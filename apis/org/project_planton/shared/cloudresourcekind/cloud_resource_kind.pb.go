@@ -131,6 +131,7 @@ const (
 	CloudResourceKind_GcpServiceAccount             CloudResourceKind = 614
 	CloudResourceKind_GcpGkeWorkloadIdentityBinding CloudResourceKind = 615
 	CloudResourceKind_GcpCertManagerCert            CloudResourceKind = 616
+	CloudResourceKind_GcpComputeInstance            CloudResourceKind = 617
 	// 800–999: Kubernetes resources
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 800
 	CloudResourceKind_KubernetesCronJob                     CloudResourceKind = 801
@@ -283,6 +284,7 @@ var (
 		614:  "GcpServiceAccount",
 		615:  "GcpGkeWorkloadIdentityBinding",
 		616:  "GcpCertManagerCert",
+		617:  "GcpComputeInstance",
 		800:  "KubernetesArgocd",
 		801:  "KubernetesCronJob",
 		802:  "KubernetesElasticsearch",
@@ -424,6 +426,7 @@ var (
 		"GcpServiceAccount":                     614,
 		"GcpGkeWorkloadIdentityBinding":         615,
 		"GcpCertManagerCert":                    616,
+		"GcpComputeInstance":                    617,
 		"KubernetesArgocd":                      800,
 		"KubernetesCronJob":                     801,
 		"KubernetesElasticsearch":               802,
@@ -654,7 +657,7 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x0fis_service_kind\x18\x05 \x01(\bR\risServiceKind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xfc-\n" +
+	"\x02v1\x10\x01*\xa6.\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12(\n" +
 	"\x14TestCloudResourceOne\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -719,6 +722,7 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x11GcpServiceAccount\x10\xe6\x04\x1a\r\xa2\xf7\x04\t\b\x12\x10\x01\"\x03gsa\x124\n" +
 	"\x1dGcpGkeWorkloadIdentityBinding\x10\xe7\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gkewib\x12*\n" +
 	"\x12GcpCertManagerCert\x10\xe8\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpcert\x12(\n" +
+	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpvm\x12(\n" +
 	"\x10KubernetesArgocd\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x12)\n" +
 	"\x11KubernetesCronJob\x10\xa1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8scron\x12-\n" +
 	"\x17KubernetesElasticsearch\x10\xa2\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8ses\x12&\n" +

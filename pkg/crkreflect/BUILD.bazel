@@ -100,6 +100,7 @@ go_library(
         "//apis/org/project_planton/provider/gcp/gcpcloudfunction/v1:gcpcloudfunction",
         "//apis/org/project_planton/provider/gcp/gcpcloudrun/v1:gcpcloudrun",
         "//apis/org/project_planton/provider/gcp/gcpcloudsql/v1:gcpcloudsql",
+        "//apis/org/project_planton/provider/gcp/gcpcomputeinstance/v1:gcpcomputeinstance",
         "//apis/org/project_planton/provider/gcp/gcpdnszone/v1:gcpdnszone",
         "//apis/org/project_planton/provider/gcp/gcpgcsbucket/v1:gcpgcsbucket",
         "//apis/org/project_planton/provider/gcp/gcpgkecluster/v1:gcpgkecluster",
