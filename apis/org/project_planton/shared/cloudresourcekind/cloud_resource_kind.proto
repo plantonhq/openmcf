@@ -305,6 +305,11 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpcert"
   }];
+  GcpComputeInstance = 617 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvm"
+  }];
 
   // 800–999: Kubernetes resources
   KubernetesArgocd = 800 [(kind_meta) = {

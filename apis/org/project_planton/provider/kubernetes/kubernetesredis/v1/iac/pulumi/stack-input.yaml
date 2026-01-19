@@ -6,7 +6,7 @@ target:
         labels:
             kubernetes.project-planton.org/context: gke_planton-shared-kfn_asia-south1_gcp-shared-cluster
             project-planton.org/provisioner: pulumi
-            pulumi.project-planton.org/organization: planton-cloud
+            pulumi.project-planton.org/organization: organization
             pulumi.project-planton.org/project: planton
             pulumi.project-planton.org/stack.name: gcp-dev.KubernetesRedis.redis-test-stack-input-1
         name: redis-test-stack-input-1

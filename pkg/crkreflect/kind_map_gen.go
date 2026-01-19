@@ -85,6 +85,7 @@ import (
 	gcpcloudfunctionv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpcloudfunction/v1"
 	gcpcloudrunv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpcloudrun/v1"
 	gcpcloudsqlv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpcloudsql/v1"
+	gcpcomputeinstancev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpcomputeinstance/v1"
 	gcpdnszonev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpdnszone/v1"
 	gcpgcsbucketv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpgcsbucket/v1"
 	gcpgkeclusterv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpgkecluster/v1"
@@ -265,6 +266,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpCloudFunction:              &gcpcloudfunctionv1.GcpCloudFunction{},
 	cloudresourcekind.CloudResourceKind_GcpCloudRun:                   &gcpcloudrunv1.GcpCloudRun{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSql:                   &gcpcloudsqlv1.GcpCloudSql{},
+	cloudresourcekind.CloudResourceKind_GcpComputeInstance:            &gcpcomputeinstancev1.GcpComputeInstance{},
 	cloudresourcekind.CloudResourceKind_GcpDnsZone:                    &gcpdnszonev1.GcpDnsZone{},
 	cloudresourcekind.CloudResourceKind_GcpGcsBucket:                  &gcpgcsbucketv1.GcpGcsBucket{},
 	cloudresourcekind.CloudResourceKind_GcpGkeCluster:                 &gcpgkeclusterv1.GcpGkeCluster{},
