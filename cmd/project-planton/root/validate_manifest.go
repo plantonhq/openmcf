@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/flag"
+	"github.com/plantonhq/project-planton/internal/cli/iacflags"
+	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
 	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/kustomize/builder"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -19,9 +19,18 @@ var ValidateManifest = &cobra.Command{
 		"validate",
 	},
 	Example: `
-	# Validate from file
+	# Validate from clipboard
+	project-planton validate --clipboard
+	project-planton validate -c
+	project-planton validate --clip
+	project-planton validate --cb
+
+	# Validate from file (positional argument)
 	project-planton validate manifest.yaml
-	
+
+	# Validate from file (flag)
+	project-planton validate -f manifest.yaml
+
 	# Validate from kustomize
 	project-planton validate --kustomize-dir _kustomize --overlay prod
 	`,
@@ -30,35 +39,25 @@ var ValidateManifest = &cobra.Command{
 }
 
 func init() {
-	ValidateManifest.PersistentFlags().String(string(flag.KustomizeDir), "", "directory containing kustomize configuration")
-	ValidateManifest.PersistentFlags().String(string(flag.Overlay), "", "kustomize overlay to use (e.g., prod, dev, staging)")
+	iacflags.AddManifestSourceFlags(ValidateManifest)
 }
 
 func validateHandler(cmd *cobra.Command, args []string) {
 	var manifestPath string
+	var isTemp bool
 	var err error
 
-	// If a positional arg is provided, use it as manifest path
+	// If a positional arg is provided, use it as manifest path (backward compatibility)
 	if len(args) > 0 {
 		manifestPath = args[0]
 	} else {
-		// Otherwise, try to build from kustomize flags
-		kustomizeDir, _ := cmd.Flags().GetString(string(flag.KustomizeDir))
-		overlay, _ := cmd.Flags().GetString(string(flag.Overlay))
-
-		if kustomizeDir != "" && overlay != "" {
-			// Build manifest from kustomize
-			manifestPath, err = builder.BuildManifest(kustomizeDir, overlay)
-			if err != nil {
-				log.Fatalf("failed to build kustomize manifest: %v", err)
-			}
+		// Use unified resolver for --clipboard, --manifest, --kustomize-dir, etc.
+		manifestPath, isTemp, err = climanifest.ResolveManifestPath(cmd)
+		if err != nil {
+			log.Fatalf("failed to resolve manifest: %v", err)
+		}
+		if isTemp {
 			defer os.Remove(manifestPath)
-		} else if kustomizeDir != "" || overlay != "" {
-			log.Fatal("both --kustomize-dir and --overlay flags must be provided together")
-			return
-		} else {
-			log.Fatal("must provide either a manifest path or (--kustomize-dir + --overlay)")
-			return
 		}
 	}
 

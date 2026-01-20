@@ -11,6 +11,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/cli/flag",
+        "//internal/cli/iacflags",
         "//internal/cli/workspace",
         "//pkg/clipboard",
         "//pkg/iac/stackinput",

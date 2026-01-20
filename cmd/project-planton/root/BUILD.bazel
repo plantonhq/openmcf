@@ -70,7 +70,6 @@ go_library(
         "//pkg/iac/tofu/tfbackend",
         "//pkg/iac/tofu/tofumodule",
         "//pkg/kubernetes/kubecontext",
-        "//pkg/kustomize/builder",
         "@com_connectrpc_connect//:connect",
         "@com_github_fatih_color//:color",
         "@com_github_sirupsen_logrus//:logrus",

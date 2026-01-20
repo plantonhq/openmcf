@@ -5,18 +5,18 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/internal/cli/flag"
+	"github.com/plantonhq/project-planton/internal/cli/iacflags"
 	"github.com/plantonhq/project-planton/internal/cli/workspace"
 	"github.com/plantonhq/project-planton/pkg/clipboard"
 	"github.com/plantonhq/project-planton/pkg/ulidgen"
 	"github.com/spf13/cobra"
 )
 
-// resolveFromClipboard checks for --clipboard flag and reads manifest from clipboard.
+// resolveFromClipboard checks for clipboard flags (--clipboard, --clip, --cb, -c) and reads manifest from clipboard.
 // Returns empty string if flag not provided.
 // When clipboard content is read, it is written to a file in the downloads directory.
 func resolveFromClipboard(cmd *cobra.Command) (manifestPath string, isTemp bool, err error) {
-	useClipboard, err := cmd.Flags().GetBool(string(flag.Clipboard))
+	useClipboard, err := iacflags.IsClipboardFlagSet(cmd)
 	if err != nil {
 		return "", false, errors.Wrap(err, "failed to get clipboard flag")
 	}
