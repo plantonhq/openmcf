@@ -2,62 +2,18 @@ package tofumodule
 
 import (
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tofumodule/providerconfig"
-	"gopkg.in/yaml.v3"
+	"github.com/plantonhq/project-planton/pkg/iac/stackinput/providerenvvars"
 )
 
+// GetProviderConfigEnvVars returns provider-specific environment variables for the stack.
+// It delegates to the IaC-agnostic providerenvvars package which determines the correct provider
+// based on the target's api_version/kind and loads only the relevant provider configuration.
 func GetProviderConfigEnvVars(stackInputYaml, fileCacheLoc, kubeContext string) ([]string, error) {
-	stackInputContentMap := map[string]interface{}{}
-	err := yaml.Unmarshal([]byte(stackInputYaml), &stackInputContentMap)
+	providerConfigEnvVars, err := providerenvvars.GetEnvVarsWithOptions(stackInputYaml, providerenvvars.Options{
+		FileCacheLoc: fileCacheLoc,
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal stack input yaml to map")
-	}
-
-	providerConfigEnvVars := map[string]string{}
-
-	// providerConfigEnvVars, err = providercredentials.AddAwsProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get AWS provider config")
-	}
-
-	providerConfigEnvVars, err = providerconfig.AddAzureProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to add Azure provider config")
-	}
-
-	providerConfigEnvVars, err = providerconfig.AddGcpProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to add GCP provider config")
-	}
-
-	providerConfigEnvVars, err = providerconfig.AddConfluentProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to add Confluent provider config")
-	}
-
-	providerConfigEnvVars, err = providerconfig.AddKubernetesProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars, fileCacheLoc)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get Kubernetes provider config")
-	}
-
-	providerConfigEnvVars, err = providerconfig.AddAtlasProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get MongoDB Atlas provider config")
-	}
-
-	providerConfigEnvVars, err = providerconfig.AddAuth0ProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get Auth0 provider config")
-	}
-
-	providerConfigEnvVars, err = providerconfig.AddOpenFgaProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get OpenFGA provider config")
-	}
-
-	providerConfigEnvVars, err = providerconfig.AddSnowflakeProviderConfigEnvVars(stackInputContentMap, providerConfigEnvVars)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get Snowflake provider config")
+		return nil, errors.Wrap(err, "failed to get provider env vars from stack input")
 	}
 
 	// Add KUBE_CTX environment variable if kube context is specified
