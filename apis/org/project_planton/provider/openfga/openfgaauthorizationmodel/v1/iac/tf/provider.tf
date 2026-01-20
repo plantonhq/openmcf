@@ -16,7 +16,7 @@ terraform {
   required_providers {
     openfga = {
       source  = "openfga/openfga"
-      version = ">= 0.1"
+      version = ">= 0.5.0"
     }
   }
 }
