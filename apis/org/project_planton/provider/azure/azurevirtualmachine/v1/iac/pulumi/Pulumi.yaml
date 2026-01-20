@@ -1,0 +1,3 @@
+name: azure-virtual-machine
+runtime: go
+description: Pulumi module for AzureVirtualMachine
