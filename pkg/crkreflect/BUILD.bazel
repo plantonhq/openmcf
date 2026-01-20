@@ -60,6 +60,7 @@ go_library(
         "//apis/org/project_planton/provider/azure/azurednszone/v1:azurednszone",
         "//apis/org/project_planton/provider/azure/azurekeyvault/v1:azurekeyvault",
         "//apis/org/project_planton/provider/azure/azurenatgateway/v1:azurenatgateway",
+        "//apis/org/project_planton/provider/azure/azurevirtualmachine/v1:azurevirtualmachine",
         "//apis/org/project_planton/provider/azure/azurevpc/v1:azurevpc",
         "//apis/org/project_planton/provider/civo/civobucket/v1:civobucket",
         "//apis/org/project_planton/provider/civo/civocertificate/v1:civocertificate",

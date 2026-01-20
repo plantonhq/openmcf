@@ -45,6 +45,7 @@ import (
 	azurednszonev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurednszone/v1"
 	azurekeyvaultv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurekeyvault/v1"
 	azurenatgatewayv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurenatgateway/v1"
+	azurevirtualmachinev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurevirtualmachine/v1"
 	azurevpcv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurevpc/v1"
 	civobucketv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civobucket/v1"
 	civocertificatev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civocertificate/v1"
@@ -211,6 +212,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:           &azurednszonev1.AzureDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzureKeyVault:          &azurekeyvaultv1.AzureKeyVault{},
 	cloudresourcekind.CloudResourceKind_AzureNatGateway:        &azurenatgatewayv1.AzureNatGateway{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualMachine:    &azurevirtualmachinev1.AzureVirtualMachine{},
 	cloudresourcekind.CloudResourceKind_AzureVpc:               &azurevpcv1.AzureVpc{},
 }
 
