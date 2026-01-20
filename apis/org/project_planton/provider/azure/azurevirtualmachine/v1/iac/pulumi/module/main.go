@@ -95,7 +95,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurevirtualmachinev1.AzureVirtu
 
 		pipAllocation := "Static"
 		if spec.Network.PublicIpAllocation != nil {
-			if *spec.Network.PublicIpAllocation == azurevirtualmachinev1.AzureVirtualMachineNetworkConfig_dynamic {
+			if *spec.Network.PublicIpAllocation == azurevirtualmachinev1.AzureVirtualMachineNetworkConfig_public_dynamic {
 				pipAllocation = "Dynamic"
 			}
 		}

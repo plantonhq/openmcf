@@ -188,21 +188,21 @@ type AzureVirtualMachineNetworkConfig_PublicIpAllocation int32
 
 const (
 	AzureVirtualMachineNetworkConfig_public_ip_allocation_unspecified AzureVirtualMachineNetworkConfig_PublicIpAllocation = 0
-	AzureVirtualMachineNetworkConfig_dynamic                          AzureVirtualMachineNetworkConfig_PublicIpAllocation = 1
-	AzureVirtualMachineNetworkConfig_static                           AzureVirtualMachineNetworkConfig_PublicIpAllocation = 2
+	AzureVirtualMachineNetworkConfig_public_dynamic                   AzureVirtualMachineNetworkConfig_PublicIpAllocation = 1
+	AzureVirtualMachineNetworkConfig_public_static                    AzureVirtualMachineNetworkConfig_PublicIpAllocation = 2
 )
 
 // Enum value maps for AzureVirtualMachineNetworkConfig_PublicIpAllocation.
 var (
 	AzureVirtualMachineNetworkConfig_PublicIpAllocation_name = map[int32]string{
 		0: "public_ip_allocation_unspecified",
-		1: "dynamic",
-		2: "static",
+		1: "public_dynamic",
+		2: "public_static",
 	}
 	AzureVirtualMachineNetworkConfig_PublicIpAllocation_value = map[string]int32{
 		"public_ip_allocation_unspecified": 0,
-		"dynamic":                          1,
-		"static":                           2,
+		"public_dynamic":                   1,
+		"public_static":                    2,
 	}
 )
 
@@ -966,11 +966,11 @@ const file_org_project_planton_provider_azure_azurevirtualmachine_v1_spec_proto_
 	"\r_storage_typeB\n" +
 	"\n" +
 	"\b_cachingB\x11\n" +
-	"\x0f_delete_with_vm\"\xb4\v\n" +
+	"\x0f_delete_with_vm\"\xc9\v\n" +
 	" AzureVirtualMachineNetworkConfig\x12(\n" +
 	"\x10enable_public_ip\x18\x01 \x01(\bR\x0eenablePublicIp\x12\xa6\x01\n" +
-	"\rpublic_ip_sku\x18\x02 \x01(\x0e2g.org.project_planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpSkuB\x14\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\bstandardH\x00R\vpublicIpSku\x88\x01\x01\x12\xb9\x01\n" +
-	"\x14public_ip_allocation\x18\x03 \x01(\x0e2n.org.project_planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpAllocationB\x12\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x06staticH\x01R\x12publicIpAllocation\x88\x01\x01\x12u\n" +
+	"\rpublic_ip_sku\x18\x02 \x01(\x0e2g.org.project_planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpSkuB\x14\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\bstandardH\x00R\vpublicIpSku\x88\x01\x01\x12\xc0\x01\n" +
+	"\x14public_ip_allocation\x18\x03 \x01(\x0e2n.org.project_planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PublicIpAllocationB\x19\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\rpublic_staticH\x01R\x12publicIpAllocation\x88\x01\x01\x12u\n" +
 	"\x19network_security_group_id\x18\x04 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefR\x16networkSecurityGroupId\x12Q\n" +
 	"\x1denable_accelerated_networking\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x1benableAcceleratedNetworking\x88\x01\x01\x12\xc5\x01\n" +
 	"\x15private_ip_allocation\x18\x06 \x01(\x0e2o.org.project_planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineNetworkConfig.PrivateIpAllocationB\x1b\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x0fprivate_dynamicH\x03R\x13privateIpAllocation\x88\x01\x01\x12,\n" +
@@ -978,12 +978,11 @@ const file_org_project_planton_provider_azure_azurevirtualmachine_v1_spec_proto_
 	"\vPublicIpSku\x12\x1d\n" +
 	"\x19public_ip_sku_unspecified\x10\x00\x12\t\n" +
 	"\x05basic\x10\x01\x12\f\n" +
-	"\bstandard\x10\x02\"S\n" +
+	"\bstandard\x10\x02\"a\n" +
 	"\x12PublicIpAllocation\x12$\n" +
-	" public_ip_allocation_unspecified\x10\x00\x12\v\n" +
-	"\adynamic\x10\x01\x12\n" +
-	"\n" +
-	"\x06static\x10\x02\"e\n" +
+	" public_ip_allocation_unspecified\x10\x00\x12\x12\n" +
+	"\x0epublic_dynamic\x10\x01\x12\x11\n" +
+	"\rpublic_static\x10\x02\"e\n" +
 	"\x13PrivateIpAllocation\x12%\n" +
 	"!private_ip_allocation_unspecified\x10\x00\x12\x13\n" +
 	"\x0fprivate_dynamic\x10\x01\x12\x12\n" +

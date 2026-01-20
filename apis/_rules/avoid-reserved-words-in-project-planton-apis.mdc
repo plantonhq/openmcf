@@ -1,0 +1,99 @@
+---
+globs:
+  - apis/**/*.proto
+alwaysApply: false
+---
+
+# Avoid Java Reserved Words in Proto Definitions
+
+## Why This Matters
+
+Protocol Buffer enum values and field names become identifiers in generated code. Java has reserved keywords that cannot be used as identifiers. Using these words in proto definitions causes Java code generation to fail.
+
+**Real example:** Using `static` as an enum value in `PublicIpAllocation` broke Java stub generation because `static` is a Java reserved keyword.
+
+## Java Reserved Keywords
+
+**NEVER** use these words as enum values or field names in `.proto` files:
+
+| Reserved Words | | | | |
+|----------------|-----------|------------|-------------|-------------|
+| `abstract` | `assert` | `boolean` | `break` | `byte` |
+| `case` | `catch` | `char` | `class` | `const` |
+| `continue` | `default` | `do` | `double` | `else` |
+| `enum` | `extends` | `final` | `finally` | `float` |
+| `for` | `goto` | `if` | `implements` | `import` |
+| `instanceof` | `int` | `interface` | `long` | `native` |
+| `new` | `package` | `private` | `protected` | `public` |
+| `return` | `short` | `static` | `strictfp` | `super` |
+| `switch` | `synchronized` | `this` | `throw` | `throws` |
+| `transient` | `try` | `void` | `volatile` | `while` |
+
+## Common Violations and Fixes
+
+### Enum Values
+
+```protobuf
+// BAD - "static" and "dynamic" are problematic
+enum PublicIpAllocation {
+  unspecified = 0;
+  dynamic = 1;
+  static = 2;      // ← FAILS: "static" is a Java keyword
+}
+
+// GOOD - Use prefixed names
+enum PublicIpAllocation {
+  public_ip_allocation_unspecified = 0;
+  public_dynamic = 1;
+  public_static = 2;
+}
+```
+
+### Field Names
+
+```protobuf
+// BAD
+message Config {
+  string class = 1;      // ← FAILS: "class" is a Java keyword
+  bool default = 2;      // ← FAILS: "default" is a Java keyword
+  string package = 3;    // ← FAILS: "package" is a Java keyword
+}
+
+// GOOD - Use descriptive alternatives
+message Config {
+  string class_name = 1;
+  bool is_default = 2;
+  string package_name = 3;
+}
+```
+
+## Naming Patterns
+
+When you need to represent concepts that match reserved words:
+
+| Concept | Bad Name | Good Alternative |
+|---------|----------|------------------|
+| Static allocation | `static` | `static_allocation`, `is_static`, `allocation_static` |
+| Dynamic allocation | `dynamic` | `dynamic_allocation`, `is_dynamic`, `allocation_dynamic` |
+| Default value | `default` | `default_value`, `is_default`, `use_default` |
+| Class type | `class` | `class_name`, `class_type`, `resource_class` |
+| Package name | `package` | `package_name`, `pkg_name` |
+| Public visibility | `public` | `is_public`, `public_access`, `visibility_public` |
+| Private visibility | `private` | `is_private`, `private_access`, `visibility_private` |
+| Import reference | `import` | `import_ref`, `import_path`, `imported_from` |
+| Interface type | `interface` | `interface_name`, `interface_type` |
+| Native mode | `native` | `is_native`, `native_mode` |
+
+## Verification
+
+Java stubs are generated during `make protos` and kept in `apis/generated/stubs/java/` (gitignored). If proto changes introduce reserved word violations, the Java generation will fail immediately, catching the issue before it reaches the planton monorepo.
+
+## Quick Reference
+
+Before naming an enum value or field, ask:
+
+1. Is this word in the reserved list above?
+2. Could this word be a keyword in any common language?
+3. Does this name clearly describe what it represents?
+
+When in doubt, add a prefix or suffix that provides context (e.g., `_type`, `_name`, `_mode`, `is_`, `enable_`).

@@ -5,7 +5,9 @@ build: lint fmt
 	buf generate
 	cp -R generated/stubs/go/github.com/plantonhq/project-planton/apis/. .
 	cp -R generated/stubs/ts/. ../app/frontend/src/gen/
-	rm -rf generated/stubs
+	# Keep Java stubs in generated/ for early detection of reserved keyword issues
+	# Go and TS stubs are copied to their destinations, so we only clean those
+	rm -rf generated/stubs/go generated/stubs/ts
 
 .PHONY: protos
 protos: build

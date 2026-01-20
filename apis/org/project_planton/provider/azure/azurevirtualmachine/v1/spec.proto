@@ -280,13 +280,13 @@ message AzureVirtualMachineNetworkConfig {
   // Static or dynamic allocation for public IP.
   enum PublicIpAllocation {
     public_ip_allocation_unspecified = 0;
-    dynamic = 1;
-    static = 2;
+    public_dynamic = 1;
+    public_static = 2;
   }
 
   // Allocation method for the public IP.
   optional PublicIpAllocation public_ip_allocation = 3 [
-    (org.project_planton.shared.options.default) = "static",
+    (org.project_planton.shared.options.default) = "public_static",
     (buf.validate.field).enum.defined_only = true
   ];
 

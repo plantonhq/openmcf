@@ -29,3 +29,9 @@ plugins:
     out: generated/stubs/ts
     opt:
       - target=ts
+  # Generate Java stubs to catch reserved keyword conflicts early (e.g., 'static', 'class')
+  # These are NOT committed - generated/stubs/java is gitignored
+  - remote: buf.build/protocolbuffers/java:v30.1
+    out: generated/stubs/java
+  - remote: buf.build/grpc/java:v1.65.0
+    out: generated/stubs/java
