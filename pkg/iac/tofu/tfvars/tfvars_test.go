@@ -47,20 +47,22 @@ func TestGeneratedTFVarsParsing(t *testing.T) {
 	}
 
 	// For demonstration, let's assume got looks like:
+	// Note: Top-level keys are NOT quoted, but nested keys ARE quoted to handle
+	// special characters (periods, slashes, etc.) common in Kubernetes-style labels.
 	got = `
 apiVersion = "kubernetes.project-planton.org/v1"
 kind = "KubernetesRedis"
 metadata = {
-  name = "red-one"
-  labels = {
-    env = "production"
+  "name" = "red-one"
+  "labels" = {
+    "env" = "production"
   }
 }
 spec = {
-  container = {
-    diskSize = "2Gi"
-    isPersistenceEnabled = true
-    replicas = 1
+  "container" = {
+    "diskSize" = "2Gi"
+    "isPersistenceEnabled" = true
+    "replicas" = 1
   }
 }
 `

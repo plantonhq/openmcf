@@ -52,21 +52,23 @@ import (
 //
 // This might produce tfvars output:
 //
-//	apiVersion = "kubernetes.project-planton.org/v1"
-//	kind = "RedisKubernetes"
 //	metadata = {
-//	  labels = {
-//	    env = "production"
+//	  "labels" = {
+//	    "env" = "production"
 //	  }
-//	  name = "red-one"
+//	  "name" = "red-one"
 //	}
 //	spec = {
-//	  container = {
-//	    diskSize = "2Gi"
-//	    isPersistenceEnabled = true
-//	    replicas = 1
+//	  "container" = {
+//	    "disk_size" = "2Gi"
+//	    "is_persistence_enabled" = true
+//	    "replicas" = 1
 //	  }
 //	}
+//
+// Note: Nested map keys are quoted to handle special characters (periods, slashes, etc.)
+// that are common in Kubernetes-style labels. Top-level variable names are not quoted
+// per HCL specification. The apiVersion, kind, and status fields are automatically skipped.
 //
 // Returns:
 //   - A string containing the tfvars-formatted representation of the proto message.
@@ -109,6 +111,17 @@ func ProtoToTFVars(msg proto.Message) (string, error) {
 	return buf.String(), nil
 }
 
+// formatKey formats a map key for HCL output.
+// Top-level keys (indentLevel 0) must NOT be quoted in tfvars files.
+// Nested map keys (indentLevel > 0) are quoted to safely handle special
+// characters like periods and slashes that are common in Kubernetes-style labels.
+func formatKey(key string, indentLevel int) string {
+	if indentLevel == 0 {
+		return key
+	}
+	return fmt.Sprintf("%q", key)
+}
+
 // writeHCL is a helper function that formats a given data structure into
 // HCL-compatible syntax suitable for Terraform tfvars. It handles recursion
 // into maps and arrays, prints primitives (string, bool, number, null) with
@@ -132,12 +145,15 @@ func ProtoToTFVars(msg proto.Message) (string, error) {
 // Example nested formatting:
 //
 //	key = {
-//	  nested_key = "value"
-//	  arr_key = [
+//	  "nested_key" = "value"
+//	  "arr_key" = [
 //	    "elem1",
 //	    "elem2",
 //	  ]
 //	}
+//
+// Note: Nested map keys (indentLevel > 0) are quoted to safely handle special
+// characters like periods and slashes. Top-level keys are NOT quoted per HCL spec.
 //
 // This function is only intended for internal use by ProtoToTFVars.
 func writeHCL(buf *bytes.Buffer, data interface{}, indentLevel int) error {
@@ -153,9 +169,14 @@ func writeHCL(buf *bytes.Buffer, data interface{}, indentLevel int) error {
 			}
 
 			snakeKey := caseconverter.ToSnakeCase(k) // Convert key to snake case here.
+			// Format the key: top-level keys (indentLevel 0) must NOT be quoted in tfvars,
+			// but nested map keys (indentLevel > 0) should be quoted to handle special
+			// characters like periods and slashes (common in Kubernetes-style labels).
+			formattedKey := formatKey(snakeKey, indentLevel)
+
 			switch val.(type) {
 			case map[string]interface{}, []interface{}:
-				buf.WriteString(fmt.Sprintf("%s%s = ", indent, snakeKey))
+				buf.WriteString(fmt.Sprintf("%s%s = ", indent, formattedKey))
 				if m, ok := val.(map[string]interface{}); ok {
 					buf.WriteString("{\n")
 					if err := writeHCL(buf, m, indentLevel+1); err != nil {
@@ -171,16 +192,16 @@ func writeHCL(buf *bytes.Buffer, data interface{}, indentLevel int) error {
 				}
 
 			case string:
-				buf.WriteString(fmt.Sprintf("%s%s = %q\n", indent, snakeKey, val))
+				buf.WriteString(fmt.Sprintf("%s%s = %q\n", indent, formattedKey, val))
 
 			case bool:
-				buf.WriteString(fmt.Sprintf("%s%s = %t\n", indent, snakeKey, val))
+				buf.WriteString(fmt.Sprintf("%s%s = %t\n", indent, formattedKey, val))
 
 			case float64:
-				buf.WriteString(fmt.Sprintf("%s%s = %v\n", indent, snakeKey, val))
+				buf.WriteString(fmt.Sprintf("%s%s = %v\n", indent, formattedKey, val))
 
 			case nil:
-				buf.WriteString(fmt.Sprintf("%s%s = null\n", indent, snakeKey))
+				buf.WriteString(fmt.Sprintf("%s%s = null\n", indent, formattedKey))
 
 			default:
 				return errors.Errorf("unsupported type for key %q: %T", k, val)
