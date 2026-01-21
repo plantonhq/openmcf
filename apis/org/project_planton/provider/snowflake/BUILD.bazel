@@ -2,7 +2,10 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "snowflake",
-    srcs = ["provider.pb.go"],
+    srcs = [
+        "cli_help.go",
+        "provider.pb.go",
+    ],
     importpath = "github.com/plantonhq/project-planton/apis/org/project_planton/provider/snowflake",
     visibility = ["//visibility:public"],
     deps = [

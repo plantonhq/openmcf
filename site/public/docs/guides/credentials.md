@@ -17,15 +17,23 @@ To deploy infrastructure, Project Planton needs permission to create resources i
 
 Think of credentials like keys to different buildings. AWS credentials are like keys to Amazon's building, GCP credentials open Google's building, and so on. Project Planton needs the right key for whichever building (cloud provider) you're working with.
 
-### The Three Ways to Provide Credentials
+### How Credentials Are Loaded
 
-Project Planton supports three methods for providing credentials:
+Project Planton uses the same credential loading mechanism as the underlying IaC providers (Pulumi, Terraform, OpenTofu). Credentials are loaded in this order:
 
-1. **Environment Variables** (Most common, recommended for local development)
-2. **Credential Files via CLI Flags** (Good for multi-account scenarios)
-3. **Embedded in Manifests** (Advanced, not covered in this guide)
+1. **Environment Variables** (Default) - The CLI and IaC providers automatically read credentials from standard environment variables for each provider
+2. **Provider Config File** (`-p` flag) - Explicit credentials file that overrides environment variables
 
-We'll focus on the first two methods, as they're the most practical and secure.
+**The key insight**: You don't need to do anything special if you already have your cloud provider CLI configured (e.g., `aws`, `gcloud`, `az`). The environment variables and default credential files used by those tools are automatically picked up.
+
+### When to Use Each Method
+
+| Method | Best For | Example |
+|--------|----------|---------|
+| Environment Variables | Local development, CI/CD pipelines | `export AWS_ACCESS_KEY_ID=...` |
+| Provider Config File (`-p`) | Multi-account scenarios, explicit credentials | `project-planton apply -f manifest.yaml -p aws-creds.yaml` |
+
+Both methods are secure when used properly. Environment variables are simpler; config files offer more control.
 
 ---
 
@@ -729,38 +737,89 @@ git commit -m "Add AWS credentials"  # DON'T DO THIS!
 
 ### Environment Variables by Provider
 
+These environment variables are automatically read by the underlying IaC providers (Pulumi/Terraform) when no explicit `-p` flag is provided.
+
 **AWS**:
 ```bash
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_DEFAULT_REGION
-AWS_PROFILE
+AWS_ACCESS_KEY_ID          # Required
+AWS_SECRET_ACCESS_KEY      # Required
+AWS_DEFAULT_REGION         # Required
+AWS_SESSION_TOKEN          # Optional (for temporary credentials)
+AWS_PROFILE                # Optional (use named profile)
 ```
 
 **GCP**:
 ```bash
-GOOGLE_APPLICATION_CREDENTIALS  # Path to JSON key file
-GOOGLE_CLOUD_PROJECT
+GOOGLE_APPLICATION_CREDENTIALS  # Path to service account JSON key file
+GOOGLE_CLOUD_PROJECT            # Default project ID
 ```
 
 **Azure**:
 ```bash
-ARM_CLIENT_ID
-ARM_CLIENT_SECRET
-ARM_TENANT_ID
-ARM_SUBSCRIPTION_ID
+ARM_CLIENT_ID           # Service principal client ID
+ARM_CLIENT_SECRET       # Service principal client secret
+ARM_TENANT_ID           # Azure AD tenant ID
+ARM_SUBSCRIPTION_ID     # Azure subscription ID
 ```
 
 **Cloudflare**:
 ```bash
-CLOUDFLARE_API_TOKEN          # Recommended
-CLOUDFLARE_API_KEY            # Legacy
-CLOUDFLARE_EMAIL              # With legacy key
+CLOUDFLARE_API_TOKEN    # Scoped API token (recommended)
+CLOUDFLARE_API_KEY      # Global API key (legacy)
+CLOUDFLARE_EMAIL        # Account email (with legacy key)
 ```
 
 **Kubernetes**:
 ```bash
-KUBECONFIG  # Path to kubeconfig file
+KUBECONFIG              # Path to kubeconfig file (default: ~/.kube/config)
+KUBE_CONTEXT            # Specific context to use
+```
+
+**OpenFGA**:
+```bash
+FGA_API_URL             # OpenFGA server URL
+FGA_API_TOKEN           # API token for authentication
+FGA_CLIENT_ID           # Client ID (for OAuth2 client credentials)
+FGA_CLIENT_SECRET       # Client secret (for OAuth2 client credentials)
+```
+
+**Confluent Cloud**:
+```bash
+CONFLUENT_CLOUD_API_KEY      # Confluent Cloud API key
+CONFLUENT_CLOUD_API_SECRET   # Confluent Cloud API secret
+```
+
+**Snowflake**:
+```bash
+SNOWFLAKE_ACCOUNT       # Snowflake account identifier
+SNOWFLAKE_REGION        # Snowflake region
+SNOWFLAKE_USER          # Username
+SNOWFLAKE_PASSWORD      # Password
+```
+
+**MongoDB Atlas**:
+```bash
+MONGODB_ATLAS_PUBLIC_KEY   # Atlas public key
+MONGODB_ATLAS_PRIVATE_KEY  # Atlas private key
+```
+
+**Auth0**:
+```bash
+AUTH0_DOMAIN            # Auth0 tenant domain
+AUTH0_CLIENT_ID         # Machine-to-machine client ID
+AUTH0_CLIENT_SECRET     # Machine-to-machine client secret
+```
+
+**DigitalOcean**:
+```bash
+DIGITALOCEAN_TOKEN      # Personal access token
+SPACES_ACCESS_KEY_ID    # Spaces access key (for object storage)
+SPACES_SECRET_ACCESS_KEY # Spaces secret key (for object storage)
+```
+
+**Civo**:
+```bash
+CIVO_TOKEN              # Civo API token
 ```
 
 ### CLI Provider Config Flag
@@ -774,6 +833,7 @@ The CLI automatically determines which provider credentials are needed based on 
 - `aws.project-planton.org/v1` → AWS credentials expected
 - `gcp.project-planton.org/v1` → GCP credentials expected
 - `kubernetes.project-planton.org/v1` → Kubernetes config expected
+- `openfga.project-planton.org/v1` → OpenFGA credentials expected
 
 ---
 

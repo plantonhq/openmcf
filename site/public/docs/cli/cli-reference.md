@@ -410,25 +410,36 @@ Create destroy plan (`plan` command).
 --destroy
 ```
 
-### Provider Config Flag
+### Provider Credentials
 
-**`-p, --provider-config <file>`**  
-Path to provider credentials file. The provider type is automatically detected from the manifest's `apiVersion` and `kind`.
+**Default Behavior (Environment Variables)**:
+
+By default, the CLI reads credentials from environment variables - the same ones used by cloud provider CLIs. If you have `aws`, `gcloud`, or `az` configured, credentials are automatically available.
 
 ```bash
-# Single unified flag works for all providers
--p ~/.config/aws-creds.yaml      # For AWS resources
--p ~/.config/gcp-creds.yaml      # For GCP resources
--p ~/.config/azure-creds.yaml    # For Azure resources
--p ~/.kube/config                # For Kubernetes resources
+# These work without any credential flags if env vars are set
+project-planton apply -f aws-vpc.yaml         # Uses AWS_ACCESS_KEY_ID, etc.
+project-planton apply -f gcp-cluster.yaml     # Uses GOOGLE_APPLICATION_CREDENTIALS
+project-planton apply -f azure-aks.yaml       # Uses ARM_CLIENT_ID, etc.
 ```
 
-**How it works**: When you run a command with a manifest, the CLI:
-1. Parses the manifest's `apiVersion` (e.g., `aws.project-planton.org/v1`)
-2. Determines the required provider (e.g., AWS)
-3. Uses the credentials from the file you specified with `-p`
+**Explicit Override (`-p, --provider-config <file>`)**:
 
-This means you don't need to remember provider-specific flags - just use `-p` with the appropriate credentials file.
+Use the `-p` flag to override environment variables with an explicit credentials file:
+
+```bash
+-p ~/.config/aws-creds.yaml      # Override AWS credentials
+-p ~/.config/gcp-creds.yaml      # Override GCP credentials
+-p ~/.config/azure-creds.yaml    # Override Azure credentials
+-p ~/.kube/config                # Override Kubernetes config
+```
+
+**How it works**: 
+1. The CLI parses your manifest's `apiVersion` (e.g., `aws.project-planton.org/v1`)
+2. Determines the required provider (e.g., AWS)
+3. Loads credentials from environment variables OR from the file specified with `-p`
+
+See the [Credentials Guide](/docs/guides/credentials) for the complete list of environment variables per provider.
 
 ---
 

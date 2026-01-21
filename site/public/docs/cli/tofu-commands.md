@@ -602,27 +602,32 @@ project-planton tofu apply \
   --set metadata.env=staging
 ```
 
-### Provider Config
+### Provider Credentials
 
-Use the `-p` / `--provider-config` flag to inject provider credentials (alternative to environment variables). The provider type is automatically detected from your manifest.
+**Default Behavior**: Credentials are automatically loaded from environment variables. If you have your cloud provider CLI configured (e.g., `aws configure`, `gcloud auth`, `az login`), no additional credential setup is needed.
+
+```bash
+# Works without -p flag if environment variables are set
+project-planton tofu apply -f ops/aws-resources/vpc.yaml  # Uses AWS_ACCESS_KEY_ID, etc.
+project-planton tofu apply -f ops/gcp-resources/gke.yaml  # Uses GOOGLE_APPLICATION_CREDENTIALS
+```
+
+**Explicit Override**: Use `-p` / `--provider-config` to override environment variables with a credentials file.
 
 **`-p, --provider-config <file>`**: Path to provider credential YAML file
 
-**Example**:
-
 ```bash
-# For AWS resources (provider auto-detected from manifest apiVersion)
+# Override with explicit credentials file
 project-planton tofu apply \
   -f ops/aws-resources/vpc.yaml \
   -p ~/.config/planton/credentials/aws-prod.yaml
 
-# For GCP resources
 project-planton tofu apply \
   -f ops/gcp-resources/cluster.yaml \
   -p ~/.config/planton/credentials/gcp-prod.yaml
 ```
 
-The CLI automatically determines which provider credentials are needed based on your manifest's `apiVersion` (e.g., `aws.project-planton.org/v1` requires AWS credentials).
+The CLI auto-detects which provider is needed from your manifest's `apiVersion`. See the [Credentials Guide](/docs/guides/credentials) for environment variable details.
 
 ---
 

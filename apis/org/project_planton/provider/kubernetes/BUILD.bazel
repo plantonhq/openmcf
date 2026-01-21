@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "kubernetes",
     srcs = [
+        "cli_help.go",
         "kubernetes.pb.go",
         "kubernetes_secret.pb.go",
         "options.pb.go",

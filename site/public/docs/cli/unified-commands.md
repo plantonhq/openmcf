@@ -348,24 +348,38 @@ All unified commands support flags from their respective provisioners.
 
 ### Provider Credentials
 
-| Flag | Description |
-|------|-------------|
-| `-p, --provider-config <file>` | Provider credentials file (type auto-detected from manifest) |
+By default, the CLI reads credentials from **environment variables** - the same ones used by the cloud provider CLIs (AWS CLI, gcloud, az, etc.). No additional configuration is needed if your environment is already set up.
 
-The CLI automatically detects which provider is needed based on your manifest's `apiVersion` and `kind`. You only need to specify a single `-p` flag with the path to your credentials file.
-
-**Examples**:
+**Default Behavior (Environment Variables)**:
 
 ```bash
-# AWS resource - CLI knows to expect AWS credentials
-project-planton apply -f aws-vpc.yaml -p ~/.config/aws-creds.yaml
+# AWS - uses AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
+project-planton apply -f aws-vpc.yaml
 
-# GCP resource - CLI knows to expect GCP credentials
-project-planton apply -f gcp-cluster.yaml -p ~/.config/gcp-creds.yaml
+# GCP - uses GOOGLE_APPLICATION_CREDENTIALS
+project-planton apply -f gcp-cluster.yaml
 
-# Kubernetes resource - CLI knows to expect kubeconfig
-project-planton apply -f k8s-postgres.yaml -p ~/.kube/prod-config.yaml
+# Azure - uses ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID
+project-planton apply -f azure-aks.yaml
 ```
+
+**Explicit Credentials (Override with `-p` flag)**:
+
+| Flag | Description |
+|------|-------------|
+| `-p, --provider-config <file>` | Provider credentials file (overrides environment variables) |
+
+Use the `-p` flag when you need to explicitly specify credentials, such as for multi-account scenarios:
+
+```bash
+# Use explicit AWS credentials file
+project-planton apply -f aws-vpc.yaml -p ~/.config/aws-prod-creds.yaml
+
+# Use explicit GCP credentials file
+project-planton apply -f gcp-cluster.yaml -p ~/.config/gcp-prod-creds.yaml
+```
+
+The CLI auto-detects which provider is needed from your manifest's `apiVersion`. See the [Credentials Guide](/docs/guides/credentials) for environment variable details per provider.
 
 ---
 

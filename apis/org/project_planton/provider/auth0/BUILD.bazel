@@ -2,7 +2,10 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "auth0",
-    srcs = ["provider.pb.go"],
+    srcs = [
+        "cli_help.go",
+        "provider.pb.go",
+    ],
     importpath = "github.com/plantonhq/project-planton/apis/org/project_planton/provider/auth0",
     visibility = ["//visibility:public"],
     deps = [

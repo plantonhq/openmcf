@@ -4,6 +4,18 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/atlas"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/auth0"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/confluent"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/openfga"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/snowflake"
 	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind"
 )
 
@@ -11,52 +23,29 @@ import (
 func ProviderConfigExample(provider cloudresourcekind.CloudResourceProvider) string {
 	switch provider {
 	case cloudresourcekind.CloudResourceProvider_atlas:
-		return `public_key: "<your-atlas-public-key>"
-private_key: "<your-atlas-private-key>"`
-
+		return atlas.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_auth0:
-		return `domain: "<your-auth0-domain>"
-client_id: "<your-auth0-client-id>"
-client_secret: "<your-auth0-client-secret>"`
-
+		return auth0.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_aws:
-		return `access_key_id: "<your-aws-access-key-id>"
-secret_access_key: "<your-aws-secret-access-key>"
-region: "us-east-1"`
-
+		return aws.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_azure:
-		return `client_id: "<your-azure-client-id>"
-client_secret: "<your-azure-client-secret>"
-tenant_id: "<your-azure-tenant-id>"
-subscription_id: "<your-azure-subscription-id>"`
-
+		return azure.ConfigFileExample
+	case cloudresourcekind.CloudResourceProvider_civo:
+		return civo.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
-		return `api_token: "<your-cloudflare-api-token>"`
-
+		return cloudflare.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_confluent:
-		return `api_key: "<your-confluent-api-key>"
-api_secret: "<your-confluent-api-secret>"`
-
+		return confluent.ConfigFileExample
+	case cloudresourcekind.CloudResourceProvider_digital_ocean:
+		return digitalocean.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_gcp:
-		return `service_account_key_base64: "<base64-encoded-service-account-json>"`
-
+		return gcp.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_kubernetes:
-		return `provider: 1  # 1=GCP_GKE, 2=AWS_EKS, 3=AZURE_AKS
-gcp_gke:
-  cluster_endpoint: "<cluster-endpoint>"
-  cluster_ca_data: "<base64-encoded-ca-cert>"
-  service_account_key_base64: "<base64-encoded-service-account-json>"`
-
+		return kubernetes.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_open_fga:
-		return `api_url: "<your-openfga-api-url>"
-api_token: "<your-openfga-api-token>"`
-
+		return openfga.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return `account: "<your-snowflake-account>"
-region: "<your-snowflake-region>"
-username: "<your-snowflake-username>"
-password: "<your-snowflake-password>"`
-
+		return snowflake.ConfigFileExample
 	default:
 		return "# Provider config format not available"
 	}
@@ -66,49 +55,132 @@ password: "<your-snowflake-password>"`
 func ProviderConfigFilename(provider cloudresourcekind.CloudResourceProvider) string {
 	switch provider {
 	case cloudresourcekind.CloudResourceProvider_atlas:
-		return "atlas-provider-config.yaml"
+		return atlas.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_auth0:
-		return "auth0-provider-config.yaml"
+		return auth0.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_aws:
-		return "aws-provider-config.yaml"
+		return aws.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_azure:
-		return "azure-provider-config.yaml"
+		return azure.ConfigFileName
+	case cloudresourcekind.CloudResourceProvider_civo:
+		return civo.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
-		return "cloudflare-provider-config.yaml"
+		return cloudflare.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_confluent:
-		return "confluent-provider-config.yaml"
+		return confluent.ConfigFileName
+	case cloudresourcekind.CloudResourceProvider_digital_ocean:
+		return digitalocean.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_gcp:
-		return "gcp-provider-config.yaml"
+		return gcp.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_kubernetes:
-		return "kubernetes-provider-config.yaml"
+		return kubernetes.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_open_fga:
-		return "openfga-provider-config.yaml"
+		return openfga.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return "snowflake-provider-config.yaml"
+		return snowflake.ConfigFileName
 	default:
 		return "provider-config.yaml"
 	}
 }
 
+// ProviderEnvironmentVariablesHelp returns the environment variable export commands for the provider.
+func ProviderEnvironmentVariablesHelp(provider cloudresourcekind.CloudResourceProvider) string {
+	switch provider {
+	case cloudresourcekind.CloudResourceProvider_atlas:
+		return atlas.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_auth0:
+		return auth0.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_aws:
+		return aws.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_azure:
+		return azure.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_civo:
+		return civo.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_cloudflare:
+		return cloudflare.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_confluent:
+		return confluent.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_digital_ocean:
+		return digitalocean.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_gcp:
+		return gcp.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_kubernetes:
+		return kubernetes.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_open_fga:
+		return openfga.EnvironmentVariablesHelp
+	case cloudresourcekind.CloudResourceProvider_snowflake:
+		return snowflake.EnvironmentVariablesHelp
+	default:
+		return "# Environment variables not available for this provider"
+	}
+}
+
+// ProviderDocsURL returns the documentation URL for the provider.
+func ProviderDocsURL(provider cloudresourcekind.CloudResourceProvider) string {
+	switch provider {
+	case cloudresourcekind.CloudResourceProvider_atlas:
+		return atlas.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_auth0:
+		return auth0.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_aws:
+		return aws.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_azure:
+		return azure.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_civo:
+		return civo.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_cloudflare:
+		return cloudflare.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_confluent:
+		return confluent.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_digital_ocean:
+		return digitalocean.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_gcp:
+		return gcp.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_kubernetes:
+		return kubernetes.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_open_fga:
+		return openfga.ProviderDocsURL
+	case cloudresourcekind.CloudResourceProvider_snowflake:
+		return snowflake.ProviderDocsURL
+	default:
+		return ""
+	}
+}
+
 // MissingProviderConfigGuidance returns a helpful message when provider config is missing.
+// It shows both options: environment variables (default) and explicit config file.
 func MissingProviderConfigGuidance(result *DetectionResult) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("The %s resource requires %s credentials.\n\n",
 		result.KindName, ProviderDisplayName(result.Provider)))
 
-	sb.WriteString(fmt.Sprintf("Create a file '%s' with:\n\n",
-		ProviderConfigFilename(result.Provider)))
-
-	// Indent the example
-	example := ProviderConfigExample(result.Provider)
-	for _, line := range strings.Split(example, "\n") {
+	// Option 1: Environment variables (recommended for local development)
+	sb.WriteString("Option 1: Set environment variables\n\n")
+	envHelp := ProviderEnvironmentVariablesHelp(result.Provider)
+	for _, line := range strings.Split(envHelp, "\n") {
 		sb.WriteString("  " + line + "\n")
 	}
 
-	sb.WriteString("\nThen run:\n\n")
-	sb.WriteString(fmt.Sprintf("  project-planton plan -f manifest.yaml -p %s\n",
+	// Option 2: Provider config file
+	sb.WriteString("\nOption 2: Create a provider config file\n\n")
+	sb.WriteString(fmt.Sprintf("  Create '%s' with:\n\n",
 		ProviderConfigFilename(result.Provider)))
+
+	example := ProviderConfigExample(result.Provider)
+	for _, line := range strings.Split(example, "\n") {
+		sb.WriteString("    " + line + "\n")
+	}
+
+	sb.WriteString("\n  Then run:\n\n")
+	sb.WriteString(fmt.Sprintf("    project-planton plan -f manifest.yaml -p %s\n",
+		ProviderConfigFilename(result.Provider)))
+
+	// Add documentation link if available
+	docsURL := ProviderDocsURL(result.Provider)
+	if docsURL != "" {
+		sb.WriteString(fmt.Sprintf("\nFor more information: %s\n", docsURL))
+	}
 
 	return sb.String()
 }
@@ -144,10 +216,14 @@ func InvalidProviderConfigGuidance(result *DetectionResult, parseErr error) stri
 	sb.WriteString(fmt.Sprintf("Expected format for %s provider config:\n\n",
 		ProviderDisplayName(result.Provider)))
 
-	// Indent the example
 	example := ProviderConfigExample(result.Provider)
 	for _, line := range strings.Split(example, "\n") {
 		sb.WriteString("  " + line + "\n")
+	}
+
+	docsURL := ProviderDocsURL(result.Provider)
+	if docsURL != "" {
+		sb.WriteString(fmt.Sprintf("\nFor more information: %s\n", docsURL))
 	}
 
 	return sb.String()
