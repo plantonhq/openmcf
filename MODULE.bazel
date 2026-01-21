@@ -30,6 +30,7 @@ use_repo(
     "build_buf_go_protovalidate",
     "com_connectrpc_connect",
     "com_github_blang_semver",
+    "com_github_charmbracelet_lipgloss",
     "com_github_fatih_color",
     "com_github_google_uuid",
     "com_github_hashicorp_hcl_v2",

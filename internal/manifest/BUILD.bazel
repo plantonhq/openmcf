@@ -12,6 +12,7 @@ go_library(
     importpath = "github.com/plantonhq/project-planton/internal/manifest",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//internal/cli/ui",
         "//internal/cli/workspace",
         "//internal/manifest/manifestprotobuf",
         "//internal/manifest/protodefaults",

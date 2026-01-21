@@ -10,6 +10,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
+	"github.com/plantonhq/project-planton/internal/cli/ui"
 	"github.com/plantonhq/project-planton/internal/cli/workspace"
 	"github.com/plantonhq/project-planton/internal/manifest/protodefaults"
 	"github.com/plantonhq/project-planton/pkg/crkreflect"
@@ -18,6 +19,32 @@ import (
 	"google.golang.org/protobuf/proto"
 	"sigs.k8s.io/yaml"
 )
+
+// ManifestLoadError represents an error when loading a manifest fails due to proto issues.
+type ManifestLoadError struct {
+	ManifestPath string
+	Err          error
+}
+
+func (e *ManifestLoadError) Error() string {
+	return e.Err.Error()
+}
+
+// IsManifestLoadError checks if an error is a ManifestLoadError.
+func IsManifestLoadError(err error) bool {
+	_, ok := err.(*ManifestLoadError)
+	return ok
+}
+
+// HandleManifestLoadError displays the error beautifully if it's a ManifestLoadError.
+// Returns true if it was handled, false otherwise.
+func HandleManifestLoadError(err error) bool {
+	if mle, ok := err.(*ManifestLoadError); ok {
+		ui.ManifestLoadError(mle.ManifestPath, mle.Err)
+		return true
+	}
+	return false
+}
 
 func LoadManifest(manifestPath string) (proto.Message, error) {
 	isUrl, err := isManifestPathUrl(manifestPath)
@@ -56,7 +83,7 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 	}
 
 	if err := protojson.Unmarshal(jsonBytes, manifest); err != nil {
-		return nil, errors.Wrapf(err, "failed to load json into proto message from %s", manifestPath)
+		return nil, &ManifestLoadError{ManifestPath: manifestPath, Err: err}
 	}
 
 	// Apply defaults from proto field options

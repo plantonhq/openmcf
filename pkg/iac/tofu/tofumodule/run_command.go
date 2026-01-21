@@ -38,18 +38,20 @@ func RunCommand(
 	}
 
 	// Extract backend configuration from manifest labels (optional)
+	// Uses provisioner-specific labels (e.g., tofu.project-planton.org/backend.type)
+	// with fallback to legacy terraform.* labels for backward compatibility
 	var backendType terraform.TerraformBackendType = terraform.TerraformBackendType_local
 	var backendConfigArgs []string
 
-	tofuBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject)
+	tofuBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject, binaryName)
 	if err != nil {
 		// Log but don't fail - backend config is optional
-		log.Debugf("Could not extract Terraform backend config from manifest labels: %v", err)
+		log.Debugf("Could not extract %s backend config from manifest labels: %v", binaryName, err)
 	}
 
 	if tofuBackendConfig != nil {
-		log.Infof("Using Terraform backend from manifest labels: type=%s, object=%s",
-			tofuBackendConfig.BackendType, tofuBackendConfig.BackendObject)
+		log.Infof("Using %s backend from manifest labels: type=%s, object=%s",
+			binaryName, tofuBackendConfig.BackendType, tofuBackendConfig.BackendObject)
 
 		// Convert backend type string to enum
 		backendType = tfbackend.BackendTypeFromString(tofuBackendConfig.BackendType)
@@ -60,7 +62,7 @@ func RunCommand(
 		// Build backend config arguments based on backend type
 		backendConfigArgs = buildBackendConfigArgs(tofuBackendConfig)
 	} else {
-		log.Debug("No Terraform backend config in manifest labels, using default local backend")
+		log.Debugf("No %s backend config in manifest labels, using default local backend", binaryName)
 	}
 
 	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)

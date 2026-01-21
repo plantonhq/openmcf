@@ -6,6 +6,17 @@ This package provides functionality to extract Terraform/OpenTofu backend config
 
 The `backendconfig` package implements the logic to read, parse, and validate Terraform/OpenTofu backend configuration from manifest labels. It ensures backend configurations are complete and valid before they're used to initialize Terraform state management.
 
+## Provisioner-Aware Labels
+
+The package supports provisioner-specific labels:
+
+| Provisioner | Backend Type Label | Backend Object Label |
+|-------------|-------------------|---------------------|
+| Terraform | `terraform.project-planton.org/backend.type` | `terraform.project-planton.org/backend.object` |
+| OpenTofu | `tofu.project-planton.org/backend.type` | `tofu.project-planton.org/backend.object` |
+
+For backward compatibility, OpenTofu also accepts the legacy `terraform.*` labels if `tofu.*` labels are not present.
+
 ## Core Types
 
 ### TofuBackendConfig
@@ -22,16 +33,22 @@ type TofuBackendConfig struct {
 ### ExtractFromManifest
 
 ```go
-func ExtractFromManifest(manifest proto.Message) (*TofuBackendConfig, error)
+func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuBackendConfig, error)
 ```
 
 Extracts Terraform/OpenTofu backend configuration from a manifest's metadata labels.
 
+**Parameters:**
+- `manifest` - The proto message containing the manifest
+- `provisionerType` - The provisioner type ("terraform" or "tofu")
+
 **Behavior:**
-- Returns `nil, nil` if no backend labels are present (allows fallback to CLI/defaults)
-- Returns an error if labels are partially specified
-- Validates backend type against supported backends
-- Ensures non-empty values for both labels
+1. Checks for provisioner-specific labels first (e.g., `tofu.project-planton.org/*`)
+2. Falls back to legacy `terraform.*` labels if provisioner-specific labels are not found
+3. Returns `nil, nil` if no backend labels are present (allows fallback to CLI/defaults)
+4. Returns an error if labels are partially specified
+5. Validates backend type against supported backends
+6. Ensures non-empty values for both labels
 
 **Example Usage:**
 
@@ -40,8 +57,8 @@ import (
     "github.com/plantonhq/project-planton/pkg/iac/tofu/backendconfig"
 )
 
-// Extract backend config from a manifest
-config, err := backendconfig.ExtractFromManifest(awsVpcManifest)
+// Extract backend config for OpenTofu
+config, err := backendconfig.ExtractFromManifest(manifest, "tofu")
 if err != nil {
     // Handle error - invalid backend configuration
     return err

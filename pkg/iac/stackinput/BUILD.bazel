@@ -4,6 +4,7 @@ go_library(
     name = "stackinput",
     srcs = [
         "extract_manifest.go",
+        "extract_manifest_bytes.go",
         "providers.go",
         "stack_input.go",
     ],

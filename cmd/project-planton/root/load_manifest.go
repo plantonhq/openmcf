@@ -1,13 +1,14 @@
 package root
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/flag"
 	"github.com/plantonhq/project-planton/internal/cli/iacflags"
 	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
 	"github.com/plantonhq/project-planton/internal/manifest"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +59,12 @@ func loadManifestHandler(cmd *cobra.Command, args []string) {
 		// Use unified resolver for --clipboard, --manifest, --kustomize-dir, etc.
 		manifestPath, isTemp, err = climanifest.ResolveManifestPath(cmd)
 		if err != nil {
-			log.Fatalf("failed to resolve manifest: %v", err)
+			// Check for clipboard-specific errors and display beautifully
+			if climanifest.HandleClipboardError(err) {
+				os.Exit(1)
+			}
+			cliprint.PrintError(fmt.Sprintf("failed to resolve manifest: %v", err))
+			os.Exit(1)
 		}
 		if isTemp {
 			defer os.Remove(manifestPath)
@@ -67,9 +73,15 @@ func loadManifestHandler(cmd *cobra.Command, args []string) {
 
 	updatedManifest, err := manifest.LoadWithOverrides(manifestPath, valueOverrides)
 	if err != nil {
-		log.Fatal(err)
+		// Check for manifest load errors (proto unmarshaling) and display beautifully
+		if manifest.HandleManifestLoadError(err) {
+			os.Exit(1)
+		}
+		cliprint.PrintError(fmt.Sprintf("failed to load manifest: %v", err))
+		os.Exit(1)
 	}
 	if err := manifest.Print(updatedManifest); err != nil {
-		log.Fatal(err)
+		cliprint.PrintError(fmt.Sprintf("failed to print manifest: %v", err))
+		os.Exit(1)
 	}
 }

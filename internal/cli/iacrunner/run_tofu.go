@@ -3,7 +3,6 @@ package iacrunner
 import (
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/flag"
@@ -19,16 +18,19 @@ func RunTofu(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOper
 
 // runHcl executes an HCL-based IaC operation (tofu or terraform) using the resolved context.
 func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOperationType, binary provisioner.HclBinary) error {
-	isAutoApprove, err := cmd.Flags().GetBool(string(flag.AutoApprove))
-	if err != nil {
-		return errors.Wrap(err, "failed to get auto-approve flag")
-	}
+	// Get auto-approve flag if defined (ignore error for commands that don't register it)
+	isAutoApprove, _ := cmd.Flags().GetBool(string(flag.AutoApprove))
 
 	// For plan operation, check if it's a destroy plan
 	isDestroyPlan := false
 	if operation == terraform.TerraformOperationType_plan {
 		isDestroyPlan, _ = cmd.Flags().GetBool(string(flag.Destroy))
 		// Plan is always auto-approve (non-interactive)
+		isAutoApprove = true
+	}
+
+	// For refresh operation, no approval needed (read-only state sync)
+	if operation == terraform.TerraformOperationType_refresh {
 		isAutoApprove = true
 	}
 
@@ -40,7 +42,7 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 
 	cliprint.PrintHandoff(binary.DisplayName())
 
-	err = tofumodule.RunCommand(
+	err := tofumodule.RunCommand(
 		string(binary),
 		ctx.ModuleDir,
 		ctx.ManifestPath,

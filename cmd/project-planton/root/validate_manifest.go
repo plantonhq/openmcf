@@ -8,7 +8,6 @@ import (
 	"github.com/plantonhq/project-planton/internal/cli/iacflags"
 	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
 	"github.com/plantonhq/project-planton/internal/manifest"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +53,12 @@ func validateHandler(cmd *cobra.Command, args []string) {
 		// Use unified resolver for --clipboard, --manifest, --kustomize-dir, etc.
 		manifestPath, isTemp, err = climanifest.ResolveManifestPath(cmd)
 		if err != nil {
-			log.Fatalf("failed to resolve manifest: %v", err)
+			// Check for clipboard-specific errors and display beautifully
+			if climanifest.HandleClipboardError(err) {
+				os.Exit(1)
+			}
+			cliprint.PrintError(fmt.Sprintf("failed to resolve manifest: %v", err))
+			os.Exit(1)
 		}
 		if isTemp {
 			defer os.Remove(manifestPath)
@@ -63,8 +67,12 @@ func validateHandler(cmd *cobra.Command, args []string) {
 
 	err = manifest.Validate(manifestPath)
 	if err != nil {
-		fmt.Printf("%v\n", err)
-		return
+		// Check for manifest load errors (proto unmarshaling) and display beautifully
+		if manifest.HandleManifestLoadError(err) {
+			os.Exit(1)
+		}
+		cliprint.PrintError(err.Error())
+		os.Exit(1)
 	}
 	cliprint.PrintSuccessMessage("manifest is valid")
 }

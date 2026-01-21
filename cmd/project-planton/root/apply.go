@@ -8,6 +8,8 @@ import (
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/iacflags"
 	"github.com/plantonhq/project-planton/internal/cli/iacrunner"
+	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
+	"github.com/plantonhq/project-planton/internal/manifest"
 	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
 	"github.com/spf13/cobra"
 )
@@ -51,7 +53,10 @@ func init() {
 func applyHandler(cmd *cobra.Command, args []string) {
 	ctx, err := iacrunner.ResolveContext(cmd)
 	if err != nil {
-		cliprint.PrintError(err.Error())
+		// Only print error if it wasn't already handled (clipboard/manifest load errors are pre-handled)
+		if !climanifest.IsClipboardError(err) && !manifest.IsManifestLoadError(err) {
+			cliprint.PrintError(err.Error())
+		}
 		os.Exit(1)
 	}
 	defer ctx.Cleanup()

@@ -53,6 +53,11 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	// Resolve manifest path with priority: --stack-input > --manifest > --input-dir > --kustomize-dir + --overlay
 	targetManifestPath, isTemp, err := climanifest.ResolveManifestPath(cmd)
 	if err != nil {
+		// Check for clipboard-specific errors and display beautifully
+		if climanifest.HandleClipboardError(err) {
+			// Return error to signal failure, but error display already handled
+			return nil, err
+		}
 		return nil, errors.Wrap(err, "failed to resolve manifest")
 	}
 	if isTemp {
@@ -80,6 +85,10 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	// Validate manifest before proceeding (after overrides are applied)
 	cliprint.PrintStep("Validating manifest...")
 	if err := manifest.Validate(ctx.ManifestPath); err != nil {
+		// Check for manifest load errors (proto unmarshaling) and display beautifully
+		if manifest.HandleManifestLoadError(err) {
+			return nil, err
+		}
 		return nil, errors.Wrap(err, "manifest validation failed")
 	}
 	cliprint.PrintSuccess("Manifest validated")
@@ -88,6 +97,10 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	cliprint.PrintStep("Detecting provisioner...")
 	manifestObject, err := manifest.LoadWithOverrides(ctx.ManifestPath, valueOverrides)
 	if err != nil {
+		// Check for manifest load errors (proto unmarshaling) and display beautifully
+		if manifest.HandleManifestLoadError(err) {
+			return nil, err
+		}
 		return nil, errors.Wrap(err, "failed to load manifest")
 	}
 	ctx.ManifestObject = manifestObject

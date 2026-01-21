@@ -3,18 +3,27 @@ package manifest
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/plantonhq/project-planton/internal/cli/iacflags"
 	"github.com/plantonhq/project-planton/internal/cli/workspace"
 	"github.com/plantonhq/project-planton/pkg/clipboard"
+	"github.com/plantonhq/project-planton/pkg/iac/stackinput"
 	"github.com/plantonhq/project-planton/pkg/ulidgen"
 	"github.com/spf13/cobra"
 )
 
-// resolveFromClipboard checks for clipboard flags (--clipboard, --clip, --cb, -c) and reads manifest from clipboard.
+// resolveFromClipboard checks for clipboard flags (--clipboard, --clip, --cb, -c) and reads content from clipboard.
 // Returns empty string if flag not provided.
-// When clipboard content is read, it is written to a file in the downloads directory.
+//
+// Smart detection order:
+//  1. If clipboard content is a file path (and file exists), read from that file
+//  2. If clipboard content has a "target" field at root, treat as stack input
+//  3. Otherwise, treat as raw manifest YAML
+//
+// Returns structured errors (ClipboardEmptyError, ClipboardInvalidYAMLError, ClipboardFileNotFoundError)
+// that can be handled by command handlers for beautiful display.
 func resolveFromClipboard(cmd *cobra.Command) (manifestPath string, isTemp bool, err error) {
 	useClipboard, err := iacflags.IsClipboardFlagSet(cmd)
 	if err != nil {
@@ -24,12 +33,46 @@ func resolveFromClipboard(cmd *cobra.Command) (manifestPath string, isTemp bool,
 		return "", false, nil
 	}
 
-	content, err := clipboard.Read()
+	raw, err := clipboard.Read()
 	if err != nil {
+		// Check if clipboard is empty
+		if strings.Contains(err.Error(), "empty") {
+			return "", false, &ClipboardEmptyError{}
+		}
 		return "", false, err
 	}
 
-	manifestPath, err = writeClipboardContent(content)
+	// Parse and validate clipboard content
+	content := ParseClipboardContent(raw)
+
+	// Case 1: File path detected
+	if content.IsFilePath {
+		if !content.FileExists {
+			return "", false, &ClipboardFileNotFoundError{FilePath: content.FilePath}
+		}
+		// Return the file path directly (not a temp file)
+		return content.FilePath, false, nil
+	}
+
+	// Case 2: Invalid YAML
+	if !content.IsValidYAML {
+		return "", false, &ClipboardInvalidYAMLError{
+			Raw:        raw,
+			ParseError: content.ParseError,
+		}
+	}
+
+	// Case 3: Stack input (has "target" field)
+	if content.IsStackInput {
+		manifestPath, err = stackinput.ExtractManifestFromBytes(raw)
+		if err != nil {
+			return "", false, errors.Wrap(err, "failed to extract manifest from stack input in clipboard")
+		}
+		return manifestPath, true, nil
+	}
+
+	// Case 4: Raw manifest YAML
+	manifestPath, err = writeClipboardContent(raw)
 	if err != nil {
 		return "", false, err
 	}

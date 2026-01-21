@@ -19,15 +19,34 @@ type TofuBackendConfig struct {
 	BackendObject string
 }
 
-// ExtractFromManifest extracts Terraform/Tofu backend configuration from manifest labels
-func ExtractFromManifest(manifest proto.Message) (*TofuBackendConfig, error) {
+// ExtractFromManifest extracts Terraform/Tofu backend configuration from manifest labels.
+// The provisionerType should be "terraform" or "tofu" to determine which label prefix to use.
+// It first checks for provisioner-specific labels (e.g., tofu.project-planton.org/backend.type),
+// then falls back to legacy terraform.* labels for backward compatibility.
+func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuBackendConfig, error) {
 	labels := metadatareflect.ExtractLabels(manifest)
 	if labels == nil {
 		return nil, fmt.Errorf("no labels found in manifest")
 	}
 
-	backendType, hasType := labels[tofulabels.BackendTypeLabelKey]
-	backendObject, hasObject := labels[tofulabels.BackendObjectLabelKey]
+	// Try provisioner-specific labels first
+	typeLabelKey := tofulabels.BackendTypeLabelKey(provisionerType)
+	objectLabelKey := tofulabels.BackendObjectLabelKey(provisionerType)
+
+	backendType, hasType := labels[typeLabelKey]
+	backendObject, hasObject := labels[objectLabelKey]
+
+	// If provisioner-specific labels not found, fall back to legacy terraform.* labels
+	// This ensures backward compatibility for existing manifests
+	if !hasType && !hasObject {
+		backendType, hasType = labels[tofulabels.LegacyBackendTypeLabelKey]
+		backendObject, hasObject = labels[tofulabels.LegacyBackendObjectLabelKey]
+		// Update label keys for error messages
+		if hasType || hasObject {
+			typeLabelKey = tofulabels.LegacyBackendTypeLabelKey
+			objectLabelKey = tofulabels.LegacyBackendObjectLabelKey
+		}
+	}
 
 	// Both labels are optional - return nil if neither is present
 	if !hasType && !hasObject {
@@ -37,12 +56,11 @@ func ExtractFromManifest(manifest proto.Message) (*TofuBackendConfig, error) {
 	// If one is present, both must be present
 	if !hasType || !hasObject {
 		return nil, fmt.Errorf("both %s and %s must be specified together",
-			tofulabels.BackendTypeLabelKey,
-			tofulabels.BackendObjectLabelKey)
+			typeLabelKey, objectLabelKey)
 	}
 
 	if backendType == "" || backendObject == "" {
-		return nil, fmt.Errorf("Terraform backend labels cannot be empty")
+		return nil, fmt.Errorf("backend labels cannot be empty")
 	}
 
 	// Validate supported backend types

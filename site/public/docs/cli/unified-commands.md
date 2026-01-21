@@ -699,14 +699,27 @@ pulumi login
 
 **Behavior**: Uses local backend by default.
 
-**Solution**: Configure backend via labels:
+**Solution**: Configure backend via labels using provisioner-specific prefixes:
 
+**For Terraform:**
 ```yaml
 metadata:
   labels:
+    project-planton.org/provisioner: terraform
     terraform.project-planton.org/backend.type: s3
     terraform.project-planton.org/backend.object: bucket/path/state.tfstate
 ```
+
+**For OpenTofu:**
+```yaml
+metadata:
+  labels:
+    project-planton.org/provisioner: tofu
+    tofu.project-planton.org/backend.type: gcs
+    tofu.project-planton.org/backend.object: bucket/path/state.tfstate
+```
+
+For complete backend configuration options, see the [State Backends Guide](/docs/guides/state-backends).
 
 ---
 
@@ -859,6 +872,7 @@ project-planton delete -f app.yaml
 - [OpenTofu Commands](/docs/cli/tofu-commands) - OpenTofu-specific details
 - [Manifest Structure](/docs/guides/manifests) - Writing manifests
 - [Kustomize Integration](/docs/guides/kustomize) - Multi-environment setup
+- [State Backends](/docs/guides/state-backends) - Configure state storage
 
 ---
 
