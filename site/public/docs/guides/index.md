@@ -58,6 +58,22 @@ Use Kustomize for managing multi-environment deployments.
 
 ---
 
+### [State Backends](/docs/guides/state-backends)
+
+Configure state storage for Pulumi, OpenTofu, and Terraform.
+
+**Topics covered**:
+- What state backends are and why they matter
+- Pulumi state management (stack labels, Pulumi Cloud, local)
+- OpenTofu/Terraform backends via manifest labels
+- Backend types (S3, GCS, Azure Storage, local)
+- Provisioner-specific labels (`terraform.*` vs `tofu.*`)
+- Best practices for production state management
+
+**Read this if**: You're deploying to production and need to configure shared state storage.
+
+---
+
 ### [Advanced Usage](/docs/guides/advanced-usage)
 
 Master advanced Project Planton techniques.
@@ -86,8 +102,9 @@ Master advanced Project Planton techniques.
 ### For Intermediate Users
 
 1. Review [Kustomize Integration](/docs/guides/kustomize) - Set up multi-environment deployments
-2. Explore [Advanced Usage](/docs/guides/advanced-usage) - Learn --set flags and URL manifests
-3. Browse [Catalog](/docs/catalog) - Discover available deployment components
+2. Configure [State Backends](/docs/guides/state-backends) - Set up shared state storage
+3. Explore [Advanced Usage](/docs/guides/advanced-usage) - Learn --set flags and URL manifests
+4. Browse [Catalog](/docs/catalog) - Discover available deployment components
 
 ### For Advanced Users
 

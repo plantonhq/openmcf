@@ -77,7 +77,6 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	backendType := tfbackend.BackendTypeFromString(backendTypeString)
 
-	providerConfigOptions := make([]stackinputproviderconfig.StackInputProviderConfigOption, 0)
 	targetManifestPath := inputDir + "/target.yaml"
 
 	if inputDir == "" {
@@ -85,9 +84,9 @@ func initHandler(cmd *cobra.Command, args []string) {
 		flag.HandleFlagErrAndValue(err, flag.Manifest, targetManifestPath)
 	}
 
-	providerConfigOptions, err = stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		log.Fatalf("failed to build credentiaal options: %v", err)
+		log.Fatalf("failed to get provider config: %v", err)
 	}
 
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
@@ -133,13 +132,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	tofuModulePath := pathResult.ModulePath
 
-	// Gather credential options (currently unused, but left for future usage)
-	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
-	for _, opt := range providerConfigOptions {
-		opt(&opts)
-	}
-
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		log.Fatalf("failed to build stack input yaml %v", err)
 	}
@@ -163,12 +156,22 @@ func initHandler(cmd *cobra.Command, args []string) {
 		log.Fatalf("failed to get credential env vars %v", err)
 	}
 
-	err = tofumodule.TofuInit(tofuModulePath, manifestObject,
+	cliprint.PrintHandoff("OpenTofu")
+
+	err = tofumodule.Init(
+		"tofu",
+		tofuModulePath,
+		manifestObject,
 		backendType,
 		backendConfigList,
 		providerConfigEnvVars,
-		false, nil)
+		false, // isReconfigure - not supported in legacy commands
+		false,
+		nil,
+	)
 	if err != nil {
-		log.Fatalf("failed to run tofu operation: %v", err)
+		cliprint.PrintTofuFailure()
+		os.Exit(1)
 	}
+	cliprint.PrintTofuSuccess()
 }

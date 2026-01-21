@@ -2,7 +2,6 @@ package tofumodule
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
@@ -16,33 +15,40 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func RunCommand(inputModuleDir, targetManifestPath string,
+// RunCommand executes an HCL-based IaC operation (init + operation) using the specified binary.
+// The binaryName parameter specifies which CLI binary to use ("tofu" or "terraform").
+func RunCommand(
+	binaryName string,
+	inputModuleDir string,
+	targetManifestPath string,
 	terraformOperation terraform.TerraformOperationType,
 	valueOverrides map[string]string,
-	isAutoApprove, isDestroyPlan bool,
-	moduleVersion string, noCleanup bool,
+	isAutoApprove bool,
+	isDestroyPlan bool,
+	isReconfigure bool,
+	moduleVersion string,
+	noCleanup bool,
 	kubeContext string,
-	providerConfigOptions ...stackinputproviderconfig.StackInputProviderConfigOption) error {
-
+	providerConfig *stackinputproviderconfig.ProviderConfig,
+) error {
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
 		return errors.Wrapf(err, "failed to override values in target manifest file")
 	}
 
 	// Extract backend configuration from manifest labels (optional)
+	// Uses provisioner-specific labels (e.g., tofu.project-planton.org/backend.type)
+	// with fallback to legacy terraform.* labels for backward compatibility
 	var backendType terraform.TerraformBackendType = terraform.TerraformBackendType_local
 	var backendConfigArgs []string
 
-	tofuBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject)
+	tofuBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject, binaryName)
 	if err != nil {
 		// Log but don't fail - backend config is optional
-		log.Debugf("Could not extract Terraform backend config from manifest labels: %v", err)
+		log.Debugf("Could not extract %s backend config from manifest labels: %v", binaryName, err)
 	}
 
 	if tofuBackendConfig != nil {
-		log.Infof("Using Terraform backend from manifest labels: type=%s, object=%s",
-			tofuBackendConfig.BackendType, tofuBackendConfig.BackendObject)
-
 		// Convert backend type string to enum
 		backendType = tfbackend.BackendTypeFromString(tofuBackendConfig.BackendType)
 		if backendType == terraform.TerraformBackendType_terraform_backend_type_unspecified {
@@ -52,7 +58,7 @@ func RunCommand(inputModuleDir, targetManifestPath string,
 		// Build backend config arguments based on backend type
 		backendConfigArgs = buildBackendConfigArgs(tofuBackendConfig)
 	} else {
-		log.Debug("No Terraform backend config in manifest labels, using default local backend")
+		log.Debugf("No %s backend config in manifest labels, using default local backend", binaryName)
 	}
 
 	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)
@@ -63,7 +69,7 @@ func RunCommand(inputModuleDir, targetManifestPath string,
 	// Get module path using staging-based approach
 	pathResult, err := GetModulePath(inputModuleDir, kindName, moduleVersion, noCleanup)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get tofu module directory")
+		return errors.Wrapf(err, "failed to get %s module directory", binaryName)
 	}
 
 	// Setup cleanup to run after execution
@@ -75,15 +81,9 @@ func RunCommand(inputModuleDir, targetManifestPath string,
 		}()
 	}
 
-	tofuModulePath := pathResult.ModulePath
+	modulePath := pathResult.ModulePath
 
-	// Gather credential options
-	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
-	for _, opt := range providerConfigOptions {
-		opt(&opts)
-	}
-
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to build stack input yaml")
 	}
@@ -98,57 +98,76 @@ func RunCommand(inputModuleDir, targetManifestPath string,
 		return errors.Wrap(err, "failed to get provider config env vars")
 	}
 
-	// Initialize tofu with backend configuration
-	// This should happen before any operation to ensure backend is properly configured
-	err = TofuInit(tofuModulePath, manifestObject, backendType, backendConfigArgs,
-		providerConfigEnvVars, false, nil)
+	// Initialize with backend configuration before any operation
+	err = Init(binaryName, modulePath, manifestObject, backendType, backendConfigArgs,
+		providerConfigEnvVars, isReconfigure, false, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialize tofu module")
+		return errors.Wrapf(err, "failed to initialize %s module", binaryName)
 	}
 
-	err = RunOperation(tofuModulePath, terraformOperation,
-		isAutoApprove,
-		isDestroyPlan, manifestObject,
+	err = RunOperation(binaryName, modulePath, terraformOperation,
+		isAutoApprove, isDestroyPlan, manifestObject,
 		providerConfigEnvVars, false, nil)
 	if err != nil {
-		return errors.Wrapf(err, "failed to run tofu operation")
+		return errors.Wrapf(err, "failed to run %s operation", binaryName)
 	}
+
 	return nil
 }
 
-// buildBackendConfigArgs builds backend configuration arguments based on backend type
+// buildBackendConfigArgs builds backend configuration arguments based on backend type.
+// For S3-compatible backends (R2, MinIO, etc.), it adds the endpoint and skip flags.
+// Both Terraform and OpenTofu support the same S3 backend configuration format.
 func buildBackendConfigArgs(config *backendconfig.TofuBackendConfig) []string {
 	var args []string
 
 	switch config.BackendType {
 	case "s3":
-		// For S3: parse "bucket-name/path/to/state"
-		parts := strings.SplitN(config.BackendObject, "/", 2)
-		if len(parts) >= 1 {
-			args = append(args, fmt.Sprintf("bucket=%s", parts[0]))
+		// S3 backend: bucket, key, and region
+		if config.BackendBucket != "" {
+			args = append(args, fmt.Sprintf("bucket=%s", config.BackendBucket))
 		}
-		if len(parts) >= 2 {
-			args = append(args, fmt.Sprintf("key=%s", parts[1]))
+		if config.BackendKey != "" {
+			args = append(args, fmt.Sprintf("key=%s", config.BackendKey))
+		}
+		if config.BackendRegion != "" {
+			args = append(args, fmt.Sprintf("region=%s", config.BackendRegion))
+		}
+
+		// S3-compatible endpoint (R2, MinIO, etc.)
+		// Both Terraform and OpenTofu use the endpoints={s3="..."} format
+		if config.BackendEndpoint != "" {
+			args = append(args, fmt.Sprintf("endpoints={s3=\"%s\"}", config.BackendEndpoint))
+		}
+
+		// S3-compatible skip flags (auto-enabled when S3Compatible is true)
+		// These are required for non-AWS S3 implementations like Cloudflare R2 or MinIO
+		// All flags are supported by both Terraform and OpenTofu
+		if config.S3Compatible {
+			args = append(args, "skip_credentials_validation=true")
+			args = append(args, "skip_region_validation=true")
+			args = append(args, "skip_metadata_api_check=true")
+			args = append(args, "skip_requesting_account_id=true")
+			args = append(args, "skip_s3_checksum=true")
+			args = append(args, "use_path_style=true")
 		}
 
 	case "gcs":
-		// For GCS: parse "bucket-name/path/to/state"
-		parts := strings.SplitN(config.BackendObject, "/", 2)
-		if len(parts) >= 1 {
-			args = append(args, fmt.Sprintf("bucket=%s", parts[0]))
+		// GCS backend: bucket and prefix (key is called prefix in GCS)
+		if config.BackendBucket != "" {
+			args = append(args, fmt.Sprintf("bucket=%s", config.BackendBucket))
 		}
-		if len(parts) >= 2 {
-			args = append(args, fmt.Sprintf("prefix=%s", parts[1]))
+		if config.BackendKey != "" {
+			args = append(args, fmt.Sprintf("prefix=%s", config.BackendKey))
 		}
 
 	case "azurerm":
-		// For Azure: parse "container-name/path/to/state"
-		parts := strings.SplitN(config.BackendObject, "/", 2)
-		if len(parts) >= 1 {
-			args = append(args, fmt.Sprintf("container_name=%s", parts[0]))
+		// Azure backend: container_name and key
+		if config.BackendBucket != "" {
+			args = append(args, fmt.Sprintf("container_name=%s", config.BackendBucket))
 		}
-		if len(parts) >= 2 {
-			args = append(args, fmt.Sprintf("key=%s", parts[1]))
+		if config.BackendKey != "" {
+			args = append(args, fmt.Sprintf("key=%s", config.BackendKey))
 		}
 
 	case "local":

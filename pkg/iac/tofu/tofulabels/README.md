@@ -4,30 +4,55 @@ This package defines standardized Kubernetes labels for configuring Terraform/Op
 
 ## Overview
 
-The `tofulabels` package provides constant definitions for labels that can be applied to any ProjectPlanton resource manifest to specify backend configuration for Terraform/OpenTofu operations. This enables infrastructure deployments to be fully portable with backend configuration embedded in the manifest.
+The `tofulabels` package provides functions and constants for labels that can be applied to any ProjectPlanton resource manifest to specify backend configuration for Terraform/OpenTofu operations. This enables infrastructure deployments to be fully portable with backend configuration embedded in the manifest.
 
-## Label Constants
+## Provisioner-Specific Labels
 
-### Backend Type Label
+Backend labels are now provisioner-aware. Use the appropriate prefix based on your provisioner:
 
-- **`BackendTypeLabelKey`** (`terraform.project-planton.org/backend.type`)
-  - Specifies the type of backend to use
-  - Supported values: `s3`, `gcs`, `azurerm`, `local`
-  - Example: `s3`
+| Provisioner | Backend Type Label | Backend Object Label |
+|-------------|-------------------|---------------------|
+| Terraform | `terraform.project-planton.org/backend.type` | `terraform.project-planton.org/backend.object` |
+| OpenTofu | `tofu.project-planton.org/backend.type` | `tofu.project-planton.org/backend.object` |
 
-### Backend Object Label
+## Label Functions
 
-- **`BackendObjectLabelKey`** (`terraform.project-planton.org/backend.object`)
-  - Specifies the backend-specific object path or identifier
-  - Format varies by backend type:
-    - **S3**: `bucket-name/path/to/state`
-    - **GCS**: `bucket-name/path/to/state`
-    - **Azure**: `container-name/path/to/state`
-    - **Local**: `/absolute/path/to/state.tfstate`
+### BackendTypeLabelKey
+
+```go
+func BackendTypeLabelKey(provisioner string) string
+```
+
+Returns the backend type label key for the given provisioner ("terraform" or "tofu").
+
+### BackendObjectLabelKey
+
+```go
+func BackendObjectLabelKey(provisioner string) string
+```
+
+Returns the backend object label key for the given provisioner.
+
+## Legacy Constants
+
+For backward compatibility, legacy constants with the `terraform.*` prefix are still available:
+
+- `LegacyBackendTypeLabelKey` - `terraform.project-planton.org/backend.type`
+- `LegacyBackendObjectLabelKey` - `terraform.project-planton.org/backend.object`
+
+When using OpenTofu, if the `tofu.*` labels are not found, the system falls back to the legacy `terraform.*` labels.
+
+## Backend Types
+
+Supported backend type values:
+- `s3` - Amazon S3
+- `gcs` - Google Cloud Storage
+- `azurerm` - Azure Blob Storage
+- `local` - Local filesystem
 
 ## Usage Examples
 
-### AWS S3 Backend
+### Terraform with S3 Backend
 
 ```yaml
 apiVersion: aws.project-planton.org/v1
@@ -35,6 +60,7 @@ kind: AwsRdsInstance
 metadata:
   name: app-database
   labels:
+    project-planton.org/provisioner: terraform
     terraform.project-planton.org/backend.type: "s3"
     terraform.project-planton.org/backend.object: "terraform-states-bucket/rds/production/app-db"
 spec:
@@ -42,7 +68,7 @@ spec:
   instanceClass: "db.t3.medium"
 ```
 
-### Google Cloud Storage Backend
+### OpenTofu with GCS Backend
 
 ```yaml
 apiVersion: gcp.project-planton.org/v1
@@ -50,14 +76,15 @@ kind: GcpCloudRun
 metadata:
   name: api-service
   labels:
-    terraform.project-planton.org/backend.type: "gcs"
-    terraform.project-planton.org/backend.object: "my-tfstate-bucket/cloud-run/prod/api"
+    project-planton.org/provisioner: tofu
+    tofu.project-planton.org/backend.type: "gcs"
+    tofu.project-planton.org/backend.object: "my-tfstate-bucket/cloud-run/prod/api"
 spec:
   region: "us-central1"
   image: "gcr.io/project/api:latest"
 ```
 
-### Azure Storage Backend
+### Azure Storage Backend (Terraform)
 
 ```yaml
 apiVersion: azure.project-planton.org/v1
@@ -65,6 +92,7 @@ kind: AzureAksCluster
 metadata:
   name: main-cluster
   labels:
+    project-planton.org/provisioner: terraform
     terraform.project-planton.org/backend.type: "azurerm"
     terraform.project-planton.org/backend.object: "tfstate-container/aks/production"
 spec:
@@ -80,8 +108,9 @@ kind: MicroserviceKubernetes
 metadata:
   name: test-service
   labels:
-    terraform.project-planton.org/backend.type: "local"
-    terraform.project-planton.org/backend.object: "/tmp/test-service.tfstate"
+    project-planton.org/provisioner: tofu
+    tofu.project-planton.org/backend.type: "local"
+    tofu.project-planton.org/backend.object: "/tmp/test-service.tfstate"
 spec:
   replicas: 1
 ```

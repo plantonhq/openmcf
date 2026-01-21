@@ -342,21 +342,44 @@ All unified commands support flags from their respective provisioners.
 |------|----------|-------------|
 | `--auto-approve` | apply, destroy | Skip interactive approval |
 | `--destroy` | plan | Create destroy plan instead of apply plan |
+| `--reconfigure` | init, apply, destroy, plan, refresh | Reconfigure backend, ignoring saved configuration |
 | `--backend-type <type>` | init | Backend type (s3, gcs, local, etc.) |
 | `--backend-config <key=value>` | init | Backend configuration (repeatable) |
 
 ### Provider Credentials
 
+By default, the CLI reads credentials from **environment variables** - the same ones used by the cloud provider CLIs (AWS CLI, gcloud, az, etc.). No additional configuration is needed if your environment is already set up.
+
+**Default Behavior (Environment Variables)**:
+
+```bash
+# AWS - uses AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
+project-planton apply -f aws-vpc.yaml
+
+# GCP - uses GOOGLE_APPLICATION_CREDENTIALS
+project-planton apply -f gcp-cluster.yaml
+
+# Azure - uses ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID
+project-planton apply -f azure-aks.yaml
+```
+
+**Explicit Credentials (Override with `-p` flag)**:
+
 | Flag | Description |
 |------|-------------|
-| `--aws-provider-config <file>` | AWS credentials |
-| `--azure-provider-config <file>` | Azure credentials |
-| `--gcp-provider-config <file>` | GCP credentials |
-| `--kubernetes-provider-config <file>` | Kubernetes config |
-| `--cloudflare-provider-config <file>` | Cloudflare credentials |
-| `--confluent-provider-config <file>` | Confluent credentials |
-| `--atlas-provider-config <file>` | MongoDB Atlas credentials |
-| `--snowflake-provider-config <file>` | Snowflake credentials |
+| `-p, --provider-config <file>` | Provider credentials file (overrides environment variables) |
+
+Use the `-p` flag when you need to explicitly specify credentials, such as for multi-account scenarios:
+
+```bash
+# Use explicit AWS credentials file
+project-planton apply -f aws-vpc.yaml -p ~/.config/aws-prod-creds.yaml
+
+# Use explicit GCP credentials file
+project-planton apply -f gcp-cluster.yaml -p ~/.config/gcp-prod-creds.yaml
+```
+
+The CLI auto-detects which provider is needed from your manifest's `apiVersion`. See the [Credentials Guide](/docs/guides/credentials) for environment variable details per provider.
 
 ---
 
@@ -409,8 +432,10 @@ metadata:
   name: production-vpc
   labels:
     project-planton.org/provisioner: tofu
-    terraform.project-planton.org/backend.type: s3
-    terraform.project-planton.org/backend.object: terraform-state/vpc/prod.tfstate
+    tofu.project-planton.org/backend.type: s3
+    tofu.project-planton.org/backend.bucket: terraform-state
+    tofu.project-planton.org/backend.key: vpc/prod.tfstate
+    tofu.project-planton.org/backend.region: us-west-2
 spec:
   cidrBlock: 10.0.0.0/16
   region: us-west-2
@@ -421,6 +446,9 @@ spec:
 ```bash
 # Deploy
 project-planton apply -f vpc.yaml --auto-approve
+
+# If backend config changed, use --reconfigure
+project-planton apply -f vpc.yaml --auto-approve --reconfigure
 
 # Destroy
 project-planton delete -f vpc.yaml --auto-approve
@@ -699,13 +727,44 @@ pulumi login
 
 **Behavior**: Uses local backend by default.
 
-**Solution**: Configure backend via labels:
+**Solution**: Configure backend via labels using provisioner-specific prefixes:
 
+**For Terraform (S3):**
 ```yaml
 metadata:
   labels:
+    project-planton.org/provisioner: terraform
     terraform.project-planton.org/backend.type: s3
-    terraform.project-planton.org/backend.object: bucket/path/state.tfstate
+    terraform.project-planton.org/backend.bucket: my-terraform-state
+    terraform.project-planton.org/backend.key: path/to/state.tfstate
+    terraform.project-planton.org/backend.region: us-west-2
+```
+
+**For OpenTofu (GCS):**
+```yaml
+metadata:
+  labels:
+    project-planton.org/provisioner: tofu
+    tofu.project-planton.org/backend.type: gcs
+    tofu.project-planton.org/backend.bucket: my-tofu-state
+    tofu.project-planton.org/backend.key: path/to/state
+```
+
+For complete backend configuration options, see the [State Backends Guide](/docs/guides/state-backends).
+
+---
+
+### Backend Configuration Changed
+
+**Error**: Terraform/Tofu prompts for backend migration or reconfiguration.
+
+**Solution**: Use the `--reconfigure` flag:
+
+```bash
+project-planton init -f manifest.yaml --reconfigure
+
+# Also works with apply, destroy, plan, refresh
+project-planton apply -f manifest.yaml --reconfigure
 ```
 
 ---
@@ -859,6 +918,7 @@ project-planton delete -f app.yaml
 - [OpenTofu Commands](/docs/cli/tofu-commands) - OpenTofu-specific details
 - [Manifest Structure](/docs/guides/manifests) - Writing manifests
 - [Kustomize Integration](/docs/guides/kustomize) - Multi-environment setup
+- [State Backends](/docs/guides/state-backends) - Configure state storage
 
 ---
 

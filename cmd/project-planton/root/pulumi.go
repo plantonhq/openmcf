@@ -44,14 +44,8 @@ func init() {
 	// Stack input file flag
 	Pulumi.PersistentFlags().StringP(string(flag.StackInput), "i", "", "path to a YAML file containing the stack input (bypasses building stack input from manifest)")
 
-	Pulumi.PersistentFlags().String(string(flag.AwsProviderConfig), "", "path of the aws-credential file")
-	Pulumi.PersistentFlags().String(string(flag.AzureProviderConfig), "", "path of the azure-credential file")
-	Pulumi.PersistentFlags().String(string(flag.CloudflareProviderConfig), "", "path of the cloudflare-credential file")
-	Pulumi.PersistentFlags().String(string(flag.ConfluentProviderConfig), "", "path of the confluent-credential file")
-	Pulumi.PersistentFlags().String(string(flag.GcpProviderConfig), "", "path of the gcp-credential file")
-	Pulumi.PersistentFlags().String(string(flag.KubernetesProviderConfig), "", "path of the yaml file containing the kubernetes cluster configuration")
-	Pulumi.PersistentFlags().String(string(flag.AtlasProviderConfig), "", "path of the mongodb-atlas-credential file")
-	Pulumi.PersistentFlags().String(string(flag.SnowflakeProviderConfig), "", "path of the snowflake-credential file")
+	// Provider config flag (unified)
+	Pulumi.PersistentFlags().StringP(string(flag.ProviderConfig), "p", "", "path to provider credentials file")
 
 	Pulumi.AddCommand(
 		pulumi.Init,

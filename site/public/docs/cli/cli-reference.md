@@ -120,6 +120,9 @@ project-planton init -f database.yaml
 # With kustomize
 project-planton init --kustomize-dir services/api --overlay prod
 
+# Reconfigure after backend changes
+project-planton init -f app.yaml --reconfigure
+
 # With tofu-specific backend config
 project-planton init -f app.yaml --backend-type s3 --backend-config bucket=my-bucket
 ```
@@ -129,7 +132,7 @@ project-planton init -f app.yaml --backend-type s3 --backend-config bucket=my-bu
 2. Routes to appropriate initialization:
    - **Pulumi**: Creates stack if it doesn't exist
    - **Tofu**: Initializes backend and downloads providers
-   - **Terraform**: Not yet implemented
+   - **Terraform**: Initializes backend and downloads providers
 
 ### plan
 
@@ -384,13 +387,20 @@ Force stack removal even if resources exist (`delete`/`rm` only).
 --force
 ```
 
-### OpenTofu-Specific Flags
+### OpenTofu/Terraform-Specific Flags
 
 **`--auto-approve`**  
 Skip interactive approval (`apply` and `destroy` commands).
 
 ```bash
 --auto-approve
+```
+
+**`--reconfigure`**  
+Reconfigure backend, ignoring any saved configuration. Use when backend configuration changes.
+
+```bash
+--reconfigure
 ```
 
 **`--destroy`**  
@@ -400,20 +410,36 @@ Create destroy plan (`plan` command).
 --destroy
 ```
 
-### Credential Flags
+### Provider Credentials
 
-Provider credential file paths:
+**Default Behavior (Environment Variables)**:
+
+By default, the CLI reads credentials from environment variables - the same ones used by cloud provider CLIs. If you have `aws`, `gcloud`, or `az` configured, credentials are automatically available.
 
 ```bash
---aws-credential <file>
---azure-credential <file>
---gcp-credential <file>
---kubernetes-cluster <file>
---cloudflare-credential <file>
---confluent-credential <file>
---mongodb-atlas-credential <file>
---snowflake-credential <file>
+# These work without any credential flags if env vars are set
+project-planton apply -f aws-vpc.yaml         # Uses AWS_ACCESS_KEY_ID, etc.
+project-planton apply -f gcp-cluster.yaml     # Uses GOOGLE_APPLICATION_CREDENTIALS
+project-planton apply -f azure-aks.yaml       # Uses ARM_CLIENT_ID, etc.
 ```
+
+**Explicit Override (`-p, --provider-config <file>`)**:
+
+Use the `-p` flag to override environment variables with an explicit credentials file:
+
+```bash
+-p ~/.config/aws-creds.yaml      # Override AWS credentials
+-p ~/.config/gcp-creds.yaml      # Override GCP credentials
+-p ~/.config/azure-creds.yaml    # Override Azure credentials
+-p ~/.kube/config                # Override Kubernetes config
+```
+
+**How it works**: 
+1. The CLI parses your manifest's `apiVersion` (e.g., `aws.project-planton.org/v1`)
+2. Determines the required provider (e.g., AWS)
+3. Loads credentials from environment variables OR from the file specified with `-p`
+
+See the [Credentials Guide](/docs/guides/credentials) for the complete list of environment variables per provider.
 
 ---
 

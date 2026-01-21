@@ -12,6 +12,7 @@ go_library(
     importpath = "github.com/plantonhq/project-planton/internal/cli/iacflags",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//apis/org/project_planton/shared/iac/terraform",
         "//internal/cli/flag",
         "@com_github_sirupsen_logrus//:logrus",
         "@com_github_spf13_cobra//:cobra",

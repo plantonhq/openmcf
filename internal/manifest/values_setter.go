@@ -15,6 +15,10 @@ import (
 func LoadWithOverrides(manifestPath string, valueOverrides map[string]string) (proto.Message, error) {
 	manifest, err := LoadManifest(manifestPath)
 	if err != nil {
+		// Preserve ManifestLoadError type for beautiful error display
+		if IsManifestLoadError(err) {
+			return nil, err
+		}
 		return nil, errors.Wrap(err, "failed to load manifest")
 	}
 	for key, value := range valueOverrides {

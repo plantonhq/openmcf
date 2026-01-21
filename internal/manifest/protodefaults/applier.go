@@ -14,9 +14,13 @@ import (
 // - The field is currently unset/empty
 //
 // For scalar fields, the default string value is converted to the appropriate type.
-// For message fields, the function recurses into the nested message.
-// For unset message fields, if the message type has fields with defaults, the message
-// is initialized and defaults are applied.
+// For message fields, the function recurses into nested messages that are explicitly set.
+//
+// IMPORTANT: Unset nested messages remain unset to preserve user intent.
+// This means if a user doesn't set an optional feature message (like `autoscaling`),
+// it won't be auto-initialized even if it contains fields with defaults.
+// To trigger defaults on an optional message, users should explicitly set it to empty
+// in their manifest (e.g., `autoscaling: {}`).
 func ApplyDefaults(msg proto.Message) error {
 	if msg == nil {
 		return nil
@@ -24,7 +28,9 @@ func ApplyDefaults(msg proto.Message) error {
 	return applyDefaultsToMessage(msg.ProtoReflect())
 }
 
-// applyDefaultsToMessage recursively applies defaults to a reflected message
+// applyDefaultsToMessage recursively applies defaults to a reflected message.
+// Defaults are only applied to nested messages that are explicitly set by the user.
+// Unset nested messages remain unset to preserve user intent (e.g., optional features).
 func applyDefaultsToMessage(msgReflect protoreflect.Message) error {
 	fields := msgReflect.Descriptor().Fields()
 
@@ -40,22 +46,15 @@ func applyDefaultsToMessage(msgReflect protoreflect.Message) error {
 		// Check if field is a message type (nested message)
 		if field.Kind() == protoreflect.MessageKind {
 			if msgReflect.Has(field) {
-				// If the field is set, recurse into it
+				// If the field is set, recurse into it to apply defaults
 				nestedMsg := msgReflect.Get(field).Message()
 				if err := applyDefaultsToMessage(nestedMsg); err != nil {
 					return errors.Wrapf(err, "failed to apply defaults to nested field %s", field.FullName())
 				}
-			} else {
-				// If the field is NOT set, check if the message type has fields with defaults
-				// If so, create the message, apply defaults, and set it on the parent
-				if hasFieldsWithDefaults(field.Message()) {
-					// Create a new message instance using Mutable which returns a mutable reference
-					newMsg := msgReflect.Mutable(field).Message()
-					if err := applyDefaultsToMessage(newMsg); err != nil {
-						return errors.Wrapf(err, "failed to apply defaults to unset nested field %s", field.FullName())
-					}
-				}
 			}
+			// If the field is NOT set, leave it unset.
+			// This preserves user intent: unset optional messages mean "I don't want this feature".
+			// Users can explicitly set an empty message (e.g., `fieldname: {}`) to trigger defaults.
 			continue
 		}
 
@@ -68,37 +67,6 @@ func applyDefaultsToMessage(msgReflect protoreflect.Message) error {
 	}
 
 	return nil
-}
-
-// hasFieldsWithDefaults recursively checks if a message descriptor has any fields
-// with default values defined, either directly or in nested messages.
-func hasFieldsWithDefaults(msgDesc protoreflect.MessageDescriptor) bool {
-	fields := msgDesc.Fields()
-
-	for i := 0; i < fields.Len(); i++ {
-		field := fields.Get(i)
-
-		// Skip lists and maps
-		if field.IsList() || field.IsMap() {
-			continue
-		}
-
-		// For message fields, recurse
-		if field.Kind() == protoreflect.MessageKind {
-			if hasFieldsWithDefaults(field.Message()) {
-				return true
-			}
-			continue
-		}
-
-		// For scalar fields, check if they have a default option
-		options := field.Options()
-		if options != nil && proto.HasExtension(options, options_pb.E_Default) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // applyDefaultToField applies the default value to a specific field if it has a default option

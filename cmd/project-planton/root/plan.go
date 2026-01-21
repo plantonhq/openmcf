@@ -8,6 +8,8 @@ import (
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/iacflags"
 	"github.com/plantonhq/project-planton/internal/cli/iacrunner"
+	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
+	"github.com/plantonhq/project-planton/internal/manifest"
 	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
 	"github.com/spf13/cobra"
 )
@@ -49,12 +51,16 @@ func init() {
 	iacflags.AddExecutionFlags(Plan)
 	iacflags.AddPulumiFlags(Plan)
 	iacflags.AddTofuPlanFlags(Plan)
+	iacflags.AddTofuInitFlags(Plan)
 }
 
 func planHandler(cmd *cobra.Command, args []string) {
 	ctx, err := iacrunner.ResolveContext(cmd)
 	if err != nil {
-		cliprint.PrintError(err.Error())
+		// Only print error if it wasn't already handled (clipboard/manifest load errors are pre-handled)
+		if !climanifest.IsClipboardError(err) && !manifest.IsManifestLoadError(err) {
+			cliprint.PrintError(err.Error())
+		}
 		os.Exit(1)
 	}
 	defer ctx.Cleanup()
@@ -70,8 +76,9 @@ func planHandler(cmd *cobra.Command, args []string) {
 			os.Exit(1)
 		}
 	case provisioner.ProvisionerTypeTerraform:
-		cliprint.PrintError("Terraform provisioner is not yet implemented. Please use 'tofu' instead.")
-		os.Exit(1)
+		if err := iacrunner.RunTerraform(ctx, cmd, terraform.TerraformOperationType_plan); err != nil {
+			os.Exit(1)
+		}
 	default:
 		cliprint.PrintError("Unknown provisioner type")
 		os.Exit(1)

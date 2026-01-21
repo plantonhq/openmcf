@@ -730,26 +730,32 @@ project-planton pulumi up \
   --set metadata.env=staging
 ```
 
-### Credential Injection
+### Provider Credentials
 
-These flags inject provider credentials (alternative to environment variables):
-
-- **`--aws-credential <file>`**: Path to AWS credential YAML
-- **`--azure-credential <file>`**: Path to Azure credential YAML
-- **`--gcp-credential <file>`**: Path to GCP credential YAML
-- **`--kubernetes-cluster <file>`**: Path to Kubernetes cluster credential YAML
-- **`--confluent-credential <file>`**: Path to Confluent Cloud credential YAML
-- **`--docker-credential <file>`**: Path to Docker registry credential YAML
-- **`--mongodb-atlas-credential <file>`**: Path to MongoDB Atlas credential YAML
-- **`--snowflake-credential <file>`**: Path to Snowflake credential YAML
-
-**Example**:
+**Default Behavior**: Credentials are automatically loaded from environment variables. If you have your cloud provider CLI configured (e.g., `aws configure`, `gcloud auth`, `az login`), no additional credential setup is needed.
 
 ```bash
+# Works without -p flag if environment variables are set
+project-planton pulumi up -f ops/aws-resources/vpc.yaml  # Uses AWS_ACCESS_KEY_ID, etc.
+project-planton pulumi up -f ops/gcp-resources/gke.yaml  # Uses GOOGLE_APPLICATION_CREDENTIALS
+```
+
+**Explicit Override**: Use `-p` / `--provider-config` to override environment variables with a credentials file.
+
+**`-p, --provider-config <file>`**: Path to provider credential YAML file
+
+```bash
+# Override with explicit credentials file
 project-planton pulumi up \
   -f ops/aws-resources/vpc.yaml \
-  --aws-credential ~/.config/planton/credentials/aws-prod.yaml
+  -p ~/.config/planton/credentials/aws-prod.yaml
+
+project-planton pulumi up \
+  -f ops/gcp-resources/cluster.yaml \
+  -p ~/.config/planton/credentials/gcp-prod.yaml
 ```
+
+The CLI auto-detects which provider is needed from your manifest's `apiVersion`. See the [Credentials Guide](/docs/guides/credentials) for environment variable details.
 
 ---
 
@@ -998,10 +1004,10 @@ project-planton pulumi up -f my-resource.yaml
 # Check credentials
 aws sts get-caller-identity
 
-# Or provide credential file
+# Or provide provider config file
 project-planton pulumi up \
   -f resource.yaml \
-  --aws-credential ~/.aws/credentials-prod.yaml
+  -p ~/.aws/credentials-prod.yaml
 ```
 
 **For GCP**:

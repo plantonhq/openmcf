@@ -12,6 +12,10 @@ import (
 func Validate(manifestPath string) error {
 	manifest, err := LoadManifest(manifestPath)
 	if err != nil {
+		// Preserve ManifestLoadError type for beautiful error display
+		if IsManifestLoadError(err) {
+			return err
+		}
 		return errors.Wrap(err, "failed to load manifest")
 	}
 

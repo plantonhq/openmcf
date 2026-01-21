@@ -13,6 +13,7 @@ import (
 	"github.com/plantonhq/project-planton/internal/manifest"
 	"github.com/plantonhq/project-planton/pkg/iac/localmodule"
 	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
+	"github.com/plantonhq/project-planton/pkg/iac/stackinput/providerdetect"
 	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/project-planton/pkg/kubernetes/kubecontext"
 	"github.com/spf13/cobra"
@@ -53,6 +54,11 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	// Resolve manifest path with priority: --stack-input > --manifest > --input-dir > --kustomize-dir + --overlay
 	targetManifestPath, isTemp, err := climanifest.ResolveManifestPath(cmd)
 	if err != nil {
+		// Check for clipboard-specific errors and display beautifully
+		if climanifest.HandleClipboardError(err) {
+			// Return error to signal failure, but error display already handled
+			return nil, err
+		}
 		return nil, errors.Wrap(err, "failed to resolve manifest")
 	}
 	if isTemp {
@@ -80,6 +86,10 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	// Validate manifest before proceeding (after overrides are applied)
 	cliprint.PrintStep("Validating manifest...")
 	if err := manifest.Validate(ctx.ManifestPath); err != nil {
+		// Check for manifest load errors (proto unmarshaling) and display beautifully
+		if manifest.HandleManifestLoadError(err) {
+			return nil, err
+		}
 		return nil, errors.Wrap(err, "manifest validation failed")
 	}
 	cliprint.PrintSuccess("Manifest validated")
@@ -88,6 +98,10 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	cliprint.PrintStep("Detecting provisioner...")
 	manifestObject, err := manifest.LoadWithOverrides(ctx.ManifestPath, valueOverrides)
 	if err != nil {
+		// Check for manifest load errors (proto unmarshaling) and display beautifully
+		if manifest.HandleManifestLoadError(err) {
+			return nil, err
+		}
 		return nil, errors.Wrap(err, "failed to load manifest")
 	}
 	ctx.ManifestObject = manifestObject
@@ -152,13 +166,44 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	ctx.NoCleanup, _ = cmd.Flags().GetBool(string(flag.NoCleanup))
 	ctx.ShowDiff, _ = cmd.Flags().GetBool(string(flag.Diff))
 
-	// Prepare provider configs
-	cliprint.PrintStep("Preparing execution...")
-	providerConfigOptions, err := stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	// Detect required provider from manifest
+	cliprint.PrintStep("Detecting required provider...")
+	manifestBytes, err := os.ReadFile(ctx.ManifestPath)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build credential options")
+		return nil, errors.Wrap(err, "failed to read manifest for provider detection")
 	}
-	ctx.ProviderConfigOpts = providerConfigOptions
+
+	detectionResult, err := providerdetect.DetectFromManifest(manifestBytes)
+	if err != nil {
+		// Show guidance for kind detection failure
+		cliprint.PrintKindDetectionError(providerdetect.KindDetectionErrorGuidance())
+		return nil, err
+	}
+
+	ctx.DetectionResult = detectionResult
+
+	// Show detected resource information
+	cliprint.PrintSuccess(fmt.Sprintf("Detected resource: %s (%s provider)",
+		detectionResult.KindName, providerdetect.ProviderDisplayName(detectionResult.Provider)))
+
+	// Get provider config from flags
+	cliprint.PrintStep("Preparing execution...")
+	providerConfig, err := stackinputproviderconfig.GetFromFlags(cmd.Flags(), detectionResult)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get provider config from flags")
+	}
+
+	// Validate provider config if explicitly provided via -p flag
+	if providerConfig.Path != "" {
+		if err := providerdetect.ValidateProviderConfig(providerConfig.Path, detectionResult.Provider); err != nil {
+			guidance := providerdetect.InvalidProviderConfigGuidance(detectionResult, err)
+			cliprint.PrintInvalidProviderConfig("Invalid provider config", guidance)
+			return nil, errors.Wrap(err, "provider config validation failed")
+		}
+		cliprint.PrintProviderConfigLoaded(providerdetect.ProviderDisplayName(detectionResult.Provider))
+	}
+
+	ctx.ProviderConfig = providerConfig
 	cliprint.PrintSuccess("Execution prepared")
 
 	return ctx, nil

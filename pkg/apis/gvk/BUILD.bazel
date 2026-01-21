@@ -5,5 +5,4 @@ go_library(
     srcs = ["gvk.go"],
     importpath = "github.com/plantonhq/project-planton/pkg/apis/gvk",
     visibility = ["//visibility:public"],
-    deps = ["//apis/org/project_planton/shared"],
 )

@@ -68,6 +68,7 @@ func init() {
 		root.Pulumi,
 		root.Refresh,
 		root.StackUpdateStreamOutputCmd,
+		root.Terraform,
 		root.Tofu,
 		root.Upgrade,
 		root.ValidateManifest,

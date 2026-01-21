@@ -2,6 +2,7 @@ package iacrunner
 
 import (
 	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
+	"github.com/plantonhq/project-planton/pkg/iac/stackinput/providerdetect"
 	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"google.golang.org/protobuf/proto"
 )
@@ -17,8 +18,11 @@ type Context struct {
 	// StackInputFilePath is the original stack input file path (if provided via --stack-input)
 	StackInputFilePath string
 
-	// ProviderConfigOpts contains the resolved provider configuration options
-	ProviderConfigOpts []stackinputproviderconfig.StackInputProviderConfigOption
+	// ProviderConfig contains the unified provider configuration
+	ProviderConfig *stackinputproviderconfig.ProviderConfig
+
+	// DetectionResult contains the provider detection result from the manifest
+	DetectionResult *providerdetect.DetectionResult
 
 	// ProvisionerType indicates which IaC provisioner to use (Pulumi, Tofu, Terraform)
 	ProvisionerType provisioner.ProvisionerType

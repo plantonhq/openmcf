@@ -1,0 +1,22 @@
+---
+title: "CIVO"
+description: "Deploy CIVO resources using Project Planton"
+icon: "cloud"
+order: 10
+---
+
+# CIVO
+
+The following CIVO resources can be deployed using Project Planton:
+
+- [Bucket](/docs/catalog/civo/civobucket)
+- [Certificate](/docs/catalog/civo/civocertificate)
+- [Compute Instance](/docs/catalog/civo/civocomputeinstance)
+- [Database](/docs/catalog/civo/civodatabase)
+- [DNS Zone](/docs/catalog/civo/civodnszone)
+- [Firewall](/docs/catalog/civo/civofirewall)
+- [IP Address](/docs/catalog/civo/civoipaddress)
+- [Kubernetes Cluster](/docs/catalog/civo/civokubernetescluster)
+- [Kubernetes Node  Pool](/docs/catalog/civo/civokubernetesnodepool)
+- [Volume](/docs/catalog/civo/civovolume)
+- [VPC](/docs/catalog/civo/civovpc)

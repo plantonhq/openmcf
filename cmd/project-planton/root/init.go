@@ -5,9 +5,10 @@ import (
 	"os"
 
 	"github.com/plantonhq/project-planton/apis/org/project_planton/shared"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/flag"
+	"github.com/plantonhq/project-planton/internal/cli/iacflags"
+	"github.com/plantonhq/project-planton/internal/cli/iacrunner"
 	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
 	"github.com/plantonhq/project-planton/internal/cli/prompt"
 	"github.com/plantonhq/project-planton/internal/cli/workspace"
@@ -21,7 +22,6 @@ import (
 	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfbackend"
 	"github.com/plantonhq/project-planton/pkg/iac/tofu/tofumodule"
 	"github.com/plantonhq/project-planton/pkg/kubernetes/kubecontext"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
@@ -34,9 +34,16 @@ var Init = &cobra.Command{
 
 If the provisioner label is not present, you will be prompted to select one interactively.`,
 	Example: `
+	# Initialize from clipboard (manifest content already copied)
+	project-planton init --clipboard
+	project-planton init -c
+
 	# Initialize with manifest file
 	project-planton init -f manifest.yaml
 	project-planton init --manifest manifest.yaml
+
+	# Initialize with stack input file (extracts manifest from target field)
+	project-planton init -i stack-input.yaml
 
 	# Initialize with kustomize
 	project-planton init --kustomize-dir _kustomize --overlay prod
@@ -48,48 +55,11 @@ If the provisioner label is not present, you will be prompted to select one inte
 }
 
 func init() {
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("failed to get current working directory")
-	}
-
-	// Use StringP to support both --manifest and -f
-	Init.PersistentFlags().StringP(string(flag.Manifest), "f", "", "path of the deployment-component manifest file")
-
-	Init.PersistentFlags().String(string(flag.InputDir), "", "directory containing target.yaml and credential yaml files")
-	Init.PersistentFlags().String(string(flag.KustomizeDir), "", "directory containing kustomize configuration")
-	Init.PersistentFlags().String(string(flag.Overlay), "", "kustomize overlay to use (e.g., prod, dev, staging)")
-	Init.PersistentFlags().String(string(flag.ModuleDir), pwd, "directory containing the provisioner module")
-	Init.PersistentFlags().StringToString(string(flag.Set), map[string]string{}, "override resource manifest values using key=value pairs")
-
-	// Pulumi-specific flags
-	Init.PersistentFlags().String(string(flag.Stack), "", "pulumi stack fqdn in the format of <org>/<project>/<stack>")
-
-	// Tofu/Terraform-specific flags
-	Init.PersistentFlags().String(string(flag.BackendType), terraform.TerraformBackendType_local.String(),
-		"Specifies the backend type (Tofu/Terraform) - 'local', 's3', 'gcs', 'azurerm', etc.")
-	Init.PersistentFlags().StringArray(string(flag.BackendConfig), []string{},
-		"Backend configuration key=value pairs (Tofu/Terraform)")
-
-	// Staging/cleanup flags
-	Init.PersistentFlags().Bool(string(flag.NoCleanup), false, "Do not cleanup the workspace copy after execution (keeps cloned modules)")
-	Init.PersistentFlags().String(string(flag.ModuleVersion), "",
-		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.\n"+
-			"This allows using a different module version than what's in the staging area without affecting it.")
-
-	// Kubernetes context flag
-	Init.PersistentFlags().String(string(flag.KubeContext), "", "kubectl context to use for Kubernetes deployments (overrides manifest label)")
-
-	// Provider credential flags
-	Init.PersistentFlags().String(string(flag.AtlasProviderConfig), "", "path of the mongodb-atlas-credential file")
-	Init.PersistentFlags().String(string(flag.Auth0ProviderConfig), "", "path of the auth0-credential file")
-	Init.PersistentFlags().String(string(flag.AwsProviderConfig), "", "path of the aws-credential file")
-	Init.PersistentFlags().String(string(flag.AzureProviderConfig), "", "path of the azure-credential file")
-	Init.PersistentFlags().String(string(flag.CloudflareProviderConfig), "", "path of the cloudflare-credential file")
-	Init.PersistentFlags().String(string(flag.ConfluentProviderConfig), "", "path of the confluent-credential file")
-	Init.PersistentFlags().String(string(flag.GcpProviderConfig), "", "path of the gcp-credential file")
-	Init.PersistentFlags().String(string(flag.KubernetesProviderConfig), "", "path of the yaml file containing the kubernetes cluster configuration")
-	Init.PersistentFlags().String(string(flag.SnowflakeProviderConfig), "", "path of the snowflake-credential file")
+	iacflags.AddManifestSourceFlags(Init)
+	iacflags.AddProviderConfigFlags(Init)
+	iacflags.AddExecutionFlags(Init)
+	iacflags.AddPulumiFlags(Init)
+	iacflags.AddTofuInitFlags(Init)
 }
 
 func initHandler(cmd *cobra.Command, args []string) {
@@ -202,11 +172,11 @@ func initHandler(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Prepare provider configs
+	// Prepare provider config
 	cliprint.PrintStep("Preparing execution...")
-	providerConfigOptions, err := stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("Failed to build credential options: %v", err))
+		cliprint.PrintError(fmt.Sprintf("Failed to get provider config: %v", err))
 		os.Exit(1)
 	}
 	cliprint.PrintSuccess("Execution prepared")
@@ -216,10 +186,9 @@ func initHandler(cmd *cobra.Command, args []string) {
 	case provisioner.ProvisionerTypePulumi:
 		initWithPulumi(cmd, moduleDir, targetManifestPath, valueOverrides)
 	case provisioner.ProvisionerTypeTofu:
-		initWithTofu(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfigOptions)
+		initWithTofu(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfig)
 	case provisioner.ProvisionerTypeTerraform:
-		cliprint.PrintError("Terraform provisioner is not yet implemented. Please use 'tofu' instead.")
-		os.Exit(1)
+		initWithTerraform(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfig)
 	default:
 		cliprint.PrintError("Unknown provisioner type")
 		os.Exit(1)
@@ -243,13 +212,15 @@ func initWithPulumi(cmd *cobra.Command, moduleDir, targetManifestPath string, va
 }
 
 func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valueOverrides map[string]string,
-	kubeContext string, manifestObject proto.Message, providerConfigOptions []stackinputproviderconfig.StackInputProviderConfigOption) {
+	kubeContext string, manifestObject proto.Message, providerConfig *stackinputproviderconfig.ProviderConfig) {
 
 	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
 	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
 
 	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
 	flag.HandleFlagErr(err, flag.BackendConfig)
+
+	isReconfigure, _ := cmd.Flags().GetBool(string(flag.Reconfigure))
 
 	backendType := tfbackend.BackendTypeFromString(backendTypeString)
 
@@ -281,12 +252,7 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 	tofuModulePath := pathResult.ModulePath
 
 	// Build stack input YAML
-	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
-	for _, opt := range providerConfigOptions {
-		opt(&opts)
-	}
-
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		cliprint.PrintError(fmt.Sprintf("Failed to build stack input yaml: %v", err))
 		os.Exit(1)
@@ -304,16 +270,114 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 		os.Exit(1)
 	}
 
+	// Display backend configuration if available (before handoff)
+	if backendInfo := iacrunner.ExtractBackendConfigForDisplay(manifestObject, "tofu"); backendInfo != nil {
+		cliprint.PrintBackendConfig(backendInfo.BackendType, backendInfo.Bucket, backendInfo.Key)
+	}
+
+	// Display module path
+	cliprint.PrintModulePath(tofuModulePath)
+
 	cliprint.PrintHandoff("OpenTofu")
 
-	err = tofumodule.TofuInit(tofuModulePath, manifestObject,
+	err = tofumodule.Init(
+		"tofu",
+		tofuModulePath,
+		manifestObject,
 		backendType,
 		backendConfigList,
 		providerConfigEnvVars,
-		false, nil)
+		isReconfigure,
+		false,
+		nil,
+	)
 	if err != nil {
 		cliprint.PrintTofuFailure()
 		os.Exit(1)
 	}
 	cliprint.PrintTofuSuccess()
+}
+
+func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string, valueOverrides map[string]string,
+	kubeContext string, manifestObject proto.Message, providerConfig *stackinputproviderconfig.ProviderConfig) {
+
+	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
+	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
+
+	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
+	flag.HandleFlagErr(err, flag.BackendConfig)
+
+	isReconfigure, _ := cmd.Flags().GetBool(string(flag.Reconfigure))
+
+	backendType := tfbackend.BackendTypeFromString(backendTypeString)
+
+	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("Failed to extract kind name from manifest proto: %v", err))
+		os.Exit(1)
+	}
+
+	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
+	moduleVersion, _ := cmd.Flags().GetString(string(flag.ModuleVersion))
+
+	pathResult, err := tofumodule.GetModulePath(moduleDir, kindName, moduleVersion, noCleanup)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("Failed to get terraform module directory: %v", err))
+		os.Exit(1)
+	}
+
+	if pathResult.ShouldCleanup {
+		defer func() {
+			if cleanupErr := pathResult.CleanupFunc(); cleanupErr != nil {
+				fmt.Printf("Warning: failed to cleanup workspace copy: %v\n", cleanupErr)
+			}
+		}()
+	}
+
+	modulePath := pathResult.ModulePath
+
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("Failed to build stack input yaml: %v", err))
+		os.Exit(1)
+	}
+
+	workspaceDir, err := workspace.GetWorkspaceDir()
+	if err != nil {
+		cliprint.PrintError("Failed to get workspace directory")
+		os.Exit(1)
+	}
+
+	providerConfigEnvVars, err := tofumodule.GetProviderConfigEnvVars(stackInputYaml, workspaceDir, kubeContext)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("Failed to get credential env vars: %v", err))
+		os.Exit(1)
+	}
+
+	// Display backend configuration if available (before handoff)
+	if backendInfo := iacrunner.ExtractBackendConfigForDisplay(manifestObject, "terraform"); backendInfo != nil {
+		cliprint.PrintBackendConfig(backendInfo.BackendType, backendInfo.Bucket, backendInfo.Key)
+	}
+
+	// Display module path
+	cliprint.PrintModulePath(modulePath)
+
+	cliprint.PrintHandoff("Terraform")
+
+	err = tofumodule.Init(
+		"terraform",
+		modulePath,
+		manifestObject,
+		backendType,
+		backendConfigList,
+		providerConfigEnvVars,
+		isReconfigure,
+		false,
+		nil,
+	)
+	if err != nil {
+		cliprint.PrintTerraformFailure()
+		os.Exit(1)
+	}
+	cliprint.PrintTerraformSuccess()
 }

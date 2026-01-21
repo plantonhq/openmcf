@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ui",
+    srcs = [
+        "backend.go",
+        "clipboard.go",
+        "manifest.go",
+        "messages.go",
+        "styles.go",
+    ],
+    importpath = "github.com/plantonhq/project-planton/internal/cli/ui",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//pkg/iac/tofu/backendconfig",
+        "@com_github_charmbracelet_lipgloss//:lipgloss",
+    ],
+)

@@ -3,6 +3,8 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "manifest",
     srcs = [
+        "clipboard_content.go",
+        "clipboard_errors.go",
         "resolve_from_clipboard.go",
         "resolve_from_stack_input.go",
         "resolver.go",
@@ -12,6 +14,7 @@ go_library(
     deps = [
         "//internal/cli/flag",
         "//internal/cli/iacflags",
+        "//internal/cli/ui",
         "//internal/cli/workspace",
         "//pkg/clipboard",
         "//pkg/iac/stackinput",
@@ -19,5 +22,6 @@ go_library(
         "//pkg/ulidgen",
         "@com_github_pkg_errors//:errors",
         "@com_github_spf13_cobra//:cobra",
+        "@in_gopkg_yaml_v3//:yaml_v3",
     ],
 )
