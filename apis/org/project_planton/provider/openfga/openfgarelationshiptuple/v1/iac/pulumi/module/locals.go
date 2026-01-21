@@ -44,10 +44,14 @@ func initializeLocals(_ *pulumi.Context, stackInput *openfgarelationshiptuplev1.
 	// Format: type:id or type:id#relation (for usersets)
 	user := ""
 	if spec.User != nil {
+		userId := ""
+		if spec.User.Id != nil {
+			userId = spec.User.Id.GetValue()
+		}
 		if spec.User.Relation != "" {
-			user = fmt.Sprintf("%s:%s#%s", spec.User.Type, spec.User.Id, spec.User.Relation)
+			user = fmt.Sprintf("%s:%s#%s", spec.User.Type, userId, spec.User.Relation)
 		} else {
-			user = fmt.Sprintf("%s:%s", spec.User.Type, spec.User.Id)
+			user = fmt.Sprintf("%s:%s", spec.User.Type, userId)
 		}
 	}
 
@@ -55,7 +59,11 @@ func initializeLocals(_ *pulumi.Context, stackInput *openfgarelationshiptuplev1.
 	// Format: type:id
 	object := ""
 	if spec.Object != nil {
-		object = fmt.Sprintf("%s:%s", spec.Object.Type, spec.Object.Id)
+		objectId := ""
+		if spec.Object.Id != nil {
+			objectId = spec.Object.Id.GetValue()
+		}
+		object = fmt.Sprintf("%s:%s", spec.Object.Type, objectId)
 	}
 
 	return &Locals{

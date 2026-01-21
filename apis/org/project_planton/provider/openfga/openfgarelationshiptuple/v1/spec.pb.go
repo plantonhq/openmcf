@@ -202,9 +202,10 @@ func (x *OpenFgaRelationshipTupleSpec) GetCondition() *OpenFgaRelationshipTupleC
 // constructing the colon-separated format.
 //
 // Examples:
-// - Simple user: {type: "user", id: "anne"} → "user:anne"
-// - Wildcard: {type: "user", id: "*"} → "user:*"
-// - Userset: {type: "group", id: "engineering", relation: "member"} → "group:engineering#member"
+// - Simple user: {type: "user", id: {value: "anne"}} → "user:anne"
+// - Wildcard: {type: "user", id: {value: "*"}} → "user:*"
+// - Reference: {type: "user", id: {value_from: {name: "my-user"}}} → "user:<resolved-id>"
+// - Userset: {type: "group", id: {value: "engineering"}, relation: "member"} → "group:engineering#member"
 type OpenFgaRelationshipTupleUser struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// type is the user type as defined in the authorization model.
@@ -216,11 +217,17 @@ type OpenFgaRelationshipTupleUser struct {
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// id is the unique identifier of the user.
 	//
-	// This can be any string that uniquely identifies the user within the type.
-	// Use "*" for wildcard access (all users of this type).
+	// This can be either:
+	// - A direct value: {value: "anne"}
+	// - A reference to another resource: {value_from: {name: "my-resource"}}
 	//
-	// Examples: "anne", "1234", "engineering", "backend-api", "*"
-	Id string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	// When using references, the ID is automatically resolved from the referenced
+	// resource's field (default: metadata.id).
+	//
+	// Use {value: "*"} for wildcard access (all users of this type).
+	//
+	// Examples: {value: "anne"}, {value: "1234"}, {value: "*"}, {value_from: {name: "my-user"}}
+	Id *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	// relation is optional, used to create usersets (type:id#relation format).
 	//
 	// When specified, the user represents "all entities that have this relation
@@ -272,11 +279,11 @@ func (x *OpenFgaRelationshipTupleUser) GetType() string {
 	return ""
 }
 
-func (x *OpenFgaRelationshipTupleUser) GetId() string {
+func (x *OpenFgaRelationshipTupleUser) GetId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Id
 	}
-	return ""
+	return nil
 }
 
 func (x *OpenFgaRelationshipTupleUser) GetRelation() string {
@@ -293,9 +300,9 @@ func (x *OpenFgaRelationshipTupleUser) GetRelation() string {
 // colon-separated format.
 //
 // Examples:
-// - {type: "document", id: "budget-2024"} → "document:budget-2024"
-// - {type: "folder", id: "reports"} → "folder:reports"
-// - {type: "project", id: "acme-corp"} → "project:acme-corp"
+// - {type: "document", id: {value: "budget-2024"}} → "document:budget-2024"
+// - {type: "folder", id: {value: "reports"}} → "folder:reports"
+// - {type: "project", id: {value_from: {name: "my-project"}}} → "project:<resolved-id>"
 type OpenFgaRelationshipTupleObject struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// type is the object type as defined in the authorization model.
@@ -306,10 +313,15 @@ type OpenFgaRelationshipTupleObject struct {
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// id is the unique identifier of the object.
 	//
-	// This can be any string that uniquely identifies the object within the type.
+	// This can be either:
+	// - A direct value: {value: "budget-2024"}
+	// - A reference to another resource: {value_from: {name: "my-resource"}}
 	//
-	// Examples: "budget-2024", "reports", "acme-corp", "engineering-team"
-	Id            string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	// When using references, the ID is automatically resolved from the referenced
+	// resource's field (default: metadata.id).
+	//
+	// Examples: {value: "budget-2024"}, {value: "reports"}, {value_from: {name: "my-project"}}
+	Id            *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -351,11 +363,11 @@ func (x *OpenFgaRelationshipTupleObject) GetType() string {
 	return ""
 }
 
-func (x *OpenFgaRelationshipTupleObject) GetId() string {
+func (x *OpenFgaRelationshipTupleObject) GetId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Id
 	}
-	return ""
+	return nil
 }
 
 // OpenFgaRelationshipTupleCondition defines an optional condition for a relationship tuple.
@@ -443,14 +455,14 @@ const file_org_project_planton_provider_openfga_openfgarelationshiptuple_v1_spec
 	"\x04user\x18\x03 \x01(\v2^.org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleUserB\x06\xbaH\x03\xc8\x01\x01R\x04user\x12\"\n" +
 	"\brelation\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\brelation\x12\x80\x01\n" +
 	"\x06object\x18\x05 \x01(\v2`.org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleObjectB\x06\xbaH\x03\xc8\x01\x01R\x06object\x12\x81\x01\n" +
-	"\tcondition\x18\x06 \x01(\v2c.org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleConditionR\tcondition\"n\n" +
+	"\tcondition\x18\x06 \x01(\v2c.org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleConditionR\tcondition\"\xaa\x01\n" +
 	"\x1cOpenFgaRelationshipTupleUser\x12\x1a\n" +
-	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x16\n" +
-	"\x02id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12\x1a\n" +
-	"\brelation\x18\x03 \x01(\tR\brelation\"T\n" +
+	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12R\n" +
+	"\x02id\x18\x02 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12\x1a\n" +
+	"\brelation\x18\x03 \x01(\tR\brelation\"\x90\x01\n" +
 	"\x1eOpenFgaRelationshipTupleObject\x12\x1a\n" +
-	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x16\n" +
-	"\x02id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\"b\n" +
+	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12R\n" +
+	"\x02id\x18\x02 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x02id\"b\n" +
 	"!OpenFgaRelationshipTupleCondition\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12!\n" +
 	"\fcontext_json\x18\x02 \x01(\tR\vcontextJsonB\xfc\x03\n" +
@@ -482,11 +494,13 @@ var file_org_project_planton_provider_openfga_openfgarelationshiptuple_v1_spec_p
 	1, // 2: org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleSpec.user:type_name -> org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleUser
 	2, // 3: org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleSpec.object:type_name -> org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleObject
 	3, // 4: org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleSpec.condition:type_name -> org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleCondition
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 5: org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleUser.id:type_name -> org.project_planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 6: org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleObject.id:type_name -> org.project_planton.shared.foreignkey.v1.StringValueOrRef
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_org_project_planton_provider_openfga_openfgarelationshiptuple_v1_spec_proto_init() }

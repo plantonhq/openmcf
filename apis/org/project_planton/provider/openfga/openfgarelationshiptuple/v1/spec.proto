@@ -121,9 +121,10 @@ message OpenFgaRelationshipTupleSpec {
 // constructing the colon-separated format.
 //
 // Examples:
-// - Simple user: {type: "user", id: "anne"} → "user:anne"
-// - Wildcard: {type: "user", id: "*"} → "user:*"
-// - Userset: {type: "group", id: "engineering", relation: "member"} → "group:engineering#member"
+// - Simple user: {type: "user", id: {value: "anne"}} → "user:anne"
+// - Wildcard: {type: "user", id: {value: "*"}} → "user:*"
+// - Reference: {type: "user", id: {value_from: {name: "my-user"}}} → "user:<resolved-id>"
+// - Userset: {type: "group", id: {value: "engineering"}, relation: "member"} → "group:engineering#member"
 message OpenFgaRelationshipTupleUser {
   // type is the user type as defined in the authorization model.
   //
@@ -135,11 +136,17 @@ message OpenFgaRelationshipTupleUser {
 
   // id is the unique identifier of the user.
   //
-  // This can be any string that uniquely identifies the user within the type.
-  // Use "*" for wildcard access (all users of this type).
+  // This can be either:
+  // - A direct value: {value: "anne"}
+  // - A reference to another resource: {value_from: {name: "my-resource"}}
   //
-  // Examples: "anne", "1234", "engineering", "backend-api", "*"
-  string id = 2 [(buf.validate.field).required = true];
+  // When using references, the ID is automatically resolved from the referenced
+  // resource's field (default: metadata.id).
+  //
+  // Use {value: "*"} for wildcard access (all users of this type).
+  //
+  // Examples: {value: "anne"}, {value: "1234"}, {value: "*"}, {value_from: {name: "my-user"}}
+  org.project_planton.shared.foreignkey.v1.StringValueOrRef id = 2 [(buf.validate.field).required = true];
 
   // relation is optional, used to create usersets (type:id#relation format).
   //
@@ -160,9 +167,9 @@ message OpenFgaRelationshipTupleUser {
 // colon-separated format.
 //
 // Examples:
-// - {type: "document", id: "budget-2024"} → "document:budget-2024"
-// - {type: "folder", id: "reports"} → "folder:reports"
-// - {type: "project", id: "acme-corp"} → "project:acme-corp"
+// - {type: "document", id: {value: "budget-2024"}} → "document:budget-2024"
+// - {type: "folder", id: {value: "reports"}} → "folder:reports"
+// - {type: "project", id: {value_from: {name: "my-project"}}} → "project:<resolved-id>"
 message OpenFgaRelationshipTupleObject {
   // type is the object type as defined in the authorization model.
   //
@@ -173,10 +180,15 @@ message OpenFgaRelationshipTupleObject {
 
   // id is the unique identifier of the object.
   //
-  // This can be any string that uniquely identifies the object within the type.
+  // This can be either:
+  // - A direct value: {value: "budget-2024"}
+  // - A reference to another resource: {value_from: {name: "my-resource"}}
   //
-  // Examples: "budget-2024", "reports", "acme-corp", "engineering-team"
-  string id = 2 [(buf.validate.field).required = true];
+  // When using references, the ID is automatically resolved from the referenced
+  // resource's field (default: metadata.id).
+  //
+  // Examples: {value: "budget-2024"}, {value: "reports"}, {value_from: {name: "my-project"}}
+  org.project_planton.shared.foreignkey.v1.StringValueOrRef id = 2 [(buf.validate.field).required = true];
 }
 
 // OpenFgaRelationshipTupleCondition defines an optional condition for a relationship tuple.

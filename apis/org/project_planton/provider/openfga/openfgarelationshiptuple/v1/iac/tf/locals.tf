@@ -12,17 +12,19 @@ locals {
   # Construct the user string from structured input:
   # - Without relation: "type:id" (e.g., "user:anne")
   # - With relation: "type:id#relation" (e.g., "group:engineering#member")
+  # The id is a StringValueOrRef object, so we extract the .value field.
   user = (
     var.spec.user.relation != null && var.spec.user.relation != ""
-    ? "${var.spec.user.type}:${var.spec.user.id}#${var.spec.user.relation}"
-    : "${var.spec.user.type}:${var.spec.user.id}"
+    ? "${var.spec.user.type}:${var.spec.user.id.value}#${var.spec.user.relation}"
+    : "${var.spec.user.type}:${var.spec.user.id.value}"
   )
 
   # The relation field (direct pass-through)
   relation = var.spec.relation
 
   # Construct the object string from structured input: "type:id"
-  object = "${var.spec.object.type}:${var.spec.object.id}"
+  # The id is a StringValueOrRef object, so we extract the .value field.
+  object = "${var.spec.object.type}:${var.spec.object.id.value}"
 
   # Condition (optional, pass-through)
   condition = var.spec.condition

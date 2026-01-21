@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file org/project_planton/provider/openfga/openfgarelationshiptuple/v1/spec.proto.
  */
 export const file_org_project_planton_provider_openfga_openfgarelationshiptuple_v1_spec: GenFile = /*@__PURE__*/
-  fileDesc("CktvcmcvcHJvamVjdF9wbGFudG9uL3Byb3ZpZGVyL29wZW5mZ2Evb3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxlL3YxL3NwZWMucHJvdG8SQG9yZy5wcm9qZWN0X3BsYW50b24ucHJvdmlkZXIub3BlbmZnYS5vcGVuZmdhcmVsYXRpb25zaGlwdHVwbGUudjEiiAUKHE9wZW5GZ2FSZWxhdGlvbnNoaXBUdXBsZVNwZWMSbgoIc3RvcmVfaWQYASABKAsyOi5vcmcucHJvamVjdF9wbGFudG9uLnNoYXJlZC5mb3JlaWdua2V5LnYxLlN0cmluZ1ZhbHVlT3JSZWZCILpIA8gBAYjUYfwRktRhEXN0YXR1cy5vdXRwdXRzLmlkEnYKFmF1dGhvcml6YXRpb25fbW9kZWxfaWQYAiABKAsyOi5vcmcucHJvamVjdF9wbGFudG9uLnNoYXJlZC5mb3JlaWdua2V5LnYxLlN0cmluZ1ZhbHVlT3JSZWZCGojUYf0RktRhEXN0YXR1cy5vdXRwdXRzLmlkEnQKBHVzZXIYAyABKAsyXi5vcmcucHJvamVjdF9wbGFudG9uLnByb3ZpZGVyLm9wZW5mZ2Eub3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxlLnYxLk9wZW5GZ2FSZWxhdGlvbnNoaXBUdXBsZVVzZXJCBrpIA8gBARIYCghyZWxhdGlvbhgEIAEoCUIGukgDyAEBEngKBm9iamVjdBgFIAEoCzJgLm9yZy5wcm9qZWN0X3BsYW50b24ucHJvdmlkZXIub3BlbmZnYS5vcGVuZmdhcmVsYXRpb25zaGlwdHVwbGUudjEuT3BlbkZnYVJlbGF0aW9uc2hpcFR1cGxlT2JqZWN0Qga6SAPIAQESdgoJY29uZGl0aW9uGAYgASgLMmMub3JnLnByb2plY3RfcGxhbnRvbi5wcm92aWRlci5vcGVuZmdhLm9wZW5mZ2FyZWxhdGlvbnNoaXB0dXBsZS52MS5PcGVuRmdhUmVsYXRpb25zaGlwVHVwbGVDb25kaXRpb24iWgocT3BlbkZnYVJlbGF0aW9uc2hpcFR1cGxlVXNlchIUCgR0eXBlGAEgASgJQga6SAPIAQESEgoCaWQYAiABKAlCBrpIA8gBARIQCghyZWxhdGlvbhgDIAEoCSJKCh5PcGVuRmdhUmVsYXRpb25zaGlwVHVwbGVPYmplY3QSFAoEdHlwZRgBIAEoCUIGukgDyAEBEhIKAmlkGAIgASgJQga6SAPIAQEiTwohT3BlbkZnYVJlbGF0aW9uc2hpcFR1cGxlQ29uZGl0aW9uEhQKBG5hbWUYASABKAlCBrpIA8gBARIUCgxjb250ZXh0X2pzb24YAiABKAlC/AMKRGNvbS5vcmcucHJvamVjdF9wbGFudG9uLnByb3ZpZGVyLm9wZW5mZ2Eub3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxlLnYxQglTcGVjUHJvdG9QAVqFAWdpdGh1Yi5jb20vcGxhbnRvbmhxL3Byb2plY3QtcGxhbnRvbi9hcGlzL29yZy9wcm9qZWN0X3BsYW50b24vcHJvdmlkZXIvb3BlbmZnYS9vcGVuZmdhcmVsYXRpb25zaGlwdHVwbGUvdjE7b3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxldjGiAgVPUFBPT6oCP09yZy5Qcm9qZWN0UGxhbnRvbi5Qcm92aWRlci5PcGVuZmdhLk9wZW5mZ2FyZWxhdGlvbnNoaXB0dXBsZS5WMcoCP09yZ1xQcm9qZWN0UGxhbnRvblxQcm92aWRlclxPcGVuZmdhXE9wZW5mZ2FyZWxhdGlvbnNoaXB0dXBsZVxWMeICS09yZ1xQcm9qZWN0UGxhbnRvblxQcm92aWRlclxPcGVuZmdhXE9wZW5mZ2FyZWxhdGlvbnNoaXB0dXBsZVxWMVxHUEJNZXRhZGF0YeoCRE9yZzo6UHJvamVjdFBsYW50b246OlByb3ZpZGVyOjpPcGVuZmdhOjpPcGVuZmdhcmVsYXRpb25zaGlwdHVwbGU6OlYxYgZwcm90bzM", [file_buf_validate_validate, file_org_project_planton_shared_foreignkey_v1_foreign_key]);
+  fileDesc("CktvcmcvcHJvamVjdF9wbGFudG9uL3Byb3ZpZGVyL29wZW5mZ2Evb3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxlL3YxL3NwZWMucHJvdG8SQG9yZy5wcm9qZWN0X3BsYW50b24ucHJvdmlkZXIub3BlbmZnYS5vcGVuZmdhcmVsYXRpb25zaGlwdHVwbGUudjEiiAUKHE9wZW5GZ2FSZWxhdGlvbnNoaXBUdXBsZVNwZWMSbgoIc3RvcmVfaWQYASABKAsyOi5vcmcucHJvamVjdF9wbGFudG9uLnNoYXJlZC5mb3JlaWdua2V5LnYxLlN0cmluZ1ZhbHVlT3JSZWZCILpIA8gBAYjUYfwRktRhEXN0YXR1cy5vdXRwdXRzLmlkEnYKFmF1dGhvcml6YXRpb25fbW9kZWxfaWQYAiABKAsyOi5vcmcucHJvamVjdF9wbGFudG9uLnNoYXJlZC5mb3JlaWdua2V5LnYxLlN0cmluZ1ZhbHVlT3JSZWZCGojUYf0RktRhEXN0YXR1cy5vdXRwdXRzLmlkEnQKBHVzZXIYAyABKAsyXi5vcmcucHJvamVjdF9wbGFudG9uLnByb3ZpZGVyLm9wZW5mZ2Eub3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxlLnYxLk9wZW5GZ2FSZWxhdGlvbnNoaXBUdXBsZVVzZXJCBrpIA8gBARIYCghyZWxhdGlvbhgEIAEoCUIGukgDyAEBEngKBm9iamVjdBgFIAEoCzJgLm9yZy5wcm9qZWN0X3BsYW50b24ucHJvdmlkZXIub3BlbmZnYS5vcGVuZmdhcmVsYXRpb25zaGlwdHVwbGUudjEuT3BlbkZnYVJlbGF0aW9uc2hpcFR1cGxlT2JqZWN0Qga6SAPIAQESdgoJY29uZGl0aW9uGAYgASgLMmMub3JnLnByb2plY3RfcGxhbnRvbi5wcm92aWRlci5vcGVuZmdhLm9wZW5mZ2FyZWxhdGlvbnNoaXB0dXBsZS52MS5PcGVuRmdhUmVsYXRpb25zaGlwVHVwbGVDb25kaXRpb24ilgEKHE9wZW5GZ2FSZWxhdGlvbnNoaXBUdXBsZVVzZXISFAoEdHlwZRgBIAEoCUIGukgDyAEBEk4KAmlkGAIgASgLMjoub3JnLnByb2plY3RfcGxhbnRvbi5zaGFyZWQuZm9yZWlnbmtleS52MS5TdHJpbmdWYWx1ZU9yUmVmQga6SAPIAQESEAoIcmVsYXRpb24YAyABKAkihgEKHk9wZW5GZ2FSZWxhdGlvbnNoaXBUdXBsZU9iamVjdBIUCgR0eXBlGAEgASgJQga6SAPIAQESTgoCaWQYAiABKAsyOi5vcmcucHJvamVjdF9wbGFudG9uLnNoYXJlZC5mb3JlaWdua2V5LnYxLlN0cmluZ1ZhbHVlT3JSZWZCBrpIA8gBASJPCiFPcGVuRmdhUmVsYXRpb25zaGlwVHVwbGVDb25kaXRpb24SFAoEbmFtZRgBIAEoCUIGukgDyAEBEhQKDGNvbnRleHRfanNvbhgCIAEoCUL8AwpEY29tLm9yZy5wcm9qZWN0X3BsYW50b24ucHJvdmlkZXIub3BlbmZnYS5vcGVuZmdhcmVsYXRpb25zaGlwdHVwbGUudjFCCVNwZWNQcm90b1ABWoUBZ2l0aHViLmNvbS9wbGFudG9uaHEvcHJvamVjdC1wbGFudG9uL2FwaXMvb3JnL3Byb2plY3RfcGxhbnRvbi9wcm92aWRlci9vcGVuZmdhL29wZW5mZ2FyZWxhdGlvbnNoaXB0dXBsZS92MTtvcGVuZmdhcmVsYXRpb25zaGlwdHVwbGV2MaICBU9QUE9PqgI/T3JnLlByb2plY3RQbGFudG9uLlByb3ZpZGVyLk9wZW5mZ2EuT3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxlLlYxygI/T3JnXFByb2plY3RQbGFudG9uXFByb3ZpZGVyXE9wZW5mZ2FcT3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxlXFYx4gJLT3JnXFByb2plY3RQbGFudG9uXFByb3ZpZGVyXE9wZW5mZ2FcT3BlbmZnYXJlbGF0aW9uc2hpcHR1cGxlXFYxXEdQQk1ldGFkYXRh6gJET3JnOjpQcm9qZWN0UGxhbnRvbjo6UHJvdmlkZXI6Ok9wZW5mZ2E6Ok9wZW5mZ2FyZWxhdGlvbnNoaXB0dXBsZTo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_org_project_planton_shared_foreignkey_v1_foreign_key]);
 
 /**
  * OpenFgaRelationshipTupleSpec defines the configuration for an OpenFGA Relationship Tuple.
@@ -160,9 +160,10 @@ export const OpenFgaRelationshipTupleSpecSchema: GenMessage<OpenFgaRelationshipT
  * constructing the colon-separated format.
  *
  * Examples:
- * - Simple user: {type: "user", id: "anne"} → "user:anne"
- * - Wildcard: {type: "user", id: "*"} → "user:*"
- * - Userset: {type: "group", id: "engineering", relation: "member"} → "group:engineering#member"
+ * - Simple user: {type: "user", id: {value: "anne"}} → "user:anne"
+ * - Wildcard: {type: "user", id: {value: "*"}} → "user:*"
+ * - Reference: {type: "user", id: {value_from: {name: "my-user"}}} → "user:<resolved-id>"
+ * - Userset: {type: "group", id: {value: "engineering"}, relation: "member"} → "group:engineering#member"
  *
  * @generated from message org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleUser
  */
@@ -182,14 +183,20 @@ export type OpenFgaRelationshipTupleUser = Message<"org.project_planton.provider
   /**
    * id is the unique identifier of the user.
    *
-   * This can be any string that uniquely identifies the user within the type.
-   * Use "*" for wildcard access (all users of this type).
+   * This can be either:
+   * - A direct value: {value: "anne"}
+   * - A reference to another resource: {value_from: {name: "my-resource"}}
    *
-   * Examples: "anne", "1234", "engineering", "backend-api", "*"
+   * When using references, the ID is automatically resolved from the referenced
+   * resource's field (default: metadata.id).
    *
-   * @generated from field: string id = 2;
+   * Use {value: "*"} for wildcard access (all users of this type).
+   *
+   * Examples: {value: "anne"}, {value: "1234"}, {value: "*"}, {value_from: {name: "my-user"}}
+   *
+   * @generated from field: org.project_planton.shared.foreignkey.v1.StringValueOrRef id = 2;
    */
-  id: string;
+  id?: StringValueOrRef;
 
   /**
    * relation is optional, used to create usersets (type:id#relation format).
@@ -222,9 +229,9 @@ export const OpenFgaRelationshipTupleUserSchema: GenMessage<OpenFgaRelationshipT
  * colon-separated format.
  *
  * Examples:
- * - {type: "document", id: "budget-2024"} → "document:budget-2024"
- * - {type: "folder", id: "reports"} → "folder:reports"
- * - {type: "project", id: "acme-corp"} → "project:acme-corp"
+ * - {type: "document", id: {value: "budget-2024"}} → "document:budget-2024"
+ * - {type: "folder", id: {value: "reports"}} → "folder:reports"
+ * - {type: "project", id: {value_from: {name: "my-project"}}} → "project:<resolved-id>"
  *
  * @generated from message org.project_planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleObject
  */
@@ -243,13 +250,18 @@ export type OpenFgaRelationshipTupleObject = Message<"org.project_planton.provid
   /**
    * id is the unique identifier of the object.
    *
-   * This can be any string that uniquely identifies the object within the type.
+   * This can be either:
+   * - A direct value: {value: "budget-2024"}
+   * - A reference to another resource: {value_from: {name: "my-resource"}}
    *
-   * Examples: "budget-2024", "reports", "acme-corp", "engineering-team"
+   * When using references, the ID is automatically resolved from the referenced
+   * resource's field (default: metadata.id).
    *
-   * @generated from field: string id = 2;
+   * Examples: {value: "budget-2024"}, {value: "reports"}, {value_from: {name: "my-project"}}
+   *
+   * @generated from field: org.project_planton.shared.foreignkey.v1.StringValueOrRef id = 2;
    */
-  id: string;
+  id?: StringValueOrRef;
 };
 
 /**

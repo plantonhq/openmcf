@@ -37,14 +37,18 @@ variable "spec" {
 
     # user is the subject of the relationship tuple - who is being granted access.
     # Structured as type + id + optional relation.
+    # The id is a StringValueOrRef object with a 'value' field containing the user ID.
+    # The value is resolved by Project Planton runtime if using foreign key references.
     # Examples:
-    #   - {type: "user", id: "anne"} -> "user:anne"
-    #   - {type: "group", id: "engineering", relation: "member"} -> "group:engineering#member"
-    #   - {type: "user", id: "*"} -> "user:*"
+    #   - {type: "user", id: {value: "anne"}} -> "user:anne"
+    #   - {type: "group", id: {value: "engineering"}, relation: "member"} -> "group:engineering#member"
+    #   - {type: "user", id: {value: "*"}} -> "user:*"
     # Note: Changing the user requires replacing the tuple.
     user = object({
-      type     = string
-      id       = string
+      type = string
+      id = object({
+        value = string
+      })
       relation = optional(string)
     })
 
@@ -55,13 +59,17 @@ variable "spec" {
 
     # object is the resource the user is being granted access to.
     # Structured as type + id.
+    # The id is a StringValueOrRef object with a 'value' field containing the object ID.
+    # The value is resolved by Project Planton runtime if using foreign key references.
     # Examples:
-    #   - {type: "document", id: "budget-2024"} -> "document:budget-2024"
-    #   - {type: "folder", id: "reports"} -> "folder:reports"
+    #   - {type: "document", id: {value: "budget-2024"}} -> "document:budget-2024"
+    #   - {type: "folder", id: {value: "reports"}} -> "folder:reports"
     # Note: Changing the object requires replacing the tuple.
     object = object({
       type = string
-      id   = string
+      id = object({
+        value = string
+      })
     })
 
     # condition is an optional condition that must be satisfied for this tuple.

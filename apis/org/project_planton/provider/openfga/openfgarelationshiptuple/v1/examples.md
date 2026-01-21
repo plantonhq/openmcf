@@ -17,11 +17,13 @@ spec:
       name: production-authz  # References an OpenFgaStore by name
   user:
     type: user
-    id: anne
+    id:
+      value: anne
   relation: viewer
   object:
     type: document
-    id: budget-2024
+    id:
+      value: budget-2024
 ```
 
 ## Role-Based Access
@@ -42,11 +44,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: bob
+    id:
+      value: bob
   relation: owner
   object:
     type: project
-    id: acme-corp
+    id:
+      value: acme-corp
 ---
 # Editor can modify
 apiVersion: open-fga.project-planton.org/v1
@@ -61,11 +65,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: carol
+    id:
+      value: carol
   relation: editor
   object:
     type: project
-    id: acme-corp
+    id:
+      value: acme-corp
 ---
 # Viewer can only read
 apiVersion: open-fga.project-planton.org/v1
@@ -80,11 +86,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: dave
+    id:
+      value: dave
   relation: viewer
   object:
     type: project
-    id: acme-corp
+    id:
+      value: acme-corp
 ```
 
 ## Group Membership
@@ -104,11 +112,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: anne
+    id:
+      value: anne
   relation: member
   object:
     type: group
-    id: engineering
+    id:
+      value: engineering
 ```
 
 ## Userset Access
@@ -129,12 +139,14 @@ spec:
       name: production-authz
   user:
     type: group
-    id: engineering
+    id:
+      value: engineering
     relation: member  # Creates "group:engineering#member"
   relation: viewer
   object:
     type: folder
-    id: engineering-docs
+    id:
+      value: engineering-docs
 ```
 
 ## Hierarchical Relationships
@@ -155,11 +167,13 @@ spec:
       name: production-authz
   user:
     type: folder
-    id: reports
+    id:
+      value: reports
   relation: parent
   object:
     type: document
-    id: budget-2024
+    id:
+      value: budget-2024
 ---
 # User has access to folder (inherited by documents via model)
 apiVersion: open-fga.project-planton.org/v1
@@ -174,11 +188,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: anne
+    id:
+      value: anne
   relation: viewer
   object:
     type: folder
-    id: reports
+    id:
+      value: reports
 ```
 
 ## Public Access (Wildcard)
@@ -198,11 +214,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: "*"  # Wildcard - all users
+    id:
+      value: "*"  # Wildcard - all users
   relation: viewer
   object:
     type: document
-    id: company-announcement
+    id:
+      value: company-announcement
 ```
 
 ## Conditional Access
@@ -223,11 +241,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: anne
+    id:
+      value: anne
   relation: viewer
   object:
     type: document
-    id: sensitive-data
+    id:
+      value: sensitive-data
   condition:
     name: in_allowed_ip_range
     contextJson: |
@@ -254,11 +274,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: alice
+    id:
+      value: alice
   relation: admin
   object:
     type: organization
-    id: acme-corp
+    id:
+      value: acme-corp
 ---
 # User is member of organization
 apiVersion: open-fga.project-planton.org/v1
@@ -273,11 +295,13 @@ spec:
       name: production-authz
   user:
     type: user
-    id: bob
+    id:
+      value: bob
   relation: member
   object:
     type: organization
-    id: acme-corp
+    id:
+      value: acme-corp
 ---
 # Project belongs to organization
 apiVersion: open-fga.project-planton.org/v1
@@ -292,11 +316,13 @@ spec:
       name: production-authz
   user:
     type: organization
-    id: acme-corp
+    id:
+      value: acme-corp
   relation: organization
   object:
     type: project
-    id: internal-tools
+    id:
+      value: internal-tools
 ```
 
 ## Specifying Authorization Model
@@ -319,11 +345,13 @@ spec:
       name: document-authz-v2  # References an OpenFgaAuthorizationModel
   user:
     type: user
-    id: anne
+    id:
+      value: anne
   relation: viewer
   object:
     type: document
-    id: budget-2024
+    id:
+      value: budget-2024
 ```
 
 Or with a direct model ID:
@@ -343,11 +371,13 @@ spec:
     value: "01HABC..."  # Direct model ID
   user:
     type: user
-    id: anne
+    id:
+      value: anne
   relation: viewer
   object:
     type: document
-    id: budget-2024
+    id:
+      value: budget-2024
 ```
 
 ## Complete Workflow Example
@@ -408,11 +438,13 @@ spec:
       name: document-authz-v1
   user:
     type: user
-    id: anne
+    id:
+      value: anne
   relation: viewer
   object:
     type: document
-    id: budget-2024
+    id:
+      value: budget-2024
 ```
 
 ## Deployment
