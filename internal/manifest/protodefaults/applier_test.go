@@ -320,10 +320,11 @@ func TestApplyDefaults_Idempotency(t *testing.T) {
 	})
 }
 
-func TestApplyDefaults_UnsetNestedMessageWithDefaults(t *testing.T) {
-	t.Run("initializes unset nested message when it has fields with defaults", func(t *testing.T) {
+func TestApplyDefaults_UnsetNestedMessageBehavior(t *testing.T) {
+	t.Run("unset nested messages remain unset to preserve user intent", func(t *testing.T) {
 		// Create message WITHOUT nested message set - the key scenario!
 		// This simulates when a YAML manifest has spec.some_field but NOT spec.nested
+		// Semantically: "I don't want this optional feature"
 		msg := &testcloudresourceonev1.TestCloudResourceOne{
 			ApiVersion: "_test.project-planton.org/v1",
 			Kind:       "TestCloudResourceOne",
@@ -331,8 +332,9 @@ func TestApplyDefaults_UnsetNestedMessageWithDefaults(t *testing.T) {
 				Name: "test-resource",
 			},
 			Spec: &testcloudresourceonev1.TestCloudResourceOneSpec{
-				// Nested field is NOT set (nil), but TestNestedMessage has fields with defaults
-				// The applier should create the nested message and apply its defaults
+				// Nested field is NOT set (nil)
+				// Even though TestNestedMessage has fields with defaults,
+				// we should NOT auto-initialize it - user didn't request this feature
 			},
 		}
 
@@ -343,10 +345,39 @@ func TestApplyDefaults_UnsetNestedMessageWithDefaults(t *testing.T) {
 		err := ApplyDefaults(msg)
 		require.NoError(t, err)
 
-		// CRITICAL: Nested message should be created because it has fields with defaults
-		require.NotNil(t, msg.Spec.Nested, "nested message should be initialized when it has fields with defaults")
+		// CRITICAL: Nested message should remain nil!
+		// This preserves user intent: "I didn't set this optional feature, so don't enable it"
+		assert.Nil(t, msg.Spec.Nested, "unset nested message should remain nil to preserve user intent")
 
-		// Verify defaults were applied to the newly created nested message
+		// Top-level defaults should still be applied
+		require.NotNil(t, msg.Spec.StringField)
+		assert.Equal(t, "default-string", *msg.Spec.StringField)
+	})
+
+	t.Run("empty nested message triggers default application", func(t *testing.T) {
+		// User explicitly sets nested message to empty: `nested: {}`
+		// This signals: "I want this feature with defaults"
+		msg := &testcloudresourceonev1.TestCloudResourceOne{
+			ApiVersion: "_test.project-planton.org/v1",
+			Kind:       "TestCloudResourceOne",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "test-resource",
+			},
+			Spec: &testcloudresourceonev1.TestCloudResourceOneSpec{
+				// Empty nested message - user is opting in to defaults
+				Nested: &testcloudresourceonev1.TestNestedMessage{},
+			},
+		}
+
+		// Verify nested is set but has no values
+		require.NotNil(t, msg.Spec.Nested, "nested should be set before applying defaults")
+		assert.Nil(t, msg.Spec.Nested.NestedString, "nested string should be nil before defaults")
+
+		// Apply defaults
+		err := ApplyDefaults(msg)
+		require.NoError(t, err)
+
+		// Defaults should be applied because user explicitly set the message
 		require.NotNil(t, msg.Spec.Nested.NestedString)
 		assert.Equal(t, "nested-default", *msg.Spec.Nested.NestedString,
 			"nested string should have its default value")
@@ -354,13 +385,9 @@ func TestApplyDefaults_UnsetNestedMessageWithDefaults(t *testing.T) {
 		require.NotNil(t, msg.Spec.Nested.NestedInt)
 		assert.Equal(t, int32(99), *msg.Spec.Nested.NestedInt,
 			"nested int should have its default value")
-
-		// Also verify top-level defaults were applied
-		require.NotNil(t, msg.Spec.StringField)
-		assert.Equal(t, "default-string", *msg.Spec.StringField)
 	})
 
-	t.Run("does not create nested message without fields with defaults", func(t *testing.T) {
+	t.Run("unset messages without defaults also remain unset", func(t *testing.T) {
 		// TestCloudResourceOne has metadata field which is a message without defaults
 		// It should NOT be created automatically
 		msg := &testcloudresourceonev1.TestCloudResourceOne{
@@ -377,8 +404,7 @@ func TestApplyDefaults_UnsetNestedMessageWithDefaults(t *testing.T) {
 		err := ApplyDefaults(msg)
 		require.NoError(t, err)
 
-		// Metadata should remain nil since CloudResourceMetadata has no fields with defaults
-		// (This ensures we don't create empty messages unnecessarily)
-		assert.Nil(t, msg.Metadata, "metadata should remain nil when message type has no fields with defaults")
+		// Metadata should remain nil
+		assert.Nil(t, msg.Metadata, "metadata should remain nil")
 	})
 }
