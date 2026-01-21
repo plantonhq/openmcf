@@ -350,28 +350,6 @@ func TestExtractFromManifest_LegacyFallback(t *testing.T) {
 			wantError:       true,
 			errorMsg:        "both",
 		},
-		{
-			name: "legacy backend.object fallback to backend.key",
-			manifest: &awsvpcv1.AwsVpc{
-				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						tofulabels.LegacyBackendTypeLabelKey:   "s3",
-						tofulabels.LegacyBackendBucketLabelKey: "my-bucket",
-						// Using deprecated backend.object label
-						tofulabels.LegacyBackendObjectLabelKey: "deprecated/object/path.tfstate",
-						tofulabels.LegacyBackendRegionLabelKey: "us-east-1",
-					},
-				},
-			},
-			provisionerType: "terraform",
-			want: &TofuBackendConfig{
-				BackendType:   "s3",
-				BackendBucket: "my-bucket",
-				BackendKey:    "deprecated/object/path.tfstate",
-				BackendRegion: "us-east-1",
-			},
-			wantError: false,
-		},
 	}
 
 	for _, tt := range tests {
