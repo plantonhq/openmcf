@@ -3,32 +3,33 @@ package tofumodule
 import (
 	"bufio"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfvars"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime/debug"
+
+	"github.com/pkg/errors"
+	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
+	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfvars"
+	"google.golang.org/protobuf/proto"
 )
 
-const TofuCommand = "tofu"
-
-// RunOperation runs a tofu command, optionally adding -json flag and streaming output lines.
-// It also recovers from any panic in the stdout-reading goroutine and returns it as an error.
+// RunOperation runs an HCL-based IaC command (tofu or terraform), optionally adding -json flag
+// and streaming output lines. It recovers from any panic in the stdout-reading goroutine.
+// The binaryName parameter specifies which CLI binary to use ("tofu" or "terraform").
 func RunOperation(
-	tofuModulePath string,
+	binaryName string,
+	modulePath string,
 	terraformOperation terraform.TerraformOperationType,
 	isAutoApprove bool,
 	isDestroyPlan bool,
 	manifestObject proto.Message,
 	providerConfigEnvVars []string,
 	isJsonOutput bool,
-	jsonLogEventsChan chan string, // channel for streaming output
+	jsonLogEventsChan chan string,
 ) (err error) {
 	// Write or update terraform.tfvars
-	tfVarsFile := filepath.Join(tofuModulePath, ".terraform", "terraform.tfvars")
+	tfVarsFile := filepath.Join(modulePath, ".terraform", "terraform.tfvars")
 	if err := tfvars.WriteVarFile(manifestObject, tfVarsFile); err != nil {
 		return errors.Wrapf(err, "failed to write %s file", tfVarsFile)
 	}
@@ -55,32 +56,31 @@ func RunOperation(
 		args = append(args, "-json")
 	}
 
-	tofuCmd := exec.Command(TofuCommand, args...)
-	tofuCmd.Dir = tofuModulePath
-	//https://stackoverflow.com/a/41133244
-	tofuCmd.Env = os.Environ()
-	tofuCmd.Env = append(tofuCmd.Env, providerConfigEnvVars...)
+	cmd := exec.Command(binaryName, args...)
+	cmd.Dir = modulePath
+	// https://stackoverflow.com/a/41133244
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, providerConfigEnvVars...)
 
 	// Keep stdin/stderr for interactive prompt or error streaming
-	tofuCmd.Stdin = os.Stdin
-	tofuCmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
 
-	fmt.Printf("tofu module directory: %s\n", tofuModulePath)
-	fmt.Printf("running command: %s\n", tofuCmd.String())
+	fmt.Printf("%s module directory: %s\n", binaryName, modulePath)
+	fmt.Printf("running command: %s\n", cmd.String())
 
 	// If JSON output, capture stdout in a goroutine with panic recovery
 	if isJsonOutput {
-		stdoutPipe, err := tofuCmd.StdoutPipe()
+		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
 			return errors.Wrap(err, "failed to create stdout pipe")
 		}
 
-		// Start the tofu command
-		if err := tofuCmd.Start(); err != nil {
-			return errors.Wrapf(err, "failed to start tofu command %s", tofuCmd.String())
+		if err := cmd.Start(); err != nil {
+			return errors.Wrapf(err, "failed to start %s command %s", binaryName, cmd.String())
 		}
 
-		// We'll capture errors (panic or scanner errors) in errChan
+		// Capture errors (panic or scanner errors) in errChan
 		errChan := make(chan error, 1)
 
 		go func() {
@@ -88,7 +88,7 @@ func RunOperation(
 				if r := recover(); r != nil {
 					stack := debug.Stack()
 					panicErr := fmt.Errorf(
-						"panic recovered in RunOperation stdout reader goroutine: %v\nstack trace:\n%s",
+						"panic recovered in RunOperation stdout reader: %v\nstack trace:\n%s",
 						r, string(stack),
 					)
 					errChan <- panicErr
@@ -106,30 +106,23 @@ func RunOperation(
 				}
 			}
 			if err := scanner.Err(); err != nil {
-				errChan <- fmt.Errorf("error reading tofu output: %v", err)
+				errChan <- fmt.Errorf("error reading %s output: %v", binaryName, err)
 			}
 		}()
 
-		// Wait for the command to finish
-		if err := tofuCmd.Wait(); err != nil {
-			return errors.Wrapf(err, "failed to execute tofu command %s", tofuCmd.String())
+		if err := cmd.Wait(); err != nil {
+			return errors.Wrapf(err, "failed to execute %s command %s", binaryName, cmd.String())
 		}
 
-		// See if the goroutine reported any error or panic
 		if readErr, ok := <-errChan; ok && readErr != nil {
 			return readErr
 		}
-
-		// Optionally close jsonLogEventsChan if you want to end streaming here
-		// close(jsonLogEventsChan)
-
 	} else {
-		// If we do NOT want JSON output, simply stream stdout to console
-		tofuCmd.Stdout = os.Stdout
+		// Stream stdout to console
+		cmd.Stdout = os.Stdout
 
-		// Run+Wait in one go
-		if err := tofuCmd.Run(); err != nil {
-			return errors.Wrapf(err, "failed to execute tofu command %s", tofuCmd.String())
+		if err := cmd.Run(); err != nil {
+			return errors.Wrapf(err, "failed to execute %s command %s", binaryName, cmd.String())
 		}
 	}
 

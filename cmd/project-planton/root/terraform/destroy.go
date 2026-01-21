@@ -1,4 +1,4 @@
-package tofu
+package terraform
 
 import (
 	"fmt"
@@ -11,28 +11,32 @@ import (
 	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
 	"github.com/plantonhq/project-planton/internal/manifest"
 	"github.com/plantonhq/project-planton/pkg/iac/localmodule"
+	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
 	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/project-planton/pkg/iac/tofu/tofumodule"
 	"github.com/plantonhq/project-planton/pkg/kubernetes/kubecontext"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var Apply = &cobra.Command{
-	Use:   "apply",
-	Short: "run tofu apply",
-	Run:   applyHandler,
+var Destroy = &cobra.Command{
+	Use:   "destroy",
+	Short: "run terraform destroy",
+	Run:   destroyHandler,
 }
 
 func init() {
-	Apply.PersistentFlags().Bool(string(flag.AutoApprove), false, "Skip interactive approval of plan before applying")
-	Apply.PersistentFlags().String(string(flag.ModuleVersion), "",
-		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.\n"+
-			"This allows using a different module version than what's in the staging area without affecting it.")
-	Apply.PersistentFlags().Bool(string(flag.NoCleanup), false, "Do not cleanup the workspace copy after execution (keeps cloned modules)")
+	Destroy.PersistentFlags().Bool(string(flag.AutoApprove), false, "Skip interactive approval of plan before applying")
+	Destroy.PersistentFlags().String(string(flag.ModuleVersion), "",
+		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.")
+	Destroy.PersistentFlags().Bool(string(flag.NoCleanup), false, "Do not cleanup the workspace copy after execution")
 }
 
-func applyHandler(cmd *cobra.Command, args []string) {
+func destroyHandler(cmd *cobra.Command, args []string) {
+	if err := provisioner.HclBinaryTerraform.CheckAvailable(); err != nil {
+		cliprint.PrintError(err.Error())
+		os.Exit(1)
+	}
+
 	isAutoApprove, err := cmd.Flags().GetBool(string(flag.AutoApprove))
 	flag.HandleFlagErr(err, flag.AutoApprove)
 
@@ -42,7 +46,6 @@ func applyHandler(cmd *cobra.Command, args []string) {
 	valueOverrides, err := cmd.Flags().GetStringToString(string(flag.Set))
 	flag.HandleFlagErr(err, flag.Set)
 
-	// Check which manifest source is being used for informative messages
 	kustomizeDir, _ := cmd.Flags().GetString(string(flag.KustomizeDir))
 	overlay, _ := cmd.Flags().GetString(string(flag.Overlay))
 
@@ -52,10 +55,10 @@ func applyHandler(cmd *cobra.Command, args []string) {
 		cliprint.PrintStep("Loading manifest...")
 	}
 
-	// Resolve manifest path with priority: --manifest > --input-dir > --kustomize-dir + --overlay
 	targetManifestPath, isTemp, err := climanifest.ResolveManifestPath(cmd)
 	if err != nil {
-		log.Fatalf("failed to resolve manifest: %v", err)
+		cliprint.PrintError(fmt.Sprintf("failed to resolve manifest: %v", err))
+		os.Exit(1)
 	}
 	if isTemp {
 		defer os.Remove(targetManifestPath)
@@ -63,14 +66,13 @@ func applyHandler(cmd *cobra.Command, args []string) {
 
 	cliprint.PrintSuccess("Manifest loaded")
 
-	// Apply value overrides if any (creates new temp file if overrides exist)
 	if len(valueOverrides) > 0 {
 		cliprint.PrintStep(fmt.Sprintf("Applying %d field override(s)...", len(valueOverrides)))
 	}
 
 	finalManifestPath, isTempOverrides, err := manifest.ApplyOverridesToFile(targetManifestPath, valueOverrides)
 	if err != nil {
-		fmt.Println(err)
+		cliprint.PrintError(err.Error())
 		os.Exit(1)
 	}
 	if isTempOverrides {
@@ -79,18 +81,15 @@ func applyHandler(cmd *cobra.Command, args []string) {
 		cliprint.PrintSuccess("Overrides applied")
 	}
 
-	// Validate manifest before proceeding (after overrides are applied)
 	cliprint.PrintStep("Validating manifest...")
 	if err := manifest.Validate(targetManifestPath); err != nil {
-		fmt.Println(err)
+		cliprint.PrintError(err.Error())
 		os.Exit(1)
 	}
 	cliprint.PrintSuccess("Manifest validated")
 
-	// Handle --local-module flag: derive module directory from local project-planton repo
 	localModule, _ := cmd.Flags().GetBool(string(flag.LocalModule))
 	if localModule {
-		var err error
 		moduleDir, err = localmodule.GetModuleDir(targetManifestPath, cmd, shared.IacProvisioner_terraform)
 		if err != nil {
 			if lmErr, ok := err.(*localmodule.Error); ok {
@@ -102,20 +101,20 @@ func applyHandler(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	cliprint.PrintStep("Preparing OpenTofu execution...")
+	cliprint.PrintStep("Preparing Terraform execution...")
 	providerConfigOptions, err := stackinputproviderconfig.BuildWithFlags(cmd.Flags())
 	if err != nil {
-		log.Fatalf("failed to build credentiaal options: %v", err)
+		cliprint.PrintError(fmt.Sprintf("failed to build credential options: %v", err))
+		os.Exit(1)
 	}
 	cliprint.PrintSuccess("Execution prepared")
 
-	// Load manifest to extract kube context
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
-		log.Fatalf("Failed to load manifest: %v", err)
+		cliprint.PrintError(fmt.Sprintf("Failed to load manifest: %v", err))
+		os.Exit(1)
 	}
 
-	// Resolve kube context: flag takes priority over manifest label
 	kubeCtx, _ := cmd.Flags().GetString(string(flag.KubeContext))
 	if kubeCtx == "" {
 		kubeCtx = kubecontext.ExtractFromManifest(manifestObject)
@@ -124,16 +123,16 @@ func applyHandler(cmd *cobra.Command, args []string) {
 		cliprint.PrintInfo(fmt.Sprintf("Using kubectl context: %s", kubeCtx))
 	}
 
-	cliprint.PrintHandoff("OpenTofu")
+	cliprint.PrintHandoff("Terraform")
 
 	moduleVersion, _ := cmd.Flags().GetString(string(flag.ModuleVersion))
 	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
 
 	err = tofumodule.RunCommand(
-		"tofu",
+		"terraform",
 		moduleDir,
 		targetManifestPath,
-		terraform.TerraformOperationType_apply,
+		terraform.TerraformOperationType_destroy,
 		valueOverrides,
 		isAutoApprove,
 		false,
@@ -143,8 +142,8 @@ func applyHandler(cmd *cobra.Command, args []string) {
 		providerConfigOptions...,
 	)
 	if err != nil {
-		cliprint.PrintTofuFailure()
+		cliprint.PrintTerraformFailure()
 		os.Exit(1)
 	}
-	cliprint.PrintTofuSuccess()
+	cliprint.PrintTerraformSuccess()
 }

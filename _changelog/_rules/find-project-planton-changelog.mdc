@@ -187,7 +187,7 @@ Here are the changelogs matching your search criteria:
 - [2025-10-18-091230-proto-field-defaults-support.md](/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-10/2025-10-18-091230-proto-field-defaults-support.md)
 - [2025-10-17-164500-temporal-namespace-initialization-bug-fix.md](/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-10/2025-10-17-164500-temporal-namespace-initialization-bug-fix.md)
 
-**Copyable filenames:**
+**Individual copyable filenames:**
 ```
 2025-10-18-153045-pulumi-interactive-output-with-diff-support.md
 ```
@@ -195,6 +195,13 @@ Here are the changelogs matching your search criteria:
 2025-10-18-091230-proto-field-defaults-support.md
 ```
 ```
+2025-10-17-164500-temporal-namespace-initialization-bug-fix.md
+```
+
+**All filenames (bulk copy):**
+```
+2025-10-18-153045-pulumi-interactive-output-with-diff-support.md
+2025-10-18-091230-proto-field-defaults-support.md
 2025-10-17-164500-temporal-namespace-initialization-bug-fix.md
 ```
 
@@ -232,14 +239,15 @@ Here are the changelogs matching your search criteria:
 
 ---
 
-*Use the clickable links above to open the changelog, or copy the filenames from the code blocks to use with `@` mentions in another conversation.*
+*Use the clickable links above to open the changelog, copy individual filenames for specific references, or use the bulk copy block to copy all filenames at once.*
 ```
 
 ### Key Elements
 
 1. **Top Section**: 
    - Bulleted list with clickable links for quick navigation
-   - Separate list with copyable code blocks for easy copy-paste
+   - Individual copyable code blocks for each filename
+   - Single bulk copy code block with all filenames
 2. **Details Section**: Numbered entries with:
    - Changelog title
    - Date, type, and components
@@ -255,7 +263,7 @@ Here are the changelogs matching your search criteria:
 - ✅ **Search broadly** if user query is vague
 - ✅ **Present most relevant first** (recent + keyword matches)
 - ✅ **Read changelog metadata** (Date, Type, Components) to provide accurate descriptions
-- ✅ **Include both clickable and copyable** formats
+- ✅ **Include clickable links, individual copyable, and bulk copy** formats
 - ✅ **Show 3-7 results** (not too few, not overwhelming)
 - ✅ **Group by relevance** or chronology
 - ✅ **Extract actual summaries** from changelog Summary sections
@@ -420,6 +428,8 @@ Before finalizing response:
 - [ ] Searched appropriate month directories
 - [ ] Found relevant changelogs (3-7 results ideal)
 - [ ] Top section has bulleted list with clickable links
+- [ ] Top section has individual copyable code blocks
+- [ ] Top section has bulk copy code block with all filenames
 - [ ] Each changelog has title, date, type, components, path, summary
 - [ ] Each changelog has copyable code block with full path
 - [ ] Results ordered by relevance or chronology
@@ -470,7 +480,16 @@ If search yields 15+ results:
 
 Found 18 changelogs matching your criteria. Showing the 7 most relevant:
 
-[... top 7 results ...]
+**Clickable links:**
+[... top 7 links ...]
+
+**Individual copyable filenames:**
+[... individual code blocks ...]
+
+**All filenames (bulk copy):**
+```
+[... all 7 filenames, one per line ...]
+```
 
 ---
 
@@ -530,7 +549,8 @@ If the user wants to create a changelog, politely inform them to use `@create-pr
 **Success criteria**: User can:
 1. Quickly scan the bulleted list to find the right changelog
 2. Click to read it immediately, OR
-3. Copy the filename to use in another conversation with `@` mentions
+3. Copy individual filenames to use in another conversation with `@` mentions, OR
+4. Copy all filenames at once for bulk operations
 
 **Context awareness**: Understand Project Planton terminology (CLI, Pulumi, providers, manifests, etc.) to improve search relevance.
 

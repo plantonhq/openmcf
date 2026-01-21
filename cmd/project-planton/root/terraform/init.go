@@ -1,65 +1,49 @@
-package tofu
+package terraform
 
 import (
 	"fmt"
 	"os"
 
 	"github.com/plantonhq/project-planton/apis/org/project_planton/shared"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
+	tfpb "github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/flag"
 	"github.com/plantonhq/project-planton/internal/cli/workspace"
 	"github.com/plantonhq/project-planton/internal/manifest"
 	"github.com/plantonhq/project-planton/pkg/crkreflect"
 	"github.com/plantonhq/project-planton/pkg/iac/localmodule"
+	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
 	"github.com/plantonhq/project-planton/pkg/iac/stackinput"
 	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfbackend"
 	"github.com/plantonhq/project-planton/pkg/iac/tofu/tofumodule"
 	"github.com/plantonhq/project-planton/pkg/kubernetes/kubecontext"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var Init = &cobra.Command{
 	Use:   "init",
-	Short: "run tofu init",
+	Short: "run terraform init",
 	Run:   initHandler,
 }
 
 func init() {
 	Init.PersistentFlags().StringArray(string(flag.BackendConfig), []string{},
-		"Configuration to be merged with what is in the\n                          "+
-			"configuration file's 'backend' block. "+
-			"This can be\n                          either a path to an HCL file with key/value\n                          "+
-			"assignments (same format as terraform.tfvars) or a\n                          'key=value' format, and can be "+
-			"specified multiple\n                          times. The backend type must be in the "+
-			"configuration\n                          itself.")
+		"Backend configuration key=value pairs")
 
-	Init.PersistentFlags().String(string(flag.BackendType), terraform.TerraformBackendType_local.String(),
-		"Specifies the backend type that Terraform will use to store and manage the state.\n"+
-			"This must match one of the supported Terraform backends, such as 'local', 's3', 'gcs',\n"+
-			"'azurerm', 'remote', 'consul', 'http', 'etcdv3', 'manta', 'swift', 'artifactory', or\n"+
-			"'oss'. By default, it uses 'local', which stores the Terraform state on the local\n"+
-			"filesystem.\n\n"+
-			"If you choose a different backend (e.g., 's3'), you can then supply additional\n"+
-			"configuration parameters using the '--backend-config' flag. For example, when using\n"+
-			"'s3', you might provide a bucket name, key, region, and a DynamoDB table for locking,\n"+
-			"either via a path to an HCL file or via key-value pairs.\n\n"+
-			"This option can be used multiple times if you need to override certain backend\n"+
-			"attributes. The backend type itself, however, must be declared in your Terraform\n"+
-			"configuration using a 'terraform { backend \"<type>\" {} }' block. The '--backend-type'\n"+
-			"flag will then instruct Terraform which backend configuration block to use.\n\n"+
-			"Example:\n"+
-			"  --backend-type=s3 --backend-config=bucket=my-terraform-bucket --backend-config=key=state.tfstate")
+	Init.PersistentFlags().String(string(flag.BackendType), tfpb.TerraformBackendType_local.String(),
+		"Backend type (local, s3, gcs, azurerm, etc.)")
 
 	Init.PersistentFlags().String(string(flag.ModuleVersion), "",
-		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.\n"+
-			"This allows using a different module version than what's in the staging area without affecting it.")
-
+		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.")
 }
 
 func initHandler(cmd *cobra.Command, args []string) {
+	if err := provisioner.HclBinaryTerraform.CheckAvailable(); err != nil {
+		cliprint.PrintError(err.Error())
+		os.Exit(1)
+	}
+
 	inputDir, err := cmd.Flags().GetString(string(flag.InputDir))
 	flag.HandleFlagErr(err, flag.InputDir)
 
@@ -87,23 +71,25 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	providerConfigOptions, err = stackinputproviderconfig.BuildWithFlags(cmd.Flags())
 	if err != nil {
-		log.Fatalf("failed to build credentiaal options: %v", err)
+		cliprint.PrintError(fmt.Sprintf("failed to build credential options: %v", err))
+		os.Exit(1)
 	}
 
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
-		log.Fatalf("failed to override values in target manifest file")
+		cliprint.PrintError("failed to load manifest file")
+		os.Exit(1)
 	}
 
 	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)
 	if err != nil {
-		log.Fatalf("failed to extract kind name from manifest proto %v", err)
+		cliprint.PrintError(fmt.Sprintf("failed to extract kind name from manifest: %v", err))
+		os.Exit(1)
 	}
 
 	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
 	moduleVersion, _ := cmd.Flags().GetString(string(flag.ModuleVersion))
 
-	// Handle --local-module flag: derive module directory from local project-planton repo
 	localModule, _ := cmd.Flags().GetBool(string(flag.LocalModule))
 	if localModule {
 		moduleDir, err = localmodule.GetModuleDir(targetManifestPath, cmd, shared.IacProvisioner_terraform)
@@ -119,21 +105,20 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	pathResult, err := tofumodule.GetModulePath(moduleDir, kindName, moduleVersion, noCleanup)
 	if err != nil {
-		log.Fatalf("failed to get tofu module directory %v", err)
+		cliprint.PrintError(fmt.Sprintf("failed to get terraform module directory: %v", err))
+		os.Exit(1)
 	}
 
-	// Setup cleanup to run after execution
 	if pathResult.ShouldCleanup {
 		defer func() {
 			if cleanupErr := pathResult.CleanupFunc(); cleanupErr != nil {
-				log.Warnf("failed to cleanup workspace copy: %v", cleanupErr)
+				fmt.Printf("Warning: failed to cleanup workspace copy: %v\n", cleanupErr)
 			}
 		}()
 	}
 
-	tofuModulePath := pathResult.ModulePath
+	modulePath := pathResult.ModulePath
 
-	// Gather credential options (currently unused, but left for future usage)
 	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
 	for _, opt := range providerConfigOptions {
 		opt(&opts)
@@ -141,15 +126,16 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
 	if err != nil {
-		log.Fatalf("failed to build stack input yaml %v", err)
+		cliprint.PrintError(fmt.Sprintf("failed to build stack input yaml: %v", err))
+		os.Exit(1)
 	}
 
 	workspaceDir, err := workspace.GetWorkspaceDir()
 	if err != nil {
-		log.Fatalf("failed to get workspace directory")
+		cliprint.PrintError("failed to get workspace directory")
+		os.Exit(1)
 	}
 
-	// Resolve kube context: flag takes priority over manifest label
 	kubeCtx, _ := cmd.Flags().GetString(string(flag.KubeContext))
 	if kubeCtx == "" {
 		kubeCtx = kubecontext.ExtractFromManifest(manifestObject)
@@ -160,14 +146,15 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	providerConfigEnvVars, err := tofumodule.GetProviderConfigEnvVars(stackInputYaml, workspaceDir, kubeCtx)
 	if err != nil {
-		log.Fatalf("failed to get credential env vars %v", err)
+		cliprint.PrintError(fmt.Sprintf("failed to get credential env vars: %v", err))
+		os.Exit(1)
 	}
 
-	cliprint.PrintHandoff("OpenTofu")
+	cliprint.PrintHandoff("Terraform")
 
 	err = tofumodule.Init(
-		"tofu",
-		tofuModulePath,
+		"terraform",
+		modulePath,
 		manifestObject,
 		backendType,
 		backendConfigList,
@@ -176,8 +163,8 @@ func initHandler(cmd *cobra.Command, args []string) {
 		nil,
 	)
 	if err != nil {
-		cliprint.PrintTofuFailure()
+		cliprint.PrintTerraformFailure()
 		os.Exit(1)
 	}
-	cliprint.PrintTofuSuccess()
+	cliprint.PrintTerraformSuccess()
 }

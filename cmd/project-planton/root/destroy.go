@@ -66,8 +66,9 @@ func destroyHandler(cmd *cobra.Command, args []string) {
 			os.Exit(1)
 		}
 	case provisioner.ProvisionerTypeTerraform:
-		cliprint.PrintError("Terraform provisioner is not yet implemented. Please use 'tofu' instead.")
-		os.Exit(1)
+		if err := iacrunner.RunTerraform(ctx, cmd, terraform.TerraformOperationType_destroy); err != nil {
+			os.Exit(1)
+		}
 	default:
 		cliprint.PrintError("Unknown provisioner type")
 		os.Exit(1)

@@ -218,8 +218,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 	case provisioner.ProvisionerTypeTofu:
 		initWithTofu(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfigOptions)
 	case provisioner.ProvisionerTypeTerraform:
-		cliprint.PrintError("Terraform provisioner is not yet implemented. Please use 'tofu' instead.")
-		os.Exit(1)
+		initWithTerraform(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfigOptions)
 	default:
 		cliprint.PrintError("Unknown provisioner type")
 		os.Exit(1)
@@ -306,14 +305,97 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 
 	cliprint.PrintHandoff("OpenTofu")
 
-	err = tofumodule.TofuInit(tofuModulePath, manifestObject,
+	err = tofumodule.Init(
+		"tofu",
+		tofuModulePath,
+		manifestObject,
 		backendType,
 		backendConfigList,
 		providerConfigEnvVars,
-		false, nil)
+		false,
+		nil,
+	)
 	if err != nil {
 		cliprint.PrintTofuFailure()
 		os.Exit(1)
 	}
 	cliprint.PrintTofuSuccess()
+}
+
+func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string, valueOverrides map[string]string,
+	kubeContext string, manifestObject proto.Message, providerConfigOptions []stackinputproviderconfig.StackInputProviderConfigOption) {
+
+	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
+	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
+
+	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
+	flag.HandleFlagErr(err, flag.BackendConfig)
+
+	backendType := tfbackend.BackendTypeFromString(backendTypeString)
+
+	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("Failed to extract kind name from manifest proto: %v", err))
+		os.Exit(1)
+	}
+
+	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
+	moduleVersion, _ := cmd.Flags().GetString(string(flag.ModuleVersion))
+
+	pathResult, err := tofumodule.GetModulePath(moduleDir, kindName, moduleVersion, noCleanup)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("Failed to get terraform module directory: %v", err))
+		os.Exit(1)
+	}
+
+	if pathResult.ShouldCleanup {
+		defer func() {
+			if cleanupErr := pathResult.CleanupFunc(); cleanupErr != nil {
+				fmt.Printf("Warning: failed to cleanup workspace copy: %v\n", cleanupErr)
+			}
+		}()
+	}
+
+	modulePath := pathResult.ModulePath
+
+	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
+	for _, opt := range providerConfigOptions {
+		opt(&opts)
+	}
+
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("Failed to build stack input yaml: %v", err))
+		os.Exit(1)
+	}
+
+	workspaceDir, err := workspace.GetWorkspaceDir()
+	if err != nil {
+		cliprint.PrintError("Failed to get workspace directory")
+		os.Exit(1)
+	}
+
+	providerConfigEnvVars, err := tofumodule.GetProviderConfigEnvVars(stackInputYaml, workspaceDir, kubeContext)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("Failed to get credential env vars: %v", err))
+		os.Exit(1)
+	}
+
+	cliprint.PrintHandoff("Terraform")
+
+	err = tofumodule.Init(
+		"terraform",
+		modulePath,
+		manifestObject,
+		backendType,
+		backendConfigList,
+		providerConfigEnvVars,
+		false,
+		nil,
+	)
+	if err != nil {
+		cliprint.PrintTerraformFailure()
+		os.Exit(1)
+	}
+	cliprint.PrintTerraformSuccess()
 }

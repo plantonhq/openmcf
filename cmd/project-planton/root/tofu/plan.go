@@ -132,16 +132,21 @@ func planHandler(cmd *cobra.Command, args []string) {
 	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
 
 	err = tofumodule.RunCommand(
+		"tofu",
 		moduleDir,
 		targetManifestPath,
 		terraform.TerraformOperationType_plan,
 		valueOverrides,
 		true,
 		isDestroyPlan,
-		moduleVersion, noCleanup,
+		moduleVersion,
+		noCleanup,
 		kubeCtx,
-		providerConfigOptions...)
+		providerConfigOptions...,
+	)
 	if err != nil {
-		log.Fatalf("failed to run tofu operation: %v", err)
+		cliprint.PrintTofuFailure()
+		os.Exit(1)
 	}
+	cliprint.PrintTofuSuccess()
 }

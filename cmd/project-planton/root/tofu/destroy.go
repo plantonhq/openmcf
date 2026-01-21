@@ -129,13 +129,22 @@ func destroyHandler(cmd *cobra.Command, args []string) {
 	moduleVersion, _ := cmd.Flags().GetString(string(flag.ModuleVersion))
 	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
 
-	err = tofumodule.RunCommand(moduleDir, targetManifestPath, terraform.TerraformOperationType_destroy, valueOverrides,
+	err = tofumodule.RunCommand(
+		"tofu",
+		moduleDir,
+		targetManifestPath,
+		terraform.TerraformOperationType_destroy,
+		valueOverrides,
 		isAutoApprove,
 		false,
-		moduleVersion, noCleanup,
+		moduleVersion,
+		noCleanup,
 		kubeCtx,
-		providerConfigOptions...)
+		providerConfigOptions...,
+	)
 	if err != nil {
-		log.Fatalf("failed to run tofu operation: %v", err)
+		cliprint.PrintTofuFailure()
+		os.Exit(1)
 	}
+	cliprint.PrintTofuSuccess()
 }

@@ -125,13 +125,22 @@ func refreshHandler(cmd *cobra.Command, args []string) {
 	moduleVersion, _ := cmd.Flags().GetString(string(flag.ModuleVersion))
 	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
 
-	err = tofumodule.RunCommand(moduleDir, targetManifestPath, terraform.TerraformOperationType_refresh, valueOverrides,
+	err = tofumodule.RunCommand(
+		"tofu",
+		moduleDir,
+		targetManifestPath,
+		terraform.TerraformOperationType_refresh,
+		valueOverrides,
 		true,
 		false,
-		moduleVersion, noCleanup,
+		moduleVersion,
+		noCleanup,
 		kubeCtx,
-		providerConfigOptions...)
+		providerConfigOptions...,
+	)
 	if err != nil {
-		log.Fatalf("failed to run tofu operation: %v", err)
+		cliprint.PrintTofuFailure()
+		os.Exit(1)
 	}
+	cliprint.PrintTofuSuccess()
 }

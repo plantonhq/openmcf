@@ -16,13 +16,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func RunCommand(inputModuleDir, targetManifestPath string,
+// RunCommand executes an HCL-based IaC operation (init + operation) using the specified binary.
+// The binaryName parameter specifies which CLI binary to use ("tofu" or "terraform").
+func RunCommand(
+	binaryName string,
+	inputModuleDir string,
+	targetManifestPath string,
 	terraformOperation terraform.TerraformOperationType,
 	valueOverrides map[string]string,
-	isAutoApprove, isDestroyPlan bool,
-	moduleVersion string, noCleanup bool,
+	isAutoApprove bool,
+	isDestroyPlan bool,
+	moduleVersion string,
+	noCleanup bool,
 	kubeContext string,
-	providerConfigOptions ...stackinputproviderconfig.StackInputProviderConfigOption) error {
+	providerConfigOptions ...stackinputproviderconfig.StackInputProviderConfigOption,
+) error {
 
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
@@ -63,7 +71,7 @@ func RunCommand(inputModuleDir, targetManifestPath string,
 	// Get module path using staging-based approach
 	pathResult, err := GetModulePath(inputModuleDir, kindName, moduleVersion, noCleanup)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get tofu module directory")
+		return errors.Wrapf(err, "failed to get %s module directory", binaryName)
 	}
 
 	// Setup cleanup to run after execution
@@ -75,7 +83,7 @@ func RunCommand(inputModuleDir, targetManifestPath string,
 		}()
 	}
 
-	tofuModulePath := pathResult.ModulePath
+	modulePath := pathResult.ModulePath
 
 	// Gather credential options
 	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
@@ -98,21 +106,20 @@ func RunCommand(inputModuleDir, targetManifestPath string,
 		return errors.Wrap(err, "failed to get provider config env vars")
 	}
 
-	// Initialize tofu with backend configuration
-	// This should happen before any operation to ensure backend is properly configured
-	err = TofuInit(tofuModulePath, manifestObject, backendType, backendConfigArgs,
+	// Initialize with backend configuration before any operation
+	err = Init(binaryName, modulePath, manifestObject, backendType, backendConfigArgs,
 		providerConfigEnvVars, false, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialize tofu module")
+		return errors.Wrapf(err, "failed to initialize %s module", binaryName)
 	}
 
-	err = RunOperation(tofuModulePath, terraformOperation,
-		isAutoApprove,
-		isDestroyPlan, manifestObject,
+	err = RunOperation(binaryName, modulePath, terraformOperation,
+		isAutoApprove, isDestroyPlan, manifestObject,
 		providerConfigEnvVars, false, nil)
 	if err != nil {
-		return errors.Wrapf(err, "failed to run tofu operation")
+		return errors.Wrapf(err, "failed to run %s operation", binaryName)
 	}
+
 	return nil
 }
 
