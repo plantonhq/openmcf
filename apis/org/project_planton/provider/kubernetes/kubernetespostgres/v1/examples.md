@@ -89,9 +89,12 @@ spec:
   # Step 2: Create databases with their owner roles
   # Owner roles must be declared in the 'users' field above
   databases:
-    app_database: app_user
-    analytics_db: analytics_role
-    reporting: reporting_user
+    - name: app_database
+      owner_role: app_user
+    - name: analytics_db
+      owner_role: analytics_role
+    - name: reporting
+      owner_role: reporting_user
 ```
 
 **Important**: The Zalando operator requires users to be declared before they can be used as database owners. If you reference a user that doesn't exist, the operator will skip creating that database with a log message like: `skipping creation of the "app_database" database, user "app_user" does not exist`.

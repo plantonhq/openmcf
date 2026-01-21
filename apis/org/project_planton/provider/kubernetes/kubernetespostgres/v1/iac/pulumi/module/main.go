@@ -59,10 +59,15 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetespostgresv1.KubernetesP
 		allEnvVars = backupEnvVars
 	}
 
-	// Convert databases map if specified
+	// Convert databases list to map[string]string for Zalando operator
+	// The operator expects a map where key=database_name, value=owner_role
 	var databasesMap pulumi.StringMapInput
 	if len(locals.KubernetesPostgres.Spec.Databases) > 0 {
-		databasesMap = pulumi.ToStringMap(locals.KubernetesPostgres.Spec.Databases)
+		databasesMapData := make(map[string]string)
+		for _, db := range locals.KubernetesPostgres.Spec.Databases {
+			databasesMapData[db.Name] = db.OwnerRole
+		}
+		databasesMap = pulumi.ToStringMap(databasesMapData)
 	}
 
 	// Convert users list to map[string][]string for Zalando operator

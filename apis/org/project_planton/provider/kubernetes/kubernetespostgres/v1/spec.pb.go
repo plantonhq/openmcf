@@ -335,6 +335,64 @@ func (x *KubernetesPostgresUser) GetFlags() []string {
 	return nil
 }
 
+// PostgreSQL database definition
+type KubernetesPostgresDatabase struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Database name (e.g., "app_database", "analytics_db")
+	// The operator will create this database during cluster initialization.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Owner role name (e.g., "app_user", "analytics_role")
+	// This role must be declared in the 'users' field before being referenced here.
+	// If not specified, the database will be owned by the default postgres user.
+	OwnerRole     string `protobuf:"bytes,2,opt,name=owner_role,json=ownerRole,proto3" json:"owner_role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesPostgresDatabase) Reset() {
+	*x = KubernetesPostgresDatabase{}
+	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesPostgresDatabase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesPostgresDatabase) ProtoMessage() {}
+
+func (x *KubernetesPostgresDatabase) ProtoReflect() protoreflect.Message {
+	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesPostgresDatabase.ProtoReflect.Descriptor instead.
+func (*KubernetesPostgresDatabase) Descriptor() ([]byte, []int) {
+	return file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesPostgresDatabase) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesPostgresDatabase) GetOwnerRole() string {
+	if x != nil {
+		return x.OwnerRole
+	}
+	return ""
+}
+
 // *
 // **KubernetesPostgresSpec** defines the configuration for deploying PostgreSQL on a Kubernetes cluster.
 // This message specifies the parameters needed to create and manage a PostgreSQL deployment within a Kubernetes environment.
@@ -355,18 +413,18 @@ type KubernetesPostgresSpec struct {
 	// When specified, these settings override the operator-level backup configuration
 	// If not specified, the database inherits operator-level backup settings
 	BackupConfig *KubernetesPostgresBackupConfig `protobuf:"bytes,6,opt,name=backup_config,json=backupConfig,proto3" json:"backup_config,omitempty"`
-	// Map of database names to their owner roles.
-	// Key: database name (e.g., "app_database", "analytics_db")
-	// Value: owner role name (e.g., "app_user", "analytics_role")
+	// List of databases to create.
 	// The operator will create these databases during cluster initialization.
 	// If not specified, only the default "postgres" database will be available.
 	// Note: Owner roles must be declared in the 'users' field before being referenced here.
 	// Example:
 	//
 	//	databases:
-	//	  app_database: app_user
-	//	  analytics_db: analytics_role
-	Databases map[string]string `protobuf:"bytes,7,rep,name=databases,proto3" json:"databases,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	//	  - name: app_database
+	//	    owner_role: app_user
+	//	  - name: analytics_db
+	//	    owner_role: analytics_role
+	Databases []*KubernetesPostgresDatabase `protobuf:"bytes,7,rep,name=databases,proto3" json:"databases,omitempty"`
 	// List of PostgreSQL users/roles to create.
 	// Users must be declared here before being used as database owners in the 'databases' field.
 	// The operator creates these users during cluster initialization.
@@ -377,7 +435,7 @@ type KubernetesPostgresSpec struct {
 
 func (x *KubernetesPostgresSpec) Reset() {
 	*x = KubernetesPostgresSpec{}
-	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[4]
+	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -389,7 +447,7 @@ func (x *KubernetesPostgresSpec) String() string {
 func (*KubernetesPostgresSpec) ProtoMessage() {}
 
 func (x *KubernetesPostgresSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[4]
+	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -402,7 +460,7 @@ func (x *KubernetesPostgresSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesPostgresSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesPostgresSpec) Descriptor() ([]byte, []int) {
-	return file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *KubernetesPostgresSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
@@ -447,7 +505,7 @@ func (x *KubernetesPostgresSpec) GetBackupConfig() *KubernetesPostgresBackupConf
 	return nil
 }
 
-func (x *KubernetesPostgresSpec) GetDatabases() map[string]string {
+func (x *KubernetesPostgresSpec) GetDatabases() []*KubernetesPostgresDatabase {
 	if x != nil {
 		return x.Databases
 	}
@@ -481,7 +539,7 @@ type KubernetesPostgresContainer struct {
 
 func (x *KubernetesPostgresContainer) Reset() {
 	*x = KubernetesPostgresContainer{}
-	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[5]
+	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -493,7 +551,7 @@ func (x *KubernetesPostgresContainer) String() string {
 func (*KubernetesPostgresContainer) ProtoMessage() {}
 
 func (x *KubernetesPostgresContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[5]
+	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,7 +564,7 @@ func (x *KubernetesPostgresContainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesPostgresContainer.ProtoReflect.Descriptor instead.
 func (*KubernetesPostgresContainer) Descriptor() ([]byte, []int) {
-	return file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *KubernetesPostgresContainer) GetReplicas() int32 {
@@ -548,7 +606,7 @@ type KubernetesPostgresIngress struct {
 
 func (x *KubernetesPostgresIngress) Reset() {
 	*x = KubernetesPostgresIngress{}
-	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[6]
+	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -560,7 +618,7 @@ func (x *KubernetesPostgresIngress) String() string {
 func (*KubernetesPostgresIngress) ProtoMessage() {}
 
 func (x *KubernetesPostgresIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[6]
+	mi := &file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -573,7 +631,7 @@ func (x *KubernetesPostgresIngress) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesPostgresIngress.ProtoReflect.Descriptor instead.
 func (*KubernetesPostgresIngress) Descriptor() ([]byte, []int) {
-	return file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *KubernetesPostgresIngress) GetEnabled() bool {
@@ -635,7 +693,11 @@ const file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_pr
 	"\b_restore\"J\n" +
 	"\x16KubernetesPostgresUser\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x14\n" +
-	"\x05flags\x18\x02 \x03(\tR\x05flags\"\xf2\a\n" +
+	"\x05flags\x18\x02 \x03(\tR\x05flags\"W\n" +
+	"\x1aKubernetesPostgresDatabase\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1d\n" +
+	"\n" +
+	"owner_role\x18\x02 \x01(\tR\townerRole\"\xa8\a\n" +
 	"\x16KubernetesPostgresSpec\x12i\n" +
 	"\x0etarget_cluster\x18\x01 \x01(\v2B.org.project_planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12r\n" +
 	"\tnamespace\x18\x02 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
@@ -645,12 +707,9 @@ const file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_pr
 	"\x051000m\x12\x031Gi\x12\f\n" +
 	"\x0350m\x12\x05100Mi\x1a\x031GiR\tcontainer\x12r\n" +
 	"\aingress\x18\x05 \x01(\v2X.org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngressR\aingress\x12\x82\x01\n" +
-	"\rbackup_config\x18\x06 \x01(\v2].org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfigR\fbackupConfig\x12\x82\x01\n" +
-	"\tdatabases\x18\a \x03(\v2d.org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.DatabasesEntryR\tdatabases\x12k\n" +
-	"\x05users\x18\b \x03(\v2U.org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUserR\x05users\x1a<\n" +
-	"\x0eDatabasesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd3\x02\n" +
+	"\rbackup_config\x18\x06 \x01(\v2].org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfigR\fbackupConfig\x12w\n" +
+	"\tdatabases\x18\a \x03(\v2Y.org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabaseR\tdatabases\x12k\n" +
+	"\x05users\x18\b \x03(\v2U.org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUserR\x05users\"\xd3\x02\n" +
 	"\x1bKubernetesPostgresContainer\x12\x1a\n" +
 	"\breplicas\x18\x01 \x01(\x05R\breplicas\x12Y\n" +
 	"\tresources\x18\x02 \x01(\v2;.org.project_planton.provider.kubernetes.ContainerResourcesR\tresources\x12\xbc\x01\n" +
@@ -681,10 +740,10 @@ var file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_prot
 	(*KubernetesPostgresRestoreConfig)(nil),      // 1: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresRestoreConfig
 	(*KubernetesPostgresBackupConfig)(nil),       // 2: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig
 	(*KubernetesPostgresUser)(nil),               // 3: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUser
-	(*KubernetesPostgresSpec)(nil),               // 4: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec
-	(*KubernetesPostgresContainer)(nil),          // 5: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
-	(*KubernetesPostgresIngress)(nil),            // 6: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngress
-	nil,                                          // 7: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.DatabasesEntry
+	(*KubernetesPostgresDatabase)(nil),           // 4: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabase
+	(*KubernetesPostgresSpec)(nil),               // 5: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec
+	(*KubernetesPostgresContainer)(nil),          // 6: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
+	(*KubernetesPostgresIngress)(nil),            // 7: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngress
 	(*kubernetes.KubernetesClusterSelector)(nil), // 8: org.project_planton.provider.kubernetes.KubernetesClusterSelector
 	(*v1.StringValueOrRef)(nil),                  // 9: org.project_planton.shared.foreignkey.v1.StringValueOrRef
 	(*kubernetes.ContainerResources)(nil),        // 10: org.project_planton.provider.kubernetes.ContainerResources
@@ -695,14 +754,14 @@ var file_org_project_planton_provider_kubernetes_kubernetespostgres_v1_spec_prot
 	1,  // 1: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig.restore:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresRestoreConfig
 	8,  // 2: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.target_cluster:type_name -> org.project_planton.provider.kubernetes.KubernetesClusterSelector
 	9,  // 3: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.namespace:type_name -> org.project_planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 4: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.container:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
-	6,  // 5: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.ingress:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngress
+	6,  // 4: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.container:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
+	7,  // 5: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.ingress:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngress
 	2,  // 6: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.backup_config:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig
-	7,  // 7: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.databases:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.DatabasesEntry
+	4,  // 7: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.databases:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabase
 	3,  // 8: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.users:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUser
 	10, // 9: org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer.resources:type_name -> org.project_planton.provider.kubernetes.ContainerResources
 	11, // 10: org.project_planton.provider.kubernetes.kubernetespostgres.v1.default_container:extendee -> google.protobuf.FieldOptions
-	5,  // 11: org.project_planton.provider.kubernetes.kubernetespostgres.v1.default_container:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
+	6,  // 11: org.project_planton.provider.kubernetes.kubernetespostgres.v1.default_container:type_name -> org.project_planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
 	12, // [12:12] is the sub-list for method output_type
 	12, // [12:12] is the sub-list for method input_type
 	11, // [11:12] is the sub-list for extension type_name

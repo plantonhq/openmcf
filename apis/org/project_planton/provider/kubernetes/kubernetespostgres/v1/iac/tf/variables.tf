@@ -68,13 +68,15 @@ variable "spec" {
       hostname = string
     })
 
-    # Map of database names to their owner roles.
-    # Key: database name (e.g., "app_database", "analytics_db")
-    # Value: owner role name (e.g., "app_user", "analytics_role")
+    # List of databases to create.
+    # Each database has a name and an optional owner role.
     # The operator will create these databases during cluster initialization.
     # If not specified, only the default "postgres" database will be available.
     # Note: Owner roles must be declared in the 'users' field.
-    databases = optional(map(string), {})
+    databases = optional(list(object({
+      name       = string
+      owner_role = optional(string, "")
+    })), [])
 
     # List of PostgreSQL users/roles to create.
     # Users must be declared here before being used as database owners.

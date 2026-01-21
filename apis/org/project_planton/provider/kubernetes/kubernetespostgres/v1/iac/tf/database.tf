@@ -51,8 +51,9 @@ resource "kubernetes_manifest" "database" {
         }
       },
       # Conditionally add databases if specified
+      # Convert list of database objects to map[string]string for Zalando operator
       length(var.spec.databases) > 0 ? {
-        databases = var.spec.databases
+        databases = { for db in var.spec.databases : db.name => db.owner_role }
       } : {},
       # Conditionally add users if specified
       # Convert list of users to map[string][]string format expected by Zalando operator

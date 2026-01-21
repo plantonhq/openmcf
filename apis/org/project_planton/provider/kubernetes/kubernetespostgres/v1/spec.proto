@@ -105,6 +105,18 @@ message KubernetesPostgresUser {
   repeated string flags = 2;
 }
 
+// PostgreSQL database definition
+message KubernetesPostgresDatabase {
+  // Database name (e.g., "app_database", "analytics_db")
+  // The operator will create this database during cluster initialization.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // Owner role name (e.g., "app_user", "analytics_role")
+  // This role must be declared in the 'users' field before being referenced here.
+  // If not specified, the database will be owned by the default postgres user.
+  string owner_role = 2;
+}
+
 /**
  * **KubernetesPostgresSpec** defines the configuration for deploying PostgreSQL on a Kubernetes cluster.
  * This message specifies the parameters needed to create and manage a PostgreSQL deployment within a Kubernetes environment.
@@ -148,17 +160,17 @@ message KubernetesPostgresSpec {
   // If not specified, the database inherits operator-level backup settings
   KubernetesPostgresBackupConfig backup_config = 6;
 
-  // Map of database names to their owner roles.
-  // Key: database name (e.g., "app_database", "analytics_db")
-  // Value: owner role name (e.g., "app_user", "analytics_role")
+  // List of databases to create.
   // The operator will create these databases during cluster initialization.
   // If not specified, only the default "postgres" database will be available.
   // Note: Owner roles must be declared in the 'users' field before being referenced here.
   // Example:
   //   databases:
-  //     app_database: app_user
-  //     analytics_db: analytics_role
-  map<string, string> databases = 7;
+  //     - name: app_database
+  //       owner_role: app_user
+  //     - name: analytics_db
+  //       owner_role: analytics_role
+  repeated KubernetesPostgresDatabase databases = 7;
 
   // List of PostgreSQL users/roles to create.
   // Users must be declared here before being used as database owners in the 'databases' field.
