@@ -105,9 +105,9 @@ func planHandler(cmd *cobra.Command, args []string) {
 	}
 
 	cliprint.PrintStep("Preparing OpenTofu execution...")
-	providerConfigOptions, err := stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		log.Fatalf("failed to build credentiaal options: %v", err)
+		log.Fatalf("failed to get provider config: %v", err)
 	}
 	cliprint.PrintSuccess("Execution prepared")
 
@@ -143,7 +143,7 @@ func planHandler(cmd *cobra.Command, args []string) {
 		moduleVersion,
 		noCleanup,
 		kubeCtx,
-		providerConfigOptions...,
+		providerConfig,
 	)
 	if err != nil {
 		cliprint.PrintTofuFailure()

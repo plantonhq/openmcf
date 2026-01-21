@@ -172,11 +172,11 @@ func initHandler(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Prepare provider configs
+	// Prepare provider config
 	cliprint.PrintStep("Preparing execution...")
-	providerConfigOptions, err := stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("Failed to build credential options: %v", err))
+		cliprint.PrintError(fmt.Sprintf("Failed to get provider config: %v", err))
 		os.Exit(1)
 	}
 	cliprint.PrintSuccess("Execution prepared")
@@ -186,9 +186,9 @@ func initHandler(cmd *cobra.Command, args []string) {
 	case provisioner.ProvisionerTypePulumi:
 		initWithPulumi(cmd, moduleDir, targetManifestPath, valueOverrides)
 	case provisioner.ProvisionerTypeTofu:
-		initWithTofu(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfigOptions)
+		initWithTofu(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfig)
 	case provisioner.ProvisionerTypeTerraform:
-		initWithTerraform(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfigOptions)
+		initWithTerraform(cmd, moduleDir, targetManifestPath, valueOverrides, kubeCtx, manifestObject, providerConfig)
 	default:
 		cliprint.PrintError("Unknown provisioner type")
 		os.Exit(1)
@@ -212,7 +212,7 @@ func initWithPulumi(cmd *cobra.Command, moduleDir, targetManifestPath string, va
 }
 
 func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valueOverrides map[string]string,
-	kubeContext string, manifestObject proto.Message, providerConfigOptions []stackinputproviderconfig.StackInputProviderConfigOption) {
+	kubeContext string, manifestObject proto.Message, providerConfig *stackinputproviderconfig.ProviderConfig) {
 
 	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
 	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
@@ -252,12 +252,7 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 	tofuModulePath := pathResult.ModulePath
 
 	// Build stack input YAML
-	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
-	for _, opt := range providerConfigOptions {
-		opt(&opts)
-	}
-
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		cliprint.PrintError(fmt.Sprintf("Failed to build stack input yaml: %v", err))
 		os.Exit(1)
@@ -304,7 +299,7 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 }
 
 func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string, valueOverrides map[string]string,
-	kubeContext string, manifestObject proto.Message, providerConfigOptions []stackinputproviderconfig.StackInputProviderConfigOption) {
+	kubeContext string, manifestObject proto.Message, providerConfig *stackinputproviderconfig.ProviderConfig) {
 
 	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
 	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
@@ -341,12 +336,7 @@ func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string,
 
 	modulePath := pathResult.ModulePath
 
-	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
-	for _, opt := range providerConfigOptions {
-		opt(&opts)
-	}
-
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		cliprint.PrintError(fmt.Sprintf("Failed to build stack input yaml: %v", err))
 		os.Exit(1)

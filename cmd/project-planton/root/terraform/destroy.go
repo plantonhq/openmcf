@@ -102,9 +102,9 @@ func destroyHandler(cmd *cobra.Command, args []string) {
 	}
 
 	cliprint.PrintStep("Preparing Terraform execution...")
-	providerConfigOptions, err := stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("failed to build credential options: %v", err))
+		cliprint.PrintError(fmt.Sprintf("failed to get provider config: %v", err))
 		os.Exit(1)
 	}
 	cliprint.PrintSuccess("Execution prepared")
@@ -140,7 +140,7 @@ func destroyHandler(cmd *cobra.Command, args []string) {
 		moduleVersion,
 		noCleanup,
 		kubeCtx,
-		providerConfigOptions...,
+		providerConfig,
 	)
 	if err != nil {
 		cliprint.PrintTerraformFailure()

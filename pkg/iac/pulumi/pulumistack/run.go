@@ -22,12 +22,7 @@ import (
 
 func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi.PulumiOperationType,
 	isUpdatePreview bool, isAutoApprove bool, valueOverrides map[string]string, showDiff bool, moduleVersion string, noCleanup bool,
-	kubeContext string, stackInputFilePath string, providerConfigOptions ...stackinputproviderconfig.StackInputProviderConfigOption) error {
-	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
-	for _, opt := range providerConfigOptions {
-		opt(&opts)
-	}
-
+	kubeContext string, stackInputFilePath string, providerConfig *stackinputproviderconfig.ProviderConfig) error {
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
 		return errors.Wrapf(err, "failed to override values in target manifest file")
@@ -84,7 +79,7 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 		finalStackInputFilePath = stackInputFilePath
 	} else {
 		// Build stack input from manifest
-		stackInputYamlContent, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+		stackInputYamlContent, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 		if err != nil {
 			return errors.Wrap(err, "failed to build stack input yaml")
 		}

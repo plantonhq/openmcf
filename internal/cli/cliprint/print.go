@@ -123,3 +123,49 @@ func PrintModulePath(modulePath string) {
 	yellow := color.New(color.FgYellow).SprintFunc()
 	fmt.Printf("%s %s: %s\n", Gear, "Module path", yellow(modulePath))
 }
+
+// PrintProviderDetected prints a message showing the detected provider.
+func PrintProviderDetected(kindName, providerName string) {
+	cyan := color.New(color.FgCyan).SprintFunc()
+	fmt.Printf("%s Detected resource: %s (requires %s credentials)\n",
+		BlueDot, cyan(kindName), cyan(providerName))
+}
+
+// PrintMissingProviderConfig prints an error when provider config is missing.
+func PrintMissingProviderConfig(title string, guidance string) {
+	red := color.New(color.FgRed, color.Bold).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	fmt.Println()
+	fmt.Printf("%s %s\n", RedTick, red(title))
+	fmt.Println()
+	fmt.Println(yellow(guidance))
+}
+
+// PrintKindDetectionError prints an error when cloud resource kind cannot be detected.
+func PrintKindDetectionError(guidance string) {
+	red := color.New(color.FgRed, color.Bold).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	fmt.Println()
+	fmt.Printf("%s %s\n", RedTick, red("Could not detect cloud resource kind from manifest"))
+	fmt.Println()
+	fmt.Println(yellow(guidance))
+}
+
+// PrintInvalidProviderConfig prints an error when provider config is invalid.
+func PrintInvalidProviderConfig(title string, guidance string) {
+	red := color.New(color.FgRed, color.Bold).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	fmt.Println()
+	fmt.Printf("%s %s\n", RedTick, red(title))
+	fmt.Println()
+	fmt.Println(yellow(guidance))
+}
+
+// PrintProviderConfigLoaded prints a success message when provider config is loaded.
+func PrintProviderConfigLoaded(providerName string) {
+	green := color.New(color.FgGreen).SprintFunc()
+	fmt.Printf("%s %s\n", CheckMark, green("Loaded "+providerName+" provider credentials"))
+}

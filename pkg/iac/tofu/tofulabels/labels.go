@@ -32,6 +32,14 @@ func BackendRegionLabelKey(provisioner string) string {
 	return fmt.Sprintf("%s.project-planton.org/backend.region", provisioner)
 }
 
+// BackendEndpointLabelKey returns the backend endpoint label key for the given provisioner.
+// This is required for S3-compatible backends like Cloudflare R2 or MinIO.
+// The provisioner should be "terraform" or "tofu".
+// Example: BackendEndpointLabelKey("terraform") returns "terraform.project-planton.org/backend.endpoint"
+func BackendEndpointLabelKey(provisioner string) string {
+	return fmt.Sprintf("%s.project-planton.org/backend.endpoint", provisioner)
+}
+
 // Legacy constants for backward compatibility.
 // These are kept to ensure existing manifests using terraform.* labels
 // continue to work regardless of the provisioner being used.
@@ -51,4 +59,8 @@ const (
 
 	// LegacyBackendRegionLabelKey is the legacy backend region label (terraform prefix)
 	LegacyBackendRegionLabelKey = "terraform.project-planton.org/backend.region"
+
+	// LegacyBackendEndpointLabelKey is the legacy backend endpoint label (terraform prefix)
+	// Used for S3-compatible backends like Cloudflare R2 or MinIO
+	LegacyBackendEndpointLabelKey = "terraform.project-planton.org/backend.endpoint"
 )

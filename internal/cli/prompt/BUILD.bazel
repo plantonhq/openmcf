@@ -2,8 +2,15 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "prompt",
-    srcs = ["provisioner.go"],
+    srcs = [
+        "backend.go",
+        "provisioner.go",
+    ],
     importpath = "github.com/plantonhq/project-planton/internal/cli/prompt",
     visibility = ["//:__subpackages__"],
-    deps = ["//pkg/iac/provisioner"],
+    deps = [
+        "//internal/cli/ui",
+        "//pkg/iac/provisioner",
+        "//pkg/iac/tofu/backendconfig",
+    ],
 )

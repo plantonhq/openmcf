@@ -96,9 +96,9 @@ func destroyHandler(cmd *cobra.Command, args []string) {
 	}
 
 	cliprint.PrintStep("Preparing Pulumi execution...")
-	providerConfigOptions, err := stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("Failed to build credential options: %v", err))
+		cliprint.PrintError(fmt.Sprintf("Failed to get provider config: %v", err))
 		os.Exit(1)
 	}
 	cliprint.PrintSuccess("Execution prepared")
@@ -125,7 +125,7 @@ func destroyHandler(cmd *cobra.Command, args []string) {
 	stackInputFilePath, _ := cmd.Flags().GetString(string(flag.StackInput))
 
 	err = pulumistack.Run(moduleDir, stackFqdn, targetManifestPath,
-		pulumi.PulumiOperationType_destroy, false, true, valueOverrides, showDiff, moduleVersion, noCleanup, kubeCtx, stackInputFilePath, providerConfigOptions...)
+		pulumi.PulumiOperationType_destroy, false, true, valueOverrides, showDiff, moduleVersion, noCleanup, kubeCtx, stackInputFilePath, providerConfig)
 	if err != nil {
 		cliprint.PrintPulumiFailure()
 		os.Exit(1)

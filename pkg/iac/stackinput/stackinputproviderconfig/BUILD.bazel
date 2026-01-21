@@ -1,49 +1,15 @@
-load("@rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "stackinputproviderconfig",
-    srcs = [
-        "atlas_provider.go",
-        "auth0_provider.go",
-        "aws_provider.go",
-        "azure_provider.go",
-        "cloudflare_provider.go",
-        "confluent_provider.go",
-        "gcp_provider.go",
-        "kubernetes_provider.go",
-        "openfga_provider.go",
-        "options.go",
-        "snowflake_provider.go",
-        "user_provider.go",
-    ],
+    srcs = ["unified_options.go"],
     importpath = "github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/org/project_planton/provider/atlas",
-        "//apis/org/project_planton/provider/auth0",
-        "//apis/org/project_planton/provider/aws",
-        "//apis/org/project_planton/provider/azure",
-        "//apis/org/project_planton/provider/cloudflare",
-        "//apis/org/project_planton/provider/confluent",
-        "//apis/org/project_planton/provider/gcp",
-        "//apis/org/project_planton/provider/kubernetes",
-        "//apis/org/project_planton/provider/openfga",
-        "//apis/org/project_planton/provider/snowflake",
+        "//apis/org/project_planton/shared/cloudresourcekind",
         "//internal/cli/flag",
-        "//pkg/fileutil",
+        "//pkg/iac/stackinput/providerdetect",
         "@com_github_pkg_errors//:errors",
         "@com_github_spf13_pflag//:pflag",
-        "@in_gopkg_yaml_v3//:yaml_v3",
-        "@io_k8s_sigs_yaml//:yaml",
-    ],
-)
-
-go_test(
-    name = "stackinputproviderconfig_test",
-    srcs = ["user_provider_test.go"],
-    embed = [":stackinputproviderconfig"],
-    deps = [
-        "//apis/org/project_planton/provider/gcp",
-        "@io_k8s_sigs_yaml//:yaml",
     ],
 )

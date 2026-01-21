@@ -25,8 +25,20 @@ func AddTofuInitFlags(cmd *cobra.Command) {
 		terraform.TerraformBackendType_local.String(),
 		"Specifies the backend type (Tofu/Terraform) - 'local', 's3', 'gcs', 'azurerm', etc.")
 
+	cmd.PersistentFlags().String(string(flag.BackendBucket), "",
+		"State bucket name (S3/GCS) or container name (Azure)")
+
+	cmd.PersistentFlags().String(string(flag.BackendKey), "",
+		"State file path within bucket (e.g., 'env/prod/terraform.tfstate')")
+
+	cmd.PersistentFlags().String(string(flag.BackendRegion), "",
+		"Region for S3 backend (use 'auto' for S3-compatible backends like R2)")
+
+	cmd.PersistentFlags().String(string(flag.BackendEndpoint), "",
+		"Custom S3-compatible endpoint URL (required for R2, MinIO, etc.)")
+
 	cmd.PersistentFlags().StringArray(string(flag.BackendConfig), []string{},
-		"Backend configuration key=value pairs (Tofu/Terraform)")
+		"Additional backend configuration key=value pairs (Tofu/Terraform)")
 
 	cmd.PersistentFlags().Bool(string(flag.Reconfigure), false,
 		"Reconfigure backend, ignoring any saved configuration (Tofu/Terraform)")

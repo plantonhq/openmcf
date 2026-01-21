@@ -18,6 +18,16 @@ type TofuBackendConfig struct {
 	BackendKey string
 	// BackendRegion specifies the region for S3 backends
 	BackendRegion string
+	// BackendEndpoint specifies a custom S3-compatible endpoint (for R2, MinIO, etc.)
+	BackendEndpoint string
+	// S3Compatible indicates this is an S3-compatible backend requiring skip flags
+	S3Compatible bool
+}
+
+// IsS3Compatible returns true if this is an S3-compatible backend (R2, MinIO, etc.)
+// Detection signals: explicit endpoint is set OR region is "auto"
+func (c *TofuBackendConfig) IsS3Compatible() bool {
+	return c.BackendEndpoint != "" || c.BackendRegion == "auto"
 }
 
 // ExtractFromManifest extracts Terraform/Tofu backend configuration from manifest labels.
@@ -35,11 +45,13 @@ func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuB
 	bucketLabelKey := tofulabels.BackendBucketLabelKey(provisionerType)
 	keyLabelKey := tofulabels.BackendKeyLabelKey(provisionerType)
 	regionLabelKey := tofulabels.BackendRegionLabelKey(provisionerType)
+	endpointLabelKey := tofulabels.BackendEndpointLabelKey(provisionerType)
 
 	backendType, hasType := labels[typeLabelKey]
 	backendBucket, hasBucket := labels[bucketLabelKey]
 	backendKey, hasKey := labels[keyLabelKey]
 	backendRegion, _ := labels[regionLabelKey]
+	backendEndpoint, _ := labels[endpointLabelKey]
 
 	// If provisioner-specific labels not found, fall back to legacy terraform.* labels
 	// This ensures backward compatibility for existing manifests
@@ -52,6 +64,7 @@ func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuB
 			backendKey, hasKey = labels[tofulabels.LegacyBackendObjectLabelKey]
 		}
 		backendRegion, _ = labels[tofulabels.LegacyBackendRegionLabelKey]
+		backendEndpoint, _ = labels[tofulabels.LegacyBackendEndpointLabelKey]
 		// Update label keys for error messages
 		if hasType || hasBucket || hasKey {
 			typeLabelKey = tofulabels.LegacyBackendTypeLabelKey
@@ -88,10 +101,15 @@ func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuB
 		return nil, fmt.Errorf("%s is required for %s backend", bucketLabelKey, backendType)
 	}
 
-	return &TofuBackendConfig{
-		BackendType:   backendType,
-		BackendBucket: backendBucket,
-		BackendKey:    backendKey,
-		BackendRegion: backendRegion,
-	}, nil
+	config := &TofuBackendConfig{
+		BackendType:     backendType,
+		BackendBucket:   backendBucket,
+		BackendKey:      backendKey,
+		BackendRegion:   backendRegion,
+		BackendEndpoint: backendEndpoint,
+	}
+	// Compute S3-compatible flag based on endpoint or region=auto
+	config.S3Compatible = config.IsS3Compatible()
+
+	return config, nil
 }

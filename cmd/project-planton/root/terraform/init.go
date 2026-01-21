@@ -61,7 +61,6 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	backendType := tfbackend.BackendTypeFromString(backendTypeString)
 
-	providerConfigOptions := make([]stackinputproviderconfig.StackInputProviderConfigOption, 0)
 	targetManifestPath := inputDir + "/target.yaml"
 
 	if inputDir == "" {
@@ -69,9 +68,9 @@ func initHandler(cmd *cobra.Command, args []string) {
 		flag.HandleFlagErrAndValue(err, flag.Manifest, targetManifestPath)
 	}
 
-	providerConfigOptions, err = stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("failed to build credential options: %v", err))
+		cliprint.PrintError(fmt.Sprintf("failed to get provider config: %v", err))
 		os.Exit(1)
 	}
 
@@ -119,12 +118,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	modulePath := pathResult.ModulePath
 
-	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
-	for _, opt := range providerConfigOptions {
-		opt(&opts)
-	}
-
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		cliprint.PrintError(fmt.Sprintf("failed to build stack input yaml: %v", err))
 		os.Exit(1)

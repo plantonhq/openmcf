@@ -8,19 +8,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// BuildStackInputYaml reads two YAML files, combines their contents,
-// and returns a new YAML string with "target" and all the credential keys.
-func BuildStackInputYaml(manifestObject proto.Message,
-	providerConfigOptions stackinputproviderconfig.StackInputProviderConfigOptions) (string, error) {
-
+// BuildStackInputYaml builds stack input YAML from a manifest and provider config.
+// The provider config path is read from the unified ProviderConfig struct.
+func BuildStackInputYaml(
+	manifestObject proto.Message,
+	providerConfig *stackinputproviderconfig.ProviderConfig,
+) (string, error) {
 	var targetContentMap map[string]interface{}
 	targetContent, err := protojson.Marshal(manifestObject)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to marshal manifest object to JSON")
 	}
 
-	err = yaml.Unmarshal(targetContent, &targetContentMap)
-	if err != nil {
+	if err := yaml.Unmarshal(targetContent, &targetContentMap); err != nil {
 		return "", errors.Wrapf(err, "failed to unmarshal target manifest file")
 	}
 
@@ -28,15 +28,15 @@ func BuildStackInputYaml(manifestObject proto.Message,
 		"target": targetContentMap,
 	}
 
-	stackInputContentMap, err = addProviderConfigs(stackInputContentMap, providerConfigOptions)
+	// Add provider config
+	stackInputContentMap, err = addProviderConfig(stackInputContentMap, providerConfig)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to add credentials to stack-input yaml")
+		return "", errors.Wrapf(err, "failed to add provider config to stack-input yaml")
 	}
 
 	// Convert map to yaml.Node to control formatting
 	var rootNode yaml.Node
-	err = rootNode.Encode(stackInputContentMap)
-	if err != nil {
+	if err := rootNode.Encode(stackInputContentMap); err != nil {
 		return "", errors.Wrap(err, "failed to encode stack-input to yaml node")
 	}
 

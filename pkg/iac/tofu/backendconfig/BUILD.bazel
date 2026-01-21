@@ -2,7 +2,12 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "backendconfig",
-    srcs = ["backend_config.go"],
+    srcs = [
+        "backend_config.go",
+        "build_config.go",
+        "env_vars.go",
+        "validate.go",
+    ],
     importpath = "github.com/plantonhq/project-planton/pkg/iac/tofu/backendconfig",
     visibility = ["//visibility:public"],
     deps = [

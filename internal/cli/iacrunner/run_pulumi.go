@@ -38,7 +38,7 @@ func RunPulumi(ctx *Context, cmd *cobra.Command, operation pulumi.PulumiOperatio
 		ctx.NoCleanup,
 		ctx.KubeContext,
 		ctx.StackInputFilePath,
-		ctx.ProviderConfigOpts...,
+		ctx.ProviderConfig,
 	)
 	if err != nil {
 		cliprint.PrintPulumiFailure()

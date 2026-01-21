@@ -28,11 +28,11 @@ Project Planton automatically detects backend configuration from labels in your 
 
 ## Quick Reference
 
-| Provisioner | Backend Labels |
-|-------------|----------------|
-| **Terraform** | `terraform.project-planton.org/backend.type`, `backend.bucket`, `backend.key`, `backend.region` |
-| **OpenTofu** | `tofu.project-planton.org/backend.type`, `backend.bucket`, `backend.key`, `backend.region` |
-| **Pulumi** | `pulumi.project-planton.org/stack.name` (uses Pulumi Cloud or local) |
+| Provisioner   | Backend Labels                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Terraform** | `terraform.project-planton.org/backend.type`, `backend.bucket`, `backend.key`, `backend.region`, `backend.endpoint` |
+| **OpenTofu**  | `tofu.project-planton.org/backend.type`, `backend.bucket`, `backend.key`, `backend.region`, `backend.endpoint`      |
+| **Pulumi**    | `pulumi.project-planton.org/stack.name` (uses Pulumi Cloud or local)                                                |
 
 ### S3 Backend Labels (Complete Example)
 
@@ -44,6 +44,115 @@ metadata:
     terraform.project-planton.org/backend.bucket: my-terraform-state
     terraform.project-planton.org/backend.key: path/to/state.tfstate
     terraform.project-planton.org/backend.region: us-west-2
+```
+
+---
+
+## CLI Flags for Backend Configuration
+
+In addition to manifest labels, you can configure backends using CLI flags. **CLI flags take precedence over manifest labels**, allowing you to override settings for CI/CD or testing.
+
+### Backend CLI Flags
+
+| Flag                 | Description                                         |
+| -------------------- | --------------------------------------------------- |
+| `--backend-type`     | Backend type: `local`, `s3`, `gcs`, `azurerm`       |
+| `--backend-bucket`   | Bucket/container name for state storage             |
+| `--backend-key`      | State file path within the bucket                   |
+| `--backend-region`   | AWS region (use `auto` for S3-compatible backends)  |
+| `--backend-endpoint` | Custom S3-compatible endpoint URL (R2, MinIO, etc.) |
+| `--reconfigure`      | Force backend reconfiguration                       |
+
+### Example: CLI-Based Configuration
+
+```bash
+# Full CLI configuration
+project-planton apply -f manifest.yaml \
+    --backend-type s3 \
+    --backend-bucket my-state-bucket \
+    --backend-key env/prod/terraform.tfstate \
+    --backend-region us-west-2
+
+# Override just the bucket (other values from manifest)
+project-planton apply -f manifest.yaml --backend-bucket different-bucket
+```
+
+### Configuration Precedence
+
+```
+CLI Flags > Manifest Labels > Environment Variables > Interactive Prompts > Defaults
+```
+
+This means:
+1. CLI flags always win if provided
+2. Manifest labels override environment variables
+3. Environment variables provide defaults when manifest labels are absent
+4. If required values are missing, you'll be prompted interactively
+5. Local backend is used if nothing is configured
+
+---
+
+## Environment Variables
+
+For scenarios where CLI flags are cumbersome or manifests can't be modified, you can configure backend settings via environment variables. This is especially useful for CI/CD pipelines and 12-factor app patterns.
+
+### Supported Variables
+
+| Variable                           | Description                                         |
+| ---------------------------------- | --------------------------------------------------- |
+| `PROJECT_PLANTON_BACKEND_TYPE`     | Backend type: `s3`, `gcs`, `azurerm`, `local`       |
+| `PROJECT_PLANTON_BACKEND_BUCKET`   | State bucket/container name                         |
+| `PROJECT_PLANTON_BACKEND_REGION`   | AWS region (use `auto` for S3-compatible backends)  |
+| `PROJECT_PLANTON_BACKEND_ENDPOINT` | Custom S3-compatible endpoint URL (R2, MinIO, etc.) |
+
+**Note:** `backend.key` is intentionally NOT configurable via environment variable. State file paths should be explicit and traceable, so they must come from manifest labels or CLI flags.
+
+### Usage Example
+
+```bash
+# Set environment variables (e.g., in CI/CD pipeline)
+export PROJECT_PLANTON_BACKEND_TYPE=s3
+export PROJECT_PLANTON_BACKEND_BUCKET=my-state-bucket
+export PROJECT_PLANTON_BACKEND_REGION=auto
+export PROJECT_PLANTON_BACKEND_ENDPOINT=https://account-id.r2.cloudflarestorage.com
+
+# Run with key from manifest
+project-planton apply -f manifest.yaml
+
+# Or provide key via CLI flag
+project-planton apply -f manifest.yaml --backend-key env/prod/state.tfstate
+```
+
+### CI/CD Example (GitHub Actions)
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_PLANTON_BACKEND_TYPE: s3
+      PROJECT_PLANTON_BACKEND_BUCKET: ${{ secrets.STATE_BUCKET }}
+      PROJECT_PLANTON_BACKEND_REGION: auto
+      PROJECT_PLANTON_BACKEND_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy infrastructure
+        run: project-planton apply -f manifest.yaml
+```
+
+### Override Behavior
+
+Environment variables serve as defaults that can be overridden:
+
+```bash
+# Environment sets bucket to "default-bucket"
+export PROJECT_PLANTON_BACKEND_BUCKET=default-bucket
+
+# Manifest label overrides to "manifest-bucket"
+# terraform.project-planton.org/backend.bucket: manifest-bucket
+
+# CLI flag overrides to "cli-bucket" (highest priority)
+project-planton apply -f manifest.yaml --backend-bucket cli-bucket
 ```
 
 ---
@@ -120,12 +229,12 @@ OpenTofu and Terraform use a backend configuration to store state. Project Plant
 
 Each provisioner uses its own label prefix. The backend configuration requires these labels:
 
-| Label | Description | Required |
-|-------|-------------|----------|
-| `backend.type` | Backend type: `s3`, `gcs`, `azurerm`, or `local` | Yes |
-| `backend.bucket` | Bucket/container name for remote state | Yes (for remote backends) |
-| `backend.key` | State file path within the bucket | Yes |
-| `backend.region` | AWS region (S3 only) | Yes (for S3) |
+| Label            | Description                                      | Required                  |
+| ---------------- | ------------------------------------------------ | ------------------------- |
+| `backend.type`   | Backend type: `s3`, `gcs`, `azurerm`, or `local` | Yes                       |
+| `backend.bucket` | Bucket/container name for remote state           | Yes (for remote backends) |
+| `backend.key`    | State file path within the bucket                | Yes                       |
+| `backend.region` | AWS region (S3 only)                             | Yes (for S3)              |
 
 **For Terraform (S3 backend):**
 ```yaml
@@ -201,6 +310,75 @@ spec:
 - S3 bucket must exist
 - IAM permissions: `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket`
 - Optional: DynamoDB table for state locking (configured via environment)
+
+---
+
+### S3-Compatible Backends (Cloudflare R2, MinIO)
+
+Project Planton supports S3-compatible backends like Cloudflare R2, MinIO, and other S3-compatible storage services. The CLI automatically detects these backends and configures the necessary compatibility flags.
+
+**Detection signals:**
+- `backend.region` set to `auto`
+- `backend.endpoint` is specified
+
+When an S3-compatible backend is detected, Project Planton automatically adds:
+- `skip_credentials_validation = true`
+- `skip_region_validation = true`
+- `skip_requesting_account_id = true`
+- `skip_metadata_api_check = true`
+- `skip_s3_checksum = true`
+- `use_path_style = true`
+
+#### Cloudflare R2 Example
+
+```yaml
+apiVersion: aws.project-planton.org/v1
+kind: AwsVpc
+metadata:
+  name: production-vpc
+  labels:
+    project-planton.org/provisioner: terraform
+    terraform.project-planton.org/backend.type: s3
+    terraform.project-planton.org/backend.bucket: my-r2-state-bucket
+    terraform.project-planton.org/backend.key: vpc/production.tfstate
+    terraform.project-planton.org/backend.region: auto
+    terraform.project-planton.org/backend.endpoint: https://<account-id>.r2.cloudflarestorage.com
+spec:
+  cidrBlock: 10.0.0.0/16
+```
+
+#### CLI-Based R2 Configuration
+
+```bash
+project-planton apply -f manifest.yaml \
+    --backend-type s3 \
+    --backend-bucket my-r2-state-bucket \
+    --backend-key vpc/production.tfstate \
+    --backend-region auto \
+    --backend-endpoint https://<account-id>.r2.cloudflarestorage.com
+```
+
+#### MinIO Example
+
+```yaml
+metadata:
+  labels:
+    project-planton.org/provisioner: tofu
+    tofu.project-planton.org/backend.type: s3
+    tofu.project-planton.org/backend.bucket: terraform-state
+    tofu.project-planton.org/backend.key: app/state.tfstate
+    tofu.project-planton.org/backend.region: auto
+    tofu.project-planton.org/backend.endpoint: https://minio.example.com:9000
+```
+
+**Prerequisites for R2:**
+- Cloudflare R2 bucket must exist
+- R2 API token with read/write permissions
+- Configure credentials via AWS CLI profile or environment variables:
+  ```bash
+  export AWS_ACCESS_KEY_ID=<r2-access-key>
+  export AWS_SECRET_ACCESS_KEY=<r2-secret-key>
+  ```
 
 ---
 
@@ -593,6 +771,59 @@ project-planton init -f manifest.yaml --reconfigure
 # Or with other commands that run init internally
 project-planton apply -f manifest.yaml --reconfigure
 ```
+
+---
+
+### S3-Compatible Backend: "InvalidClientTokenId"
+
+**Error:** `error calling sts:GetCallerIdentity: InvalidClientTokenId`
+
+**Cause:** This error occurs when using S3-compatible backends (R2, MinIO) without the proper endpoint configuration. Terraform tries to validate credentials via AWS STS, which fails with non-AWS credentials.
+
+**Solution:** Set `region` to `auto` and provide the `endpoint`:
+
+```yaml
+metadata:
+  labels:
+    terraform.project-planton.org/backend.region: auto
+    terraform.project-planton.org/backend.endpoint: https://<account-id>.r2.cloudflarestorage.com
+```
+
+Or via CLI:
+```bash
+project-planton apply -f manifest.yaml \
+    --backend-region auto \
+    --backend-endpoint https://<account-id>.r2.cloudflarestorage.com \
+    --reconfigure
+```
+
+---
+
+### Incomplete Backend Configuration (Interactive Prompt)
+
+**Behavior:** When required backend configuration is missing, Project Planton prompts for values interactively:
+
+```
+ℹ  S3-Compatible Backend Detected
+   Region is set to 'auto', indicating an S3-compatible backend
+
+✗  Incomplete Backend Configuration
+
+   S3 backend requires the following configuration:
+
+   • Custom S3-compatible endpoint (required when region is 'auto')
+     Flag:    --backend-endpoint
+     Example: https://<account-id>.r2.cloudflarestorage.com
+
+Enter endpoint: _
+```
+
+**Solution:** Either:
+1. Provide values at the prompt
+2. Add labels to your manifest
+3. Use CLI flags: `--backend-endpoint https://...`
+
+**In CI/CD (non-interactive):** The CLI will exit with an error and show exactly which flags or labels are needed.
 
 ---
 

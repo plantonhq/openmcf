@@ -13,6 +13,7 @@ import (
 	"github.com/plantonhq/project-planton/internal/manifest"
 	"github.com/plantonhq/project-planton/pkg/iac/localmodule"
 	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
+	"github.com/plantonhq/project-planton/pkg/iac/stackinput/providerdetect"
 	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/project-planton/pkg/kubernetes/kubecontext"
 	"github.com/spf13/cobra"
@@ -165,13 +166,57 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	ctx.NoCleanup, _ = cmd.Flags().GetBool(string(flag.NoCleanup))
 	ctx.ShowDiff, _ = cmd.Flags().GetBool(string(flag.Diff))
 
-	// Prepare provider configs
-	cliprint.PrintStep("Preparing execution...")
-	providerConfigOptions, err := stackinputproviderconfig.BuildWithFlags(cmd.Flags())
+	// Detect required provider from manifest
+	cliprint.PrintStep("Detecting required provider...")
+	manifestBytes, err := os.ReadFile(ctx.ManifestPath)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build credential options")
+		return nil, errors.Wrap(err, "failed to read manifest for provider detection")
 	}
-	ctx.ProviderConfigOpts = providerConfigOptions
+
+	detectionResult, err := providerdetect.DetectFromManifest(manifestBytes)
+	if err != nil {
+		// Show guidance for kind detection failure
+		cliprint.PrintKindDetectionError(providerdetect.KindDetectionErrorGuidance())
+		return nil, err
+	}
+
+	ctx.DetectionResult = detectionResult
+
+	if detectionResult.RequiresProviderConfig {
+		cliprint.PrintProviderDetected(detectionResult.KindName, providerdetect.ProviderDisplayName(detectionResult.Provider))
+	} else {
+		cliprint.PrintSuccess(fmt.Sprintf("Detected resource: %s (no provider credentials required)", detectionResult.KindName))
+	}
+
+	// Get provider config from flags
+	cliprint.PrintStep("Preparing execution...")
+	providerConfig, err := stackinputproviderconfig.GetFromFlags(cmd.Flags(), detectionResult)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get provider config from flags")
+	}
+
+	// Check if provider config is required but not provided
+	if detectionResult.RequiresProviderConfig && providerConfig.Path == "" {
+		// Show guidance for missing provider config
+		guidance := providerdetect.MissingProviderConfigGuidance(detectionResult)
+		cliprint.PrintMissingProviderConfig(
+			fmt.Sprintf("%s provider config required", providerdetect.ProviderDisplayName(detectionResult.Provider)),
+			guidance,
+		)
+		return nil, errors.Errorf("missing required provider config for %s", providerdetect.ProviderDisplayName(detectionResult.Provider))
+	}
+
+	// Validate provider config if provided
+	if providerConfig.Path != "" {
+		if err := providerdetect.ValidateProviderConfig(providerConfig.Path, detectionResult.Provider); err != nil {
+			guidance := providerdetect.InvalidProviderConfigGuidance(detectionResult, err)
+			cliprint.PrintInvalidProviderConfig("Invalid provider config", guidance)
+			return nil, errors.Wrap(err, "provider config validation failed")
+		}
+		cliprint.PrintProviderConfigLoaded(providerdetect.ProviderDisplayName(detectionResult.Provider))
+	}
+
+	ctx.ProviderConfig = providerConfig
 	cliprint.PrintSuccess("Execution prepared")
 
 	return ctx, nil

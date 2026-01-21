@@ -29,9 +29,8 @@ func RunCommand(
 	moduleVersion string,
 	noCleanup bool,
 	kubeContext string,
-	providerConfigOptions ...stackinputproviderconfig.StackInputProviderConfigOption,
+	providerConfig *stackinputproviderconfig.ProviderConfig,
 ) error {
-
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
 		return errors.Wrapf(err, "failed to override values in target manifest file")
@@ -84,13 +83,7 @@ func RunCommand(
 
 	modulePath := pathResult.ModulePath
 
-	// Gather credential options
-	opts := stackinputproviderconfig.StackInputProviderConfigOptions{}
-	for _, opt := range providerConfigOptions {
-		opt(&opts)
-	}
-
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, opts)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to build stack input yaml")
 	}
@@ -122,7 +115,8 @@ func RunCommand(
 	return nil
 }
 
-// buildBackendConfigArgs builds backend configuration arguments based on backend type
+// buildBackendConfigArgs builds backend configuration arguments based on backend type.
+// For S3-compatible backends (R2, MinIO, etc.), it adds the endpoint and skip flags.
 func buildBackendConfigArgs(config *backendconfig.TofuBackendConfig) []string {
 	var args []string
 
@@ -137,6 +131,23 @@ func buildBackendConfigArgs(config *backendconfig.TofuBackendConfig) []string {
 		}
 		if config.BackendRegion != "" {
 			args = append(args, fmt.Sprintf("region=%s", config.BackendRegion))
+		}
+
+		// S3-compatible endpoint (R2, MinIO, etc.)
+		if config.BackendEndpoint != "" {
+			// Use endpoints block format for Terraform 1.6+
+			args = append(args, fmt.Sprintf("endpoints={s3=\"%s\"}", config.BackendEndpoint))
+		}
+
+		// S3-compatible skip flags (auto-enabled when S3Compatible is true)
+		// These are required for non-AWS S3 implementations like Cloudflare R2 or MinIO
+		if config.S3Compatible {
+			args = append(args, "skip_credentials_validation=true")
+			args = append(args, "skip_region_validation=true")
+			args = append(args, "skip_requesting_account_id=true")
+			args = append(args, "skip_metadata_api_check=true")
+			args = append(args, "skip_s3_checksum=true")
+			args = append(args, "use_path_style=true")
 		}
 
 	case "gcs":
