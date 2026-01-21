@@ -350,14 +350,22 @@ All unified commands support flags from their respective provisioners.
 
 | Flag | Description |
 |------|-------------|
-| `--aws-provider-config <file>` | AWS credentials |
-| `--azure-provider-config <file>` | Azure credentials |
-| `--gcp-provider-config <file>` | GCP credentials |
-| `--kubernetes-provider-config <file>` | Kubernetes config |
-| `--cloudflare-provider-config <file>` | Cloudflare credentials |
-| `--confluent-provider-config <file>` | Confluent credentials |
-| `--atlas-provider-config <file>` | MongoDB Atlas credentials |
-| `--snowflake-provider-config <file>` | Snowflake credentials |
+| `-p, --provider-config <file>` | Provider credentials file (type auto-detected from manifest) |
+
+The CLI automatically detects which provider is needed based on your manifest's `apiVersion` and `kind`. You only need to specify a single `-p` flag with the path to your credentials file.
+
+**Examples**:
+
+```bash
+# AWS resource - CLI knows to expect AWS credentials
+project-planton apply -f aws-vpc.yaml -p ~/.config/aws-creds.yaml
+
+# GCP resource - CLI knows to expect GCP credentials
+project-planton apply -f gcp-cluster.yaml -p ~/.config/gcp-creds.yaml
+
+# Kubernetes resource - CLI knows to expect kubeconfig
+project-planton apply -f k8s-postgres.yaml -p ~/.kube/prod-config.yaml
+```
 
 ---
 

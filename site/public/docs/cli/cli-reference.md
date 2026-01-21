@@ -410,20 +410,25 @@ Create destroy plan (`plan` command).
 --destroy
 ```
 
-### Credential Flags
+### Provider Config Flag
 
-Provider credential file paths:
+**`-p, --provider-config <file>`**  
+Path to provider credentials file. The provider type is automatically detected from the manifest's `apiVersion` and `kind`.
 
 ```bash
---aws-credential <file>
---azure-credential <file>
---gcp-credential <file>
---kubernetes-cluster <file>
---cloudflare-credential <file>
---confluent-credential <file>
---mongodb-atlas-credential <file>
---snowflake-credential <file>
+# Single unified flag works for all providers
+-p ~/.config/aws-creds.yaml      # For AWS resources
+-p ~/.config/gcp-creds.yaml      # For GCP resources
+-p ~/.config/azure-creds.yaml    # For Azure resources
+-p ~/.kube/config                # For Kubernetes resources
 ```
+
+**How it works**: When you run a command with a manifest, the CLI:
+1. Parses the manifest's `apiVersion` (e.g., `aws.project-planton.org/v1`)
+2. Determines the required provider (e.g., AWS)
+3. Uses the credentials from the file you specified with `-p`
+
+This means you don't need to remember provider-specific flags - just use `-p` with the appropriate credentials file.
 
 ---
 

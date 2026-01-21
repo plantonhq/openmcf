@@ -697,7 +697,7 @@ secretAccessKey: ...
 region: us-west-2
 EOF
 
-project-planton pulumi up -f resource.yaml --aws-credential aws-cred.yaml
+project-planton pulumi up -f resource.yaml -p aws-cred.yaml
 ```
 
 ### GCP: "API not enabled"

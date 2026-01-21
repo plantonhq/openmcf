@@ -23,13 +23,17 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("terraform"):   "s3",
-						tofulabels.BackendObjectLabelKey("terraform"): "my-terraform-state/aws-vpc/dev",
+						tofulabels.BackendBucketLabelKey("terraform"): "my-terraform-state",
+						tofulabels.BackendKeyLabelKey("terraform"):    "aws-vpc/dev/terraform.tfstate",
+						tofulabels.BackendRegionLabelKey("terraform"): "us-west-2",
 					},
 				},
 			},
 			want: &TofuBackendConfig{
 				BackendType:   "s3",
-				BackendObject: "my-terraform-state/aws-vpc/dev",
+				BackendBucket: "my-terraform-state",
+				BackendKey:    "aws-vpc/dev/terraform.tfstate",
+				BackendRegion: "us-west-2",
 			},
 			wantError: false,
 		},
@@ -39,13 +43,15 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("terraform"):   "gcs",
-						tofulabels.BackendObjectLabelKey("terraform"): "my-gcs-bucket/terraform/state",
+						tofulabels.BackendBucketLabelKey("terraform"): "my-gcs-bucket",
+						tofulabels.BackendKeyLabelKey("terraform"):    "terraform/state",
 					},
 				},
 			},
 			want: &TofuBackendConfig{
 				BackendType:   "gcs",
-				BackendObject: "my-gcs-bucket/terraform/state",
+				BackendBucket: "my-gcs-bucket",
+				BackendKey:    "terraform/state",
 			},
 			wantError: false,
 		},
@@ -55,13 +61,15 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("terraform"):   "azurerm",
-						tofulabels.BackendObjectLabelKey("terraform"): "my-container/terraform/state",
+						tofulabels.BackendBucketLabelKey("terraform"): "my-container",
+						tofulabels.BackendKeyLabelKey("terraform"):    "terraform/state",
 					},
 				},
 			},
 			want: &TofuBackendConfig{
 				BackendType:   "azurerm",
-				BackendObject: "my-container/terraform/state",
+				BackendBucket: "my-container",
+				BackendKey:    "terraform/state",
 			},
 			wantError: false,
 		},
@@ -70,14 +78,37 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
-						tofulabels.BackendTypeLabelKey("terraform"):   "local",
-						tofulabels.BackendObjectLabelKey("terraform"): "/tmp/terraform.tfstate",
+						tofulabels.BackendTypeLabelKey("terraform"): "local",
+						tofulabels.BackendKeyLabelKey("terraform"):  "/tmp/terraform.tfstate",
 					},
 				},
 			},
 			want: &TofuBackendConfig{
-				BackendType:   "local",
-				BackendObject: "/tmp/terraform.tfstate",
+				BackendType: "local",
+				BackendKey:  "/tmp/terraform.tfstate",
+			},
+			wantError: false,
+		},
+		{
+			name: "s3-compatible backend with endpoint",
+			manifest: &awsvpcv1.AwsVpc{
+				Metadata: &shared.CloudResourceMetadata{
+					Labels: map[string]string{
+						tofulabels.BackendTypeLabelKey("terraform"):     "s3",
+						tofulabels.BackendBucketLabelKey("terraform"):   "my-r2-bucket",
+						tofulabels.BackendKeyLabelKey("terraform"):      "state.tfstate",
+						tofulabels.BackendRegionLabelKey("terraform"):   "auto",
+						tofulabels.BackendEndpointLabelKey("terraform"): "https://account.r2.cloudflarestorage.com",
+					},
+				},
+			},
+			want: &TofuBackendConfig{
+				BackendType:     "s3",
+				BackendBucket:   "my-r2-bucket",
+				BackendKey:      "state.tfstate",
+				BackendRegion:   "auto",
+				BackendEndpoint: "https://account.r2.cloudflarestorage.com",
+				S3Compatible:    true,
 			},
 			wantError: false,
 		},
@@ -94,60 +125,19 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "missing backend object",
-			manifest: &awsvpcv1.AwsVpc{
-				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						tofulabels.BackendTypeLabelKey("terraform"): "s3",
-						// Missing backend object
-					},
-				},
-			},
-			want:      nil,
-			wantError: true,
-			errorMsg:  "both",
-		},
-		{
-			name: "missing backend type",
-			manifest: &awsvpcv1.AwsVpc{
-				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						tofulabels.BackendObjectLabelKey("terraform"): "my-bucket/state",
-						// Missing backend type
-					},
-				},
-			},
-			want:      nil,
-			wantError: true,
-			errorMsg:  "both",
-		},
-		{
-			name: "empty backend type",
-			manifest: &awsvpcv1.AwsVpc{
-				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						tofulabels.BackendTypeLabelKey("terraform"):   "",
-						tofulabels.BackendObjectLabelKey("terraform"): "my-bucket/state",
-					},
-				},
-			},
-			want:      nil,
-			wantError: true,
-			errorMsg:  "cannot be empty",
-		},
-		{
-			name: "empty backend object",
+			name: "missing backend key",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("terraform"):   "s3",
-						tofulabels.BackendObjectLabelKey("terraform"): "",
+						tofulabels.BackendBucketLabelKey("terraform"): "my-bucket",
+						// Missing backend key
 					},
 				},
 			},
 			want:      nil,
 			wantError: true,
-			errorMsg:  "cannot be empty",
+			errorMsg:  "both",
 		},
 		{
 			name: "unsupported backend type",
@@ -155,7 +145,8 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("terraform"):   "unsupported",
-						tofulabels.BackendObjectLabelKey("terraform"): "some/path",
+						tofulabels.BackendBucketLabelKey("terraform"): "bucket",
+						tofulabels.BackendKeyLabelKey("terraform"):    "some/path",
 					},
 				},
 			},
@@ -204,13 +195,17 @@ func TestExtractFromManifest_TofuProvisioner(t *testing.T) {
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("tofu"):   "s3",
-						tofulabels.BackendObjectLabelKey("tofu"): "my-tofu-state/aws-vpc/dev",
+						tofulabels.BackendBucketLabelKey("tofu"): "my-tofu-state",
+						tofulabels.BackendKeyLabelKey("tofu"):    "aws-vpc/dev/terraform.tfstate",
+						tofulabels.BackendRegionLabelKey("tofu"): "us-east-1",
 					},
 				},
 			},
 			want: &TofuBackendConfig{
 				BackendType:   "s3",
-				BackendObject: "my-tofu-state/aws-vpc/dev",
+				BackendBucket: "my-tofu-state",
+				BackendKey:    "aws-vpc/dev/terraform.tfstate",
+				BackendRegion: "us-east-1",
 			},
 			wantError: false,
 		},
@@ -220,23 +215,26 @@ func TestExtractFromManifest_TofuProvisioner(t *testing.T) {
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("tofu"):   "gcs",
-						tofulabels.BackendObjectLabelKey("tofu"): "my-gcs-bucket/tofu/state",
+						tofulabels.BackendBucketLabelKey("tofu"): "my-gcs-bucket",
+						tofulabels.BackendKeyLabelKey("tofu"):    "tofu/state",
 					},
 				},
 			},
 			want: &TofuBackendConfig{
 				BackendType:   "gcs",
-				BackendObject: "my-gcs-bucket/tofu/state",
+				BackendBucket: "my-gcs-bucket",
+				BackendKey:    "tofu/state",
 			},
 			wantError: false,
 		},
 		{
-			name: "missing backend object with tofu labels",
+			name: "missing backend key with tofu labels",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
-						tofulabels.BackendTypeLabelKey("tofu"): "s3",
-						// Missing backend object
+						tofulabels.BackendTypeLabelKey("tofu"):   "s3",
+						tofulabels.BackendBucketLabelKey("tofu"): "my-bucket",
+						// Missing backend key
 					},
 				},
 			},
@@ -278,14 +276,18 @@ func TestExtractFromManifest_LegacyFallback(t *testing.T) {
 					Labels: map[string]string{
 						// Using legacy terraform.* labels
 						tofulabels.LegacyBackendTypeLabelKey:   "s3",
-						tofulabels.LegacyBackendObjectLabelKey: "legacy-state/aws-vpc/prod",
+						tofulabels.LegacyBackendBucketLabelKey: "legacy-bucket",
+						tofulabels.LegacyBackendKeyLabelKey:    "aws-vpc/prod/state.tfstate",
+						tofulabels.LegacyBackendRegionLabelKey: "us-west-2",
 					},
 				},
 			},
 			provisionerType: "tofu",
 			want: &TofuBackendConfig{
 				BackendType:   "s3",
-				BackendObject: "legacy-state/aws-vpc/prod",
+				BackendBucket: "legacy-bucket",
+				BackendKey:    "aws-vpc/prod/state.tfstate",
+				BackendRegion: "us-west-2",
 			},
 			wantError: false,
 		},
@@ -296,14 +298,16 @@ func TestExtractFromManifest_LegacyFallback(t *testing.T) {
 					Labels: map[string]string{
 						// terraform.* labels are both provisioner-specific AND legacy
 						tofulabels.LegacyBackendTypeLabelKey:   "gcs",
-						tofulabels.LegacyBackendObjectLabelKey: "terraform-state/aws-vpc/staging",
+						tofulabels.LegacyBackendBucketLabelKey: "terraform-bucket",
+						tofulabels.LegacyBackendKeyLabelKey:    "aws-vpc/staging",
 					},
 				},
 			},
 			provisionerType: "terraform",
 			want: &TofuBackendConfig{
 				BackendType:   "gcs",
-				BackendObject: "terraform-state/aws-vpc/staging",
+				BackendBucket: "terraform-bucket",
+				BackendKey:    "aws-vpc/staging",
 			},
 			wantError: false,
 		},
@@ -314,16 +318,19 @@ func TestExtractFromManifest_LegacyFallback(t *testing.T) {
 					Labels: map[string]string{
 						// Both tofu.* and terraform.* labels present
 						tofulabels.BackendTypeLabelKey("tofu"):   "s3",
-						tofulabels.BackendObjectLabelKey("tofu"): "tofu-specific-bucket/state",
+						tofulabels.BackendBucketLabelKey("tofu"): "tofu-specific-bucket",
+						tofulabels.BackendKeyLabelKey("tofu"):    "tofu-state.tfstate",
 						tofulabels.LegacyBackendTypeLabelKey:     "gcs",
-						tofulabels.LegacyBackendObjectLabelKey:   "legacy-bucket/state",
+						tofulabels.LegacyBackendBucketLabelKey:   "legacy-bucket",
+						tofulabels.LegacyBackendKeyLabelKey:      "legacy-state",
 					},
 				},
 			},
 			provisionerType: "tofu",
 			want: &TofuBackendConfig{
 				BackendType:   "s3",
-				BackendObject: "tofu-specific-bucket/state",
+				BackendBucket: "tofu-specific-bucket",
+				BackendKey:    "tofu-state.tfstate",
 			},
 			wantError: false,
 		},
@@ -332,8 +339,9 @@ func TestExtractFromManifest_LegacyFallback(t *testing.T) {
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
-						// Only type, missing object
-						tofulabels.LegacyBackendTypeLabelKey: "s3",
+						// Only type, missing key
+						tofulabels.LegacyBackendTypeLabelKey:   "s3",
+						tofulabels.LegacyBackendBucketLabelKey: "my-bucket",
 					},
 				},
 			},
@@ -341,6 +349,28 @@ func TestExtractFromManifest_LegacyFallback(t *testing.T) {
 			want:            nil,
 			wantError:       true,
 			errorMsg:        "both",
+		},
+		{
+			name: "legacy backend.object fallback to backend.key",
+			manifest: &awsvpcv1.AwsVpc{
+				Metadata: &shared.CloudResourceMetadata{
+					Labels: map[string]string{
+						tofulabels.LegacyBackendTypeLabelKey:   "s3",
+						tofulabels.LegacyBackendBucketLabelKey: "my-bucket",
+						// Using deprecated backend.object label
+						tofulabels.LegacyBackendObjectLabelKey: "deprecated/object/path.tfstate",
+						tofulabels.LegacyBackendRegionLabelKey: "us-east-1",
+					},
+				},
+			},
+			provisionerType: "terraform",
+			want: &TofuBackendConfig{
+				BackendType:   "s3",
+				BackendBucket: "my-bucket",
+				BackendKey:    "deprecated/object/path.tfstate",
+				BackendRegion: "us-east-1",
+			},
+			wantError: false,
 		},
 	}
 
@@ -356,6 +386,62 @@ func TestExtractFromManifest_LegacyFallback(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.want, got)
 			}
+		})
+	}
+}
+
+func TestIsS3Compatible(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *TofuBackendConfig
+		want   bool
+	}{
+		{
+			name: "endpoint set - S3 compatible",
+			config: &TofuBackendConfig{
+				BackendType:     "s3",
+				BackendEndpoint: "https://account.r2.cloudflarestorage.com",
+			},
+			want: true,
+		},
+		{
+			name: "region auto - S3 compatible",
+			config: &TofuBackendConfig{
+				BackendType:   "s3",
+				BackendRegion: "auto",
+			},
+			want: true,
+		},
+		{
+			name: "both endpoint and auto region - S3 compatible",
+			config: &TofuBackendConfig{
+				BackendType:     "s3",
+				BackendRegion:   "auto",
+				BackendEndpoint: "https://account.r2.cloudflarestorage.com",
+			},
+			want: true,
+		},
+		{
+			name: "standard AWS S3 - not S3 compatible",
+			config: &TofuBackendConfig{
+				BackendType:   "s3",
+				BackendRegion: "us-west-2",
+			},
+			want: false,
+		},
+		{
+			name: "GCS backend - not S3 compatible",
+			config: &TofuBackendConfig{
+				BackendType: "gcs",
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.config.IsS3Compatible()
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

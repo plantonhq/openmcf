@@ -602,26 +602,27 @@ project-planton tofu apply \
   --set metadata.env=staging
 ```
 
-### Credential Injection
+### Provider Config
 
-These flags inject provider credentials (alternative to environment variables):
+Use the `-p` / `--provider-config` flag to inject provider credentials (alternative to environment variables). The provider type is automatically detected from your manifest.
 
-- **`--aws-credential <file>`**: Path to AWS credential YAML
-- **`--azure-credential <file>`**: Path to Azure credential YAML
-- **`--gcp-credential <file>`**: Path to GCP credential YAML
-- **`--kubernetes-cluster <file>`**: Path to Kubernetes cluster credential YAML
-- **`--confluent-credential <file>`**: Path to Confluent Cloud credential YAML
-- **`--docker-credential <file>`**: Path to Docker registry credential YAML
-- **`--mongodb-atlas-credential <file>`**: Path to MongoDB Atlas credential YAML
-- **`--snowflake-credential <file>`**: Path to Snowflake credential YAML
+**`-p, --provider-config <file>`**: Path to provider credential YAML file
 
 **Example**:
 
 ```bash
+# For AWS resources (provider auto-detected from manifest apiVersion)
 project-planton tofu apply \
   -f ops/aws-resources/vpc.yaml \
-  --aws-credential ~/.config/planton/credentials/aws-prod.yaml
+  -p ~/.config/planton/credentials/aws-prod.yaml
+
+# For GCP resources
+project-planton tofu apply \
+  -f ops/gcp-resources/cluster.yaml \
+  -p ~/.config/planton/credentials/gcp-prod.yaml
 ```
+
+The CLI automatically determines which provider credentials are needed based on your manifest's `apiVersion` (e.g., `aws.project-planton.org/v1` requires AWS credentials).
 
 ---
 
@@ -869,10 +870,10 @@ project-planton tofu apply -f my-resource.yaml
 # Check credentials
 aws sts get-caller-identity
 
-# Or provide credential file
+# Or provide provider config file
 project-planton tofu apply \
   -f resource.yaml \
-  --aws-credential ~/.aws/credentials-prod.yaml
+  -p ~/.aws/credentials-prod.yaml
 ```
 
 **For GCP**:

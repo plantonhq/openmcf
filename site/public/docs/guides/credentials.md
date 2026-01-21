@@ -84,21 +84,23 @@ project-planton pulumi up -f ops/aws/vpc.yaml
 2. Click "Create access key"
 3. Download and store securely (you won't see the secret again)
 
-### Method 2: Credential Files via CLI Flags
+### Method 2: Provider Config Files via CLI Flag
 
 ```bash
-# Create credential file
+# Create provider config file
 cat > ~/.aws/project-planton-prod.yaml <<EOF
 accessKeyId: AKIAIOSFODNN7EXAMPLE
 secretAccessKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 region: us-west-2
 EOF
 
-# Use with CLI
+# Use with CLI (provider type auto-detected from manifest)
 project-planton pulumi up \
   -f ops/aws/vpc.yaml \
-  --aws-credential ~/.aws/project-planton-prod.yaml
+  -p ~/.aws/project-planton-prod.yaml
 ```
+
+The CLI automatically detects which provider is needed based on your manifest's `apiVersion` and `kind`. You don't need to specify provider-specific flags.
 
 ### Method 3: AWS Profiles (Recommended for Multiple Accounts)
 
@@ -182,10 +184,10 @@ export GOOGLE_APPLICATION_CREDENTIALS=~/gcp-key.json
 
 project-planton pulumi up -f ops/gcp/gke-cluster.yaml
 
-# Method B: CLI flag
+# Method B: CLI flag (provider auto-detected from manifest)
 project-planton pulumi up \
   -f ops/gcp/gke-cluster.yaml \
-  --gcp-credential ~/gcp-key-as-yaml.yaml
+  -p ~/gcp-credential.yaml
 ```
 
 ### Method 2: Application Default Credentials (Local Development)
@@ -295,7 +297,7 @@ export ARM_SUBSCRIPTION_ID="your-subscription-id"
 
 project-planton pulumi up -f ops/azure/aks-cluster.yaml
 
-# Method B: Credential file via CLI flag
+# Method B: Provider config file via CLI flag
 cat > azure-credential.yaml <<EOF
 clientId: abc-123
 clientSecret: xyz-789
@@ -305,7 +307,7 @@ EOF
 
 project-planton pulumi up \
   -f ops/azure/aks-cluster.yaml \
-  --azure-credential azure-credential.yaml
+  -p azure-credential.yaml
 ```
 
 ### Method 2: Azure CLI Authentication (Local Development)
@@ -427,10 +429,10 @@ project-planton pulumi up -f ops/k8s/postgres.yaml
 ### Method 3: Kubeconfig via CLI Flag
 
 ```bash
-# Pass kubeconfig as YAML file
+# Pass kubeconfig as provider config file
 project-planton pulumi up \
   -f ops/k8s/postgres.yaml \
-  --kubernetes-cluster ~/.kube/prod-cluster.yaml
+  -p ~/.kube/prod-cluster.yaml
 ```
 
 ### Getting Kubeconfig Files
@@ -485,10 +487,10 @@ kubectl config use-context my-cluster
 export MONGODB_ATLAS_PUBLIC_KEY="your-public-key"
 export MONGODB_ATLAS_PRIVATE_KEY="your-private-key"
 
-# Or via CLI flag
+# Or via CLI flag (provider auto-detected from manifest)
 project-planton pulumi up \
   -f ops/atlas/cluster.yaml \
-  --mongodb-atlas-credential atlas-creds.yaml
+  -p atlas-creds.yaml
 ```
 
 ### Snowflake
@@ -499,10 +501,10 @@ export SNOWFLAKE_ACCOUNT="account-identifier"
 export SNOWFLAKE_USER="username"
 export SNOWFLAKE_PASSWORD="password"
 
-# Or via CLI flag
+# Or via CLI flag (provider auto-detected from manifest)
 project-planton pulumi up \
   -f ops/snowflake/database.yaml \
-  --snowflake-credential snowflake-creds.yaml
+  -p snowflake-creds.yaml
 ```
 
 ### Confluent Cloud
@@ -512,10 +514,10 @@ project-planton pulumi up \
 export CONFLUENT_CLOUD_API_KEY="api-key"
 export CONFLUENT_CLOUD_API_SECRET="api-secret"
 
-# Or via CLI flag
+# Or via CLI flag (provider auto-detected from manifest)
 project-planton pulumi up \
   -f ops/confluent/kafka.yaml \
-  --confluent-credential confluent-creds.yaml
+  -p confluent-creds.yaml
 ```
 
 ---
@@ -761,18 +763,17 @@ CLOUDFLARE_EMAIL              # With legacy key
 KUBECONFIG  # Path to kubeconfig file
 ```
 
-### CLI Credential Flags
+### CLI Provider Config Flag
 
 ```bash
---aws-credential <file>
---azure-credential <file>
---gcp-credential <file>
---kubernetes-cluster <file>
---cloudflare-credential <file>
---confluent-credential <file>
---mongodb-atlas-credential <file>
---snowflake-credential <file>
+# Unified flag - provider type is auto-detected from manifest
+-p, --provider-config <file>
 ```
+
+The CLI automatically determines which provider credentials are needed based on your manifest's `apiVersion` and `kind`. For example:
+- `aws.project-planton.org/v1` → AWS credentials expected
+- `gcp.project-planton.org/v1` → GCP credentials expected
+- `kubernetes.project-planton.org/v1` → Kubernetes config expected
 
 ---
 
