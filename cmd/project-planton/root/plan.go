@@ -51,6 +51,7 @@ func init() {
 	iacflags.AddExecutionFlags(Plan)
 	iacflags.AddPulumiFlags(Plan)
 	iacflags.AddTofuPlanFlags(Plan)
+	iacflags.AddTofuInitFlags(Plan)
 }
 
 func planHandler(cmd *cobra.Command, args []string) {

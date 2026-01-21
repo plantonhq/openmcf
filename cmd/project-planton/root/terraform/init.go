@@ -159,6 +159,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 		backendType,
 		backendConfigList,
 		providerConfigEnvVars,
+		false, // isReconfigure - not supported in legacy commands
 		false,
 		nil,
 	)

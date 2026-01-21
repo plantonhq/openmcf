@@ -133,6 +133,7 @@ func refreshHandler(cmd *cobra.Command, args []string) {
 		valueOverrides,
 		true,
 		false,
+		false, // isReconfigure - not supported in legacy commands
 		moduleVersion,
 		noCleanup,
 		kubeCtx,

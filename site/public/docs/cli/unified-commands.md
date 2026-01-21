@@ -342,6 +342,7 @@ All unified commands support flags from their respective provisioners.
 |------|----------|-------------|
 | `--auto-approve` | apply, destroy | Skip interactive approval |
 | `--destroy` | plan | Create destroy plan instead of apply plan |
+| `--reconfigure` | init, apply, destroy, plan, refresh | Reconfigure backend, ignoring saved configuration |
 | `--backend-type <type>` | init | Backend type (s3, gcs, local, etc.) |
 | `--backend-config <key=value>` | init | Backend configuration (repeatable) |
 
@@ -409,8 +410,10 @@ metadata:
   name: production-vpc
   labels:
     project-planton.org/provisioner: tofu
-    terraform.project-planton.org/backend.type: s3
-    terraform.project-planton.org/backend.object: terraform-state/vpc/prod.tfstate
+    tofu.project-planton.org/backend.type: s3
+    tofu.project-planton.org/backend.bucket: terraform-state
+    tofu.project-planton.org/backend.key: vpc/prod.tfstate
+    tofu.project-planton.org/backend.region: us-west-2
 spec:
   cidrBlock: 10.0.0.0/16
   region: us-west-2
@@ -421,6 +424,9 @@ spec:
 ```bash
 # Deploy
 project-planton apply -f vpc.yaml --auto-approve
+
+# If backend config changed, use --reconfigure
+project-planton apply -f vpc.yaml --auto-approve --reconfigure
 
 # Destroy
 project-planton delete -f vpc.yaml --auto-approve
@@ -701,25 +707,43 @@ pulumi login
 
 **Solution**: Configure backend via labels using provisioner-specific prefixes:
 
-**For Terraform:**
+**For Terraform (S3):**
 ```yaml
 metadata:
   labels:
     project-planton.org/provisioner: terraform
     terraform.project-planton.org/backend.type: s3
-    terraform.project-planton.org/backend.object: bucket/path/state.tfstate
+    terraform.project-planton.org/backend.bucket: my-terraform-state
+    terraform.project-planton.org/backend.key: path/to/state.tfstate
+    terraform.project-planton.org/backend.region: us-west-2
 ```
 
-**For OpenTofu:**
+**For OpenTofu (GCS):**
 ```yaml
 metadata:
   labels:
     project-planton.org/provisioner: tofu
     tofu.project-planton.org/backend.type: gcs
-    tofu.project-planton.org/backend.object: bucket/path/state.tfstate
+    tofu.project-planton.org/backend.bucket: my-tofu-state
+    tofu.project-planton.org/backend.key: path/to/state
 ```
 
 For complete backend configuration options, see the [State Backends Guide](/docs/guides/state-backends).
+
+---
+
+### Backend Configuration Changed
+
+**Error**: Terraform/Tofu prompts for backend migration or reconfiguration.
+
+**Solution**: Use the `--reconfigure` flag:
+
+```bash
+project-planton init -f manifest.yaml --reconfigure
+
+# Also works with apply, destroy, plan, refresh
+project-planton apply -f manifest.yaml --reconfigure
+```
 
 ---
 

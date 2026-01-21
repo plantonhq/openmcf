@@ -137,6 +137,7 @@ func applyHandler(cmd *cobra.Command, args []string) {
 		valueOverrides,
 		isAutoApprove,
 		false,
+		false, // isReconfigure - not supported in legacy commands
 		moduleVersion,
 		noCleanup,
 		kubeCtx,

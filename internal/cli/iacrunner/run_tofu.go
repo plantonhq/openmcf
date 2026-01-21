@@ -21,6 +21,9 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 	// Get auto-approve flag if defined (ignore error for commands that don't register it)
 	isAutoApprove, _ := cmd.Flags().GetBool(string(flag.AutoApprove))
 
+	// Get reconfigure flag if defined (ignore error for commands that don't register it)
+	isReconfigure, _ := cmd.Flags().GetBool(string(flag.Reconfigure))
+
 	// For plan operation, check if it's a destroy plan
 	isDestroyPlan := false
 	if operation == terraform.TerraformOperationType_plan {
@@ -40,6 +43,14 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 		os.Exit(1)
 	}
 
+	// Display backend configuration if available (before handoff)
+	if backendInfo := ExtractBackendConfigForDisplay(ctx.ManifestObject, string(binary)); backendInfo != nil {
+		cliprint.PrintBackendConfig(backendInfo.BackendType, backendInfo.Bucket, backendInfo.Key)
+	}
+
+	// Display module path
+	cliprint.PrintModulePath(ctx.ModuleDir)
+
 	cliprint.PrintHandoff(binary.DisplayName())
 
 	err := tofumodule.RunCommand(
@@ -50,6 +61,7 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 		ctx.ValueOverrides,
 		isAutoApprove,
 		isDestroyPlan,
+		isReconfigure,
 		ctx.ModuleVersion,
 		ctx.NoCleanup,
 		ctx.KubeContext,

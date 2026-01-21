@@ -9,11 +9,27 @@ func BackendTypeLabelKey(provisioner string) string {
 	return fmt.Sprintf("%s.project-planton.org/backend.type", provisioner)
 }
 
-// BackendObjectLabelKey returns the backend object label key for the given provisioner.
+// BackendBucketLabelKey returns the backend bucket label key for the given provisioner.
 // The provisioner should be "terraform" or "tofu".
-// Example: BackendObjectLabelKey("tofu") returns "tofu.project-planton.org/backend.object"
-func BackendObjectLabelKey(provisioner string) string {
-	return fmt.Sprintf("%s.project-planton.org/backend.object", provisioner)
+// Example: BackendBucketLabelKey("terraform") returns "terraform.project-planton.org/backend.bucket"
+func BackendBucketLabelKey(provisioner string) string {
+	return fmt.Sprintf("%s.project-planton.org/backend.bucket", provisioner)
+}
+
+// BackendKeyLabelKey returns the backend key label key for the given provisioner.
+// This is the state file path within the bucket.
+// The provisioner should be "terraform" or "tofu".
+// Example: BackendKeyLabelKey("terraform") returns "terraform.project-planton.org/backend.key"
+func BackendKeyLabelKey(provisioner string) string {
+	return fmt.Sprintf("%s.project-planton.org/backend.key", provisioner)
+}
+
+// BackendRegionLabelKey returns the backend region label key for the given provisioner.
+// This is required for S3 backends.
+// The provisioner should be "terraform" or "tofu".
+// Example: BackendRegionLabelKey("terraform") returns "terraform.project-planton.org/backend.region"
+func BackendRegionLabelKey(provisioner string) string {
+	return fmt.Sprintf("%s.project-planton.org/backend.region", provisioner)
 }
 
 // Legacy constants for backward compatibility.
@@ -23,9 +39,16 @@ const (
 	// LegacyBackendTypeLabelKey is the legacy backend type label (terraform prefix)
 	LegacyBackendTypeLabelKey = "terraform.project-planton.org/backend.type"
 
-	// LegacyBackendObjectLabelKey is the legacy backend object label (terraform prefix)
-	// For S3: "bucket-name/path/to/state"
-	// For GCS: "bucket-name/path/to/state"
-	// For Azure: "container-name/path/to/state"
+	// LegacyBackendBucketLabelKey is the legacy backend bucket label (terraform prefix)
+	LegacyBackendBucketLabelKey = "terraform.project-planton.org/backend.bucket"
+
+	// LegacyBackendKeyLabelKey is the legacy backend key label (terraform prefix)
+	LegacyBackendKeyLabelKey = "terraform.project-planton.org/backend.key"
+
+	// LegacyBackendObjectLabelKey is the deprecated backend object label (terraform prefix)
+	// Kept for backward compatibility - prefer backend.key
 	LegacyBackendObjectLabelKey = "terraform.project-planton.org/backend.object"
+
+	// LegacyBackendRegionLabelKey is the legacy backend region label (terraform prefix)
+	LegacyBackendRegionLabelKey = "terraform.project-planton.org/backend.region"
 )

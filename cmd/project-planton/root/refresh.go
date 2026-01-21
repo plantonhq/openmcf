@@ -46,7 +46,7 @@ func init() {
 	iacflags.AddProviderConfigFlags(Refresh)
 	iacflags.AddExecutionFlags(Refresh)
 	iacflags.AddPulumiFlags(Refresh)
-	// Refresh doesn't need Tofu-specific flags (no --auto-approve or --destroy)
+	iacflags.AddTofuInitFlags(Refresh)
 }
 
 func refreshHandler(cmd *cobra.Command, args []string) {

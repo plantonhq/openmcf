@@ -48,6 +48,7 @@ func init() {
 	iacflags.AddExecutionFlags(Apply)
 	iacflags.AddPulumiFlags(Apply)
 	iacflags.AddTofuApplyFlags(Apply)
+	iacflags.AddTofuInitFlags(Apply)
 }
 
 func applyHandler(cmd *cobra.Command, args []string) {

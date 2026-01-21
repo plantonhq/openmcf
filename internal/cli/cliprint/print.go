@@ -102,3 +102,24 @@ func PrintTerraformFailure() {
 	fmt.Printf("   %s\n", yellow("Check the above output from Terraform CLI to understand the root cause"))
 	fmt.Println()
 }
+
+// PrintBackendConfig displays backend configuration details in a beautiful format.
+// Shows backend type, bucket/container, and key (state file path) clearly formatted.
+func PrintBackendConfig(backendType, bucket, key string) {
+	cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
+	white := color.New(color.FgWhite).SprintFunc()
+	blue := color.New(color.FgBlue).SprintFunc()
+
+	fmt.Println()
+	fmt.Printf("%s %s\n", Package, cyan("State Backend Configuration"))
+	fmt.Printf("   %-12s %s\n", white("Type:"), blue(backendType))
+	fmt.Printf("   %-12s %s\n", white("Bucket:"), blue(bucket))
+	fmt.Printf("   %-12s %s\n", white("Key:"), blue(key))
+	fmt.Println()
+}
+
+// PrintModulePath displays the module path being used.
+func PrintModulePath(modulePath string) {
+	yellow := color.New(color.FgYellow).SprintFunc()
+	fmt.Printf("%s %s: %s\n", Gear, "Module path", yellow(modulePath))
+}

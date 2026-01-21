@@ -24,6 +24,7 @@ func Init(
 	backendType terraform.TerraformBackendType,
 	backendConfigInput []string,
 	providerConfigEnvVars []string,
+	isReconfigure bool,
 	isJsonOutput bool,
 	jsonLogEventsChan chan string,
 ) (err error) {
@@ -41,6 +42,9 @@ func Init(
 		terraform.TerraformOperationType_init.String(),
 		"--var-file", tfVarsFile,
 	}
+	if isReconfigure {
+		cmdArgs = append(cmdArgs, "-reconfigure")
+	}
 	if isJsonOutput {
 		cmdArgs = append(cmdArgs, "-json")
 	}
@@ -56,9 +60,6 @@ func Init(
 
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
-
-	fmt.Printf("%s module directory: %s\n", binaryName, modulePath)
-	fmt.Printf("running command: %s\n", cmd.String())
 
 	// If jsonLogEventsChan is provided, read stdout in a goroutine with panic recovery
 	if jsonLogEventsChan != nil {

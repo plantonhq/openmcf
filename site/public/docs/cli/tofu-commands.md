@@ -575,6 +575,16 @@ project-planton tofu apply \
 project-planton tofu apply -f resource.yaml --auto-approve
 ```
 
+**`--reconfigure`**: Reconfigure backend, ignoring any saved configuration. Use when backend configuration changes.
+
+```bash
+# Reconfigure after backend label changes
+project-planton tofu init -f resource.yaml --reconfigure
+
+# Also works with other commands
+project-planton tofu apply -f resource.yaml --reconfigure
+```
+
 **`--destroy`**: Create a destruction plan (only for `plan` command).
 
 ```bash

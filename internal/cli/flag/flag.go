@@ -34,6 +34,7 @@ const (
 	OutputFile               Flag = "output-file"
 	Overlay                  Flag = "overlay"
 	ProjectPlantonGitRepo    Flag = "project-planton-git-repo"
+	Reconfigure              Flag = "reconfigure"
 	Set                      Flag = "set"
 	SnowflakeProviderConfig  Flag = "snowflake-provider-config"
 	Stack                    Flag = "stack"

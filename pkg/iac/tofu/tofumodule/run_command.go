@@ -2,7 +2,6 @@ package tofumodule
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
@@ -26,6 +25,7 @@ func RunCommand(
 	valueOverrides map[string]string,
 	isAutoApprove bool,
 	isDestroyPlan bool,
+	isReconfigure bool,
 	moduleVersion string,
 	noCleanup bool,
 	kubeContext string,
@@ -50,9 +50,6 @@ func RunCommand(
 	}
 
 	if tofuBackendConfig != nil {
-		log.Infof("Using %s backend from manifest labels: type=%s, object=%s",
-			binaryName, tofuBackendConfig.BackendType, tofuBackendConfig.BackendObject)
-
 		// Convert backend type string to enum
 		backendType = tfbackend.BackendTypeFromString(tofuBackendConfig.BackendType)
 		if backendType == terraform.TerraformBackendType_terraform_backend_type_unspecified {
@@ -110,7 +107,7 @@ func RunCommand(
 
 	// Initialize with backend configuration before any operation
 	err = Init(binaryName, modulePath, manifestObject, backendType, backendConfigArgs,
-		providerConfigEnvVars, false, nil)
+		providerConfigEnvVars, isReconfigure, false, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to initialize %s module", binaryName)
 	}
@@ -131,33 +128,33 @@ func buildBackendConfigArgs(config *backendconfig.TofuBackendConfig) []string {
 
 	switch config.BackendType {
 	case "s3":
-		// For S3: parse "bucket-name/path/to/state"
-		parts := strings.SplitN(config.BackendObject, "/", 2)
-		if len(parts) >= 1 {
-			args = append(args, fmt.Sprintf("bucket=%s", parts[0]))
+		// S3 backend: bucket, key, and region
+		if config.BackendBucket != "" {
+			args = append(args, fmt.Sprintf("bucket=%s", config.BackendBucket))
 		}
-		if len(parts) >= 2 {
-			args = append(args, fmt.Sprintf("key=%s", parts[1]))
+		if config.BackendKey != "" {
+			args = append(args, fmt.Sprintf("key=%s", config.BackendKey))
+		}
+		if config.BackendRegion != "" {
+			args = append(args, fmt.Sprintf("region=%s", config.BackendRegion))
 		}
 
 	case "gcs":
-		// For GCS: parse "bucket-name/path/to/state"
-		parts := strings.SplitN(config.BackendObject, "/", 2)
-		if len(parts) >= 1 {
-			args = append(args, fmt.Sprintf("bucket=%s", parts[0]))
+		// GCS backend: bucket and prefix (key is called prefix in GCS)
+		if config.BackendBucket != "" {
+			args = append(args, fmt.Sprintf("bucket=%s", config.BackendBucket))
 		}
-		if len(parts) >= 2 {
-			args = append(args, fmt.Sprintf("prefix=%s", parts[1]))
+		if config.BackendKey != "" {
+			args = append(args, fmt.Sprintf("prefix=%s", config.BackendKey))
 		}
 
 	case "azurerm":
-		// For Azure: parse "container-name/path/to/state"
-		parts := strings.SplitN(config.BackendObject, "/", 2)
-		if len(parts) >= 1 {
-			args = append(args, fmt.Sprintf("container_name=%s", parts[0]))
+		// Azure backend: container_name and key
+		if config.BackendBucket != "" {
+			args = append(args, fmt.Sprintf("container_name=%s", config.BackendBucket))
 		}
-		if len(parts) >= 2 {
-			args = append(args, fmt.Sprintf("key=%s", parts[1]))
+		if config.BackendKey != "" {
+			args = append(args, fmt.Sprintf("key=%s", config.BackendKey))
 		}
 
 	case "local":

@@ -12,11 +12,12 @@ import (
 type TofuBackendConfig struct {
 	// BackendType specifies the backend type (e.g., "s3", "gcs", "azurerm")
 	BackendType string
-	// BackendObject specifies the backend object path
-	// For S3: "bucket-name/path/to/state"
-	// For GCS: "bucket-name/path/to/state"
-	// For Azure: "container-name/path/to/state"
-	BackendObject string
+	// BackendBucket specifies the bucket or container name for remote backends
+	BackendBucket string
+	// BackendKey specifies the state file path within the bucket
+	BackendKey string
+	// BackendRegion specifies the region for S3 backends
+	BackendRegion string
 }
 
 // ExtractFromManifest extracts Terraform/Tofu backend configuration from manifest labels.
@@ -31,36 +32,47 @@ func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuB
 
 	// Try provisioner-specific labels first
 	typeLabelKey := tofulabels.BackendTypeLabelKey(provisionerType)
-	objectLabelKey := tofulabels.BackendObjectLabelKey(provisionerType)
+	bucketLabelKey := tofulabels.BackendBucketLabelKey(provisionerType)
+	keyLabelKey := tofulabels.BackendKeyLabelKey(provisionerType)
+	regionLabelKey := tofulabels.BackendRegionLabelKey(provisionerType)
 
 	backendType, hasType := labels[typeLabelKey]
-	backendObject, hasObject := labels[objectLabelKey]
+	backendBucket, hasBucket := labels[bucketLabelKey]
+	backendKey, hasKey := labels[keyLabelKey]
+	backendRegion, _ := labels[regionLabelKey]
 
 	// If provisioner-specific labels not found, fall back to legacy terraform.* labels
 	// This ensures backward compatibility for existing manifests
-	if !hasType && !hasObject {
+	if !hasType && !hasBucket && !hasKey {
 		backendType, hasType = labels[tofulabels.LegacyBackendTypeLabelKey]
-		backendObject, hasObject = labels[tofulabels.LegacyBackendObjectLabelKey]
+		backendBucket, hasBucket = labels[tofulabels.LegacyBackendBucketLabelKey]
+		// Try backend.key first, then fall back to deprecated backend.object
+		backendKey, hasKey = labels[tofulabels.LegacyBackendKeyLabelKey]
+		if !hasKey {
+			backendKey, hasKey = labels[tofulabels.LegacyBackendObjectLabelKey]
+		}
+		backendRegion, _ = labels[tofulabels.LegacyBackendRegionLabelKey]
 		// Update label keys for error messages
-		if hasType || hasObject {
+		if hasType || hasBucket || hasKey {
 			typeLabelKey = tofulabels.LegacyBackendTypeLabelKey
-			objectLabelKey = tofulabels.LegacyBackendObjectLabelKey
+			bucketLabelKey = tofulabels.LegacyBackendBucketLabelKey
+			keyLabelKey = tofulabels.LegacyBackendKeyLabelKey
 		}
 	}
 
-	// Both labels are optional - return nil if neither is present
-	if !hasType && !hasObject {
+	// All labels are optional - return nil if none are present
+	if !hasType && !hasBucket && !hasKey {
 		return nil, nil
 	}
 
-	// If one is present, both must be present
-	if !hasType || !hasObject {
+	// If type is present, key must also be present
+	if hasType && !hasKey {
 		return nil, fmt.Errorf("both %s and %s must be specified together",
-			typeLabelKey, objectLabelKey)
+			typeLabelKey, keyLabelKey)
 	}
 
-	if backendType == "" || backendObject == "" {
-		return nil, fmt.Errorf("backend labels cannot be empty")
+	if backendType == "" {
+		return nil, fmt.Errorf("backend type label cannot be empty")
 	}
 
 	// Validate supported backend types
@@ -71,8 +83,15 @@ func ExtractFromManifest(manifest proto.Message, provisionerType string) (*TofuB
 		return nil, fmt.Errorf("unsupported backend type: %s", backendType)
 	}
 
+	// For remote backends (non-local), bucket is required
+	if backendType != "local" && !hasBucket {
+		return nil, fmt.Errorf("%s is required for %s backend", bucketLabelKey, backendType)
+	}
+
 	return &TofuBackendConfig{
 		BackendType:   backendType,
-		BackendObject: backendObject,
+		BackendBucket: backendBucket,
+		BackendKey:    backendKey,
+		BackendRegion: backendRegion,
 	}, nil
 }

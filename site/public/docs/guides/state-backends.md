@@ -28,11 +28,23 @@ Project Planton automatically detects backend configuration from labels in your 
 
 ## Quick Reference
 
-| Provisioner | Backend Type Label | Backend Object/Stack Label |
-|-------------|-------------------|---------------------------|
-| **Terraform** | `terraform.project-planton.org/backend.type` | `terraform.project-planton.org/backend.object` |
-| **OpenTofu** | `tofu.project-planton.org/backend.type` | `tofu.project-planton.org/backend.object` |
-| **Pulumi** | N/A (uses Pulumi Cloud or local) | `pulumi.project-planton.org/stack.name` |
+| Provisioner | Backend Labels |
+|-------------|----------------|
+| **Terraform** | `terraform.project-planton.org/backend.type`, `backend.bucket`, `backend.key`, `backend.region` |
+| **OpenTofu** | `tofu.project-planton.org/backend.type`, `backend.bucket`, `backend.key`, `backend.region` |
+| **Pulumi** | `pulumi.project-planton.org/stack.name` (uses Pulumi Cloud or local) |
+
+### S3 Backend Labels (Complete Example)
+
+```yaml
+metadata:
+  labels:
+    project-planton.org/provisioner: terraform
+    terraform.project-planton.org/backend.type: s3
+    terraform.project-planton.org/backend.bucket: my-terraform-state
+    terraform.project-planton.org/backend.key: path/to/state.tfstate
+    terraform.project-planton.org/backend.region: us-west-2
+```
 
 ---
 
@@ -106,40 +118,54 @@ OpenTofu and Terraform use a backend configuration to store state. Project Plant
 
 ### Label Format
 
-Each provisioner uses its own label prefix:
+Each provisioner uses its own label prefix. The backend configuration requires these labels:
 
-**For Terraform:**
+| Label | Description | Required |
+|-------|-------------|----------|
+| `backend.type` | Backend type: `s3`, `gcs`, `azurerm`, or `local` | Yes |
+| `backend.bucket` | Bucket/container name for remote state | Yes (for remote backends) |
+| `backend.key` | State file path within the bucket | Yes |
+| `backend.region` | AWS region (S3 only) | Yes (for S3) |
+
+**For Terraform (S3 backend):**
 ```yaml
 metadata:
   labels:
     project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: "s3"
-    terraform.project-planton.org/backend.object: "bucket-name/path/to/state.tfstate"
+    terraform.project-planton.org/backend.type: s3
+    terraform.project-planton.org/backend.bucket: my-terraform-state
+    terraform.project-planton.org/backend.key: vpc/production.tfstate
+    terraform.project-planton.org/backend.region: us-west-2
 ```
 
-**For OpenTofu:**
+**For OpenTofu (GCS backend):**
 ```yaml
 metadata:
   labels:
     project-planton.org/provisioner: tofu
-    tofu.project-planton.org/backend.type: "gcs"
-    tofu.project-planton.org/backend.object: "bucket-name/path/to/state.tfstate"
+    tofu.project-planton.org/backend.type: gcs
+    tofu.project-planton.org/backend.bucket: my-tofu-state
+    tofu.project-planton.org/backend.key: vpc/production
 ```
 
 ### Backward Compatibility
 
-For backward compatibility, OpenTofu also accepts `terraform.project-planton.org/*` labels if the provisioner-specific `tofu.project-planton.org/*` labels are not present:
+For backward compatibility:
+- OpenTofu accepts `terraform.project-planton.org/*` labels if provisioner-specific labels are not present
+- `backend.object` label is still supported but deprecated in favor of `backend.key`
 
 ```yaml
 metadata:
   labels:
     project-planton.org/provisioner: tofu
-    # Legacy labels - still work with OpenTofu
-    terraform.project-planton.org/backend.type: "s3"
-    terraform.project-planton.org/backend.object: "my-bucket/state.tfstate"
+    # Legacy labels - still work
+    terraform.project-planton.org/backend.type: s3
+    terraform.project-planton.org/backend.bucket: my-bucket
+    terraform.project-planton.org/backend.object: path/to/state.tfstate  # deprecated, use backend.key
+    terraform.project-planton.org/backend.region: us-west-2
 ```
 
-However, we recommend using the provisioner-specific labels for clarity.
+We recommend using provisioner-specific labels with `backend.key` for clarity.
 
 ---
 
@@ -156,14 +182,20 @@ metadata:
   name: production-vpc
   labels:
     project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: "s3"
-    terraform.project-planton.org/backend.object: "my-terraform-state/vpc/production.tfstate"
+    terraform.project-planton.org/backend.type: s3
+    terraform.project-planton.org/backend.bucket: my-terraform-state
+    terraform.project-planton.org/backend.key: vpc/production.tfstate
+    terraform.project-planton.org/backend.region: us-west-2
 spec:
   cidrBlock: 10.0.0.0/16
   region: us-west-2
 ```
 
-**Object format:** `bucket-name/path/to/state.tfstate`
+**Required labels:**
+- `backend.type`: `s3`
+- `backend.bucket`: S3 bucket name
+- `backend.key`: State file path within the bucket
+- `backend.region`: AWS region where the bucket is located
 
 **Prerequisites:**
 - S3 bucket must exist
@@ -183,14 +215,18 @@ metadata:
   name: staging-cluster
   labels:
     project-planton.org/provisioner: tofu
-    tofu.project-planton.org/backend.type: "gcs"
-    tofu.project-planton.org/backend.object: "my-gcs-state-bucket/gke/staging-cluster"
+    tofu.project-planton.org/backend.type: gcs
+    tofu.project-planton.org/backend.bucket: my-gcs-state-bucket
+    tofu.project-planton.org/backend.key: gke/staging-cluster
 spec:
   projectId: my-gcp-project
   region: us-central1
 ```
 
-**Object format:** `bucket-name/prefix/path`
+**Required labels:**
+- `backend.type`: `gcs`
+- `backend.bucket`: GCS bucket name
+- `backend.key`: State prefix/path within the bucket
 
 **Prerequisites:**
 - GCS bucket must exist
@@ -209,14 +245,18 @@ metadata:
   name: production-aks
   labels:
     project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: "azurerm"
-    terraform.project-planton.org/backend.object: "tfstate-container/aks/production"
+    terraform.project-planton.org/backend.type: azurerm
+    terraform.project-planton.org/backend.bucket: tfstate-container
+    terraform.project-planton.org/backend.key: aks/production
 spec:
   location: eastus
   nodeCount: 3
 ```
 
-**Object format:** `container-name/path/to/state`
+**Required labels:**
+- `backend.type`: `azurerm`
+- `backend.bucket`: Azure container name
+- `backend.key`: State file path within the container
 
 **Prerequisites:**
 - Storage account and container must exist
@@ -236,11 +276,15 @@ metadata:
   name: test-service
   labels:
     project-planton.org/provisioner: tofu
-    tofu.project-planton.org/backend.type: "local"
-    tofu.project-planton.org/backend.object: "/tmp/test-service.tfstate"
+    tofu.project-planton.org/backend.type: local
+    tofu.project-planton.org/backend.key: /tmp/test-service.tfstate
 spec:
   replicas: 1
 ```
+
+**Required labels:**
+- `backend.type`: `local`
+- `backend.key`: Local file path for state
 
 **Use cases:**
 - Local development
@@ -268,8 +312,10 @@ metadata:
     project-planton.org/provisioner: terraform
     
     # Backend configuration
-    terraform.project-planton.org/backend.type: "s3"
-    terraform.project-planton.org/backend.object: "company-terraform-state/rds/app-database/production"
+    terraform.project-planton.org/backend.type: s3
+    terraform.project-planton.org/backend.bucket: company-terraform-state
+    terraform.project-planton.org/backend.key: rds/app-database/production.tfstate
+    terraform.project-planton.org/backend.region: us-west-2
 spec:
   engine: postgres
   engineVersion: "15"
@@ -297,8 +343,9 @@ metadata:
     project-planton.org/provisioner: tofu
     
     # Backend configuration (OpenTofu-specific)
-    tofu.project-planton.org/backend.type: "gcs"
-    tofu.project-planton.org/backend.object: "company-tofu-state/cloud-run/api-service/prod"
+    tofu.project-planton.org/backend.type: gcs
+    tofu.project-planton.org/backend.bucket: company-tofu-state
+    tofu.project-planton.org/backend.key: cloud-run/api-service/prod
 spec:
   projectId: my-gcp-project
   region: us-central1
@@ -322,8 +369,10 @@ metadata:
   name: app-database
   labels:
     project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: "s3"
-    # Object path will be patched per environment
+    terraform.project-planton.org/backend.type: s3
+    terraform.project-planton.org/backend.bucket: company-terraform-state
+    terraform.project-planton.org/backend.region: us-west-2
+    # Key will be patched per environment
 spec:
   engine: postgres
   instanceClass: db.t3.small
@@ -333,9 +382,9 @@ spec:
 ```yaml
 patches:
   - patch: |
-      - op: replace
-        path: /metadata/labels/terraform.project-planton.org~1backend.object
-        value: "terraform-state/rds/production"
+      - op: add
+        path: /metadata/labels/terraform.project-planton.org~1backend.key
+        value: rds/app-database/production.tfstate
       - op: replace
         path: /spec/instanceClass
         value: db.t3.large
@@ -401,13 +450,16 @@ Use different buckets or prefixes for different environments:
 
 ```yaml
 # Production
-terraform.project-planton.org/backend.object: "prod-terraform-state/vpc/main"
+terraform.project-planton.org/backend.bucket: prod-terraform-state
+terraform.project-planton.org/backend.key: vpc/main.tfstate
 
 # Staging
-terraform.project-planton.org/backend.object: "staging-terraform-state/vpc/main"
+terraform.project-planton.org/backend.bucket: staging-terraform-state
+terraform.project-planton.org/backend.key: vpc/main.tfstate
 
 # Development
-terraform.project-planton.org/backend.object: "dev-terraform-state/vpc/main"
+terraform.project-planton.org/backend.bucket: dev-terraform-state
+terraform.project-planton.org/backend.key: vpc/main.tfstate
 ```
 
 ### 3. Enable Versioning
@@ -465,15 +517,20 @@ aws dynamodb create-table \
 
 ### "Backend configuration required"
 
-**Error:** Backend type is specified but object is missing.
+**Error:** Backend type is specified but required labels are missing.
 
-**Solution:** Both `backend.type` and `backend.object` labels must be specified together:
+**Solution:** For remote backends, all required labels must be specified:
 
 ```yaml
 labels:
-  terraform.project-planton.org/backend.type: "s3"
-  terraform.project-planton.org/backend.object: "bucket/path/state.tfstate"  # Required!
+  # S3 backend - all four labels required
+  terraform.project-planton.org/backend.type: s3
+  terraform.project-planton.org/backend.bucket: my-terraform-state
+  terraform.project-planton.org/backend.key: path/to/state.tfstate
+  terraform.project-planton.org/backend.region: us-west-2
 ```
+
+For GCS or Azure backends, `backend.region` is not required.
 
 ---
 
@@ -510,15 +567,31 @@ labels:
 **Solution:** Ensure labels match the provisioner:
 
 ```yaml
-# For Terraform
+# For Terraform (S3)
 project-planton.org/provisioner: terraform
-terraform.project-planton.org/backend.type: "s3"
-terraform.project-planton.org/backend.object: "..."
+terraform.project-planton.org/backend.type: s3
+terraform.project-planton.org/backend.bucket: my-state-bucket
+terraform.project-planton.org/backend.key: path/to/state.tfstate
+terraform.project-planton.org/backend.region: us-west-2
 
-# For OpenTofu
+# For OpenTofu (GCS)
 project-planton.org/provisioner: tofu
-tofu.project-planton.org/backend.type: "s3"
-tofu.project-planton.org/backend.object: "..."
+tofu.project-planton.org/backend.type: gcs
+tofu.project-planton.org/backend.bucket: my-state-bucket
+tofu.project-planton.org/backend.key: path/to/state
+```
+
+### "Backend configuration changed"
+
+**Error:** Terraform/Tofu prompts for backend reconfiguration.
+
+**Solution:** Use the `--reconfigure` flag to accept the new backend configuration:
+
+```bash
+project-planton init -f manifest.yaml --reconfigure
+
+# Or with other commands that run init internally
+project-planton apply -f manifest.yaml --reconfigure
 ```
 
 ---

@@ -139,6 +139,7 @@ func planHandler(cmd *cobra.Command, args []string) {
 		valueOverrides,
 		true,
 		isDestroyPlan,
+		false, // isReconfigure - not supported in legacy commands
 		moduleVersion,
 		noCleanup,
 		kubeCtx,

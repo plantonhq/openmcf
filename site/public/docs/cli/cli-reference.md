@@ -120,6 +120,9 @@ project-planton init -f database.yaml
 # With kustomize
 project-planton init --kustomize-dir services/api --overlay prod
 
+# Reconfigure after backend changes
+project-planton init -f app.yaml --reconfigure
+
 # With tofu-specific backend config
 project-planton init -f app.yaml --backend-type s3 --backend-config bucket=my-bucket
 ```
@@ -129,7 +132,7 @@ project-planton init -f app.yaml --backend-type s3 --backend-config bucket=my-bu
 2. Routes to appropriate initialization:
    - **Pulumi**: Creates stack if it doesn't exist
    - **Tofu**: Initializes backend and downloads providers
-   - **Terraform**: Not yet implemented
+   - **Terraform**: Initializes backend and downloads providers
 
 ### plan
 
@@ -384,13 +387,20 @@ Force stack removal even if resources exist (`delete`/`rm` only).
 --force
 ```
 
-### OpenTofu-Specific Flags
+### OpenTofu/Terraform-Specific Flags
 
 **`--auto-approve`**  
 Skip interactive approval (`apply` and `destroy` commands).
 
 ```bash
 --auto-approve
+```
+
+**`--reconfigure`**  
+Reconfigure backend, ignoring any saved configuration. Use when backend configuration changes.
+
+```bash
+--reconfigure
 ```
 
 **`--destroy`**  

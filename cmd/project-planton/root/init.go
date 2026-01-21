@@ -5,9 +5,10 @@ import (
 	"os"
 
 	"github.com/plantonhq/project-planton/apis/org/project_planton/shared"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/flag"
+	"github.com/plantonhq/project-planton/internal/cli/iacflags"
+	"github.com/plantonhq/project-planton/internal/cli/iacrunner"
 	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
 	"github.com/plantonhq/project-planton/internal/cli/prompt"
 	"github.com/plantonhq/project-planton/internal/cli/workspace"
@@ -21,7 +22,6 @@ import (
 	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfbackend"
 	"github.com/plantonhq/project-planton/pkg/iac/tofu/tofumodule"
 	"github.com/plantonhq/project-planton/pkg/kubernetes/kubecontext"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
@@ -34,9 +34,16 @@ var Init = &cobra.Command{
 
 If the provisioner label is not present, you will be prompted to select one interactively.`,
 	Example: `
+	# Initialize from clipboard (manifest content already copied)
+	project-planton init --clipboard
+	project-planton init -c
+
 	# Initialize with manifest file
 	project-planton init -f manifest.yaml
 	project-planton init --manifest manifest.yaml
+
+	# Initialize with stack input file (extracts manifest from target field)
+	project-planton init -i stack-input.yaml
 
 	# Initialize with kustomize
 	project-planton init --kustomize-dir _kustomize --overlay prod
@@ -48,48 +55,11 @@ If the provisioner label is not present, you will be prompted to select one inte
 }
 
 func init() {
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("failed to get current working directory")
-	}
-
-	// Use StringP to support both --manifest and -f
-	Init.PersistentFlags().StringP(string(flag.Manifest), "f", "", "path of the deployment-component manifest file")
-
-	Init.PersistentFlags().String(string(flag.InputDir), "", "directory containing target.yaml and credential yaml files")
-	Init.PersistentFlags().String(string(flag.KustomizeDir), "", "directory containing kustomize configuration")
-	Init.PersistentFlags().String(string(flag.Overlay), "", "kustomize overlay to use (e.g., prod, dev, staging)")
-	Init.PersistentFlags().String(string(flag.ModuleDir), pwd, "directory containing the provisioner module")
-	Init.PersistentFlags().StringToString(string(flag.Set), map[string]string{}, "override resource manifest values using key=value pairs")
-
-	// Pulumi-specific flags
-	Init.PersistentFlags().String(string(flag.Stack), "", "pulumi stack fqdn in the format of <org>/<project>/<stack>")
-
-	// Tofu/Terraform-specific flags
-	Init.PersistentFlags().String(string(flag.BackendType), terraform.TerraformBackendType_local.String(),
-		"Specifies the backend type (Tofu/Terraform) - 'local', 's3', 'gcs', 'azurerm', etc.")
-	Init.PersistentFlags().StringArray(string(flag.BackendConfig), []string{},
-		"Backend configuration key=value pairs (Tofu/Terraform)")
-
-	// Staging/cleanup flags
-	Init.PersistentFlags().Bool(string(flag.NoCleanup), false, "Do not cleanup the workspace copy after execution (keeps cloned modules)")
-	Init.PersistentFlags().String(string(flag.ModuleVersion), "",
-		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.\n"+
-			"This allows using a different module version than what's in the staging area without affecting it.")
-
-	// Kubernetes context flag
-	Init.PersistentFlags().String(string(flag.KubeContext), "", "kubectl context to use for Kubernetes deployments (overrides manifest label)")
-
-	// Provider credential flags
-	Init.PersistentFlags().String(string(flag.AtlasProviderConfig), "", "path of the mongodb-atlas-credential file")
-	Init.PersistentFlags().String(string(flag.Auth0ProviderConfig), "", "path of the auth0-credential file")
-	Init.PersistentFlags().String(string(flag.AwsProviderConfig), "", "path of the aws-credential file")
-	Init.PersistentFlags().String(string(flag.AzureProviderConfig), "", "path of the azure-credential file")
-	Init.PersistentFlags().String(string(flag.CloudflareProviderConfig), "", "path of the cloudflare-credential file")
-	Init.PersistentFlags().String(string(flag.ConfluentProviderConfig), "", "path of the confluent-credential file")
-	Init.PersistentFlags().String(string(flag.GcpProviderConfig), "", "path of the gcp-credential file")
-	Init.PersistentFlags().String(string(flag.KubernetesProviderConfig), "", "path of the yaml file containing the kubernetes cluster configuration")
-	Init.PersistentFlags().String(string(flag.SnowflakeProviderConfig), "", "path of the snowflake-credential file")
+	iacflags.AddManifestSourceFlags(Init)
+	iacflags.AddProviderConfigFlags(Init)
+	iacflags.AddExecutionFlags(Init)
+	iacflags.AddPulumiFlags(Init)
+	iacflags.AddTofuInitFlags(Init)
 }
 
 func initHandler(cmd *cobra.Command, args []string) {
@@ -250,6 +220,8 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
 	flag.HandleFlagErr(err, flag.BackendConfig)
 
+	isReconfigure, _ := cmd.Flags().GetBool(string(flag.Reconfigure))
+
 	backendType := tfbackend.BackendTypeFromString(backendTypeString)
 
 	// Extract kind name for module path resolution
@@ -303,6 +275,14 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 		os.Exit(1)
 	}
 
+	// Display backend configuration if available (before handoff)
+	if backendInfo := iacrunner.ExtractBackendConfigForDisplay(manifestObject, "tofu"); backendInfo != nil {
+		cliprint.PrintBackendConfig(backendInfo.BackendType, backendInfo.Bucket, backendInfo.Key)
+	}
+
+	// Display module path
+	cliprint.PrintModulePath(tofuModulePath)
+
 	cliprint.PrintHandoff("OpenTofu")
 
 	err = tofumodule.Init(
@@ -312,6 +292,7 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 		backendType,
 		backendConfigList,
 		providerConfigEnvVars,
+		isReconfigure,
 		false,
 		nil,
 	)
@@ -330,6 +311,8 @@ func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string,
 
 	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
 	flag.HandleFlagErr(err, flag.BackendConfig)
+
+	isReconfigure, _ := cmd.Flags().GetBool(string(flag.Reconfigure))
 
 	backendType := tfbackend.BackendTypeFromString(backendTypeString)
 
@@ -381,6 +364,14 @@ func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string,
 		os.Exit(1)
 	}
 
+	// Display backend configuration if available (before handoff)
+	if backendInfo := iacrunner.ExtractBackendConfigForDisplay(manifestObject, "terraform"); backendInfo != nil {
+		cliprint.PrintBackendConfig(backendInfo.BackendType, backendInfo.Bucket, backendInfo.Key)
+	}
+
+	// Display module path
+	cliprint.PrintModulePath(modulePath)
+
 	cliprint.PrintHandoff("Terraform")
 
 	err = tofumodule.Init(
@@ -390,6 +381,7 @@ func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string,
 		backendType,
 		backendConfigList,
 		providerConfigEnvVars,
+		isReconfigure,
 		false,
 		nil,
 	)

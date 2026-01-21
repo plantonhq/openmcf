@@ -48,6 +48,7 @@ func init() {
 	iacflags.AddExecutionFlags(Destroy)
 	iacflags.AddPulumiFlags(Destroy)
 	iacflags.AddTofuApplyFlags(Destroy)
+	iacflags.AddTofuInitFlags(Destroy)
 }
 
 func destroyHandler(cmd *cobra.Command, args []string) {
