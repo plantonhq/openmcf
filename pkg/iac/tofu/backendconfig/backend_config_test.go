@@ -125,22 +125,24 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "missing backend key",
+			name: "missing backend key - returns partial config",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("terraform"):   "s3",
 						tofulabels.BackendBucketLabelKey("terraform"): "my-bucket",
-						// Missing backend key
+						// Missing backend key - pure extraction returns partial config
 					},
 				},
 			},
-			want:      nil,
-			wantError: true,
-			errorMsg:  "both",
+			want: &TofuBackendConfig{
+				BackendType:   "s3",
+				BackendBucket: "my-bucket",
+			},
+			wantError: false,
 		},
 		{
-			name: "unsupported backend type",
+			name: "unsupported backend type - returns config (validation happens later)",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
@@ -150,9 +152,12 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 					},
 				},
 			},
-			want:      nil,
-			wantError: true,
-			errorMsg:  "unsupported backend type",
+			want: &TofuBackendConfig{
+				BackendType:   "unsupported",
+				BackendBucket: "bucket",
+				BackendKey:    "some/path",
+			},
+			wantError: false,
 		},
 		{
 			name: "no labels",
@@ -228,19 +233,21 @@ func TestExtractFromManifest_TofuProvisioner(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "missing backend key with tofu labels",
+			name: "missing backend key with tofu labels - returns partial config",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofulabels.BackendTypeLabelKey("tofu"):   "s3",
 						tofulabels.BackendBucketLabelKey("tofu"): "my-bucket",
-						// Missing backend key
+						// Missing backend key - pure extraction returns partial config
 					},
 				},
 			},
-			want:      nil,
-			wantError: true,
-			errorMsg:  "both",
+			want: &TofuBackendConfig{
+				BackendType:   "s3",
+				BackendBucket: "my-bucket",
+			},
+			wantError: false,
 		},
 	}
 
@@ -335,20 +342,22 @@ func TestExtractFromManifest_LegacyFallback(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "legacy fallback with partial labels returns error",
+			name: "legacy fallback with partial labels returns partial config",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
-						// Only type, missing key
+						// Only type and bucket, missing key - pure extraction returns partial config
 						tofulabels.LegacyBackendTypeLabelKey:   "s3",
 						tofulabels.LegacyBackendBucketLabelKey: "my-bucket",
 					},
 				},
 			},
 			provisionerType: "tofu",
-			want:            nil,
-			wantError:       true,
-			errorMsg:        "both",
+			want: &TofuBackendConfig{
+				BackendType:   "s3",
+				BackendBucket: "my-bucket",
+			},
+			wantError: false,
 		},
 	}
 
