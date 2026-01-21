@@ -182,11 +182,9 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 
 	ctx.DetectionResult = detectionResult
 
-	if detectionResult.RequiresProviderConfig {
-		cliprint.PrintProviderDetected(detectionResult.KindName, providerdetect.ProviderDisplayName(detectionResult.Provider))
-	} else {
-		cliprint.PrintSuccess(fmt.Sprintf("Detected resource: %s (no provider credentials required)", detectionResult.KindName))
-	}
+	// Show detected resource information
+	cliprint.PrintSuccess(fmt.Sprintf("Detected resource: %s (%s provider)",
+		detectionResult.KindName, providerdetect.ProviderDisplayName(detectionResult.Provider)))
 
 	// Get provider config from flags
 	cliprint.PrintStep("Preparing execution...")
@@ -195,18 +193,7 @@ func ResolveContext(cmd *cobra.Command) (*Context, error) {
 		return nil, errors.Wrap(err, "failed to get provider config from flags")
 	}
 
-	// Check if provider config is required but not provided
-	if detectionResult.RequiresProviderConfig && providerConfig.Path == "" {
-		// Show guidance for missing provider config
-		guidance := providerdetect.MissingProviderConfigGuidance(detectionResult)
-		cliprint.PrintMissingProviderConfig(
-			fmt.Sprintf("%s provider config required", providerdetect.ProviderDisplayName(detectionResult.Provider)),
-			guidance,
-		)
-		return nil, errors.Errorf("missing required provider config for %s", providerdetect.ProviderDisplayName(detectionResult.Provider))
-	}
-
-	// Validate provider config if provided
+	// Validate provider config if explicitly provided via -p flag
 	if providerConfig.Path != "" {
 		if err := providerdetect.ValidateProviderConfig(providerConfig.Path, detectionResult.Provider); err != nil {
 			guidance := providerdetect.InvalidProviderConfigGuidance(detectionResult, err)
