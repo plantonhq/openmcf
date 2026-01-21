@@ -9,6 +9,7 @@ import (
 
 // S3CompatibleDetected displays a helpful message when S3-compatible backend is detected.
 // This informs the user that additional configuration flags will be applied automatically.
+// All flags are supported by both Terraform and OpenTofu.
 func S3CompatibleDetected(reason string) {
 	fmt.Println()
 	fmt.Printf("%s  %s\n",
@@ -18,8 +19,9 @@ func S3CompatibleDetected(reason string) {
 	fmt.Printf("   %s\n", dimStyle.Render("Additional configuration will be applied automatically:"))
 	fmt.Printf("   %s\n", dimStyle.Render("  • skip_credentials_validation = true"))
 	fmt.Printf("   %s\n", dimStyle.Render("  • skip_region_validation = true"))
-	fmt.Printf("   %s\n", dimStyle.Render("  • skip_requesting_account_id = true"))
 	fmt.Printf("   %s\n", dimStyle.Render("  • skip_metadata_api_check = true"))
+	fmt.Printf("   %s\n", dimStyle.Render("  • skip_requesting_account_id = true"))
+	fmt.Printf("   %s\n", dimStyle.Render("  • skip_s3_checksum = true"))
 	fmt.Printf("   %s\n", dimStyle.Render("  • use_path_style = true"))
 	fmt.Println()
 }
@@ -30,7 +32,13 @@ func BackendConfigSummary(config *backendconfig.TofuBackendConfig) {
 	fmt.Printf("%s  %s\n",
 		successIcon.Render("📦"),
 		successTitle.Render("Backend Configuration"))
-	fmt.Printf("   %-12s %s\n", dimStyle.Render("Type:"), infoMessage.Render(config.BackendType))
+
+	// Show type, defaulting to "local" if empty
+	backendType := config.BackendType
+	if backendType == "" {
+		backendType = "local (default)"
+	}
+	fmt.Printf("   %-12s %s\n", dimStyle.Render("Type:"), infoMessage.Render(backendType))
 	fmt.Printf("   %-12s %s\n", dimStyle.Render("Bucket:"), infoMessage.Render(config.BackendBucket))
 	fmt.Printf("   %-12s %s\n", dimStyle.Render("Key:"), infoMessage.Render(config.BackendKey))
 	if config.BackendRegion != "" {
@@ -66,6 +74,11 @@ func MissingBackendConfigError(missing []backendconfig.MissingField, backendType
 		fmt.Printf("     %s %s\n",
 			dimStyle.Render("Flag:"),
 			cmdStyle.Render(field.FlagName))
+		if field.EnvVarName != "" {
+			fmt.Printf("     %s %s\n",
+				dimStyle.Render("Env:"),
+				cmdStyle.Render(field.EnvVarName))
+		}
 		fmt.Printf("     %s %s\n",
 			dimStyle.Render("Example:"),
 			cmdStyle.Render(field.Example))
@@ -82,6 +95,20 @@ func MissingFieldPrompt(field backendconfig.MissingField) {
 	fmt.Printf("   %s\n", dimStyle.Render(field.Description))
 	fmt.Printf("   %s %s\n", dimStyle.Render("Example:"), cmdStyle.Render(field.Example))
 	fmt.Printf("   %s %s\n", dimStyle.Render("CLI flag:"), cmdStyle.Render(field.FlagName))
+	if field.EnvVarName != "" {
+		fmt.Printf("   %s %s\n", dimStyle.Render("Env var:"), cmdStyle.Render(field.EnvVarName))
+	}
+	fmt.Println()
+}
+
+// IncompleteBackendConfigWarning displays a warning when backend fields are set but type is not specified.
+func IncompleteBackendConfigWarning() {
+	fmt.Println()
+	fmt.Printf("%s  %s\n",
+		warningIcon.Render(iconWarning),
+		warningTitle.Render("Incomplete Backend Configuration"))
+	fmt.Printf("   %s\n", dimStyle.Render("Backend fields are set but --backend-type is not specified."))
+	fmt.Printf("   %s\n", dimStyle.Render("Using local backend. Set --backend-type to use remote state."))
 	fmt.Println()
 }
 

@@ -117,6 +117,7 @@ func RunCommand(
 
 // buildBackendConfigArgs builds backend configuration arguments based on backend type.
 // For S3-compatible backends (R2, MinIO, etc.), it adds the endpoint and skip flags.
+// Both Terraform and OpenTofu support the same S3 backend configuration format.
 func buildBackendConfigArgs(config *backendconfig.TofuBackendConfig) []string {
 	var args []string
 
@@ -134,18 +135,19 @@ func buildBackendConfigArgs(config *backendconfig.TofuBackendConfig) []string {
 		}
 
 		// S3-compatible endpoint (R2, MinIO, etc.)
+		// Both Terraform and OpenTofu use the endpoints={s3="..."} format
 		if config.BackendEndpoint != "" {
-			// Use endpoints block format for Terraform 1.6+
 			args = append(args, fmt.Sprintf("endpoints={s3=\"%s\"}", config.BackendEndpoint))
 		}
 
 		// S3-compatible skip flags (auto-enabled when S3Compatible is true)
 		// These are required for non-AWS S3 implementations like Cloudflare R2 or MinIO
+		// All flags are supported by both Terraform and OpenTofu
 		if config.S3Compatible {
 			args = append(args, "skip_credentials_validation=true")
 			args = append(args, "skip_region_validation=true")
-			args = append(args, "skip_requesting_account_id=true")
 			args = append(args, "skip_metadata_api_check=true")
+			args = append(args, "skip_requesting_account_id=true")
 			args = append(args, "skip_s3_checksum=true")
 			args = append(args, "use_path_style=true")
 		}

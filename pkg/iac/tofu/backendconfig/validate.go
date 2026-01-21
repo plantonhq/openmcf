@@ -20,6 +20,8 @@ type MissingField struct {
 	Name string
 	// FlagName is the CLI flag to provide this value (e.g., "--backend-endpoint")
 	FlagName string
+	// EnvVarName is the environment variable to provide this value (e.g., "PROJECT_PLANTON_BACKEND_ENDPOINT")
+	EnvVarName string
 	// LabelName is the manifest label (e.g., "terraform.project-planton.org/backend.endpoint")
 	LabelName string
 	// Description is a human-readable description of the field
@@ -66,6 +68,7 @@ func validateS3Backend(config *TofuBackendConfig) *ValidationResult {
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "bucket",
 			FlagName:    "--backend-bucket",
+			EnvVarName:  EnvBackendBucket,
 			LabelName:   "terraform.project-planton.org/backend.bucket",
 			Description: "S3 bucket name for state storage",
 			Example:     "my-terraform-state-bucket",
@@ -79,6 +82,7 @@ func validateS3Backend(config *TofuBackendConfig) *ValidationResult {
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "key",
 			FlagName:    "--backend-key",
+			EnvVarName:  "", // Key is intentionally not read from env vars
 			LabelName:   "terraform.project-planton.org/backend.key",
 			Description: "Path to state file within bucket",
 			Example:     "env/prod/terraform.tfstate",
@@ -92,6 +96,7 @@ func validateS3Backend(config *TofuBackendConfig) *ValidationResult {
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "region",
 			FlagName:    "--backend-region",
+			EnvVarName:  EnvBackendRegion,
 			LabelName:   "terraform.project-planton.org/backend.region",
 			Description: "AWS region (use 'auto' for S3-compatible backends like R2)",
 			Example:     "us-west-2 (or 'auto' for R2/MinIO)",
@@ -105,6 +110,7 @@ func validateS3Backend(config *TofuBackendConfig) *ValidationResult {
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "endpoint",
 			FlagName:    "--backend-endpoint",
+			EnvVarName:  EnvBackendEndpoint,
 			LabelName:   "terraform.project-planton.org/backend.endpoint",
 			Description: "Custom S3-compatible endpoint (required when region is 'auto')",
 			Example:     "https://<account-id>.r2.cloudflarestorage.com",
@@ -127,6 +133,7 @@ func validateGCSBackend(config *TofuBackendConfig) *ValidationResult {
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "bucket",
 			FlagName:    "--backend-bucket",
+			EnvVarName:  EnvBackendBucket,
 			LabelName:   "terraform.project-planton.org/backend.bucket",
 			Description: "GCS bucket name for state storage",
 			Example:     "my-terraform-state",
@@ -140,6 +147,7 @@ func validateGCSBackend(config *TofuBackendConfig) *ValidationResult {
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "key",
 			FlagName:    "--backend-key",
+			EnvVarName:  "", // Key is intentionally not read from env vars
 			LabelName:   "terraform.project-planton.org/backend.key",
 			Description: "Prefix path for state file within bucket",
 			Example:     "terraform/state",
@@ -160,6 +168,7 @@ func validateAzureBackend(config *TofuBackendConfig) *ValidationResult {
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "bucket",
 			FlagName:    "--backend-bucket",
+			EnvVarName:  EnvBackendBucket,
 			LabelName:   "terraform.project-planton.org/backend.bucket",
 			Description: "Azure Storage container name for state storage",
 			Example:     "tfstate",
@@ -173,6 +182,7 @@ func validateAzureBackend(config *TofuBackendConfig) *ValidationResult {
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "key",
 			FlagName:    "--backend-key",
+			EnvVarName:  "", // Key is intentionally not read from env vars
 			LabelName:   "terraform.project-planton.org/backend.key",
 			Description: "State file blob name",
 			Example:     "prod.terraform.tfstate",

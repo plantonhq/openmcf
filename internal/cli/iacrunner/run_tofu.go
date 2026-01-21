@@ -54,8 +54,8 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 		os.Exit(1)
 	}
 
-	// Display backend configuration if available (before handoff)
-	if backendCfg != nil && backendCfg.BackendType != "" && backendCfg.BackendType != "local" {
+	// ALWAYS display backend configuration before handoff
+	if backendCfg != nil {
 		ui.BackendConfigSummary(backendCfg)
 	}
 
@@ -97,6 +97,11 @@ func buildAndValidateBackendConfig(ctx *Context, cmd *cobra.Command, provisioner
 	config, err := backendconfig.BuildBackendConfig(ctx.ManifestObject, provisionerType, cliFlags)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build backend configuration: %w", err)
+	}
+
+	// Check for incomplete configuration (has fields but no type)
+	if config.BackendType == "" && hasAnyBackendFields(config) {
+		ui.IncompleteBackendConfigWarning()
 	}
 
 	// Skip validation for local backend or when no backend is configured
@@ -151,6 +156,14 @@ func extractCLIBackendFlags(cmd *cobra.Command) backendconfig.CLIBackendFlags {
 		BackendRegion:   backendRegion,
 		BackendEndpoint: backendEndpoint,
 	}
+}
+
+// hasAnyBackendFields returns true if any backend field is configured.
+func hasAnyBackendFields(config *backendconfig.TofuBackendConfig) bool {
+	return config.BackendBucket != "" ||
+		config.BackendKey != "" ||
+		config.BackendRegion != "" ||
+		config.BackendEndpoint != ""
 }
 
 // printHclSuccess prints a success message for the appropriate binary.
