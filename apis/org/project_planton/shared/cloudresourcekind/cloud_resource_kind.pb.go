@@ -115,6 +115,7 @@ const (
 	CloudResourceKind_AzureVpc               CloudResourceKind = 405
 	CloudResourceKind_AzureNatGateway        CloudResourceKind = 406
 	CloudResourceKind_AzureVirtualMachine    CloudResourceKind = 407
+	CloudResourceKind_AzureStorageAccount    CloudResourceKind = 408
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -271,6 +272,7 @@ var (
 		405:  "AzureVpc",
 		406:  "AzureNatGateway",
 		407:  "AzureVirtualMachine",
+		408:  "AzureStorageAccount",
 		600:  "GcpArtifactRegistryRepo",
 		601:  "GcpCloudCdn",
 		602:  "GcpCloudFunction",
@@ -415,6 +417,7 @@ var (
 		"AzureVpc":                              405,
 		"AzureNatGateway":                       406,
 		"AzureVirtualMachine":                   407,
+		"AzureStorageAccount":                   408,
 		"GcpArtifactRegistryRepo":               600,
 		"GcpCloudCdn":                           601,
 		"GcpCloudFunction":                      602,
@@ -663,7 +666,7 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x0fis_service_kind\x18\x05 \x01(\bR\risServiceKind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf5.\n" +
+	"\x02v1\x10\x01*\x9f/\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12(\n" +
 	"\x14TestCloudResourceOne\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -711,7 +714,9 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\bAzureVpc\x10\x95\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azvpc\x12%\n" +
 	"\x0fAzureNatGateway\x10\x96\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aznat\x12(\n" +
 	"\x13AzureVirtualMachine\x10\x97\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azvm\x12.\n" +
+	"\b\r\x10\x01\"\x04azvm\x12(\n" +
+	"\x13AzureStorageAccount\x10\x98\x03\x1a\x0e\xa2\xf7\x04\n" +
+	"\b\r\x10\x01\"\x04azsa\x12.\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
 	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +
