@@ -105,6 +105,7 @@ const (
 	CloudResourceKind_AwsKmsKey          CloudResourceKind = 219
 	CloudResourceKind_AwsEc2Instance     CloudResourceKind = 220
 	CloudResourceKind_AwsClientVpn       CloudResourceKind = 221
+	CloudResourceKind_AwsDocumentDb      CloudResourceKind = 222
 	// 400–599: Azure resources
 	CloudResourceKind_AzureAksCluster        CloudResourceKind = 400
 	CloudResourceKind_AzureAksNodePool       CloudResourceKind = 401
@@ -261,6 +262,7 @@ var (
 		219:  "AwsKmsKey",
 		220:  "AwsEc2Instance",
 		221:  "AwsClientVpn",
+		222:  "AwsDocumentDb",
 		400:  "AzureAksCluster",
 		401:  "AzureAksNodePool",
 		402:  "AzureContainerRegistry",
@@ -404,6 +406,7 @@ var (
 		"AwsKmsKey":                             219,
 		"AwsEc2Instance":                        220,
 		"AwsClientVpn":                          221,
+		"AwsDocumentDb":                         222,
 		"AzureAksCluster":                       400,
 		"AzureAksNodePool":                      401,
 		"AzureContainerRegistry":                402,
@@ -660,7 +663,7 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x0fis_service_kind\x18\x05 \x01(\bR\risServiceKind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xd0.\n" +
+	"\x02v1\x10\x01*\xf5.\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12(\n" +
 	"\x14TestCloudResourceOne\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -698,6 +701,7 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\tAwsKmsKey\x10\xdb\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskms\x12&\n" +
 	"\x0eAwsEc2Instance\x10\xdc\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aec2inst\x12#\n" +
 	"\fAwsClientVpn\x10\xdd\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsvpn\x12#\n" +
+	"\rAwsDocumentDb\x10\xde\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05docdb\x12#\n" +
 	"\x0fAzureAksCluster\x10\x90\x03\x1a\r\xa2\xf7\x04\t\b\r\x10\x01\"\x03aks\x12&\n" +
 	"\x10AzureAksNodePool\x10\x91\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aksnp\x12*\n" +
 	"\x16AzureContainerRegistry\x10\x92\x03\x1a\r\xa2\xf7\x04\t\b\r\x10\x01\"\x03acr\x12\"\n" +

@@ -181,6 +181,11 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsvpn"
   }];
+  AwsDocumentDb = 222 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "docdb"
+  }];
 
   // 400–599: Azure resources
   AzureAksCluster = 400 [(kind_meta) = {

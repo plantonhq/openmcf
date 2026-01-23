@@ -36,6 +36,7 @@ go_library(
         "//apis/org/project_planton/provider/aws/awscertmanagercert/v1:awscertmanagercert",
         "//apis/org/project_planton/provider/aws/awsclientvpn/v1:awsclientvpn",
         "//apis/org/project_planton/provider/aws/awscloudfront/v1:awscloudfront",
+        "//apis/org/project_planton/provider/aws/awsdocumentdb/v1:awsdocumentdb",
         "//apis/org/project_planton/provider/aws/awsdynamodb/v1:awsdynamodb",
         "//apis/org/project_planton/provider/aws/awsec2instance/v1:awsec2instance",
         "//apis/org/project_planton/provider/aws/awsecrrepo/v1:awsecrrepo",
