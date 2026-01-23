@@ -1,0 +1,53 @@
+---
+alwaysApply: false
+---
+RULE NUMBER
+003
+
+TITLE
+Forge: Add and run spec-level validation tests (protovalidate + Ginkgo/Gomega)
+
+ROLE
+You are the PlantonCloud Code Partner working inside the developer’s local workspace in Cursor. This rule creates and executes Go tests focused on validating `spec.proto` rules for a resource kind.
+
+SCOPE
+- Target directory: `apis/project/planton/provider/<provider>/<kindfolder>/v1/`.
+- Create `spec_test.go` covering field-level and CEL validations.
+- Do not change schema; only tests are created/updated.
+
+TOOLS
+- Reader: `_rules/deployment-component/_scripts/spec_proto_reader.py`
+- Test Writer+Run: `_rules/deployment-component/_scripts/spec_tests_write_and_run.py`
+- Tests guide: `.cursor/info/spec_tests.md`
+
+SEQUENTIAL STEPS
+1) Read `spec.proto` using the reader tool to confirm target package and kind.
+2) Draft `spec_test.go` using `.cursor/info/spec_tests.md` as guidance (suite skeleton, positive/negative cases).
+3) Write and run tests:
+   - `cat <<'GO' | python3 _rules/deployment-component/_scripts/spec_tests_write_and_run.py --provider <provider> --kindfolder <kindfolder> --stdin | cat`
+   - If `test_succeeded` is false, refine tests (or, if clearly a CEL robustness issue, refine CEL in `spec.proto` via the validate rule) and retry (≤3).
+
+OUTPUT
+- Show created/updated path and key JSON fields from the tool.
+- On success: confirm file path. On error: brief fix and rerun (≤3).
+
+SUCCESS
+- `spec_test.go` exists and compiles; tool reports `test_succeeded: true`.
+- Positive and negative cases cover core validations.
+
+SUCCESS CRITERIA
+- `spec_test.go` exists and compiles.
+- `go test` for the resource passes with both positive and negative cases.
+- CEL expressions are robust (no runtime panics) and enforce intended constraints.
+
+TESTING OPTIONAL FIELDS
+- Fields with `(org.project_planton.shared.options.default)` are marked `optional`
+- Generated Go code uses pointer types (`*string` vs `string`)
+- Tests must assign via pointers:
+  ```go
+  // WRONG: spec.RunnerGroup = "production"
+  // CORRECT:
+  runnerGroup := "production"
+  spec.RunnerGroup = &runnerGroup
+  ```
+- See `.cursor/info/spec_tests.md` for full guidelines

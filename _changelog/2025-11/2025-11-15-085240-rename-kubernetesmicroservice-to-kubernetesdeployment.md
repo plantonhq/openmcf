@@ -33,7 +33,7 @@ Renaming to `KubernetesDeployment`:
 
 ### Rename Strategy
 
-Used the automated rename script located at `.cursor/rules/deployment-component/rename/_scripts/rename_deployment_component.py` which applies 7 comprehensive naming patterns:
+Used the automated rename script located at `_rules/deployment-component/rename/_scripts/rename_deployment_component.py` which applies 7 comprehensive naming patterns:
 
 1. **PascalCase**: `KubernetesMicroservice` → `KubernetesDeployment`
 2. **camelCase**: `kubernetesMicroservice` → `kubernetesDeployment`

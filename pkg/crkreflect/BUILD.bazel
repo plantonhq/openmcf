@@ -92,6 +92,7 @@ go_library(
         "//apis/org/project_planton/provider/digitalocean/digitaloceancertificate/v1:digitaloceancertificate",
         "//apis/org/project_planton/provider/digitalocean/digitaloceancontainerregistry/v1:digitaloceancontainerregistry",
         "//apis/org/project_planton/provider/digitalocean/digitaloceandatabasecluster/v1:digitaloceandatabasecluster",
+        "//apis/org/project_planton/provider/digitalocean/digitaloceandnsrecord/v1:digitaloceandnsrecord",
         "//apis/org/project_planton/provider/digitalocean/digitaloceandnszone/v1:digitaloceandnszone",
         "//apis/org/project_planton/provider/digitalocean/digitaloceandroplet/v1:digitaloceandroplet",
         "//apis/org/project_planton/provider/digitalocean/digitaloceanfirewall/v1:digitaloceanfirewall",

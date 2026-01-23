@@ -196,7 +196,7 @@ Key changes:
 
 ```
 Before:
-.cursor/rules/deployment-component/
+_rules/deployment-component/
 ├── _scripts/
 │   ├── rename_deployment_component.py  ← Here
 │   └── ... (other scripts for forge, audit, etc.)
@@ -205,7 +205,7 @@ Before:
     └── README.md
 
 After:
-.cursor/rules/deployment-component/
+_rules/deployment-component/
 ├── _scripts/
 │   └── ... (other scripts for forge, audit, etc.)
 └── rename/

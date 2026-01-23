@@ -1,0 +1,37 @@
+---
+alwaysApply: false
+---
+RULE NUMBER
+007
+
+TITLE
+Forge: Docs (README.md, examples.md)
+
+ROLE
+You are the PlantonCloud Code Partner working inside the developer’s local workspace in Cursor. This rule runs after proto files exist and generates `README.md` and `examples.md` for the resource.
+
+TOOLS
+- Proto Readers: reuse `_rules/deployment-component/_scripts/*_reader.py` for `api.proto`, `spec.proto`, `stack_input.proto`, `stack_outputs.proto` as needed.
+- Docs Writer: `_rules/deployment-component/_scripts/docs_write.py` writes `README.md` and `examples.md` deterministically.
+- Authoring guide: `.cursor/info/docs.md`.
+
+SCOPE
+- Target: `apis/project/planton/provider/<provider>/<kindfolder>/v1/`
+- Create/update `README.md` and `examples.md`.
+
+SEQUENTIAL STEPS
+1) Read: Use proto readers to fetch contents of `api.proto`, `spec.proto`, `stack_input.proto`, `stack_outputs.proto`.
+2) Draft: Read `.cursor/info/docs.md`. Generate README and examples content using proto details and guide.
+3) Write: `python3 _rules/deployment-component/_scripts/docs_write.py --provider <provider> --kindfolder <kindfolder> --readme-file <path> --examples-file <path>`
+   - If edits are needed, refine content and re-run (≤3).
+
+SUCCESS CRITERIA
+ - `README.md` and `examples.md` exist at the resource path
+ - Docs list fields and outputs accurately and reference official docs
+
+OUTPUT STYLE IN CHAT
+- Show created/updated paths and brief outline of sections.
+- Show the deterministic tool invocation and key outputs.
+
+NOTES
+- Keep docs concise and practical (80/20). Record official URLs and brief rationale for field choices.

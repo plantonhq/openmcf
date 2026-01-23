@@ -6,7 +6,7 @@
 
 ## Summary
 
-Added comprehensive automation for systematically renaming deployment components across the entire Project Planton codebase. The new rename system applies seven comprehensive naming pattern replacements, updates the cloud resource registry, modifies all documentation, and validates changes through the full build pipeline (protos, build, test). This establishes rename as the seventh lifecycle operation alongside forge, audit, update, complete, fix, and delete. Additionally, reorganized all automation scripts from `.cursor/tools/` to `.cursor/rules/deployment-component/_scripts/` for better organization and discoverability.
+Added comprehensive automation for systematically renaming deployment components across the entire Project Planton codebase. The new rename system applies seven comprehensive naming pattern replacements, updates the cloud resource registry, modifies all documentation, and validates changes through the full build pipeline (protos, build, test). This establishes rename as the seventh lifecycle operation alongside forge, audit, update, complete, fix, and delete. Additionally, reorganized all automation scripts from `.cursor/tools/` to `_rules/deployment-component/_scripts/` for better organization and discoverability.
 
 ## Problem Statement / Motivation
 
@@ -94,7 +94,7 @@ The rename system applies comprehensive replacements covering all conventions:
 └── ... (15 more scripts)
 
 # After
-.cursor/rules/deployment-component/_scripts/
+_rules/deployment-component/_scripts/
 ├── api_reader.py
 ├── spec_proto_write_and_build.py
 ├── pulumi_module_write.py
@@ -114,20 +114,20 @@ The rename system applies comprehensive replacements covering all conventions:
 
 ### Phase 2: Rename Script (`rename_deployment_component.py`)
 
-**File**: `.cursor/rules/deployment-component/rename/_scripts/rename_deployment_component.py`  
+**File**: `_rules/deployment-component/rename/_scripts/rename_deployment_component.py`  
 **Size**: 494 lines  
 **Language**: Python 3
 
 #### Command-Line Interface
 
 ```bash
-python3 .cursor/rules/deployment-component/rename/_scripts/rename_deployment_component.py \
+python3 _rules/deployment-component/rename/_scripts/rename_deployment_component.py \
   --old-name KubernetesMicroservice \
   --new-name KubernetesDeployment \
   --new-id-prefix k8sdpl  # Optional
 
 # Keep existing ID prefix
-python3 .cursor/rules/deployment-component/rename/_scripts/rename_deployment_component.py \
+python3 _rules/deployment-component/rename/_scripts/rename_deployment_component.py \
   --old-name KubernetesMicroservice \
   --new-name KubernetesDeployment
 ```
@@ -226,7 +226,7 @@ JSON with comprehensive metrics:
 
 ### Phase 3: Cursor Rule (`rename-project-planton-component.mdc`)
 
-**File**: `.cursor/rules/deployment-component/rename/rename-project-planton-component.mdc`  
+**File**: `_rules/deployment-component/rename/rename-project-planton-component.mdc`  
 **Size**: 900 lines
 
 #### Interactive Workflow
@@ -309,7 +309,7 @@ What rename does NOT do:
 
 ### Phase 4: Documentation (`rename/README.md`)
 
-**File**: `.cursor/rules/deployment-component/rename/README.md`  
+**File**: `_rules/deployment-component/rename/README.md`  
 **Size**: 650 lines
 
 #### Major Sections
@@ -348,7 +348,7 @@ November 2025 workload refactoring (23 components renamed, ~500 files modified).
 
 ### Phase 5: Integration with Lifecycle System
 
-Updated `.cursor/rules/deployment-component/README.md`:
+Updated `_rules/deployment-component/README.md`:
 
 **Before**: Six Lifecycle Operations
 **After**: Seven Lifecycle Operations
@@ -457,7 +457,7 @@ Added the missing seventh operation (forge, audit, update, complete, fix, **rena
 
 **New files** (3 files, ~2,150 lines):
 ```
-.cursor/rules/deployment-component/
+_rules/deployment-component/
 ├── _scripts/
 │   └── rename_deployment_component.py      (494 lines) NEW
 └── rename/
@@ -472,7 +472,7 @@ Added the missing seventh operation (forge, audit, update, complete, fix, **rena
 - 2 rename docs (paths updated)
 
 **Directory reorganization**:
-- Moved: `.cursor/tools/` → `.cursor/rules/deployment-component/_scripts/`
+- Moved: `.cursor/tools/` → `_rules/deployment-component/_scripts/`
 - Added: `rename/` subdirectory
 
 ### Breaking Changes

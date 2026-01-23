@@ -161,13 +161,13 @@ sequenceDiagram
 - `.cursor/info/pulumi_module.md` - Getter methods guide
 
 ### Updated Rules
-- `.cursor/rules/coding-guidelines/protobuf-validations.mdc` - Default options section
-- `.cursor/rules/deployment-component/forge/flow/001-spec-proto.mdc`
-- `.cursor/rules/deployment-component/forge/flow/002-spec-validate.mdc`
-- `.cursor/rules/deployment-component/forge/flow/003-spec-tests.mdc`
-- `.cursor/rules/deployment-component/forge/flow/009-pulumi-module.mdc`
-- `.cursor/rules/deployment-component/update/update-project-planton-component.mdc`
-- `.cursor/rules/deployment-component/fix/fix-project-planton-component.mdc`
+- `_rules/coding-guidelines/protobuf-validations.mdc` - Default options section
+- `_rules/deployment-component/forge/flow/001-spec-proto.mdc`
+- `_rules/deployment-component/forge/flow/002-spec-validate.mdc`
+- `_rules/deployment-component/forge/flow/003-spec-tests.mdc`
+- `_rules/deployment-component/forge/flow/009-pulumi-module.mdc`
+- `_rules/deployment-component/update/update-project-planton-component.mdc`
+- `_rules/deployment-component/fix/fix-project-planton-component.mdc`
 
 ### Fixed Tests
 - `apis/org/project_planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec_test.go`

@@ -94,7 +94,7 @@ Adapted from planton-cloud to match Project Planton's structure:
 apis/org/project_planton/provider/**  → deployment-component
 cmd/project-planton/**                → cli
 pkg/**                                → pkg
-.cursor/rules/deployment-component/forge/** → forge
+_rules/deployment-component/forge/** → forge
 site/**                               → site
 tools/**, hack/**                     → tooling
 ```
@@ -339,10 +339,10 @@ Agent:
 ## Files Created
 
 ### Rules
-- `.cursor/rules/issues/create-project-planton-issue.mdc` (653 lines)
-- `.cursor/rules/issues/close-project-planton-issue.mdc` (662 lines)
-- `.cursor/rules/git/github/issues/generate-project-planton-issue-info.mdc` (341 lines)
-- `.cursor/rules/git/github/issues/create-project-planton-github-issue.mdc` (281 lines)
+- `_rules/issues/create-project-planton-issue.mdc` (653 lines)
+- `_rules/issues/close-project-planton-issue.mdc` (662 lines)
+- `_rules/git/github/issues/generate-project-planton-issue-info.mdc` (341 lines)
+- `_rules/git/github/issues/create-project-planton-github-issue.mdc` (281 lines)
 
 ### Tooling
 - `tools/local-dev/create_github_issue.py` (265 lines)

@@ -303,7 +303,7 @@ planton apply -f tekton-operator.yaml
 
 - **KubernetesElasticOperator**: Reference implementation for operator pattern
 - **KubernetesStrimziKafkaOperator**: Similar operator deployment pattern
-- **Forge Workflow**: Used `.cursor/rules/deployment-component/forge/` rules
+- **Forge Workflow**: Used `_rules/deployment-component/forge/` rules
 
 ## Design Decisions
 

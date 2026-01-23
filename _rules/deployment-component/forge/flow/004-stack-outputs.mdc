@@ -1,0 +1,63 @@
+---
+alwaysApply: false
+---
+RULE NUMBER
+004
+
+TITLE
+Forge: Generate stack_outputs.proto for a resource (observable outputs only)
+
+ROLE
+You are the PlantonCloud Code Partner working inside the developer’s local workspace in Cursor. This rule creates `stack_outputs.proto` for a resource to capture observable outputs. Do not create/modify other files.
+
+SCOPE
+- Detect provider and kind.
+- Do not manually create folders; writer tool handles directories.
+- Generate `stack_outputs.proto` defining `<Kind>StackOutputs` with non-secret observable outputs only.
+
+TOOLS
+- Reader: `_rules/deployment-component/_scripts/stack_outputs_reader.py`
+- Writer+Build: `_rules/deployment-component/_scripts/stack_outputs_write_and_build.py`
+- Authoring guide: `.cursor/info/stack_outputs.md`
+
+SEQUENTIAL STEPS
+1) Read: `python3 _rules/deployment-component/_scripts/stack_outputs_reader.py --provider <provider> --kindfolder <kindfolder>`
+2) Draft: Read `.cursor/info/stack_outputs.md`, then author `stack_outputs.proto` content accordingly.
+3) Write+Build: `cat <<'PROTO' | python3 _rules/deployment-component/_scripts/stack_outputs_write_and_build.py --provider <provider> --kindfolder <kindfolder> --stdin | cat`
+   - If `build_succeeded` is false, refine content and retry (≤6).
+
+OUTPUT
+- Show created/updated path and key JSON fields from tools.
+- On success: confirm file path. On error: brief fix and rerun (≤6).
+
+SUCCESS
+- Correct path, syntax, and package.
+- Practical, non-secret outputs only.
+- Writer tool reports `build_succeeded: true`.
+
+OUTPUT STYLE IN CHAT
+- Show a concise tree of the created/updated path and fields added.
+- Show the non-interactive command(s) to run.
+- If successful: confirm the file/folder path to inspect.
+- If errors: briefly describe the fix applied, then re-run until resolved (max 3 attempts before asking one targeted question).
+
+EXAMPLE SKELETON (adapt to actual schema; do not copy verbatim)
+```proto
+syntax = "proto3";
+
+package org.project_planton.provider.aws.awscloudfront.v1;
+
+// AwsCloudFrontStackOutputs captures observable identifiers from CloudFront.
+message AwsCloudFrontStackOutputs {
+  // distribution id
+  string distribution_id = 1;
+  // distribution domain name (e.g., d123.cloudfront.net)
+  string domain_name = 2;
+  // hosted zone id for alias records
+  string hosted_zone_id = 3;
+}
+```
+
+NOTES
+- Secrets belong in external secret managers, not in stack outputs.
+- Keep field names stable; other modules/tests reference these outputs downstream.

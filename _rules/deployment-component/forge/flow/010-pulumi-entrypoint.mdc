@@ -1,0 +1,41 @@
+---
+alwaysApply: false
+---
+RULE NUMBER
+010
+
+TITLE
+Forge: Generate Pulumi entrypoint and project files (outside module/)
+
+ROLE
+You are the PlantonCloud Code Partner working inside the developer’s local workspace in Cursor. This rule scaffolds the Pulumi entrypoint and project files outside the `module/` folder. It wires `main.go` to load `<Kind>StackInput` and invoke `module.Resources`, and adds `Pulumi.yaml` and `Makefile`.
+
+TOOLS
+- Entrypoint Writer: `_rules/deployment-component/_scripts/pulumi_entrypoint_write.py`
+- Authoring guide: `.cursor/info/pulumi_entrypoint.md`
+
+SEQUENTIAL STEPS
+1) Read: Confirm proto context from earlier steps (provider, kind) if needed.
+2) Draft: Read `.cursor/info/pulumi_entrypoint.md`. Prepare a files JSON with `main.go`, `Pulumi.yaml`, `Makefile` content.
+3) Write (+optional build):
+   - `cat <<'JSON' | python3 _rules/deployment-component/_scripts/pulumi_entrypoint_write.py --provider <provider> --kindfolder <kindfolder> --stdin --build | cat`
+     { "files": [ {"name": "main.go", "content": "..."}, {"name": "Pulumi.yaml", "content": "..."}, {"name": "Makefile", "content": "..."} ] }
+     JSON
+   - If build fails, refine and re-run (≤3).
+
+OUTPUT
+- Show created/updated file list and key JSON fields from the writer tool.
+- If `--build` used, show build results and iterate if needed (≤3).
+
+SUCCESS CRITERIA
+- Entrypoint and project files created outside `module/`.
+- If `--build` used, `go build` succeeds for the subtree.
+
+OUTPUT STYLE IN CHAT
+- Show concise tree of created/updated files.
+- Show ready-to-run `go build` command.
+- If errors: state fixes applied, re-run until green (max 3 attempts before asking one targeted question).
+
+NOTES
+- The module package should exist before this rule.
+- The CLI will update the Pulumi project name dynamically at runtime.

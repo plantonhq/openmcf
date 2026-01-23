@@ -104,7 +104,7 @@ go test -v
 ### Files Modified
 
 **Audit Rule:**
-- `.cursor/rules/deployment-component/audit/audit-project-planton-component.mdc`
+- `_rules/deployment-component/audit/audit-project-planton-component.mdc`
   - Added 80+ lines of formatting requirements (before report structure)
   - Added validation checklist
   - Enhanced report template with properly formatted examples

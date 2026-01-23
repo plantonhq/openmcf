@@ -77,6 +77,7 @@ import (
 	digitaloceancertificatev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean/digitaloceancertificate/v1"
 	digitaloceancontainerregistryv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean/digitaloceancontainerregistry/v1"
 	digitaloceandatabaseclusterv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean/digitaloceandatabasecluster/v1"
+	digitaloceandnsrecordv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean/digitaloceandnsrecord/v1"
 	digitaloceandnszonev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean/digitaloceandnszone/v1"
 	digitaloceandropletv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean/digitaloceandroplet/v1"
 	digitaloceanfirewallv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean/digitaloceanfirewall/v1"
@@ -263,6 +264,7 @@ var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 	cloudresourcekind.CloudResourceKind_DigitalOceanCertificate:        &digitaloceancertificatev1.DigitalOceanCertificate{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanContainerRegistry:  &digitaloceancontainerregistryv1.DigitalOceanContainerRegistry{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseCluster:    &digitaloceandatabaseclusterv1.DigitalOceanDatabaseCluster{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDnsRecord:          &digitaloceandnsrecordv1.DigitalOceanDnsRecord{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanDnsZone:            &digitaloceandnszonev1.DigitalOceanDnsZone{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanDroplet:            &digitaloceandropletv1.DigitalOceanDroplet{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanFirewall:           &digitaloceanfirewallv1.DigitalOceanFirewall{},

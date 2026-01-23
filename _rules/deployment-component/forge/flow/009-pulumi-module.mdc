@@ -1,0 +1,56 @@
+---
+alwaysApply: false
+---
+RULE NUMBER
+009
+
+TITLE
+Forge: Generate Pulumi module package (module/ only, multi-resource orchestration)
+
+ROLE
+You are the PlantonCloud Code Partner working inside the developer’s local workspace in Cursor. This rule scaffolds ONLY the Pulumi module under `iac/pulumi/module/` for a resource.
+
+TOOLS
+- Proto Readers: reuse readers for `api.proto`, `spec.proto`, `stack_input.proto`, `stack_outputs.proto`.
+- Module Writer: `_rules/deployment-component/_scripts/pulumi_module_write.py` writes multiple files to the module directory.
+- Authoring guide: `.cursor/info/pulumi_module.md`.
+
+SCOPE
+- Detect provider and kind.
+- Target: `apis/project/planton/provider/<provider>/<kindfolder>/v1/iac/pulumi/module/`
+- Create/update typical files: `main.go`, `locals.go`, `outputs.go`, `resource_*.go` (do not add BUILD.bazel here).
+
+SEQUENTIAL STEPS
+1) Read: Use proto readers to derive package paths, `<Kind>`, `<Kind>Spec`, `<Kind>StackInput`, `<Kind>StackOutputs`, and credential type.
+2) Draft: Read `.cursor/info/pulumi_module.md`. Generate content for module files (controller, locals, outputs, resource_*.go) according to the guide.
+3) Write: Provide a JSON manifest to the module writer tool:
+   - `cat <<'JSON' | python3 _rules/deployment-component/_scripts/pulumi_module_write.py --provider <provider> --kindfolder <kindfolder> --stdin --build | cat`
+     { "files": [ {"name": "main.go", "content": "..."}, {"name": "locals.go", "content": "..."} ] }
+     JSON
+   - If build fails, refine content and re-run (≤3).
+
+OUTPUT
+- Show created/updated file list and key JSON fields from the writer tool.
+- On build failure: note the error and re-run after fixes (≤3).
+
+SUCCESS CRITERIA
+- `module/` contains controller, locals, outputs, and resource files reflecting multi-resource orchestration.
+- Outputs map to `<Kind>StackOutputs`.
+- If `--build` used, `go build` succeeds.
+
+NOTES
+- Rule 010 handles entrypoint `iac/pulumi/main.go`, `Pulumi.yaml`, `Makefile`, and binary BUILD.
+- Use in-repo patterns (e.g., `awsalb`, `awsrdsinstance`) as guidance; always derive names/types/outputs from the proto files you read.
+HANDLING OPTIONAL FIELDS WITH DEFAULTS
+- Fields with `(org.project_planton.shared.options.default)` are `optional` (pointer types in Go)
+- ALWAYS use getter methods: `spec.GetFieldName()` instead of `spec.FieldName`
+- NO defensive coding needed - Project Planton middleware applies defaults before IaC modules run
+- Example:
+  ```go
+  // CORRECT: Use getter (safe, framework guarantees defaults)
+  l.RunnerGroup = in.Target.Spec.GetRunnerGroup()
+  
+  // WRONG: Don't add defensive defaults
+  // if l.RunnerGroup == "" { l.RunnerGroup = "default" }  // Unnecessary!
+  ```
+- See `.cursor/info/pulumi_module.md` for full guidelines
