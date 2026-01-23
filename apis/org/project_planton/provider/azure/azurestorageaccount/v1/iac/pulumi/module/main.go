@@ -40,7 +40,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurestorageaccountv1.AzureStora
 
 		networkRulesArgs = &storage.AccountNetworkRulesTypeArgs{
 			DefaultAction: pulumi.String(getNetworkDefaultAction(spec.NetworkRules.GetDefaultAction())),
-			Bypass:        bypass,
+			Bypasses:      bypass,
 		}
 
 		// Add IP rules
@@ -64,7 +64,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurestorageaccountv1.AzureStora
 		// Default network rules: Deny all with Azure Services bypass
 		networkRulesArgs = &storage.AccountNetworkRulesTypeArgs{
 			DefaultAction: pulumi.String("Deny"),
-			Bypass:        pulumi.StringArray{pulumi.String("AzureServices")},
+			Bypasses:      pulumi.StringArray{pulumi.String("AzureServices")},
 		}
 	}
 
@@ -114,7 +114,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurestorageaccountv1.AzureStora
 			AccessTier:             pulumi.String(getAccessTier(spec.GetAccessTier())),
 
 			// Security settings
-			EnableHttpsTrafficOnly:     pulumi.Bool(spec.GetEnableHttpsTrafficOnly()),
+			HttpsTrafficOnlyEnabled:    pulumi.Bool(spec.GetEnableHttpsTrafficOnly()),
 			MinTlsVersion:              pulumi.String(getMinTlsVersion(spec.GetMinTlsVersion())),
 			AllowNestedItemsToBePublic: pulumi.Bool(false),
 
