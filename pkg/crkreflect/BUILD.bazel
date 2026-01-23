@@ -159,6 +159,7 @@ go_library(
         "//apis/org/project_planton/provider/kubernetes/kubernetespostgres/v1:kubernetespostgres",
         "//apis/org/project_planton/provider/kubernetes/kubernetesprometheus/v1:kubernetesprometheus",
         "//apis/org/project_planton/provider/kubernetes/kubernetesredis/v1:kubernetesredis",
+        "//apis/org/project_planton/provider/kubernetes/kubernetesrookcephcluster/v1:kubernetesrookcephcluster",
         "//apis/org/project_planton/provider/kubernetes/kubernetesrookcephoperator/v1:kubernetesrookcephoperator",
         "//apis/org/project_planton/provider/kubernetes/kubernetessignoz/v1:kubernetessignoz",
         "//apis/org/project_planton/provider/kubernetes/kubernetessolr/v1:kubernetessolr",

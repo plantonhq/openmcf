@@ -1,0 +1,3 @@
+name: kubernetes-rook-ceph-cluster
+runtime: go
+description: Pulumi module for deploying Rook Ceph storage clusters on Kubernetes
