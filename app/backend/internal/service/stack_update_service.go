@@ -13,6 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
+	credentialv1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1"
+	stackupdatev1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/stackupdate/v1"
 	"github.com/plantonhq/project-planton/app/backend/internal/database"
 	"github.com/plantonhq/project-planton/app/backend/pkg/models"
 	"github.com/plantonhq/project-planton/internal/manifest"
@@ -22,21 +25,7 @@ import (
 	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumistack"
 	"github.com/plantonhq/project-planton/pkg/iac/stackinput"
 	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
-
-	"connectrpc.com/connect"
-	atlasv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/atlas"
-	auth0v1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/auth0"
-	awsv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws"
-	azurev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure"
-	cloudflarev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare"
-	confluentv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/confluent"
-	gcpv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp"
-	kubernetesv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes"
-	openfgav1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/openfga"
-	snowflakev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/snowflake"
-	cloudresourcekind "github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind"
-	credentialv1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1"
-	stackupdatev1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/stackupdate/v1"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -496,84 +485,32 @@ func (s *StackUpdateService) deployWithPulumi(ctx context.Context, stackUpdateID
 	// Step 10: Resolve provider credentials from database
 	// Credentials are resolved based on the provider from the cloud resource kind
 	// The provider is automatically determined from the kind (e.g., GcpCloudSql -> gcp)
-	providerConfig, err := s.credentialResolver.ResolveProviderConfig(ctx, kindName)
+	credentialConfig, err := s.credentialResolver.ResolveProviderConfig(ctx, kindName)
 	if err != nil {
 		return s.updateStackUpdateWithError(ctx, stackUpdateID, fmt.Errorf("failed to resolve provider credentials: %w", err))
 	}
 
-	// Step 11: Build provider config options from resolved credentials
-	// Convert resolved credentials to files (same pattern as CLI)
-	var awsConfig *awsv1.AwsProviderConfig
-	var gcpConfig *gcpv1.GcpProviderConfig
-	var azureConfig *azurev1.AzureProviderConfig
-	var atlasConfig *atlasv1.AtlasProviderConfig
-	var auth0Config *auth0v1.Auth0ProviderConfig
-	var cloudflareConfig *cloudflarev1.CloudflareProviderConfig
-	var confluentConfig *confluentv1.ConfluentProviderConfig
-	var openfgaConfig *openfgav1.OpenFgaProviderConfig
-	var snowflakeConfig *snowflakev1.SnowflakeProviderConfig
-	var kubernetesConfig *kubernetesv1.KubernetesProviderConfig
-
-	// Extract provider configs from oneof
-	switch cfg := providerConfig.Data.(type) {
-	case *credentialv1.CredentialProviderConfig_Aws:
-		// Use provider proto directly
-		awsConfig = cfg.Aws
-	case *credentialv1.CredentialProviderConfig_Gcp:
-		gcpConfig = cfg.Gcp
-	case *credentialv1.CredentialProviderConfig_Azure:
-		azureConfig = cfg.Azure
-	case *credentialv1.CredentialProviderConfig_Atlas:
-		atlasConfig = cfg.Atlas
-	case *credentialv1.CredentialProviderConfig_Auth0:
-		auth0Config = cfg.Auth0
-	case *credentialv1.CredentialProviderConfig_Cloudflare:
-		cloudflareConfig = cfg.Cloudflare
-	case *credentialv1.CredentialProviderConfig_Confluent:
-		confluentConfig = cfg.Confluent
-	case *credentialv1.CredentialProviderConfig_Openfga:
-		openfgaConfig = cfg.Openfga
-	case *credentialv1.CredentialProviderConfig_Snowflake:
-		snowflakeConfig = cfg.Snowflake
-	case *credentialv1.CredentialProviderConfig_Kubernetes:
-		kubernetesConfig = cfg.Kubernetes
-	}
-
-	providerConfigOptions, cleanupProviderConfigs, err := stackinputproviderconfig.BuildProviderConfigOptionsFromUserCredentials(
-		awsConfig,
-		gcpConfig,
-		azureConfig,
-		atlasConfig,
-		auth0Config,
-		cloudflareConfig,
-		confluentConfig,
-		openfgaConfig,
-		snowflakeConfig,
-		kubernetesConfig,
-	)
+	// Step 11: Build provider config from resolved credentials
+	// Extract the credential proto from the oneof and write it to a temp file
+	credentialProto := extractCredentialProto(credentialConfig)
+	stackInputProviderConfig, cleanupProviderConfig, err := stackinputproviderconfig.BuildFromProto(credentialProto, provider)
 	if err != nil {
 		return s.updateStackUpdateWithError(ctx, stackUpdateID, fmt.Errorf("failed to build provider config from user credentials: %w", err))
 	}
-	defer cleanupProviderConfigs()
+	defer cleanupProviderConfig()
 
 	// Validate that required credentials are provided based on provider enum
-	if err := s.validateProviderCredentials(provider, providerConfigOptions, kindName); err != nil {
+	if err := stackinputproviderconfig.ValidateProviderConfig(provider, stackInputProviderConfig, kindName); err != nil {
 		return s.updateStackUpdateWithError(ctx, stackUpdateID, err)
 	}
 
-	// Debug: Log which provider configs were found
-	if providerConfigOptions.AwsProviderConfig != "" {
-		fmt.Printf("DEBUG: AWS provider config file created: %s\n", providerConfigOptions.AwsProviderConfig)
-	}
-	if providerConfigOptions.GcpProviderConfig != "" {
-		fmt.Printf("DEBUG: GCP provider config file created: %s\n", providerConfigOptions.GcpProviderConfig)
-	}
-	if providerConfigOptions.AzureProviderConfig != "" {
-		fmt.Printf("DEBUG: Azure provider config file created: %s\n", providerConfigOptions.AzureProviderConfig)
+	// Debug: Log provider config
+	if stackInputProviderConfig.Path != "" {
+		fmt.Printf("DEBUG: Provider config file created: %s (provider: %s)\n", stackInputProviderConfig.Path, provider.String())
 	}
 
-	// Step 11: Build stack input YAML (REQUIRED - fail if error)
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfigOptions)
+	// Step 12: Build stack input YAML (REQUIRED - fail if error)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, stackInputProviderConfig)
 	if err != nil {
 		return s.updateStackUpdateWithError(ctx, stackUpdateID, fmt.Errorf("failed to build stack input YAML: %w", err))
 	}
@@ -926,78 +863,36 @@ func (s *StackUpdateService) cancelStackLock(ctx context.Context, pulumiModulePa
 	return nil
 }
 
-// validateProviderCredentials validates that required credentials are provided based on provider enum
-func (s *StackUpdateService) validateProviderCredentials(
-	provider cloudresourcekind.CloudResourceProvider,
-	providerConfigOptions stackinputproviderconfig.StackInputProviderConfigOptions,
-	kindName string,
-) error {
-	switch provider {
-	case cloudresourcekind.CloudResourceProvider_aws:
-		if providerConfigOptions.AwsProviderConfig == "" {
-			return fmt.Errorf(
-				"AWS credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				kindName,
-			)
-		}
-	case cloudresourcekind.CloudResourceProvider_gcp:
-		if providerConfigOptions.GcpProviderConfig == "" {
-			return fmt.Errorf(
-				"GCP credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				kindName,
-			)
-		}
-	case cloudresourcekind.CloudResourceProvider_azure:
-		if providerConfigOptions.AzureProviderConfig == "" {
-			return fmt.Errorf(
-				"Azure credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				kindName,
-			)
-		}
-	case cloudresourcekind.CloudResourceProvider_atlas:
-		if providerConfigOptions.AtlasProviderConfig == "" {
-			return fmt.Errorf(
-				"Atlas credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				kindName,
-			)
-		}
-	case cloudresourcekind.CloudResourceProvider_cloudflare:
-		if providerConfigOptions.CloudflareProviderConfig == "" {
-			return fmt.Errorf(
-				"Cloudflare credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				kindName,
-			)
-		}
-	case cloudresourcekind.CloudResourceProvider_confluent:
-		if providerConfigOptions.ConfluentProviderConfig == "" {
-			return fmt.Errorf(
-				"Confluent credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				kindName,
-			)
-		}
-	case cloudresourcekind.CloudResourceProvider_snowflake:
-		if providerConfigOptions.SnowflakeProviderConfig == "" {
-			return fmt.Errorf(
-				"Snowflake credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				kindName,
-			)
-		}
-	case cloudresourcekind.CloudResourceProvider_kubernetes:
-		if providerConfigOptions.KubernetesProviderConfig == "" {
-			return fmt.Errorf(
-				"Kubernetes credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				kindName,
-			)
-		}
-	case cloudresourcekind.CloudResourceProvider_cloud_resource_provider_unspecified:
-		// No credentials needed for unspecified provider
-		return nil
-	default:
-		// For other providers (civo, digitalocean, etc.), credentials are optional
-		// They may be provided but are not required
+// extractCredentialProto extracts the provider-specific proto message from a CredentialProviderConfig.
+// Returns nil if no credentials are set.
+func extractCredentialProto(config *credentialv1.CredentialProviderConfig) proto.Message {
+	if config == nil {
 		return nil
 	}
-	return nil
+	switch cfg := config.Data.(type) {
+	case *credentialv1.CredentialProviderConfig_Aws:
+		return cfg.Aws
+	case *credentialv1.CredentialProviderConfig_Gcp:
+		return cfg.Gcp
+	case *credentialv1.CredentialProviderConfig_Azure:
+		return cfg.Azure
+	case *credentialv1.CredentialProviderConfig_Atlas:
+		return cfg.Atlas
+	case *credentialv1.CredentialProviderConfig_Auth0:
+		return cfg.Auth0
+	case *credentialv1.CredentialProviderConfig_Cloudflare:
+		return cfg.Cloudflare
+	case *credentialv1.CredentialProviderConfig_Confluent:
+		return cfg.Confluent
+	case *credentialv1.CredentialProviderConfig_Openfga:
+		return cfg.Openfga
+	case *credentialv1.CredentialProviderConfig_Snowflake:
+		return cfg.Snowflake
+	case *credentialv1.CredentialProviderConfig_Kubernetes:
+		return cfg.Kubernetes
+	default:
+		return nil
+	}
 }
 
 // ifEmpty returns "SET" if value is not empty, otherwise returns defaultValue
