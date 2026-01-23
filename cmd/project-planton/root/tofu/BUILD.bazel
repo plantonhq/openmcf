@@ -19,6 +19,7 @@ go_library(
         "//internal/cli/cliprint",
         "//internal/cli/flag",
         "//internal/cli/manifest",
+        "//internal/cli/ui",
         "//internal/cli/workspace",
         "//internal/manifest",
         "//pkg/crkreflect",

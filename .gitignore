@@ -42,3 +42,4 @@ web-app/src/gen/
 !app/entrypoint-unified.sh
 **/*.env
 _aacursor/
+backend.tf
