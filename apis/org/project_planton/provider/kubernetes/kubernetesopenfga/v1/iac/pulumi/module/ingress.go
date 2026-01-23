@@ -19,6 +19,9 @@ func ingress(ctx *pulumi.Context, locals *Locals, kubernetesProvider pulumi.Prov
 				Name:      pulumi.String(locals.IngressCertificateName),
 				Namespace: pulumi.String(vars.IstioIngressNamespace),
 				Labels:    pulumi.ToStringMap(locals.Labels),
+				Annotations: pulumi.StringMap{
+					"pulumi.com/patchForce": pulumi.String("true"),
+				},
 			},
 			Spec: certmanagerv1.CertificateSpecArgs{
 				DnsNames:   pulumi.ToStringArray(locals.IngressHostnames),
@@ -42,6 +45,9 @@ func ingress(ctx *pulumi.Context, locals *Locals, kubernetesProvider pulumi.Prov
 				Name:      pulumi.String(locals.IngressGatewayName),
 				Namespace: pulumi.String(vars.IstioIngressNamespace),
 				Labels:    pulumi.ToStringMap(locals.Labels),
+				Annotations: pulumi.StringMap{
+					"pulumi.com/patchForce": pulumi.String("true"),
+				},
 			},
 			Spec: gatewayv1.GatewaySpecArgs{
 				GatewayClassName: pulumi.String(vars.GatewayIngressClassName),
@@ -98,6 +104,9 @@ func ingress(ctx *pulumi.Context, locals *Locals, kubernetesProvider pulumi.Prov
 				Name:      pulumi.String(locals.IngressHttpRedirectRouteName),
 				Namespace: pulumi.String(locals.Namespace),
 				Labels:    pulumi.ToStringMap(locals.Labels),
+				Annotations: pulumi.StringMap{
+					"pulumi.com/patchForce": pulumi.String("true"),
+				},
 			},
 			Spec: gatewayv1.HTTPRouteSpecArgs{
 				Hostnames: pulumi.StringArray{pulumi.String(locals.IngressExternalHostname)},
@@ -136,6 +145,9 @@ func ingress(ctx *pulumi.Context, locals *Locals, kubernetesProvider pulumi.Prov
 				Name:      pulumi.String(locals.IngressHttpsRouteName),
 				Namespace: pulumi.String(locals.Namespace),
 				Labels:    pulumi.ToStringMap(locals.Labels),
+				Annotations: pulumi.StringMap{
+					"pulumi.com/patchForce": pulumi.String("true"),
+				},
 			},
 			Spec: gatewayv1.HTTPRouteSpecArgs{
 				Hostnames: pulumi.StringArray{pulumi.String(locals.IngressExternalHostname)},

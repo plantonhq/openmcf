@@ -32,10 +32,20 @@ func (e *ClipboardFileNotFoundError) Error() string {
 	return fmt.Sprintf("file not found: %s", e.FilePath)
 }
 
+// ClipboardNotStackInputError indicates clipboard content is valid YAML
+// but not a stack input (missing 'target' field).
+type ClipboardNotStackInputError struct {
+	Raw []byte
+}
+
+func (e *ClipboardNotStackInputError) Error() string {
+	return "clipboard content is not a stack input (missing 'target' field)"
+}
+
 // IsClipboardError returns true if the error is a clipboard-related error.
 func IsClipboardError(err error) bool {
 	switch err.(type) {
-	case *ClipboardEmptyError, *ClipboardInvalidYAMLError, *ClipboardFileNotFoundError:
+	case *ClipboardEmptyError, *ClipboardInvalidYAMLError, *ClipboardFileNotFoundError, *ClipboardNotStackInputError:
 		return true
 	default:
 		return false
@@ -59,6 +69,9 @@ func HandleClipboardError(err error) bool {
 		return true
 	case *ClipboardFileNotFoundError:
 		ui.ClipboardFileNotFound(e.FilePath)
+		return true
+	case *ClipboardNotStackInputError:
+		ui.ClipboardNotStackInput(e.Raw)
 		return true
 	default:
 		return false
