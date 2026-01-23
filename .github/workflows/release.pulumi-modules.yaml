@@ -11,7 +11,7 @@
 #   - Clear progress logging with component counts
 #   - No hardcoded component paths - auto-discovers from filesystem
 #
-# Matrix: 11 providers × 4 platforms = 44 parallel jobs
+# Matrix: 12 providers × 4 platforms = 48 parallel jobs
 #
 # Path pattern: apis/org/project_planton/provider/{provider}/{component}/v1/iac/pulumi
 #
@@ -39,7 +39,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 44
+      max-parallel: 48
       matrix:
         provider:
           - atlas
@@ -52,6 +52,7 @@ jobs:
           - digitalocean
           - gcp
           - kubernetes
+          - openfga
           - snowflake
         platform:
           - goos: linux

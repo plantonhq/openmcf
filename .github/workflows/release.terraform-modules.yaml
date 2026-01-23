@@ -11,7 +11,7 @@
 #   - Clear progress logging with component counts
 #   - No hardcoded component paths - auto-discovers from filesystem
 #
-# Matrix: 11 providers = 11 parallel jobs
+# Matrix: 12 providers = 12 parallel jobs
 #
 # Path pattern: apis/org/project_planton/provider/{provider}/{component}/v1/iac/tf
 #
@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      max-parallel: 11
+      max-parallel: 12
       matrix:
         provider:
           - atlas
@@ -51,6 +51,7 @@ jobs:
           - digitalocean
           - gcp
           - kubernetes
+          - openfga
           - snowflake
 
     steps:
