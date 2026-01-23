@@ -186,6 +186,11 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "docdb"
   }];
+  AwsRoute53DnsRecord = 223 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "r53rec"
+  }];
 
   // 400–599: Azure resources
   AzureAksCluster = 400 [(kind_meta) = {
@@ -232,6 +237,11 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azsa"
+  }];
+  AzureDnsRecord = 409 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azdrec"
   }];
 
   // 600–799: GCP resources
@@ -324,6 +334,11 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpvm"
+  }];
+  GcpDnsRecord = 618 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpdrec"
   }];
 
   // 800–999: Kubernetes resources
@@ -636,6 +651,11 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "docert"
   }];
+  DigitalOceanDnsRecord = 1214 [(kind_meta) = {
+    provider: digital_ocean
+    version: v1
+    id_prefix: "dodnsrec"
+  }];
 
   // 1500–1799: Civo resources
   CivoBucket = 1500 [(kind_meta) = {
@@ -693,6 +713,11 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "civpc"
   }];
+  CivoDnsRecord = 1511 [(kind_meta) = {
+    provider: civo
+    version: v1
+    id_prefix: "cirec"
+  }];
 
   // 1800–2099: Cloudflare resources
   CloudflareDnsZone = 1800 [(kind_meta) = {
@@ -729,6 +754,11 @@ enum CloudResourceKind {
     provider: cloudflare
     version: v1
     id_prefix: "cfzta"
+  }];
+  CloudflareDnsRecord = 1807 [(kind_meta) = {
+    provider: cloudflare
+    version: v1
+    id_prefix: "cfrec"
   }];
 
   // 2100–2299: Auth0 resources

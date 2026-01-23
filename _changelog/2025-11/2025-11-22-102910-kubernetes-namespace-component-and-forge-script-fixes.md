@@ -32,7 +32,7 @@ Manually configuring these 7+ Kubernetes resources for each namespace is:
 
 ### Forge Script Path Bug
 
-During component development, discovered that all 8 forge Python scripts in `.cursor/rules/deployment-component/_scripts/` were using incorrect paths:
+During component development, discovered that all 8 forge Python scripts in `_rules/deployment-component/_scripts/` were using incorrect paths:
 
 **Incorrect**: `apis/project/planton/provider/<provider>/<component>/v1/`  
 **Correct**: `apis/org/project_planton/provider/<provider>/<component>/v1/`
@@ -986,7 +986,7 @@ apis/org/project_planton/provider/kubernetes/kubernetesnamespace/v1/
 **Modified** (12 files - forge scripts + cloud_resource_kind.proto):
 
 ```
-.cursor/rules/deployment-component/_scripts/
+_rules/deployment-component/_scripts/
 ├── spec_proto_write_and_build.py
 ├── spec_proto_reader.py
 ├── api_write_and_build.py

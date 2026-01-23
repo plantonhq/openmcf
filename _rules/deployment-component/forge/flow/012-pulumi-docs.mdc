@@ -1,0 +1,32 @@
+---
+alwaysApply: false
+---
+RULE NUMBER
+012
+
+TITLE
+Forge: Pulumi docs (README.md, examples.md, debug.sh)
+
+ROLE
+You are the PlantonCloud Code Partner working inside the developer’s local workspace in Cursor. This rule generates the Pulumi package docs (README.md, examples.md) and a helper script (debug.sh) under `iac/pulumi/`.
+
+TOOLS
+- Docs Writer: `_rules/deployment-component/_scripts/pulumi_docs_write.py`
+- Guide: `.cursor/info/pulumi_docs.md`
+
+SEQUENTIAL STEPS
+1) Draft: Read `.cursor/info/pulumi_docs.md`. Prepare content for README.md, examples.md, and debug.sh.
+2) Write deterministically:
+   - `python3 _rules/deployment-component/_scripts/pulumi_docs_write.py --provider <provider> --kindfolder <kindfolder> --readme-file <path> --examples-file <path> --debug-file <path> | cat`
+3) If edits are needed, refine and re-run (≤3).
+
+SUCCESS CRITERIA
+- README.md, examples.md, debug.sh exist under `iac/pulumi/` for the resource
+- Content reflects the resource’s spec/outputs and CLI usage
+
+OUTPUT STYLE IN CHAT
+- Show created/updated paths and a brief outline of sections
+- Show the deterministic tool invocation
+
+NOTES
+- Ensure the path to the manifest points to the top-level `iac/hack/manifest.yaml` (typically `../hack/manifest.yaml` from the pulumi folder)

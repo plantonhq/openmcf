@@ -289,7 +289,7 @@ project-planton destroy -f manifest.yaml
 
 ## Coding Guidelines Updated
 
-Also updated `.cursor/rules/coding-guidelines/` to capture the project's Go coding standards:
+Also updated `_rules/coding-guidelines/` to capture the project's Go coding standards:
 
 - File size limits (50-150 ideal, 250 max)
 - Function size limits (20-40 lines)

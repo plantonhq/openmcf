@@ -318,7 +318,7 @@ High-level architecture documentation:
 - **README.md** (this file): Complete architecture overview
 - **deployment-component.md**: Ideal state definition for components
 
-#### `/.cursor/rules/deployment-component`
+#### `/_rules/deployment-component`
 
 Cursor AI rules for managing deployment components:
 - **forge**: Create new components from scratch (21-step workflow)
@@ -1525,7 +1525,7 @@ project-planton pulumi destroy --manifest test.yaml --stack test
 **Documentation:**
 - Architecture overview (this file)
 - Deployment component ideal state (`architecture/deployment-component.md`)
-- Lifecycle operation READMEs (`.cursor/rules/deployment-component/*/README.md`)
+- Lifecycle operation READMEs (`_rules/deployment-component/*/README.md`)
 
 **Examples:**
 - Browse complete components (`apis/org/project_planton/provider/`)
@@ -1586,7 +1586,7 @@ project-planton version
 
 **Next Steps:**
 - Browse deployment components in `apis/org/project_planton/provider/`
-- Read lifecycle management guides in `.cursor/rules/deployment-component/`
+- Read lifecycle management guides in `_rules/deployment-component/`
 - Try deploying a component locally
 - Contribute new components or improvements
 

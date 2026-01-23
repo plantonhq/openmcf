@@ -981,7 +981,7 @@ The result is a more robust, rigorous system where:
 **Status**: ✅ Production Ready
 
 **Locations**:
-- Rules: `.cursor/rules/deployment-component/fix/`
+- Rules: `_rules/deployment-component/fix/`
 - Updated: All lifecycle operation documentation
 - Ideal State: `architecture/deployment-component.md`
 

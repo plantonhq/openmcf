@@ -276,10 +276,10 @@ Complements:
 ## Code Metrics
 
 **Files Modified**: 4
-- `.cursor/rules/deployment-component/update/update-project-planton-component.mdc` (+108 lines)
-- `.cursor/rules/deployment-component/fix/fix-project-planton-component.mdc` (+95 lines)
-- `.cursor/rules/deployment-component/complete/complete-project-planton-component.mdc` (+42 lines)
-- `.cursor/rules/deployment-component/update/README.md` (+35 lines)
+- `_rules/deployment-component/update/update-project-planton-component.mdc` (+108 lines)
+- `_rules/deployment-component/fix/fix-project-planton-component.mdc` (+95 lines)
+- `_rules/deployment-component/complete/complete-project-planton-component.mdc` (+42 lines)
+- `_rules/deployment-component/update/README.md` (+35 lines)
 
 **Total Enhancement**: +280 lines of documentation and guidance
 

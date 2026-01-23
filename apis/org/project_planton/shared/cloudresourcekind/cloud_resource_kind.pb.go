@@ -83,29 +83,30 @@ const (
 	CloudResourceKind_MongodbAtlas      CloudResourceKind = 51
 	CloudResourceKind_SnowflakeDatabase CloudResourceKind = 52
 	// 200–399: AWS resources
-	CloudResourceKind_AwsAlb             CloudResourceKind = 200
-	CloudResourceKind_AwsCertManagerCert CloudResourceKind = 201
-	CloudResourceKind_AwsCloudFront      CloudResourceKind = 202
-	CloudResourceKind_AwsDynamodb        CloudResourceKind = 203
-	CloudResourceKind_AwsEcrRepo         CloudResourceKind = 204
-	CloudResourceKind_AwsEcsCluster      CloudResourceKind = 205
-	CloudResourceKind_AwsEcsService      CloudResourceKind = 206
-	CloudResourceKind_AwsEksCluster      CloudResourceKind = 207
-	CloudResourceKind_AwsIamRole         CloudResourceKind = 208
-	CloudResourceKind_AwsLambda          CloudResourceKind = 209
-	CloudResourceKind_AwsRdsCluster      CloudResourceKind = 210
-	CloudResourceKind_AwsRdsInstance     CloudResourceKind = 211
-	CloudResourceKind_AwsRoute53Zone     CloudResourceKind = 212
-	CloudResourceKind_AwsS3Bucket        CloudResourceKind = 213
-	CloudResourceKind_AwsSecretsManager  CloudResourceKind = 214
-	CloudResourceKind_AwsSecurityGroup   CloudResourceKind = 215
-	CloudResourceKind_AwsVpc             CloudResourceKind = 216
-	CloudResourceKind_AwsEksNodeGroup    CloudResourceKind = 217
-	CloudResourceKind_AwsIamUser         CloudResourceKind = 218
-	CloudResourceKind_AwsKmsKey          CloudResourceKind = 219
-	CloudResourceKind_AwsEc2Instance     CloudResourceKind = 220
-	CloudResourceKind_AwsClientVpn       CloudResourceKind = 221
-	CloudResourceKind_AwsDocumentDb      CloudResourceKind = 222
+	CloudResourceKind_AwsAlb              CloudResourceKind = 200
+	CloudResourceKind_AwsCertManagerCert  CloudResourceKind = 201
+	CloudResourceKind_AwsCloudFront       CloudResourceKind = 202
+	CloudResourceKind_AwsDynamodb         CloudResourceKind = 203
+	CloudResourceKind_AwsEcrRepo          CloudResourceKind = 204
+	CloudResourceKind_AwsEcsCluster       CloudResourceKind = 205
+	CloudResourceKind_AwsEcsService       CloudResourceKind = 206
+	CloudResourceKind_AwsEksCluster       CloudResourceKind = 207
+	CloudResourceKind_AwsIamRole          CloudResourceKind = 208
+	CloudResourceKind_AwsLambda           CloudResourceKind = 209
+	CloudResourceKind_AwsRdsCluster       CloudResourceKind = 210
+	CloudResourceKind_AwsRdsInstance      CloudResourceKind = 211
+	CloudResourceKind_AwsRoute53Zone      CloudResourceKind = 212
+	CloudResourceKind_AwsS3Bucket         CloudResourceKind = 213
+	CloudResourceKind_AwsSecretsManager   CloudResourceKind = 214
+	CloudResourceKind_AwsSecurityGroup    CloudResourceKind = 215
+	CloudResourceKind_AwsVpc              CloudResourceKind = 216
+	CloudResourceKind_AwsEksNodeGroup     CloudResourceKind = 217
+	CloudResourceKind_AwsIamUser          CloudResourceKind = 218
+	CloudResourceKind_AwsKmsKey           CloudResourceKind = 219
+	CloudResourceKind_AwsEc2Instance      CloudResourceKind = 220
+	CloudResourceKind_AwsClientVpn        CloudResourceKind = 221
+	CloudResourceKind_AwsDocumentDb       CloudResourceKind = 222
+	CloudResourceKind_AwsRoute53DnsRecord CloudResourceKind = 223
 	// 400–599: Azure resources
 	CloudResourceKind_AzureAksCluster        CloudResourceKind = 400
 	CloudResourceKind_AzureAksNodePool       CloudResourceKind = 401
@@ -116,6 +117,7 @@ const (
 	CloudResourceKind_AzureNatGateway        CloudResourceKind = 406
 	CloudResourceKind_AzureVirtualMachine    CloudResourceKind = 407
 	CloudResourceKind_AzureStorageAccount    CloudResourceKind = 408
+	CloudResourceKind_AzureDnsRecord         CloudResourceKind = 409
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -135,6 +137,7 @@ const (
 	CloudResourceKind_GcpGkeWorkloadIdentityBinding CloudResourceKind = 615
 	CloudResourceKind_GcpCertManagerCert            CloudResourceKind = 616
 	CloudResourceKind_GcpComputeInstance            CloudResourceKind = 617
+	CloudResourceKind_GcpDnsRecord                  CloudResourceKind = 618
 	// 800–999: Kubernetes resources
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 800
 	CloudResourceKind_KubernetesCronJob                     CloudResourceKind = 801
@@ -198,6 +201,7 @@ const (
 	CloudResourceKind_DigitalOceanVolume             CloudResourceKind = 1211
 	CloudResourceKind_DigitalOceanVpc                CloudResourceKind = 1212
 	CloudResourceKind_DigitalOceanCertificate        CloudResourceKind = 1213
+	CloudResourceKind_DigitalOceanDnsRecord          CloudResourceKind = 1214
 	// 1500–1799: Civo resources
 	CloudResourceKind_CivoBucket             CloudResourceKind = 1500
 	CloudResourceKind_CivoCertificate        CloudResourceKind = 1501
@@ -210,6 +214,7 @@ const (
 	CloudResourceKind_CivoKubernetesNodePool CloudResourceKind = 1508
 	CloudResourceKind_CivoVolume             CloudResourceKind = 1509
 	CloudResourceKind_CivoVpc                CloudResourceKind = 1510
+	CloudResourceKind_CivoDnsRecord          CloudResourceKind = 1511
 	// 1800–2099: Cloudflare resources
 	CloudResourceKind_CloudflareDnsZone                    CloudResourceKind = 1800
 	CloudResourceKind_CloudflareKvNamespace                CloudResourceKind = 1801
@@ -218,6 +223,7 @@ const (
 	CloudResourceKind_CloudflareLoadBalancer               CloudResourceKind = 1804
 	CloudResourceKind_CloudflareD1Database                 CloudResourceKind = 1805
 	CloudResourceKind_CloudflareZeroTrustAccessApplication CloudResourceKind = 1806
+	CloudResourceKind_CloudflareDnsRecord                  CloudResourceKind = 1807
 	// 2100–2299: Auth0 resources
 	CloudResourceKind_Auth0Connection     CloudResourceKind = 2100
 	CloudResourceKind_Auth0Client         CloudResourceKind = 2101
@@ -264,6 +270,7 @@ var (
 		220:  "AwsEc2Instance",
 		221:  "AwsClientVpn",
 		222:  "AwsDocumentDb",
+		223:  "AwsRoute53DnsRecord",
 		400:  "AzureAksCluster",
 		401:  "AzureAksNodePool",
 		402:  "AzureContainerRegistry",
@@ -273,6 +280,7 @@ var (
 		406:  "AzureNatGateway",
 		407:  "AzureVirtualMachine",
 		408:  "AzureStorageAccount",
+		409:  "AzureDnsRecord",
 		600:  "GcpArtifactRegistryRepo",
 		601:  "GcpCloudCdn",
 		602:  "GcpCloudFunction",
@@ -291,6 +299,7 @@ var (
 		615:  "GcpGkeWorkloadIdentityBinding",
 		616:  "GcpCertManagerCert",
 		617:  "GcpComputeInstance",
+		618:  "GcpDnsRecord",
 		800:  "KubernetesArgocd",
 		801:  "KubernetesCronJob",
 		802:  "KubernetesElasticsearch",
@@ -352,6 +361,7 @@ var (
 		1211: "DigitalOceanVolume",
 		1212: "DigitalOceanVpc",
 		1213: "DigitalOceanCertificate",
+		1214: "DigitalOceanDnsRecord",
 		1500: "CivoBucket",
 		1501: "CivoCertificate",
 		1502: "CivoComputeInstance",
@@ -363,6 +373,7 @@ var (
 		1508: "CivoKubernetesNodePool",
 		1509: "CivoVolume",
 		1510: "CivoVpc",
+		1511: "CivoDnsRecord",
 		1800: "CloudflareDnsZone",
 		1801: "CloudflareKvNamespace",
 		1802: "CloudflareR2Bucket",
@@ -370,6 +381,7 @@ var (
 		1804: "CloudflareLoadBalancer",
 		1805: "CloudflareD1Database",
 		1806: "CloudflareZeroTrustAccessApplication",
+		1807: "CloudflareDnsRecord",
 		2100: "Auth0Connection",
 		2101: "Auth0Client",
 		2102: "Auth0EventStream",
@@ -409,6 +421,7 @@ var (
 		"AwsEc2Instance":                        220,
 		"AwsClientVpn":                          221,
 		"AwsDocumentDb":                         222,
+		"AwsRoute53DnsRecord":                   223,
 		"AzureAksCluster":                       400,
 		"AzureAksNodePool":                      401,
 		"AzureContainerRegistry":                402,
@@ -418,6 +431,7 @@ var (
 		"AzureNatGateway":                       406,
 		"AzureVirtualMachine":                   407,
 		"AzureStorageAccount":                   408,
+		"AzureDnsRecord":                        409,
 		"GcpArtifactRegistryRepo":               600,
 		"GcpCloudCdn":                           601,
 		"GcpCloudFunction":                      602,
@@ -436,6 +450,7 @@ var (
 		"GcpGkeWorkloadIdentityBinding":         615,
 		"GcpCertManagerCert":                    616,
 		"GcpComputeInstance":                    617,
+		"GcpDnsRecord":                          618,
 		"KubernetesArgocd":                      800,
 		"KubernetesCronJob":                     801,
 		"KubernetesElasticsearch":               802,
@@ -497,6 +512,7 @@ var (
 		"DigitalOceanVolume":                    1211,
 		"DigitalOceanVpc":                       1212,
 		"DigitalOceanCertificate":               1213,
+		"DigitalOceanDnsRecord":                 1214,
 		"CivoBucket":                            1500,
 		"CivoCertificate":                       1501,
 		"CivoComputeInstance":                   1502,
@@ -508,6 +524,7 @@ var (
 		"CivoKubernetesNodePool":                1508,
 		"CivoVolume":                            1509,
 		"CivoVpc":                               1510,
+		"CivoDnsRecord":                         1511,
 		"CloudflareDnsZone":                     1800,
 		"CloudflareKvNamespace":                 1801,
 		"CloudflareR2Bucket":                    1802,
@@ -515,6 +532,7 @@ var (
 		"CloudflareLoadBalancer":                1804,
 		"CloudflareD1Database":                  1805,
 		"CloudflareZeroTrustAccessApplication":  1806,
+		"CloudflareDnsRecord":                   1807,
 		"Auth0Connection":                       2100,
 		"Auth0Client":                           2101,
 		"Auth0EventStream":                      2102,
@@ -666,7 +684,7 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x0fis_service_kind\x18\x05 \x01(\bR\risServiceKind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x9f/\n" +
+	"\x02v1\x10\x01*\x981\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12(\n" +
 	"\x14TestCloudResourceOne\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -704,7 +722,8 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\tAwsKmsKey\x10\xdb\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskms\x12&\n" +
 	"\x0eAwsEc2Instance\x10\xdc\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aec2inst\x12#\n" +
 	"\fAwsClientVpn\x10\xdd\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsvpn\x12#\n" +
-	"\rAwsDocumentDb\x10\xde\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05docdb\x12#\n" +
+	"\rAwsDocumentDb\x10\xde\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05docdb\x12*\n" +
+	"\x13AwsRoute53DnsRecord\x10\xdf\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06r53rec\x12#\n" +
 	"\x0fAzureAksCluster\x10\x90\x03\x1a\r\xa2\xf7\x04\t\b\r\x10\x01\"\x03aks\x12&\n" +
 	"\x10AzureAksNodePool\x10\x91\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aksnp\x12*\n" +
 	"\x16AzureContainerRegistry\x10\x92\x03\x1a\r\xa2\xf7\x04\t\b\r\x10\x01\"\x03acr\x12\"\n" +
@@ -716,7 +735,8 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x13AzureVirtualMachine\x10\x97\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azvm\x12(\n" +
 	"\x13AzureStorageAccount\x10\x98\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azsa\x12.\n" +
+	"\b\r\x10\x01\"\x04azsa\x12%\n" +
+	"\x0eAzureDnsRecord\x10\x99\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azdrec\x12.\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
 	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +
@@ -736,7 +756,8 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x11GcpServiceAccount\x10\xe6\x04\x1a\r\xa2\xf7\x04\t\b\x12\x10\x01\"\x03gsa\x124\n" +
 	"\x1dGcpGkeWorkloadIdentityBinding\x10\xe7\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gkewib\x12*\n" +
 	"\x12GcpCertManagerCert\x10\xe8\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpcert\x12(\n" +
-	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpvm\x12(\n" +
+	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpvm\x12$\n" +
+	"\fGcpDnsRecord\x10\xea\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdrec\x12(\n" +
 	"\x10KubernetesArgocd\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x12)\n" +
 	"\x11KubernetesCronJob\x10\xa1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8scron\x12-\n" +
 	"\x17KubernetesElasticsearch\x10\xa2\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8ses\x12&\n" +
@@ -803,7 +824,8 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\b\x11\x10\x01\"\x04dolb\x12(\n" +
 	"\x12DigitalOceanVolume\x10\xbb\t\x1a\x0f\xa2\xf7\x04\v\b\x11\x10\x01\"\x05dovol\x12%\n" +
 	"\x0fDigitalOceanVpc\x10\xbc\t\x1a\x0f\xa2\xf7\x04\v\b\x11\x10\x01\"\x05dovpc\x12.\n" +
-	"\x17DigitalOceanCertificate\x10\xbd\t\x1a\x10\xa2\xf7\x04\f\b\x11\x10\x01\"\x06docert\x12 \n" +
+	"\x17DigitalOceanCertificate\x10\xbd\t\x1a\x10\xa2\xf7\x04\f\b\x11\x10\x01\"\x06docert\x12.\n" +
+	"\x15DigitalOceanDnsRecord\x10\xbe\t\x1a\x12\xa2\xf7\x04\x0e\b\x11\x10\x01\"\bdodnsrec\x12 \n" +
 	"\n" +
 	"CivoBucket\x10\xdc\v\x1a\x0f\xa2\xf7\x04\v\b\x0e\x10\x01\"\x05cibkt\x12&\n" +
 	"\x0fCivoCertificate\x10\xdd\v\x1a\x10\xa2\xf7\x04\f\b\x0e\x10\x01\"\x06cicert\x12*\n" +
@@ -820,7 +842,8 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x16CivoKubernetesNodePool\x10\xe4\v\x1a\x0f\xa2\xf7\x04\v\b\x0e\x10\x01\"\x05ciknp\x12 \n" +
 	"\n" +
 	"CivoVolume\x10\xe5\v\x1a\x0f\xa2\xf7\x04\v\b\x0e\x10\x01\"\x05civol\x12\x1d\n" +
-	"\aCivoVpc\x10\xe6\v\x1a\x0f\xa2\xf7\x04\v\b\x0e\x10\x01\"\x05civpc\x12'\n" +
+	"\aCivoVpc\x10\xe6\v\x1a\x0f\xa2\xf7\x04\v\b\x0e\x10\x01\"\x05civpc\x12#\n" +
+	"\rCivoDnsRecord\x10\xe7\v\x1a\x0f\xa2\xf7\x04\v\b\x0e\x10\x01\"\x05cirec\x12'\n" +
 	"\x11CloudflareDnsZone\x10\x88\x0e\x1a\x0f\xa2\xf7\x04\v\b\x0f\x10\x01\"\x05cfdns\x12+\n" +
 	"\x15CloudflareKvNamespace\x10\x89\x0e\x1a\x0f\xa2\xf7\x04\v\b\x0f\x10\x01\"\x05cfkvn\x12(\n" +
 	"\x12CloudflareR2Bucket\x10\x8a\x0e\x1a\x0f\xa2\xf7\x04\v\b\x0f\x10\x01\"\x05cfr2b\x12&\n" +
@@ -828,7 +851,8 @@ const file_org_project_planton_shared_cloudresourcekind_cloud_resource_kind_prot
 	"\x16CloudflareLoadBalancer\x10\x8c\x0e\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\x0f\x10\x01\"\x04cflb\x12+\n" +
 	"\x14CloudflareD1Database\x10\x8d\x0e\x1a\x10\xa2\xf7\x04\f\b\x0f\x10\x01\"\x06cfd1db\x12:\n" +
-	"$CloudflareZeroTrustAccessApplication\x10\x8e\x0e\x1a\x0f\xa2\xf7\x04\v\b\x0f\x10\x01\"\x05cfzta\x12&\n" +
+	"$CloudflareZeroTrustAccessApplication\x10\x8e\x0e\x1a\x0f\xa2\xf7\x04\v\b\x0f\x10\x01\"\x05cfzta\x12)\n" +
+	"\x13CloudflareDnsRecord\x10\x8f\x0e\x1a\x0f\xa2\xf7\x04\v\b\x0f\x10\x01\"\x05cfrec\x12&\n" +
 	"\x0fAuth0Connection\x10\xb4\x10\x1a\x10\xa2\xf7\x04\f\b\x15\x10\x01\"\x06a0conn\x12!\n" +
 	"\vAuth0Client\x10\xb5\x10\x1a\x0f\xa2\xf7\x04\v\b\x15\x10\x01\"\x05a0cli\x12%\n" +
 	"\x10Auth0EventStream\x10\xb6\x10\x1a\x0e\xa2\xf7\x04\n" +

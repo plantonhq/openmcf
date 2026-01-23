@@ -1280,9 +1280,9 @@ The result is a framework that transforms component development from a manual, i
 **Status**: ✅ Production Ready
 
 **Locations**:
-- Rules: `.cursor/rules/deployment-component/`
+- Rules: `_rules/deployment-component/`
 - Documentation: `architecture/deployment-component.md`
-- README: `.cursor/rules/deployment-component/README.md`
+- README: `_rules/deployment-component/README.md`
 
 **Next Steps**:
 1. Use forge to create new components (expect 95-100% completion)

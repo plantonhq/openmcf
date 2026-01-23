@@ -30,7 +30,7 @@ Established a consistent `Kubernetes*` naming convention for all Kubernetes addo
 
 ### Rename Script Improvements
 
-Enhanced `.cursor/rules/deployment-component/rename/_scripts/rename_deployment_component.py` to:
+Enhanced `_rules/deployment-component/rename/_scripts/rename_deployment_component.py` to:
 
 1. **Remove proto validation dependency**: Script no longer requires finding old names in `cloud_resource_kind.proto`
 2. **Auto-discover component directories**: Searches kubernetes, kubernetes/workload, and kubernetes/addon paths
@@ -100,7 +100,7 @@ Each component was renamed using the improved Python script:
 
 ```bash
 # Example: CertManager rename
-python3 .cursor/rules/deployment-component/rename/_scripts/rename_deployment_component.py \
+python3 _rules/deployment-component/rename/_scripts/rename_deployment_component.py \
   --old-name CertManager \
   --new-name KubernetesCertManager
 

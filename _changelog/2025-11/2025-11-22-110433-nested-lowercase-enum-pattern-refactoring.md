@@ -203,7 +203,7 @@ Created comprehensive enum guidelines in three locations:
 - Documented naming conventions with examples
 - Explained when to deviate (external standards)
 
-**2. Forge Flow Rule** (`/.cursor/rules/deployment-component/forge/flow/001-spec-proto.mdc`):
+**2. Forge Flow Rule** (`/_rules/deployment-component/forge/flow/001-spec-proto.mdc`):
 - Added enum guidelines to NOTES section
 - Ensures all new components follow the pattern
 
