@@ -2,7 +2,10 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "stackinputproviderconfig",
-    srcs = ["unified_options.go"],
+    srcs = [
+        "backend_options.go",
+        "unified_options.go",
+    ],
     importpath = "github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig",
     visibility = ["//visibility:public"],
     deps = [
@@ -11,5 +14,8 @@ go_library(
         "//pkg/iac/stackinput/providerdetect",
         "@com_github_pkg_errors//:errors",
         "@com_github_spf13_pflag//:pflag",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
     ],
 )

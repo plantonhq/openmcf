@@ -104,6 +104,47 @@ func ClipboardFileNotFound(filePath string) {
 	fmt.Println(sep)
 }
 
+// ClipboardNotStackInput displays a formatted error when clipboard content
+// is valid YAML but not a stack input (missing "target" field).
+func ClipboardNotStackInput(content []byte) {
+	sep := separator(infoIcon)
+
+	fmt.Println()
+	fmt.Println(sep)
+	fmt.Printf("%s  %s\n", infoIcon.Render("ℹ️"), infoTitle.Render("Not a Stack Input"))
+	fmt.Println(sep)
+
+	fmt.Println(infoMessage.Render("The clipboard content is valid YAML but not a stack input."))
+	fmt.Println(infoMessage.Render("Stack input files must have a \"target\" field at the root level."))
+	fmt.Println()
+
+	// Show content preview
+	preview := formatContentPreview(content)
+	fmt.Println(warningTitle.Render("Content preview:"))
+	fmt.Println(preview)
+	fmt.Println()
+
+	// Show expected stack input format
+	fmt.Println(infoTitle.Render("Expected stack input format:"))
+	fmt.Println()
+	fmt.Printf("    %s\n", Cmd("target:"))
+	fmt.Printf("    %s\n", Cmd("  apiVersion: kubernetes.project-planton.com/v1"))
+	fmt.Printf("    %s\n", Cmd("  kind: PostgresKubernetes"))
+	fmt.Printf("    %s\n", Cmd("  metadata:"))
+	fmt.Printf("    %s\n", Cmd("    name: my-postgres"))
+	fmt.Printf("    %s\n", Cmd("  spec:"))
+	fmt.Printf("    %s\n", Cmd("    ..."))
+	fmt.Printf("    %s\n", Cmd("provider_config:"))
+	fmt.Printf("    %s\n", Cmd("  ..."))
+	fmt.Println()
+
+	fmt.Printf("%s %s\n", infoIcon.Render(iconTip),
+		infoMessage.Render("Tip: If your clipboard contains a raw manifest (not stack input),"))
+	fmt.Println(infoMessage.Render("     use '--clip' without '-i' and it will be detected automatically."))
+
+	fmt.Println(sep)
+}
+
 // ClipboardFileLoaded displays a success message when loading from a file path in clipboard
 func ClipboardFileLoaded(filePath string) {
 	fmt.Printf("%s  %s: %s\n",
