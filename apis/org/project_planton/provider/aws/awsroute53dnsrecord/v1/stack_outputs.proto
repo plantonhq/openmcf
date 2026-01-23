@@ -14,7 +14,7 @@ message AwsRoute53DnsRecordStackOutputs {
   string record_type = 2;
 
   // The hosted zone ID where the record was created.
-  string hosted_zone_id = 3;
+  string zone_id = 3;
 
   // Whether this is an alias record (pointing to an AWS resource).
   bool is_alias = 4;

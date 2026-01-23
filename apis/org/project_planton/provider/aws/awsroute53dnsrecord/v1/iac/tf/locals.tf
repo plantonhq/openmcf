@@ -1,6 +1,18 @@
 locals {
-  # Determine if this is an alias record
-  is_alias = var.spec.alias_target != null
+  # Extract zone_id from StringValueOrRef structure
+  zone_id = var.spec.zone_id != null ? var.spec.zone_id.value : ""
+
+  # Determine if this is an alias record by checking alias_target.dns_name
+  is_alias = (
+    var.spec.alias_target != null &&
+    var.spec.alias_target.dns_name != null &&
+    var.spec.alias_target.dns_name.value != null &&
+    var.spec.alias_target.dns_name.value != ""
+  )
+
+  # Extract alias target values from StringValueOrRef structure
+  alias_dns_name = local.is_alias ? var.spec.alias_target.dns_name.value : null
+  alias_zone_id  = local.is_alias && var.spec.alias_target.zone_id != null ? var.spec.alias_target.zone_id.value : null
 
   # TTL is only applicable for non-alias records
   ttl = local.is_alias ? null : var.spec.ttl

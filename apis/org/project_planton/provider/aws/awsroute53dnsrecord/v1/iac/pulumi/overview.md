@@ -1,90 +1,99 @@
-# AWS Route53 DNS Record - Module Overview
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Pulumi Module                                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
-│  │   main.go    │ -> │  module/     │ -> │  AWS Route53 │      │
-│  │  (entrypoint)│    │  main.go     │    │   Record     │      │
-│  └──────────────┘    └──────────────┘    └──────────────┘      │
-│         │                   │                    │               │
-│         v                   v                    v               │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
-│  │ Load Stack   │    │ AWS Provider │    │   Exports    │      │
-│  │ Input (env)  │    │ (credentials)│    │  (outputs)   │      │
-│  └──────────────┘    └──────────────┘    └──────────────┘      │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+# AWS Route53 DNS Record Pulumi Module Architecture
 
 ## Module Structure
 
 ```
-iac/pulumi/
-├── main.go              # Entrypoint - loads input and calls module
-├── Pulumi.yaml          # Project configuration
-├── Makefile             # Build automation
-├── README.md            # Usage documentation
-├── overview.md          # This file
+pulumi/
+├── main.go          # Entrypoint - initializes stack and calls Resources
+├── Pulumi.yaml      # Project configuration
+├── Makefile         # Build automation
+├── README.md        # Usage documentation
+├── overview.md      # This file
 └── module/
-    ├── main.go          # Resource creation logic
-    ├── locals.go        # Local state initialization
-    └── outputs.go       # Output key constants
+    ├── main.go      # Core resource creation logic
+    ├── locals.go    # Local variable initialization
+    └── outputs.go   # Output constant definitions
 ```
 
-## Data Flow
+## Resource Flow
 
-1. **Input Loading**: `main.go` loads the `AwsRoute53DnsRecordStackInput` from the `STACK_INPUT` environment variable (base64-encoded YAML/JSON)
+```
+AwsRoute53DnsRecordStackInput
+         │
+         ▼
+   initializeLocals()
+         │
+         ▼
+    Extract zone_id from StringValueOrRef
+         │
+         ├──────────────────────────────────┐
+         │                                  │
+         ▼                                  ▼
+   Standard Record                    Alias Record
+   (values + ttl)              (dns_name + zone_id from StringValueOrRef)
+         │                                  │
+         └──────────┬───────────────────────┘
+                    │
+                    ▼
+         Apply Routing Policy
+         (weighted/latency/failover/geo)
+                    │
+                    ▼
+      aws_route53_record resource
+                    │
+                    ▼
+            Export outputs
+```
 
-2. **Provider Setup**: Creates AWS provider with credentials from `provider_config` or uses default credentials
+## Key Implementation Details
 
-3. **Record Creation**: Creates the Route53 record based on spec:
-   - Standard record: Uses `values` and `ttl`
-   - Alias record: Uses `alias_target`
-   - With routing policy: Applies weighted/latency/failover/geolocation
+### StringValueOrRef Handling
 
-4. **Output Export**: Exports record FQDN, type, and routing information
+The `StringValueOrRef` type allows fields to be either literal values or references to other resources:
 
-## Key Design Decisions
+```go
+// Extract zone_id from StringValueOrRef
+zoneId := ""
+if spec.ZoneId != nil {
+    zoneId = spec.ZoneId.GetValue()
+}
+```
 
-### Single Resource Focus
+The CLI resolves `value_from` references before invoking Pulumi, so the module always receives the resolved value via `GetValue()`.
 
-Unlike `AwsRoute53Zone` which can create multiple records inline, this module focuses on a single DNS record. This enables:
-- Granular lifecycle management
-- Independent scaling and versioning
-- Team-level autonomy (app teams manage their records)
+### Alias Detection
 
-### AWS Classic Provider
+Alias records are detected by checking if `alias_target.dns_name` has a non-empty value:
 
-Uses `pulumi-aws` (classic) instead of `pulumi-aws-native` because:
-- More mature and stable for Route53
-- Better error messages
-- Consistent with other Route53 modules
+```go
+isAlias := spec.AliasTarget != nil &&
+    spec.AliasTarget.DnsName != nil &&
+    spec.AliasTarget.DnsName.GetValue() != ""
+```
 
-### Routing Policy as Oneof
+### Routing Policy Application
 
-The protobuf schema uses `oneof` for routing policies, ensuring only one policy type is active. The Go code handles this with type switches.
+Routing policies are applied via a type switch on the oneof policy field:
 
-## Extension Points
+```go
+switch p := policy.Policy.(type) {
+case *AwsRoute53RoutingPolicy_Weighted:
+    // Apply weighted routing
+case *AwsRoute53RoutingPolicy_Latency:
+    // Apply latency routing
+case *AwsRoute53RoutingPolicy_Failover:
+    // Apply failover routing
+case *AwsRoute53RoutingPolicy_Geolocation:
+    // Apply geolocation routing
+}
+```
 
-### Adding New Routing Policies
+## Outputs
 
-1. Add policy message to `spec.proto`
-2. Add case to `applyRoutingPolicy()` in `module/main.go`
-3. Update documentation
-
-### Adding New Record Types
-
-Record types are handled via the shared `DnsRecordType` enum. To add support for specialized record type handling:
-1. Add specific logic in `module/main.go`
-2. Update validation in `spec.proto` if needed
-
-## Dependencies
-
-- `pulumi-aws` v7.x - AWS provider
-- `project-planton/pkg/iac/pulumi` - Stack input loading utilities
-- Generated protobuf stubs from `awsroute53dnsrecord/v1`
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `OpFqdn` | `fqdn` | Fully qualified domain name |
+| `OpRecordType` | `record_type` | DNS record type |
+| `OpZoneId` | `zone_id` | Route53 zone ID |
+| `OpIsAlias` | `is_alias` | Boolean - is alias record |
+| `OpSetIdentifier` | `set_identifier` | Routing set identifier |

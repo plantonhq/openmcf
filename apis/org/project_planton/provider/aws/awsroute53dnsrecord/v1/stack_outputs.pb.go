@@ -32,7 +32,7 @@ type AwsRoute53DnsRecordStackOutputs struct {
 	// Example: "A", "AAAA", "CNAME", "MX", "TXT"
 	RecordType string `protobuf:"bytes,2,opt,name=record_type,json=recordType,proto3" json:"record_type,omitempty"`
 	// The hosted zone ID where the record was created.
-	HostedZoneId string `protobuf:"bytes,3,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	ZoneId string `protobuf:"bytes,3,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	// Whether this is an alias record (pointing to an AWS resource).
 	IsAlias bool `protobuf:"varint,4,opt,name=is_alias,json=isAlias,proto3" json:"is_alias,omitempty"`
 	// The set identifier (if using routing policies).
@@ -86,9 +86,9 @@ func (x *AwsRoute53DnsRecordStackOutputs) GetRecordType() string {
 	return ""
 }
 
-func (x *AwsRoute53DnsRecordStackOutputs) GetHostedZoneId() string {
+func (x *AwsRoute53DnsRecordStackOutputs) GetZoneId() string {
 	if x != nil {
-		return x.HostedZoneId
+		return x.ZoneId
 	}
 	return ""
 }
@@ -111,12 +111,12 @@ var File_org_project_planton_provider_aws_awsroute53dnsrecord_v1_stack_outputs_p
 
 const file_org_project_planton_provider_aws_awsroute53dnsrecord_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Korg/project_planton/provider/aws/awsroute53dnsrecord/v1/stack_outputs.proto\x127org.project_planton.provider.aws.awsroute53dnsrecord.v1\"\xbe\x01\n" +
+	"Korg/project_planton/provider/aws/awsroute53dnsrecord/v1/stack_outputs.proto\x127org.project_planton.provider.aws.awsroute53dnsrecord.v1\"\xb1\x01\n" +
 	"\x1fAwsRoute53DnsRecordStackOutputs\x12\x12\n" +
 	"\x04fqdn\x18\x01 \x01(\tR\x04fqdn\x12\x1f\n" +
 	"\vrecord_type\x18\x02 \x01(\tR\n" +
-	"recordType\x12$\n" +
-	"\x0ehosted_zone_id\x18\x03 \x01(\tR\fhostedZoneId\x12\x19\n" +
+	"recordType\x12\x17\n" +
+	"\azone_id\x18\x03 \x01(\tR\x06zoneId\x12\x19\n" +
 	"\bis_alias\x18\x04 \x01(\bR\aisAlias\x12%\n" +
 	"\x0eset_identifier\x18\x05 \x01(\tR\rsetIdentifierB\xc8\x03\n" +
 	";com.org.project_planton.provider.aws.awsroute53dnsrecord.v1B\x11StackOutputsProtoP\x01Zwgithub.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awsroute53dnsrecord/v1;awsroute53dnsrecordv1\xa2\x02\x05OPPAA\xaa\x026Org.ProjectPlanton.Provider.Aws.Awsroute53dnsrecord.V1\xca\x026Org\\ProjectPlanton\\Provider\\Aws\\Awsroute53dnsrecord\\V1\xe2\x02BOrg\\ProjectPlanton\\Provider\\Aws\\Awsroute53dnsrecord\\V1\\GPBMetadata\xea\x02;Org::ProjectPlanton::Provider::Aws::Awsroute53dnsrecord::V1b\x06proto3"

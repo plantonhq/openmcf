@@ -39,15 +39,26 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53dnsrecordv1.AwsRoute53
 		}
 	}
 
+	// Extract zone_id from StringValueOrRef
+	zoneId := ""
+	if spec.ZoneId != nil {
+		zoneId = spec.ZoneId.GetValue()
+	}
+	if zoneId == "" {
+		return errors.New("zone_id is required but was empty")
+	}
+
 	// Build record args
 	recordArgs := &awsclassicroute53.RecordArgs{
-		ZoneId: pulumi.String(spec.HostedZoneId),
+		ZoneId: pulumi.String(zoneId),
 		Name:   pulumi.String(spec.Name),
 		Type:   pulumi.String(spec.Type.String()),
 	}
 
-	// Track if this is an alias record
-	isAlias := spec.AliasTarget != nil && spec.AliasTarget.DnsName != ""
+	// Track if this is an alias record by checking if alias_target has a dns_name
+	isAlias := spec.AliasTarget != nil &&
+		spec.AliasTarget.DnsName != nil &&
+		spec.AliasTarget.DnsName.GetValue() != ""
 
 	// Set identifier for routing policies
 	if spec.SetIdentifier != "" {
@@ -61,10 +72,24 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53dnsrecordv1.AwsRoute53
 
 	// Handle alias records vs basic records
 	if isAlias {
+		// Extract dns_name and zone_id from alias target's StringValueOrRef fields
+		aliasDnsName := spec.AliasTarget.DnsName.GetValue()
+		aliasZoneId := ""
+		if spec.AliasTarget.ZoneId != nil {
+			aliasZoneId = spec.AliasTarget.ZoneId.GetValue()
+		}
+
+		if aliasDnsName == "" {
+			return errors.New("alias_target.dns_name is required but was empty")
+		}
+		if aliasZoneId == "" {
+			return errors.New("alias_target.zone_id is required but was empty")
+		}
+
 		recordArgs.Aliases = awsclassicroute53.RecordAliasArray{
 			&awsclassicroute53.RecordAliasArgs{
-				Name:                 pulumi.String(spec.AliasTarget.DnsName),
-				ZoneId:               pulumi.String(spec.AliasTarget.HostedZoneId),
+				Name:                 pulumi.String(aliasDnsName),
+				ZoneId:               pulumi.String(aliasZoneId),
 				EvaluateTargetHealth: pulumi.Bool(spec.AliasTarget.EvaluateTargetHealth),
 			},
 		}
@@ -98,7 +123,7 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53dnsrecordv1.AwsRoute53
 	// Export outputs
 	ctx.Export(OpFqdn, createdRecord.Fqdn)
 	ctx.Export(OpRecordType, pulumi.String(spec.Type.String()))
-	ctx.Export(OpHostedZoneId, pulumi.String(spec.HostedZoneId))
+	ctx.Export(OpZoneId, pulumi.String(zoneId))
 	ctx.Export(OpIsAlias, pulumi.Bool(isAlias))
 	ctx.Export(OpSetIdentifier, pulumi.String(spec.SetIdentifier))
 

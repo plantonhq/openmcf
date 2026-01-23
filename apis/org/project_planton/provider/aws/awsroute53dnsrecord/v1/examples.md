@@ -2,7 +2,7 @@
 
 This document provides working, copy-paste ready examples for common Route53 DNS record configurations.
 
-## Basic A Record
+## Basic A Record (Literal Zone ID)
 
 Simple A record pointing a subdomain to an IP address.
 
@@ -12,7 +12,28 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: www-a-record
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
+  name: www.example.com
+  type: A
+  ttl: 300
+  values:
+    - 192.0.2.1
+```
+
+## A Record with Zone Reference
+
+Reference an existing `AwsRoute53Zone` resource using `value_from`.
+
+```yaml
+apiVersion: aws.project-planton.org/v1
+kind: AwsRoute53DnsRecord
+metadata:
+  name: www-a-record
+spec:
+  zone_id:
+    value_from:
+      name: my-zone  # References AwsRoute53Zone named "my-zone"
   name: www.example.com
   type: A
   ttl: 300
@@ -30,7 +51,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: api-round-robin
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: api.example.com
   type: A
   ttl: 60
@@ -50,7 +72,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: blog-cname
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: blog.example.com
   type: CNAME
   ttl: 300
@@ -68,7 +91,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: mail-mx-records
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: example.com
   type: MX
   ttl: 3600
@@ -88,30 +112,13 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: spf-record
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: example.com
   type: TXT
   ttl: 300
   values:
     - "v=spf1 include:_spf.google.com include:servers.mcsv.net ~all"
-```
-
-## TXT Record for Domain Verification
-
-Verify domain ownership for Google Workspace, etc.
-
-```yaml
-apiVersion: aws.project-planton.org/v1
-kind: AwsRoute53DnsRecord
-metadata:
-  name: google-verification
-spec:
-  hosted_zone_id: Z1234567890ABC
-  name: example.com
-  type: TXT
-  ttl: 300
-  values:
-    - "google-site-verification=abc123xyz789"
 ```
 
 ## Wildcard A Record
@@ -124,7 +131,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: wildcard-record
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: "*.example.com"
   type: A
   ttl: 300
@@ -132,7 +140,32 @@ spec:
     - 192.0.2.1
 ```
 
-## Alias Record to CloudFront Distribution
+## Alias Record to ALB (with value_from)
+
+Wire directly to an `AwsAlb` resource - the most common pattern for web applications.
+
+```yaml
+apiVersion: aws.project-planton.org/v1
+kind: AwsRoute53DnsRecord
+metadata:
+  name: api-alb-alias
+spec:
+  zone_id:
+    value_from:
+      name: my-zone  # References AwsRoute53Zone
+  name: api.example.com
+  type: A
+  alias_target:
+    dns_name:
+      value_from:
+        name: my-alb  # References AwsAlb - gets load_balancer_dns_name
+    zone_id:
+      value_from:
+        name: my-alb  # References AwsAlb - gets load_balancer_hosted_zone_id
+    evaluate_target_health: true
+```
+
+## Alias Record to CloudFront Distribution (Literal)
 
 Point zone apex to CloudFront (free queries, no CNAME restriction).
 
@@ -142,32 +175,16 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: apex-cloudfront
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: example.com
   type: A
   alias_target:
-    dns_name: d1234abcd.cloudfront.net
-    hosted_zone_id: Z2FDTNDATAQYW2
+    dns_name:
+      value: d1234abcd.cloudfront.net
+    zone_id:
+      value: Z2FDTNDATAQYW2  # CloudFront's global hosted zone ID
     evaluate_target_health: false
-```
-
-## Alias Record to Application Load Balancer
-
-Point subdomain to ALB with health evaluation.
-
-```yaml
-apiVersion: aws.project-planton.org/v1
-kind: AwsRoute53DnsRecord
-metadata:
-  name: api-alb-alias
-spec:
-  hosted_zone_id: Z1234567890ABC
-  name: api.example.com
-  type: A
-  alias_target:
-    dns_name: my-alb-1234567890.us-east-1.elb.amazonaws.com
-    hosted_zone_id: Z35SXDOTRQ7X7K
-    evaluate_target_health: true
 ```
 
 ## Alias Record to S3 Website
@@ -180,12 +197,15 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: static-s3-alias
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: static.example.com
   type: A
   alias_target:
-    dns_name: my-bucket.s3-website-us-east-1.amazonaws.com
-    hosted_zone_id: Z3AQBSTGFYJSTF
+    dns_name:
+      value: my-bucket.s3-website-us-east-1.amazonaws.com
+    zone_id:
+      value: Z3AQBSTGFYJSTF  # S3 us-east-1 hosted zone ID
     evaluate_target_health: false
 ```
 
@@ -201,7 +221,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: api-weighted-blue
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: api.example.com
   type: A
   ttl: 60
@@ -221,7 +242,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: api-weighted-green
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: api.example.com
   type: A
   ttl: 60
@@ -245,7 +267,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: api-latency-us-east
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: api.example.com
   type: A
   ttl: 60
@@ -265,7 +288,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: api-latency-eu-west
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: api.example.com
   type: A
   ttl: 60
@@ -289,7 +313,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: www-failover-primary
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: www.example.com
   type: A
   ttl: 60
@@ -310,7 +335,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: www-failover-secondary
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: www.example.com
   type: A
   ttl: 60
@@ -334,7 +360,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: api-geo-eu
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: api.example.com
   type: A
   ttl: 300
@@ -354,7 +381,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: api-geo-us
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: api.example.com
   type: A
   ttl: 300
@@ -364,25 +392,6 @@ spec:
     geolocation:
       country: US
   set_identifier: us
-```
-
-**Default (catch-all for other locations):**
-
-```yaml
-apiVersion: aws.project-planton.org/v1
-kind: AwsRoute53DnsRecord
-metadata:
-  name: api-geo-default
-spec:
-  hosted_zone_id: Z1234567890ABC
-  name: api.example.com
-  type: A
-  ttl: 300
-  values:
-    - 192.0.2.3
-  routing_policy:
-    geolocation: {}
-  set_identifier: default
 ```
 
 ## CAA Record - Certificate Authority Authorization
@@ -395,7 +404,8 @@ kind: AwsRoute53DnsRecord
 metadata:
   name: caa-record
 spec:
-  hosted_zone_id: Z1234567890ABC
+  zone_id:
+    value: Z1234567890ABC
   name: example.com
   type: CAA
   ttl: 3600
@@ -416,3 +426,15 @@ project-planton pulumi up --manifest dns-record.yaml
 # Deploy with OpenTofu/Terraform
 project-planton tofu apply --manifest dns-record.yaml
 ```
+
+## value_from Defaults
+
+When using `value_from`, the following defaults are applied:
+
+| Field | Default Kind | Default Field Path |
+|-------|--------------|-------------------|
+| `spec.zone_id` | `AwsRoute53Zone` | `status.outputs.zone_id` |
+| `alias_target.dns_name` | `AwsAlb` | `status.outputs.load_balancer_dns_name` |
+| `alias_target.zone_id` | `AwsAlb` | `status.outputs.load_balancer_hosted_zone_id` |
+
+You can override these by specifying `kind` and `field_path` in the `value_from` block.

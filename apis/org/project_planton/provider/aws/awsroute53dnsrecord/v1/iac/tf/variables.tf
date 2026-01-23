@@ -8,14 +8,24 @@ variable "metadata" {
 variable "spec" {
   description = "AWS Route53 DNS Record specification"
   type = object({
-    hosted_zone_id = string
-    name           = string
-    type           = string
-    ttl            = optional(number, 300)
-    values         = optional(list(string), [])
+    # zone_id as StringValueOrRef - for Terraform we accept the resolved value
+    # The Project Planton CLI resolves value_from references before passing to Terraform
+    zone_id = object({
+      value = optional(string)
+    })
+    name = string
+    type = string
+    ttl  = optional(number, 300)
+    values = optional(list(string), [])
     alias_target = optional(object({
-      dns_name               = string
-      hosted_zone_id         = string
+      # dns_name as StringValueOrRef - resolved by CLI
+      dns_name = object({
+        value = optional(string)
+      })
+      # zone_id as StringValueOrRef - resolved by CLI
+      zone_id = object({
+        value = optional(string)
+      })
       evaluate_target_health = optional(bool, false)
     }))
     routing_policy = optional(object({

@@ -1,6 +1,6 @@
 # AWS Route53 DNS Record
 resource "aws_route53_record" "record" {
-  zone_id = var.spec.hosted_zone_id
+  zone_id = local.zone_id
   name    = var.spec.name
   type    = var.spec.type
 
@@ -16,11 +16,11 @@ resource "aws_route53_record" "record" {
 
   # Alias record configuration
   dynamic "alias" {
-    for_each = local.is_alias ? [var.spec.alias_target] : []
+    for_each = local.is_alias ? [1] : []
     content {
-      name                   = alias.value.dns_name
-      zone_id                = alias.value.hosted_zone_id
-      evaluate_target_health = alias.value.evaluate_target_health
+      name                   = local.alias_dns_name
+      zone_id                = local.alias_zone_id
+      evaluate_target_health = var.spec.alias_target.evaluate_target_health
     }
   }
 

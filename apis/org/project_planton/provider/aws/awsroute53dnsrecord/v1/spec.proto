@@ -3,6 +3,7 @@ syntax = "proto3";
 package org.project_planton.provider.aws.awsroute53dnsrecord.v1;
 
 import "buf/validate/validate.proto";
+import "org/project_planton/shared/foreignkey/v1/foreign_key.proto";
 import "org/project_planton/shared/networking/enums/dnsrecordtype/dns_record_type.proto";
 
 // AwsRoute53DnsRecordSpec defines the configuration for creating a DNS record in an AWS Route53 hosted zone.
@@ -14,9 +15,20 @@ import "org/project_planton/shared/networking/enums/dnsrecordtype/dns_record_typ
 // without CNAME restrictions and with no query charges.
 message AwsRoute53DnsRecordSpec {
   // The Route53 hosted zone ID where this DNS record will be created.
-  // Can be obtained from AwsRoute53Zone outputs or from the AWS console.
-  // Example: "Z1234567890ABC"
-  string hosted_zone_id = 1 [(buf.validate.field).required = true];
+  // Can be provided as a literal value or referenced from an AwsRoute53Zone resource.
+  //
+  // When using value_from, the default kind is AwsRoute53Zone and the default field path
+  // is "status.outputs.zone_id", allowing you to wire this directly to a zone resource.
+  //
+  // Example literal: "Z1234567890ABC"
+  // Example value_from:
+  //   value_from:
+  //     name: my-zone
+  org.project_planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (org.project_planton.shared.foreignkey.v1.default_kind) = AwsRoute53Zone,
+    (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
 
   // The name of the DNS record (fully qualified domain name or subdomain).
   // Examples:
@@ -102,14 +114,14 @@ message AwsRoute53DnsRecordSpec {
   option (buf.validate.message).cel = {
     id: "spec.values_or_alias_exclusive"
     message: "values and alias_target are mutually exclusive - specify one or the other"
-    expression: "size(this.values) == 0 || !has(this.alias_target) || this.alias_target.dns_name == ''"
+    expression: "size(this.values) == 0 || !has(this.alias_target) || (!has(this.alias_target.dns_name) && !has(this.alias_target.dns_name.value) && !has(this.alias_target.dns_name.value_from))"
   };
 
   // Cross-field validation: at least values or alias_target must be specified
   option (buf.validate.message).cel = {
     id: "spec.values_or_alias_required"
     message: "either values or alias_target must be specified"
-    expression: "size(this.values) > 0 || (has(this.alias_target) && this.alias_target.dns_name != '')"
+    expression: "size(this.values) > 0 || (has(this.alias_target) && has(this.alias_target.dns_name) && (has(this.alias_target.dns_name.value) || has(this.alias_target.dns_name.value_from)))"
   };
 
   // Cross-field validation: set_identifier required for non-simple routing
@@ -128,24 +140,52 @@ message AwsRoute53DnsRecordSpec {
 //   - Works at zone apex (example.com) where CNAME is not allowed
 //   - No query charges for alias queries to AWS resources
 //   - Automatic updates when target resource's IP changes
+//
+// Both dns_name and zone_id can be provided as literals or referenced from AWS resources.
+// The default kind for both is AwsAlb, enabling seamless wiring to Application Load Balancers.
 message AwsRoute53AliasTarget {
   // The DNS name of the target resource.
-  // Examples:
+  // Can be provided as a literal value or referenced from an AWS resource.
+  //
+  // When using value_from, the default kind is AwsAlb and the default field path
+  // is "status.outputs.load_balancer_dns_name".
+  //
+  // Example literals:
   //   - CloudFront: "d1234abcd.cloudfront.net"
   //   - ALB: "my-alb-1234567890.us-east-1.elb.amazonaws.com"
   //   - S3 website: "my-bucket.s3-website-us-east-1.amazonaws.com"
   //   - API Gateway: "abc123.execute-api.us-east-1.amazonaws.com"
-  string dns_name = 1 [(buf.validate.field).required = true];
+  //
+  // Example value_from (ALB):
+  //   value_from:
+  //     name: my-alb
+  org.project_planton.shared.foreignkey.v1.StringValueOrRef dns_name = 1 [
+    (buf.validate.field).required = true,
+    (org.project_planton.shared.foreignkey.v1.default_kind) = AwsAlb,
+    (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.load_balancer_dns_name"
+  ];
 
-  // The hosted zone ID of the target resource.
-  // Each AWS service has a specific hosted zone ID per region.
-  // Common hosted zone IDs:
+  // The hosted zone ID of the target resource (AWS service's zone ID, not your Route53 zone).
+  // Can be provided as a literal value or referenced from an AWS resource.
+  //
+  // When using value_from, the default kind is AwsAlb and the default field path
+  // is "status.outputs.load_balancer_hosted_zone_id".
+  //
+  // Common hosted zone IDs (for literal values):
   //   - CloudFront: "Z2FDTNDATAQYW2" (global)
   //   - ALB (us-east-1): "Z35SXDOTRQ7X7K"
   //   - S3 website (us-east-1): "Z3AQBSTGFYJSTF"
   //
+  // Example value_from (ALB):
+  //   value_from:
+  //     name: my-alb
+  //
   // Note: This is NOT your Route53 zone ID - it's the AWS service's zone ID.
-  string hosted_zone_id = 2 [(buf.validate.field).required = true];
+  org.project_planton.shared.foreignkey.v1.StringValueOrRef zone_id = 2 [
+    (buf.validate.field).required = true,
+    (org.project_planton.shared.foreignkey.v1.default_kind) = AwsAlb,
+    (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.load_balancer_hosted_zone_id"
+  ];
 
   // Evaluate target health.
   // If true, Route53 checks the health of the target before responding.

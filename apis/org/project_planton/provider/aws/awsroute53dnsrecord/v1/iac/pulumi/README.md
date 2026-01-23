@@ -1,51 +1,50 @@
-# AWS Route53 DNS Record - Pulumi Module
+# AWS Route53 DNS Record Pulumi Module
 
-This Pulumi module creates and manages AWS Route53 DNS records.
-
-## Overview
-
-The module provisions a single DNS record in an existing Route53 hosted zone with support for:
-
-- Standard DNS record types (A, AAAA, CNAME, MX, TXT, etc.)
-- Alias records (Route53's killer feature for AWS resources)
-- Advanced routing policies (weighted, latency, failover, geolocation)
-- Health check integration
+This Pulumi module creates DNS records in AWS Route53 hosted zones.
 
 ## Usage
 
-### With Project Planton CLI
+### As a Go Module
+
+```go
+package main
+
+import (
+    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+    awsroute53dnsrecordv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awsroute53dnsrecord/v1"
+    "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awsroute53dnsrecord/v1/iac/pulumi/module"
+)
+
+func main() {
+    pulumi.Run(func(ctx *pulumi.Context) error {
+        stackInput := &awsroute53dnsrecordv1.AwsRoute53DnsRecordStackInput{
+            // Note: zone_id and alias_target fields use StringValueOrRef
+            // The CLI resolves value_from references before passing to Pulumi
+        }
+        return module.Resources(ctx, stackInput)
+    })
+}
+```
+
+### Via Project Planton CLI
 
 ```bash
-# Deploy a DNS record
 project-planton pulumi up --manifest dns-record.yaml
-
-# Preview changes
-project-planton pulumi preview --manifest dns-record.yaml
-
-# Destroy the record
-project-planton pulumi destroy --manifest dns-record.yaml
 ```
 
-### Standalone Usage
+## Inputs
 
-```bash
-# Set the stack input as environment variable
-export STACK_INPUT=$(cat manifest.yaml | base64)
+The module accepts `AwsRoute53DnsRecordStackInput` which contains:
 
-# Initialize and run
-pulumi login --local
-pulumi stack init dev
-pulumi up
-```
-
-## Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `STACK_INPUT` | Base64-encoded manifest YAML | Yes |
-| `AWS_ACCESS_KEY_ID` | AWS access key (if not in manifest) | No |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key (if not in manifest) | No |
-| `AWS_REGION` | AWS region (if not in manifest) | No |
+- `target`: The `AwsRoute53DnsRecord` resource definition
+  - `spec.zone_id`: Route53 zone ID (StringValueOrRef - resolved before module)
+  - `spec.name`: DNS record name (FQDN or subdomain)
+  - `spec.type`: Record type (A, AAAA, CNAME, MX, TXT, etc.)
+  - `spec.ttl`: Time to live in seconds (ignored for alias records)
+  - `spec.values`: Record values (for standard records)
+  - `spec.alias_target`: Alias target configuration (StringValueOrRef fields)
+  - `spec.routing_policy`: Advanced routing configuration
+- `provider_config`: AWS credentials configuration
 
 ## Outputs
 
@@ -53,60 +52,26 @@ pulumi up
 |--------|-------------|
 | `fqdn` | Fully qualified domain name of the record |
 | `record_type` | DNS record type (A, AAAA, CNAME, etc.) |
-| `hosted_zone_id` | Route53 hosted zone ID |
+| `zone_id` | Route53 hosted zone ID |
 | `is_alias` | Whether this is an alias record |
-| `set_identifier` | Set identifier for routing policies |
+| `set_identifier` | Routing policy set identifier |
 
-## Example Manifests
+## StringValueOrRef Fields
 
-### Basic A Record
+The following fields support both literal values and resource references:
 
-```yaml
-apiVersion: aws.project-planton.org/v1
-kind: AwsRoute53DnsRecord
-metadata:
-  name: www-example
-spec:
-  hosted_zone_id: Z1234567890ABC
-  name: www.example.com
-  type: A
-  ttl: 300
-  values:
-    - 192.0.2.1
-```
+- `spec.zone_id`: Default kind is `AwsRoute53Zone`, field path is `status.outputs.zone_id`
+- `alias_target.dns_name`: Default kind is `AwsAlb`, field path is `status.outputs.load_balancer_dns_name`
+- `alias_target.zone_id`: Default kind is `AwsAlb`, field path is `status.outputs.load_balancer_hosted_zone_id`
 
-### Alias Record to CloudFront
+The CLI resolves `value_from` references before invoking the Pulumi module.
 
-```yaml
-apiVersion: aws.project-planton.org/v1
-kind: AwsRoute53DnsRecord
-metadata:
-  name: apex-cloudfront
-spec:
-  hosted_zone_id: Z1234567890ABC
-  name: example.com
-  type: A
-  alias_target:
-    dns_name: d1234abcd.cloudfront.net
-    hosted_zone_id: Z2FDTNDATAQYW2
-```
-
-## Troubleshooting
-
-### Record already exists
-
-If you get an error that the record already exists, the record may have been created outside of Pulumi. You can import it:
+## Development
 
 ```bash
-pulumi import aws:route53/record:Record www Z1234567890ABC_www.example.com_A
+# Build
+make build
+
+# Test locally
+pulumi preview --stack dev
 ```
-
-### Invalid hosted zone ID
-
-Ensure you're using the correct hosted zone ID:
-- For your records: Use your Route53 hosted zone ID
-- For alias targets: Use the AWS service's hosted zone ID (e.g., CloudFront: Z2FDTNDATAQYW2)
-
-### TTL ignored for alias records
-
-This is expected behavior. Alias records use the TTL of the target resource automatically.

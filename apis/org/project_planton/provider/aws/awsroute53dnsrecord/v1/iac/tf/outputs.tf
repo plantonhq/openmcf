@@ -8,9 +8,9 @@ output "record_type" {
   value       = aws_route53_record.record.type
 }
 
-output "hosted_zone_id" {
+output "zone_id" {
   description = "Route53 hosted zone ID where the record was created"
-  value       = var.spec.hosted_zone_id
+  value       = local.zone_id
 }
 
 output "is_alias" {

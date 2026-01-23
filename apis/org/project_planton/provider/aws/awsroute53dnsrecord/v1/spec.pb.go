@@ -8,6 +8,7 @@ package awsroute53dnsrecordv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/project-planton/apis/org/project_planton/shared/foreignkey/v1"
 	dnsrecordtype "github.com/plantonhq/project-planton/apis/org/project_planton/shared/networking/enums/dnsrecordtype"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -86,9 +87,17 @@ func (AwsRoute53FailoverPolicy_FailoverType) EnumDescriptor() ([]byte, []int) {
 type AwsRoute53DnsRecordSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Route53 hosted zone ID where this DNS record will be created.
-	// Can be obtained from AwsRoute53Zone outputs or from the AWS console.
-	// Example: "Z1234567890ABC"
-	HostedZoneId string `protobuf:"bytes,1,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	// Can be provided as a literal value or referenced from an AwsRoute53Zone resource.
+	//
+	// When using value_from, the default kind is AwsRoute53Zone and the default field path
+	// is "status.outputs.zone_id", allowing you to wire this directly to a zone resource.
+	//
+	// Example literal: "Z1234567890ABC"
+	// Example value_from:
+	//
+	//	value_from:
+	//	  name: my-zone
+	ZoneId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	// The name of the DNS record (fully qualified domain name or subdomain).
 	// Examples:
 	//   - "example.com" for zone apex
@@ -183,11 +192,11 @@ func (*AwsRoute53DnsRecordSpec) Descriptor() ([]byte, []int) {
 	return file_org_project_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AwsRoute53DnsRecordSpec) GetHostedZoneId() string {
+func (x *AwsRoute53DnsRecordSpec) GetZoneId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.HostedZoneId
+		return x.ZoneId
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsRoute53DnsRecordSpec) GetName() string {
@@ -254,24 +263,46 @@ func (x *AwsRoute53DnsRecordSpec) GetSetIdentifier() string {
 //   - Works at zone apex (example.com) where CNAME is not allowed
 //   - No query charges for alias queries to AWS resources
 //   - Automatic updates when target resource's IP changes
+//
+// Both dns_name and zone_id can be provided as literals or referenced from AWS resources.
+// The default kind for both is AwsAlb, enabling seamless wiring to Application Load Balancers.
 type AwsRoute53AliasTarget struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The DNS name of the target resource.
-	// Examples:
+	// Can be provided as a literal value or referenced from an AWS resource.
+	//
+	// When using value_from, the default kind is AwsAlb and the default field path
+	// is "status.outputs.load_balancer_dns_name".
+	//
+	// Example literals:
 	//   - CloudFront: "d1234abcd.cloudfront.net"
 	//   - ALB: "my-alb-1234567890.us-east-1.elb.amazonaws.com"
 	//   - S3 website: "my-bucket.s3-website-us-east-1.amazonaws.com"
 	//   - API Gateway: "abc123.execute-api.us-east-1.amazonaws.com"
-	DnsName string `protobuf:"bytes,1,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
-	// The hosted zone ID of the target resource.
-	// Each AWS service has a specific hosted zone ID per region.
-	// Common hosted zone IDs:
+	//
+	// Example value_from (ALB):
+	//
+	//	value_from:
+	//	  name: my-alb
+	DnsName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
+	// The hosted zone ID of the target resource (AWS service's zone ID, not your Route53 zone).
+	// Can be provided as a literal value or referenced from an AWS resource.
+	//
+	// When using value_from, the default kind is AwsAlb and the default field path
+	// is "status.outputs.load_balancer_hosted_zone_id".
+	//
+	// Common hosted zone IDs (for literal values):
 	//   - CloudFront: "Z2FDTNDATAQYW2" (global)
 	//   - ALB (us-east-1): "Z35SXDOTRQ7X7K"
 	//   - S3 website (us-east-1): "Z3AQBSTGFYJSTF"
 	//
+	// Example value_from (ALB):
+	//
+	//	value_from:
+	//	  name: my-alb
+	//
 	// Note: This is NOT your Route53 zone ID - it's the AWS service's zone ID.
-	HostedZoneId string `protobuf:"bytes,2,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	ZoneId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	// Evaluate target health.
 	// If true, Route53 checks the health of the target before responding.
 	// Useful for automatic failover when combined with health checks.
@@ -311,18 +342,18 @@ func (*AwsRoute53AliasTarget) Descriptor() ([]byte, []int) {
 	return file_org_project_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AwsRoute53AliasTarget) GetDnsName() string {
+func (x *AwsRoute53AliasTarget) GetDnsName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.DnsName
 	}
-	return ""
+	return nil
 }
 
-func (x *AwsRoute53AliasTarget) GetHostedZoneId() string {
+func (x *AwsRoute53AliasTarget) GetZoneId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.HostedZoneId
+		return x.ZoneId
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsRoute53AliasTarget) GetEvaluateTargetHealth() bool {
@@ -677,9 +708,9 @@ var File_org_project_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto prot
 
 const file_org_project_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Borg/project_planton/provider/aws/awsroute53dnsrecord/v1/spec.proto\x127org.project_planton.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1aOorg/project_planton/shared/networking/enums/dnsrecordtype/dns_record_type.proto\"\xa4\f\n" +
-	"\x17AwsRoute53DnsRecordSpec\x12,\n" +
-	"\x0ehosted_zone_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fhostedZoneId\x12h\n" +
+	"Borg/project_planton/provider/aws/awsroute53dnsrecord/v1/spec.proto\x127org.project_planton.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a:org/project_planton/shared/foreignkey/v1/foreign_key.proto\x1aOorg/project_planton/shared/networking/enums/dnsrecordtype/dns_record_type.proto\"\xa7\x0e\n" +
+	"\x17AwsRoute53DnsRecordSpec\x12z\n" +
+	"\azone_id\x18\x01 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12h\n" +
 	"\x04name\x18\x02 \x01(\tBT\xbaHQ\xc8\x01\x01rL2J^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9\\-\\.]+)$R\x04name\x12\xbd\x01\n" +
 	"\x04type\x18\x03 \x01(\x0e2H.org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordTypeB_\xbaH\\\xba\x01Q\n" +
 	"\x14type.not_unspecified\x12.type must be specified (cannot be unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x8e\x01\n" +
@@ -689,13 +720,13 @@ const file_org_project_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_ra
 	"\falias_target\x18\x06 \x01(\v2N.org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTargetR\valiasTarget\x12w\n" +
 	"\x0erouting_policy\x18\a \x01(\v2P.org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicyR\rroutingPolicy\x12&\n" +
 	"\x0fhealth_check_id\x18\b \x01(\tR\rhealthCheckId\x12%\n" +
-	"\x0eset_identifier\x18\t \x01(\tR\rsetIdentifier:\xcc\x05\xbaH\xc8\x05\x1a\xc2\x01\n" +
-	"\x1espec.values_or_alias_exclusive\x12Ivalues and alias_target are mutually exclusive - specify one or the other\x1aUsize(this.values) == 0 || !has(this.alias_target) || this.alias_target.dns_name == ''\x1a\xa7\x01\n" +
-	"\x1dspec.values_or_alias_required\x12/either values or alias_target must be specified\x1aUsize(this.values) > 0 || (has(this.alias_target) && this.alias_target.dns_name != '')\x1a\xd6\x02\n" +
-	"&spec.set_identifier_for_routing_policy\x12Yset_identifier is required when using weighted, latency, failover, or geolocation routing\x1a\xd0\x01!has(this.routing_policy) || !has(this.routing_policy.weighted) && !has(this.routing_policy.latency) && !has(this.routing_policy.failover) && !has(this.routing_policy.geolocation) || this.set_identifier != ''\"\x9e\x01\n" +
-	"\x15AwsRoute53AliasTarget\x12!\n" +
-	"\bdns_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\adnsName\x12,\n" +
-	"\x0ehosted_zone_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fhostedZoneId\x124\n" +
+	"\x0eset_identifier\x18\t \x01(\tR\rsetIdentifier:\x81\a\xbaH\xfd\x06\x1a\x9e\x02\n" +
+	"\x1espec.values_or_alias_exclusive\x12Ivalues and alias_target are mutually exclusive - specify one or the other\x1a\xb0\x01size(this.values) == 0 || !has(this.alias_target) || (!has(this.alias_target.dns_name) && !has(this.alias_target.dns_name.value) && !has(this.alias_target.dns_name.value_from))\x1a\x80\x02\n" +
+	"\x1dspec.values_or_alias_required\x12/either values or alias_target must be specified\x1a\xad\x01size(this.values) > 0 || (has(this.alias_target) && has(this.alias_target.dns_name) && (has(this.alias_target.dns_name.value) || has(this.alias_target.dns_name.value_from)))\x1a\xd6\x02\n" +
+	"&spec.set_identifier_for_routing_policy\x12Yset_identifier is required when using weighted, latency, failover, or geolocation routing\x1a\xd0\x01!has(this.routing_policy) || !has(this.routing_policy.weighted) && !has(this.routing_policy.latency) && !has(this.routing_policy.failover) && !has(this.routing_policy.geolocation) || this.set_identifier != ''\"\xed\x02\n" +
+	"\x15AwsRoute53AliasTarget\x12\x8b\x01\n" +
+	"\bdns_name\x18\x01 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xc8\x01\x92\xd4a%status.outputs.load_balancer_dns_nameR\adnsName\x12\x8f\x01\n" +
+	"\azone_id\x18\x02 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB:\xbaH\x03\xc8\x01\x01\x88\xd4a\xc8\x01\x92\xd4a+status.outputs.load_balancer_hosted_zone_idR\x06zoneId\x124\n" +
 	"\x16evaluate_target_health\x18\x03 \x01(\bR\x14evaluateTargetHealth\"\xed\x03\n" +
 	"\x17AwsRoute53RoutingPolicy\x12o\n" +
 	"\bweighted\x18\x01 \x01(\v2Q.org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicyH\x00R\bweighted\x12l\n" +
@@ -743,22 +774,26 @@ var file_org_project_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_goTy
 	(*AwsRoute53LatencyPolicy)(nil),            // 5: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
 	(*AwsRoute53FailoverPolicy)(nil),           // 6: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
 	(*AwsRoute53GeolocationPolicy)(nil),        // 7: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
-	(dnsrecordtype.DnsRecordType)(0),           // 8: org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordType
+	(*v1.StringValueOrRef)(nil),                // 8: org.project_planton.shared.foreignkey.v1.StringValueOrRef
+	(dnsrecordtype.DnsRecordType)(0),           // 9: org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordType
 }
 var file_org_project_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_depIdxs = []int32{
-	8, // 0: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.type:type_name -> org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordType
-	2, // 1: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.alias_target:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
-	3, // 2: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.routing_policy:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
-	4, // 3: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.weighted:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
-	5, // 4: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.latency:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
-	6, // 5: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.failover:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
-	7, // 6: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.geolocation:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
-	0, // 7: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.failover_type:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverType
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	8,  // 0: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.zone_id:type_name -> org.project_planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 1: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.type:type_name -> org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordType
+	2,  // 2: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.alias_target:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
+	3,  // 3: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.routing_policy:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
+	8,  // 4: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.dns_name:type_name -> org.project_planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 5: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.zone_id:type_name -> org.project_planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 6: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.weighted:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
+	5,  // 7: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.latency:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
+	6,  // 8: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.failover:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
+	7,  // 9: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.geolocation:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
+	0,  // 10: org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.failover_type:type_name -> org.project_planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverType
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_org_project_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_init() }
