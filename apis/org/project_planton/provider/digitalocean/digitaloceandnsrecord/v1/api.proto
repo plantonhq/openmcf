@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package org.project_planton.provider.digitalocean.digitaloceandnsrecord.v1;
+
+import "buf/validate/validate.proto";
+import "org/project_planton/provider/digitalocean/digitaloceandnsrecord/v1/spec.proto";
+import "org/project_planton/provider/digitalocean/digitaloceandnsrecord/v1/stack_outputs.proto";
+import "org/project_planton/shared/metadata.proto";
+
+// DigitalOceanDnsRecord is a Kubernetes Resource Model (KRM) style resource for managing
+// individual DNS records within a DigitalOcean DNS zone (domain).
+message DigitalOceanDnsRecord {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'digitalocean.project-planton.org/v1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'DigitalOceanDnsRecord'];
+
+  // metadata
+  org.project_planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  DigitalOceanDnsRecordSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  DigitalOceanDnsRecordStatus status = 5;
+}
+
+// DigitalOceanDnsRecordStatus represents the observed state of a DigitalOcean DNS record.
+message DigitalOceanDnsRecordStatus {
+  // stack-outputs from the IaC deployment
+  DigitalOceanDnsRecordStackOutputs outputs = 1;
+}

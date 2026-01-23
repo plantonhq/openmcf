@@ -35,6 +35,7 @@ import (
 	awslambdav1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awslambda/v1"
 	awsrdsclusterv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awsrdscluster/v1"
 	awsrdsinstancev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awsrdsinstance/v1"
+	awsroute53dnsrecordv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awsroute53dnsrecord/v1"
 	awsroute53zonev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awsroute53zone/v1"
 	awss3bucketv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awss3bucket/v1"
 	awssecretsmanagerv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awssecretsmanager/v1"
@@ -43,6 +44,7 @@ import (
 	azureaksclusterv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azureakscluster/v1"
 	azureaksnodepoolv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azureaksnodepool/v1"
 	azurecontainerregistryv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurecontainerregistry/v1"
+	azurednsrecordv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurednsrecord/v1"
 	azurednszonev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurednszone/v1"
 	azurekeyvaultv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurekeyvault/v1"
 	azurenatgatewayv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure/azurenatgateway/v1"
@@ -53,6 +55,7 @@ import (
 	civocertificatev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civocertificate/v1"
 	civocomputeinstancev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civocomputeinstance/v1"
 	civodatabasev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civodatabase/v1"
+	civodnsrecordv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civodnsrecord/v1"
 	civodnszonev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civodnszone/v1"
 	civofirewallv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civofirewall/v1"
 	civoipaddressv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civoipaddress/v1"
@@ -61,6 +64,7 @@ import (
 	civovolumev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civovolume/v1"
 	civovpcv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo/civovpc/v1"
 	cloudflared1databasev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare/cloudflared1database/v1"
+	cloudflarednsrecordv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare/cloudflarednsrecord/v1"
 	cloudflarednszonev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare/cloudflarednszone/v1"
 	cloudflarekvnamespacev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare/cloudflarekvnamespace/v1"
 	cloudflareloadbalancerv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare/cloudflareloadbalancer/v1"
@@ -89,6 +93,7 @@ import (
 	gcpcloudrunv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpcloudrun/v1"
 	gcpcloudsqlv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpcloudsql/v1"
 	gcpcomputeinstancev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpcomputeinstance/v1"
+	gcpdnsrecordv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpdnsrecord/v1"
 	gcpdnszonev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpdnszone/v1"
 	gcpgcsbucketv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpgcsbucket/v1"
 	gcpgkeclusterv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp/gcpgkecluster/v1"
@@ -183,35 +188,37 @@ var ProviderAuth0Map = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_AwsAlb:             &awsalbv1.AwsAlb{},
-	cloudresourcekind.CloudResourceKind_AwsCertManagerCert: &awscertmanagercertv1.AwsCertManagerCert{},
-	cloudresourcekind.CloudResourceKind_AwsClientVpn:       &awsclientvpnv1.AwsClientVpn{},
-	cloudresourcekind.CloudResourceKind_AwsCloudFront:      &awscloudfrontv1.AwsCloudFront{},
-	cloudresourcekind.CloudResourceKind_AwsDocumentDb:      &awsdocumentdbv1.AwsDocumentDb{},
-	cloudresourcekind.CloudResourceKind_AwsDynamodb:        &awsdynamodbv1.AwsDynamodb{},
-	cloudresourcekind.CloudResourceKind_AwsEc2Instance:     &awsec2instancev1.AwsEc2Instance{},
-	cloudresourcekind.CloudResourceKind_AwsEcrRepo:         &awsecrrepov1.AwsEcrRepo{},
-	cloudresourcekind.CloudResourceKind_AwsEcsCluster:      &awsecsclusterv1.AwsEcsCluster{},
-	cloudresourcekind.CloudResourceKind_AwsEcsService:      &awsecsservicev1.AwsEcsService{},
-	cloudresourcekind.CloudResourceKind_AwsEksCluster:      &awseksclusterv1.AwsEksCluster{},
-	cloudresourcekind.CloudResourceKind_AwsEksNodeGroup:    &awseksnodegroupv1.AwsEksNodeGroup{},
-	cloudresourcekind.CloudResourceKind_AwsIamRole:         &awsiamrolev1.AwsIamRole{},
-	cloudresourcekind.CloudResourceKind_AwsIamUser:         &awsiamuserv1.AwsIamUser{},
-	cloudresourcekind.CloudResourceKind_AwsKmsKey:          &awskmskeyv1.AwsKmsKey{},
-	cloudresourcekind.CloudResourceKind_AwsLambda:          &awslambdav1.AwsLambda{},
-	cloudresourcekind.CloudResourceKind_AwsRdsCluster:      &awsrdsclusterv1.AwsRdsCluster{},
-	cloudresourcekind.CloudResourceKind_AwsRdsInstance:     &awsrdsinstancev1.AwsRdsInstance{},
-	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:     &awsroute53zonev1.AwsRoute53Zone{},
-	cloudresourcekind.CloudResourceKind_AwsS3Bucket:        &awss3bucketv1.AwsS3Bucket{},
-	cloudresourcekind.CloudResourceKind_AwsSecretsManager:  &awssecretsmanagerv1.AwsSecretsManager{},
-	cloudresourcekind.CloudResourceKind_AwsSecurityGroup:   &awssecuritygroupv1.AwsSecurityGroup{},
-	cloudresourcekind.CloudResourceKind_AwsVpc:             &awsvpcv1.AwsVpc{},
+	cloudresourcekind.CloudResourceKind_AwsAlb:              &awsalbv1.AwsAlb{},
+	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:  &awscertmanagercertv1.AwsCertManagerCert{},
+	cloudresourcekind.CloudResourceKind_AwsClientVpn:        &awsclientvpnv1.AwsClientVpn{},
+	cloudresourcekind.CloudResourceKind_AwsCloudFront:       &awscloudfrontv1.AwsCloudFront{},
+	cloudresourcekind.CloudResourceKind_AwsDocumentDb:       &awsdocumentdbv1.AwsDocumentDb{},
+	cloudresourcekind.CloudResourceKind_AwsDynamodb:         &awsdynamodbv1.AwsDynamodb{},
+	cloudresourcekind.CloudResourceKind_AwsEc2Instance:      &awsec2instancev1.AwsEc2Instance{},
+	cloudresourcekind.CloudResourceKind_AwsEcrRepo:          &awsecrrepov1.AwsEcrRepo{},
+	cloudresourcekind.CloudResourceKind_AwsEcsCluster:       &awsecsclusterv1.AwsEcsCluster{},
+	cloudresourcekind.CloudResourceKind_AwsEcsService:       &awsecsservicev1.AwsEcsService{},
+	cloudresourcekind.CloudResourceKind_AwsEksCluster:       &awseksclusterv1.AwsEksCluster{},
+	cloudresourcekind.CloudResourceKind_AwsEksNodeGroup:     &awseksnodegroupv1.AwsEksNodeGroup{},
+	cloudresourcekind.CloudResourceKind_AwsIamRole:          &awsiamrolev1.AwsIamRole{},
+	cloudresourcekind.CloudResourceKind_AwsIamUser:          &awsiamuserv1.AwsIamUser{},
+	cloudresourcekind.CloudResourceKind_AwsKmsKey:           &awskmskeyv1.AwsKmsKey{},
+	cloudresourcekind.CloudResourceKind_AwsLambda:           &awslambdav1.AwsLambda{},
+	cloudresourcekind.CloudResourceKind_AwsRdsCluster:       &awsrdsclusterv1.AwsRdsCluster{},
+	cloudresourcekind.CloudResourceKind_AwsRdsInstance:      &awsrdsinstancev1.AwsRdsInstance{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord: &awsroute53dnsrecordv1.AwsRoute53DnsRecord{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:      &awsroute53zonev1.AwsRoute53Zone{},
+	cloudresourcekind.CloudResourceKind_AwsS3Bucket:         &awss3bucketv1.AwsS3Bucket{},
+	cloudresourcekind.CloudResourceKind_AwsSecretsManager:   &awssecretsmanagerv1.AwsSecretsManager{},
+	cloudresourcekind.CloudResourceKind_AwsSecurityGroup:    &awssecuritygroupv1.AwsSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AwsVpc:              &awsvpcv1.AwsVpc{},
 }
 
 var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureAksCluster:        &azureaksclusterv1.AzureAksCluster{},
 	cloudresourcekind.CloudResourceKind_AzureAksNodePool:       &azureaksnodepoolv1.AzureAksNodePool{},
 	cloudresourcekind.CloudResourceKind_AzureContainerRegistry: &azurecontainerregistryv1.AzureContainerRegistry{},
+	cloudresourcekind.CloudResourceKind_AzureDnsRecord:         &azurednsrecordv1.AzureDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:           &azurednszonev1.AzureDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzureKeyVault:          &azurekeyvaultv1.AzureKeyVault{},
 	cloudresourcekind.CloudResourceKind_AzureNatGateway:        &azurenatgatewayv1.AzureNatGateway{},
@@ -225,6 +232,7 @@ var ProviderCivoMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_CivoCertificate:        &civocertificatev1.CivoCertificate{},
 	cloudresourcekind.CloudResourceKind_CivoComputeInstance:    &civocomputeinstancev1.CivoComputeInstance{},
 	cloudresourcekind.CloudResourceKind_CivoDatabase:           &civodatabasev1.CivoDatabase{},
+	cloudresourcekind.CloudResourceKind_CivoDnsRecord:          &civodnsrecordv1.CivoDnsRecord{},
 	cloudresourcekind.CloudResourceKind_CivoDnsZone:            &civodnszonev1.CivoDnsZone{},
 	cloudresourcekind.CloudResourceKind_CivoFirewall:           &civofirewallv1.CivoFirewall{},
 	cloudresourcekind.CloudResourceKind_CivoIpAddress:          &civoipaddressv1.CivoIpAddress{},
@@ -236,6 +244,7 @@ var ProviderCivoMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 
 var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_CloudflareD1Database:                 &cloudflared1databasev1.CloudflareD1Database{},
+	cloudresourcekind.CloudResourceKind_CloudflareDnsRecord:                  &cloudflarednsrecordv1.CloudflareDnsRecord{},
 	cloudresourcekind.CloudResourceKind_CloudflareDnsZone:                    &cloudflarednszonev1.CloudflareDnsZone{},
 	cloudresourcekind.CloudResourceKind_CloudflareKvNamespace:                &cloudflarekvnamespacev1.CloudflareKvNamespace{},
 	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancer:               &cloudflareloadbalancerv1.CloudflareLoadBalancer{},
@@ -273,6 +282,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpCloudRun:                   &gcpcloudrunv1.GcpCloudRun{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSql:                   &gcpcloudsqlv1.GcpCloudSql{},
 	cloudresourcekind.CloudResourceKind_GcpComputeInstance:            &gcpcomputeinstancev1.GcpComputeInstance{},
+	cloudresourcekind.CloudResourceKind_GcpDnsRecord:                  &gcpdnsrecordv1.GcpDnsRecord{},
 	cloudresourcekind.CloudResourceKind_GcpDnsZone:                    &gcpdnszonev1.GcpDnsZone{},
 	cloudresourcekind.CloudResourceKind_GcpGcsBucket:                  &gcpgcsbucketv1.GcpGcsBucket{},
 	cloudresourcekind.CloudResourceKind_GcpGkeCluster:                 &gcpgkeclusterv1.GcpGkeCluster{},
