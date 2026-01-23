@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package org.project_planton.provider.civo.civodnsrecord.v1;
+
+import "buf/validate/validate.proto";
+import "org/project_planton/provider/civo/civodnsrecord/v1/spec.proto";
+import "org/project_planton/provider/civo/civodnsrecord/v1/stack_outputs.proto";
+import "org/project_planton/shared/metadata.proto";
+
+// CivoDnsRecord is a Kubernetes Resource Model (KRM) style resource for managing
+// individual DNS records within a Civo DNS zone.
+message CivoDnsRecord {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'civo.project-planton.org/v1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CivoDnsRecord'];
+
+  // metadata
+  org.project_planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CivoDnsRecordSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CivoDnsRecordStatus status = 5;
+}
+
+// CivoDnsRecordStatus represents the observed state of a Civo DNS record.
+message CivoDnsRecordStatus {
+  // stack-outputs from the IaC deployment
+  CivoDnsRecordStackOutputs outputs = 1;
+}
