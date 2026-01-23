@@ -17,12 +17,7 @@ resource "openfga_relationship_tuple" "this" {
   relation               = local.relation
   object                 = local.object
 
-  # Condition block (optional)
-  dynamic "condition" {
-    for_each = local.condition != null ? [local.condition] : []
-    content {
-      name         = condition.value.name
-      context_json = condition.value.context_json
-    }
-  }
+  # Condition is a SingleNestedAttribute in the OpenFGA provider, not a block.
+  # Direct assignment works correctly with null for optional attributes.
+  condition = local.condition
 }
