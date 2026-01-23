@@ -19,15 +19,12 @@ message GcpDnsRecordSpec {
   ];
 
   // The name of the Managed Zone where this DNS record will be created.
-  // This must be an existing Cloud DNS Managed Zone in the specified project.
+  // This can be a direct value or a reference to a GcpDnsZone resource's output.
   // Example: "example-zone" (the zone name, not the DNS name).
-  string managed_zone = 2 [
+  org.project_planton.shared.foreignkey.v1.StringValueOrRef managed_zone = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "managed_zone.valid_name"
-      message: "managed_zone must be a valid Cloud DNS zone name (lowercase letters, numbers, and hyphens)"
-      expression: "this.matches('^[a-z][a-z0-9-]{0,62}$')"
-    }
+    (org.project_planton.shared.foreignkey.v1.default_kind) = GcpDnsZone,
+    (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_name"
   ];
 
   // The DNS record type to create.

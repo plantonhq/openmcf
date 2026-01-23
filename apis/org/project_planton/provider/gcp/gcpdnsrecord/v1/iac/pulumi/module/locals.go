@@ -25,7 +25,8 @@ func initializeLocals(ctx *pulumi.Context, stackInput *gcpdnsrecordv1.GcpDnsReco
 	// Extract project ID from StringValueOrRef
 	locals.ProjectId = target.Spec.ProjectId.GetValue()
 
-	locals.ManagedZone = target.Spec.ManagedZone
+	// Extract managed zone from StringValueOrRef
+	locals.ManagedZone = target.Spec.ManagedZone.GetValue()
 	locals.RecordType = target.Spec.RecordType.String()
 	locals.Name = target.Spec.Name
 	locals.Values = target.Spec.Values

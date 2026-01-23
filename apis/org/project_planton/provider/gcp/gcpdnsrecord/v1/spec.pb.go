@@ -33,9 +33,9 @@ type GcpDnsRecordSpec struct {
 	// This is used to locate the DNS zone where the record will be created.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// The name of the Managed Zone where this DNS record will be created.
-	// This must be an existing Cloud DNS Managed Zone in the specified project.
+	// This can be a direct value or a reference to a GcpDnsZone resource's output.
 	// Example: "example-zone" (the zone name, not the DNS name).
-	ManagedZone string `protobuf:"bytes,2,opt,name=managed_zone,json=managedZone,proto3" json:"managed_zone,omitempty"`
+	ManagedZone *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=managed_zone,json=managedZone,proto3" json:"managed_zone,omitempty"`
 	// The DNS record type to create.
 	// Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA.
 	RecordType dnsrecordtype.DnsRecordType `protobuf:"varint,3,opt,name=record_type,json=recordType,proto3,enum=org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordType" json:"record_type,omitempty"`
@@ -97,11 +97,11 @@ func (x *GcpDnsRecordSpec) GetProjectId() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *GcpDnsRecordSpec) GetManagedZone() string {
+func (x *GcpDnsRecordSpec) GetManagedZone() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ManagedZone
 	}
-	return ""
+	return nil
 }
 
 func (x *GcpDnsRecordSpec) GetRecordType() dnsrecordtype.DnsRecordType {
@@ -136,12 +136,11 @@ var File_org_project_planton_provider_gcp_gcpdnsrecord_v1_spec_proto protoreflec
 
 const file_org_project_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	";org/project_planton/provider/gcp/gcpdnsrecord/v1/spec.proto\x120org.project_planton.provider.gcp.gcpdnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a:org/project_planton/shared/foreignkey/v1/foreign_key.proto\x1aOorg/project_planton/shared/networking/enums/dnsrecordtype/dns_record_type.proto\x1a0org/project_planton/shared/options/options.proto\"\x9f\a\n" +
+	";org/project_planton/provider/gcp/gcpdnsrecord/v1/spec.proto\x120org.project_planton.provider.gcp.gcpdnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a:org/project_planton/shared/foreignkey/v1/foreign_key.proto\x1aOorg/project_planton/shared/networking/enums/dnsrecordtype/dns_record_type.proto\x1a0org/project_planton/shared/options/options.proto\"\xd9\x06\n" +
 	"\x10GcpDnsRecordSpec\x12\x83\x01\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xcc\x01\n" +
-	"\fmanaged_zone\x18\x02 \x01(\tB\xa8\x01\xbaH\xa4\x01\xba\x01\x9d\x01\n" +
-	"\x17managed_zone.valid_name\x12Zmanaged_zone must be a valid Cloud DNS zone name (lowercase letters, numbers, and hyphens)\x1a&this.matches('^[a-z][a-z0-9-]{0,62}$')\xc8\x01\x01R\vmanagedZone\x12\xd8\x01\n" +
+	"project_id\x18\x01 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x86\x01\n" +
+	"\fmanaged_zone\x18\x02 \x01(\v2:.org.project_planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x04\x92\xd4a\x18status.outputs.zone_nameR\vmanagedZone\x12\xd8\x01\n" +
 	"\vrecord_type\x18\x03 \x01(\x0e2H.org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordTypeBm\xbaHj\xba\x01_\n" +
 	"\x1brecord_type.not_unspecified\x125record_type must be specified (cannot be unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\n" +
 	"recordType\x12\xee\x01\n" +
@@ -173,12 +172,13 @@ var file_org_project_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_goTypes = [
 }
 var file_org_project_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_depIdxs = []int32{
 	1, // 0: org.project_planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.project_id:type_name -> org.project_planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: org.project_planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.record_type:type_name -> org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordType
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // 1: org.project_planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.managed_zone:type_name -> org.project_planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 2: org.project_planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.record_type:type_name -> org.project_planton.shared.networking.enums.dnsrecordtype.DnsRecordType
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_org_project_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_init() }

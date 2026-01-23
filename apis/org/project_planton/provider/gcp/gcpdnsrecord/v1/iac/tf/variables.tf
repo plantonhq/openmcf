@@ -22,8 +22,10 @@ variable "spec" {
     })
 
     # The name of the Managed Zone where this DNS record will be created.
-    # This must be an existing Cloud DNS Managed Zone in the specified project.
-    managed_zone = string
+    # Supports StringValueOrRef pattern - use {value: "zone-name"} for literal values.
+    managed_zone = object({
+      value = string
+    })
 
     # The DNS record type to create.
     # Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA.
