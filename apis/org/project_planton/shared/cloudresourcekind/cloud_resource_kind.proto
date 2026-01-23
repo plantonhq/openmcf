@@ -584,6 +584,11 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8srookop"
   }];
+  KubernetesRookCephCluster = 848 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srookcl"
+  }];
 
   // 1200–1499: DigitalOcean resources
   DigitalOceanAppPlatformService = 1200 [(kind_meta) = {

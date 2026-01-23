@@ -144,6 +144,7 @@ import (
 	kubernetespostgresv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/kubernetespostgres/v1"
 	kubernetesprometheusv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/kubernetesprometheus/v1"
 	kubernetesredisv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/kubernetesredis/v1"
+	kubernetesrookcephclusterv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/kubernetesrookcephcluster/v1"
 	kubernetesrookcephoperatorv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/kubernetesrookcephoperator/v1"
 	kubernetessignozv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/kubernetessignoz/v1"
 	kubernetessolrv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/kubernetessolr/v1"
@@ -338,6 +339,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPostgres:                    &kubernetespostgresv1.KubernetesPostgres{},
 	cloudresourcekind.CloudResourceKind_KubernetesPrometheus:                  &kubernetesprometheusv1.KubernetesPrometheus{},
 	cloudresourcekind.CloudResourceKind_KubernetesRedis:                       &kubernetesredisv1.KubernetesRedis{},
+	cloudresourcekind.CloudResourceKind_KubernetesRookCephCluster:             &kubernetesrookcephclusterv1.KubernetesRookCephCluster{},
 	cloudresourcekind.CloudResourceKind_KubernetesRookCephOperator:            &kubernetesrookcephoperatorv1.KubernetesRookCephOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesSignoz:                      &kubernetessignozv1.KubernetesSignoz{},
 	cloudresourcekind.CloudResourceKind_KubernetesSolr:                        &kubernetessolrv1.KubernetesSolr{},
