@@ -1,0 +1,12 @@
+apiVersion: cloudflare.project-planton.org/v1
+kind: CloudflareDnsRecord
+metadata:
+  name: test-dns-record
+spec:
+  zone_id: "test-zone-id-abc123"
+  name: "www"
+  type: A
+  value: "192.0.2.1"
+  proxied: true
+  ttl: 1
+  comment: "Test DNS record for local development"
