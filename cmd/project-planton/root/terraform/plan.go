@@ -9,6 +9,7 @@ import (
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/flag"
 	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
+	"github.com/plantonhq/project-planton/internal/cli/ui"
 	"github.com/plantonhq/project-planton/internal/manifest"
 	"github.com/plantonhq/project-planton/pkg/iac/localmodule"
 	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
@@ -141,8 +142,12 @@ func planHandler(cmd *cobra.Command, args []string) {
 		noCleanup,
 		kubeCtx,
 		providerConfig,
+		nil, // backendConfig - uses manifest labels for direct commands
 	)
 	if err != nil {
+		ui.ErrorWithoutExit("Terraform Execution Failed", err.Error(),
+			"Check the module configuration for syntax errors",
+			"Ensure all required provider credentials are configured")
 		cliprint.PrintTerraformFailure()
 		os.Exit(1)
 	}

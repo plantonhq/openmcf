@@ -77,9 +77,10 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 		ctx.NoCleanup,
 		ctx.KubeContext,
 		ctx.ProviderConfig,
+		backendCfg,
 	)
 	if err != nil {
-		printHclFailure(binary)
+		printHclExecutionError(binary, err)
 		os.Exit(1)
 	}
 
@@ -184,4 +185,13 @@ func printHclFailure(binary provisioner.HclBinary) {
 	case provisioner.HclBinaryTerraform:
 		cliprint.PrintTerraformFailure()
 	}
+}
+
+// printHclExecutionError prints a beautiful error message when HCL execution fails.
+// It displays the actual error message along with helpful hints for troubleshooting.
+func printHclExecutionError(binary provisioner.HclBinary, err error) {
+	title := fmt.Sprintf("%s Execution Failed", binary.DisplayName())
+	ui.ErrorWithoutExit(title, err.Error(),
+		"Check the module configuration for syntax errors",
+		"Ensure all required provider credentials are configured")
 }

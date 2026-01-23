@@ -8,6 +8,7 @@ import (
 	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
 	"github.com/plantonhq/project-planton/internal/cli/cliprint"
 	"github.com/plantonhq/project-planton/internal/cli/flag"
+	"github.com/plantonhq/project-planton/internal/cli/ui"
 	"github.com/plantonhq/project-planton/internal/cli/workspace"
 	"github.com/plantonhq/project-planton/internal/manifest"
 	"github.com/plantonhq/project-planton/pkg/crkreflect"
@@ -170,6 +171,9 @@ func initHandler(cmd *cobra.Command, args []string) {
 		nil,
 	)
 	if err != nil {
+		ui.ErrorWithoutExit("OpenTofu Execution Failed", err.Error(),
+			"Check the module configuration for syntax errors",
+			"Ensure all required provider credentials are configured")
 		cliprint.PrintTofuFailure()
 		os.Exit(1)
 	}
