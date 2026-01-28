@@ -16,9 +16,9 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-2 mb-4">
               <Image src="/icon.png" alt="OpenMCF mark" width={36} height={36} className="h-9 w-auto object-contain" />
-              <span className="text-xl font-bold text-white">OpenMCF</span>
+              <Image src="/text-logo.svg" alt="OpenMCF" width={155} height={32} className="h-8 w-auto object-contain" />
             </div>
             <p className="text-slate-400 max-w-md mb-6">
               Kubernetes‑style manifests for multi‑cloud infrastructure. Define once. Deploy anywhere.

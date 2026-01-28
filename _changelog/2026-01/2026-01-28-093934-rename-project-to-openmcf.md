@@ -1,4 +1,4 @@
-# Rename Project from project-planton to OpenMCF
+# Rename Project from openmcf to OpenMCF
 
 **Date**: January 28, 2026
 **Type**: Refactoring
@@ -6,7 +6,7 @@
 
 ## Summary
 
-Completed the comprehensive rename of the open source project from "project-planton" to "OpenMCF" (Open Multi-Cloud Framework). This involved renaming 760+ files and directories, updating the git remote URL, and ensuring all references use the new naming conventions.
+Completed the comprehensive rename of the open source project from "openmcf" to "OpenMCF" (Open Multi-Cloud Framework). This involved renaming 760+ files and directories, updating the git remote URL, and ensuring all references use the new naming conventions.
 
 ## Problem Statement / Motivation
 
@@ -14,7 +14,7 @@ The project needed a new identity as "OpenMCF" to better reflect its purpose as 
 
 ### Pain Points
 
-- Old naming (`project-planton`, `project_planton`, `OpenMCF`) scattered across files and directories
+- Old naming (`openmcf`, `openmcf`, `OpenMCF`) scattered across files and directories
 - Git remote URL still pointing to old repository name
 - Documentation and release notes referencing old project name
 
@@ -23,8 +23,8 @@ The project needed a new identity as "OpenMCF" to better reflect its purpose as 
 Performed a comprehensive rename operation:
 
 1. **String replacements** (done by user):
-   - `project-planton` → `openmcf`
-   - `project_planton` → `openmcf`
+   - `openmcf` → `openmcf`
+   - `openmcf` → `openmcf`
    - `OpenMCF` → `OpenMCF`
    - `OpenMCF` → `OpenMCF`
 
@@ -33,17 +33,17 @@ Performed a comprehensive rename operation:
    - All directories containing old naming patterns
 
 3. **Git remote URL update**:
-   - Updated from `plantonhq/project-planton` to `plantonhq/openmcf`
+   - Updated from `plantonhq/openmcf` to `plantonhq/openmcf`
 
 ### Rename Scope
 
 ```mermaid
 flowchart TB
     subgraph Directories["Directories Renamed (4)"]
-        D1["cmd/project-planton → cmd/openmcf"]
+        D1["cmd/openmcf → cmd/openmcf"]
         D2["app/frontend/src/gen/org/openmcf→ .../openmcf"]
         D3["app/frontend/src/gen/org/openmcf/openmcf→ .../openmcf"]
-        D4["_projects/20251127-project-planton-web-app → ...-openmcf-web-app"]
+        D4["_projects/20251127-openmcf-web-app → ...-openmcf-web-app"]
     end
     
     subgraph Files["Files Renamed (25+ explicit)"]
@@ -63,10 +63,10 @@ flowchart TB
 
 | Original Path | New Path |
 |--------------|----------|
-| `cmd/project-planton` | `cmd/openmcf` |
-| `app/frontend/src/gen/org/project_planton` | `app/frontend/src/gen/org/openmcf` |
-| `app/frontend/src/gen/org/openmcf/project_planton` | `app/frontend/src/gen/org/openmcf/openmcf` |
-| `_projects/20251127-project-planton-web-app` | `_projects/20251127-openmcf-web-app` |
+| `cmd/openmcf` | `cmd/openmcf` |
+| `app/frontend/src/gen/org/openmcf` | `app/frontend/src/gen/org/openmcf` |
+| `app/frontend/src/gen/org/openmcf/openmcf` | `app/frontend/src/gen/org/openmcf/openmcf` |
+| `_projects/20251127-openmcf-web-app` | `_projects/20251127-openmcf-web-app` |
 
 ### Files Renamed (25 explicit files)
 
@@ -88,7 +88,7 @@ flowchart TB
 
 ```bash
 # Before
-origin  git@github.com:plantonhq/project-planton.git
+origin  git@github.com:plantonhq/openmcf.git
 
 # After
 origin  git@github.com:plantonhq/openmcf.git
@@ -99,7 +99,7 @@ origin  git@github.com:plantonhq/openmcf.git
 - **Consistent branding**: All references now use "OpenMCF" or "openmcf"
 - **Git history preserved**: Used `git mv` for all renames to maintain history
 - **Clean repository state**: 760 files tracked as renames, not delete+add
-- **Updated domain**: References now use `openmcf.org` instead of `project-planton.org`
+- **Updated domain**: References now use `openmcf.org` instead of `openmcf.org`
 
 ## Impact
 
@@ -116,8 +116,8 @@ origin  git@github.com:plantonhq/openmcf.git
 
 ## Related Work
 
-- GitHub repository renamed from `project-planton` to `openmcf`
-- Domain updated from `project-planton.org` to `openmcf.org`
+- GitHub repository renamed from `openmcf` to `openmcf`
+- Domain updated from `openmcf.org` to `openmcf.org`
 - GitHub workflows already updated to reference new names
 
 ---

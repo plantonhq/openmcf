@@ -37,8 +37,20 @@ export default function Hero() {
 
 						{/* Heading */}
 						<h1 className="text-3xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 w-full break-words">
-							<span className="text-white block">Open‑Source Multi‑Cloud</span>
-							<span className="bg-gradient-to-r from-[#f0abfc] via-[#f472b6] to-[#d946ef] bg-clip-text text-transparent block">Infrastructure Framework</span>
+							<span className="block">
+								<span className="text-white">An </span>
+								<span className="text-[#7a4183]">Open </span>
+								<span className="text-white">Source </span>
+							</span>
+							<span className="block">
+								<span className="text-[#7a4183]">M</span>
+								<span className="text-white">ulti‑</span>
+								<span className="text-[#7a4183]">C</span>
+								<span className="text-white">loud </span>
+								{/* <span className="text-white">Infrastructure </span> */}
+								<span className="text-[#7a4183]">F</span>
+								<span className="text-white">ramework</span>
+							</span>
 						</h1>
 
 						{/* Subheading */}

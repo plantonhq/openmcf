@@ -30,7 +30,7 @@ export const DocsHeader: React.FC<DocsHeaderProps> = ({ onMenuToggle }) => {
             </div>
             
             {/* Logo - same as landing page */}
-            <Link href="/" className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
               <Image 
                 src="/icon.png" 
                 alt="OpenMCF logo" 
@@ -39,7 +39,7 @@ export const DocsHeader: React.FC<DocsHeaderProps> = ({ onMenuToggle }) => {
                 className="h-9 w-auto object-contain" 
                 priority 
               />
-              <span className="text-xl font-bold text-white hidden sm:block">OpenMCF</span>
+              <Image src="/text-logo.svg" alt="OpenMCF" width={155} height={32} className="h-8 w-auto object-contain hidden sm:block" />
             </Link>
           </div>
 

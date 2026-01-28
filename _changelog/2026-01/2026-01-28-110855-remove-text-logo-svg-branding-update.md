@@ -6,7 +6,7 @@
 
 ## Summary
 
-Removed the old PROJECT PLANTON text logo SVG (`logo-text.svg`) and replaced it with styled "OpenMCF" text across all site headers and footer. This completes the branding transition following the recent project rename from project-planton to OpenMCF.
+Removed the old PROJECT PLANTON text logo SVG (`logo-text.svg`) and replaced it with styled "OpenMCF" text across all site headers and footer. This completes the branding transition following the recent project rename from openmcf to OpenMCF.
 
 ## Problem Statement / Motivation
 

@@ -58,7 +58,7 @@ export const DocsLayout: React.FC<DocsLayoutProps> = ({ children, author = [], c
                 height={32} 
                 className="h-8 w-auto object-contain" 
               />
-              <span className="text-lg font-bold text-white">OpenMCF</span>
+              <Image src="/text-logo.svg" alt="OpenMCF" width={136} height={28} className="h-7 w-auto object-contain" />
             </Link>
             <IconButton onClick={handleSidebarToggle} className="text-white">
               <CloseIcon />

@@ -3,7 +3,7 @@
 > **Deploy anywhere with one workflow.** Write declarative YAML once, deploy to AWS, GCP, Azure, or Kubernetes with the same CLI and consistent experience.
 
 <p align="center">
-  <img src="site/public/icon.png" alt="openmcf-logo">
+  <img src="site/public/icon.png" alt="openmcf-logo"> <img src="site/public/text-logo.svg" alt="openmcf-text-logo">
 </p>
 
 ## What is OpenMCF?
