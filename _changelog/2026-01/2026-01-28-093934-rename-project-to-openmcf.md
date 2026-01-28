@@ -14,7 +14,7 @@ The project needed a new identity as "OpenMCF" to better reflect its purpose as 
 
 ### Pain Points
 
-- Old naming (`project-planton`, `project_planton`, `ProjectPlanton`) scattered across files and directories
+- Old naming (`project-planton`, `project_planton`, `OpenMCF`) scattered across files and directories
 - Git remote URL still pointing to old repository name
 - Documentation and release notes referencing old project name
 
@@ -25,8 +25,8 @@ Performed a comprehensive rename operation:
 1. **String replacements** (done by user):
    - `project-planton` → `openmcf`
    - `project_planton` → `openmcf`
-   - `ProjectPlanton` → `OpenMCF`
-   - `Project Planton` → `OpenMCF`
+   - `OpenMCF` → `OpenMCF`
+   - `OpenMCF` → `OpenMCF`
 
 2. **File and directory renames** (done via git mv):
    - All files containing old naming patterns
@@ -41,8 +41,8 @@ Performed a comprehensive rename operation:
 flowchart TB
     subgraph Directories["Directories Renamed (4)"]
         D1["cmd/project-planton → cmd/openmcf"]
-        D2["app/frontend/src/gen/org/project_planton → .../openmcf"]
-        D3["app/frontend/src/gen/org/openmcf/project_planton → .../openmcf"]
+        D2["app/frontend/src/gen/org/openmcf→ .../openmcf"]
+        D3["app/frontend/src/gen/org/openmcf/openmcf→ .../openmcf"]
         D4["_projects/20251127-project-planton-web-app → ...-openmcf-web-app"]
     end
     

@@ -21,35 +21,35 @@ Browse deployment components by cloud provider:
     <img src="/images/providers/default.svg" alt="AUTH0" class="w-8 h-8 object-contain" />
     <div>
       <div class="font-semibold text-white">AUTH0</div>
-      <div class="text-sm text-slate-400">1 component</div>
+      <div class="text-sm text-slate-400">4 components</div>
     </div>
   </a>
   <a href="/docs/catalog/aws" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
     <img src="/images/providers/aws.svg" alt="AWS" class="w-8 h-8 object-contain" />
     <div>
       <div class="font-semibold text-white">AWS</div>
-      <div class="text-sm text-slate-400">22 components</div>
+      <div class="text-sm text-slate-400">24 components</div>
     </div>
   </a>
   <a href="/docs/catalog/azure" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
     <img src="/images/providers/azure.svg" alt="AZURE" class="w-8 h-8 object-contain" />
     <div>
       <div class="font-semibold text-white">AZURE</div>
-      <div class="text-sm text-slate-400">7 components</div>
+      <div class="text-sm text-slate-400">9 components</div>
     </div>
   </a>
   <a href="/docs/catalog/civo" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
     <img src="/images/providers/civo.svg" alt="CIVO" class="w-8 h-8 object-contain" />
     <div>
       <div class="font-semibold text-white">CIVO</div>
-      <div class="text-sm text-slate-400">11 components</div>
+      <div class="text-sm text-slate-400">12 components</div>
     </div>
   </a>
   <a href="/docs/catalog/cloudflare" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
     <img src="/images/providers/cloudflare.svg" alt="CLOUDFLARE" class="w-8 h-8 object-contain" />
     <div>
       <div class="font-semibold text-white">CLOUDFLARE</div>
-      <div class="text-sm text-slate-400">7 components</div>
+      <div class="text-sm text-slate-400">8 components</div>
     </div>
   </a>
   <a href="/docs/catalog/confluent" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
@@ -63,21 +63,21 @@ Browse deployment components by cloud provider:
     <img src="/images/providers/digital-ocean.svg" alt="DIGITALOCEAN" class="w-8 h-8 object-contain" />
     <div>
       <div class="font-semibold text-white">DIGITALOCEAN</div>
-      <div class="text-sm text-slate-400">14 components</div>
+      <div class="text-sm text-slate-400">15 components</div>
     </div>
   </a>
   <a href="/docs/catalog/gcp" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
     <img src="/images/providers/gcp.svg" alt="GCP" class="w-8 h-8 object-contain" />
     <div>
       <div class="font-semibold text-white">GCP</div>
-      <div class="text-sm text-slate-400">17 components</div>
+      <div class="text-sm text-slate-400">19 components</div>
     </div>
   </a>
   <a href="/docs/catalog/kubernetes" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
     <img src="/images/providers/kubernetes.svg" alt="KUBERNETES" class="w-8 h-8 object-contain" />
     <div>
       <div class="font-semibold text-white">KUBERNETES</div>
-      <div class="text-sm text-slate-400">43 components</div>
+      <div class="text-sm text-slate-400">49 components</div>
     </div>
   </a>
   <a href="/docs/catalog/snowflake" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">

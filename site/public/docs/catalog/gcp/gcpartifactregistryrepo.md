@@ -344,7 +344,7 @@ The current `GcpArtifactRegistryRepoSpec` is intentionally minimal, focused on t
 - Remote and Virtual repository modes (platform features for advanced use cases)
 - CMEK support (compliance/security requirement for regulated industries)
 
-As OpenMCF evolves, these capabilities can be added incrementally, following the proven API shape established by Terraform, Pulumi, and Config Connector. The research analysis in Section 5 of the [research report](../../../../../../../../../../../plantoncloud-inc/planton-cloud/apis/ai/planton/infrahub/cloudresource/v1/assets/provider/gcp/gcpartifactregistryrepo/v1/research/report.md) provides a comprehensive roadmap for this evolution.
+As OpenMCF evolves, these capabilities can be added incrementally, following the proven API shape established by Terraform, Pulumi, and Config Connector.
 
 ## Conclusion: Artifact Registry as Infrastructure
 

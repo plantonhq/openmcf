@@ -75,7 +75,7 @@ openmcf pulumi up --manifest redis.yaml
 
 Visit [CONTRIBUTING.md](CONTRIBUTING.md) for information on building OpenMCF from source or contributing improvements.
 
-Also, refer to this [Contributor Guide](https://openmcf.org/docs/guide/contributor-guide) for detailed information about becoming a contributor to Project-Planton.
+Also, refer to this [Contributor Guide](https://openmcf.org/docs/guide/contributor-guide) for detailed information about becoming a contributor to OpenMCF.
 
 ## License
 

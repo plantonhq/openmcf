@@ -7,7 +7,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the entry point invoked by the project‑planton CLI.
+// Resources is the entry point invoked by the openmcfCLI.
 func Resources(
 	ctx *pulumi.Context,
 	stackInput *cloudflarezerotrustaccessapplicationv1.CloudflareZeroTrustAccessApplicationStackInput,
