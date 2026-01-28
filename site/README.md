@@ -25,7 +25,7 @@ Folder structure:
 - `src/app` – Next.js App Router pages and routes (home, robots, sitemap)
 - `src/components` – UI primitives and page sections
 - `src/lib/utils.ts` – `cn()` helper for classnames
-- `public/` – static assets (`icon.png`, `logo-text.svg`)
+- `public/` – static assets (`icon.png`)
 
 Notes:
 

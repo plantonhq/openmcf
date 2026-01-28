@@ -2,6 +2,10 @@
 
 > **Deploy anywhere with one workflow.** Write declarative YAML once, deploy to AWS, GCP, Azure, or Kubernetes with the same CLI and consistent experience.
 
+<p align="center">
+  <img src="site/public/icon.png" alt="openmcf-logo">
+</p>
+
 ## What is OpenMCF?
 
 An open-source multi-cloud deployment framework that brings Kubernetes-style consistency to infrastructure deployments everywhere. No vendor lock-in, no artificial abstractions—just provider-specific configurations with a unified structure and workflow.

@@ -18,7 +18,7 @@ export default function Footer() {
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <Image src="/icon.png" alt="OpenMCF mark" width={36} height={36} className="h-9 w-auto object-contain" />
-              <Image src="/logo-text.svg" alt="OpenMCF" width={160} height={40} className="h-10 w-auto object-contain" />
+              <span className="text-xl font-bold text-white">OpenMCF</span>
             </div>
             <p className="text-slate-400 max-w-md mb-6">
               Kubernetes‑style manifests for multi‑cloud infrastructure. Define once. Deploy anywhere.

@@ -25,7 +25,7 @@ export default function HomePage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
               <Image src="/icon.png" alt="OpenMCF logo" width={36} height={36} className="h-9 w-auto object-contain" priority />
-              <Image src="/logo-text.svg" alt="OpenMCF" width={160} height={40} className="h-10 w-auto object-contain hidden sm:block" priority />
+              <span className="text-xl font-bold text-white hidden sm:block">OpenMCF</span>
             </div>
             <div className="flex items-center gap-4 sm:gap-6">
                 <Link

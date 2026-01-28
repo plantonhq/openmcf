@@ -39,14 +39,7 @@ export const DocsHeader: React.FC<DocsHeaderProps> = ({ onMenuToggle }) => {
                 className="h-9 w-auto object-contain" 
                 priority 
               />
-              <Image 
-                src="/logo-text.svg" 
-                alt="OpenMCF" 
-                width={160} 
-                height={40} 
-                className="h-10 w-auto object-contain hidden sm:block" 
-                priority 
-              />
+              <span className="text-xl font-bold text-white hidden sm:block">OpenMCF</span>
             </Link>
           </div>
 
