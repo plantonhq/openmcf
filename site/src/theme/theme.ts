@@ -6,7 +6,7 @@ export const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#a855f7', // Purple-500 to match ProjectPlanton branding
+      main: '#a855f7', // Purple-500 to match OpenMCF branding
       light: '#c084fc', // Purple-400
       dark: '#9333ea', // Purple-600
     },

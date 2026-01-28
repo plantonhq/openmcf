@@ -2,7 +2,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Grid2, InputAdornment } from '@mui/material';
 import { Search } from '@mui/icons-material';
-import { Credential_CredentialProvider } from '@/gen/org/project_planton/app/credential/v1/api_pb';
+import { Credential_CredentialProvider } from '@/gen/org/openmcf/app/credential/v1/api_pb';
 import { Icon, ICON_NAMES } from '@/components/shared/icon';
 import { FlexCenterRow } from '@/components/shared/resource-header/styled';
 import {

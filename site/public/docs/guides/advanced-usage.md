@@ -1,13 +1,13 @@
 ---
 title: "Advanced Usage"
-description: "Advanced Project Planton techniques - runtime overrides, URL manifests, validation, module customization, and power-user workflows"
+description: "Advanced OpenMCF techniques - runtime overrides, URL manifests, validation, module customization, and power-user workflows"
 icon: "settings"
 order: 5
 ---
 
 # Advanced Usage Guide
 
-Master advanced Project Planton techniques for power users and complex scenarios.
+Master advanced OpenMCF techniques for power users and complex scenarios.
 
 ---
 
@@ -18,7 +18,7 @@ The `--set` flag lets you override manifest values without editing files. Think 
 ### Basic Syntax
 
 ```bash
-project-planton pulumi up \
+openmcf pulumi up \
   -f deployment.yaml \
   --set key=value
 ```
@@ -29,7 +29,7 @@ Use dot notation to access nested fields:
 
 ```bash
 # Override nested spec fields
-project-planton pulumi up \
+openmcf pulumi up \
   -f api.yaml \
   --set spec.container.replicas=5 \
   --set spec.container.image.tag=v2.0.0 \
@@ -41,7 +41,7 @@ project-planton pulumi up \
 Repeat the `--set` flag multiple times:
 
 ```bash
-project-planton pulumi up \
+openmcf pulumi up \
   -f deployment.yaml \
   --set spec.replicas=10 \
   --set spec.container.image.tag=v1.5.0 \
@@ -68,18 +68,18 @@ project-planton pulumi up \
 
 ```bash
 # Test with 1 replica (cheapest)
-project-planton pulumi preview \
+openmcf pulumi preview \
   -f api.yaml \
   --set spec.replicas=1
 
 # Test with 5 replicas (more realistic)
-project-planton pulumi preview \
+openmcf pulumi preview \
   -f api.yaml \
   --set spec.replicas=5
 
 # Deploy with 3 (commit to manifest for permanence)
 vim api.yaml  # Set replicas: 3
-project-planton pulumi up -f api.yaml
+openmcf pulumi up -f api.yaml
 ```
 
 **Dynamic image tags in CI/CD**:
@@ -88,7 +88,7 @@ project-planton pulumi up -f api.yaml
 # In GitHub Actions
 IMAGE_TAG="${GITHUB_SHA:0:7}"  # Short commit hash
 
-project-planton pulumi up \
+openmcf pulumi up \
   -f deployment.yaml \
   --set spec.container.image.tag=$IMAGE_TAG \
   --yes
@@ -98,14 +98,14 @@ project-planton pulumi up \
 
 ```bash
 # Production is slow, scale up immediately
-project-planton pulumi up \
+openmcf pulumi up \
   -f prod-api.yaml \
   --set spec.replicas=10 \
   --yes
 
 # Later: Update manifest and revert to normal
 vim prod-api.yaml  # Set permanent replica count
-project-planton pulumi up -f prod-api.yaml
+openmcf pulumi up -f prod-api.yaml
 ```
 
 ### Limitations
@@ -132,11 +132,11 @@ Deploy infrastructure directly from URLs without downloading files manually.
 
 ```bash
 # Deploy from GitHub raw URL
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://raw.githubusercontent.com/myorg/manifests/main/prod/database.yaml
 
 # Deploy from any HTTPS URL
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://config-server.example.com/api/manifests/vpc.yaml
 ```
 
@@ -156,7 +156,7 @@ project-planton pulumi up \
 6. Cleans up temp file
 ```
 
-**Temp file location**: `~/.project-planton/manifests/downloaded/<ulid>.yaml`
+**Temp file location**: `~/.openmcf/manifests/downloaded/<ulid>.yaml`
 
 ### Use Cases
 
@@ -168,10 +168,10 @@ project-planton pulumi up \
 
 MANIFEST_REPO="https://raw.githubusercontent.com/myorg/infra-manifests/main"
 
-project-planton pulumi up \
+openmcf pulumi up \
   -f $MANIFEST_REPO/prod/database.yaml
 
-project-planton pulumi up \
+openmcf pulumi up \
   -f $MANIFEST_REPO/prod/cache.yaml
 ```
 
@@ -181,18 +181,18 @@ project-planton pulumi up \
 # CI/CD generates manifests via API
 MANIFEST_URL=$(curl -s https://config-api.example.com/generate?env=prod&service=api)
 
-project-planton pulumi up -f $MANIFEST_URL
+openmcf pulumi up -f $MANIFEST_URL
 ```
 
 **Version-pinned deployments**:
 
 ```bash
 # Deploy from specific Git tag/commit
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://raw.githubusercontent.com/myorg/manifests/v1.0.0/database.yaml
 
 # Rollback to previous version
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://raw.githubusercontent.com/myorg/manifests/v0.9.0/database.yaml
 ```
 
@@ -222,7 +222,7 @@ Validate manifests before deploying to catch errors early.
 
 ```bash
 # Validate a single manifest
-project-planton validate -f database.yaml
+openmcf validate -f database.yaml
 
 # If valid, no output (exit code 0)
 # If invalid, shows detailed errors
@@ -239,7 +239,7 @@ project-planton validate -f database.yaml
 ### Example Validation Errors
 
 ```bash
-$ project-planton validate -f bad-config.yaml
+$ openmcf validate -f bad-config.yaml
 
 ╔═══════════════════════════════════════════════════════════╗
 ║                 ❌  MANIFEST VALIDATION FAILED            ║
@@ -256,14 +256,14 @@ spec.container.image.repo: value is required
 
 ```bash
 # ✅ Good: Validate before deploying
-project-planton validate -f resource.yaml
+openmcf validate -f resource.yaml
 # See errors immediately (2 seconds)
 
-project-planton pulumi up -f resource.yaml
+openmcf pulumi up -f resource.yaml
 # Deploy with confidence
 
 # ⚠️ Risky: Deploy without validation
-project-planton pulumi up -f resource.yaml
+openmcf pulumi up -f resource.yaml
 # Might fail after 5 minutes of deployment
 ```
 
@@ -274,11 +274,11 @@ project-planton pulumi up -f resource.yaml
 - name: Validate Manifests
   run: |
     for manifest in ops/manifests/**/*.yaml; do
-      project-planton validate -f $manifest
+      openmcf validate -f $manifest
     done
 
 - name: Deploy
-  run: project-planton pulumi up -f ops/manifests/prod.yaml --yes
+  run: openmcf pulumi up -f ops/manifests/prod.yaml --yes
 ```
 
 ---
@@ -291,7 +291,7 @@ View the effective manifest with defaults applied and overrides resolved.
 
 ```bash
 # Load and display manifest
-project-planton load-manifest database.yaml
+openmcf load-manifest database.yaml
 ```
 
 **Output**: YAML with all defaults filled in.
@@ -300,7 +300,7 @@ project-planton load-manifest database.yaml
 
 ```bash
 # See what --set would produce
-project-planton load-manifest \
+openmcf load-manifest \
   -f deployment.yaml \
   --set spec.replicas=5 \
   --set spec.container.image.tag=v2.0.0
@@ -310,7 +310,7 @@ project-planton load-manifest \
 
 ```bash
 # See what kustomize builds
-project-planton load-manifest \
+openmcf load-manifest \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 ```
@@ -326,7 +326,7 @@ spec:
   # version omitted
 
 # Load to see defaults
-$ project-planton load-manifest kubernetes-kubernetes-cert-manager.yaml
+$ openmcf load-manifest kubernetes-kubernetes-cert-manager.yaml
 
 # Output shows:
 spec:
@@ -339,7 +339,7 @@ spec:
 
 ```bash
 # Make sure your overlay produces expected result
-project-planton load-manifest \
+openmcf load-manifest \
   --kustomize-dir services/api/kustomize \
   --overlay prod \
   | grep "replicas:"
@@ -351,7 +351,7 @@ project-planton load-manifest \
 
 ```bash
 # Verify override works as expected
-project-planton load-manifest \
+openmcf load-manifest \
   -f api.yaml \
   --set spec.container.image.tag=v2.0.0 \
   | grep "tag:"
@@ -373,11 +373,11 @@ Customize or test IaC modules locally before deploying.
 
 ### Default Behavior
 
-Without `--module-dir`, Project Planton uses current working directory:
+Without `--module-dir`, OpenMCF uses current working directory:
 
 ```bash
 cd /path/to/module
-project-planton pulumi up -f resource.yaml
+openmcf pulumi up -f resource.yaml
 # Uses current directory as module directory
 ```
 
@@ -387,7 +387,7 @@ With `--module-dir`, you can deploy from anywhere:
 
 ```bash
 # From any location
-project-planton pulumi up \
+openmcf pulumi up \
   -f ~/manifests/database.yaml \
   --module-dir ~/projects/custom-modules/postgres-k8s
 ```
@@ -396,23 +396,23 @@ project-planton pulumi up \
 
 ```bash
 # 1. Clone or fork a module
-git clone https://github.com/plantonhq/project-planton
-cd apis/org/project_planton/provider/kubernetes/postgresqk8s/v1/iac/pulumi
+git clone https://github.com/plantonhq/openmcf
+cd apis/org/openmcf/provider/kubernetes/postgresqk8s/v1/iac/pulumi
 
 # 2. Make changes to module code
 vim main.go
 
 # 3. Test with your manifest
-project-planton pulumi preview \
+openmcf pulumi preview \
   -f ~/test-manifests/postgres.yaml \
   --module-dir .
 
 # 4. Iterate
 vim main.go
-project-planton pulumi preview -f ~/test-manifests/postgres.yaml --module-dir .
+openmcf pulumi preview -f ~/test-manifests/postgres.yaml --module-dir .
 
 # 5. Deploy when ready
-project-planton pulumi up \
+openmcf pulumi up \
   -f ~/test-manifests/postgres.yaml \
   --module-dir .
 ```
@@ -423,7 +423,7 @@ project-planton pulumi up \
 
 ```bash
 # 1. Fork the default module
-cp -r apis/org/project_planton/provider/aws/awss3bucket/v1/iac/pulumi \
+cp -r apis/org/openmcf/provider/aws/awss3bucket/v1/iac/pulumi \
       ~/custom-modules/my-s3-module
 
 # 2. Customize
@@ -431,7 +431,7 @@ cd ~/custom-modules/my-s3-module
 vim main.go  # Add custom logic
 
 # 3. Test
-project-planton pulumi up \
+openmcf pulumi up \
   -f s3-bucket.yaml \
   --module-dir ~/custom-modules/my-s3-module
 
@@ -446,7 +446,7 @@ project-planton pulumi up \
 
 ```bash
 # Base from kustomize, runtime override for image tag
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay prod \
   --set spec.container.image.tag=$GIT_SHA
@@ -462,7 +462,7 @@ project-planton pulumi up \
 
 ```bash
 # Load from URL, override specific values
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://manifests.example.com/database.yaml \
   --set spec.region=us-west-2 \
   --set spec.instanceSize=large
@@ -472,7 +472,7 @@ project-planton pulumi up \
 
 ```bash
 # Custom overlay + custom module
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay prod \
   --module-dir ~/custom-modules/api-module
@@ -490,13 +490,13 @@ MANIFEST="ops/resources/database.yaml"
 OVERLAY="prod"
 IMAGE_TAG="v1.2.3"
 
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay $OVERLAY \
   --set spec.container.image.tag=$IMAGE_TAG
 
 # ❌ Bad: Hard to read, error-prone
-project-planton pulumi up --kustomize-dir services/api/kustomize --overlay prod --set spec.container.image.tag=v1.2.3
+openmcf pulumi up --kustomize-dir services/api/kustomize --overlay prod --set spec.container.image.tag=v1.2.3
 ```
 
 ### 2. Create Deployment Scripts
@@ -512,7 +512,7 @@ IMAGE_TAG=${2:-latest}
 
 echo "Deploying API to $ENVIRONMENT with tag $IMAGE_TAG"
 
-project-planton pulumi preview \
+openmcf pulumi preview \
   --kustomize-dir services/api/kustomize \
   --overlay $ENVIRONMENT \
   --set spec.container.image.tag=$IMAGE_TAG
@@ -520,7 +520,7 @@ project-planton pulumi preview \
 read -p "Apply? (y/N) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    project-planton pulumi up \
+    openmcf pulumi up \
       --kustomize-dir services/api/kustomize \
       --overlay $ENVIRONMENT \
       --set spec.container.image.tag=$IMAGE_TAG
@@ -542,7 +542,7 @@ fi
 
 # Validate all manifests before committing
 for manifest in $(git diff --cached --name-only --diff-filter=ACM | grep '\.yaml$'); do
-    if project-planton validate -f $manifest; then
+    if openmcf validate -f $manifest; then
         echo "✓ $manifest valid"
     else
         echo "✗ $manifest invalid"
@@ -560,35 +560,35 @@ done
 
 validate:
 	@for f in ops/manifests/*.yaml; do \
-		project-planton validate -f $$f; \
+		openmcf validate -f $$f; \
 	done
 
 deploy-dev:
-	project-planton pulumi up \
+	openmcf pulumi up \
 		--kustomize-dir services/api/kustomize \
 		--overlay dev \
 		--yes
 
 deploy-staging:
-	project-planton pulumi preview \
+	openmcf pulumi preview \
 		--kustomize-dir services/api/kustomize \
 		--overlay staging
 	@read -p "Deploy to staging? (y/N) " REPLY; \
 	if [ "$$REPLY" = "y" ]; then \
-		project-planton pulumi up \
+		openmcf pulumi up \
 			--kustomize-dir services/api/kustomize \
 			--overlay staging; \
 	fi
 
 deploy-prod:
 	@echo "⚠️  Production deployment - review carefully"
-	project-planton pulumi preview \
+	openmcf pulumi preview \
 		--kustomize-dir services/api/kustomize \
 		--overlay prod
 	@echo "Deploy to PRODUCTION?"
 	@read -p "Type 'yes' to confirm: " REPLY; \
 	if [ "$$REPLY" = "yes" ]; then \
-		project-planton pulumi up \
+		openmcf pulumi up \
 			--kustomize-dir services/api/kustomize \
 			--overlay prod; \
 	fi
@@ -617,7 +617,7 @@ Test configuration across all environments:
 for env in dev staging prod; do
     echo "Testing $env environment..."
     
-    if project-planton validate \
+    if openmcf validate \
         --kustomize-dir services/api/kustomize \
         --overlay $env; then
         echo "✓ $env configuration valid"
@@ -639,7 +639,7 @@ Deploy gradually across environments with validation:
 IMAGE_TAG=$1
 
 # Deploy to dev
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay dev \
   --set spec.container.image.tag=$IMAGE_TAG \
@@ -650,7 +650,7 @@ sleep 60
 curl -f https://api-dev.example.com/health || exit 1
 
 # Deploy to staging
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay staging \
   --set spec.container.image.tag=$IMAGE_TAG \
@@ -661,7 +661,7 @@ sleep 60
 curl -f https://api-staging.example.com/health || exit 1
 
 # Deploy to prod (with manual confirmation)
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay prod \
   --set spec.container.image.tag=$IMAGE_TAG
@@ -677,7 +677,7 @@ import yaml
 
 def generate_manifest(name, replicas, memory):
     manifest = {
-        'apiVersion': 'kubernetes.project-planton.org/v1',
+        'apiVersion': 'kubernetes.openmcf.org/v1',
         'kind': 'MicroserviceKubernetes',
         'metadata': {'name': name},
         'spec': {
@@ -704,8 +704,8 @@ Then deploy:
 
 ```bash
 python3 generate-manifests.py
-project-planton pulumi up -f api.yaml
-project-planton pulumi up -f worker.yaml
+openmcf pulumi up -f api.yaml
+openmcf pulumi up -f worker.yaml
 ```
 
 ---
@@ -718,7 +718,7 @@ See exactly what gets deployed:
 
 ```bash
 # Load manifest with all transformations applied
-project-planton load-manifest \
+openmcf load-manifest \
   --kustomize-dir services/api/kustomize \
   --overlay prod \
   --set spec.container.image.tag=v1.2.0 \
@@ -732,12 +732,12 @@ cat final-manifest.yaml
 
 ```bash
 # Validate with overrides
-project-planton validate \
+openmcf validate \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 
 # If validation passes, deploy
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 ```
@@ -749,15 +749,15 @@ project-planton pulumi up \
 cd ~/projects/custom-module
 
 # 1. Validate manifest
-project-planton validate -f ~/test-manifests/test.yaml
+openmcf validate -f ~/test-manifests/test.yaml
 
 # 2. Preview changes
-project-planton pulumi preview \
+openmcf pulumi preview \
   -f ~/test-manifests/test.yaml \
   --module-dir .
 
 # 3. If preview looks good, deploy to test environment
-project-planton pulumi up \
+openmcf pulumi up \
   -f ~/test-manifests/test.yaml \
   --module-dir . \
   --stack test-org/test-project/test-stack
@@ -786,7 +786,7 @@ MANIFESTS=(
 
 for manifest in "${MANIFESTS[@]}"; do
     echo "Deploying $manifest to $OVERLAY..."
-    project-planton pulumi up \
+    openmcf pulumi up \
         --kustomize-dir ops/resources/kustomize \
         --overlay $OVERLAY \
         --yes
@@ -801,9 +801,9 @@ done
 Deploy only if validation passes:
 
 ```bash
-if project-planton validate -f database.yaml; then
+if openmcf validate -f database.yaml; then
     echo "✓ Validation passed, deploying..."
-    project-planton pulumi up -f database.yaml --yes
+    openmcf pulumi up -f database.yaml --yes
 else
     echo "✗ Validation failed, aborting"
     exit 1
@@ -821,7 +821,7 @@ REPLICAS=$2
 CPU=$3
 MEMORY=$4
 
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay $ENVIRONMENT \
   --set spec.replicas=$REPLICAS \
@@ -843,7 +843,7 @@ project-planton pulumi up \
 
 ```bash
 # BAD: Override in CI/CD but not in manifest
-project-planton pulumi up \
+openmcf pulumi up \
   -f api.yaml \
   --set spec.replicas=10 \
   --yes
@@ -854,18 +854,18 @@ project-planton pulumi up \
 # GOOD: Update manifest first
 vim api.yaml  # Set replicas: 10
 git commit -m "scale: increase API replicas to 10"
-project-planton pulumi up -f api.yaml --yes
+openmcf pulumi up -f api.yaml --yes
 ```
 
 ### ❌ Loading Non-Raw GitHub URLs
 
 ```bash
 # BAD: Returns HTML page, not YAML
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://github.com/myorg/repo/blob/main/manifest.yaml
 
 # GOOD: Use raw.githubusercontent.com
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://raw.githubusercontent.com/myorg/repo/main/manifest.yaml
 ```
 
@@ -873,12 +873,12 @@ project-planton pulumi up \
 
 ```bash
 # BAD: Trying to override complex structures
-project-planton pulumi up \
+openmcf pulumi up \
   -f api.yaml \
   --set spec.container.resources='{"limits":{"cpu":"2000m"}}'  # Won't work
 
 # GOOD: Override individual fields
-project-planton pulumi up \
+openmcf pulumi up \
   -f api.yaml \
   --set spec.container.resources.limits.cpu=2000m
 ```
@@ -901,5 +901,5 @@ project-planton pulumi up \
 3. **Create Scripts**: Automate your common deployment workflows
 4. **Test Validation**: Add validate step to your CI/CD pipeline
 
-Master these advanced techniques to unlock Project Planton's full power for complex deployment scenarios.
+Master these advanced techniques to unlock OpenMCF's full power for complex deployment scenarios.
 

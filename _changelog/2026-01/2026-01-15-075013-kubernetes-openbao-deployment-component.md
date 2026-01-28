@@ -6,7 +6,7 @@
 
 ## Summary
 
-Added complete `KubernetesOpenBao` deployment component for deploying OpenBao (HashiCorp Vault fork) on Kubernetes clusters. The component supports standalone and high-availability deployment modes, Agent Injector for automatic secret injection, and full Pulumi/Terraform IaC implementations following Project Planton conventions.
+Added complete `KubernetesOpenBao` deployment component for deploying OpenBao (HashiCorp Vault fork) on Kubernetes clusters. The component supports standalone and high-availability deployment modes, Agent Injector for automatic secret injection, and full Pulumi/Terraform IaC implementations following OpenMCF conventions.
 
 ## Problem Statement / Motivation
 
@@ -19,11 +19,11 @@ Organizations need enterprise-grade secrets management in Kubernetes environment
 - Configuring Raft integrated storage for HA mode
 - Setting up Agent Injector for automatic secret injection
 - Managing ingress, TLS, and external access
-- No standardized Project Planton component for secrets management
+- No standardized OpenMCF component for secrets management
 
 ## Solution / What's New
 
-Created a complete `KubernetesOpenBao` deployment component that wraps the official OpenBao Helm chart with sensible defaults and Project Planton conventions.
+Created a complete `KubernetesOpenBao` deployment component that wraps the official OpenBao Helm chart with sensible defaults and OpenMCF conventions.
 
 ### Architecture Overview
 
@@ -85,7 +85,7 @@ flowchart LR
 
 ### Proto API Structure
 
-Created 4 proto files following Project Planton conventions:
+Created 4 proto files following OpenMCF conventions:
 
 | File | Purpose |
 |------|---------|
@@ -161,7 +161,7 @@ iac/tf/
 ## Benefits
 
 ### For Platform Engineers
-- **Standardized deployment**: Consistent patterns across all Project Planton components
+- **Standardized deployment**: Consistent patterns across all OpenMCF components
 - **Sensible defaults**: Production-ready configuration out of the box
 - **Dual IaC support**: Both Pulumi and Terraform implementations
 
@@ -228,7 +228,7 @@ $ make build
 ### Basic Standalone Deployment
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesOpenBao
 metadata:
   name: dev-openbao
@@ -252,7 +252,7 @@ spec:
 ### Production HA Deployment
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesOpenBao
 metadata:
   name: prod-openbao

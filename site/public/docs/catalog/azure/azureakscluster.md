@@ -16,7 +16,7 @@ The good news: the industry has converged on what "production-ready" actually me
 
 The bad news: getting there still requires navigating a maze of decisions. Should you use Kubenet or Azure CNI? What's the difference between Azure CNI and Azure CNI Overlay? Do you need a User-Assigned Managed Identity or a Service Principal? Is the Free tier actually free, or just free until production breaks?
 
-This document maps the AKS deployment landscape from anti-patterns to production-grade practices. We'll explore how the definition of a production cluster has evolved, why certain once-common patterns are now explicitly deprecated, and how Project Planton abstracts the complexity while preserving the power.
+This document maps the AKS deployment landscape from anti-patterns to production-grade practices. We'll explore how the definition of a production cluster has evolved, why certain once-common patterns are now explicitly deprecated, and how OpenMCF abstracts the complexity while preserving the power.
 
 ## The Production Baseline: What Changed (And What's Non-Negotiable Now)
 
@@ -67,7 +67,7 @@ The 20% solution—self-hosted Prometheus/Grafana—is for teams requiring cloud
 
 ### What This Means for You
 
-If you're starting fresh: these aren't optimizations to add later. They're the defaults. Project Planton's AKS API is designed to make this production baseline the *low-friction path*.
+If you're starting fresh: these aren't optimizations to add later. They're the defaults. OpenMCF's AKS API is designed to make this production baseline the *low-friction path*.
 
 If you have existing clusters: audit them against these criteria. Clusters on Free tier, using Kubenet, or relying on Service Principals need migration plans. The good news: in-place migration from Kubenet to CNI Overlay is now possible via `az aks update`.
 
@@ -225,13 +225,13 @@ All major tools handle the full production pattern:
 - Bicep: Stateless—Azure platform is the state
 - Crossplane: Kubernetes control plane (etcd) is the state
 
-## What Project Planton Supports (And Why)
+## What OpenMCF Supports (And Why)
 
-Project Planton's philosophy is **pragmatic abstraction**: expose the 20% of configuration that 80% of users need, while making advanced options accessible.
+OpenMCF's philosophy is **pragmatic abstraction**: expose the 20% of configuration that 80% of users need, while making advanced options accessible.
 
 ### Default Approach: Pulumi-Backed Clusters
 
-Project Planton uses **Pulumi** to provision AKS clusters. Why Pulumi?
+OpenMCF uses **Pulumi** to provision AKS clusters. Why Pulumi?
 
 1. **Code as configuration**: Easier to embed complex logic (conditional node pools, dynamic configurations)
 2. **Type safety**: Catch configuration errors at compile time
@@ -249,7 +249,7 @@ Research shows most AKS deployments configure:
 - Azure AD RBAC integration
 - Monitoring (Container Insights + Log Analytics)
 
-Advanced configurations like custom DNS servers, BYOCNI (bring your own CNI), or exotic kubelet settings are rarely used. Project Planton's spec focuses on common cases while allowing advanced users to drop down to Pulumi modules when needed.
+Advanced configurations like custom DNS servers, BYOCNI (bring your own CNI), or exotic kubelet settings are rarely used. OpenMCF's spec focuses on common cases while allowing advanced users to drop down to Pulumi modules when needed.
 
 ### What the AzureAksClusterSpec Provides
 
@@ -339,7 +339,7 @@ AdvancedNetworking advanced_networking = 15;  // Optional
 
 **You don't specify:**
 - Low-level subnet group details (derived from VNet configuration)
-- Security group minutiae (Project Planton creates appropriate rules)
+- Security group minutiae (OpenMCF creates appropriate rules)
 - Default parameter configurations (sensible defaults applied)
 
 **You do get:**
@@ -352,10 +352,10 @@ AdvancedNetworking advanced_networking = 15;  // Optional
 
 ### Example: Minimal Production AKS Cluster
 
-In Project Planton, defining a production AKS cluster looks like:
+In OpenMCF, defining a production AKS cluster looks like:
 
 ```yaml
-apiVersion: azure.project-planton.org/v1
+apiVersion: azure.openmcf.org/v1
 kind: AzureAksCluster
 metadata:
   name: app-production-aks
@@ -627,7 +627,7 @@ Infrastructure as Code—whether Terraform, Pulumi, Bicep, or Crossplane—is th
 
 The production baseline is no longer subjective. Microsoft has codified it. The networking confusion has been resolved (CNI Overlay is the answer). The identity model has converged (Managed Identities everywhere). The HA pattern is clear (system and user pools across three AZs).
 
-Project Planton's approach is to meet you where production infrastructure should be: sensible defaults (Standard tier, CNI Overlay, Managed Identity, multi-AZ), essential security baked in (Azure AD RBAC, private/restricted API server, deletion protection), and the flexibility to customize when your needs demand it.
+OpenMCF's approach is to meet you where production infrastructure should be: sensible defaults (Standard tier, CNI Overlay, Managed Identity, multi-AZ), essential security baked in (Azure AD RBAC, private/restricted API server, deletion protection), and the flexibility to customize when your needs demand it.
 
 AKS's promise—managed Kubernetes without operational overhead, seamless scaling, deep Azure integration—is real. But it's only realized when deployed with discipline. Use Infrastructure as Code. Enable the Standard tier and multi-AZ deployment. Use Managed Identities. Separate system and user node pools. Monitor proactively. Do these things, and AKS becomes what it was designed to be: a Kubernetes platform that gets out of your way so you can focus on your applications.
 

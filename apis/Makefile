@@ -3,7 +3,7 @@ build: lint fmt
 	rm -rf generated/stubs
 	mkdir -p generated/stubs
 	buf generate
-	cp -R generated/stubs/go/github.com/plantonhq/project-planton/apis/. .
+	cp -R generated/stubs/go/github.com/plantonhq/openmcf/apis/. .
 	cp -R generated/stubs/ts/. ../app/frontend/src/gen/
 	# Keep Java stubs in generated/ for early detection of reserved keyword issues
 	# Go and TS stubs are copied to their destinations, so we only clean those

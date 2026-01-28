@@ -1,4 +1,4 @@
-import { Credential_CredentialProvider } from '@/gen/org/project_planton/app/credential/v1/api_pb';
+import { Credential_CredentialProvider } from '@/gen/org/openmcf/app/credential/v1/api_pb';
 import { ICON_NAMES } from '@/components/shared/icon';
 
 export interface ProviderConfig {

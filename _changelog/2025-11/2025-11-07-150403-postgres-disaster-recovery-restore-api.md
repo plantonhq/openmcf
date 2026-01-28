@@ -271,7 +271,7 @@ postgresqlArgs := &zalandov1.PostgresqlArgs{
 **Manifest**: `postgres-api-resources.yaml`
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: PostgresKubernetes
 metadata:
   name: api-resources
@@ -302,13 +302,13 @@ spec:
 ```bash
 cd ops/organizations/planton-cloud/infra-hub/cloud-resources/app-prod/kubernetes/workload/app/dependencies/databases
 
-export POSTGRES_MODULE=~/scm/github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/workload/postgreskubernetes/v1/iac/pulumi
+export POSTGRES_MODULE=~/scm/github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/workload/postgreskubernetes/v1/iac/pulumi
 
 # Preview changes
-project-planton pulumi preview --manifest postgres-api-resources.yaml --module-dir ${POSTGRES_MODULE}
+openmcf pulumi preview --manifest postgres-api-resources.yaml --module-dir ${POSTGRES_MODULE}
 
 # Deploy
-project-planton pulumi up --manifest postgres-api-resources.yaml --module-dir ${POSTGRES_MODULE} --yes
+openmcf pulumi up --manifest postgres-api-resources.yaml --module-dir ${POSTGRES_MODULE} --yes
 ```
 
 **Generated Zalando Manifest**:
@@ -359,7 +359,7 @@ kubectl exec -n postgres-app-prod-api-resources $POD -- psql -U postgres -c "CRE
 **Deploy**:
 
 ```bash
-project-planton pulumi up --manifest postgres-api-resources.yaml --module-dir ${POSTGRES_MODULE} --yes
+openmcf pulumi up --manifest postgres-api-resources.yaml --module-dir ${POSTGRES_MODULE} --yes
 ```
 
 **Generated Zalando Manifest** (spec:standby block removed):

@@ -1,13 +1,13 @@
 ---
 title: "AZURE"
-description: "Deploy AZURE resources using Project Planton"
+description: "Deploy AZURE resources using OpenMCF"
 icon: "cloud"
 order: 10
 ---
 
 # AZURE
 
-The following AZURE resources can be deployed using Project Planton:
+The following AZURE resources can be deployed using OpenMCF:
 
 - [Aks Cluster](/docs/catalog/azure/azureakscluster)
 - [Aks Node  Pool](/docs/catalog/azure/azureaksnodepool)

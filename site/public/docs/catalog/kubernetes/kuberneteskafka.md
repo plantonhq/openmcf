@@ -148,7 +148,7 @@ This "open core" model means the operator may be open source, but the software i
 
 ### The Recommendation: Strimzi
 
-For an open-source infrastructure-as-code framework like Project Planton, **Strimzi is the clear choice**:
+For an open-source infrastructure-as-code framework like OpenMCF, **Strimzi is the clear choice**:
 
 1. **Licensing Alignment:** 100% Apache 2.0, no restrictions, fully FOSS
 2. **Community Governance:** CNCF sandbox project with vendor-neutral oversight
@@ -450,7 +450,7 @@ spec:
 
 ### Schema Registry: The 100% FOSS Choice
 
-Strimzi deliberately does not bundle a schema registry, choosing to focus on core Kafka. For Project Planton, **Apicurio Registry** is the ideal companion:
+Strimzi deliberately does not bundle a schema registry, choosing to focus on core Kafka. For OpenMCF, **Apicurio Registry** is the ideal companion:
 
 - **License:** Apache 2.0 (100% FOSS)
 - **Operator:** Dedicated Kubernetes operator available on OperatorHub
@@ -540,7 +540,7 @@ Simply import these dashboards into your Grafana instance configured with your P
 
 The journey from anti-patterns to production-ready Kafka on Kubernetes is a story of architectural maturity. Simple Deployments fail immediately due to network identity issues. StatefulSets provide a foundation but lack Kafka-aware lifecycle management. Helm charts simplify installation but don't solve operational complexity. Only Kubernetes Operators—with their embedded domain expertise—make Kafka on Kubernetes production-viable.
 
-For open-source infrastructure frameworks like Project Planton, the path forward is clear:
+For open-source infrastructure frameworks like OpenMCF, the path forward is clear:
 
 1. **Adopt the Operator Pattern:** It's the only production-ready approach for Kafka's Day 2 operations
 2. **Choose Strimzi:** 100% Apache 2.0, CNCF-backed, modern KRaft-native architecture, production-proven

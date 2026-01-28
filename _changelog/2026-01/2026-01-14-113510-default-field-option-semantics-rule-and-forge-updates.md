@@ -6,7 +6,7 @@
 
 ## Summary
 
-Created a comprehensive action rule and updated the entire forge/update/fix pipeline to properly handle proto field default values using `(org.project_planton.shared.options.default)` field options. This ensures default values are enforced at build time via the `DEFAULT_REQUIRES_OPTIONAL` linter, applied automatically by Project Planton middleware, and handled correctly in tests and IaC modules.
+Created a comprehensive action rule and updated the entire forge/update/fix pipeline to properly handle proto field default values using `(org.openmcf.shared.options.default)` field options. This ensures default values are enforced at build time via the `DEFAULT_REQUIRES_OPTIONAL` linter, applied automatically by OpenMCF middleware, and handled correctly in tests and IaC modules.
 
 ## Problem Statement / Motivation
 
@@ -57,7 +57,7 @@ flowchart TB
 
 ### Key Components
 
-1. **Action Rule**: `apis/_rules/apply-project-planton-default-option-semantics.mdc`
+1. **Action Rule**: `apis/_rules/apply-openmcf-default-option-semantics.mdc`
    - Comprehensive guide for applying default semantics to any component
    - Documents the full workflow from proto to IaC
 
@@ -83,12 +83,12 @@ flowchart TB
 
 ```protobuf
 // Import the options
-import "org/project_planton/shared/options/options.proto";
+import "org/openmcf/shared/options/options.proto";
 
 // CORRECT: Both optional keyword AND default option
-optional string runner_group = 7 [(org.project_planton.shared.options.default) = "default"];
+optional string runner_group = 7 [(org.openmcf.shared.options.default) = "default"];
 
-optional string repository = 1 [(org.project_planton.shared.options.default) = "ghcr.io/actions/actions-runner"];
+optional string repository = 1 [(org.openmcf.shared.options.default) = "ghcr.io/actions/actions-runner"];
 ```
 
 ### Generated Go Code Changes
@@ -152,7 +152,7 @@ sequenceDiagram
 ## Files Changed
 
 ### New Files
-- `apis/_rules/apply-project-planton-default-option-semantics.mdc` - Comprehensive action rule
+- `apis/_rules/apply-openmcf-default-option-semantics.mdc` - Comprehensive action rule
 
 ### Updated Info Files
 - `.cursor/info/spec_proto.md` - Default Field Options section
@@ -166,11 +166,11 @@ sequenceDiagram
 - `_rules/deployment-component/forge/flow/002-spec-validate.mdc`
 - `_rules/deployment-component/forge/flow/003-spec-tests.mdc`
 - `_rules/deployment-component/forge/flow/009-pulumi-module.mdc`
-- `_rules/deployment-component/update/update-project-planton-component.mdc`
-- `_rules/deployment-component/fix/fix-project-planton-component.mdc`
+- `_rules/deployment-component/update/update-openmcf-component.mdc`
+- `_rules/deployment-component/fix/fix-openmcf-component.mdc`
 
 ### Fixed Tests
-- `apis/org/project_planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec_test.go`
+- `apis/org/openmcf/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec_test.go`
 
 ## Benefits
 
@@ -193,7 +193,7 @@ sequenceDiagram
 
 ### For Future Maintenance
 
-- **Invoke rule**: `@apply-project-planton-default-option-semantics` handles migration
+- **Invoke rule**: `@apply-openmcf-default-option-semantics` handles migration
 - **Self-documenting**: Proto options show defaults in schema, not just comments
 
 ## Impact
@@ -223,13 +223,13 @@ None. Existing components continue to work. New components and migrations benefi
 When you encounter a component with comment-only defaults:
 
 ```bash
-@apply-project-planton-default-option-semantics KubernetesGhaRunnerScaleSet
+@apply-openmcf-default-option-semantics KubernetesGhaRunnerScaleSet
 ```
 
 Or use the update rule:
 
 ```bash
-@update-project-planton-component KubernetesGhaRunnerScaleSet --scenario apply-default-semantics
+@update-openmcf-component KubernetesGhaRunnerScaleSet --scenario apply-default-semantics
 ```
 
 ---

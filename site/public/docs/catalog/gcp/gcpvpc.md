@@ -14,7 +14,7 @@ Here's a truth that catches many teams off guard: the way you create your VPC ne
 
 Google Cloud's VPC is deceptively simple on the surface—just a network with some subnets, right? But beneath that simplicity lies a sophisticated software-defined network that spans regions globally, routes traffic through an implicit mesh, and integrates with everything from Kubernetes to serverless functions. The question isn't whether you *can* create a VPC—anyone can click through the console in 5 minutes. The real question is: **how do you deploy VPCs consistently, with the right architecture choices, in a way that doesn't haunt you six months later?**
 
-This document examines the evolution of GCP VPC deployment methods, from manual provisioning through modern infrastructure-as-code approaches, and explains why Project Planton chose a streamlined, custom-mode-first design that prevents the most common networking pitfalls before they happen.
+This document examines the evolution of GCP VPC deployment methods, from manual provisioning through modern infrastructure-as-code approaches, and explains why OpenMCF chose a streamlined, custom-mode-first design that prevents the most common networking pitfalls before they happen.
 
 ## The Maturity Spectrum: How VPC Provisioning Evolved
 
@@ -182,13 +182,13 @@ This model is powerful for platform teams building internal developer platforms:
 - **Choose Crossplane** if you're building an internal platform and want continuous reconciliation with GitOps workflows.
 - **Avoid Deployment Manager** for new projects unless you have a specific requirement for GCP-native tooling and no multi-cloud needs.
 
-## Project Planton's Approach: Streamlined Custom-Mode VPCs
+## OpenMCF's Approach: Streamlined Custom-Mode VPCs
 
-Project Planton's GCP VPC module is designed around a simple principle: **make the right thing easy and the wrong thing hard**.
+OpenMCF's GCP VPC module is designed around a simple principle: **make the right thing easy and the wrong thing hard**.
 
-### What Project Planton Provides
+### What OpenMCF Provides
 
-The `GcpVpc` API in Project Planton is intentionally minimal, focusing on the 20% of configuration that covers 80% of real-world use cases:
+The `GcpVpc` API in OpenMCF is intentionally minimal, focusing on the 20% of configuration that covers 80% of real-world use cases:
 
 ```protobuf
 message GcpVpcSpec {
@@ -215,36 +215,36 @@ message GcpVpcSpec {
 
 ### The Philosophy: Guard Rails, Not Handcuffs
 
-Project Planton doesn't try to abstract away GCP's VPC entirely. Instead, it provides a thin, opinionated layer that:
+OpenMCF doesn't try to abstract away GCP's VPC entirely. Instead, it provides a thin, opinionated layer that:
 
 1. **Defaults to best practices**: Custom mode, regional routing, explicit project references.
 2. **Prevents common mistakes**: You can't accidentally create an auto-mode VPC and get into IP conflicts later without explicitly choosing that path.
-3. **Integrates with the ecosystem**: Under the hood, Project Planton generates Terraform or Pulumi code (or calls GCP APIs directly), leveraging battle-tested tooling rather than reinventing the wheel.
+3. **Integrates with the ecosystem**: Under the hood, OpenMCF generates Terraform or Pulumi code (or calls GCP APIs directly), leveraging battle-tested tooling rather than reinventing the wheel.
 4. **Keeps configuration auditable**: The protobuf API is version-controlled, typed, and can be validated at CI time. You get all the benefits of infrastructure-as-code with a cleaner, more focused schema.
 
 This isn't about hiding complexity for complexity's sake. It's about encoding the lessons from the research—the knowledge that auto-mode causes problems, that routing mode matters for hybrid connectivity, that most advanced knobs can safely default—into an API that guides users toward success.
 
-### When to Use Project Planton's GcpVpc
+### When to Use OpenMCF's GcpVpc
 
 **Use it when**:
 - You want a streamlined, best-practice VPC without boilerplate.
 - You're managing infrastructure via protobuf-defined APIs (e.g., in a GitOps or platform engineering context).
-- You need cross-cloud consistency (Project Planton provides similar abstractions for AWS, Azure, etc.).
+- You need cross-cloud consistency (OpenMCF provides similar abstractions for AWS, Azure, etc.).
 
 **Consider raw Terraform/Pulumi instead when**:
-- You need extremely fine-grained control over every GCP VPC knob (though you can often extend Project Planton or use it for the base network and Terraform for advanced tweaks).
+- You need extremely fine-grained control over every GCP VPC knob (though you can often extend OpenMCF or use it for the base network and Terraform for advanced tweaks).
 - You're deeply embedded in the Terraform ecosystem and prefer direct HCL.
 
-## Architecture Patterns Enabled by Project Planton
+## Architecture Patterns Enabled by OpenMCF
 
-Project Planton's VPC design supports the full range of GCP networking patterns:
+OpenMCF's VPC design supports the full range of GCP networking patterns:
 
 ### Pattern 1: Single-Region Custom VPC (Dev/Test)
 
 A simple, custom-mode VPC in one region with a subnet for internal workloads:
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpVpc
 metadata:
   name: dev-network
@@ -261,7 +261,7 @@ Subnets, firewall rules, and routes are defined separately, keeping the base net
 A global VPC with regional subnets, used as a Shared VPC host for multiple service projects:
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpVpc
 metadata:
   name: prod-network
@@ -281,7 +281,7 @@ While the `GcpVpc` resource defines the base network, subnets with secondary IP 
 
 The journey from console clicks to mature IaC is a progression every team makes, often painfully. Starting with custom-mode VPCs, using declarative IaC tools (Terraform, Pulumi, or Crossplane depending on your context), and avoiding the auto-mode trap aren't advanced techniques—they're the baseline for production-grade networking.
 
-Project Planton's GCP VPC module distills the lessons from thousands of deployments into a simple API: custom mode by default, explicit routing choices, and a focus on what actually matters. It's not about hiding GCP's capabilities. It's about providing a saner starting point so you spend less time debugging IP conflicts and more time building what matters.
+OpenMCF's GCP VPC module distills the lessons from thousands of deployments into a simple API: custom mode by default, explicit routing choices, and a focus on what actually matters. It's not about hiding GCP's capabilities. It's about providing a saner starting point so you spend less time debugging IP conflicts and more time building what matters.
 
 Whether you're provisioning your first VPC or refactoring your tenth, the principles remain the same: **plan your IP space, use custom mode, codify everything, and choose tools that make drift visible**. Follow those rules, and your network becomes a foundation you can build on—not a liability you're stuck with.
 

@@ -6,10 +6,10 @@ go_library(
         "applier.go",
         "type_converter.go",
     ],
-    importpath = "github.com/plantonhq/project-planton/internal/manifest/protodefaults",
+    importpath = "github.com/plantonhq/openmcf/internal/manifest/protodefaults",
     visibility = ["//:__subpackages__"],
     deps = [
-        "//apis/org/project_planton/shared/options",
+        "//apis/org/openmcf/shared/options",
         "@com_github_pkg_errors//:errors",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protoreflect",
@@ -24,8 +24,8 @@ go_test(
     ],
     embed = [":protodefaults"],
     deps = [
-        "//apis/org/project_planton/provider/_test/testcloudresourceone/v1:testcloudresourceone",
-        "//apis/org/project_planton/shared",
+        "//apis/org/openmcf/provider/_test/testcloudresourceone/v1:testcloudresourceone",
+        "//apis/org/openmcf/shared",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_protobuf//proto",

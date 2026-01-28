@@ -1,0 +1,7 @@
+apiVersion: kubernetes.openmcf.org/v1
+kind: TemporalKubernetes
+metadata:
+  name: openmcf-test-temporal
+spec:
+  database:
+    backend: cassandra

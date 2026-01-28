@@ -47,7 +47,7 @@ repeated VolumeMount volume_mounts = 18;
 
 ### Proto Schema Changes
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetescronjob/v1/spec.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetescronjob/v1/spec.proto`
 
 Added import for shared volume mount definitions and two new fields:
 - `config_maps` for declarative ConfigMap creation
@@ -100,12 +100,12 @@ Before (required external ConfigMap):
 ```bash
 kubectl create configmap backup-script --from-file=backup.sh
 # Then deploy CronJob separately
-project-planton pulumi up --manifest cronjob.yaml
+openmcf pulumi up --manifest cronjob.yaml
 ```
 
 After (all-in-one):
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesCronJob
 metadata:
   name: db-backup

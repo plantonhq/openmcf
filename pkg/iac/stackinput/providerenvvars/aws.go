@@ -2,7 +2,7 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	awsprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws"
+	awsprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/aws"
 )
 
 // loadAwsEnvVars loads AWS provider config and returns environment variables.

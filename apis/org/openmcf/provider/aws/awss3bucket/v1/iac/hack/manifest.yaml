@@ -1,0 +1,8 @@
+apiVersion: aws.openmcf.org/v1
+kind: AwsS3Bucket
+metadata:
+  name: awss3bucket-demo
+spec:
+  awsRegion: us-east-1
+  isPublic: false
+

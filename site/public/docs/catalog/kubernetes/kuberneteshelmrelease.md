@@ -12,7 +12,7 @@ componentName: "kuberneteshelmrelease"
 
 "Just run `helm install` and you're done" might work for a developer's local cluster, but it's a recipe for disaster in production. The story of Helm deployment methods is the story of learning—often painfully—that managing application state in Kubernetes requires more than a powerful CLI. It requires continuous reconciliation, automated drift correction, and a single source of truth.
 
-This document explores how the industry evolved from manual `helm` commands to the modern GitOps controllers that power production Kubernetes platforms today. Understanding this progression isn't just historical curiosity—it directly informs why Project Planton's HelmRelease API is designed the way it is, and what trade-offs we deliberately chose.
+This document explores how the industry evolved from manual `helm` commands to the modern GitOps controllers that power production Kubernetes platforms today. Understanding this progression isn't just historical curiosity—it directly informs why OpenMCF's HelmRelease API is designed the way it is, and what trade-offs we deliberately chose.
 
 ## The Evolution of Helm Deployment Methods
 
@@ -157,7 +157,7 @@ Helm uses semantic versioning (SemVer 2.0) for chart versions. Both the `version
 - **Floating Image Tags**: Using `latest` breaks declarative immutability. The artifact can change without any Git commit, making rollbacks and audits impossible.
 - **SemVer Ranges in Production**: While useful in development or staging to absorb patch releases automatically, production manifests must be explicitly pinned. A Git commit should be required to change versions—that's the correct GitOps pattern.
 
-**Project Planton's Choice**: Our `chart_version` field is a required string that does not resolve ranges. This enforces immutability at the API level, forcing explicit version changes through Git commits.
+**OpenMCF's Choice**: Our `chart_version` field is a required string that does not resolve ranges. This enforces immutability at the API level, forcing explicit version changes through Git commits.
 
 ### Secrets Management: The Decoupled Pattern
 
@@ -192,7 +192,7 @@ In both cases, the HelmRelease controller is **completely unaware** of the encry
 | **SOPS** | Symmetric (via Cloud KMS, PGP) | **High** (controller must decrypt) |
 | **External Secrets Operator** | None (syncs from external stores) | **None** (references native Secret) |
 
-**Project Planton's Choice**: We follow the decoupled model. Project Planton's HelmRelease API does not implement SOPS-style decryption. We document integration with ESO and Sealed Secrets as the recommended patterns. This keeps our API simple, secure, and focused on deploying charts.
+**OpenMCF's Choice**: We follow the decoupled model. OpenMCF's HelmRelease API does not implement SOPS-style decryption. We document integration with ESO and Sealed Secrets as the recommended patterns. This keeps our API simple, secure, and focused on deploying charts.
 
 ### Release Lifecycle: Atomic Operations and Rollbacks
 
@@ -203,7 +203,7 @@ Production deployments must be transactional. A partially-applied, broken releas
 - `--atomic`: Enables `--wait` and automatically triggers a rollback to the previous revision if the wait condition fails. This prevents releases from being left in a broken state.
 - `--timeout`: Specifies how long to wait before failing the operation.
 
-**Project Planton's Choice**: Our HelmRelease API includes these as first-class fields (`atomic`, `wait`, `timeout`). They are not "advanced" features—they are core requirements for production safety.
+**OpenMCF's Choice**: Our HelmRelease API includes these as first-class fields (`atomic`, `wait`, `timeout`). They are not "advanced" features—they are core requirements for production safety.
 
 ### Chart Repositories: OCI vs HTTP
 
@@ -218,11 +218,11 @@ Helm supports two repository models:
 - Content-addressable, immutable storage
 - Re-uses the battle-tested security models of container registries
 
-**Project Planton's Choice**: Our `repo` field supports both `https://` and `oci://` prefixes. OCI support is non-negotiable for a modern deployment tool.
+**OpenMCF's Choice**: Our `repo` field supports both `https://` and `oci://` prefixes. OCI support is non-negotiable for a modern deployment tool.
 
-## What Project Planton Supports (And Why)
+## What OpenMCF Supports (And Why)
 
-Project Planton's HelmRelease API is intentionally minimal, opinionated, and focused on the 80% use case.
+OpenMCF's HelmRelease API is intentionally minimal, opinionated, and focused on the 80% use case.
 
 ### The Core Specification
 
@@ -246,7 +246,7 @@ To keep the API clean and implementable, we exclude 20% "power-user" features:
 
 ### The Philosophy: Simple, Secure, Production-Ready
 
-Project Planton's HelmRelease API follows the **GitOps pull model**. CI pipelines do not run `helm install`. Instead, they:
+OpenMCF's HelmRelease API follows the **GitOps pull model**. CI pipelines do not run `helm install`. Instead, they:
 1. Build and push container images
 2. Commit changes to Git (updating `chart_version` or `image.tag` in the manifest)
 
@@ -291,7 +291,7 @@ This de-risks adoption and ensures no vendor lock-in. Both FluxCD and ArgoCD are
 
 The evolution from manual commands to in-cluster controllers isn't arbitrary—it's the result of learning from production failures. Manual commands drift. Scripts can't reconcile. External IaC creates state conflicts. The only architecturally sound solution is a Kubernetes-native controller that runs inside the cluster, uses the Helm SDK natively, and continuously reconciles desired state with actual state.
 
-Project Planton's HelmRelease API embodies this lesson. We provide a minimal, production-ready interface that:
+OpenMCF's HelmRelease API embodies this lesson. We provide a minimal, production-ready interface that:
 - Enforces version pinning through a non-ranged `version` field
 - Decouples secrets management (no built-in SOPS, integrate with ESO or Sealed Secrets)
 - Supports modern OCI registries alongside traditional HTTP repos

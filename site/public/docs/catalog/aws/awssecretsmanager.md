@@ -14,7 +14,7 @@ Here's a counterintuitive truth about secrets management: **the infrastructure t
 
 AWS Secrets Manager exists to solve this problem by providing secure, auditable, and rotatable storage for sensitive data like database credentials, API keys, and certificates. But deploying Secrets Manager itself presents a paradox: you need infrastructure-as-code to create secrets *containers*, yet you must never put actual secret *values* in that code.
 
-This document explores how to deploy AWS Secrets Manager across different maturity levels—from manual console clicks to production-grade automation—and explains why Project Planton takes a deliberately minimal approach that separates secret infrastructure from secret data.
+This document explores how to deploy AWS Secrets Manager across different maturity levels—from manual console clicks to production-grade automation—and explains why OpenMCF takes a deliberately minimal approach that separates secret infrastructure from secret data.
 
 ## The Maturity Spectrum: From Quick Fixes to Production Patterns
 
@@ -404,24 +404,24 @@ All IaC tools share a common challenge: **don't put secret values in code or sta
 
 **Universal best practice:** Treat secret values and secret infrastructure as separate concerns. IaC creates the container; a secure pipeline populates the content.
 
-## The Project Planton Choice: Minimal and Intentional
+## The OpenMCF Choice: Minimal and Intentional
 
-Project Planton takes a deliberately minimalist approach to AWS Secrets Manager, grounded in the **80/20 principle**: 80% of use cases need only 20% of the available configuration options.
+OpenMCF takes a deliberately minimalist approach to AWS Secrets Manager, grounded in the **80/20 principle**: 80% of use cases need only 20% of the available configuration options.
 
 ### The Philosophy
 
 **Secrets infrastructure is not secrets management.** 
 
-Project Planton's role is to ensure secret *containers* exist with secure defaults, proper tagging, and correct IAM integration. The actual secret *values* are populated through secure, auditable processes outside of the infrastructure definition.
+OpenMCF's role is to ensure secret *containers* exist with secure defaults, proper tagging, and correct IAM integration. The actual secret *values* are populated through secure, auditable processes outside of the infrastructure definition.
 
 This separation provides:
-- **Security**: No secret values ever touch the Project Planton spec or state
+- **Security**: No secret values ever touch the OpenMCF spec or state
 - **Simplicity**: Developers specify what secrets they need, not how to manage AWS KMS, rotation Lambdas, or cross-region replication
 - **Flexibility**: Teams can choose their own secret population strategy (CI/CD, vaults, manual)
 
 ### The Minimal API
 
-The Project Planton API for AWS Secrets Manager contains exactly what 80% of users need:
+The OpenMCF API for AWS Secrets Manager contains exactly what 80% of users need:
 
 ```protobuf
 message AwsSecretsManagerSpec {
@@ -436,7 +436,7 @@ That's it. No secret values, no rotation configuration, no replica regions, no K
 **Example usage:**
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsSecretsManager
 metadata:
   name: myapp-prod-secrets
@@ -471,7 +471,7 @@ Advanced scenarios require additional configuration or separate steps:
 
 ### Secure Defaults
 
-Even with minimal configuration, Project Planton ensures production-ready security:
+Even with minimal configuration, OpenMCF ensures production-ready security:
 - **Encryption at rest**: All secrets encrypted with AWS KMS
 - **IAM integration**: Application roles automatically granted least-privilege access to their secrets
 - **Audit logging**: CloudTrail automatically logs all secret access
@@ -479,13 +479,13 @@ Even with minimal configuration, Project Planton ensures production-ready securi
 
 ### The Value Proposition
 
-By keeping the API minimal, Project Planton:
+By keeping the API minimal, OpenMCF:
 - **Reduces misconfiguration risk**: No options means no wrong options
 - **Accelerates deployment**: No decision paralysis about KMS keys or rotation schedules
 - **Maintains security**: Default AWS encryption is production-grade
 - **Enables iteration**: Start simple, add complexity (rotation, replication) when needed
 
-This aligns with modern infrastructure philosophy: **make the right thing easy and the wrong thing hard**. You can't accidentally leak a secret value in Project Planton because there's no way to specify one.
+This aligns with modern infrastructure philosophy: **make the right thing easy and the wrong thing hard**. You can't accidentally leak a secret value in OpenMCF because there's no way to specify one.
 
 ## Production Essentials: What Happens After Deployment
 
@@ -666,7 +666,7 @@ Even with minimal initial configuration, plan for rotation:
 
 AWS Secrets Manager is a powerful service, but its power comes from **what it doesn't do** as much as what it does. It doesn't give you secrets; it gives you a secure place to put them. It doesn't manage rotation logic; it gives you hooks to implement it. It doesn't decide what should be secret; it enforces that whatever you deem secret stays protected.
 
-Project Planton embraces this philosophy by providing the minimum viable infrastructure: names of secrets that need to exist. This approach:
+OpenMCF embraces this philosophy by providing the minimum viable infrastructure: names of secrets that need to exist. This approach:
 - **Prevents leaks** by making it impossible to embed values in code
 - **Accelerates deployment** by removing decision paralysis
 - **Maintains flexibility** for teams to implement their own secret lifecycle

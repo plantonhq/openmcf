@@ -14,7 +14,7 @@ For years, managed Kubernetes meant waiting 10-15 minutes for a cluster to provi
 
 The result? **Cluster creation in under 90 seconds**, a **free control plane**, and a developer-first experience that doesn't sacrifice production-readiness for simplicity.
 
-This document explains the deployment methods available for Civo Kubernetes clusters, from manual provisioning to fully automated Infrastructure as Code (IaC) patterns, and how Project Planton exposes this powerful platform through a minimal, opinionated API.
+This document explains the deployment methods available for Civo Kubernetes clusters, from manual provisioning to fully automated Infrastructure as Code (IaC) patterns, and how OpenMCF exposes this powerful platform through a minimal, opinionated API.
 
 ## Why Civo Kubernetes Exists
 
@@ -245,13 +245,13 @@ For production-grade monitoring, install the **`prometheus-operator`** from the 
 ❌ **Environment mixing**: Running dev, staging, and prod in the same cluster or namespace  
 ❌ **Plain-text secrets**: Storing credentials in ConfigMaps or environment variables  
 
-## The Project Planton Choice
+## The OpenMCF Choice
 
-Project Planton's `CivoKubernetesCluster/v1` API is designed following the **80/20 principle**: expose the 20% of configuration that 80% of users need, enforce security by default, and make production-readiness the path of least resistance.
+OpenMCF's `CivoKubernetesCluster/v1` API is designed following the **80/20 principle**: expose the 20% of configuration that 80% of users need, enforce security by default, and make production-readiness the path of least resistance.
 
 ### Minimal, Opinionated API
 
-The Project Planton API **mandates** the following fields:
+The OpenMCF API **mandates** the following fields:
 
 | Field | Type | Rationale |
 |-------|------|-----------|
@@ -275,12 +275,12 @@ The Project Planton API **mandates** the following fields:
 
 ### Default Deployment Strategy
 
-Project Planton uses **Pulumi** as the default IaC engine for Civo Kubernetes clusters, leveraging:
+OpenMCF uses **Pulumi** as the default IaC engine for Civo Kubernetes clusters, leveraging:
 
 - The official `@pulumi/civo` bridged provider (100% resource parity with Terraform)
 - Built-in encrypted secret management for API keys and kubeconfig
 - Stack-based multi-environment management
-- Integration with Project Planton's unified resource lifecycle
+- Integration with OpenMCF's unified resource lifecycle
 
 The underlying Pulumi module is located at:
 
@@ -376,7 +376,7 @@ Civo Kubernetes represents a paradigm shift: **production-grade Kubernetes doesn
 
 The platform is mature, automatable via official Terraform and Pulumi providers, and production-ready for workloads that value velocity, predictability, and cost efficiency.
 
-**Project Planton's opinionated API design enforces security by default** (requiring network and firewall configuration upfront), exposes the critical configuration surface (Kubernetes version, node pools, tags), and abstracts away the complexity of multi-cloud infrastructure management—making Civo Kubernetes accessible to teams of any size.
+**OpenMCF's opinionated API design enforces security by default** (requiring network and firewall configuration upfront), exposes the critical configuration surface (Kubernetes version, node pools, tags), and abstracts away the complexity of multi-cloud infrastructure management—making Civo Kubernetes accessible to teams of any size.
 
 For comprehensive guides on specific implementation details, see:
 

@@ -20,7 +20,7 @@ What makes DigitalOcean Cloud Firewalls compelling is that they solve the right 
 
 But simplicity at the API level doesn't mean simple operations. You need to understand the deployment spectrum—from manual "click-ops" (an anti-pattern for production) to declarative Infrastructure-as-Code with Terraform, Pulumi, or Crossplane. You need to know when to use static Droplet IDs (almost never) versus tag-based targeting (the production standard). And you need a coherent strategy for organizing rules, managing multi-environment configs, and troubleshooting connectivity issues when both firewalls are in play.
 
-This guide walks you through the landscape of DigitalOcean Cloud Firewall deployment methods, explains the production patterns that separate brittle configurations from scalable ones, and shows how Project Planton abstracts these choices into a clean, protobuf-defined API.
+This guide walks you through the landscape of DigitalOcean Cloud Firewall deployment methods, explains the production patterns that separate brittle configurations from scalable ones, and shows how OpenMCF abstracts these choices into a clean, protobuf-defined API.
 
 ---
 
@@ -429,9 +429,9 @@ When a connection times out, it's almost always a firewall misconfiguration. Her
 
 ---
 
-## Project Planton's Approach: Abstraction with Production Pragmatism
+## OpenMCF's Approach: Abstraction with Production Pragmatism
 
-Project Planton abstracts DigitalOcean Cloud Firewall provisioning behind a clean, protobuf-defined API (`DigitalOceanFirewall`). This provides a consistent interface across clouds while respecting DigitalOcean's unique characteristics.
+OpenMCF abstracts DigitalOcean Cloud Firewall provisioning behind a clean, protobuf-defined API (`DigitalOceanFirewall`). This provides a consistent interface across clouds while respecting DigitalOcean's unique characteristics.
 
 ### What We Abstract
 
@@ -459,7 +459,7 @@ This unifies the simple (allow HTTPS from anywhere) and the advanced (allow Post
 
 ### Under the Hood: Pulumi
 
-Project Planton currently uses **Pulumi (Go)** for DigitalOcean Firewall provisioning. Why?
+OpenMCF currently uses **Pulumi (Go)** for DigitalOcean Firewall provisioning. Why?
 
 - **Language Flexibility**: Pulumi's Go SDK fits naturally into our broader multi-cloud orchestration.
 - **Equivalent Coverage**: Pulumi's DigitalOcean provider (bridged from Terraform) supports all firewall features.
@@ -476,7 +476,7 @@ That said, Terraform would work equally well. The choice is implementation detai
 **Use Case:** Simple web application for developer testing. Easy access, no strict security.
 
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanFirewall
 metadata:
   name: dev-web-fw
@@ -523,7 +523,7 @@ spec:
 **Use Case:** Production web servers behind a Load Balancer. Serve HTTPS traffic, allow SSH from office only.
 
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanFirewall
 metadata:
   name: prod-web-fw
@@ -572,7 +572,7 @@ spec:
 **Use Case:** PostgreSQL database reachable only by web tier and administrators. No public access.
 
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanFirewall
 metadata:
   name: prod-db-fw
@@ -622,7 +622,7 @@ spec:
 
 6. **The 80/20 config is name, tags, inbound rules, and outbound rules.** Advanced features (Load Balancer UIDs, Kubernetes cluster IDs, tag-based sources/destinations) are essential for multi-tier production architectures.
 
-7. **Project Planton abstracts the API** into a clean protobuf spec, making multi-cloud deployments consistent while respecting DigitalOcean's unique features (tag-based targeting, resource-aware rules).
+7. **OpenMCF abstracts the API** into a clean protobuf spec, making multi-cloud deployments consistent while respecting DigitalOcean's unique features (tag-based targeting, resource-aware rules).
 
 ---
 
@@ -637,5 +637,5 @@ spec:
 
 ---
 
-**Bottom Line:** DigitalOcean Cloud Firewalls give you stateful, network-edge security with centralized management and tag-based scalability. Manage them with Terraform or Pulumi, avoid the "double firewall" trap, and adopt tag-first targeting for production. Project Planton makes this simple with a protobuf API that hides complexity while exposing the essential configuration you actually need.
+**Bottom Line:** DigitalOcean Cloud Firewalls give you stateful, network-edge security with centralized management and tag-based scalability. Manage them with Terraform or Pulumi, avoid the "double firewall" trap, and adopt tag-first targeting for production. OpenMCF makes this simple with a protobuf API that hides complexity while exposing the essential configuration you actually need.
 

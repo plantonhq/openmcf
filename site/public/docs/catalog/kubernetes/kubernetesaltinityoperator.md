@@ -303,9 +303,9 @@ Cross-region replication is supported but requires careful architecture. The coo
 
 This provides low-latency reads in the secondary region but creates a single point of failure for writes if the primary region fails.
 
-## Project Planton's Choice
+## OpenMCF's Choice
 
-For Project Planton, the Altinity ClickHouse Operator is the **only viable choice** for providing ClickHouse on Kubernetes. This decision is based on:
+For OpenMCF, the Altinity ClickHouse Operator is the **only viable choice** for providing ClickHouse on Kubernetes. This decision is based on:
 
 **1. Production Maturity:** Five years of battle-testing at scale by organizations like eBay, Twilio, and Lyft.
 
@@ -319,7 +319,7 @@ For Project Planton, the Altinity ClickHouse Operator is the **only viable choic
 
 ### The Abstraction Layer
 
-Project Planton's API abstracts the operator's Helm chart complexity into approximately **six essential fields**:
+OpenMCF's API abstracts the operator's Helm chart complexity into approximately **six essential fields**:
 
 | Field | Purpose |
 |-------|---------|

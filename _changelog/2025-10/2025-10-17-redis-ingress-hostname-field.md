@@ -12,7 +12,7 @@ Refactored the Redis Kubernetes ingress configuration from a shared `IngressSpec
 
 ### The Problem
 
-The previous implementation used the shared `IngressSpec` from `org.project_planton.shared.kubernetes`:
+The previous implementation used the shared `IngressSpec` from `org.openmcf.shared.kubernetes`:
 
 ```yaml
 ingress:
@@ -63,7 +63,7 @@ message IngressSpec {
 }
 
 message RedisKubernetesSpec {
-  org.project_planton.shared.kubernetes.IngressSpec ingress = 2;
+  org.openmcf.shared.kubernetes.IngressSpec ingress = 2;
 }
 ```
 
@@ -95,7 +95,7 @@ message RedisKubernetesSpec {
 
 **Before**:
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: prod-redis
@@ -110,7 +110,7 @@ spec:
 
 **After**:
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: prod-redis
@@ -274,7 +274,7 @@ output "external_hostname" {
 **File**: `apis/project/planton/provider/kubernetes/workload/rediskubernetes/v1/spec.proto`
 
 **Changes Made**:
-1. **Updated Field Type**: Line 39 changed from `org.project_planton.shared.kubernetes.IngressSpec` to `RedisKubernetesIngress`
+1. **Updated Field Type**: Line 39 changed from `org.openmcf.shared.kubernetes.IngressSpec` to `RedisKubernetesIngress`
 2. **Added Message**: New `RedisKubernetesIngress` message with CEL validation (lines 78-96)
 
 **Validation Strategy**: Uses CEL (Common Expression Language) to validate that `hostname` is required when `enabled` is true, providing clear error messages and type safety.
@@ -413,13 +413,13 @@ spec:
 
 ```bash
 # Update CLI
-brew update && brew upgrade project-planton
+brew update && brew upgrade openmcf
 
 # Or fresh install
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # Verify version
-project-planton version
+openmcf version
 
 # For developers: regenerate protobuf stubs
 cd apis
@@ -442,10 +442,10 @@ If you chose a different hostname than the auto-constructed one:
 
 ```bash
 # Preview changes
-project-planton pulumi preview --manifest redis.yaml
+openmcf pulumi preview --manifest redis.yaml
 
 # Apply
-project-planton pulumi up --manifest redis.yaml
+openmcf pulumi up --manifest redis.yaml
 ```
 
 ### Automated Migration Script
@@ -510,8 +510,8 @@ echo "✅ Migration complete!"
 echo ""
 echo "Next steps:"
 echo "1. Review the changes with: git diff"
-echo "2. Test with: project-planton pulumi preview --manifest <file>"
-echo "3. Apply with: project-planton pulumi up --manifest <file>"
+echo "2. Test with: openmcf pulumi preview --manifest <file>"
+echo "3. Apply with: openmcf pulumi up --manifest <file>"
 ```
 
 **Usage**:
@@ -525,7 +525,7 @@ chmod +x migrate-redis-ingress.sh
 ### Basic Redis Configuration Without Ingress
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: internal-cache
@@ -545,7 +545,7 @@ spec:
 ### Production with Ingress and Persistence
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: prod-redis
@@ -712,7 +712,7 @@ ingress:
 ```bash
 # Create manifest with new syntax
 cat > redis-test.yaml <<EOF
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: test-redis
@@ -727,7 +727,7 @@ spec:
 EOF
 
 # Deploy
-project-planton pulumi up --manifest redis-test.yaml
+openmcf pulumi up --manifest redis-test.yaml
 
 # Verify LoadBalancer service created with correct annotation
 kubectl get svc -n test-redis ingress-external-lb -o yaml | \
@@ -742,7 +742,7 @@ kubectl get svc -n test-redis ingress-external-lb -o yaml | \
 # After: ingress.hostname = "existing-redis.example.com"
 
 # Apply update
-project-planton pulumi up --manifest redis-existing.yaml
+openmcf pulumi up --manifest redis-existing.yaml
 
 # Verify hostname annotation updated
 kubectl get svc -n existing-redis ingress-external-lb -o yaml | \
@@ -754,7 +754,7 @@ kubectl get svc -n existing-redis ingress-external-lb -o yaml | \
 ```bash
 # Try invalid configuration
 cat > redis-invalid.yaml <<EOF
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: invalid-redis
@@ -765,7 +765,7 @@ spec:
 EOF
 
 # Attempt deploy
-project-planton pulumi up --manifest redis-invalid.yaml
+openmcf pulumi up --manifest redis-invalid.yaml
 # Expected error: hostname is required when ingress is enabled
 ```
 
@@ -864,7 +864,7 @@ For questions or issues with migration:
 2. Use the [automated migration script](#automated-migration-script)
 3. Check [examples](#examples) for reference configurations
 4. Verify [validation rules](#validation) are met
-5. Contact Project Planton support if issues persist
+5. Contact OpenMCF support if issues persist
 
 ---
 

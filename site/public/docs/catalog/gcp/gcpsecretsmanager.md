@@ -14,7 +14,7 @@ Hardcoding API keys in source code. Storing passwords in environment variables. 
 
 The conventional wisdom has long been clear: don't put secrets in code. But the **how** of managing secrets securely at scale—across teams, environments, and cloud platforms—remains a challenge that developers navigate daily. Google Cloud Secret Manager emerged as GCP's answer to this problem: a fully-managed service for storing API keys, passwords, certificates, and other sensitive data with built-in versioning, encryption, and audit logging.
 
-This document explores the spectrum of approaches for deploying and managing secrets using GCP Secret Manager, from manual console clicks to fully-automated infrastructure-as-code patterns. We'll examine what works in production, what doesn't, and how Project Planton provides a declarative, protobuf-defined interface that makes secret management both secure and maintainable.
+This document explores the spectrum of approaches for deploying and managing secrets using GCP Secret Manager, from manual console clicks to fully-automated infrastructure-as-code patterns. We'll examine what works in production, what doesn't, and how OpenMCF provides a declarative, protobuf-defined interface that makes secret management both secure and maintainable.
 
 ## Understanding GCP Secret Manager
 
@@ -365,11 +365,11 @@ Most secret management needs are simple: create a secret, store a value, grant a
 - Expiration timestamps
 - Version aliases
 
-This is where Project Planton's design philosophy shines: **expose the 80% in a simple protobuf spec, make the 20% optional**.
+This is where OpenMCF's design philosophy shines: **expose the 80% in a simple protobuf spec, make the 20% optional**.
 
-### Project Planton's Approach
+### OpenMCF's Approach
 
-The `GcpSecretsManagerSpec` in Project Planton is deliberately minimal:
+The `GcpSecretsManagerSpec` in OpenMCF is deliberately minimal:
 
 ```protobuf
 message GcpSecretsManagerSpec {
@@ -389,7 +389,7 @@ For advanced use cases, the underlying Pulumi or Terraform modules support the f
 **Example: Basic secret creation**
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpSecretsManager
 metadata:
   name: app-secrets
@@ -497,7 +497,7 @@ The evolution of secret management mirrors a broader shift in infrastructure: fr
 6. **Sync to Kubernetes via ESO** (for GKE apps, using Workload Identity)
 7. **Monitor and audit** (Cloud Audit Logs, alerts on anomalies)
 
-Project Planton's declarative API abstracts this complexity: define the secrets you need, let the platform handle provisioning, and supply values through secure channels. The result: secret management that's both secure by default and maintainable at scale.
+OpenMCF's declarative API abstracts this complexity: define the secrets you need, let the platform handle provisioning, and supply values through secure channels. The result: secret management that's both secure by default and maintainable at scale.
 
 The shift from "where do I put this API key?" to "how do I declaratively manage secret lifecycle?" represents a maturation in how we think about security infrastructure. GCP Secret Manager—when integrated thoughtfully—makes that shift achievable.
 

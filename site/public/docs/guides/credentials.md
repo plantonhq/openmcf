@@ -1,25 +1,25 @@
 ---
 title: "Credentials Management"
-description: "Complete guide to providing cloud provider credentials for Project Planton - environment variables, credential files, and best practices"
+description: "Complete guide to providing cloud provider credentials for OpenMCF - environment variables, credential files, and best practices"
 icon: "key"
 order: 3
 ---
 
 # Credentials Management Guide
 
-Your complete guide to securely providing cloud provider credentials to Project Planton.
+Your complete guide to securely providing cloud provider credentials to OpenMCF.
 
 ---
 
 ## Overview
 
-To deploy infrastructure, Project Planton needs permission to create resources in your cloud accounts. These permissions come from **credentials** - authentication information that proves you have the right to make changes.
+To deploy infrastructure, OpenMCF needs permission to create resources in your cloud accounts. These permissions come from **credentials** - authentication information that proves you have the right to make changes.
 
-Think of credentials like keys to different buildings. AWS credentials are like keys to Amazon's building, GCP credentials open Google's building, and so on. Project Planton needs the right key for whichever building (cloud provider) you're working with.
+Think of credentials like keys to different buildings. AWS credentials are like keys to Amazon's building, GCP credentials open Google's building, and so on. OpenMCF needs the right key for whichever building (cloud provider) you're working with.
 
 ### How Credentials Are Loaded
 
-Project Planton uses the same credential loading mechanism as the underlying IaC providers (Pulumi, Terraform, OpenTofu). Credentials are loaded in this order:
+OpenMCF uses the same credential loading mechanism as the underlying IaC providers (Pulumi, Terraform, OpenTofu). Credentials are loaded in this order:
 
 1. **Environment Variables** (Default) - The CLI and IaC providers automatically read credentials from standard environment variables for each provider
 2. **Provider Config File** (`-p` flag) - Explicit credentials file that overrides environment variables
@@ -31,7 +31,7 @@ Project Planton uses the same credential loading mechanism as the underlying IaC
 | Method | Best For | Example |
 |--------|----------|---------|
 | Environment Variables | Local development, CI/CD pipelines | `export AWS_ACCESS_KEY_ID=...` |
-| Provider Config File (`-p`) | Multi-account scenarios, explicit credentials | `project-planton apply -f manifest.yaml -p aws-creds.yaml` |
+| Provider Config File (`-p`) | Multi-account scenarios, explicit credentials | `openmcf apply -f manifest.yaml -p aws-creds.yaml` |
 
 Both methods are secure when used properly. Environment variables are simpler; config files offer more control.
 
@@ -72,7 +72,7 @@ Each cloud provider has guides for setting up appropriate IAM policies.
 
 ### Method 1: Environment Variables (Recommended)
 
-The simplest approach - AWS CLI and Project Planton both read these:
+The simplest approach - AWS CLI and OpenMCF both read these:
 
 ```bash
 # Set credentials
@@ -84,7 +84,7 @@ export AWS_DEFAULT_REGION="us-west-2"  # Optional but recommended
 aws sts get-caller-identity
 
 # Deploy
-project-planton pulumi up -f ops/aws/vpc.yaml
+openmcf pulumi up -f ops/aws/vpc.yaml
 ```
 
 **Where to get these**:
@@ -96,16 +96,16 @@ project-planton pulumi up -f ops/aws/vpc.yaml
 
 ```bash
 # Create provider config file
-cat > ~/.aws/project-planton-prod.yaml <<EOF
+cat > ~/.aws/openmcf-prod.yaml <<EOF
 accessKeyId: AKIAIOSFODNN7EXAMPLE
 secretAccessKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 region: us-west-2
 EOF
 
 # Use with CLI (provider type auto-detected from manifest)
-project-planton pulumi up \
+openmcf pulumi up \
   -f ops/aws/vpc.yaml \
-  -p ~/.aws/project-planton-prod.yaml
+  -p ~/.aws/openmcf-prod.yaml
 ```
 
 The CLI automatically detects which provider is needed based on your manifest's `apiVersion` and `kind`. You don't need to specify provider-specific flags.
@@ -119,9 +119,9 @@ Use AWS CLI profiles to manage multiple accounts:
 aws configure --profile production
 # Enter access key, secret, region when prompted
 
-# Use profile with Project Planton
+# Use profile with OpenMCF
 export AWS_PROFILE=production
-project-planton pulumi up -f ops/aws/vpc.yaml
+openmcf pulumi up -f ops/aws/vpc.yaml
 ```
 
 ### Method 4: IAM Roles (Best for EC2/ECS/Lambda)
@@ -132,7 +132,7 @@ If running on AWS compute (EC2, ECS, Lambda), use IAM roles instead of access ke
 # No credentials needed - automatically provided by AWS
 # Just ensure your EC2 instance/ECS task has an IAM role attached
 
-project-planton pulumi up -f ops/aws/vpc.yaml
+openmcf pulumi up -f ops/aws/vpc.yaml
 ```
 
 ### Troubleshooting AWS Credentials
@@ -171,17 +171,17 @@ aws iam get-user
 
 ```bash
 # Via gcloud CLI
-gcloud iam service-accounts create project-planton-deployer \
-  --display-name "Project Planton Deployer"
+gcloud iam service-accounts create openmcf-deployer \
+  --display-name "OpenMCF Deployer"
 
 # Grant necessary roles (example: GKE admin)
 gcloud projects add-iam-policy-binding my-project \
-  --member="serviceAccount:project-planton-deployer@my-project.iam.gserviceaccount.com" \
+  --member="serviceAccount:openmcf-deployer@my-project.iam.gserviceaccount.com" \
   --role="roles/container.admin"
 
 # Create and download key
 gcloud iam service-accounts keys create ~/gcp-key.json \
-  --iam-account=project-planton-deployer@my-project.iam.gserviceaccount.com
+  --iam-account=openmcf-deployer@my-project.iam.gserviceaccount.com
 ```
 
 **Step 2**: Use the key file:
@@ -190,10 +190,10 @@ gcloud iam service-accounts keys create ~/gcp-key.json \
 # Method A: Environment variable (most common)
 export GOOGLE_APPLICATION_CREDENTIALS=~/gcp-key.json
 
-project-planton pulumi up -f ops/gcp/gke-cluster.yaml
+openmcf pulumi up -f ops/gcp/gke-cluster.yaml
 
 # Method B: CLI flag (provider auto-detected from manifest)
-project-planton pulumi up \
+openmcf pulumi up \
   -f ops/gcp/gke-cluster.yaml \
   -p ~/gcp-credential.yaml
 ```
@@ -205,7 +205,7 @@ project-planton pulumi up \
 gcloud auth application-default login
 
 # No additional configuration needed
-project-planton pulumi up -f ops/gcp/gke-cluster.yaml
+openmcf pulumi up -f ops/gcp/gke-cluster.yaml
 ```
 
 **When to use**: Local development, personal projects.  
@@ -218,7 +218,7 @@ If deploying from within GKE, use Workload Identity:
 ```bash
 # Configure at cluster creation - no credentials in code
 # Kubernetes service accounts automatically get GCP permissions
-# Project Planton automatically uses workload identity when available
+# OpenMCF automatically uses workload identity when available
 ```
 
 ### GCP Credential File Format for CLI Flag
@@ -267,7 +267,7 @@ gcloud config set project my-project-id
 # Verify service account permissions
 gcloud projects get-iam-policy my-project \
   --flatten="bindings[].members" \
-  --filter="bindings.members:serviceAccount:project-planton-deployer@*"
+  --filter="bindings.members:serviceAccount:openmcf-deployer@*"
 ```
 
 ---
@@ -281,7 +281,7 @@ gcloud projects get-iam-policy my-project \
 ```bash
 # Create service principal and get credentials
 az ad sp create-for-rbac \
-  --name "project-planton-deployer" \
+  --name "openmcf-deployer" \
   --role contributor \
   --scopes /subscriptions/<subscription-id>
 
@@ -303,7 +303,7 @@ export ARM_CLIENT_SECRET="xyz-789"
 export ARM_TENANT_ID="def-456"
 export ARM_SUBSCRIPTION_ID="your-subscription-id"
 
-project-planton pulumi up -f ops/azure/aks-cluster.yaml
+openmcf pulumi up -f ops/azure/aks-cluster.yaml
 
 # Method B: Provider config file via CLI flag
 cat > azure-credential.yaml <<EOF
@@ -313,7 +313,7 @@ tenantId: def-456
 subscriptionId: your-subscription-id
 EOF
 
-project-planton pulumi up \
+openmcf pulumi up \
   -f ops/azure/aks-cluster.yaml \
   -p azure-credential.yaml
 ```
@@ -325,7 +325,7 @@ project-planton pulumi up \
 az login
 
 # No additional configuration needed
-project-planton pulumi up -f ops/azure/aks-cluster.yaml
+openmcf pulumi up -f ops/azure/aks-cluster.yaml
 ```
 
 ### Troubleshooting Azure Credentials
@@ -377,7 +377,7 @@ az role assignment create \
 # Method A: Environment variable
 export CLOUDFLARE_API_TOKEN="your-api-token-here"
 
-project-planton pulumi up -f ops/cloudflare/r2-bucket.yaml
+openmcf pulumi up -f ops/cloudflare/r2-bucket.yaml
 
 # Method B: Credential file (not commonly used, environment variable preferred)
 ```
@@ -388,7 +388,7 @@ project-planton pulumi up -f ops/cloudflare/r2-bucket.yaml
 export CLOUDFLARE_API_KEY="your-api-key"
 export CLOUDFLARE_EMAIL="your-email@example.com"
 
-project-planton pulumi up -f ops/cloudflare/r2-bucket.yaml
+openmcf pulumi up -f ops/cloudflare/r2-bucket.yaml
 ```
 
 **Why not recommended**: API keys have account-wide access. API tokens can be scoped to specific permissions.
@@ -421,8 +421,8 @@ When deploying to Kubernetes (using `*.Kubernetes` components), you need kubecon
 ### Method 1: Default Kubeconfig File
 
 ```bash
-# Project Planton automatically uses ~/.kube/config
-project-planton pulumi up -f ops/k8s/postgres.yaml
+# OpenMCF automatically uses ~/.kube/config
+openmcf pulumi up -f ops/k8s/postgres.yaml
 ```
 
 ### Method 2: Custom Kubeconfig Path
@@ -431,14 +431,14 @@ project-planton pulumi up -f ops/k8s/postgres.yaml
 # Set custom kubeconfig
 export KUBECONFIG=~/.kube/staging-cluster-config
 
-project-planton pulumi up -f ops/k8s/postgres.yaml
+openmcf pulumi up -f ops/k8s/postgres.yaml
 ```
 
 ### Method 3: Kubeconfig via CLI Flag
 
 ```bash
 # Pass kubeconfig as provider config file
-project-planton pulumi up \
+openmcf pulumi up \
   -f ops/k8s/postgres.yaml \
   -p ~/.kube/prod-cluster.yaml
 ```
@@ -496,7 +496,7 @@ export MONGODB_ATLAS_PUBLIC_KEY="your-public-key"
 export MONGODB_ATLAS_PRIVATE_KEY="your-private-key"
 
 # Or via CLI flag (provider auto-detected from manifest)
-project-planton pulumi up \
+openmcf pulumi up \
   -f ops/atlas/cluster.yaml \
   -p atlas-creds.yaml
 ```
@@ -510,7 +510,7 @@ export SNOWFLAKE_USER="username"
 export SNOWFLAKE_PASSWORD="password"
 
 # Or via CLI flag (provider auto-detected from manifest)
-project-planton pulumi up \
+openmcf pulumi up \
   -f ops/snowflake/database.yaml \
   -p snowflake-creds.yaml
 ```
@@ -523,7 +523,7 @@ export CONFLUENT_CLOUD_API_KEY="api-key"
 export CONFLUENT_CLOUD_API_SECRET="api-secret"
 
 # Or via CLI flag (provider auto-detected from manifest)
-project-planton pulumi up \
+openmcf pulumi up \
   -f ops/confluent/kafka.yaml \
   -p confluent-creds.yaml
 ```
@@ -549,7 +549,7 @@ jobs:
       
       - name: Deploy to AWS
         run: |
-          project-planton pulumi up \
+          openmcf pulumi up \
             -f ops/aws/vpc.yaml \
             --yes
         env:
@@ -569,7 +569,7 @@ jobs:
 deploy:
   stage: deploy
   script:
-    - project-planton pulumi up -f ops/gcp/cluster.yaml --yes
+    - openmcf pulumi up -f ops/gcp/cluster.yaml --yes
   variables:
     GOOGLE_APPLICATION_CREDENTIALS: ${GCP_SERVICE_ACCOUNT_KEY}
   only:
@@ -592,7 +592,7 @@ pipeline {
     stages {
         stage('Deploy') {
             steps {
-                sh 'project-planton pulumi up -f ops/aws/vpc.yaml --yes'
+                sh 'openmcf pulumi up -f ops/aws/vpc.yaml --yes'
             }
         }
     }
@@ -830,10 +830,10 @@ CIVO_TOKEN              # Civo API token
 ```
 
 The CLI automatically determines which provider credentials are needed based on your manifest's `apiVersion` and `kind`. For example:
-- `aws.project-planton.org/v1` → AWS credentials expected
-- `gcp.project-planton.org/v1` → GCP credentials expected
-- `kubernetes.project-planton.org/v1` → Kubernetes config expected
-- `openfga.project-planton.org/v1` → OpenFGA credentials expected
+- `aws.openmcf.org/v1` → AWS credentials expected
+- `gcp.openmcf.org/v1` → GCP credentials expected
+- `kubernetes.openmcf.org/v1` → Kubernetes config expected
+- `openfga.openmcf.org/v1` → OpenFGA credentials expected
 
 ---
 
@@ -852,7 +852,7 @@ The CLI automatically determines which provider credentials are needed based on 
 
 **Security concern?** Contact your security team immediately if credentials may be compromised.
 
-**Need help?** [Open an issue](https://github.com/plantonhq/project-planton/issues) with details (never include actual credentials in issues!).
+**Need help?** [Open an issue](https://github.com/plantonhq/openmcf/issues) with details (never include actual credentials in issues!).
 
 ---
 

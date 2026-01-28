@@ -16,7 +16,7 @@ This directory contains example manifests demonstrating how to embed backend con
 ```yaml
 metadata:
   labels:
-    pulumi.project-planton.org/stack.fqdn: "myorg/project/stack"
+    pulumi.openmcf.org/stack.fqdn: "myorg/project/stack"
 ```
 
 ### Using Individual Components
@@ -24,9 +24,9 @@ metadata:
 ```yaml
 metadata:
   labels:
-    pulumi.project-planton.org/organization: "myorg"
-    pulumi.project-planton.org/project: "my-project"
-    pulumi.project-planton.org/stack.name: "production"
+    pulumi.openmcf.org/organization: "myorg"
+    pulumi.openmcf.org/project: "my-project"
+    pulumi.openmcf.org/stack.name: "production"
 ```
 
 ## Terraform/Tofu Backend Configuration
@@ -36,8 +36,8 @@ metadata:
 ```yaml
 metadata:
   labels:
-    terraform.project-planton.org/backend.type: "s3"
-    terraform.project-planton.org/backend.object: "bucket-name/path/to/state.tfstate"
+    terraform.openmcf.org/backend.type: "s3"
+    terraform.openmcf.org/backend.object: "bucket-name/path/to/state.tfstate"
 ```
 
 ### GCS Backend (Google Cloud)
@@ -45,8 +45,8 @@ metadata:
 ```yaml
 metadata:
   labels:
-    terraform.project-planton.org/backend.type: "gcs"
-    terraform.project-planton.org/backend.object: "bucket-name/prefix/path"
+    terraform.openmcf.org/backend.type: "gcs"
+    terraform.openmcf.org/backend.object: "bucket-name/prefix/path"
 ```
 
 ### Azure Blob Storage Backend
@@ -54,8 +54,8 @@ metadata:
 ```yaml
 metadata:
   labels:
-    terraform.project-planton.org/backend.type: "azurerm"
-    terraform.project-planton.org/backend.object: "container-name/path/to/state"
+    terraform.openmcf.org/backend.type: "azurerm"
+    terraform.openmcf.org/backend.object: "container-name/path/to/state"
 ```
 
 ## Usage Examples
@@ -64,20 +64,20 @@ metadata:
 
 ```bash
 # Deploy using manifest with embedded Pulumi backend config
-project-planton pulumi update --manifest pulumi-backend-example.yaml
+openmcf pulumi update --manifest pulumi-backend-example.yaml
 
 # Deploy from URL
-project-planton pulumi update --manifest https://raw.githubusercontent.com/example/repo/main/manifest.yaml
+openmcf pulumi update --manifest https://raw.githubusercontent.com/example/repo/main/manifest.yaml
 ```
 
 ### Deploy with Tofu/Terraform (Backend auto-configured)
 
 ```bash
 # Apply using manifest with embedded Terraform backend config
-project-planton tofu apply --manifest tofu-s3-backend-example.yaml
+openmcf tofu apply --manifest tofu-s3-backend-example.yaml
 
 # Plan changes
-project-planton tofu plan --manifest tofu-gcs-backend-example.yaml
+openmcf tofu plan --manifest tofu-gcs-backend-example.yaml
 ```
 
 ## Priority Order
@@ -111,5 +111,5 @@ Enable debug logging to see which backend configuration is being used:
 
 ```bash
 # See backend configuration details
-LOG_LEVEL=debug project-planton pulumi update --manifest example.yaml
+LOG_LEVEL=debug openmcf pulumi update --manifest example.yaml
 ```

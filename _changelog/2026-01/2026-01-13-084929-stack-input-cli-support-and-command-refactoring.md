@@ -10,7 +10,7 @@ Added `--stack-input` / `-i` as a first-class alternative to `--manifest` for Ia
 
 ## Problem Statement / Motivation
 
-When running `project-planton destroy --stack-input file.yaml --local-module`, the CLI failed with:
+When running `openmcf destroy --stack-input file.yaml --local-module`, the CLI failed with:
 ```
 Failed to resolve manifest: must provide one of: --manifest, --input-dir, or (--kustomize-dir + --overlay)
 ```
@@ -168,10 +168,10 @@ func applyHandler(cmd *cobra.Command, args []string) {
 | File | Change |
 |------|--------|
 | `internal/cli/manifest/resolver.go` | Added stack input as priority 1 source |
-| `cmd/project-planton/root/apply.go` | Simplified from ~280 to ~70 lines |
-| `cmd/project-planton/root/destroy.go` | Simplified from ~280 to ~75 lines |
-| `cmd/project-planton/root/plan.go` | Simplified from ~285 to ~80 lines |
-| `cmd/project-planton/root/refresh.go` | Simplified from ~275 to ~70 lines |
+| `cmd/openmcf/root/apply.go` | Simplified from ~280 to ~70 lines |
+| `cmd/openmcf/root/destroy.go` | Simplified from ~280 to ~75 lines |
+| `cmd/openmcf/root/plan.go` | Simplified from ~285 to ~80 lines |
+| `cmd/openmcf/root/refresh.go` | Simplified from ~275 to ~70 lines |
 
 ## Usage Examples
 
@@ -179,26 +179,26 @@ func applyHandler(cmd *cobra.Command, args []string) {
 
 ```bash
 # Apply using stack input (extracts manifest from target field)
-project-planton apply -i stack-input.yaml --local-module
+openmcf apply -i stack-input.yaml --local-module
 
 # Destroy using stack input
-project-planton destroy -i stack-input.yaml --local-module
+openmcf destroy -i stack-input.yaml --local-module
 
 # Preview using stack input
-project-planton plan -i stack-input.yaml --local-module
+openmcf plan -i stack-input.yaml --local-module
 ```
 
 ### Stack Input File Structure
 
 ```yaml
 target:
-  api_version: kubernetes.project-planton.org/v1
+  api_version: kubernetes.openmcf.org/v1
   kind: KubernetesRedis
   metadata:
     name: redis-test
     labels:
-      project-planton.org/provisioner: pulumi
-      pulumi.project-planton.org/stack.name: org/project/stack
+      openmcf.org/provisioner: pulumi
+      pulumi.openmcf.org/stack.name: org/project/stack
   spec:
     namespace:
       value: redis-namespace

@@ -14,7 +14,7 @@ DNS management often feels like an afterthought in cloud infrastructure—until 
 
 Unlike heavyweight DNS providers with complex feature sets and per-query pricing, Civo DNS takes a refreshingly simple approach. It's included free with your Civo account, integrates seamlessly with Civo's API and tooling, and covers the essential DNS needs of most applications without the bloat. But is it production-ready? When should you use it versus established providers like Route 53 or Cloudflare? And how do you manage it declaratively as part of your infrastructure as code?
 
-This document answers those questions. We'll explore the landscape of DNS management options, from manual console changes to GitOps-driven automation, and explain why Project Planton defaults to a minimal, focused API that captures the 80% of DNS configuration that matters to 80% of users.
+This document answers those questions. We'll explore the landscape of DNS management options, from manual console changes to GitOps-driven automation, and explain why OpenMCF defaults to a minimal, focused API that captures the 80% of DNS configuration that matters to 80% of users.
 
 ## The DNS Management Maturity Spectrum
 
@@ -103,16 +103,16 @@ The community-maintained [cert-manager webhook for Civo DNS](https://github.com/
 
 **Verdict:** For Kubernetes-native teams, this is the pinnacle—DNS and TLS management fully integrated into your GitOps workflow. Your application manifests are the source of truth, and DNS/certificates automatically follow.
 
-### Level 4: Multi-Cloud Abstraction (Project Planton's Approach)
+### Level 4: Multi-Cloud Abstraction (OpenMCF's Approach)
 
-Project Planton takes DNS management one step further: a **provider-agnostic API** that abstracts Civo DNS (and other providers) behind a unified Protobuf schema. Instead of writing Terraform HCL or Pulumi code specific to Civo, you define a `CivoDnsZone` resource in a standard format, and Project Planton handles the provider-specific implementation.
+OpenMCF takes DNS management one step further: a **provider-agnostic API** that abstracts Civo DNS (and other providers) behind a unified Protobuf schema. Instead of writing Terraform HCL or Pulumi code specific to Civo, you define a `CivoDnsZone` resource in a standard format, and OpenMCF handles the provider-specific implementation.
 
 This matters in multi-cloud environments. If you manage infrastructure across Civo, AWS, and GCP, you can use a consistent API pattern for DNS zones regardless of provider. The abstraction also enforces best practices—our schema focuses on the essential 80% of configuration (domain name, records with name/type/value/TTL), avoiding the complexity of rarely-used fields.
 
-**How it works:** Project Planton's `CivoDnsZone` CRD (Custom Resource Definition) lets you declare:
+**How it works:** OpenMCF's `CivoDnsZone` CRD (Custom Resource Definition) lets you declare:
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoDnsZone
 metadata:
   name: example-zone
@@ -131,9 +131,9 @@ spec:
       ttlSeconds: 3600
 ```
 
-Behind the scenes, Project Planton uses Pulumi or Terraform modules to provision the actual zone and records on Civo. But from your perspective, you're working with a clean, opinionated API that hides provider quirks.
+Behind the scenes, OpenMCF uses Pulumi or Terraform modules to provision the actual zone and records on Civo. But from your perspective, you're working with a clean, opinionated API that hides provider quirks.
 
-**Verdict:** Ideal for teams standardizing on Project Planton for multi-cloud infrastructure, or anyone who values API consistency over provider-specific features.
+**Verdict:** Ideal for teams standardizing on OpenMCF for multi-cloud infrastructure, or anyone who values API consistency over provider-specific features.
 
 ## When to Choose Civo DNS vs. Dedicated Providers
 
@@ -170,7 +170,7 @@ There's no rule that you must consolidate all DNS in one provider. The key is ha
 
 ## The 80/20 Configuration Principle
 
-When designing the Project Planton API for Civo DNS, we analyzed what users *actually configure* in production. The Pareto principle holds true: **80% of DNS use cases require only 20% of possible configuration fields**.
+When designing the OpenMCF API for Civo DNS, we analyzed what users *actually configure* in production. The Pareto principle holds true: **80% of DNS use cases require only 20% of possible configuration fields**.
 
 ### What Users Actually Need
 
@@ -251,7 +251,7 @@ The API subdomain points to your Civo load balancer, the CDN subdomain aliases t
 
 ### API Design Implications
 
-Project Planton's `CivoDnsZoneSpec` captures exactly these fields:
+OpenMCF's `CivoDnsZoneSpec` captures exactly these fields:
 - `domain_name` (required)
 - `records[]` list with:
   - `name` (required)
@@ -265,7 +265,7 @@ By focusing on this minimal set, we keep the API approachable for new users whil
 
 ### 1. Always Use Infrastructure as Code
 
-Treat DNS changes with the same rigor as application code. Use Terraform, Pulumi, or Project Planton's declarative API. Check your DNS configuration into Git, review changes via pull requests, and apply through CI/CD pipelines. This prevents the "mystery record" problem where no one knows why a particular DNS entry exists or what will break if it's removed.
+Treat DNS changes with the same rigor as application code. Use Terraform, Pulumi, or OpenMCF's declarative API. Check your DNS configuration into Git, review changes via pull requests, and apply through CI/CD pipelines. This prevents the "mystery record" problem where no one knows why a particular DNS entry exists or what will break if it's removed.
 
 ### 2. Set Nameservers at Your Registrar
 
@@ -339,7 +339,7 @@ For non-Kubernetes workflows, integrate DNS updates into your CI/CD pipeline:
 
 If your architecture spans multiple clouds:
 - **Centralized DNS on Civo:** Use Civo DNS for all domains, regardless of where workloads run. A records can point to IPs in any cloud.
-- **Provider-per-cloud:** Use Civo DNS for Civo workloads, Route 53 for AWS, Cloud DNS for GCP. Manage with separate Terraform configs or a unified tool like Project Planton.
+- **Provider-per-cloud:** Use Civo DNS for Civo workloads, Route 53 for AWS, Cloud DNS for GCP. Manage with separate Terraform configs or a unified tool like OpenMCF.
 - **Neutral provider:** Use Cloudflare or another neutral DNS provider for everything, decoupling DNS from any single cloud. This avoids provider lock-in but adds another service to manage.
 
 There's no single "right" answer—choose based on your team's priorities (cost, simplicity, redundancy).
@@ -360,9 +360,9 @@ There's no single "right" answer—choose based on your team's priorities (cost,
 
 **Takeaway:** Civo DNS trades advanced features for simplicity and cost. For the majority of use cases (web apps, APIs, email), it's perfectly sufficient. For edge cases requiring geo-routing or DNSSEC, consider a specialized provider.
 
-## Why Project Planton Chooses This Approach
+## Why OpenMCF Chooses This Approach
 
-Project Planton's `CivoDnsZone` API is intentionally minimal. We focus on the **core fields that 80% of users need** (domain name, record name/type/value/TTL) and omit the rarely-used 20% (complex CAA syntax, exotic record types, per-record metadata).
+OpenMCF's `CivoDnsZone` API is intentionally minimal. We focus on the **core fields that 80% of users need** (domain name, record name/type/value/TTL) and omit the rarely-used 20% (complex CAA syntax, exotic record types, per-record metadata).
 
 This decision is grounded in real-world usage patterns. After analyzing production DNS configurations across hundreds of domains, the pattern is clear: most zones consist of a handful of A, CNAME, MX, and TXT records. Advanced features like SRV records or custom TTLs per record exist but are exceptions, not the norm.
 
@@ -371,13 +371,13 @@ By keeping the API simple:
 - **The API remains stable.** We're not chasing every DNS protocol extension or provider-specific quirk.
 - **Multi-cloud consistency is easier.** When we add support for other DNS providers, the API surface area is small and transferable.
 
-For users who need advanced configuration, they can always drop down to Terraform or Pulumi. Project Planton doesn't prevent that—it just provides a higher-level, opinionated path for common cases.
+For users who need advanced configuration, they can always drop down to Terraform or Pulumi. OpenMCF doesn't prevent that—it just provides a higher-level, opinionated path for common cases.
 
 ## Conclusion
 
 DNS management has evolved from manual console edits and shell scripts to declarative IaC and GitOps-integrated automation. Civo DNS, while simpler than heavyweight providers, fits beautifully into modern infrastructure workflows when paired with tools like Terraform, ExternalDNS, and cert-manager.
 
-The key insight is this: **most applications don't need the complexity of advanced DNS routing or DNSSEC**. They need reliable, cost-effective DNS that integrates seamlessly with their existing tooling. Civo DNS delivers that, and Project Planton's minimal API makes it even easier to use.
+The key insight is this: **most applications don't need the complexity of advanced DNS routing or DNSSEC**. They need reliable, cost-effective DNS that integrates seamlessly with their existing tooling. Civo DNS delivers that, and OpenMCF's minimal API makes it even easier to use.
 
 Whether you're deploying a side project, a production SaaS, or a multi-cloud application, understanding the DNS management spectrum—from manual to fully automated—empowers you to choose the right approach for your context. Start simple, automate early, and layer in sophistication only when your requirements demand it.
 

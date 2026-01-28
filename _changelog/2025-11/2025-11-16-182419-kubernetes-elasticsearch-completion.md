@@ -24,13 +24,13 @@ These gaps didn't affect functionality but reduced overall completeness score.
 
 ## Solution / What's New
 
-Added the missing supporting files following Project Planton's deployment component standards:
+Added the missing supporting files following OpenMCF's deployment component standards:
 
 ### Files Created
 
 1. **`iac/hack/manifest.yaml`** (707 bytes)
    - Test manifest with realistic Elasticsearch and Kibana configuration
-   - Enables local testing with: `project-planton deploy iac/hack/manifest.yaml`
+   - Enables local testing with: `openmcf deploy iac/hack/manifest.yaml`
    - Includes persistence, ingress, and resource configurations
 
 2. **`iac/tf/examples.md`** (6.4 KB)
@@ -48,7 +48,7 @@ Added the missing supporting files following Project Planton's deployment compon
 ### Test Manifest Structure
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: ElasticsearchKubernetes
 metadata:
   name: test-elasticsearch-cluster
@@ -138,5 +138,5 @@ This completion work follows the same pattern as:
 
 **Status**: ✅ Production Ready  
 **Timeline**: ~15 minutes  
-**Component Path**: `apis/org/project_planton/provider/kubernetes/kuberneteselasticsearch/v1/`
+**Component Path**: `apis/org/openmcf/provider/kubernetes/kuberneteselasticsearch/v1/`
 

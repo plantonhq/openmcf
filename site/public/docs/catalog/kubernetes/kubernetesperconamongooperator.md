@@ -14,7 +14,7 @@ For years, conventional wisdom held that stateful applications—especially data
 
 But something changed. Not Kubernetes' fundamental architecture—it still has no native understanding of what it means to run a MongoDB replica set. What changed was the **Operator pattern**: a way to encode expert operational knowledge into an automated controller that runs alongside your workloads. Today, running production-grade MongoDB on Kubernetes isn't just possible—with the right operator, it's often superior to traditional deployment methods.
 
-This document explains the spectrum of deployment approaches for MongoDB on Kubernetes, from basic (and dangerous) anti-patterns to production-ready operator-based solutions. Most importantly, it explains why Project Planton has chosen the **Percona Server for MongoDB Operator** as the foundation for its MongoDB deployment abstraction.
+This document explains the spectrum of deployment approaches for MongoDB on Kubernetes, from basic (and dangerous) anti-patterns to production-ready operator-based solutions. Most importantly, it explains why OpenMCF has chosen the **Percona Server for MongoDB Operator** as the foundation for its MongoDB deployment abstraction.
 
 ## Part 1: Understanding MongoDB Distributions
 
@@ -70,7 +70,7 @@ At this moment, MongoDB Inc.'s intended path is clear: upsell to MongoDB Atlas (
 
 Percona intercepts this exact moment. It positions PSMDB as a drop-in replacement that provides precisely those missing enterprise features—at zero license cost. The value proposition is "freedom from vendor lock-in," targeting users who have the technical capability to self-manage but are unwilling or unable to pay for Enterprise licenses.
 
-For Project Planton, this means supporting PSMDB isn't just a technical choice—it's a strategic one. It empowers users with production-ready, secure, operationally robust database capabilities without forcing them into costly commercial relationships.
+For OpenMCF, this means supporting PSMDB isn't just a technical choice—it's a strategic one. It empowers users with production-ready, secure, operationally robust database capabilities without forcing them into costly commercial relationships.
 
 ### Distribution Comparison
 
@@ -171,15 +171,15 @@ The other options—MongoDB Enterprise Operator and KubeDB—are "open-core." Th
 
 The choice isn't technical—it's strategic.
 
-## Part 4: Why Project Planton Chose Percona
+## Part 4: Why OpenMCF Chose Percona
 
-Project Planton's selection of the Percona Server for MongoDB Operator is based on four pillars:
+OpenMCF's selection of the Percona Server for MongoDB Operator is based on four pillars:
 
 ### 1. True Open Source (No Hidden Costs)
 
 The operator is licensed under Apache 2.0. This is not "open-core" with paywalled features. Every production capability—automated upgrades, full backup/restore (logical, physical, and point-in-time recovery), comprehensive scaling—is available without restriction.
 
-For Project Planton's users, this means no surprise license fees, no feature gates, no vendor lock-in.
+For OpenMCF's users, this means no surprise license fees, no feature gates, no vendor lock-in.
 
 ### 2. Enterprise-Grade Features Without Enterprise Licensing
 
@@ -231,7 +231,7 @@ Percona Server for MongoDB (the `mongod` binary) is licensed under the Server Si
 
 **What SSPL Does NOT Restrict**: Using PSMDB to run your own applications, even in commercial, production environments.
 
-**Conclusion**: For 99% of users—and all Project Planton users self-managing infrastructure—the entire stack (Apache 2.0 Operator + SSPL Server) is completely free for production use.
+**Conclusion**: For 99% of users—and all OpenMCF users self-managing infrastructure—the entire stack (Apache 2.0 Operator + SSPL Server) is completely free for production use.
 
 ## Part 6: Total Cost of Ownership
 
@@ -302,7 +302,7 @@ While the operator automates complex operations, production success still requir
 
 The decision to run MongoDB on Kubernetes is no longer a question of "if" but "how." The operator pattern has matured to the point where Kubernetes deployments can match or exceed traditional deployments in reliability, security, and operational efficiency.
 
-Project Planton's choice of the Percona Server for MongoDB Operator reflects a clear strategic position: **production-grade database capabilities should not require expensive commercial licenses**.
+OpenMCF's choice of the Percona Server for MongoDB Operator reflects a clear strategic position: **production-grade database capabilities should not require expensive commercial licenses**.
 
 For users who have—or are building—the engineering capability to self-manage infrastructure, Percona provides an exceptional value proposition:
 
@@ -313,7 +313,7 @@ For users who have—or are building—the engineering capability to self-manage
 - Zero software license costs
 - No vendor lock-in
 
-By building a thoughtful, opinionated abstraction layer over the Percona Operator, Project Planton shields users from operational complexity while preserving flexibility and avoiding costly commercial relationships.
+By building a thoughtful, opinionated abstraction layer over the Percona Operator, OpenMCF shields users from operational complexity while preserving flexibility and avoiding costly commercial relationships.
 
 The result: a best-in-class path for running production MongoDB on Kubernetes that's both technically excellent and economically sensible.
 

@@ -23,11 +23,11 @@ After implementing the staging-based module cache, users needed a way to:
 ### New `--module-version` Flag
 
 Added `--module-version` to all infrastructure commands:
-- `project-planton apply --module-version v0.2.273`
-- `project-planton destroy --module-version main`
-- `project-planton plan --module-version abc1234`
-- `project-planton refresh --module-version <version>`
-- `project-planton init --module-version <version>`
+- `openmcf apply --module-version v0.2.273`
+- `openmcf destroy --module-version main`
+- `openmcf plan --module-version abc1234`
+- `openmcf refresh --module-version <version>`
+- `openmcf init --module-version <version>`
 
 The version argument supports:
 - **Tags**: `v0.2.273`, `v1.0.0`
@@ -39,16 +39,16 @@ The version argument supports:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│  User runs: project-planton apply --module-version v0.2.273    │
+│  User runs: openmcf apply --module-version v0.2.273    │
 │                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  1. Ensure staging exists (clone if not)                        │
 │                                                                 │
 │  2. Copy staging → workspace                                    │
-│     ~/.project-planton/staging/project-planton                 │
+│     ~/.openmcf/staging/openmcf                 │
 │           ↓ (cp -a)                                             │
-│     ~/.project-planton/pulumi/<stack>/project-planton          │
+│     ~/.openmcf/pulumi/<stack>/openmcf          │
 │                                                                 │
 │  3. In workspace copy: git checkout v0.2.273                   │
 │     (staging unchanged - still on its current version)          │
@@ -78,10 +78,10 @@ The version argument supports:
 | `pkg/iac/tofu/tofumodule/module_directory.go` | Updated `GetModulePath()` to accept `moduleVersion` |
 | `pkg/iac/pulumi/pulumistack/*.go` | Updated all stack operations to pass `moduleVersion` |
 | `pkg/iac/tofu/tofumodule/run_command.go` | Updated to pass `moduleVersion` |
-| `cmd/project-planton/root/*.go` | Added `--module-version` flag to unified commands |
-| `cmd/project-planton/root/pulumi.go` | Added `--module-version` to Pulumi parent command |
-| `cmd/project-planton/root/pulumi/*.go` | Updated handlers to pass `moduleVersion` |
-| `cmd/project-planton/root/tofu/*.go` | Added `--module-version` flag and handlers |
+| `cmd/openmcf/root/*.go` | Added `--module-version` flag to unified commands |
+| `cmd/openmcf/root/pulumi.go` | Added `--module-version` to Pulumi parent command |
+| `cmd/openmcf/root/pulumi/*.go` | Updated handlers to pass `moduleVersion` |
+| `cmd/openmcf/root/tofu/*.go` | Added `--module-version` flag and handlers |
 
 ### New Function
 
@@ -112,21 +112,21 @@ func CheckoutVersionInWorkspace(workspacePath, version string) error {
 
 ```bash
 # Use a specific release tag
-project-planton apply -f manifest.yaml --module-version v0.2.273
+openmcf apply -f manifest.yaml --module-version v0.2.273
 
 # Use latest development branch
-project-planton plan -f manifest.yaml --module-version main
+openmcf plan -f manifest.yaml --module-version main
 
 # Debug with exact commit SHA from previous deployment
-project-planton destroy -f manifest.yaml --module-version a1b2c3d4
+openmcf destroy -f manifest.yaml --module-version a1b2c3d4
 
 # Combine with --no-cleanup to inspect the workspace
-project-planton apply -f manifest.yaml --module-version v0.2.270 --no-cleanup
+openmcf apply -f manifest.yaml --module-version v0.2.270 --no-cleanup
 ```
 
 ## Checkout Command Update
 
-The `project-planton checkout` command was already designed to support any git ref (tag, branch, or commit SHA). This changelog confirms that behavior and extends the same flexibility to `--module-version`.
+The `openmcf checkout` command was already designed to support any git ref (tag, branch, or commit SHA). This changelog confirms that behavior and extends the same flexibility to `--module-version`.
 
 ## Impact
 

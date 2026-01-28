@@ -95,7 +95,7 @@ Civo supports two certificate types. Here's when to use each.
 **Example configuration:**
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoCertificate
 metadata:
   name: example-wildcard-cert
@@ -136,7 +136,7 @@ This requests a wildcard cert covering both `*.example.com` and the apex `exampl
 **Example configuration:**
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoCertificate
 metadata:
   name: corp-ev-cert
@@ -231,9 +231,9 @@ const lb = new civo.LoadBalancer("app-lb", {
 
 **Verdict:** Excellent choice if your team prefers code over config, or if secret management is a top concern.
 
-### Crossplane (and Project Planton)
+### Crossplane (and OpenMCF)
 
-**Maturity:** Emerging. The upstream Crossplane Civo provider doesn't yet include certificate resources, but **Project Planton's `CivoCertificate` custom resource fills this gap**.
+**Maturity:** Emerging. The upstream Crossplane Civo provider doesn't yet include certificate resources, but **OpenMCF's `CivoCertificate` custom resource fills this gap**.
 
 **Strengths:**
 - **Kubernetes-native:** Declare certificates as CRDs, manage them with `kubectl` and GitOps (Argo CD, Flux)
@@ -264,7 +264,7 @@ Most certificate configurations use a small subset of available fields. Here's w
 **Minimal example:**
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoCertificate
 metadata:
   name: simple-cert
@@ -290,7 +290,7 @@ That's it. Three fields plus boilerplate.
 **Minimal example:**
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoCertificate
 metadata:
   name: custom-cert
@@ -370,7 +370,7 @@ Five fields total. Everything else is optional noise.
    - **Pros:** End-to-end encryption, per-service certificates
    - **Cons:** More complex setup, cert-manager learning curve
 
-**Project Planton supports the first approach** — Civo-managed certificates attached to load balancers. If you prefer the second, you're better off using cert-manager with Civo DNS webhooks directly.
+**OpenMCF supports the first approach** — Civo-managed certificates attached to load balancers. If you prefer the second, you're better off using cert-manager with Civo DNS webhooks directly.
 
 ### Secure Private Key Handling
 
@@ -402,9 +402,9 @@ Five fields total. Everything else is optional noise.
 - **Result:** Auto-renewal succeeded, but chain is incomplete (edge case, but it happens)
 - **Fix:** Automated post-renewal checks that curl your endpoint and validate the chain
 
-## The Project Planton Choice
+## The OpenMCF Choice
 
-Project Planton's `CivoCertificate` resource abstracts Civo's certificate API into a Kubernetes-style declarative interface. We support both Let's Encrypt and custom certificates because **production environments need both**:
+OpenMCF's `CivoCertificate` resource abstracts Civo's certificate API into a Kubernetes-style declarative interface. We support both Let's Encrypt and custom certificates because **production environments need both**:
 
 - **Let's Encrypt for everything we can:** Free, automated, secure. This covers 90% of use cases.
 - **Custom certificates when regulations or trust models demand it:** Extended Validation certs, internal CAs, compliance-mandated issuers.

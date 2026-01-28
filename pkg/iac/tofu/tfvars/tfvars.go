@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/pkg/fileutil"
-	"github.com/plantonhq/project-planton/pkg/strings/caseconverter"
+	"github.com/plantonhq/openmcf/pkg/fileutil"
+	"github.com/plantonhq/openmcf/pkg/strings/caseconverter"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -38,7 +38,7 @@ import (
 // Example:
 // Given a proto message representing a resource configuration:
 //
-//	apiVersion: "kubernetes.project-planton.org/v1"
+//	apiVersion: "kubernetes.openmcf.org/v1"
 //	kind: "RedisKubernetes"
 //	metadata:
 //	  name: "red-one"

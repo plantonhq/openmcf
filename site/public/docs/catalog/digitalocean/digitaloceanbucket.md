@@ -16,7 +16,7 @@ The S3 API compatibility is Spaces' superpower. Any tool written for AWS S3—fr
 
 But S3 compatibility alone doesn't answer the fundamental question: **how should you provision and manage Spaces buckets in production?** The spectrum runs from clicking through the DigitalOcean control panel to declarative Infrastructure-as-Code that treats buckets as versioned, reviewable configuration.
 
-This document examines that spectrum—from manual configuration through CLI tools to full IaC automation—and explains why Project Planton chose **Pulumi with the DigitalOcean provider** as the foundation for production Spaces deployments.
+This document examines that spectrum—from manual configuration through CLI tools to full IaC automation—and explains why OpenMCF chose **Pulumi with the DigitalOcean provider** as the foundation for production Spaces deployments.
 
 ## The Deployment Maturity Spectrum
 
@@ -204,9 +204,9 @@ All three tools use the **official DigitalOcean provider**, which offers native 
 
 ---
 
-## The Project Planton Choice: Pulumi
+## The OpenMCF Choice: Pulumi
 
-Project Planton uses **Pulumi with the DigitalOcean provider** as the foundation for DigitalOcean Spaces deployments. Here's why:
+OpenMCF uses **Pulumi with the DigitalOcean provider** as the foundation for DigitalOcean Spaces deployments. Here's why:
 
 ### 1. Programmatic Infrastructure
 
@@ -220,11 +220,11 @@ Pulumi lets us write infrastructure in real programming languages (Go, TypeScrip
 
 ### 2. Open Source Alignment
 
-Project Planton is an open-source project. Pulumi is open source (Apache 2.0), and while Terraform recently shifted to a Business Source License, Pulumi's commitment to open source aligns with our values. OpenTofu is also a strong open-source option, but Pulumi's programmatic approach offers unique advantages.
+OpenMCF is an open-source project. Pulumi is open source (Apache 2.0), and while Terraform recently shifted to a Business Source License, Pulumi's commitment to open source aligns with our values. OpenTofu is also a strong open-source option, but Pulumi's programmatic approach offers unique advantages.
 
 ### 3. Multi-Language Support
 
-Different teams prefer different languages. Pulumi supports TypeScript, Python, Go, C#, and Java—teams can use Project Planton's infrastructure components in their preferred language.
+Different teams prefer different languages. Pulumi supports TypeScript, Python, Go, C#, and Java—teams can use OpenMCF's infrastructure components in their preferred language.
 
 ### 4. Testing and Validation
 
@@ -379,7 +379,7 @@ For typical web applications (static assets, user uploads, backups), Spaces' sim
 
 The evolution from manual Spaces configuration to declarative Infrastructure-as-Code mirrors the broader maturation of cloud operations. Clicking through the DigitalOcean control panel teaches you what Spaces can do. CLI tools let you script repetitive tasks. But production infrastructure demands **auditability, repeatability, and version control**—qualities that only IaC provides.
 
-Project Planton's choice of **Pulumi** reflects a belief that infrastructure should be written in real programming languages, tested like application code, and composed from reusable components. The `DigitalOceanBucketSpec` API distills Spaces configuration down to the essential 20% that covers 80% of use cases: name, region, access control, versioning, and tags.
+OpenMCF's choice of **Pulumi** reflects a belief that infrastructure should be written in real programming languages, tested like application code, and composed from reusable components. The `DigitalOceanBucketSpec` API distills Spaces configuration down to the essential 20% that covers 80% of use cases: name, region, access control, versioning, and tags.
 
 For teams building on DigitalOcean, Spaces offers a compelling combination: S3 compatibility (bring your existing tools), predictable pricing (no surprise bills), and a built-in CDN (fast global delivery). Managed through Pulumi, Spaces buckets become first-class infrastructure—versioned, reviewed, and deployed alongside your application code.
 

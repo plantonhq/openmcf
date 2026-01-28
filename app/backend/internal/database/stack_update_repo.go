@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/plantonhq/project-planton/app/backend/pkg/models"
+	"github.com/plantonhq/openmcf/app/backend/pkg/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

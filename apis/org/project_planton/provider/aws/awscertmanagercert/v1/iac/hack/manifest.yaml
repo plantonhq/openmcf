@@ -1,9 +1,0 @@
-apiVersion: aws.project-planton.org/v1
-kind: AwsCertManagerCert
-metadata:
-  name: awscertmanagercert-demo
-spec:
-  primaryDomainName: example.com
-  alternateDomainNames:
-    - www.example.com
-  validationMethod: DNS

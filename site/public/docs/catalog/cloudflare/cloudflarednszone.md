@@ -18,7 +18,7 @@ But that conventional wisdom has blind spots. Cloud provider DNS services typica
 
 This flexibility makes Cloudflare DNS uniquely positioned for modern multi-cloud and edge-native architectures. Whether you're running a personal blog on the free tier, a SaaS platform serving millions of users across continents, or a hybrid infrastructure spanning AWS, GCP, and on-premises datacenters, Cloudflare DNS can serve as your unified global control plane for traffic routing.
 
-This guide explains the landscape of deployment methods for Cloudflare DNS zones—from manual console operations to production-grade Infrastructure-as-Code—and shows how Project Planton distills Cloudflare's extensive feature set into a clean, protobuf-defined API that exposes the 20% of configuration that 80% of users actually need.
+This guide explains the landscape of deployment methods for Cloudflare DNS zones—from manual console operations to production-grade Infrastructure-as-Code—and shows how OpenMCF distills Cloudflare's extensive feature set into a clean, protobuf-defined API that exposes the 20% of configuration that 80% of users actually need.
 
 ---
 
@@ -661,7 +661,7 @@ Cloudflare offers hundreds of settings across zones, DNS, SSL, caching, firewall
 
 ### Core Fields for Zone Creation
 
-**`CloudflareDnsZoneSpec` (Project Planton's protobuf):**
+**`CloudflareDnsZoneSpec` (OpenMCF's protobuf):**
 
 ```protobuf
 message CloudflareDnsZoneSpec {
@@ -716,7 +716,7 @@ Managed separately via `cloudflare_zone_settings_override` resource in Terraform
 #### Development: Minimal Free Zone
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareDnsZone
 metadata:
   name: dev-example-zone
@@ -735,7 +735,7 @@ spec:
 #### Staging: Pro Plan with Proxying
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareDnsZone
 metadata:
   name: staging-zone
@@ -754,7 +754,7 @@ spec:
 #### Production: Business Plan, Explicit Control
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareDnsZone
 metadata:
   name: production-zone
@@ -770,14 +770,14 @@ spec:
 
 ---
 
-## Project Planton's Approach: Abstraction with Pragmatism
+## OpenMCF's Approach: Abstraction with Pragmatism
 
-Project Planton provides a **protobuf-defined API** that abstracts Cloudflare DNS zone creation into a clean, multi-cloud-consistent interface. The philosophy: expose the essential 20% of configuration, hide complexity, and make DNS deployment feel like deploying any other cloud resource.
+OpenMCF provides a **protobuf-defined API** that abstracts Cloudflare DNS zone creation into a clean, multi-cloud-consistent interface. The philosophy: expose the essential 20% of configuration, hide complexity, and make DNS deployment feel like deploying any other cloud resource.
 
 ### What We Abstract
 
 **Unified API across cloud providers:**  
-Whether you're deploying AWS Route 53, GCP Cloud DNS, or Cloudflare DNS, Project Planton's resource specs follow similar patterns (zone name, account context, plan tier). This makes multi-cloud DNS management predictable.
+Whether you're deploying AWS Route 53, GCP Cloud DNS, or Cloudflare DNS, OpenMCF's resource specs follow similar patterns (zone name, account context, plan tier). This makes multi-cloud DNS management predictable.
 
 **Intelligent defaults:**
 - `plan` defaults to `FREE` (most users start here)
@@ -789,9 +789,9 @@ Zone creation is separate from DNS record management, zone settings configuratio
 
 ### Under the Hood: Pulumi
 
-Project Planton currently uses **Pulumi (Go SDK)** to provision Cloudflare DNS zones. Why Pulumi over Terraform?
+OpenMCF currently uses **Pulumi (Go SDK)** to provision Cloudflare DNS zones. Why Pulumi over Terraform?
 
-- **Language flexibility:** Pulumi's Go SDK integrates naturally into Project Planton's multi-cloud orchestration layer (also written in Go).
+- **Language flexibility:** Pulumi's Go SDK integrates naturally into OpenMCF's multi-cloud orchestration layer (also written in Go).
 - **Programmatic control:** Pulumi's code-native model simplifies conditional logic (e.g., "if Enterprise plan, enable advanced features").
 - **Equivalent coverage:** Pulumi's Cloudflare provider (bridged from Terraform) supports all necessary zone operations.
 
@@ -908,7 +908,7 @@ If something goes wrong:
 
 7. **For Kubernetes, combine Terraform/Pulumi (zone creation) with ExternalDNS (dynamic record management)** to get the best of both worlds: declarative zone config and automatic DNS updates for ephemeral services.
 
-8. **Project Planton abstracts Cloudflare's complexity** into a clean protobuf API, making multi-cloud DNS management consistent while respecting Cloudflare's unique strengths (proxying, security, global network).
+8. **OpenMCF abstracts Cloudflare's complexity** into a clean protobuf API, making multi-cloud DNS management consistent while respecting Cloudflare's unique strengths (proxying, security, global network).
 
 ---
 
@@ -924,5 +924,5 @@ If something goes wrong:
 
 ---
 
-**Bottom Line:** Cloudflare DNS is more than DNS—it's a global edge platform that gives you authoritative DNS, DDoS protection, CDN capabilities, and a WAF in one unified service, with zero per-query fees and sub-second propagation. Manage it with Terraform or Pulumi for production reliability, enable DNSSEC for security, proxy web traffic (orange cloud) for protection and performance, and leverage Kubernetes integrations like ExternalDNS for dynamic environments. Project Planton makes this simple with a protobuf API that focuses on the essential configuration while hiding unnecessary complexity.
+**Bottom Line:** Cloudflare DNS is more than DNS—it's a global edge platform that gives you authoritative DNS, DDoS protection, CDN capabilities, and a WAF in one unified service, with zero per-query fees and sub-second propagation. Manage it with Terraform or Pulumi for production reliability, enable DNSSEC for security, proxy web traffic (orange cloud) for protection and performance, and leverage Kubernetes integrations like ExternalDNS for dynamic environments. OpenMCF makes this simple with a protobuf API that focuses on the essential configuration while hiding unnecessary complexity.
 

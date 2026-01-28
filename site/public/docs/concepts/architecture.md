@@ -1,13 +1,13 @@
 ---
 title: "Architecture"
-description: "Technical architecture and design of ProjectPlanton"
+description: "Technical architecture and design of OpenMCF"
 icon: "gear"
 order: 1
 ---
 
 # Architecture
 
-ProjectPlanton is built on three foundational components that work together seamlessly.
+OpenMCF is built on three foundational components that work together seamlessly.
 
 ## The Three Pillars
 
@@ -19,7 +19,7 @@ ProjectPlanton is built on three foundational components that work together seam
 Every deployment component follows the same structure:
 
 ```yaml
-apiVersion: <provider>.project-planton.org/<version>
+apiVersion: <provider>.openmcf.org/<version>
 kind: <ComponentType>
 metadata:
   name: <resource-name>
@@ -33,7 +33,7 @@ status:
 
 **Why Protocol Buffers?**
 
-Unlike Kubernetes (which uses Go structs), ProjectPlanton uses Protocol Buffers to enable:
+Unlike Kubernetes (which uses Go structs), OpenMCF uses Protocol Buffers to enable:
 
 - **Language Neutrality**: Auto-generate SDKs in Go, Java, Python, TypeScript
 - **Beautiful Documentation**: Publish to Buf Schema Registry
@@ -50,7 +50,7 @@ message PostgresKubernetesSpec {
 }
 ```
 
-The `project-planton validate` command checks these rules **before** calling any cloud APIs.
+The `openmcf validate` command checks these rules **before** calling any cloud APIs.
 
 ### 2. IaC Modules: The "Recipes"
 
@@ -66,7 +66,7 @@ Different teams have different preferences:
 - **Pulumi**: Real programming languages (Go, Python, TypeScript), better for complex logic, type safety
 - **Terraform/OpenTofu**: Mature ecosystem, HashiCorp Configuration Language, familiar to many DevOps teams
 
-ProjectPlanton doesn't force a choice—it supports both.
+OpenMCF doesn't force a choice—it supports both.
 
 **Design Philosophy: Deliberately Simple**
 
@@ -87,7 +87,7 @@ The default modules are intentionally designed to be **Terraform-like** even whe
 Installation:
 
 ```bash
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 ```
 
 **What the CLI does:**
@@ -104,16 +104,16 @@ brew install plantonhq/tap/project-planton
 
 ```bash
 # Validate a manifest
-project-planton validate -f postgres.yaml
+openmcf validate -f postgres.yaml
 
 # Deploy with Pulumi
-project-planton pulumi up -f postgres.yaml --stack org/project/env
+openmcf pulumi up -f postgres.yaml --stack org/project/env
 
 # Deploy with Terraform/OpenTofu
-project-planton tofu apply -f postgres.yaml
+openmcf tofu apply -f postgres.yaml
 
 # Override specific values
-project-planton pulumi up \
+openmcf pulumi up \
   -f postgres.yaml \
   --set spec.container.cpu=500m \
   --stack org/project/env
@@ -125,7 +125,7 @@ Here's how a developer deploys Redis to Kubernetes:
 
 ### Step 1: Browse Available Components
 
-Visit the ProjectPlanton repository to find deployment components.
+Visit the OpenMCF repository to find deployment components.
 
 **Example**: "RedisKubernetes" - deploys Redis to any Kubernetes cluster
 
@@ -142,7 +142,7 @@ Visit Buf Schema Registry where APIs are published to see:
 Create `my-redis.yaml`:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: session-store
@@ -165,13 +165,13 @@ spec:
 ### Step 4: Validate (Optional)
 
 ```bash
-project-planton validate -f my-redis.yaml
+openmcf validate -f my-redis.yaml
 ```
 
 ### Step 5: Deploy
 
 ```bash
-project-planton pulumi up -f my-redis.yaml --stack acme/platform/prod
+openmcf pulumi up -f my-redis.yaml --stack acme/platform/prod
 ```
 
 **What happens under the hood:**
@@ -189,7 +189,7 @@ project-planton pulumi up -f my-redis.yaml --stack acme/platform/prod
 **Default modules:**
 - Hosted on GitHub (open source)
 - Versioned with Git tags
-- Cached locally in `~/.project-planton/`
+- Cached locally in `~/.openmcf/`
 - Updated via `git pull` on demand
 
 **Custom modules:**
@@ -221,7 +221,7 @@ project-planton pulumi up -f my-redis.yaml --stack acme/platform/prod
 
 2. **CLI validation** (before deployment):
    ```bash
-   project-planton validate -f config.yaml
+   openmcf validate -f config.yaml
    ```
 
 3. **Cloud provider validation** (during deployment):

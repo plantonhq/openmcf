@@ -12,7 +12,7 @@ Refactored the NATS Kubernetes ingress configuration from a shared `IngressSpec`
 
 ### The Problem
 
-The previous implementation used the shared `IngressSpec` from `org.project_planton.shared.kubernetes`:
+The previous implementation used the shared `IngressSpec` from `org.openmcf.shared.kubernetes`:
 
 ```yaml
 ingress:
@@ -63,7 +63,7 @@ message IngressSpec {
 }
 
 message NatsKubernetesSpec {
-  org.project_planton.shared.kubernetes.IngressSpec ingress = 5;
+  org.openmcf.shared.kubernetes.IngressSpec ingress = 5;
 }
 ```
 
@@ -95,7 +95,7 @@ message NatsKubernetesSpec {
 
 **Before**:
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: NatsKubernetes
 metadata:
   name: nats-external
@@ -108,7 +108,7 @@ spec:
 
 **After**:
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: NatsKubernetes
 metadata:
   name: nats-external
@@ -235,7 +235,7 @@ output "external_hostname" {
 **File**: `apis/project/planton/provider/kubernetes/workload/natskubernetes/v1/spec.proto`
 
 **Changes Made**:
-1. **Updated Field Type**: Line 40 changed from `org.project_planton.shared.kubernetes.IngressSpec` to `NatsKubernetesIngress`
+1. **Updated Field Type**: Line 40 changed from `org.openmcf.shared.kubernetes.IngressSpec` to `NatsKubernetesIngress`
 2. **Added Message**: New `NatsKubernetesIngress` message with CEL validation (lines 88-104)
 
 **Validation Strategy**: Uses CEL (Common Expression Language) to validate that `hostname` is required when `enabled` is true, providing clear error messages and type safety.
@@ -353,13 +353,13 @@ spec:
 
 ```bash
 # Update CLI
-brew update && brew upgrade project-planton
+brew update && brew upgrade openmcf
 
 # Or fresh install
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # Verify version
-project-planton version
+openmcf version
 
 # For developers: regenerate protobuf stubs
 cd apis
@@ -382,10 +382,10 @@ If you chose a different hostname than the auto-constructed one:
 
 ```bash
 # Preview changes
-project-planton pulumi preview --manifest nats.yaml
+openmcf pulumi preview --manifest nats.yaml
 
 # Apply
-project-planton pulumi up --manifest nats.yaml
+openmcf pulumi up --manifest nats.yaml
 ```
 
 ### Automated Migration Script
@@ -445,8 +445,8 @@ echo "✅ Migration complete!"
 echo ""
 echo "Next steps:"
 echo "1. Review the changes with: git diff"
-echo "2. Test with: project-planton pulumi preview --manifest <file>"
-echo "3. Apply with: project-planton pulumi up --manifest <file>"
+echo "2. Test with: openmcf pulumi preview --manifest <file>"
+echo "3. Apply with: openmcf pulumi up --manifest <file>"
 ```
 
 **Usage**:
@@ -460,7 +460,7 @@ chmod +x migrate-nats-ingress.sh
 ### Basic Ingress Configuration
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: NatsKubernetes
 metadata:
   name: nats-basic
@@ -488,7 +488,7 @@ spec:
 ### Production with Custom Hostname
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: NatsKubernetes
 metadata:
   name: prod-messaging
@@ -656,7 +656,7 @@ ingress:
 ```bash
 # Create manifest with new syntax
 cat > nats-test.yaml <<EOF
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: NatsKubernetes
 metadata:
   name: test-nats
@@ -670,7 +670,7 @@ spec:
 EOF
 
 # Deploy
-project-planton pulumi up --manifest nats-test.yaml
+openmcf pulumi up --manifest nats-test.yaml
 
 # Verify LoadBalancer service created with correct annotation
 kubectl get svc -n test-nats nats-external-lb -o yaml | \
@@ -685,7 +685,7 @@ kubectl get svc -n test-nats nats-external-lb -o yaml | \
 # After: ingress.hostname = "existing-nats.example.com"
 
 # Apply update
-project-planton pulumi up --manifest nats-existing.yaml
+openmcf pulumi up --manifest nats-existing.yaml
 
 # Verify hostname annotation updated
 kubectl get svc -n existing-nats nats-external-lb -o yaml | \
@@ -697,7 +697,7 @@ kubectl get svc -n existing-nats nats-external-lb -o yaml | \
 ```bash
 # Try invalid configuration
 cat > nats-invalid.yaml <<EOF
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: NatsKubernetes
 metadata:
   name: invalid-nats
@@ -708,7 +708,7 @@ spec:
 EOF
 
 # Attempt deploy
-project-planton pulumi up --manifest nats-invalid.yaml
+openmcf pulumi up --manifest nats-invalid.yaml
 # Expected error: hostname is required when ingress is enabled
 ```
 
@@ -808,7 +808,7 @@ For questions or issues with migration:
 2. Use the [automated migration script](#automated-migration-script)
 3. Check [examples](#examples) for reference configurations
 4. Verify [validation rules](#validation) are met
-5. Contact Project Planton support if issues persist
+5. Contact OpenMCF support if issues persist
 
 ---
 

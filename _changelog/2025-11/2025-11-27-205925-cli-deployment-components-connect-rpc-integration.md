@@ -6,11 +6,11 @@
 
 ## Summary
 
-Implemented comprehensive CLI commands for deployment component management, introducing a git-like configuration system and seamless backend integration via Connect-RPC. The CLI now provides `project-planton config` commands for backend URL management and `project-planton list-deployment-components` for querying and filtering deployment resources, establishing a foundation for CLI-backend communication across the Project Planton ecosystem.
+Implemented comprehensive CLI commands for deployment component management, introducing a git-like configuration system and seamless backend integration via Connect-RPC. The CLI now provides `openmcf config` commands for backend URL management and `openmcf list-deployment-components` for querying and filtering deployment resources, establishing a foundation for CLI-backend communication across the OpenMCF ecosystem.
 
 ## Problem Statement / Motivation
 
-The Project Planton CLI previously operated in isolation, requiring users to manage infrastructure resources without visibility into the broader deployment component ecosystem. With the recent addition of a full-stack web application (backend + frontend), there was a clear need to:
+The OpenMCF CLI previously operated in isolation, requiring users to manage infrastructure resources without visibility into the broader deployment component ecosystem. With the recent addition of a full-stack web application (backend + frontend), there was a clear need to:
 
 ### Pain Points
 
@@ -23,20 +23,20 @@ The Project Planton CLI previously operated in isolation, requiring users to man
 
 ## Solution / What's New
 
-Introduced a comprehensive CLI extension that bridges the gap between command-line workflows and the Project Planton backend ecosystem. The solution consists of two main command groups that work together to provide seamless backend connectivity.
+Introduced a comprehensive CLI extension that bridges the gap between command-line workflows and the OpenMCF backend ecosystem. The solution consists of two main command groups that work together to provide seamless backend connectivity.
 
 ### Configuration Management System
 
 Implemented a git-like configuration system with persistent storage:
 
 ```bash
-project-planton config set backend-url http://localhost:50051
-project-planton config get backend-url
-project-planton config list
+openmcf config set backend-url http://localhost:50051
+openmcf config get backend-url
+openmcf config list
 ```
 
 **Key Features**:
-- **Persistent Storage**: Configuration stored in `~/.project-planton/config.yaml` with appropriate permissions
+- **Persistent Storage**: Configuration stored in `~/.openmcf/config.yaml` with appropriate permissions
 - **URL Validation**: Enforces http:// or https:// prefixes with clear error messages
 - **Secure Storage**: Config file created with 0600 permissions (user read/write only)
 - **Unknown Key Protection**: Prevents typos with validation for supported configuration keys
@@ -47,11 +47,11 @@ Added comprehensive deployment component listing with filtering capabilities:
 
 ```bash
 # List all deployment components
-project-planton list-deployment-components
+openmcf list-deployment-components
 
 # Filter by component kind
-project-planton list-deployment-components --kind PostgresKubernetes
-project-planton list-deployment-components -k AwsRdsInstance
+openmcf list-deployment-components --kind PostgresKubernetes
+openmcf list-deployment-components -k AwsRdsInstance
 ```
 
 **Output Format**:
@@ -76,11 +76,11 @@ Established robust backend communication using the same Connect-RPC infrastructu
 **Error Handling**:
 ```bash
 # Configuration missing
-$ project-planton list-deployment-components
-Error: backend URL not configured. Run: project-planton config set backend-url <url>
+$ openmcf list-deployment-components
+Error: backend URL not configured. Run: openmcf config set backend-url <url>
 
 # Connection issues
-$ project-planton list-deployment-components
+$ openmcf list-deployment-components
 Error: Cannot connect to backend service at http://localhost:50051. Please check:
   1. The backend service is running
   2. The backend URL is correct
@@ -92,15 +92,15 @@ Error: Cannot connect to backend service at http://localhost:50051. Please check
 ### File Structure
 
 **New Command Files**:
-- `cmd/project-planton/root/config.go` - Configuration management commands (183 lines)
-- `cmd/project-planton/root/list_deployment_component.go` - Deployment component listing (117 lines)
+- `cmd/openmcf/root/config.go` - Configuration management commands (183 lines)
+- `cmd/openmcf/root/list_deployment_component.go` - Deployment component listing (117 lines)
 
 **Modified Files**:
-- `cmd/project-planton/root.go` - Command registration
+- `cmd/openmcf/root.go` - Command registration
 - `go.mod` - Added `connectrpc.com/connect v1.16.2` dependency
 
 **Documentation**:
-- `cmd/project-planton/HELP.md` - Comprehensive 357-line user guide
+- `cmd/openmcf/HELP.md` - Comprehensive 357-line user guide
 
 **Protobuf Integration**:
 - `internal/backend/proto/` - Copied backend protobuf definitions for CLI access
@@ -120,7 +120,7 @@ func GetBackendURL() (string, error) {
     }
 
     if config.BackendURL == "" {
-        return "", fmt.Errorf("backend URL not configured. Run: project-planton config set backend-url <url>")
+        return "", fmt.Errorf("backend URL not configured. Run: openmcf config set backend-url <url>")
     }
 
     return config.BackendURL, nil
@@ -128,7 +128,7 @@ func GetBackendURL() (string, error) {
 ```
 
 **Configuration Storage**:
-- **Location**: `~/.project-planton/config.yaml`
+- **Location**: `~/.openmcf/config.yaml`
 - **Directory Permissions**: 0755 (created automatically)
 - **File Permissions**: 0600 (user access only)
 - **Format**: YAML for human readability and future extensibility
@@ -163,10 +163,10 @@ resp, err := client.ListDeploymentComponents(ctx, connect.NewRequest(req))
 
 ### Command Registration Pattern
 
-Following established Project Planton CLI patterns:
+Following established OpenMCF CLI patterns:
 
 ```go
-// cmd/project-planton/root.go
+// cmd/openmcf/root.go
 rootCmd.AddCommand(
     root.Apply,
     root.ConfigCmd,        // ← New config command
@@ -230,23 +230,23 @@ Created comprehensive testing infrastructure:
 **Configuration Flow**:
 ```bash
 # Initial setup
-project-planton config set backend-url http://localhost:50051
-project-planton config get backend-url
-project-planton config list
+openmcf config set backend-url http://localhost:50051
+openmcf config get backend-url
+openmcf config list
 
 # Validation testing
-project-planton config set backend-url invalid-url  # Should fail
-project-planton config set unknown-key value        # Should fail
+openmcf config set backend-url invalid-url  # Should fail
+openmcf config set unknown-key value        # Should fail
 ```
 
 **Deployment Component Discovery**:
 ```bash
 # Basic listing
-project-planton list-deployment-components
+openmcf list-deployment-components
 
 # Filtering scenarios
-project-planton list-deployment-components --kind PostgresKubernetes
-project-planton list-deployment-components --kind NonExistentKind  # Graceful handling
+openmcf list-deployment-components --kind PostgresKubernetes
+openmcf list-deployment-components --kind NonExistentKind  # Graceful handling
 ```
 
 **Error Scenarios**:
@@ -260,15 +260,15 @@ project-planton list-deployment-components --kind NonExistentKind  # Graceful ha
 
 ```bash
 # 1. Configure backend connection
-$ project-planton config set backend-url http://localhost:50051
+$ openmcf config set backend-url http://localhost:50051
 Configuration backend-url set to http://localhost:50051
 
 # 2. Verify configuration
-$ project-planton config get backend-url
+$ openmcf config get backend-url
 http://localhost:50051
 
 # 3. Test connectivity
-$ project-planton list-deployment-components
+$ openmcf list-deployment-components
 NAME                KIND                PROVIDER    VERSION  ID PREFIX  SERVICE KIND  CREATED
 PostgresKubernetes  PostgresKubernetes  kubernetes  v1       k8spg      Yes           2025-11-25
 AwsRdsInstance      AwsRdsInstance      aws         v1       rdsins     Yes           2025-11-25
@@ -281,14 +281,14 @@ Total: 3 deployment component(s)
 
 ```bash
 # Find Kubernetes components
-$ project-planton list-deployment-components --kind PostgresKubernetes
+$ openmcf list-deployment-components --kind PostgresKubernetes
 NAME                KIND                PROVIDER    VERSION  ID PREFIX  SERVICE KIND  CREATED
 PostgresKubernetes  PostgresKubernetes  kubernetes  v1       k8spg      Yes           2025-11-25
 
 Total: 1 deployment component(s) (filtered by kind: PostgresKubernetes)
 
 # Search for AWS resources
-$ project-planton list-deployment-components -k AwsRdsInstance
+$ openmcf list-deployment-components -k AwsRdsInstance
 NAME            KIND            PROVIDER  VERSION  ID PREFIX  SERVICE KIND  CREATED
 AwsRdsInstance  AwsRdsInstance  aws       v1       rdsins     Yes           2025-11-25
 
@@ -299,13 +299,13 @@ Total: 1 deployment component(s) (filtered by kind: AwsRdsInstance)
 
 ```bash
 # Development environment
-project-planton config set backend-url http://localhost:50051
+openmcf config set backend-url http://localhost:50051
 
 # Staging environment
-project-planton config set backend-url https://staging-api.project-planton.com
+openmcf config set backend-url https://staging-api.openmcf.com
 
 # Production environment
-project-planton config set backend-url https://api.project-planton.com
+openmcf config set backend-url https://api.openmcf.com
 ```
 
 ## Impact
@@ -348,8 +348,8 @@ project-planton config set backend-url https://api.project-planton.com
 
 - **JSON Output**: Add `--output json` flag for scripting workflows
 - **Provider Filtering**: Add `--provider` flag alongside existing `--kind` filter
-- **Configuration Validation**: Add `project-planton config validate` command
-- **Connection Testing**: Add `project-planton config test-connection` command
+- **Configuration Validation**: Add `openmcf config validate` command
+- **Connection Testing**: Add `openmcf config test-connection` command
 
 ### Long-term Integration
 
@@ -361,7 +361,7 @@ project-planton config set backend-url https://api.project-planton.com
 ## Related Work
 
 **Connects to**:
-- [Project Planton Web App Implementation](../2025-11-27-135906-app-backend-frontend-docker-implementation.md) - Uses the same backend services and APIs
+- [OpenMCF Web App Implementation](../2025-11-27-135906-app-backend-frontend-docker-implementation.md) - Uses the same backend services and APIs
 - CLI Flag System Refactoring - Follows established CLI patterns for command structure
 - Connect-RPC Framework Adoption - Standardizes on Connect-RPC across all client types
 

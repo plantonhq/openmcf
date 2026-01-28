@@ -11,8 +11,8 @@ import { useCredentialQuery, useCredentialCommand } from '@/app/credentials/_ser
 import {
   ListCredentialsRequestSchema,
   CredentialSummary,
-} from '@/gen/org/project_planton/app/credential/v1/io_pb';
-import { Credential, Credential_CredentialProvider } from '@/gen/org/project_planton/app/credential/v1/api_pb';
+} from '@/gen/org/openmcf/app/credential/v1/io_pb';
+import { Credential, Credential_CredentialProvider } from '@/gen/org/openmcf/app/credential/v1/api_pb';
 import { formatTimestampToDate } from '@/lib';
 import { create } from '@bufbuild/protobuf';
 import { providerConfig } from '@/app/credentials/_components/utils';

@@ -56,10 +56,10 @@ spec.proto (default: v0.78.0)
 
 ### Proto Schema
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetestektonoperator/v1/spec.proto`
 
 ```protobuf
-import "org/project_planton/shared/options/options.proto";
+import "org/openmcf/shared/options/options.proto";
 
 message KubernetesTektonOperatorSpec {
   // ... existing fields ...
@@ -67,7 +67,7 @@ message KubernetesTektonOperatorSpec {
   // The version of the Tekton Operator to deploy.
   // https://github.com/tektoncd/operator/releases
   // https://operatorhub.io/operator/tektoncd-operator
-  string operator_version = 4 [(org.project_planton.shared.options.default) = "v0.78.0"];
+  string operator_version = 4 [(org.openmcf.shared.options.default) = "v0.78.0"];
 }
 ```
 
@@ -162,7 +162,7 @@ spec:
 ### Default Version (v0.78.0)
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesTektonOperator
 metadata:
   name: tekton-operator
@@ -180,7 +180,7 @@ spec:
 ### Specific Version
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesTektonOperator
 metadata:
   name: tekton-operator
@@ -226,7 +226,7 @@ spec:
 
 - [KubernetesSolrOperator version field](2025-12-20-052215-kubernetes-solr-operator-version-field.md) - Similar pattern for Solr Operator
 - [KubernetesTektonOperator component](2025-12-19-055933-kubernetes-tekton-operator-component.md) - Original component creation
-- `org/project_planton/shared/options/options.proto` - Provides the `default` field option
+- `org/openmcf/shared/options/options.proto` - Provides the `default` field option
 
 ---
 

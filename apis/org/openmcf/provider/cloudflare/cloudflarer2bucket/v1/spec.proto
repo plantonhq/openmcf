@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package org.openmcf.provider.cloudflare.cloudflarer2bucket.v1;
+
+import "buf/validate/validate.proto";
+import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
+
+// Supported Cloudflare R2 bucket regions (location hints).
+// These values must match Cloudflare's expected location strings exactly.
+enum CloudflareR2Location {
+  auto = 0; // Auto (Cloudflare chooses optimal region)
+  WNAM = 1; // Western North America (US West)
+  ENAM = 2; // Eastern North America (US East)
+  WEUR = 3; // Western Europe
+  EEUR = 4; // Eastern Europe
+  APAC = 5; // Asia-Pacific
+  OC = 6; // Oceania
+}
+
+// CloudflareR2BucketSpec defines the user configuration for a Cloudflare R2 bucket.
+message CloudflareR2BucketSpec {
+  // bucket name (DNS-compatible, 3–63 characters)
+  string bucket_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 63
+  ];
+
+  // The Cloudflare account ID in which to create the bucket.
+  string account_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.len = 32,
+    (buf.validate.field).string.pattern = "^[0-9a-fA-F]{32}$"
+  ];
+
+  // primary region for the bucket (location hint)
+  CloudflareR2Location location = 3 [(buf.validate.field).required = true];
+
+  // expose bucket via public URL (Cloudflare-managed r2.dev domain; default: false)
+  bool public_access = 4;
+
+  // enable object versioning for the bucket (default: false)
+  bool versioning_enabled = 5;
+
+  // custom domain configuration for the bucket
+  CloudflareR2BucketCustomDomainConfig custom_domain = 6;
+}
+
+// CloudflareR2BucketCustomDomainConfig configures a custom domain for accessing the R2 bucket.
+// When enabled, the bucket will be accessible via the specified domain.
+message CloudflareR2BucketCustomDomainConfig {
+  // CEL validation: zone_id is required when enabled is true
+  option (buf.validate.message).cel = {
+    id: "custom_domain_zone_id_required"
+    message: "zone_id is required when custom domain is enabled"
+    expression: "!this.enabled || has(this.zone_id)"
+  };
+
+  // CEL validation: domain is required when enabled is true
+  option (buf.validate.message).cel = {
+    id: "custom_domain_domain_required"
+    message: "domain is required when custom domain is enabled"
+    expression: "!this.enabled || this.domain != ''"
+  };
+
+  // Whether to enable custom domain access for the bucket.
+  bool enabled = 1;
+
+  // The Cloudflare Zone ID where the custom domain will be configured.
+  // Can be a literal value or referenced from a CloudflareDnsZone resource.
+  // Required when enabled is true.
+  org.openmcf.shared.foreignkey.v1.StringValueOrRef zone_id = 2 [
+    (org.openmcf.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The full domain name to use for accessing the bucket (e.g., "media.example.com").
+  // Must be within the zone specified by zone_id.
+  // Required when enabled is true.
+  string domain = 3 [(buf.validate.field).string.max_len = 253];
+}

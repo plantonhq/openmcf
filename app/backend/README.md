@@ -1,6 +1,6 @@
-# Project Planton Backend
+# OpenMCF Backend
 
-The backend service for Project Planton, providing gRPC/Connect-RPC APIs for cloud resource management using Pulumi.
+The backend service for OpenMCF, providing gRPC/Connect-RPC APIs for cloud resource management using Pulumi.
 
 ## Architecture
 
@@ -62,14 +62,14 @@ The entrypoint script automatically detects `PULUMI_ACCESS_TOKEN` and uses Pulum
 
 ### Required
 
-- `MONGODB_URI` - MongoDB connection string (default: `mongodb://localhost:27017/project_planton`)
+- `MONGODB_URI` - MongoDB connection string (default: `mongodb://localhost:27017/openmcf`)
 - `SERVER_PORT` - gRPC server port (default: `50051`)
 
 ### Pulumi Configuration
 
 - `PULUMI_HOME` - Pulumi home directory (default: `/home/appuser/.pulumi`)
 - `PULUMI_STATE_DIR` - State storage directory (default: `/home/appuser/.pulumi/state`)
-- `PULUMI_CONFIG_PASSPHRASE` - Encryption passphrase for secrets (default: `project-planton-default-passphrase`)
+- `PULUMI_CONFIG_PASSPHRASE` - Encryption passphrase for secrets (default: `openmcf-default-passphrase`)
 - `PULUMI_SKIP_UPDATE_CHECK` - Disable update checks (default: `true`)
 - `PULUMI_ACCESS_TOKEN` - _(Optional)_ Pulumi Cloud access token
 - `PULUMI_BACKEND_URL` - _(Optional)_ Pulumi Cloud API URL
@@ -106,7 +106,7 @@ export PULUMI_CONFIG_PASSPHRASE=""
 pulumi login --local
 
 # Set environment variables
-export MONGODB_URI=mongodb://localhost:27017/project_planton
+export MONGODB_URI=mongodb://localhost:27017/openmcf
 export SERVER_PORT=50051
 export PULUMI_SKIP_UPDATE_CHECK=true
 export PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK=true
@@ -125,7 +125,7 @@ The backend is built as part of the unified container image:
 
 ```bash
 # From project root
-docker build -f app/Dockerfile.unified -t project-planton:latest .
+docker build -f app/Dockerfile.unified -t openmcf:latest .
 ```
 
 **Note:** There is no separate backend-only Docker image. The unified container includes MongoDB, backend, and frontend together.
@@ -144,7 +144,7 @@ error: getting stack configuration: get stack secrets manager: passphrase must b
 **Solution:** Use the same passphrase as the Docker container and login to local backend:
 
 ```bash
-export PULUMI_CONFIG_PASSPHRASE="project-planton-default-passphrase"
+export PULUMI_CONFIG_PASSPHRASE="openmcf-default-passphrase"
 pulumi login --local
 ```
 
@@ -176,7 +176,7 @@ error: the stack is currently locked by ...
 **Solution:** The backend automatically runs `pulumi cancel` before each deployment. If manual intervention is needed:
 
 ```bash
-docker exec -it project-planton pulumi cancel --stack <stack-fqdn> --yes
+docker exec -it openmcf pulumi cancel --stack <stack-fqdn> --yes
 ```
 
 ### Out of Disk Space
@@ -203,12 +203,12 @@ docker-compose up -d
 
 The backend exposes Connect-RPC endpoints:
 
-- `/org.project_planton.app.cloudresource.v1.CloudResourceCommandController/*`
-- `/org.project_planton.app.cloudresource.v1.CloudResourceQueryController/*`
-- `/org.project_planton.app.stackupdate.v1.StackUpdateCommandController/*`
-- `/org.project_planton.app.stackupdate.v1.StackUpdateQueryController/*`
-- `/org.project_planton.app.credential.v1.CredentialCommandController/*`
-- `/org.project_planton.app.credential.v1.CredentialQueryController/*`
+- `/org.openmcf.app.cloudresource.v1.CloudResourceCommandController/*`
+- `/org.openmcf.app.cloudresource.v1.CloudResourceQueryController/*`
+- `/org.openmcf.app.stackupdate.v1.StackUpdateCommandController/*`
+- `/org.openmcf.app.stackupdate.v1.StackUpdateQueryController/*`
+- `/org.openmcf.app.credential.v1.CredentialCommandController/*`
+- `/org.openmcf.app.credential.v1.CredentialQueryController/*`
 
 Health check endpoint:
 

@@ -22,7 +22,7 @@ This isn't just about resource efficiency. Production GKE clusters leverage mult
 
 The key architectural decision: **node pools are separate resources from the cluster**. They reference their parent GKE cluster but have independent lifecycles. You can create, update, and destroy node pools without ever touching the cluster's control plane—a critical pattern for production stability.
 
-This document explores the maturity spectrum of GKE node pool deployment methods, from manual click-ops to declarative GitOps, and explains Project Planton's approach to managing this fundamental building block of GKE infrastructure.
+This document explores the maturity spectrum of GKE node pool deployment methods, from manual click-ops to declarative GitOps, and explains OpenMCF's approach to managing this fundamental building block of GKE infrastructure.
 
 ## The Deployment Maturity Spectrum
 
@@ -96,7 +96,7 @@ resource "google_container_node_pool" "prod_pool" {
 
 On `terraform apply`, Terraform compares the desired state (your HCL) against its state file and the real-world GCP resources, then executes only the necessary API calls. If you change `max_node_count` from 10 to 15, Terraform knows to call the GKE API's update method, not recreate the entire pool.
 
-**The critical pattern**: Node pools are **separate resources**, not inline blocks within the cluster definition. Terraform documentation explicitly warns that inline node pools can cause IaC tools to "struggle with complex changes" and risk triggering unintended cluster-level operations. This validates Project Planton's design of `GcpGkeNodePool` as an independent resource.
+**The critical pattern**: Node pools are **separate resources**, not inline blocks within the cluster definition. Terraform documentation explicitly warns that inline node pools can cause IaC tools to "struggle with complex changes" and risk triggering unintended cluster-level operations. This validates OpenMCF's design of `GcpGkeNodePool` as an independent resource.
 
 #### Pulumi
 
@@ -165,9 +165,9 @@ Crossplane extends the pattern with multi-cloud support and composability. Platf
 
 **Verdict**: The cutting edge. Ideal for platform engineering teams building internal developer platforms, but requires deep Kubernetes expertise and introduces operational complexity (the operator must be highly available and correctly configured).
 
-## The Project Planton Choice
+## The OpenMCF Choice
 
-Project Planton adopts the **separate resource pattern** validated by Terraform, Pulumi, and production best practices: `GcpGkeNodePool` is an independent resource that references its parent `GcpGkeCluster`.
+OpenMCF adopts the **separate resource pattern** validated by Terraform, Pulumi, and production best practices: `GcpGkeNodePool` is an independent resource that references its parent `GcpGkeCluster`.
 
 ### Why This Design
 
@@ -202,7 +202,7 @@ This structure ensures that simple use cases are simple (3-4 required fields), w
 
 **Dev/Test Pool (Cost-Optimized with Spot VMs)**:
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeNodePool
 metadata:
   name: dev-pool
@@ -220,7 +220,7 @@ spec:
 
 **Production General-Purpose Pool (High Availability)**:
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeNodePool
 metadata:
   name: prod-general
@@ -242,7 +242,7 @@ spec:
 
 **Production GPU Pool (Machine Learning Workloads)**:
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeNodePool
 metadata:
   name: gpu-pool
@@ -357,7 +357,7 @@ During soak, operators can:
 
 GKE node pools transformed Kubernetes infrastructure from homogeneous to heterogeneous, solving the resource fragmentation problem and unlocking cost optimization through targeted infrastructure choices. The architectural decision to treat node pools as independent resources—separate from their parent cluster—is the foundation of production-grade automation.
 
-Project Planton's `GcpGkeNodePool` embraces this pattern, validated by Terraform, Pulumi, and real-world production practices. The API's 80/20 design ensures that simple use cases remain simple while providing the depth required for complex, multi-pool production environments running diverse workload profiles.
+OpenMCF's `GcpGkeNodePool` embraces this pattern, validated by Terraform, Pulumi, and real-world production practices. The API's 80/20 design ensures that simple use cases remain simple while providing the depth required for complex, multi-pool production environments running diverse workload profiles.
 
 Whether you're creating a single dev pool with Spot VMs for cost savings or orchestrating a production cluster with specialized pools for GPUs, high-memory workloads, and batch processing, the pattern is the same: define the desired state, let the controller handle the lifecycle, and trust that node pool operations never risk disrupting the cluster's control plane.
 

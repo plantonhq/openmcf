@@ -1,13 +1,13 @@
 ---
 title: "Getting Started"
-description: "Install ProjectPlanton CLI and deploy your first resource"
+description: "Install OpenMCF CLI and deploy your first resource"
 icon: "rocket"
 order: 2
 ---
 
 # Getting Started
 
-This guide will help you install the ProjectPlanton CLI and deploy your first infrastructure resource.
+This guide will help you install the OpenMCF CLI and deploy your first infrastructure resource.
 
 ## Prerequisites
 
@@ -20,16 +20,16 @@ Before you begin, ensure you have the following installed:
 
 ## Installation
 
-Install the ProjectPlanton CLI using Homebrew:
+Install the OpenMCF CLI using Homebrew:
 
 ```bash
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 ```
 
 Verify the installation:
 
 ```bash
-project-planton version
+openmcf version
 ```
 
 ## Your First Deployment
@@ -50,12 +50,12 @@ kind create cluster
 Create a file named `postgres.yaml`:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: dev-database
   labels:
-    project-planton.org/provisioner: pulumi
+    openmcf.org/provisioner: pulumi
 spec:
   container:
     replicas: 1
@@ -70,7 +70,7 @@ spec:
 Validate your manifest before deployment:
 
 ```bash
-project-planton validate -f postgres.yaml
+openmcf validate -f postgres.yaml
 ```
 
 This runs validation rules defined in the protobuf, catching errors like:
@@ -90,10 +90,10 @@ Deploy the resource using the unified kubectl-style command:
 
 ```bash
 # Simple unified command (automatically detects provisioner from label)
-project-planton apply -f postgres.yaml
+openmcf apply -f postgres.yaml
 
 # Or use the traditional Pulumi-specific command
-project-planton pulumi up -f postgres.yaml --stack org/dev/local
+openmcf pulumi up -f postgres.yaml --stack org/dev/local
 ```
 
 ### Step 5: Verify
@@ -126,20 +126,20 @@ Behind the scenes, the CLI:
 
 ```bash
 # Validate a manifest
-project-planton validate -f config.yaml
+openmcf validate -f config.yaml
 
 # Unified kubectl-style commands (provisioner auto-detected from manifest)
-project-planton apply -f config.yaml
-project-planton destroy -f config.yaml
+openmcf apply -f config.yaml
+openmcf destroy -f config.yaml
 # Or use 'delete' as an alias
-project-planton delete -f config.yaml
+openmcf delete -f config.yaml
 
 # Provisioner-specific commands (still supported)
-project-planton pulumi up -f config.yaml --stack org/project/env
-project-planton tofu apply -f config.yaml
+openmcf pulumi up -f config.yaml --stack org/project/env
+openmcf tofu apply -f config.yaml
 
 # Override specific values
-project-planton apply -f config.yaml --set spec.container.cpu=500m
+openmcf apply -f config.yaml --set spec.container.cpu=500m
 ```
 
 ## Troubleshooting
@@ -168,7 +168,7 @@ brew install opentofu  # For Terraform deployments
 
 ## Get Help
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/plantonhq/project-planton/issues)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/plantonhq/openmcf/issues)
 - **Documentation**: Browse the full [documentation](/)
 - **Examples**: Check the repository for example manifests
 

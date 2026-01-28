@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package org.openmcf.provider.aws;
+
+import "buf/validate/validate.proto";
+
+// AwsProviderConfig message represents the specification required to connect an AWS Account.
+// This message consolidates all necessary input parameters to establish a connection with an AWS Account, ensuring
+// accurate configuration and validation of credentials.
+// Fields include details like AWS account ID, access credentials, and the region, providing a complete set of
+// information for securely connecting to AWS.
+// Detailed validation rules have been applied to these fields to ensure input correctness and adherence to
+// security protocols.
+message AwsProviderConfig {
+  // The AWS Account ID, which uniquely identifies the AWS account.
+  // This is a mandatory field and must be a numeric string.
+  // The value cannot be empty and must only contain numbers (0-9).
+  // For more information do refer this link https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-identifiers.html
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.aws.account_id"
+      message: "Only numbers (0-9) are allowed"
+      expression: "this.matches('^[0-9]+$')"
+    }
+  ];
+
+  // The AWS Access Key ID, which is used to authenticate API requests to AWS services.
+  // This is a required field, and it must start with either 'AKIA' (long-term credentials) or 'ASIA' (temporary security credentials)
+  // followed by 16 alphanumeric characters. This field must contain exactly 20 characters.
+  // For more information do refer this link https://docs.aws.amazon.com/IAM/latest/UserGuide/access-keys-admin-managed.html
+  string access_key_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.len = 20,
+    (buf.validate.field).cel = {
+      id: "spec.access_key_id.prefix"
+      message: "Must start with 'AKIA' (long-term) or 'ASIA' (temporary)"
+      // https://regex101.com/r/QgVmCf/1
+      expression: "this.matches('^A(K|S)IA.*')"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.access_key_id.format"
+      message: "Must start with 'AKIA' or 'ASIA' followed by 16 alphanumeric characters"
+      // https://regex101.com/r/LybhZA/1
+      expression: "this.matches('^.{4}[a-zA-Z0-9]{16}$')"
+    }
+  ];
+
+  // The AWS Secret Access Key, which is used in combination with the access key ID to authenticate API requests to AWS services.
+  // This is a required field, and the value must be exactly 40 characters long.
+  // The secret access key can include numbers, lowercase and uppercase letters, slashes (/), and plus signs (+).
+  // For more information do refer this link https://docs.aws.amazon.com/IAM/latest/UserGuide/access-keys-admin-managed.html
+  string secret_access_key = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.len = 40,
+    (buf.validate.field).cel = {
+      id: "spec.aws.secret_access_key"
+      message: "The provided AWS Secret Access Key is invalid. It must contain exactly 40 characters consisting of numbers, lowercase and uppercase letters, slashes (/), and plus signs (+). Please double-check your input and try again."
+      //https://regex101.com/r/YlvVRM/1
+      expression: "this.matches('^[0-9a-zA-Z/+]{40}$')"
+    }
+  ];
+
+  // The AWS region to be used when configuring this AWS credential.
+  // This optional field allows specifying the region in which resources will be created or managed.
+  // For more information do refer this link https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html
+  string region = 4 [(buf.validate.field).required = true];
+
+  // The AWS Session Token, required when using temporary security credentials.
+  // This field is optional and only needed when using temporary credentials obtained through
+  // AWS STS operations (e.g., AssumeRole, GetSessionToken).
+  // Temporary credentials have Access Key IDs starting with 'ASIA'.
+  // For more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html
+  string session_token = 5;
+}

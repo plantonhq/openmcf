@@ -2,11 +2,11 @@
 
 ## Overview
 
-This directory contains the complete rule system for managing deployment components in Project Planton. These rules handle the entire lifecycle from creation to deletion, ensuring components match the **ideal state** defined in `architecture/deployment-component.md`.
+This directory contains the complete rule system for managing deployment components in OpenMCF. These rules handle the entire lifecycle from creation to deletion, ensuring components match the **ideal state** defined in `architecture/deployment-component.md`.
 
 ## The Seven Lifecycle Operations
 
-Project Planton provides seven operations for deployment components:
+OpenMCF provides seven operations for deployment components:
 
 | Operation | Purpose | When to Use |
 |-----------|---------|-------------|
@@ -33,41 +33,41 @@ Need to work with a deployment component?
 │
 ├─ Does the component exist?
 │  │
-│  ├─ NO → Use @forge-project-planton-component
+│  ├─ NO → Use @forge-openmcf-component
 │  │        Creates complete, production-ready component
 │  │        Expected result: 95-100% complete
 │  │
 │  └─ YES → What do you need to do?
 │     │
 │     ├─ Just checking status?
-│     │  └─ Use @audit-project-planton-component
+│     │  └─ Use @audit-openmcf-component
 │     │     Shows completion %, identifies gaps
 │     │     Generates timestamped report
 │     │
 │     ├─ Make it production-ready quickly?
-│     │  └─ Use @complete-project-planton-component
+│     │  └─ Use @complete-openmcf-component
 │     │     Audits + fills all gaps + verifies
 │     │     One command to 95%+ completion
 │     │
 │     ├─ Have specific bug/issue to fix?
-│     │  └─ Use @fix-project-planton-component
+│     │  └─ Use @fix-openmcf-component
 │     │     Targeted fix with cascading updates
 │     │     Ensures code, docs, examples, tests all match
 │     │     Source code is truth, docs updated to match
 │     │
 │     ├─ Need general improvements?
-│     │  └─ Use @update-project-planton-component
+│     │  └─ Use @update-openmcf-component
 │     │     Fills gaps, refreshes docs, updates IaC
 │     │     6 scenarios: fill-gaps, proto-changed, etc.
 │     │
 │     ├─ Need to rename component?
-│     │  └─ Use @rename-project-planton-component
+│     │  └─ Use @rename-openmcf-component
 │     │     Systematic rename across entire codebase
 │     │     7 naming patterns, build verification
 │     │     Name clarity, remove abstractions
 │     │
 │     └─ Want to remove?
-│        └─ Use @delete-project-planton-component
+│        └─ Use @delete-openmcf-component
 │           Safe deletion with backup and confirmation
 │           Checks for references, creates backup
 ```
@@ -98,19 +98,19 @@ Bootstrap complete, production-ready deployment components from scratch.
 ### Usage
 
 ```bash
-@forge-project-planton-component <ComponentName> --provider <provider>
+@forge-openmcf-component <ComponentName> --provider <provider>
 ```
 
 **Examples:**
 ```bash
-@forge-project-planton-component MongodbAtlas --provider atlas
-@forge-project-planton-component GcpStorageBucket --provider gcp
-@forge-project-planton-component PostgresKubernetes --provider kubernetes --category workload
+@forge-openmcf-component MongodbAtlas --provider atlas
+@forge-openmcf-component GcpStorageBucket --provider gcp
+@forge-openmcf-component PostgresKubernetes --provider kubernetes --category workload
 ```
 
 ### Learn More
 - **README:** [`forge/README.md`](forge/README.md)
-- **Rule:** [`forge/forge-project-planton-component.mdc`](forge/forge-project-planton-component.mdc)
+- **Rule:** [`forge/forge-openmcf-component.mdc`](forge/forge-openmcf-component.mdc)
 - **Flow Rules:** [`forge/flow/`](forge/flow/)
 
 ---
@@ -145,13 +145,13 @@ Audits 9 categories:
 ### Usage
 
 ```bash
-@audit-project-planton-component <ComponentName>
+@audit-openmcf-component <ComponentName>
 ```
 
 **Examples:**
 ```bash
-@audit-project-planton-component MongodbAtlas
-@audit-project-planton-component GcpCertManagerCert
+@audit-openmcf-component MongodbAtlas
+@audit-openmcf-component GcpCertManagerCert
 ```
 
 ### Report Output
@@ -167,7 +167,7 @@ Reports saved to: `<component>/v1/docs/audit/<timestamp>.md`
 
 ### Learn More
 - **README:** [`audit/README.md`](audit/README.md)
-- **Rule:** [`audit/audit-project-planton-component.mdc`](audit/audit-project-planton-component.mdc)
+- **Rule:** [`audit/audit-openmcf-component.mdc`](audit/audit-openmcf-component.mdc)
 
 ---
 
@@ -197,25 +197,25 @@ Improve existing components by filling gaps, adding features, refreshing docs, o
 ### Usage
 
 ```bash
-@update-project-planton-component <ComponentName> [--scenario <type>] [--explain "<description>"]
+@update-openmcf-component <ComponentName> [--scenario <type>] [--explain "<description>"]
 ```
 
 **Examples:**
 ```bash
 # Fill gaps from audit
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
 
 # Propagate proto changes
-@update-project-planton-component GcpCertManagerCert --scenario proto-changed
+@update-openmcf-component GcpCertManagerCert --scenario proto-changed
 
 # Refresh documentation
-@update-project-planton-component AwsRdsInstance --scenario refresh-docs
+@update-openmcf-component AwsRdsInstance --scenario refresh-docs
 
 # Update IaC implementation
-@update-project-planton-component GcpGkeCluster --scenario update-iac --explain "add multi-region support"
+@update-openmcf-component GcpGkeCluster --scenario update-iac --explain "add multi-region support"
 
 # Fix specific issue
-@update-project-planton-component PostgresKubernetes --explain "examples use deprecated field names"
+@update-openmcf-component PostgresKubernetes --explain "examples use deprecated field names"
 ```
 
 ### Safety Features
@@ -227,7 +227,7 @@ Improve existing components by filling gaps, adding features, refreshing docs, o
 
 ### Learn More
 - **README:** [`update/README.md`](update/README.md)
-- **Rule:** [`update/update-project-planton-component.mdc`](update/update-project-planton-component.mdc)
+- **Rule:** [`update/update-openmcf-component.mdc`](update/update-openmcf-component.mdc)
 
 ---
 
@@ -255,23 +255,23 @@ One-command workflow that audits a component and automatically fills all gaps to
 ### Usage
 
 ```bash
-@complete-project-planton-component <ComponentName> [flags]
+@complete-openmcf-component <ComponentName> [flags]
 ```
 
 **Examples:**
 ```bash
 # Basic usage (target: 95%)
-@complete-project-planton-component MongodbAtlas
+@complete-openmcf-component MongodbAtlas
 
 # Preview without changes
-@complete-project-planton-component MongodbAtlas --dry-run
+@complete-openmcf-component MongodbAtlas --dry-run
 
 # Custom target score
-@complete-project-planton-component PostgresKubernetes --target-score 100
+@complete-openmcf-component PostgresKubernetes --target-score 100
 
 # Batch processing
 for component in Comp1 Comp2 Comp3; do
-  @complete-project-planton-component $component
+  @complete-openmcf-component $component
 done
 ```
 
@@ -298,7 +298,7 @@ Automatically creates missing items:
 
 ### Learn More
 - **README:** [`complete/README.md`](complete/README.md)
-- **Rule:** [`complete/complete-project-planton-component.mdc`](complete/complete-project-planton-component.mdc)
+- **Rule:** [`complete/complete-openmcf-component.mdc`](complete/complete-openmcf-component.mdc)
 
 ---
 
@@ -337,22 +337,22 @@ Make targeted fixes to components and automatically propagate changes to all rel
 ### Usage
 
 ```bash
-@fix-project-planton-component <ComponentName> --explain "<detailed fix description>"
+@fix-openmcf-component <ComponentName> --explain "<detailed fix description>"
 ```
 
 **Examples:**
 ```bash
 # Fix validation logic
-@fix-project-planton-component GcpCertManagerCert --explain "primaryDomainName validation should allow wildcards like *.example.com"
+@fix-openmcf-component GcpCertManagerCert --explain "primaryDomainName validation should allow wildcards like *.example.com"
 
 # Fix IaC implementation
-@fix-project-planton-component AwsRdsInstance --explain "Pulumi hardcodes backup_retention_period instead of using spec field"
+@fix-openmcf-component AwsRdsInstance --explain "Pulumi hardcodes backup_retention_period instead of using spec field"
 
 # Fix documentation drift
-@fix-project-planton-component PostgresKubernetes --explain "examples use deprecated 'database_name' field, should be 'db_identifier'"
+@fix-openmcf-component PostgresKubernetes --explain "examples use deprecated 'database_name' field, should be 'db_identifier'"
 
 # Fix test failures
-@fix-project-planton-component MongodbAtlas --explain "spec_test.go expects validation on cluster_tier but spec.proto has no validation rule"
+@fix-openmcf-component MongodbAtlas --explain "spec_test.go expects validation on cluster_tier but spec.proto has no validation rule"
 ```
 
 ### What Gets Updated
@@ -385,7 +385,7 @@ Make targeted fixes to components and automatically propagate changes to all rel
 
 ### Learn More
 - **README:** [`fix/README.md`](fix/README.md)
-- **Rule:** [`fix/fix-project-planton-component.mdc`](fix/fix-project-planton-component.mdc)
+- **Rule:** [`fix/fix-openmcf-component.mdc`](fix/fix-openmcf-component.mdc)
 
 ---
 
@@ -421,7 +421,7 @@ Rename applies comprehensive replacement patterns:
 ### Usage
 
 ```bash
-@rename-project-planton-component
+@rename-openmcf-component
 ```
 
 The rule will interactively ask for:
@@ -431,7 +431,7 @@ The rule will interactively ask for:
 
 **Example:**
 ```bash
-@rename-project-planton-component
+@rename-openmcf-component
 
 Old component name: KubernetesMicroservice
 New component name: KubernetesDeployment
@@ -467,7 +467,7 @@ Rename isn't complete until all phases pass:
 ### Post-Rename
 
 If all tests pass:
-- ✅ Automatically invokes `@create-project-planton-changelog`
+- ✅ Automatically invokes `@create-openmcf-changelog`
 - ✅ Provides commit message template
 - ✅ Shows next steps
 
@@ -499,7 +499,7 @@ See: `_changelog/2025-11/2025-11-14-072635-kubernetes-workload-naming-consistenc
 
 ### Learn More
 - **README:** [`rename/README.md`](rename/README.md)
-- **Rule:** [`rename/rename-project-planton-component.mdc`](rename/rename-project-planton-component.mdc)
+- **Rule:** [`rename/rename-openmcf-component.mdc`](rename/rename-openmcf-component.mdc)
 - **Script:** [`rename/_scripts/rename_deployment_component.py`](rename/_scripts/rename_deployment_component.py)
 
 ---
@@ -526,16 +526,16 @@ Completely remove deployment components with safety features to prevent accident
 ### Usage
 
 ```bash
-@delete-project-planton-component <ComponentName> [flags]
+@delete-openmcf-component <ComponentName> [flags]
 ```
 
 **Recommended Workflow:**
 ```bash
 # Step 1: Preview (dry-run)
-@delete-project-planton-component ObsoleteComponent --dry-run
+@delete-openmcf-component ObsoleteComponent --dry-run
 
 # Step 2: Delete with backup
-@delete-project-planton-component ObsoleteComponent --backup
+@delete-openmcf-component ObsoleteComponent --backup
 
 # Step 3: Confirm (type: DELETE ObsoleteComponent)
 
@@ -545,7 +545,7 @@ make build && make test
 
 **Quick Delete (with caution):**
 ```bash
-@delete-project-planton-component TestComponent --force --backup
+@delete-openmcf-component TestComponent --force --backup
 ```
 
 ### What Gets Deleted
@@ -555,7 +555,7 @@ make build && make test
 
 ### Learn More
 - **README:** [`delete/README.md`](delete/README.md)
-- **Rule:** [`delete/delete-project-planton-component.mdc`](delete/delete-project-planton-component.mdc)
+- **Rule:** [`delete/delete-openmcf-component.mdc`](delete/delete-openmcf-component.mdc)
 
 ---
 
@@ -566,27 +566,27 @@ make build && make test
 **Option A: Manual (More Control)**
 ```bash
 # 1. Create new component
-@forge-project-planton-component NewComponent --provider aws
+@forge-openmcf-component NewComponent --provider aws
 
 # 2. Verify completeness
-@audit-project-planton-component NewComponent
+@audit-openmcf-component NewComponent
 # Expected: 95-100% complete
 
 # 3. If gaps found, fill them
-@update-project-planton-component NewComponent --scenario fill-gaps
+@update-openmcf-component NewComponent --scenario fill-gaps
 
 # 4. Re-audit to verify
-@audit-project-planton-component NewComponent
+@audit-openmcf-component NewComponent
 # Expected: 100% complete
 ```
 
 **Option B: Automated (Faster)**
 ```bash
 # 1. Create new component
-@forge-project-planton-component NewComponent --provider aws
+@forge-openmcf-component NewComponent --provider aws
 
 # 2. Auto-complete if any gaps
-@complete-project-planton-component NewComponent
+@complete-openmcf-component NewComponent
 # Audits, fills gaps, verifies automatically
 # Result: 95-100% complete
 ```
@@ -596,7 +596,7 @@ make build && make test
 **Option A: Automated (Recommended)**
 ```bash
 # One command to production-ready
-@complete-project-planton-component ExistingComponent
+@complete-openmcf-component ExistingComponent
 
 # Automatically:
 # - Audits current state (65%)
@@ -610,14 +610,14 @@ make build && make test
 **Option B: Manual (More Control)**
 ```bash
 # 1. Check current state
-@audit-project-planton-component ExistingComponent
+@audit-openmcf-component ExistingComponent
 # Result: 65% complete (missing Terraform, docs)
 
 # 2. Fill identified gaps
-@update-project-planton-component ExistingComponent --scenario fill-gaps
+@update-openmcf-component ExistingComponent --scenario fill-gaps
 
 # 3. Verify improvement
-@audit-project-planton-component ExistingComponent
+@audit-openmcf-component ExistingComponent
 # Result: 98% complete
 ```
 
@@ -625,16 +625,16 @@ make build && make test
 
 ```bash
 # 1. Edit spec.proto (add new fields)
-vim apis/org/project_planton/provider/gcp/gcpcloudsl/v1/spec.proto
+vim apis/org/openmcf/provider/gcp/gcpcloudsl/v1/spec.proto
 
 # 2. Propagate changes
-@update-project-planton-component GcpCloudSql --scenario proto-changed
+@update-openmcf-component GcpCloudSql --scenario proto-changed
 
 # 3. Test changes
 # Deploy with iac/hack/manifest.yaml
 
 # 4. Verify no regressions
-@audit-project-planton-component GcpCloudSql
+@audit-openmcf-component GcpCloudSql
 # Score should not decrease
 ```
 
@@ -642,24 +642,24 @@ vim apis/org/project_planton/provider/gcp/gcpcloudsl/v1/spec.proto
 
 ```bash
 # 1. Check what needs migration
-@audit-project-planton-component OldComponent
+@audit-openmcf-component OldComponent
 # Result: 40% complete, not worth updating
 
 # 2. Create new implementation
-@forge-project-planton-component NewComponent --provider aws
+@forge-openmcf-component NewComponent --provider aws
 
 # 3. Migrate users (manual step)
 # Update references, notify users
 
 # 4. Delete old component
-@delete-project-planton-component OldComponent --backup
+@delete-openmcf-component OldComponent --backup
 ```
 
 ### Workflow 5: Quality Gate (Pre-Commit)
 
 ```bash
 # Before committing changes to component
-@audit-project-planton-component ModifiedComponent
+@audit-openmcf-component ModifiedComponent
 
 # If score decreased:
 # - Investigate what was lost
@@ -683,10 +683,10 @@ git commit -m "feat: enhance ModifiedComponent"
 git checkout -b feature/new-component
 
 # Create component
-@forge-project-planton-component NewComponent --provider gcp
+@forge-openmcf-component NewComponent --provider gcp
 
 # Validate
-@audit-project-planton-component NewComponent
+@audit-openmcf-component NewComponent
 
 # Commit
 git add -A
@@ -717,8 +717,8 @@ jobs:
 # Makefile
 .PHONY: audit-all
 audit-all:
-	@for component in $(shell find apis/org/project_planton/provider -name "v1" -type d); do \
-		@audit-project-planton-component $$(basename $$(dirname $$component)); \
+	@for component in $(shell find apis/org/openmcf/provider -name "v1" -type d); do \
+		@audit-openmcf-component $$(basename $$(dirname $$component)); \
 	done
 ```
 
@@ -804,7 +804,7 @@ audit-all:
 **Solution:**
 ```bash
 # List all components
-grep "^\s*[A-Z]" apis/org/project_planton/shared/cloudresourcekind/cloud_resource_kind.proto
+grep "^\s*[A-Z]" apis/org/openmcf/shared/cloudresourcekind/cloud_resource_kind.proto
 ```
 
 ### "Audit shows 0% but component exists"
@@ -817,7 +817,7 @@ grep "^\s*[A-Z]" apis/org/project_planton/shared/cloudresourcekind/cloud_resourc
 **Solution:**
 ```bash
 # Check file sizes
-find apis/org/project_planton/provider/atlas/mongodbatlas/v1 -type f -exec ls -lh {} \;
+find apis/org/openmcf/provider/atlas/mongodbatlas/v1 -type f -exec ls -lh {} \;
 ```
 
 ### "Update fails with build errors"
@@ -889,33 +889,33 @@ grep -r "ComponentName" docs/
 ### AWS Components
 
 ```bash
-@forge-project-planton-component AwsRdsInstance --provider aws
-@forge-project-planton-component AwsEksCluster --provider aws
-@forge-project-planton-component AwsS3Bucket --provider aws
+@forge-openmcf-component AwsRdsInstance --provider aws
+@forge-openmcf-component AwsEksCluster --provider aws
+@forge-openmcf-component AwsS3Bucket --provider aws
 ```
 
 ### GCP Components
 
 ```bash
-@forge-project-planton-component GcpCloudSql --provider gcp
-@forge-project-planton-component GcpGkeCluster --provider gcp
-@forge-project-planton-component GcpStorageBucket --provider gcp
+@forge-openmcf-component GcpCloudSql --provider gcp
+@forge-openmcf-component GcpGkeCluster --provider gcp
+@forge-openmcf-component GcpStorageBucket --provider gcp
 ```
 
 ### Kubernetes Components
 
 ```bash
-@forge-project-planton-component PostgresKubernetes --provider kubernetes --category workload
-@forge-project-planton-component RedisKubernetes --provider kubernetes --category workload
-@forge-project-planton-component CertManagerKubernetes --provider kubernetes --category addon
+@forge-openmcf-component PostgresKubernetes --provider kubernetes --category workload
+@forge-openmcf-component RedisKubernetes --provider kubernetes --category workload
+@forge-openmcf-component CertManagerKubernetes --provider kubernetes --category addon
 ```
 
 ### SaaS Platform Components
 
 ```bash
-@forge-project-planton-component MongodbAtlas --provider atlas
-@forge-project-planton-component ConfluentKafka --provider confluent
-@forge-project-planton-component SnowflakeDatabase --provider snowflake
+@forge-openmcf-component MongodbAtlas --provider atlas
+@forge-openmcf-component ConfluentKafka --provider confluent
+@forge-openmcf-component SnowflakeDatabase --provider snowflake
 ```
 
 ---
@@ -955,10 +955,10 @@ When adding new rules or improving existing ones:
 
 | Operation | Command Template |
 |-----------|-----------------|
-| **Forge** | `@forge-project-planton-component <Name> --provider <provider>` |
-| **Audit** | `@audit-project-planton-component <Name>` |
-| **Update** | `@update-project-planton-component <Name> [--scenario <type>]` |
-| **Complete** | `@complete-project-planton-component <Name> [--target-score <pct>]` |
-| **Fix** | `@fix-project-planton-component <Name> --explain "<fix description>"` |
-| **Delete** | `@delete-project-planton-component <Name> --backup` |
+| **Forge** | `@forge-openmcf-component <Name> --provider <provider>` |
+| **Audit** | `@audit-openmcf-component <Name>` |
+| **Update** | `@update-openmcf-component <Name> [--scenario <type>]` |
+| **Complete** | `@complete-openmcf-component <Name> [--target-score <pct>]` |
+| **Fix** | `@fix-openmcf-component <Name> --explain "<fix description>"` |
+| **Delete** | `@delete-openmcf-component <Name> --backup` |
 

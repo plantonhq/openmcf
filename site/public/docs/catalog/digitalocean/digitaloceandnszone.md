@@ -21,7 +21,7 @@ DigitalOcean DNS is offered as a free, API-first service that allows you to cons
 
 However, this simplicity comes with clear trade-offs. DigitalOcean DNS lacks DNSSEC support entirely and provides no zone import functionality, making large-scale migrations painful. Understanding these constraints is essential for making informed architectural decisions.
 
-This document explores the evolution of DNS management methods—from manual control panel clicking to declarative Infrastructure as Code—and explains why Project Planton's approach balances flexibility with the platform's 80/20 design philosophy.
+This document explores the evolution of DNS management methods—from manual control panel clicking to declarative Infrastructure as Code—and explains why OpenMCF's approach balances flexibility with the platform's 80/20 design philosophy.
 
 ## The DNS Management Evolution
 
@@ -356,13 +356,13 @@ DNS configuration is code. Your backup strategy depends on your management metho
 
 **cert-manager (DNS-01 challenges):** Automatically provision Let's Encrypt wildcard certificates by creating temporary `_acme-challenge` TXT records. Requires a Kubernetes secret containing your DigitalOcean API token.
 
-## Project Planton's Approach: Balancing Flexibility and Simplicity
+## OpenMCF's Approach: Balancing Flexibility and Simplicity
 
-Project Planton's `DigitalOceanDnsZone` API is designed around the **80/20 principle**: expose the configuration that 80% of users need 80% of the time, while still enabling advanced use cases.
+OpenMCF's `DigitalOceanDnsZone` API is designed around the **80/20 principle**: expose the configuration that 80% of users need 80% of the time, while still enabling advanced use cases.
 
 ### Core Design Decisions
 
-1. **Unified zone and records:** Unlike Terraform/Pulumi, which split zones and records into separate resources, Project Planton's API includes a `records` array directly in the `DigitalOceanDnsZoneSpec`. This simplifies the common case (creating a domain with its initial records in one atomic operation) while still supporting incremental record updates.
+1. **Unified zone and records:** Unlike Terraform/Pulumi, which split zones and records into separate resources, OpenMCF's API includes a `records` array directly in the `DigitalOceanDnsZoneSpec`. This simplifies the common case (creating a domain with its initial records in one atomic operation) while still supporting incremental record updates.
 
 2. **Field-level simplicity:** Each record requires only the essentials:
    - `name` (relative to the zone, use "@" for apex)
@@ -376,7 +376,7 @@ Project Planton's `DigitalOceanDnsZone` API is designed around the **80/20 princ
 
 **Simple website (apex + www + email):**
 ```yaml
-apiVersion: digital-ocean.project-planton.org/v1
+apiVersion: digital-ocean.openmcf.org/v1
 kind: DigitalOceanDnsZone
 metadata:
   name: my-website
@@ -408,7 +408,7 @@ spec:
 
 **Complex application (Load Balancer + Spaces CDN + verification):**
 ```yaml
-apiVersion: digital-ocean.project-planton.org/v1
+apiVersion: digital-ocean.openmcf.org/v1
 kind: DigitalOceanDnsZone
 metadata:
   name: my-app
@@ -455,7 +455,7 @@ However, simplicity is not a weakness—it's a strategic choice. By understandin
 
 For production DNS management, declarative Infrastructure as Code (Terraform, Pulumi) is the clear winner. These tools provide stateful management, drift detection, and team collaboration features that manual control panel clicking and stateless scripting cannot match.
 
-Project Planton's `DigitalOceanDnsZone` API builds on these principles by providing a clean, protobuf-defined abstraction that balances simplicity (80/20 configuration) with flexibility (support for advanced record types and cross-resource references). Whether you're deploying a simple website or a complex multi-region application, the API gives you the tools to manage DNS as code, without the ceremony.
+OpenMCF's `DigitalOceanDnsZone` API builds on these principles by providing a clean, protobuf-defined abstraction that balances simplicity (80/20 configuration) with flexibility (support for advanced record types and cross-resource references). Whether you're deploying a simple website or a complex multi-region application, the API gives you the tools to manage DNS as code, without the ceremony.
 
 **Next steps:** Explore the `spec.proto` file to see the full API schema, and check out the example manifests in the repository for real-world configurations.
 

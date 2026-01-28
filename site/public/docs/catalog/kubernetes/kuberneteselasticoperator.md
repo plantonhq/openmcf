@@ -16,7 +16,7 @@ Then Kubernetes matured. StatefulSets brought stable identity and ordered deploy
 
 Today, ECK represents a paradigm shift: running production Elasticsearch on Kubernetes is not just viable, it's often **easier and more reliable** than traditional approaches. The operator handles certificate rotation, rolling upgrades, scale-out operations, and cross-cluster replication—all the tasks that once required runbooks and midnight maintenance windows.
 
-This document explores the landscape of ECK deployment methods, from quick-start patterns to production-ready approaches, and explains why Project Planton defaults to Helm-based installation with a clear path to GitOps maturity.
+This document explores the landscape of ECK deployment methods, from quick-start patterns to production-ready approaches, and explains why OpenMCF defaults to Helm-based installation with a clear path to GitOps maturity.
 
 ## Understanding ECK: The Operator
 
@@ -195,9 +195,9 @@ resource "helm_release" "eck_operator" {
 
 **Key insight:** These methods aren't mutually exclusive. Many organizations use **Terraform to provision clusters**, **Helm (via GitOps or Terraform) to install ECK**, and **GitOps to manage Elastic Stack resources** (Elasticsearch clusters, Kibana, etc.). The right combination depends on your operational maturity and team structure.
 
-## Project Planton's Approach: Helm with Clear Abstractions
+## OpenMCF's Approach: Helm with Clear Abstractions
 
-Project Planton defaults to **Helm-based ECK installation** for the operator itself, with first-class support for GitOps workflows.
+OpenMCF defaults to **Helm-based ECK installation** for the operator itself, with first-class support for GitOps workflows.
 
 ### Why Helm?
 
@@ -209,9 +209,9 @@ Project Planton defaults to **Helm-based ECK installation** for the operator its
 
 4. **No vendor lock-in**: Unlike OLM (which is OpenShift-centric), Helm works on any Kubernetes distribution. Unlike Terraform (which requires state management), Helm is declarative and stateless.
 
-### What Project Planton Abstracts
+### What OpenMCF Abstracts
 
-The `KubernetesElasticOperator` API in Project Planton focuses on the essential configuration needed to deploy the ECK operator:
+The `KubernetesElasticOperator` API in OpenMCF focuses on the essential configuration needed to deploy the ECK operator:
 
 - **Operator namespace and scope**: Whether the operator watches all namespaces (cluster-wide) or specific namespaces (multi-tenant).
 - **High availability**: Replica count and resource requests/limits for the operator pod.
@@ -221,9 +221,9 @@ The `KubernetesElasticOperator` API in Project Planton focuses on the essential 
 
 ### The Path to GitOps
 
-While Project Planton installs ECK via Helm by default, it's designed to fit into GitOps workflows:
+While OpenMCF installs ECK via Helm by default, it's designed to fit into GitOps workflows:
 
-1. **Initial deployment**: Use Project Planton (via Pulumi or Terraform) to provision the cluster and install ECK.
+1. **Initial deployment**: Use OpenMCF (via Pulumi or Terraform) to provision the cluster and install ECK.
 2. **Transition to GitOps**: Export the ECK Helm Chart reference to a Git repository managed by Argo CD or Flux.
 3. **Continuous management**: Let GitOps handle ongoing operator updates, configuration drift prevention, and multi-cluster synchronization.
 
@@ -298,7 +298,7 @@ This is the power of the operator pattern: you declare intent, and ECK handles t
 
 The evolution from `kubectl apply` to GitOps mirrors the broader maturity of Kubernetes itself. What started as a platform for stateless applications now reliably runs complex stateful systems like Elasticsearch—*because operators like ECK encode decades of operational knowledge into software*.
 
-**Project Planton's choice—Helm-based installation with GitOps compatibility—reflects a pragmatic philosophy:**
+**OpenMCF's choice—Helm-based installation with GitOps compatibility—reflects a pragmatic philosophy:**
 
 - Start simple: Helm is approachable and widely understood.
 - Scale gracefully: GitOps fits naturally as operational needs grow.

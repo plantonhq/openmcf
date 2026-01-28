@@ -4,10 +4,10 @@ Deterministic tool: Run Terraform (tofu) E2E for a provider/kind using local CLI
 
 Steps:
   1) make local
-  2) project-planton tofu init --manifest <manifest>
-  3) project-planton tofu plan --manifest <manifest>
-  4) project-planton tofu apply --manifest <manifest> --auto-approve
-  5) project-planton tofu destroy --manifest <manifest> --auto-approve
+  2) openmcf tofu init --manifest <manifest>
+  3) openmcf tofu plan --manifest <manifest>
+  4) openmcf tofu apply --manifest <manifest> --auto-approve
+  5) openmcf tofu destroy --manifest <manifest> --auto-approve
 
 Usage:
   python3 _rules/deployment-component/_scripts/terraform_e2e_run.py --provider aws --kindfolder awscloudfront --manifest <path>
@@ -42,7 +42,7 @@ def run(cmd, cwd=None, env=None):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Terraform E2E via ProjectPlanton CLI")
+    parser = argparse.ArgumentParser(description="Run Terraform E2E via OpenMCF CLI")
     parser.add_argument("--provider", required=True)
     parser.add_argument("--kindfolder", required=True)
     parser.add_argument("--manifest", required=True)
@@ -71,13 +71,13 @@ def main() -> int:
     result["make_local"] = run(["make", "-C", repo_root, "local"], cwd=repo_root, env=env)
 
     # 2) init
-    result["tofu_init"] = run(["project-planton", "tofu", "init", "--manifest", result["manifest"]], cwd=repo_root, env=env)
+    result["tofu_init"] = run(["openmcf", "tofu", "init", "--manifest", result["manifest"]], cwd=repo_root, env=env)
     # 3) plan
-    result["tofu_plan"] = run(["project-planton", "tofu", "plan", "--manifest", result["manifest"]], cwd=repo_root, env=env)
+    result["tofu_plan"] = run(["openmcf", "tofu", "plan", "--manifest", result["manifest"]], cwd=repo_root, env=env)
     # 4) apply
-    result["tofu_apply"] = run(["project-planton", "tofu", "apply", "--manifest", result["manifest"], "--auto-approve"], cwd=repo_root, env=env)
+    result["tofu_apply"] = run(["openmcf", "tofu", "apply", "--manifest", result["manifest"], "--auto-approve"], cwd=repo_root, env=env)
     # 5) destroy
-    result["tofu_destroy"] = run(["project-planton", "tofu", "destroy", "--manifest", result["manifest"], "--auto-approve"], cwd=repo_root, env=env)
+    result["tofu_destroy"] = run(["openmcf", "tofu", "destroy", "--manifest", result["manifest"], "--auto-approve"], cwd=repo_root, env=env)
 
     print(json.dumps(result))
     return 0 if all(step.get("exit_code", 1) == 0 for step in [result["tofu_init"], result["tofu_plan"], result["tofu_apply"], result["tofu_destroy"]]) else 4

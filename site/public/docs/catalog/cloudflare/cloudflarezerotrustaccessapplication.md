@@ -20,7 +20,7 @@ Think of it as replacing a VPN tunnel (which says "you're in the building, go an
 
 Cloudflare Access integrates seamlessly with enterprise identity providers (Okta, Azure AD, Google Workspace, GitHub) and can protect not just web applications but also SSH servers, RDP sessions, and internal APIs. It logs every authentication attempt. It supports MFA enforcement, device posture checks, and fine-grained policies per app. And critically, it works without requiring users to install VPN software or maintain complex network configurations.
 
-This guide explains how Cloudflare Zero Trust Access works, surveys the deployment methods from manual dashboard clicks to production-grade Infrastructure-as-Code, and shows how **Project Planton** distills the complexity into a clean, protobuf-defined API focused on the 20% of configuration that covers 80% of real-world use cases.
+This guide explains how Cloudflare Zero Trust Access works, surveys the deployment methods from manual dashboard clicks to production-grade Infrastructure-as-Code, and shows how **OpenMCF** distills the complexity into a clean, protobuf-defined API focused on the 20% of configuration that covers 80% of real-world use cases.
 
 ---
 
@@ -185,11 +185,11 @@ Both tools cover Cloudflare Access comprehensively. The choice comes down to pre
 - More boilerplate code compared to Terraform's concise HCL
 - Breaking changes in Terraform provider (like resource renames) flow through to Pulumi
 
-### Recommendation for Project Planton
+### Recommendation for OpenMCF
 
-Since Project Planton uses **Pulumi** under the hood (as evidenced by the `iac/pulumi/` directory in the repo), the choice is straightforward: Pulumi provides the runtime, and the Project Planton API abstracts away the complexity. Users define a simple protobuf spec; Planton generates the Pulumi code to create the Access application, policies, and necessary configurations.
+Since OpenMCF uses **Pulumi** under the hood (as evidenced by the `iac/pulumi/` directory in the repo), the choice is straightforward: Pulumi provides the runtime, and the OpenMCF API abstracts away the complexity. Users define a simple protobuf spec; Planton generates the Pulumi code to create the Access application, policies, and necessary configurations.
 
-For teams working directly with Cloudflare (outside Project Planton), **Terraform** is the safer bet due to broader adoption and more examples. For teams already invested in Pulumi or who need programmatic flexibility, Pulumi is equally capable.
+For teams working directly with Cloudflare (outside OpenMCF), **Terraform** is the safer bet due to broader adoption and more examples. For teams already invested in Pulumi or who need programmatic flexibility, Pulumi is equally capable.
 
 ---
 
@@ -301,9 +301,9 @@ These are powerful but less commonly needed:
 - **Geolocation or IP restrictions** (e.g., block logins from certain countries)
 - **Custom deny messages or branding** (aesthetic, not security-critical)
 
-### Project Planton's Design Philosophy
+### OpenMCF's Design Philosophy
 
-Project Planton's `CloudflareZeroTrustAccessApplicationSpec` focuses squarely on the 80%:
+OpenMCF's `CloudflareZeroTrustAccessApplicationSpec` focuses squarely on the 80%:
 
 ```protobuf
 message CloudflareZeroTrustAccessApplicationSpec {
@@ -349,7 +349,7 @@ One of the most powerful integrations is **Cloudflare Tunnel** (formerly Argo Tu
 
 **Example use case:** Protect an internal Jenkins dashboard running on `10.x.x.x` by creating a Cloudflare Tunnel, mapping it to `jenkins.example.com`, and applying an Access policy that allows only the DevOps team.
 
-**Project Planton consideration:** Cloudflare Tunnel setup is typically a separate resource (Cloudflare Tunnel configuration, DNS records). Once the tunnel is established, you configure a Zero Trust Access Application on the public hostname, which is what Project Planton's spec addresses.
+**OpenMCF consideration:** Cloudflare Tunnel setup is typically a separate resource (Cloudflare Tunnel configuration, DNS records). Once the tunnel is established, you configure a Zero Trust Access Application on the public hostname, which is what OpenMCF's spec addresses.
 
 ---
 
@@ -364,7 +364,7 @@ Cloudflare offers an **Access App Launcher**—a portal at `yourcompany.cloudfla
 
 **Best practice:** Enable the App Launcher for user-facing internal tools. It significantly improves discoverability and reduces the "where do I find X?" support burden.
 
-**Project Planton consideration:** The spec doesn't currently include app launcher visibility flags, but it could be added as an optional boolean (`app_launcher_visible`) if teams find it valuable.
+**OpenMCF consideration:** The spec doesn't currently include app launcher visibility flags, but it could be added as an optional boolean (`app_launcher_visible`) if teams find it valuable.
 
 ---
 
@@ -420,13 +420,13 @@ Cloudflare Zero Trust Access pricing tiers (as of 2025):
 
 ---
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton treats Cloudflare Zero Trust Access as a first-class cloud resource, abstracting the Cloudflare API and Pulumi provider complexity into a simple protobuf spec.
+OpenMCF treats Cloudflare Zero Trust Access as a first-class cloud resource, abstracting the Cloudflare API and Pulumi provider complexity into a simple protobuf spec.
 
 **What you define:**
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareZeroTrustAccessApplication
 metadata:
   name: internal-dashboard
@@ -443,7 +443,7 @@ spec:
     - engineering@example.com
 ```
 
-**What Project Planton generates:**
+**What OpenMCF generates:**
 - Pulumi code to create the Access application
 - Access policy with Include rules (email domain, Google groups)
 - Require rule for MFA
@@ -454,7 +454,7 @@ spec:
 - Declarative, version-controlled Access policy
 - Consistent application across environments (dev/staging/prod)
 - Abstraction of Cloudflare provider quirks (resource naming, API nuances)
-- Integration with Project Planton's broader multi-cloud orchestration
+- Integration with OpenMCF's broader multi-cloud orchestration
 
 ---
 
@@ -462,9 +462,9 @@ spec:
 
 The migration from VPN-based access to application-layer Zero Trust is one of the most impactful security shifts an organization can make. Cloudflare Zero Trust Access makes this transition accessible—offering the BeyondCorp model without Google-scale infrastructure, the security rigor of enterprise solutions without the complexity tax, and the flexibility to integrate with any identity provider or application type.
 
-For teams starting out, the Cloudflare dashboard is a useful learning tool. For production, Infrastructure-as-Code (Terraform or Pulumi) is the standard, providing the repeatability, auditability, and scale required for serious deployments. And for teams using Project Planton, the complexity collapses further—into a clean protobuf API that captures the essence of what most teams need: identity-based policies, MFA enforcement, and session management, applied consistently across environments.
+For teams starting out, the Cloudflare dashboard is a useful learning tool. For production, Infrastructure-as-Code (Terraform or Pulumi) is the standard, providing the repeatability, auditability, and scale required for serious deployments. And for teams using OpenMCF, the complexity collapses further—into a clean protobuf API that captures the essence of what most teams need: identity-based policies, MFA enforcement, and session management, applied consistently across environments.
 
 Zero Trust Access isn't just a security upgrade; it's a rethinking of how we grant access to resources. Every request authenticated. Every decision logged. No implicit trust. And with Cloudflare's global edge network handling enforcement, it's fast, reliable, and scalable from day one.
 
-If you're still using VPNs to protect internal applications, it's time to rethink the model. And if you're adopting Zero Trust, Cloudflare Access—automated via Project Planton—is a pragmatic, production-ready path forward.
+If you're still using VPNs to protect internal applications, it's time to rethink the model. And if you're adopting Zero Trust, Cloudflare Access—automated via OpenMCF—is a pragmatic, production-ready path forward.
 

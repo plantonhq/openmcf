@@ -86,7 +86,7 @@ curl -X POST "https://api.cloudflare.com/client/v4/accounts/{account_id}/d1/data
 
 **What it doesn't solve:** The migration gap. The API can create the database "container," but it has **no endpoints for schema management**. There's no `/migrations/apply` or `/migrations/list`. The migration workflow exists only in the Wrangler CLI's client-side logic.
 
-This architectural gap is critical for anyone building custom controllers (like Project Planton). You cannot "just" use the REST API to fully provision a D1 database. You must either replicate Wrangler's migration logic (reading `.sql` files, tracking applied migrations, handling rollback) or shell out to the Wrangler binary.
+This architectural gap is critical for anyone building custom controllers (like OpenMCF). You cannot "just" use the REST API to fully provision a D1 database. You must either replicate Wrangler's migration logic (reading `.sql` files, tracking applied migrations, handling rollback) or shell out to the Wrangler binary.
 
 **Verdict:** Useful for understanding what Terraform/Pulumi are doing under the hood, or for building custom tooling that orchestrates Wrangler. But not suitable as a standalone production tool.
 
@@ -164,7 +164,7 @@ This forces a hybrid workflow: IaC for resources, Wrangler for schema. Some Pulu
 
 **Workaround:** Teams can use `provider-terraform` to wrap the Terraform `cloudflare_d1_database` resource. This creates a fragile, indirect management path: Crossplane → provider-terraform → Terraform HCL → Cloudflare API. It's technically possible, but it adds layers of indirection and debugging complexity.
 
-**Verdict:** Not a first-class citizen in the Kubernetes ecosystem. If you need Kubernetes-native D1 management, you'll need a custom controller—exactly what Project Planton provides.
+**Verdict:** Not a first-class citizen in the Kubernetes ecosystem. If you need Kubernetes-native D1 management, you'll need a custom controller—exactly what OpenMCF provides.
 
 ---
 
@@ -368,7 +368,7 @@ The research reveals a clear 80/20 split: most users need just a few essential f
 **Use Case:** Developer's local sandbox. Small database for testing.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareD1Database
 metadata:
   name: dev-db
@@ -391,7 +391,7 @@ spec:
 **Use Case:** Preview environment for testing changes before production.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareD1Database
 metadata:
   name: preview-db
@@ -427,7 +427,7 @@ preview_database_id = "cccc-dddd-..."
 **Use Case:** Production application serving global users.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareD1Database
 metadata:
   name: prod-db
@@ -463,7 +463,7 @@ The correct, idempotent production workflow is:
    # Using Terraform
    terraform apply -auto-approve
 
-   # Or using Project Planton
+   # Or using OpenMCF
    planton apply
    ```
    This ensures the `cloudflare_d1_database` resource exists. It creates or updates the database "container" and outputs the `database_name` for the next step.
@@ -489,9 +489,9 @@ The correct, idempotent production workflow is:
 
 ---
 
-## Project Planton's Approach: Bridging the Gap
+## OpenMCF's Approach: Bridging the Gap
 
-Project Planton provides a clean, protobuf-defined API for Cloudflare D1 that abstracts the orchestration complexity while respecting D1's architectural realities.
+OpenMCF provides a clean, protobuf-defined API for Cloudflare D1 that abstracts the orchestration complexity while respecting D1's architectural realities.
 
 ### What We Abstract
 
@@ -537,9 +537,9 @@ This follows the **80/20 principle**: 80% of users need only `account_id`, `data
 
 ### Under the Hood: Pulumi (Go)
 
-Project Planton uses **Pulumi (Go)** for D1 provisioning. Why?
+OpenMCF uses **Pulumi (Go)** for D1 provisioning. Why?
 
-- **Language Consistency:** Pulumi's Go SDK integrates naturally with Project Planton's broader multi-cloud orchestration (also Go-based).
+- **Language Consistency:** Pulumi's Go SDK integrates naturally with OpenMCF's broader multi-cloud orchestration (also Go-based).
 - **Equivalent Coverage:** Pulumi's Cloudflare provider (bridged from Terraform) supports all D1 operations we need: create, delete, update, and configure read replication.
 - **Future-Proofing:** Pulumi's programming model makes it easier to add conditional logic, multi-database strategies, or custom integrations (e.g., automatically pairing `wrangler d1 migrations apply` with resource provisioning).
 
@@ -563,7 +563,7 @@ That said, Terraform would work equally well. The protobuf API remains the same 
 
 7. **D1 Time Travel provides robust PITR backups.** 30-day retention for paid plans, 7-day for free. Restoration is destructive and in-place, but it's automatic and free.
 
-8. **Project Planton abstracts the complexity** into a clean protobuf API, making multi-cloud deployments consistent while respecting D1's unique architecture. We provision the database via Pulumi, but we document and support the hybrid workflow (IaC + Wrangler migrations) that production requires.
+8. **OpenMCF abstracts the complexity** into a clean protobuf API, making multi-cloud deployments consistent while respecting D1's unique architecture. We provision the database via Pulumi, but we document and support the hybrid workflow (IaC + Wrangler migrations) that production requires.
 
 ---
 
@@ -578,5 +578,5 @@ That said, Terraform would work equally well. The protobuf API remains the same 
 
 ---
 
-**Bottom Line:** Cloudflare D1 is a genuinely serverless, SQLite-based database designed for edge compute. It's not a drop-in replacement for Postgres, but for the right use case—read-heavy, edge-first applications tightly integrated with Cloudflare Workers—it's a powerful, cost-effective choice. Manage it with IaC (Terraform or Pulumi) for resource provisioning and Wrangler for schema migrations. Project Planton simplifies this with a protobuf API that hides the orchestration complexity while exposing the essential configuration you actually need.
+**Bottom Line:** Cloudflare D1 is a genuinely serverless, SQLite-based database designed for edge compute. It's not a drop-in replacement for Postgres, but for the right use case—read-heavy, edge-first applications tightly integrated with Cloudflare Workers—it's a powerful, cost-effective choice. Manage it with IaC (Terraform or Pulumi) for resource provisioning and Wrangler for schema migrations. OpenMCF simplifies this with a protobuf API that hides the orchestration complexity while exposing the essential configuration you actually need.
 

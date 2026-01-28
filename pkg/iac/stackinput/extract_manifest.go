@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/internal/cli/workspace"
-	"github.com/plantonhq/project-planton/pkg/ulidgen"
+	"github.com/plantonhq/openmcf/internal/cli/workspace"
+	"github.com/plantonhq/openmcf/pkg/ulidgen"
 	"gopkg.in/yaml.v3"
 )
 

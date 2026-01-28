@@ -281,7 +281,7 @@ import (
 
 ### Example: Complete Fix for a Component
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetesnats/v1/iac/pulumi/module/main.go`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetesnats/v1/iac/pulumi/module/main.go`
 
 ```go
 func Resources(ctx *pulumi.Context, stackInput *kubernetesnatsv1.KubernetesNatsStackInput) error {
@@ -339,11 +339,11 @@ For each component:
 
 ```bash
 # Pulumi build (MUST pass)
-cd apis/org/project_planton/provider/kubernetes/<component>/v1/iac/pulumi
+cd apis/org/openmcf/provider/kubernetes/<component>/v1/iac/pulumi
 go build ./...
 
 # Terraform validation (verify no regressions)
-cd apis/org/project_planton/provider/kubernetes/<component>/v1/iac/tf
+cd apis/org/openmcf/provider/kubernetes/<component>/v1/iac/tf
 terraform init -backend=false
 terraform validate
 ```
@@ -356,7 +356,7 @@ The fix was validated with the `kubernetesnats` component:
 
 **Test 1: Create namespace (create_namespace: true)**
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesNats
 metadata:
   name: test-nats
@@ -377,7 +377,7 @@ kubectl create namespace nats-production
 ```
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesNats
 metadata:
   name: prod-nats
@@ -395,7 +395,7 @@ spec:
 **Test 3: Multi-component deployment**
 ```yaml
 # Component 1 - creates namespace
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesDeployment
 metadata:
   name: api-gateway
@@ -406,7 +406,7 @@ spec:
 
 ---
 # Component 2 - uses existing namespace
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesNats
 metadata:
   name: message-bus

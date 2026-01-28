@@ -36,7 +36,7 @@ on:
         required: true
         type: string
       path:
-        description: 'Path to the Terraform module (e.g., apis/org/project_planton/provider/aws/awsecsservice/v1/iac/tf)'
+        description: 'Path to the Terraform module (e.g., apis/org/openmcf/provider/aws/awsecsservice/v1/iac/tf)'
         required: true
         type: string
 
@@ -101,7 +101,7 @@ jobs:
 
           ```bash
           # Download and extract
-          curl -LO https://github.com/plantonhq/project-planton/releases/download/TAG_PLACEHOLDER/terraform-COMPONENT_PLACEHOLDER.zip
+          curl -LO https://github.com/plantonhq/openmcf/releases/download/TAG_PLACEHOLDER/terraform-COMPONENT_PLACEHOLDER.zip
           unzip terraform-COMPONENT_PLACEHOLDER.zip -d COMPONENT_PLACEHOLDER
           cd COMPONENT_PLACEHOLDER
 
@@ -119,7 +119,7 @@ jobs:
 
           ```hcl
           module "COMPONENT_PLACEHOLDER" {
-            source = "git::https://github.com/plantonhq/project-planton.git//PATH_PLACEHOLDER?ref=TAG_PLACEHOLDER"
+            source = "git::https://github.com/plantonhq/openmcf.git//PATH_PLACEHOLDER?ref=TAG_PLACEHOLDER"
 
             # Add your variables here
           }

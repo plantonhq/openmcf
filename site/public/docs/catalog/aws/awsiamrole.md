@@ -21,7 +21,7 @@ The challenge isn't creating a role—AWS makes that trivially easy. The challen
 - **Reproducible**: Deployable consistently across dev, staging, and production
 - **Maintainable**: Easy to update, roll back, and verify
 
-This document examines the landscape of IAM role deployment methods, from manual console clicks to production-ready Infrastructure as Code approaches. We'll explore what works, what doesn't, and why Project Planton has chosen specific deployment patterns to make IAM role management both powerful and safe.
+This document examines the landscape of IAM role deployment methods, from manual console clicks to production-ready Infrastructure as Code approaches. We'll explore what works, what doesn't, and why OpenMCF has chosen specific deployment patterns to make IAM role management both powerful and safe.
 
 ## Understanding IAM Roles: The Two-Policy Foundation
 
@@ -451,9 +451,9 @@ Analysis of real-world IAM roles reveals that **80% of roles use only 20% of ava
 
 **Implication for API design**: A minimal IAM role API can be surprisingly simple—role name, trust policy (principal + optional conditions), and list of policy ARNs or inline policy JSON. Everything else is optional for edge cases.
 
-## Project Planton's Approach: Terraform and Pulumi for Maximum Flexibility
+## OpenMCF's Approach: Terraform and Pulumi for Maximum Flexibility
 
-Project Planton provides **both Terraform and Pulumi modules** for deploying AWS IAM roles. Why support both?
+OpenMCF provides **both Terraform and Pulumi modules** for deploying AWS IAM roles. Why support both?
 
 ### Terraform: Declarative Simplicity
 
@@ -464,7 +464,7 @@ For teams that:
 - Standardize on one tool for multi-cloud infrastructure
 - Have operations-focused engineers who value proven patterns
 
-**Project Planton's Terraform module**:
+**OpenMCF's Terraform module**:
 
 - Clean, minimal HCL defining role, trust policy, and policy attachments
 - Reusable across projects with variable inputs
@@ -480,7 +480,7 @@ For teams that:
 - Value type safety and IDE autocomplete
 - Prefer infrastructure code alongside application code
 
-**Project Planton's Pulumi module**:
+**OpenMCF's Pulumi module**:
 
 - Language-native IAM role definitions
 - Type-checked policy construction
@@ -489,7 +489,7 @@ For teams that:
 
 ### Why Both?
 
-**Flexibility and choice**. Organizations have different preferences, existing tooling, and team compositions. Rather than forcing one approach, Project Planton provides production-ready implementations in both leading IaC tools. You choose what fits your workflow.
+**Flexibility and choice**. Organizations have different preferences, existing tooling, and team compositions. Rather than forcing one approach, OpenMCF provides production-ready implementations in both leading IaC tools. You choose what fits your workflow.
 
 **Common foundation**: Both modules adhere to the same principles:
 
@@ -497,11 +497,11 @@ For teams that:
 - Trust policies with recommended security conditions
 - Versioned, reviewable infrastructure code
 - Support for both managed and inline policies
-- Integration with Project Planton's broader AWS resource management
+- Integration with OpenMCF's broader AWS resource management
 
 ### What We Abstract Away
 
-Project Planton's IAM role API focuses on the **essential 80%**, reducing boilerplate while maintaining full power when needed:
+OpenMCF's IAM role API focuses on the **essential 80%**, reducing boilerplate while maintaining full power when needed:
 
 - **Simplified trust policy definition**: Specify principals and conditions without wrestling with JSON syntax
 - **Managed policy attachment**: Reference policies by ARN or name
@@ -511,7 +511,7 @@ Project Planton's IAM role API focuses on the **essential 80%**, reducing boiler
 
 ### What We Don't Hide
 
-- **Full policy control**: You write the permissions policies—Project Planton won't silently grant more access than you specify
+- **Full policy control**: You write the permissions policies—OpenMCF won't silently grant more access than you specify
 - **Trust policy transparency**: You see and control exactly who can assume the role
 - **AWS integration**: Direct access to underlying Terraform/Pulumi resources for advanced use cases
 
@@ -529,11 +529,11 @@ The journey from manual IAM role configuration to production-ready infrastructur
 
 4. **Simplicity wins**: 80% of roles need 20% of features. Focus on the essentials: clear trust, minimal permissions, good descriptions. Complexity is the enemy of security.
 
-5. **Choose tools that fit your team**: Terraform for declarative simplicity and mature ecosystem. Pulumi for programmable power and type safety. CloudFormation/CDK for AWS-native integration. Project Planton supports the leading options.
+5. **Choose tools that fit your team**: Terraform for declarative simplicity and mature ecosystem. Pulumi for programmable power and type safety. CloudFormation/CDK for AWS-native integration. OpenMCF supports the leading options.
 
 IAM roles are powerful because they separate identity from credentials, enable secure delegation, and integrate seamlessly across AWS services. Deployed well—version-controlled, reviewed, and monitored—they're the foundation of secure, scalable cloud infrastructure. Deployed poorly, they're the keys to the kingdom left under the doormat.
 
-Project Planton makes the well-deployed path easier. Define your roles in code, apply security best practices by default, and let infrastructure automation ensure consistency across every environment.
+OpenMCF makes the well-deployed path easier. Define your roles in code, apply security best practices by default, and let infrastructure automation ensure consistency across every environment.
 
 **Start with minimal trust, minimal permissions, and maximum visibility. Everything else follows from there.**
 

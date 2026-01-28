@@ -1,13 +1,13 @@
 ---
 title: "Manifest Structure Guide"
-description: "Understanding Project Planton manifests - KRM structure, validation, defaults, and best practices for writing infrastructure definitions"
+description: "Understanding OpenMCF manifests - KRM structure, validation, defaults, and best practices for writing infrastructure definitions"
 icon: "document"
 order: 1
 ---
 
 # Manifest Structure Guide
 
-Your complete guide to writing and understanding Project Planton manifests.
+Your complete guide to writing and understanding OpenMCF manifests.
 
 ---
 
@@ -18,7 +18,7 @@ A manifest is a YAML file that describes a piece of infrastructure you want to d
 **Simple example**:
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareR2Bucket
 metadata:
   name: my-app-assets
@@ -43,12 +43,12 @@ Think of manifests like ordering from a restaurant:
 
 ## Anatomy of a Manifest
 
-Every Project Planton manifest follows the **Kubernetes Resource Model (KRM)** structure. This isn't an accident—it's the same pattern used by Kubernetes, which millions of developers already know.
+Every OpenMCF manifest follows the **Kubernetes Resource Model (KRM)** structure. This isn't an accident—it's the same pattern used by Kubernetes, which millions of developers already know.
 
 ### The Five Sections
 
 ```yaml
-apiVersion: <provider>.project-planton.org/<version>
+apiVersion: <provider>.openmcf.org/<version>
 kind: <ResourceType>
 metadata:
   name: <resource-name>
@@ -65,18 +65,18 @@ Let's break down each section.
 
 ## apiVersion: The Menu Selection
 
-**Format**: `<provider>.project-planton.org/<version>`
+**Format**: `<provider>.openmcf.org/<version>`
 
 **Purpose**: Identifies which cloud provider and API version you're using.
 
 **Examples**:
-- `aws.project-planton.org/v1` - AWS resources
-- `gcp.project-planton.org/v1` - GCP resources
-- `azure.project-planton.org/v1` - Azure resources
-- `cloudflare.project-planton.org/v1` - Cloudflare resources
-- `kubernetes.project-planton.org/v1` - Kubernetes resources
+- `aws.openmcf.org/v1` - AWS resources
+- `gcp.openmcf.org/v1` - GCP resources
+- `azure.openmcf.org/v1` - Azure resources
+- `cloudflare.openmcf.org/v1` - Cloudflare resources
+- `kubernetes.openmcf.org/v1` - Kubernetes resources
 
-**Why it matters**: The `apiVersion` tells Project Planton which API definitions to use for validation. As APIs evolve, version numbers allow you to opt into changes gradually.
+**Why it matters**: The `apiVersion` tells OpenMCF which API definitions to use for validation. As APIs evolve, version numbers allow you to opt into changes gradually.
 
 **Versioning**:
 - `v1` = First stable version
@@ -98,7 +98,7 @@ Let's break down each section.
 
 **Finding available kinds**:
 - Browse the [Catalog](/docs/catalog) - all 118 deployment components
-- Check [Buf Schema Registry](https://buf.build/project-planton/apis) - API documentation
+- Check [Buf Schema Registry](https://buf.build/openmcf/apis) - API documentation
 - Search the repository: `provider/<provider>/`
 
 **Example kinds**:
@@ -147,7 +147,7 @@ metadata:
     environment: production
     team: backend
     cost-center: engineering
-    pulumi.project-planton.org/stack.name: "acme/platform/prod.ApiDeployment.api-v2"
+    pulumi.openmcf.org/stack.name: "acme/platform/prod.ApiDeployment.api-v2"
 ```
 
 **Common labels**:
@@ -155,7 +155,7 @@ metadata:
 - `team`: owning team name
 - `project`: project identifier
 - `version`: version tag
-- `pulumi.project-planton.org/stack.name`: Pulumi stack FQDN (when using Pulumi)
+- `pulumi.openmcf.org/stack.name`: Pulumi stack FQDN (when using Pulumi)
 
 **Why labels matter**: They help you:
 - Organize resources
@@ -176,7 +176,7 @@ Every `kind` has its own `spec` structure defined in Protocol Buffers. There's n
 ### Example: Cloudflare R2 Bucket
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareR2Bucket
 metadata:
   name: pipeline-logs
@@ -188,7 +188,7 @@ spec:
 ### Example: PostgreSQL on Kubernetes
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -271,7 +271,7 @@ Keeping status separate from spec follows the Kubernetes philosophy:
 
 ## Validation: Early Error Detection
 
-One of Project Planton's superpowers is **validation before deployment**. Instead of waiting 5 minutes for an AWS deployment to fail because you typo'd a field name, you catch errors in seconds.
+One of OpenMCF's superpowers is **validation before deployment**. Instead of waiting 5 minutes for an AWS deployment to fail because you typo'd a field name, you catch errors in seconds.
 
 ### Three Validation Layers
 
@@ -279,7 +279,7 @@ One of Project Planton's superpowers is **validation before deployment**. Instea
 
 ```bash
 # This fails immediately if YAML doesn't match proto structure
-project-planton validate -f my-resource.yaml
+openmcf validate -f my-resource.yaml
 ```
 
 **2. Field-Level Validation** (via buf-validate)
@@ -306,7 +306,7 @@ Final validation by the actual cloud provider APIs. This catches provider-specif
 
 ```bash
 # Validate before deploying
-project-planton validate -f my-app.yaml
+openmcf validate -f my-app.yaml
 
 # If validation fails, you'll see exactly what's wrong
 ❌  MANIFEST VALIDATION FAILED
@@ -342,12 +342,12 @@ Many fields have sensible defaults so you don't have to specify everything.
 
 ### How Defaults Work
 
-Defaults are defined in the protobuf with the `(org.project_planton.shared.options.default)` extension:
+Defaults are defined in the protobuf with the `(org.openmcf.shared.options.default)` extension:
 
 ```protobuf
 message KubernetesExternalDnsKubernetesSpec {
-  optional string namespace = 1 [(org.project_planton.shared.options.default) = "kubernetes-external-dns"];
-  optional string version = 2 [(org.project_planton.shared.options.default) = "v0.19.0"];
+  optional string namespace = 1 [(org.openmcf.shared.options.default) = "kubernetes-external-dns"];
+  optional string version = 2 [(org.openmcf.shared.options.default) = "v0.19.0"];
 }
 ```
 
@@ -356,7 +356,7 @@ message KubernetesExternalDnsKubernetesSpec {
 **Minimal (using defaults)**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesExternalDnsKubernetes
 metadata:
   name: kubernetes-external-dns
@@ -369,7 +369,7 @@ spec:
 **Explicit (overriding defaults)**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesExternalDnsKubernetes
 metadata:
   name: kubernetes-external-dns
@@ -385,7 +385,7 @@ spec:
 Use `load-manifest` to see the effective configuration with defaults:
 
 ```bash
-project-planton load-manifest kubernetes-external-dns.yaml
+openmcf load-manifest kubernetes-external-dns.yaml
 
 # Output shows defaults filled in:
 # spec:
@@ -403,7 +403,7 @@ Let's walk through a complete manifest with annotations:
 
 ```yaml
 # Which API (AWS resources, version 1)
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 
 # What resource (S3 Bucket)
 kind: AwsS3Bucket
@@ -415,7 +415,7 @@ metadata:
     environment: production
     team: backend
     purpose: user-uploads
-    pulumi.project-planton.org/stack.name: "acme/storage/prod.AwsS3Bucket.user-uploads"
+    pulumi.openmcf.org/stack.name: "acme/storage/prod.AwsS3Bucket.user-uploads"
 
 # Configuration
 spec:
@@ -457,7 +457,7 @@ Sometimes you need multiple manifests for related resources:
 **postgres.yaml**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -474,7 +474,7 @@ spec:
 **postgres-backup-bucket.yaml**:
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsS3Bucket
 metadata:
   name: postgres-backups
@@ -491,10 +491,10 @@ Deploy separately but manage together:
 
 ```bash
 # Deploy database
-project-planton pulumi up -f postgres.yaml
+openmcf pulumi up -f postgres.yaml
 
 # Deploy backup bucket
-project-planton pulumi up -f postgres-backup-bucket.yaml
+openmcf pulumi up -f postgres-backup-bucket.yaml
 ```
 
 ---
@@ -505,11 +505,11 @@ Manifests don't have to be local files—you can load them from URLs:
 
 ```bash
 # Load from GitHub raw URL
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://raw.githubusercontent.com/my-org/manifests/main/prod/database.yaml
 
 # Load from any HTTPS URL
-project-planton pulumi up \
+openmcf pulumi up \
   -f https://config-server.example.com/manifests/vpc.yaml
 ```
 
@@ -547,11 +547,11 @@ vim /tmp/database.yaml
 
 ```bash
 # ✅ Good: Catch errors early
-project-planton validate -f resource.yaml
-project-planton pulumi up -f resource.yaml
+openmcf validate -f resource.yaml
+openmcf pulumi up -f resource.yaml
 
 # ⚠️ Risky: Deploy without validation
-project-planton pulumi up -f resource.yaml
+openmcf pulumi up -f resource.yaml
 ```
 
 **Why**: Validation catches 90% of errors before making cloud API calls.
@@ -682,7 +682,7 @@ cat manifest.yaml | yq .
 # Check if you accidentally set field to empty string or 0
 
 # View effective manifest with defaults:
-project-planton load-manifest resource.yaml
+openmcf load-manifest resource.yaml
 ```
 
 ### Manifest from URL Fails
@@ -713,8 +713,8 @@ Now that you understand manifests:
 
 1. **Browse the Catalog**: See what resources you can deploy at `/docs/catalog`
 2. **Write Your First Manifest**: Start with something simple like a storage bucket
-3. **Validate It**: Use `project-planton validate -f your-resource.yaml`
+3. **Validate It**: Use `openmcf validate -f your-resource.yaml`
 4. **Deploy It**: Follow the Pulumi or OpenTofu command guides
 
-**Remember**: Manifests are declarative—you describe what you want, not how to create it. Project Planton handles the "how."
+**Remember**: Manifests are declarative—you describe what you want, not how to create it. OpenMCF handles the "how."
 

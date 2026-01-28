@@ -1,5 +1,0 @@
-apiVersion: civo.project-planton.org/v1
-kind: CivoVolume
-metadata:
-  name: first-certificate
-spec:

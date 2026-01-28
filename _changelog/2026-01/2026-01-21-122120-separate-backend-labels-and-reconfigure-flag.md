@@ -67,16 +67,16 @@ flowchart TB
 ### Example Manifest
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsVpc
 metadata:
   name: production-vpc
   labels:
-    project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: s3
-    terraform.project-planton.org/backend.bucket: my-terraform-state
-    terraform.project-planton.org/backend.key: vpc/production.tfstate
-    terraform.project-planton.org/backend.region: us-west-2
+    openmcf.org/provisioner: terraform
+    terraform.openmcf.org/backend.type: s3
+    terraform.openmcf.org/backend.bucket: my-terraform-state
+    terraform.openmcf.org/backend.key: vpc/production.tfstate
+    terraform.openmcf.org/backend.region: us-west-2
 spec:
   cidrBlock: 10.0.0.0/16
 ```
@@ -87,11 +87,11 @@ Added support for reconfiguring backend without state migration:
 
 ```bash
 # When backend configuration changes
-project-planton init -f manifest.yaml --reconfigure
+openmcf init -f manifest.yaml --reconfigure
 
 # Also works with other commands that run init internally
-project-planton apply -f manifest.yaml --reconfigure
-project-planton refresh -f manifest.yaml --reconfigure
+openmcf apply -f manifest.yaml --reconfigure
+openmcf refresh -f manifest.yaml --reconfigure
 ```
 
 ## Implementation Details
@@ -104,18 +104,18 @@ Added new label key functions:
 
 ```go
 func BackendKeyLabelKey(provisioner string) string {
-    return fmt.Sprintf("%s.project-planton.org/backend.key", provisioner)
+    return fmt.Sprintf("%s.openmcf.org/backend.key", provisioner)
 }
 
 func BackendRegionLabelKey(provisioner string) string {
-    return fmt.Sprintf("%s.project-planton.org/backend.region", provisioner)
+    return fmt.Sprintf("%s.openmcf.org/backend.region", provisioner)
 }
 
 // Legacy constants for backward compatibility
 const (
-    LegacyBackendKeyLabelKey    = "terraform.project-planton.org/backend.key"
-    LegacyBackendObjectLabelKey = "terraform.project-planton.org/backend.object"
-    LegacyBackendRegionLabelKey = "terraform.project-planton.org/backend.region"
+    LegacyBackendKeyLabelKey    = "terraform.openmcf.org/backend.key"
+    LegacyBackendObjectLabelKey = "terraform.openmcf.org/backend.object"
+    LegacyBackendRegionLabelKey = "terraform.openmcf.org/backend.region"
 )
 ```
 
@@ -189,7 +189,7 @@ fmt.Printf("   %-12s %s\n", white("Key:"), blue(key))
 
 ### 6. Reconfigure Flag
 
-**Files**: `internal/cli/iacflags/tofu_flags.go`, `cmd/project-planton/root/init.go`, etc.
+**Files**: `internal/cli/iacflags/tofu_flags.go`, `cmd/openmcf/root/init.go`, etc.
 
 Added `--reconfigure` flag to all relevant commands:
 

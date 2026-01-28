@@ -1,5 +1,0 @@
-apiVersion: cloudflare.project-planton.org/v1
-kind: CloudflareDnsZone
-metadata:
-  name: first-certificate
-spec:

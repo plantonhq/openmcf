@@ -14,7 +14,7 @@ Azure Container Registry (ACR) is Microsoft's fully managed Docker/OCI registry 
 
 The question isn't whether to use a container registry—that's a given for any containerized workload—but rather *how* to provision and manage it. The landscape has evolved from manual portal clicks to sophisticated infrastructure-as-code approaches, each with distinct trade-offs. For Azure-centric deployments, ACR stands out due to its tight integration with Azure AD for authentication, Azure Monitor for observability, and Azure's networking primitives for security.
 
-This document explores the spectrum of deployment methods for Azure Container Registry, from basic manual provisioning to production-ready automation. We'll examine the maturity progression, compare infrastructure-as-code tools, and explain Project Planton's approach to abstracting ACR configuration while maintaining flexibility for production requirements.
+This document explores the spectrum of deployment methods for Azure Container Registry, from basic manual provisioning to production-ready automation. We'll examine the maturity progression, compare infrastructure-as-code tools, and explain OpenMCF's approach to abstracting ACR configuration while maintaining flexibility for production requirements.
 
 ## Understanding Azure Container Registry
 
@@ -344,17 +344,17 @@ geo_replication_regions:
 # Network isolation handled via separate private endpoint config
 ```
 
-By focusing on these essential fields in the API, Project Planton enables users to provision ACR quickly while the underlying implementation applies production defaults (disabled admin user, retention policies, tags) automatically.
+By focusing on these essential fields in the API, OpenMCF enables users to provision ACR quickly while the underlying implementation applies production defaults (disabled admin user, retention policies, tags) automatically.
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton's `AzureContainerRegistrySpec` abstracts ACR configuration to its essential elements while leveraging Pulumi for deployment automation. This approach balances simplicity with production-readiness:
+OpenMCF's `AzureContainerRegistrySpec` abstracts ACR configuration to its essential elements while leveraging Pulumi for deployment automation. This approach balances simplicity with production-readiness:
 
 **Why Pulumi?**
 - **Multi-Cloud Consistency**: Pulumi enables a unified deployment experience across Azure, AWS, GCP, and Kubernetes-native resources
 - **Azure Native Coverage**: Pulumi's `@pulumi/azure-native` provider offers complete Azure API coverage with same-day feature support
 - **Programmability**: Complex logic (conditional geo-replication, dynamic network rules) is easier to express in Go than HCL or Bicep
-- **State Management**: Pulumi's state backend works seamlessly with Project Planton's workflow without requiring separate Terraform Cloud or Azure storage setup
+- **State Management**: Pulumi's state backend works seamlessly with OpenMCF's workflow without requiring separate Terraform Cloud or Azure storage setup
 
 **Abstraction Philosophy:**
 
@@ -368,7 +368,7 @@ Advanced features (network isolation, CMK encryption, retention policies) are co
 
 **Infrastructure Philosophy:**
 
-Rather than forcing users to choose between Terraform, Bicep, or Pulumi, Project Planton makes the choice for them based on our multi-cloud requirements, then exposes a cloud-agnostic API. Users specify *what* they want (a Premium ACR in East US with replicas in Europe and Asia), not *how* to provision it (which Pulumi resources, dependencies, and state to manage).
+Rather than forcing users to choose between Terraform, Bicep, or Pulumi, OpenMCF makes the choice for them based on our multi-cloud requirements, then exposes a cloud-agnostic API. Users specify *what* they want (a Premium ACR in East US with replicas in Europe and Asia), not *how* to provision it (which Pulumi resources, dependencies, and state to manage).
 
 This abstraction allows the underlying implementation to evolve—switching from Pulumi to Bicep or adding Crossplane support—without breaking existing configurations.
 
@@ -452,7 +452,7 @@ Azure Container Registry deployment has matured from manual portal provisioning 
 
 For Azure-only teams, **Bicep** offers first-party support, zero state overhead, and same-day feature availability. For multi-cloud enterprises, **Terraform** provides a battle-tested, cloud-agnostic workflow. For development-heavy teams, **Pulumi** bridges infrastructure and application code in familiar languages.
 
-Project Planton abstracts this choice, using **Pulumi** internally to deliver a consistent multi-cloud API while applying production defaults (disabled admin user, appropriate SKU selection, geo-replication configuration) automatically. This lets users focus on *what* they need—a secure, performant container registry—rather than *how* to wire together Azure Resource Manager primitives.
+OpenMCF abstracts this choice, using **Pulumi** internally to deliver a consistent multi-cloud API while applying production defaults (disabled admin user, appropriate SKU selection, geo-replication configuration) automatically. This lets users focus on *what* they need—a secure, performant container registry—rather than *how* to wire together Azure Resource Manager primitives.
 
 By understanding the deployment spectrum and applying the 80/20 principle to configuration, you can provision Azure Container Registry that is simple enough for rapid iteration yet robust enough for global production deployments. The registry becomes invisible infrastructure: always available, seamlessly integrated, and secure by default.
 

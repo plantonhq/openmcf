@@ -12,7 +12,7 @@ componentName: "kuberneteslocust"
 
 Load testing has come a long way from the days of manually scaling virtual machines and praying your infrastructure could handle the spike. Locust, with its Python-based scripting and elegant distributed architecture, modernized load testing by making it accessible to developers. But deploying Locust *on Kubernetes* introduced a new set of challenges: managing the master-worker architecture, injecting test scripts without rebuilding containers, installing dependencies at runtime, and orchestrating rolling updates when scripts change.
 
-The Kubernetes ecosystem has evolved a clear pattern for deploying Locust at scale. This document explores that landscape—from the anti-patterns that fail under load to the production-ready approaches that power tests generating 20,000+ requests per second. More importantly, it explains *why* Project Planton's LocustKubernetes resource is designed the way it is: as an opinionated abstraction that eliminates the most painful friction points in the developer workflow.
+The Kubernetes ecosystem has evolved a clear pattern for deploying Locust at scale. This document explores that landscape—from the anti-patterns that fail under load to the production-ready approaches that power tests generating 20,000+ requests per second. More importantly, it explains *why* OpenMCF's LocustKubernetes resource is designed the way it is: as an opinionated abstraction that eliminates the most painful friction points in the developer workflow.
 
 ## The Locust Architecture: Master-Worker and the GIL
 
@@ -94,7 +94,7 @@ The chart's `values.yaml` provides a mature API:
 
 #### The "Tricky" Part: Manual ConfigMap Creation
 
-The chart's primary friction point is that it *references* ConfigMaps by name. You must run `kubectl create configmap locust-scripts --from-file=locustfile.py` *before* installing the chart. This manual pre-step is exactly the kind of workflow friction that Project Planton eliminates (more on that later).
+The chart's primary friction point is that it *references* ConfigMaps by name. You must run `kubectl create configmap locust-scripts --from-file=locustfile.py` *before* installing the chart. This manual pre-step is exactly the kind of workflow friction that OpenMCF eliminates (more on that later).
 
 **Verdict**: Production-ready, but requires manual orchestration of ConfigMaps and script updates.
 
@@ -117,7 +117,7 @@ The operator watches for `LocustTest` resources and generates the underlying Dep
 
 **Key advantage**: Declarative, Kubernetes-native API with a `status` field that enables CI/CD integration (e.g., `kubectl wait --for=condition=Completed`).
 
-**Project Planton's Approach**: As an IaC framework, Project Planton *is* an abstraction layer. We don't deploy third-party operators. Instead, our `LocustKubernetes` resource behaves *like* the `LocustTest` CRD—it provides a high-level, declarative API while the Planton controller directly creates and manages the Kubernetes resources.
+**OpenMCF's Approach**: As an IaC framework, OpenMCF *is* an abstraction layer. We don't deploy third-party operators. Instead, our `LocustKubernetes` resource behaves *like* the `LocustTest` CRD—it provides a high-level, declarative API while the Planton controller directly creates and manages the Kubernetes resources.
 
 ## The Developer Experience Problem
 
@@ -166,11 +166,11 @@ Production case studies reveal a much better approach using Kustomize's `configM
 3. When you change `locustfile.py` and run `kubectl apply -k .`, Kustomize creates a *new* ConfigMap with a *new* hash
 4. Updating the ConfigMap reference in the Deployment's pod template triggers an **automatic rolling update**
 
-This hash-based rollout is the gold standard for "GitOps-native" script updates. Project Planton implements this logic internally—changing the `load_test` spec triggers an automatic rolling update of the managed Deployments.
+This hash-based rollout is the gold standard for "GitOps-native" script updates. OpenMCF implements this logic internally—changing the `load_test` spec triggers an automatic rolling update of the managed Deployments.
 
-## Project Planton's Design Philosophy
+## OpenMCF's Design Philosophy
 
-Project Planton's LocustKubernetes resource is not a simple wrapper around the DeliveryHero Helm chart. It's an **opinionated abstraction** that automates the most painful parts of the workflow.
+OpenMCF's LocustKubernetes resource is not a simple wrapper around the DeliveryHero Helm chart. It's an **opinionated abstraction** that automates the most painful parts of the workflow.
 
 ### What We Solve
 
@@ -219,7 +219,7 @@ Master and worker resource needs are asymmetric:
 
 ### Security Hardening
 
-The DeliveryHero Helm chart dangerously defaults `securityContext.runAsNonRoot` to `false`. Project Planton enforces security by default:
+The DeliveryHero Helm chart dangerously defaults `securityContext.runAsNonRoot` to `false`. OpenMCF enforces security by default:
 
 - `runAsNonRoot: true`
 - `runAsUser: 1000` (high UID)
@@ -249,7 +249,7 @@ Locust doesn't natively export Prometheus metrics. The standard solution is the 
 
 The DeliveryHero project provides a dedicated Helm chart for this exporter: `deliveryhero/prometheus-locust-exporter`.
 
-**Recommendation**: Project Planton could expose a simple `metrics.prometheus.enabled` boolean that co-deploys this exporter and the necessary ServiceMonitor resources.
+**Recommendation**: OpenMCF could expose a simple `metrics.prometheus.enabled` boolean that co-deploys this exporter and the necessary ServiceMonitor resources.
 
 ### CI/CD Integration
 
@@ -261,7 +261,7 @@ The operator pattern solves this elegantly via a `status` sub-resource. The cont
 kubectl wait --for=condition=Completed LocustKubernetes/my-test --timeout=30m
 ```
 
-Project Planton's LocustKubernetes resource implements this status pattern, making CI/CD integration seamless.
+OpenMCF's LocustKubernetes resource implements this status pattern, making CI/CD integration seamless.
 
 ## Conclusion: The Paradigm Shift
 
@@ -269,7 +269,7 @@ The evolution of Locust on Kubernetes reflects a broader shift in cloud-native d
 
 Manual manifests gave you control at the cost of verbosity. Helm charts provided reusable templates but still required manual orchestration of ConfigMaps and dependencies. Operators introduced declarative, Kubernetes-native resources but required installing and managing additional controllers.
 
-Project Planton synthesizes the best of all three approaches: the declarative simplicity of operators, the production-readiness of the DeliveryHero Helm chart's `pip_packages` innovation, and the GitOps-native script management of Kustomize's content-hashed ConfigMaps—all wrapped in a single, opinionated abstraction that eliminates workflow friction.
+OpenMCF synthesizes the best of all three approaches: the declarative simplicity of operators, the production-readiness of the DeliveryHero Helm chart's `pip_packages` innovation, and the GitOps-native script management of Kustomize's content-hashed ConfigMaps—all wrapped in a single, opinionated abstraction that eliminates workflow friction.
 
 The result is a load testing platform where you define your test in protobuf, commit it to git, and let the system handle the rest. No manual ConfigMaps. No custom Docker images. No manual rollouts. Just iterative, fast-paced load test development that scales from dev clusters to production systems generating 20,000+ requests per second.
 

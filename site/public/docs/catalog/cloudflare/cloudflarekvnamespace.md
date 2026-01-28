@@ -20,7 +20,7 @@ What makes KV compelling isn't just performance—it's **simplicity**. There's n
 
 But this simplicity comes with trade-offs. KV is **eventually consistent**, with propagation delays up to 60 seconds or more. It's not suitable for counters, queues, or anything requiring immediate read-after-write consistency. For those cases, Cloudflare offers Durable Objects (single-location strong consistency) or you look elsewhere. KV shines when you can tolerate a delay between writing a value and seeing it globally—which is true for more use cases than you might think.
 
-This guide walks through the landscape of deploying and managing Workers KV namespaces, from quick prototypes with the Wrangler CLI to production-grade Infrastructure-as-Code with Terraform and Pulumi. We'll show how Project Planton abstracts these choices into a clean protobuf API that captures the 80% use case while staying out of your way.
+This guide walks through the landscape of deploying and managing Workers KV namespaces, from quick prototypes with the Wrangler CLI to production-grade Infrastructure-as-Code with Terraform and Pulumi. We'll show how OpenMCF abstracts these choices into a clean protobuf API that captures the 80% use case while staying out of your way.
 
 ---
 
@@ -406,7 +406,7 @@ await SESSION.put("user-token-abc", sessionData, { expirationTtl: 3600 });
 - Feature flags managed externally
 - User preferences
 
-**Note:** Project Planton's spec includes a `ttl_seconds` field to document a default TTL policy for a namespace. While Cloudflare's API doesn't support namespace-wide TTL, this field serves as documentation and could be enforced by tooling that writes to KV.
+**Note:** OpenMCF's spec includes a `ttl_seconds` field to document a default TTL policy for a namespace. While Cloudflare's API doesn't support namespace-wide TTL, this field serves as documentation and could be enforced by tooling that writes to KV.
 
 ---
 
@@ -469,9 +469,9 @@ Hard-coding KV namespace IDs in `wrangler.toml` makes it hard to manage multiple
 
 ---
 
-## Project Planton's Approach: Simplicity by Design
+## OpenMCF's Approach: Simplicity by Design
 
-Project Planton abstracts Workers KV into a clean protobuf API that captures the 80% use case while staying out of your way.
+OpenMCF abstracts Workers KV into a clean protobuf API that captures the 80% use case while staying out of your way.
 
 ### The 80/20 Configuration
 
@@ -519,7 +519,7 @@ The `description` field isn't required by Cloudflare's API, but we include it to
 
 ### Under the Hood: Pulumi for Orchestration
 
-Project Planton uses **Pulumi (Go)** to provision KV namespaces. The implementation is straightforward:
+OpenMCF uses **Pulumi (Go)** to provision KV namespaces. The implementation is straightforward:
 
 ```go
 kvNamespace, err := cloudflare.NewWorkersKvNamespace(ctx, spec.NamespaceName, &cloudflare.WorkersKvNamespaceArgs{
@@ -528,7 +528,7 @@ kvNamespace, err := cloudflare.NewWorkersKvNamespace(ctx, spec.NamespaceName, &c
 ```
 
 **Why Pulumi over Terraform?**
-- **Language consistency:** Project Planton's codebase is Go-based, so Pulumi Go fits naturally
+- **Language consistency:** OpenMCF's codebase is Go-based, so Pulumi Go fits naturally
 - **Protobuf integration:** Easier to map protobuf specs to Pulumi resources programmatically
 - **Equivalent coverage:** Pulumi's Cloudflare provider (bridged from Terraform) supports all KV operations
 
@@ -536,7 +536,7 @@ That said, Terraform would work equally well. The protobuf API remains the same 
 
 ### What We Don't Manage
 
-Project Planton manages the **namespace lifecycle** (create, update, delete), but not the **contents** (keys and values). Why?
+OpenMCF manages the **namespace lifecycle** (create, update, delete), but not the **contents** (keys and values). Why?
 
 **1. Scale:** A namespace might contain thousands or millions of keys. Managing them in IaC state would be impractical.
 
@@ -560,7 +560,7 @@ wrangler kv:bulk put --namespace-id=$NAMESPACE_ID flags.json
 **Use case:** A developer's local sandbox for testing Workers with KV.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareKvNamespace
 metadata:
   name: myapp-dev-alice
@@ -582,7 +582,7 @@ spec:
 **Use case:** Staging environment mirroring production setup.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareKvNamespace
 metadata:
   name: myapp-config-staging
@@ -606,7 +606,7 @@ spec:
 **Config namespace:**
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareKvNamespace
 metadata:
   name: myapp-config-prod
@@ -619,7 +619,7 @@ spec:
 **Cache namespace:**
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareKvNamespace
 metadata:
   name: myapp-cache-prod
@@ -632,7 +632,7 @@ spec:
 **Session namespace:**
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareKvNamespace
 metadata:
   name: myapp-session-prod
@@ -740,7 +740,7 @@ wrangler kv:bulk import --namespace-id=$NEW_NAMESPACE_ID backup.json
 
 6. **Implement TTLs where appropriate.** Use expiration for ephemeral data (sessions, cache). Leave config data without TTL.
 
-7. **Project Planton simplifies the API.** Three fields (`namespace_name`, `ttl_seconds`, `description`) cover 80% of use cases. Advanced patterns happen at the application layer, not in infrastructure config.
+7. **OpenMCF simplifies the API.** Three fields (`namespace_name`, `ttl_seconds`, `description`) cover 80% of use cases. Advanced patterns happen at the application layer, not in infrastructure config.
 
 ---
 
@@ -754,5 +754,5 @@ wrangler kv:bulk import --namespace-id=$NEW_NAMESPACE_ID backup.json
 
 ---
 
-**Bottom Line:** Cloudflare Workers KV gives you globally distributed edge storage with minimal operational overhead. Manage namespaces with IaC, embrace eventual consistency in your application design, and use Wrangler for development velocity. Project Planton reduces the API surface to three essential fields, letting you focus on building edge applications instead of wrangling infrastructure.
+**Bottom Line:** Cloudflare Workers KV gives you globally distributed edge storage with minimal operational overhead. Manage namespaces with IaC, embrace eventual consistency in your application design, and use Wrangler for development velocity. OpenMCF reduces the API surface to three essential fields, letting you focus on building edge applications instead of wrangling infrastructure.
 

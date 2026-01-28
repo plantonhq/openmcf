@@ -16,7 +16,7 @@ AWS Security Groups are the fundamental building blocks of network security in V
 
 The challenge isn't in understanding what Security Groups do (they're conceptually straightforward), but in **managing them systematically across environments, teams, and the full application lifecycle**. How do you define security group rules that are neither too restrictive (breaking applications) nor too permissive (exposing attack surfaces)? How do you handle circular dependencies when two security groups need to reference each other? How do you update rules in production without causing traffic drops?
 
-This document explores the full spectrum of Security Group deployment methods—from manual console clicks to sophisticated IaC orchestration—and explains how Project Planton provides a production-ready, declarative approach that balances security, flexibility, and operational simplicity.
+This document explores the full spectrum of Security Group deployment methods—from manual console clicks to sophisticated IaC orchestration—and explains how OpenMCF provides a production-ready, declarative approach that balances security, flexibility, and operational simplicity.
 
 ## The Maturity Spectrum: How Teams Deploy Security Groups
 
@@ -190,7 +190,7 @@ By default, instances in the same Security Group **cannot** talk to each other u
 **Pattern:** For Cassandra, Elasticsearch, or any clustered application where nodes need to communicate, add an ingress rule where the source is the Security Group's own ID.
 
 In AWS terms: `source_security_group_id = <this SG's ID>`  
-In Project Planton: `self_reference = true`
+In OpenMCF: `self_reference = true`
 
 This allows all cluster members to communicate on the required ports (e.g., gossip, replication) without opening those ports to the broader network.
 
@@ -272,9 +272,9 @@ This covers the vast majority of use cases. Advanced needs (AWS Managed Prefix L
 
 ---
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton provides a **production-grade, declarative Security Group API** that balances simplicity for common cases with flexibility for advanced scenarios.
+OpenMCF provides a **production-grade, declarative Security Group API** that balances simplicity for common cases with flexibility for advanced scenarios.
 
 ### Design Philosophy
 
@@ -294,14 +294,14 @@ Project Planton provides a **production-grade, declarative Security Group API** 
    If two Security Groups reference each other, Planton's orchestration layer can create both SGs first, then populate rules in a second step. Users don't need to manually split operations.
 
 6. **Tagging and metadata**  
-   All Security Groups created by Planton are automatically tagged with `ManagedBy: ProjectPlanton`, ensuring clear ownership and enabling automated cleanup or auditing.
+   All Security Groups created by Planton are automatically tagged with `ManagedBy: OpenMCF`, ensuring clear ownership and enabling automated cleanup or auditing.
 
 7. **Validation and linting**  
    Planton can warn (or optionally block) risky configurations—e.g., opening SSH to `0.0.0.0/0` in production—guiding users toward best practices without being overly restrictive.
 
 ### Comparison to Raw IaC
 
-| **Aspect**                  | **Terraform/Pulumi (raw)** | **Project Planton** |
+| **Aspect**                  | **Terraform/Pulumi (raw)** | **OpenMCF** |
 |-----------------------------|----------------------------|---------------------|
 | Inline vs. separate rules   | User must choose, can conflict | Abstracted away (feels inline, implemented separately) |
 | Circular dependencies       | Manual workaround required | Handled automatically |
@@ -310,7 +310,7 @@ Project Planton provides a **production-grade, declarative Security Group API** 
 | Multi-cloud abstraction     | AWS-specific               | Unified API across AWS, GCP, Azure (for SG equivalents) |
 | Validation                  | Linting via external tools | Built-in best-practice checks |
 
-### When to Use Project Planton's Security Group API
+### When to Use OpenMCF's Security Group API
 
 - **Multi-cloud environments:** If you're managing infrastructure across AWS, GCP, and Azure, Planton's unified API reduces cognitive load.
 - **Platform teams:** Building internal developer platforms where application teams shouldn't need to understand AWS Security Group nuances.
@@ -329,7 +329,7 @@ AWS Security Groups are deceptively simple in concept but operationally complex 
 
 For teams reaching production maturity, Terraform and Pulumi are the industry-standard tools, each with trade-offs around rule management patterns and update semantics. CloudFormation/CDK remain the best choice for AWS-native teams willing to work within CloudFormation's constraints (or let CDK abstract them away).
 
-**Project Planton sits at the next level of abstraction:** providing a declarative, production-ready Security Group API that handles the sharp edges (circular dependencies, inline vs. separate, default egress) while remaining flexible enough for advanced use cases. Whether you're building a three-tier web app or a multi-account, multi-cloud platform, Planton's approach ensures Security Groups are defined clearly, versioned, and deployed with confidence.
+**OpenMCF sits at the next level of abstraction:** providing a declarative, production-ready Security Group API that handles the sharp edges (circular dependencies, inline vs. separate, default egress) while remaining flexible enough for advanced use cases. Whether you're building a three-tier web app or a multi-account, multi-cloud platform, Planton's approach ensures Security Groups are defined clearly, versioned, and deployed with confidence.
 
 The paradigm shift isn't just technical—it's cultural. When Security Groups are code-reviewed, tested in staging, and deployed via CI/CD, security stops being an afterthought and becomes an integral part of the development workflow. That's the difference between "we'll lock it down later" and "it's secure by default."
 

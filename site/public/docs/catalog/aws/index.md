@@ -1,13 +1,13 @@
 ---
 title: "AWS"
-description: "Deploy AWS resources using Project Planton"
+description: "Deploy AWS resources using OpenMCF"
 icon: "cloud"
 order: 10
 ---
 
 # AWS
 
-The following AWS resources can be deployed using Project Planton:
+The following AWS resources can be deployed using OpenMCF:
 
 - [ALB](/docs/catalog/aws/awsalb)
 - [Cert Manager Certificate](/docs/catalog/aws/awscertmanagercert)

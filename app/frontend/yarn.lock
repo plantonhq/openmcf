@@ -5314,9 +5314,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"project-planton-frontend@workspace:.":
+"openmcf-frontend@workspace:.":
   version: 0.0.0-use.local
-  resolution: "project-planton-frontend@workspace:."
+  resolution: "openmcf-frontend@workspace:."
   dependencies:
     "@bufbuild/protobuf": ^2.5.1
     "@connectrpc/connect": ^2.0.2

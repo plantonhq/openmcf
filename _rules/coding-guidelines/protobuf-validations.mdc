@@ -1,5 +1,5 @@
 ---
-description: Proto Validation coding guidelines for ProjectPlanton
+description: Proto Validation coding guidelines for OpenMCF
 globs:
   - apis/**/*.proto
 alwaysApply: false
@@ -65,21 +65,21 @@ option (buf.validate.message).cel = {
 
 ## Default Field Options
 
-When a field should have a default value that Project Planton applies automatically:
+When a field should have a default value that OpenMCF applies automatically:
 
 ### Requirements
 1. Mark the field as `optional`
-2. Add `(org.project_planton.shared.options.default)` field option
+2. Add `(org.openmcf.shared.options.default)` field option
 
 ### Import
 ```protobuf
-import "org/project_planton/shared/options/options.proto";
+import "org/openmcf/shared/options/options.proto";
 ```
 
 ### Syntax
 ```protobuf
 // ✅ Correct: Both optional keyword AND default option
-optional string namespace = 1 [(org.project_planton.shared.options.default) = "external-dns"];
+optional string namespace = 1 [(org.openmcf.shared.options.default) = "external-dns"];
 
 // ❌ Wrong: Default only in comment, no enforcement
 string namespace = 1;  // Missing optional + field option!

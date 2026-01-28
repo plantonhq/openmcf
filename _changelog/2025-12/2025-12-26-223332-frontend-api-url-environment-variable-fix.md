@@ -10,7 +10,7 @@ Fixed environment variable mismatch between the frontend code and Docker configu
 
 ## Problem Statement
 
-The Project Planton web app's frontend code and Docker configuration had an inconsistency in environment variable naming:
+The OpenMCF web app's frontend code and Docker configuration had an inconsistency in environment variable naming:
 
 ### The Mismatch
 
@@ -69,8 +69,8 @@ Updated `docker-compose.yml` to allow external configuration with sensible defau
 ```
 
 This follows the same pattern used for other configurable variables like:
-- `MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/project_planton}`
-- `PULUMI_CONFIG_PASSPHRASE=${PULUMI_CONFIG_PASSPHRASE:-project-planton-default-passphrase}`
+- `MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/openmcf}`
+- `PULUMI_CONFIG_PASSPHRASE=${PULUMI_CONFIG_PASSPHRASE:-openmcf-default-passphrase}`
 
 ## Implementation Details
 

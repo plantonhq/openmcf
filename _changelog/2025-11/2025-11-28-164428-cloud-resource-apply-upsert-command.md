@@ -17,22 +17,22 @@ The existing cloud resource management commands (`create`, `update`, `delete`) r
 **1. Non-idempotent workflows**: Running the same operation twice would fail
 ```bash
 # First run succeeds
-$ project-planton cloud-resource:create --arg=vpc.yaml
+$ openmcf cloud-resource:create --arg=vpc.yaml
 ✅ Created
 
 # Second run fails with duplicate name error
-$ project-planton cloud-resource:create --arg=vpc.yaml
+$ openmcf cloud-resource:create --arg=vpc.yaml
 ❌ Error: cloud resource with name 'my-vpc' already exists
 ```
 
 **2. ID tracking burden**: Update operations required knowing the MongoDB ObjectID
 ```bash
 # User had to manually find the ID first
-$ project-planton cloud-resource:list | grep my-vpc
+$ openmcf cloud-resource:list | grep my-vpc
 507f1f77bcf86cd799439011  my-vpc  CivoVpc  2025-11-28
 
 # Then use it for updates
-$ project-planton cloud-resource:update --id=507f1f77bcf86cd799439011 --arg=vpc-updated.yaml
+$ openmcf cloud-resource:update --id=507f1f77bcf86cd799439011 --arg=vpc-updated.yaml
 ```
 
 **3. Workflow complexity**: Different commands for create vs update scenarios
@@ -229,7 +229,7 @@ func (s *CloudResourceService) ApplyCloudResource(
 
 ### 4. CLI Command
 
-**File**: `cmd/project-planton/root/cloud_resource_apply.go`
+**File**: `cmd/openmcf/root/cloud_resource_apply.go`
 
 Created new CLI command following existing patterns:
 
@@ -269,7 +269,7 @@ func cloudResourceApplyHandler(cmd *cobra.Command, args []string) {
 
 ### 5. Command Registration
 
-**File**: `cmd/project-planton/root.go`
+**File**: `cmd/openmcf/root.go`
 
 Registered command alphabetically:
 
@@ -292,7 +292,7 @@ Added 4 new test scenarios covering all upsert behaviors:
 **Test 10: Apply creates new resource**
 ```bash
 # Apply a resource that doesn't exist
-project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply.yaml
+openmcf cloud-resource:apply --arg=/tmp/test-vpc-apply.yaml
 
 # Verify: Action: Created
 ✅ Apply correctly created new resource
@@ -301,7 +301,7 @@ project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply.yaml
 **Test 11: Apply updates existing resource**
 ```bash
 # Apply modified manifest with same name/kind
-project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply-updated.yaml
+openmcf cloud-resource:apply --arg=/tmp/test-vpc-apply-updated.yaml
 
 # Verify: Action: Updated
 ✅ Apply correctly updated existing resource
@@ -310,8 +310,8 @@ project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply-updated.yaml
 **Test 12: Idempotency check**
 ```bash
 # Apply same manifest multiple times
-project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply-updated.yaml
-project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply-updated.yaml
+openmcf cloud-resource:apply --arg=/tmp/test-vpc-apply-updated.yaml
+openmcf cloud-resource:apply --arg=/tmp/test-vpc-apply-updated.yaml
 
 # Verify: Both succeed with Action: Updated
 ✅ Apply is idempotent - can be run multiple times
@@ -320,10 +320,10 @@ project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply-updated.yaml
 **Test 13: Different kind, same name**
 ```bash
 # Apply CivoVpc:test-vpc-apply
-project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply.yaml
+openmcf cloud-resource:apply --arg=/tmp/test-vpc-apply.yaml
 
 # Apply AwsVpc:test-vpc-apply (same name, different kind)
-project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply-different-kind.yaml
+openmcf cloud-resource:apply --arg=/tmp/test-vpc-apply-different-kind.yaml
 
 # Verify: Two separate resources created
 ✅ Apply correctly created new resource for different kind
@@ -331,7 +331,7 @@ project-planton cloud-resource:apply --arg=/tmp/test-vpc-apply-different-kind.ya
 
 ### 7. Documentation Update
 
-**File**: `cmd/project-planton/CLI-HELP.md`
+**File**: `cmd/openmcf/CLI-HELP.md`
 
 Added comprehensive documentation section including:
 - Basic usage and examples
@@ -348,15 +348,15 @@ Added comprehensive documentation section including:
 **1. Simplified workflows**: One command for all scenarios
 ```bash
 # Same command works whether resource exists or not
-project-planton cloud-resource:apply --arg=vpc.yaml
-project-planton cloud-resource:apply --arg=vpc.yaml  # Works again!
+openmcf cloud-resource:apply --arg=vpc.yaml
+openmcf cloud-resource:apply --arg=vpc.yaml  # Works again!
 ```
 
 **2. Idempotent operations**: Safe to run multiple times
 ```bash
 # CI/CD pipeline can always apply, no conditional logic needed
 for manifest in infrastructure/*.yaml; do
-    project-planton cloud-resource:apply --arg="$manifest"
+    openmcf cloud-resource:apply --arg="$manifest"
 done
 ```
 
@@ -376,17 +376,17 @@ spec:
 **4. No ID tracking**: Name + kind is sufficient
 ```bash
 # Before: Required resource ID for updates
-project-planton cloud-resource:update --id=507f... --arg=vpc.yaml
+openmcf cloud-resource:update --id=507f... --arg=vpc.yaml
 
 # After: Just apply the manifest
-project-planton cloud-resource:apply --arg=vpc.yaml
+openmcf cloud-resource:apply --arg=vpc.yaml
 ```
 
 **5. Multi-cloud support**: Same names across different providers
 ```bash
 # Can have both without conflicts
-project-planton cloud-resource:apply --arg=civo-vpc.yaml    # CivoVpc:my-vpc
-project-planton cloud-resource:apply --arg=aws-vpc.yaml     # AwsVpc:my-vpc
+openmcf cloud-resource:apply --arg=civo-vpc.yaml    # CivoVpc:my-vpc
+openmcf cloud-resource:apply --arg=aws-vpc.yaml     # AwsVpc:my-vpc
 ```
 
 ### For Developers
@@ -395,13 +395,13 @@ project-planton cloud-resource:apply --arg=aws-vpc.yaml     # AwsVpc:my-vpc
 ```bash
 # Before: Complex scripting required
 if resource_exists "$name"; then
-    project-planton cloud-resource:update --id=$(get_id "$name") --arg="$file"
+    openmcf cloud-resource:update --id=$(get_id "$name") --arg="$file"
 else
-    project-planton cloud-resource:create --arg="$file"
+    openmcf cloud-resource:create --arg="$file"
 fi
 
 # After: Simple and clean
-project-planton cloud-resource:apply --arg="$file"
+openmcf cloud-resource:apply --arg="$file"
 ```
 
 **2. GitOps-friendly**: Infrastructure-as-code made easy
@@ -409,14 +409,14 @@ project-planton cloud-resource:apply --arg="$file"
 # Sync infrastructure from Git - always applies latest state
 git pull origin main
 for manifest in infrastructure/*.yaml; do
-    project-planton cloud-resource:apply --arg="$manifest"
+    openmcf cloud-resource:apply --arg="$manifest"
 done
 ```
 
 **3. Disaster recovery**: Reapply manifests to recreate infrastructure
 ```bash
 # Resources deleted? Just reapply from version control
-project-planton cloud-resource:apply --arg=all-resources/*.yaml
+openmcf cloud-resource:apply --arg=all-resources/*.yaml
 ```
 
 **4. Consistent patterns**: Follows Kubernetes conventions
@@ -447,7 +447,7 @@ project-planton cloud-resource:apply --arg=all-resources/*.yaml
 
 ```bash
 # Configure backend
-project-planton config set backend-url http://localhost:50051
+openmcf config set backend-url http://localhost:50051
 
 # Create a resource manifest
 cat > production-vpc.yaml <<EOF
@@ -461,7 +461,7 @@ spec:
 EOF
 
 # First apply - creates the resource
-$ project-planton cloud-resource:apply --arg=production-vpc.yaml
+$ openmcf cloud-resource:apply --arg=production-vpc.yaml
 ✅ Cloud resource applied successfully!
 
 Action: Created
@@ -477,7 +477,7 @@ cat >> production-vpc.yaml <<EOF
 EOF
 
 # Second apply - updates the resource
-$ project-planton cloud-resource:apply --arg=production-vpc.yaml
+$ openmcf cloud-resource:apply --arg=production-vpc.yaml
 ✅ Cloud resource applied successfully!
 
 Action: Updated
@@ -486,7 +486,7 @@ Name: production-vpc
 Kind: CivoVpc
 
 # Third apply with same manifest - still works (idempotent)
-$ project-planton cloud-resource:apply --arg=production-vpc.yaml
+$ openmcf cloud-resource:apply --arg=production-vpc.yaml
 ✅ Cloud resource applied successfully!
 
 Action: Updated
@@ -508,7 +508,7 @@ spec:
   cidr: 10.0.0.0/16
 EOF
 
-$ project-planton cloud-resource:apply --arg=civo-vpc.yaml
+$ openmcf cloud-resource:apply --arg=civo-vpc.yaml
 Action: Created  # ID: 507f1f77bcf86cd799439011
 
 # Create AWS VPC with same name - works because different kind!
@@ -521,11 +521,11 @@ spec:
   cidr: 10.1.0.0/16
 EOF
 
-$ project-planton cloud-resource:apply --arg=aws-vpc.yaml
+$ openmcf cloud-resource:apply --arg=aws-vpc.yaml
 Action: Created  # ID: 507f1f77bcf86cd799439012
 
 # Now you have TWO resources named "my-vpc"
-$ project-planton cloud-resource:list
+$ openmcf cloud-resource:list
 ID                     NAME      KIND     CREATED
 507f1f77bcf86cd799439011  my-vpc   CivoVpc  2025-11-28 16:00:00
 507f1f77bcf86cd799439012  my-vpc   AwsVpc   2025-11-28 16:01:00
@@ -545,7 +545,7 @@ git pull origin main
 # Apply all resources (creates new, updates existing)
 for manifest in infrastructure/manifests/*.yaml; do
     echo "Applying $(basename $manifest)..."
-    project-planton cloud-resource:apply --arg="$manifest"
+    openmcf cloud-resource:apply --arg="$manifest"
 done
 
 echo "Infrastructure deployment complete!"
@@ -568,15 +568,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Configure Project Planton
+      - name: Configure OpenMCF
         run: |
-          project-planton config set backend-url ${{ secrets.BACKEND_URL }}
+          openmcf config set backend-url ${{ secrets.BACKEND_URL }}
 
       - name: Apply Infrastructure
         run: |
           # Idempotent - safe to run on every commit
           for manifest in infrastructure/manifests/*.yaml; do
-            project-planton cloud-resource:apply --arg="$manifest"
+            openmcf cloud-resource:apply --arg="$manifest"
           done
 ```
 
@@ -787,7 +787,7 @@ These limitations are intentional for the initial implementation and can be addr
 **Phase 1**: Try apply for new workflows
 ```bash
 # New infrastructure? Use apply
-project-planton cloud-resource:apply --arg=new-resource.yaml
+openmcf cloud-resource:apply --arg=new-resource.yaml
 ```
 
 **Phase 2**: Migrate existing automation incrementally
@@ -796,7 +796,7 @@ project-planton cloud-resource:apply --arg=new-resource.yaml
 # Before:
 # if exists; then update; else create; fi
 # After:
-project-planton cloud-resource:apply --arg=resource.yaml
+openmcf cloud-resource:apply --arg=resource.yaml
 ```
 
 **Phase 3**: Standardize on apply for all workflows
@@ -811,37 +811,37 @@ Based on this foundation, future work could include:
 
 **1. Dry-run mode**
 ```bash
-project-planton cloud-resource:apply --arg=vpc.yaml --dry-run
+openmcf cloud-resource:apply --arg=vpc.yaml --dry-run
 # Output: Would update CivoVpc/my-vpc (changed: spec.cidr)
 ```
 
 **2. Diff output**
 ```bash
-project-planton cloud-resource:apply --arg=vpc.yaml --diff
+openmcf cloud-resource:apply --arg=vpc.yaml --diff
 # Shows unified diff of changes
 ```
 
 **3. Batch apply**
 ```bash
-project-planton cloud-resource:apply --arg=directory/
+openmcf cloud-resource:apply --arg=directory/
 # Apply all manifests in directory
 ```
 
 **4. Prune operations**
 ```bash
-project-planton cloud-resource:apply --arg=directory/ --prune
+openmcf cloud-resource:apply --arg=directory/ --prune
 # Delete resources not in manifest set
 ```
 
 **5. Manifest history**
 ```bash
-project-planton cloud-resource:history --name=my-vpc --kind=CivoVpc
+openmcf cloud-resource:history --name=my-vpc --kind=CivoVpc
 # Show previous manifest versions
 ```
 
 **6. Rollback support**
 ```bash
-project-planton cloud-resource:rollback --name=my-vpc --kind=CivoVpc --to-version=2
+openmcf cloud-resource:rollback --name=my-vpc --kind=CivoVpc --to-version=2
 # Rollback to previous manifest version
 ```
 

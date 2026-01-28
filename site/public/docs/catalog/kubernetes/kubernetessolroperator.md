@@ -14,7 +14,7 @@ For years, the conventional wisdom was clear: **don't run stateful search worklo
 
 What changed? The answer lies not in Solr becoming simpler or Kubernetes gaining magic stateful powers, but in the emergence of **Kubernetes operators** that encode Solr's operational complexity into the control plane. The Apache Solr Operator represents this paradigm shift—transforming what was once a deployment nightmare into a manageable, production-ready solution.
 
-This document explores the deployment landscape for Solr on Kubernetes, from anti-patterns to avoid through intermediate approaches, culminating in operator-based solutions. We'll examine why Project Planton chose the Apache Solr Operator as the default deployment method, and where to learn more about production operations.
+This document explores the deployment landscape for Solr on Kubernetes, from anti-patterns to avoid through intermediate approaches, culminating in operator-based solutions. We'll examine why OpenMCF chose the Apache Solr Operator as the default deployment method, and where to learn more about production operations.
 
 ## The Solr on Kubernetes Challenge
 
@@ -140,7 +140,7 @@ For a comprehensive guide to production operations, see the Apache Solr Operator
 
 ## The 80/20 Configuration Principle
 
-When designing the Project Planton API for KubernetesSolrOperator, we apply the **80/20 principle**: focus on the 20% of configuration parameters that 80% of users need to make informed decisions.
+When designing the OpenMCF API for KubernetesSolrOperator, we apply the **80/20 principle**: focus on the 20% of configuration parameters that 80% of users need to make informed decisions.
 
 **Essential Configuration Fields**:
 1. **Cluster Identity**: Name and namespace for the SolrCloud instance
@@ -160,20 +160,20 @@ When designing the Project Planton API for KubernetesSolrOperator, we apply the 
 - Backup scheduling (handled separately from deployment)
 - Multi-zone topology spread constraints (basic anti-affinity covers most cases)
 
-This minimal API surface makes KubernetesSolrOperator approachable without sacrificing flexibility. Power users needing advanced tuning can access the full Solr Operator CRD directly, but the Project Planton abstraction covers the typical production scenario.
+This minimal API surface makes KubernetesSolrOperator approachable without sacrificing flexibility. Power users needing advanced tuning can access the full Solr Operator CRD directly, but the OpenMCF abstraction covers the typical production scenario.
 
-## Project Planton's Choice
+## OpenMCF's Choice
 
-**Default: Apache Solr Operator** deployed via Helm, configured through the Project Planton abstraction layer.
+**Default: Apache Solr Operator** deployed via Helm, configured through the OpenMCF abstraction layer.
 
 **Justification**:
-- **Open Source Philosophy**: Aligns with Project Planton's commitment to 100% open source tooling—no vendor lock-in, no license fees.
+- **Open Source Philosophy**: Aligns with OpenMCF's commitment to 100% open source tooling—no vendor lock-in, no license fees.
 - **Production Proven**: Bloomberg's massive scale deployment and active Apache community provide confidence in stability and support.
 - **Comprehensive Automation**: The operator handles the full lifecycle—deployment, scaling, upgrades, backup, monitoring—reducing operational toil.
 - **No Viable Alternatives**: The Apache Solr Operator is the de facto standard. Other approaches (manual Helm, custom scripts) require significantly more effort for equivalent functionality.
 - **Future-Proof**: Active development with a roadmap toward v1.0.0, backward-compatible upgrade paths, and alignment with Kubernetes evolution.
 
-By defaulting to the Apache Solr Operator, Project Planton provides a production-ready SolrCloud deployment experience while abstracting away unnecessary complexity. The protobuf-based API exposes the essential 80% of configuration, with the operator handling the operational 20% that used to require manual intervention.
+By defaulting to the Apache Solr Operator, OpenMCF provides a production-ready SolrCloud deployment experience while abstracting away unnecessary complexity. The protobuf-based API exposes the essential 80% of configuration, with the operator handling the operational 20% that used to require manual intervention.
 
 ## Where to Learn More
 
@@ -196,7 +196,7 @@ Commercial support options if you need guaranteed SLAs and expert assistance.
 
 The journey from "don't run Solr on Kubernetes" to "run thousands of Solr clusters on Kubernetes" represents a fundamental shift in how we approach stateful workloads in containerized environments. The Apache Solr Operator embodies this shift—transforming Solr's operational complexity from a manual burden into automated, declarative infrastructure.
 
-For Project Planton, choosing the Apache Solr Operator as the default deployment method means users get production-ready SolrCloud clusters without navigating the deployment landscape themselves. The operator handles the hard parts—ZooKeeper coordination, safe rolling updates, shard rebalancing, backup orchestration—while the Project Planton API simplifies the configuration surface to what actually matters for most deployments.
+For OpenMCF, choosing the Apache Solr Operator as the default deployment method means users get production-ready SolrCloud clusters without navigating the deployment landscape themselves. The operator handles the hard parts—ZooKeeper coordination, safe rolling updates, shard rebalancing, backup orchestration—while the OpenMCF API simplifies the configuration surface to what actually matters for most deployments.
 
 The result is a deployment experience that respects Solr's complexity without overwhelming operators with it. That's the promise of Kubernetes operators, fully realized for SolrCloud.
 

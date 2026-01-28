@@ -336,11 +336,11 @@ index 45a838eb..ed7307fc 100644
  
  package backend.v1;
  
--option go_package = "github.com/plantonhq/project-planton/app/backend/apis/gen/go/proto;v1";
+-option go_package = "github.com/plantonhq/openmcf/app/backend/apis/gen/go/proto;v1";
 -
  import "google/protobuf/timestamp.proto";
  
-+option go_package = "github.com/plantonhq/project-planton/app/backend/apis/gen/go/proto;v1";
++option go_package = "github.com/plantonhq/openmcf/app/backend/apis/gen/go/proto;v1";
 +
  // CloudResourceService provides operations for managing cloud resources.
  service CloudResourceService {
@@ -2122,36 +2122,36 @@ index 983a379f..4cf6d769 100644
                            </IconButton>
                            <Menu
                              anchorEl={anchorEl[rowId]}
-diff --git a/cmd/project-planton/CLI-HELP.md b/cmd/project-planton/CLI-HELP.md
+diff --git a/cmd/openmcf/CLI-HELP.md b/cmd/openmcf/CLI-HELP.md
 index d34b66bc..939acd00 100644
---- a/cmd/project-planton/CLI-HELP.md
-+++ b/cmd/project-planton/CLI-HELP.md
-@@ -23,15 +23,18 @@ The Project Planton CLI uses a configuration system similar to Git, allowing you
+--- a/cmd/openmcf/CLI-HELP.md
++++ b/cmd/openmcf/CLI-HELP.md
+@@ -23,15 +23,18 @@ The OpenMCF CLI uses a configuration system similar to Git, allowing you
  Set a configuration value.
  
  **Available Keys:**
 +
- - `backend-url` - URL of the Project Planton backend service
+ - `backend-url` - URL of the OpenMCF backend service
  
  **Example:**
 +
  ```bash
- project-planton config set backend-url http://localhost:50051
- project-planton config set backend-url https://api.project-planton.com
+ openmcf config set backend-url http://localhost:50051
+ openmcf config set backend-url https://api.openmcf.com
  ```
  
  **Validation:**
 +
  - `backend-url` must start with `http://` or `https://`
  
- #### `project-planton config get <key>`
-@@ -39,12 +42,14 @@ project-planton config set backend-url https://api.project-planton.com
+ #### `openmcf config get <key>`
+@@ -39,12 +42,14 @@ openmcf config set backend-url https://api.openmcf.com
  Get a configuration value.
  
  **Example:**
 +
  ```bash
- project-planton config get backend-url
+ openmcf config get backend-url
  # Output: http://localhost:50051
  ```
  
@@ -2160,15 +2160,15 @@ index d34b66bc..939acd00 100644
  - Returns exit code 1 if the key is not set
  - Prints error message for unknown keys
  
-@@ -53,6 +58,7 @@ project-planton config get backend-url
+@@ -53,6 +58,7 @@ openmcf config get backend-url
  List all configuration values.
  
  **Example:**
 +
  ```bash
- project-planton config list
+ openmcf config list
  # Output: backend-url=http://localhost:50051
-@@ -83,6 +89,7 @@ project-planton list-deployment-components
+@@ -83,6 +89,7 @@ openmcf list-deployment-components
  ```
  
  **Sample Output:**
@@ -2176,7 +2176,7 @@ index d34b66bc..939acd00 100644
  ```
  NAME                KIND                PROVIDER    VERSION  ID PREFIX  SERVICE KIND  CREATED
  PostgresKubernetes  PostgresKubernetes  kubernetes  v1       k8spg      Yes           2025-11-25
-@@ -103,6 +110,7 @@ project-planton list-deployment-components -k AwsRdsInstance
+@@ -103,6 +110,7 @@ openmcf list-deployment-components -k AwsRdsInstance
  ```
  
  **Sample Output:**
@@ -2184,14 +2184,14 @@ index d34b66bc..939acd00 100644
  ```
  NAME                KIND                PROVIDER    VERSION  ID PREFIX  SERVICE KIND  CREATED
  PostgresKubernetes  PostgresKubernetes  kubernetes  v1       k8spg      Yes           2025-11-25
-@@ -152,12 +160,14 @@ project-planton cloud-resource:create --arg=path/to/manifest.yaml
+@@ -152,12 +160,14 @@ openmcf cloud-resource:create --arg=path/to/manifest.yaml
  ```
  
  **Example:**
 +
  ```bash
  # Create a cloud resource from a YAML file
- project-planton cloud-resource:create --arg=my-vpc.yaml
+ openmcf cloud-resource:create --arg=my-vpc.yaml
  ```
  
  **Sample Output:**
@@ -2219,7 +2219,7 @@ index d34b66bc..939acd00 100644
 +
  ```
  Error: --arg flag is required. Provide path to YAML manifest file
- Usage: project-planton cloud-resource:create --arg=<yaml-file>
+ Usage: openmcf cloud-resource:create --arg=<yaml-file>
  ```
  
  **Invalid YAML:**
@@ -2239,7 +2239,7 @@ index d34b66bc..939acd00 100644
  ```
  Error: Cannot connect to backend service at http://localhost:50051. Please check:
    1. The backend service is running
-@@ -226,6 +242,7 @@ project-planton cloud-resource:list
+@@ -226,6 +242,7 @@ openmcf cloud-resource:list
  ```
  
  **Sample Output:**
@@ -2247,7 +2247,7 @@ index d34b66bc..939acd00 100644
  ```
  ID                     NAME      KIND            CREATED
  507f1f77bcf86cd799439011  my-vpc   CivoVpc        2025-11-28 13:14:12
-@@ -245,6 +262,7 @@ project-planton cloud-resource:list -k AwsRdsInstance
+@@ -245,6 +262,7 @@ openmcf cloud-resource:list -k AwsRdsInstance
  ```
  
  **Sample Output:**
@@ -2255,14 +2255,14 @@ index d34b66bc..939acd00 100644
  ```
  ID                     NAME      KIND     CREATED
  507f1f77bcf86cd799439011  my-vpc   CivoVpc  2025-11-28 13:14:12
-@@ -277,12 +295,14 @@ project-planton cloud-resource:get --id=<resource-id>
+@@ -277,12 +295,14 @@ openmcf cloud-resource:get --id=<resource-id>
  ```
  
  **Example:**
 +
  ```bash
  # Get a cloud resource by ID
- project-planton cloud-resource:get --id=507f1f77bcf86cd799439011
+ openmcf cloud-resource:get --id=507f1f77bcf86cd799439011
  ```
  
  **Sample Output:**
@@ -2277,7 +2277,7 @@ index d34b66bc..939acd00 100644
 +
  ```
  Error: --id flag is required. Provide the cloud resource ID
- Usage: project-planton cloud-resource:get --id=<resource-id>
+ Usage: openmcf cloud-resource:get --id=<resource-id>
  ```
  
  **Resource not found:**
@@ -2291,14 +2291,14 @@ index d34b66bc..939acd00 100644
  ```
  Error: Invalid manifest - invalid ID format
  ```
-@@ -337,12 +360,14 @@ project-planton cloud-resource:update --id=<resource-id> --arg=<yaml-file>
+@@ -337,12 +360,14 @@ openmcf cloud-resource:update --id=<resource-id> --arg=<yaml-file>
  ```
  
  **Example:**
 +
  ```bash
  # Update a cloud resource
- project-planton cloud-resource:update --id=507f1f77bcf86cd799439011 --arg=my-vpc-updated.yaml
+ openmcf cloud-resource:update --id=507f1f77bcf86cd799439011 --arg=my-vpc-updated.yaml
  ```
  
  **Sample Output:**
@@ -2328,7 +2328,7 @@ index d34b66bc..939acd00 100644
  ```
  Error: --id flag is required. Provide the cloud resource ID
  Error: --arg flag is required. Provide path to YAML manifest file
-@@ -392,21 +420,25 @@ Usage: project-planton cloud-resource:update --id=<resource-id> --arg=<yaml-file
+@@ -392,21 +420,25 @@ Usage: openmcf cloud-resource:update --id=<resource-id> --arg=<yaml-file
  ```
  
  **Resource not found:**
@@ -2354,14 +2354,14 @@ index d34b66bc..939acd00 100644
  ```
  Error: Invalid manifest - invalid YAML format: yaml: line 2: found character that cannot start any token
  ```
-@@ -422,12 +454,14 @@ project-planton cloud-resource:delete --id=<resource-id>
+@@ -422,12 +454,14 @@ openmcf cloud-resource:delete --id=<resource-id>
  ```
  
  **Example:**
 +
  ```bash
  # Delete a cloud resource
- project-planton cloud-resource:delete --id=507f1f77bcf86cd799439011
+ openmcf cloud-resource:delete --id=507f1f77bcf86cd799439011
  ```
  
  **Sample Output:**
@@ -2369,14 +2369,14 @@ index d34b66bc..939acd00 100644
  ```
  ✅ Cloud resource 'my-vpc' deleted successfully
  ```
-@@ -440,17 +474,20 @@ project-planton cloud-resource:delete --id=507f1f77bcf86cd799439011
+@@ -440,17 +474,20 @@ openmcf cloud-resource:delete --id=507f1f77bcf86cd799439011
  #### Error Handling
  
  **Missing ID:**
 +
  ```
  Error: --id flag is required. Provide the cloud resource ID
- Usage: project-planton cloud-resource:delete --id=<resource-id>
+ Usage: openmcf cloud-resource:delete --id=<resource-id>
  ```
  
  **Resource not found:**
@@ -2390,14 +2390,14 @@ index d34b66bc..939acd00 100644
  ```
  Error: Cannot connect to backend service at http://localhost:50051. Please check:
    1. The backend service is running
-@@ -469,6 +506,7 @@ project-planton cloud-resource:apply --arg=path/to/manifest.yaml
+@@ -469,6 +506,7 @@ openmcf cloud-resource:apply --arg=path/to/manifest.yaml
  ```
  
  **Example:**
 +
  ```bash
  # Apply a cloud resource (create or update)
- project-planton cloud-resource:apply --arg=my-vpc.yaml
+ openmcf cloud-resource:apply --arg=my-vpc.yaml
 @@ -519,10 +557,12 @@ Updated At: 2025-11-28 15:30:45
  #### Manifest Requirements
  
@@ -2418,8 +2418,8 @@ index d34b66bc..939acd00 100644
 +
  ```bash
  # Create infrastructure from scratch
- project-planton cloud-resource:apply --arg=vpc.yaml
-@@ -602,6 +643,7 @@ project-planton cloud-resource:apply --arg=cache.yaml
+ openmcf cloud-resource:apply --arg=vpc.yaml
+@@ -602,6 +643,7 @@ openmcf cloud-resource:apply --arg=cache.yaml
  ```
  
  **2. Configuration Updates**
@@ -2427,7 +2427,7 @@ index d34b66bc..939acd00 100644
  ```bash
  # Modify vpc.yaml to change CIDR or add tags
  # Then apply the changes
-@@ -610,6 +652,7 @@ project-planton cloud-resource:apply --arg=vpc.yaml
+@@ -610,6 +652,7 @@ openmcf cloud-resource:apply --arg=vpc.yaml
  ```
  
  **3. GitOps Workflows**
@@ -2435,15 +2435,15 @@ index d34b66bc..939acd00 100644
  ```bash
  # In CI/CD pipeline - always apply the latest manifest
  git pull origin main
-@@ -617,6 +660,7 @@ project-planton cloud-resource:apply --arg=manifests/production-vpc.yaml
+@@ -617,6 +660,7 @@ openmcf cloud-resource:apply --arg=manifests/production-vpc.yaml
  ```
  
  **4. Disaster Recovery**
 +
  ```bash
  # Resources deleted accidentally? Just reapply
- project-planton cloud-resource:apply --arg=all-resources/*.yaml
-@@ -626,14 +670,17 @@ project-planton cloud-resource:apply --arg=all-resources/*.yaml
+ openmcf cloud-resource:apply --arg=all-resources/*.yaml
+@@ -626,14 +670,17 @@ openmcf cloud-resource:apply --arg=all-resources/*.yaml
  #### Comparison with Other Commands
  
  **Apply vs Create:**
@@ -2461,14 +2461,14 @@ index d34b66bc..939acd00 100644
  - Use `apply` for declarative, idempotent workflows (recommended for most cases)
  - Use `create` when you want to ensure a resource doesn't already exist
  - Use `update` when you have the resource ID and want explicit update semantics
-@@ -641,23 +688,27 @@ project-planton cloud-resource:apply --arg=all-resources/*.yaml
+@@ -641,23 +688,27 @@ openmcf cloud-resource:apply --arg=all-resources/*.yaml
  #### Error Handling
  
  **Missing manifest:**
 +
  ```
  Error: --arg flag is required. Provide path to YAML manifest file
- Usage: project-planton cloud-resource:apply --arg=<yaml-file>
+ Usage: openmcf cloud-resource:apply --arg=<yaml-file>
  ```
  
  **Invalid YAML:**
@@ -2489,85 +2489,85 @@ index d34b66bc..939acd00 100644
  ```
  Error: Cannot connect to backend service at http://localhost:50051. Please check:
    1. The backend service is running
-@@ -680,11 +731,13 @@ project-planton config set backend-url <your-backend-url>
+@@ -680,11 +731,13 @@ openmcf config set backend-url <your-backend-url>
  ### Initial Setup
  
  1. **Configure the backend URL:**
 +
     ```bash
-    project-planton config set backend-url http://localhost:50051
+    openmcf config set backend-url http://localhost:50051
     ```
  
  2. **Verify configuration:**
 +
     ```bash
-    project-planton config get backend-url
+    openmcf config get backend-url
     ```
-@@ -697,11 +750,13 @@ project-planton config set backend-url <your-backend-url>
+@@ -697,11 +750,13 @@ openmcf config set backend-url <your-backend-url>
  ### Daily Usage
  
  1. **List all available deployment components:**
 +
     ```bash
-    project-planton list-deployment-components
+    openmcf list-deployment-components
     ```
  
  2. **Find specific component types:**
 +
     ```bash
     # List all Kubernetes components
-    project-planton list-deployment-components --kind PostgresKubernetes
-@@ -711,6 +766,7 @@ project-planton config set backend-url <your-backend-url>
+    openmcf list-deployment-components --kind PostgresKubernetes
+@@ -711,6 +766,7 @@ openmcf config set backend-url <your-backend-url>
     ```
  
  3. **Manage cloud resources:**
 +
     ```bash
     # Apply a cloud resource (recommended - works for create and update)
-    project-planton cloud-resource:apply --arg=my-vpc.yaml
-@@ -729,6 +785,7 @@ project-planton config set backend-url <your-backend-url>
+    openmcf cloud-resource:apply --arg=my-vpc.yaml
+@@ -729,6 +785,7 @@ openmcf config set backend-url <your-backend-url>
     ```
  
  4. **List cloud resources:**
 +
     ```bash
     # List all cloud resources
-    project-planton cloud-resource:list
-@@ -745,16 +802,19 @@ project-planton config set backend-url <your-backend-url>
+    openmcf cloud-resource:list
+@@ -745,16 +802,19 @@ openmcf config set backend-url <your-backend-url>
  ### Environment-Specific Setup
  
  #### Local Development
 +
  ```bash
- project-planton config set backend-url http://localhost:50051
+ openmcf config set backend-url http://localhost:50051
  ```
  
  #### Staging Environment
 +
  ```bash
- project-planton config set backend-url https://staging-api.project-planton.com
+ openmcf config set backend-url https://staging-api.openmcf.com
  ```
  
  #### Production Environment
 +
  ```bash
- project-planton config set backend-url https://api.project-planton.com
+ openmcf config set backend-url https://api.openmcf.com
  ```
-@@ -766,11 +826,13 @@ project-planton config set backend-url https://api.project-planton.com
+@@ -766,11 +826,13 @@ openmcf config set backend-url https://api.openmcf.com
  ### Backend URL Not Configured
  
  **Error:**
 +
  ```
- Error: backend URL not configured. Run: project-planton config set backend-url <url>
+ Error: backend URL not configured. Run: openmcf config set backend-url <url>
  ```
  
  **Solution:**
 +
  ```bash
- project-planton config set backend-url http://localhost:50051
+ openmcf config set backend-url http://localhost:50051
  ```
-@@ -778,6 +840,7 @@ project-planton config set backend-url http://localhost:50051
+@@ -778,6 +840,7 @@ openmcf config set backend-url http://localhost:50051
  ### Connection Refused
  
  **Error:**
@@ -2591,7 +2591,7 @@ index d34b66bc..939acd00 100644
  2. **Verify backend URL configuration:**
 +
     ```bash
-    project-planton config get backend-url
+    openmcf config get backend-url
     ```
 @@ -808,11 +874,13 @@ Error: Cannot connect to backend service at http://localhost:50051. Please check
  ### Invalid Backend URL
@@ -2606,8 +2606,8 @@ index d34b66bc..939acd00 100644
 +
  ```bash
  # Correct format
- project-planton config set backend-url http://localhost:50051
-@@ -822,6 +890,7 @@ project-planton config set backend-url https://api.example.com
+ openmcf config set backend-url http://localhost:50051
+@@ -822,6 +890,7 @@ openmcf config set backend-url https://api.example.com
  ### No Results Found
  
  **Output:**
@@ -2629,7 +2629,7 @@ index d34b66bc..939acd00 100644
  1. **Check without filters:**
 +
     ```bash
-    project-planton list-deployment-components
+    openmcf list-deployment-components
     ```
 @@ -846,21 +918,25 @@ No deployment components found with kind 'YourKind'
  ### Cloud Resource Creation Errors
@@ -2655,8 +2655,8 @@ index d34b66bc..939acd00 100644
  **Solution:**
 +
  - Use a different name for the resource
- - Check existing resources: `project-planton cloud-resource:list`
- - Delete the existing resource if needed: `project-planton cloud-resource:delete --id=<id>`
+ - Check existing resources: `openmcf cloud-resource:list`
+ - Delete the existing resource if needed: `openmcf cloud-resource:delete --id=<id>`
 @@ -868,31 +944,37 @@ Error: Invalid manifest - cloud resource with name 'my-vpc' already exists
  ### Cloud Resource Update Errors
  
@@ -2669,7 +2669,7 @@ index d34b66bc..939acd00 100644
  **Solution:**
 +
  - Ensure the manifest `metadata.name` matches the existing resource name
- - Get current resource details: `project-planton cloud-resource:get --id=<id>`
+ - Get current resource details: `openmcf cloud-resource:get --id=<id>`
  - Update the manifest to use the correct name
  
  **Kind Mismatch:**
@@ -2682,7 +2682,7 @@ index d34b66bc..939acd00 100644
 +
  - Ensure the manifest `kind` matches the existing resource kind
  - If you need to change the kind, delete and recreate the resource
- - Get current resource details: `project-planton cloud-resource:get --id=<id>`
+ - Get current resource details: `openmcf cloud-resource:get --id=<id>`
  
  **Resource Not Found:**
 +
@@ -2693,7 +2693,7 @@ index d34b66bc..939acd00 100644
  **Solution:**
 +
  - Verify the resource ID is correct
- - List all resources: `project-planton cloud-resource:list`
+ - List all resources: `openmcf cloud-resource:list`
  - The resource may have been deleted
 @@ -900,16 +982,19 @@ Error: Cloud resource with ID '507f1f77bcf86cd799439011' not found
  ### Cloud Resource Deletion Errors
@@ -2707,7 +2707,7 @@ index d34b66bc..939acd00 100644
  **Solution:**
 +
  - Verify the resource ID is correct
- - List all resources: `project-planton cloud-resource:list`
+ - List all resources: `openmcf cloud-resource:list`
  - The resource may have already been deleted
  
  **Empty Results:**
@@ -2729,13 +2729,13 @@ index d34b66bc..939acd00 100644
  1. **Check without filters:**
 +
     ```bash
-    project-planton cloud-resource:list
+    openmcf cloud-resource:list
     ```
  
  2. **Create a test resource:**
 +
     ```bash
-    project-planton cloud-resource:create --arg=test-resource.yaml
+    openmcf cloud-resource:create --arg=test-resource.yaml
     ```
 @@ -939,7 +1028,9 @@ No cloud resources found with kind 'YourKind'
  **Error:** Permission denied or file access issues
@@ -2745,7 +2745,7 @@ index d34b66bc..939acd00 100644
  1. **Check file permissions:**
 +
     ```bash
-    ls -la ~/.project-planton/
+    ls -la ~/.openmcf/
     ```
 @@ -955,7 +1046,9 @@ No cloud resources found with kind 'YourKind'
  **Error:** Timeout or DNS resolution issues
@@ -2757,11 +2757,11 @@ index d34b66bc..939acd00 100644
     ```bash
     ping <your-backend-host>
     curl <your-backend-url>
-@@ -1205,6 +1298,7 @@ project-planton list-deployment-components --output json
+@@ -1205,6 +1298,7 @@ openmcf list-deployment-components --output json
  ## Support
  
  For additional help:
 +
- - Check the main CLI help: `project-planton --help`
- - Command-specific help: `project-planton <command> --help`
- - Project documentation: [Project Planton Documentation](https://project-planton.org)
+ - Check the main CLI help: `openmcf --help`
+ - Command-specific help: `openmcf <command> --help`
+ - Project documentation: [OpenMCF Documentation](https://openmcf.org)

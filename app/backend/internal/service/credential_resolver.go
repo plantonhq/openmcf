@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"strings"
 
-	credentialv1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1"
-	auth0v1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/auth0"
-	awsv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws"
-	azurev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure"
-	gcpv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind"
-	"github.com/plantonhq/project-planton/app/backend/internal/database"
-	"github.com/plantonhq/project-planton/app/backend/pkg/models"
-	"github.com/plantonhq/project-planton/pkg/crkreflect"
+	credentialv1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1"
+	auth0v1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/auth0"
+	awsv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/aws"
+	azurev1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/azure"
+	gcpv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/gcp"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/cloudresourcekind"
+	"github.com/plantonhq/openmcf/app/backend/internal/database"
+	"github.com/plantonhq/openmcf/app/backend/pkg/models"
+	"github.com/plantonhq/openmcf/pkg/crkreflect"
 )
 
 // CredentialResolver resolves provider credentials from the database based on provider.

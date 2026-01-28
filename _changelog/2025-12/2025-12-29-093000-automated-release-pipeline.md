@@ -6,7 +6,7 @@
 
 ## Summary
 
-Implemented a fully automated release pipeline for the Project Planton CLI using GoReleaser v2 and GitHub Actions. Running `make release` now auto-calculates the next semantic version, creates a git tag, and triggers a workflow that builds cross-platform binaries, creates a GitHub release, and auto-updates the Homebrew Cask.
+Implemented a fully automated release pipeline for the OpenMCF CLI using GoReleaser v2 and GitHub Actions. Running `make release` now auto-calculates the next semantic version, creates a git tag, and triggers a workflow that builds cross-platform binaries, creates a GitHub release, and auto-updates the Homebrew Cask.
 
 ## Problem Statement / Motivation
 
@@ -56,26 +56,26 @@ Created `.github/workflows/release.yml`:
 
 ```yaml
 version: 2
-project_name: project-planton
+project_name: openmcf
 
 builds:
   - ldflags:
-      - -s -w -X github.com/plantonhq/project-planton/internal/cli/version.Version={{.Version}}
+      - -s -w -X github.com/plantonhq/openmcf/internal/cli/version.Version={{.Version}}
     goos: [darwin, linux, windows]
     goarch: [amd64, arm64]
 
 homebrew_casks:
-  - name: project-planton
+  - name: openmcf
     repository:
-      owner: project-planton
+      owner: openmcf
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    binaries: [project-planton]
+    binaries: [openmcf]
     hooks:
       post:
         install: |
           if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/project-planton"]
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/openmcf"]
           end
 ```
 
@@ -102,7 +102,7 @@ Created `tap_migrations.json` for seamless migration from Formula to Cask:
 
 ```json
 {
-  "project-planton": "plantonhq/tap/project-planton"
+  "openmcf": "plantonhq/tap/openmcf"
 }
 ```
 
@@ -119,7 +119,7 @@ Created `tap_migrations.json` for seamless migration from Formula to Cask:
 
 - **Windows support**: CLI now available for Windows (amd64/arm64)
 - **No security warnings**: macOS Gatekeeper quarantine auto-removed
-- **Easy installation**: `brew install --cask plantonhq/tap/project-planton`
+- **Easy installation**: `brew install --cask plantonhq/tap/openmcf`
 - **GitHub Releases**: Direct downloads without cloud authentication
 
 ### For CI/CD
@@ -135,7 +135,7 @@ Created `tap_migrations.json` for seamless migration from Formula to Cask:
 | Before | After |
 |--------|-------|
 | GCS downloads | GitHub Releases |
-| Formula (`brew install plantonhq/tap/project-planton`) | Cask (`brew install --cask plantonhq/tap/project-planton`) |
+| Formula (`brew install plantonhq/tap/openmcf`) | Cask (`brew install --cask plantonhq/tap/openmcf`) |
 | Manual version argument | Auto-calculated via Python script |
 | Darwin + Linux only | Darwin + Linux + Windows |
 | Gatekeeper warnings | No warnings (quarantine removed) |

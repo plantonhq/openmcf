@@ -12,7 +12,7 @@ componentName: "kubernetesgatewayapicrds"
 
 The Kubernetes Gateway API represents the next generation of ingress and service mesh traffic routing APIs for Kubernetes. Unlike its predecessor, the Ingress API, Gateway API was designed from the ground up with role-oriented design, expressiveness, and extensibility as core principles.
 
-This research document explores the Gateway API landscape, explains why CRD management matters, and justifies the design decisions in Project Planton's KubernetesGatewayApiCrds component.
+This research document explores the Gateway API landscape, explains why CRD management matters, and justifies the design decisions in OpenMCF's KubernetesGatewayApiCrds component.
 
 ## The Evolution of Kubernetes Traffic Management
 
@@ -296,7 +296,7 @@ Organizations running multiple clusters face:
 - **Testing complexity**: Hard to test upgrades before production
 - **Audit requirements**: No record of when/what was installed
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
 ### Design Principles
 
@@ -383,7 +383,7 @@ This separation ensures:
 
 ### Multi-Cluster Strategy
 
-1. **Centralized version management**: Use Project Planton to ensure consistency
+1. **Centralized version management**: Use OpenMCF to ensure consistency
 2. **Environment progression**: dev → staging → production
 3. **Canary upgrades**: Upgrade one cluster first, monitor, then roll out
 4. **Rollback plan**: Know how to revert if issues arise
@@ -418,7 +418,7 @@ This separation ensures:
 
 The Kubernetes Gateway API represents a significant improvement over Ingress, providing a more expressive, role-oriented, and portable API for traffic management. Proper CRD management is essential for production deployments.
 
-Project Planton's KubernetesGatewayApiCrds component provides:
+OpenMCF's KubernetesGatewayApiCrds component provides:
 
 - **Declarative CRD management** instead of manual kubectl commands
 - **Version control** for consistent deployments

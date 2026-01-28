@@ -16,7 +16,7 @@ What's easy for a learning exercise becomes a liability in production. Manual co
 
 The modern cloud paradigm has shifted decisively toward Infrastructure-as-Code (IaC), where infrastructure is defined as declarative data structures, reviewed like application code, and deployed through automated pipelines. This shift wasn't arbitrary—it was driven by the hard lessons of managing complex systems at scale.
 
-This document explores the landscape of EC2 instance deployment methods, from manual console workflows to sophisticated IaC abstractions. We'll examine why certain approaches have become best practices, what makes a production-grade EC2 configuration, and how Project Planton's AwsEc2Instance API embodies these principles in a clean, opinionated abstraction.
+This document explores the landscape of EC2 instance deployment methods, from manual console workflows to sophisticated IaC abstractions. We'll examine why certain approaches have become best practices, what makes a production-grade EC2 configuration, and how OpenMCF's AwsEc2Instance API embodies these principles in a clean, opinionated abstraction.
 
 ## The Deployment Landscape: A Maturity Spectrum
 
@@ -174,7 +174,7 @@ The AWS Cloud Development Kit (CDK) introduced an explicit two-tier model that's
 
 This L1/L2 split is AWS's explicit admission: *the raw API is too complex for most users*.
 
-**Project Planton's AwsEc2Instance follows the L2 philosophy.** It doesn't expose every EC2 parameter. It focuses on the 20% of configuration that covers 80% of use cases, provides secure-by-default settings, and abstracts complex multi-resource patterns into simple flags.
+**OpenMCF's AwsEc2Instance follows the L2 philosophy.** It doesn't expose every EC2 parameter. It focuses on the 20% of configuration that covers 80% of use cases, provides secure-by-default settings, and abstracts complex multi-resource patterns into simple flags.
 
 ## Production Essentials: The Non-Negotiables
 
@@ -410,7 +410,7 @@ This anti-pattern contributed to the 2024 CrowdStrike outage, where a faulty, un
 - **Atomic deployments:** Updates are all-or-nothing.
 - **Instant rollbacks:** Route traffic back to the old instance.
 
-**For Project Planton:** The controller's update strategy should follow the immutable pattern. A change to `ami_id` should trigger a "create-before-destroy" replacement.
+**For OpenMCF:** The controller's update strategy should follow the immutable pattern. A change to `ami_id` should trigger a "create-before-destroy" replacement.
 
 ### Vertical Scaling
 
@@ -445,7 +445,7 @@ This is the most important comparison.
 - **Use EC2 when:** You need full control, VPC integration, IAM roles, granular security, and the full range of instance types. This is the correct choice for all enterprise applications.
 - **Use Lightsail when:** You want a simple, all-in-one VPS with a fixed monthly price for hobbyist projects that don't need to integrate with the broader AWS ecosystem.
 
-## Project Planton's Choice: An L2 Abstraction
+## OpenMCF's Choice: An L2 Abstraction
 
 The AwsEc2Instance API embodies the lessons learned from the deployment landscape:
 
@@ -467,7 +467,7 @@ Infrastructure is no longer something you "set up" once and then manually mainta
 
 The AWS EC2 instance, one of the oldest and most fundamental AWS services, has matured from a "click and SSH" model to a secure, declarative, SSM-managed resource that's deployed, monitored, and replaced like any other piece of software.
 
-Project Planton's AwsEc2Instance API brings this philosophy full circle: it provides a clean, L2-style abstraction that enforces best practices, minimizes cognitive load, and lets engineers focus on solving business problems rather than wrestling with hundreds of low-level API parameters.
+OpenMCF's AwsEc2Instance API brings this philosophy full circle: it provides a clean, L2-style abstraction that enforces best practices, minimizes cognitive load, and lets engineers focus on solving business problems rather than wrestling with hundreds of low-level API parameters.
 
 The next time you need to deploy an EC2 instance, you won't be clicking through a console wizard. You'll be defining a protobuf spec, committing it to Git, and letting a controller reconcile reality to match your declared intent. That's the infrastructure-as-code future—and it's already here.
 

@@ -1,20 +1,20 @@
 ---
 title: "CLI Reference"
-description: "Complete command-line reference for project-planton CLI - all commands, flags, and options"
+description: "Complete command-line reference for openmcf CLI - all commands, flags, and options"
 icon: "terminal"
 order: 1
 ---
 
 # CLI Reference
 
-Complete command-line reference for the `project-planton` CLI.
+Complete command-line reference for the `openmcf` CLI.
 
 ---
 
 ## Command Tree
 
 ```
-project-planton
+openmcf
 ├── apply               Deploy infrastructure (unified, auto-detects provisioner)
 ├── destroy             Teardown infrastructure (or 'delete')
 ├── init                Initialize backend/stack (unified, auto-detects provisioner)
@@ -45,31 +45,31 @@ project-planton
 
 ### apply
 
-**NEW!** Unified kubectl-style command to deploy infrastructure by automatically detecting the provisioner from the manifest label `project-planton.org/provisioner`.
+**NEW!** Unified kubectl-style command to deploy infrastructure by automatically detecting the provisioner from the manifest label `openmcf.org/provisioner`.
 
 **Usage**:
 
 ```bash
-project-planton apply -f <file> [flags]
+openmcf apply -f <file> [flags]
 # or
-project-planton apply -f <file> [flags]
+openmcf apply -f <file> [flags]
 ```
 
 **Example**:
 
 ```bash
 # Auto-detect provisioner from manifest
-project-planton apply -f database.yaml
+openmcf apply -f database.yaml
 
 # With kustomize
-project-planton apply --kustomize-dir services/api --overlay prod
+openmcf apply --kustomize-dir services/api --overlay prod
 
 # With overrides
-project-planton apply -f api.yaml --set spec.replicas=5
+openmcf apply -f api.yaml --set spec.replicas=5
 ```
 
 **How it works**:
-1. Reads the `project-planton.org/provisioner` label from your manifest
+1. Reads the `openmcf.org/provisioner` label from your manifest
 2. Automatically routes to the appropriate provisioner (pulumi/tofu/terraform)
 3. If label is missing, prompts you to select a provisioner interactively (defaults to Pulumi)
 
@@ -84,21 +84,21 @@ project-planton apply -f api.yaml --set spec.replicas=5
 **Usage**:
 
 ```bash
-project-planton destroy -f <file> [flags]
-project-planton delete -f <file> [flags]
+openmcf destroy -f <file> [flags]
+openmcf delete -f <file> [flags]
 ```
 
 **Example**:
 
 ```bash
 # Auto-detect provisioner from manifest
-project-planton destroy -f database.yaml
+openmcf destroy -f database.yaml
 
 # Using kubectl-style delete alias
-project-planton delete -f database.yaml
+openmcf delete -f database.yaml
 
 # With auto-approve (skips confirmation)
-project-planton destroy -f api.yaml --auto-approve
+openmcf destroy -f api.yaml --auto-approve
 ```
 
 ### init
@@ -108,27 +108,27 @@ project-planton destroy -f api.yaml --auto-approve
 **Usage**:
 
 ```bash
-project-planton init -f <file> [flags]
+openmcf init -f <file> [flags]
 ```
 
 **Example**:
 
 ```bash
 # Auto-detect provisioner from manifest
-project-planton init -f database.yaml
+openmcf init -f database.yaml
 
 # With kustomize
-project-planton init --kustomize-dir services/api --overlay prod
+openmcf init --kustomize-dir services/api --overlay prod
 
 # Reconfigure after backend changes
-project-planton init -f app.yaml --reconfigure
+openmcf init -f app.yaml --reconfigure
 
 # With tofu-specific backend config
-project-planton init -f app.yaml --backend-type s3 --backend-config bucket=my-bucket
+openmcf init -f app.yaml --backend-type s3 --backend-config bucket=my-bucket
 ```
 
 **How it works**:
-1. Reads the `project-planton.org/provisioner` label from your manifest
+1. Reads the `openmcf.org/provisioner` label from your manifest
 2. Routes to appropriate initialization:
    - **Pulumi**: Creates stack if it doesn't exist
    - **Tofu**: Initializes backend and downloads providers
@@ -143,28 +143,28 @@ project-planton init -f app.yaml --backend-type s3 --backend-config bucket=my-bu
 **Usage**:
 
 ```bash
-project-planton plan -f <file> [flags]
-project-planton preview -f <file> [flags]
+openmcf plan -f <file> [flags]
+openmcf preview -f <file> [flags]
 ```
 
 **Example**:
 
 ```bash
 # Auto-detect provisioner and preview changes
-project-planton plan -f database.yaml
+openmcf plan -f database.yaml
 
 # Using preview alias (Pulumi-style)
-project-planton preview -f database.yaml
+openmcf preview -f database.yaml
 
 # With kustomize
-project-planton plan --kustomize-dir services/api --overlay staging
+openmcf plan --kustomize-dir services/api --overlay staging
 
 # Preview destroy plan (Tofu)
-project-planton plan -f app.yaml --destroy
+openmcf plan -f app.yaml --destroy
 ```
 
 **How it works**:
-1. Reads the `project-planton.org/provisioner` label from your manifest
+1. Reads the `openmcf.org/provisioner` label from your manifest
 2. Routes to appropriate preview operation:
    - **Pulumi**: Runs `pulumi preview`
    - **Tofu**: Runs `tofu plan`
@@ -177,20 +177,20 @@ project-planton plan -f app.yaml --destroy
 **Usage**:
 
 ```bash
-project-planton refresh -f <file> [flags]
+openmcf refresh -f <file> [flags]
 ```
 
 **Example**:
 
 ```bash
 # Auto-detect provisioner and refresh state
-project-planton refresh -f database.yaml
+openmcf refresh -f database.yaml
 
 # With kustomize
-project-planton refresh --kustomize-dir services/api --overlay prod
+openmcf refresh --kustomize-dir services/api --overlay prod
 
 # Show detailed diffs (Pulumi)
-project-planton refresh -f app.yaml --diff
+openmcf refresh -f app.yaml --diff
 ```
 
 **How it works**:
@@ -213,7 +213,7 @@ Manage infrastructure using Pulumi as the IaC engine.
 **Example**:
 
 ```bash
-project-planton pulumi up -f database.yaml
+openmcf pulumi up -f database.yaml
 ```
 
 ### tofu
@@ -227,7 +227,7 @@ Manage infrastructure using OpenTofu/Terraform as the IaC engine.
 **Example**:
 
 ```bash
-project-planton tofu apply -f database.yaml
+openmcf tofu apply -f database.yaml
 ```
 
 ### validate
@@ -237,17 +237,17 @@ Validate a manifest against its Protocol Buffer schema without deploying.
 **Usage**:
 
 ```bash
-project-planton validate -f <file> [flags]
+openmcf validate -f <file> [flags]
 ```
 
 **Example**:
 
 ```bash
 # Validate single manifest
-project-planton validate -f ops/resources/database.yaml
+openmcf validate -f ops/resources/database.yaml
 
 # With kustomize
-project-planton validate \
+openmcf validate \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 
@@ -267,22 +267,22 @@ Load a manifest and display it with defaults applied and overrides resolved.
 **Usage**:
 
 ```bash
-project-planton load-manifest -f <file> [flags]
+openmcf load-manifest -f <file> [flags]
 ```
 
 **Example**:
 
 ```bash
 # Load manifest and see defaults
-project-planton load-manifest -f database.yaml
+openmcf load-manifest -f database.yaml
 
 # Load with overrides
-project-planton load-manifest \
+openmcf load-manifest \
   -f api.yaml \
   --set spec.replicas=5
 
 # Load kustomize-built manifest
-project-planton load-manifest \
+openmcf load-manifest \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 ```
@@ -293,18 +293,18 @@ project-planton load-manifest \
 
 ### version
 
-Show Project Planton CLI version information.
+Show OpenMCF CLI version information.
 
 **Usage**:
 
 ```bash
-project-planton version
+openmcf version
 ```
 
 **Example Output**:
 
 ```
-project-planton version: v0.1.0
+openmcf version: v0.1.0
 git commit: a1b2c3d
 built: 2025-11-11T10:30:00Z
 ```
@@ -418,9 +418,9 @@ By default, the CLI reads credentials from environment variables - the same ones
 
 ```bash
 # These work without any credential flags if env vars are set
-project-planton apply -f aws-vpc.yaml         # Uses AWS_ACCESS_KEY_ID, etc.
-project-planton apply -f gcp-cluster.yaml     # Uses GOOGLE_APPLICATION_CREDENTIALS
-project-planton apply -f azure-aks.yaml       # Uses ARM_CLIENT_ID, etc.
+openmcf apply -f aws-vpc.yaml         # Uses AWS_ACCESS_KEY_ID, etc.
+openmcf apply -f gcp-cluster.yaml     # Uses GOOGLE_APPLICATION_CREDENTIALS
+openmcf apply -f azure-aks.yaml       # Uses ARM_CLIENT_ID, etc.
 ```
 
 **Explicit Override (`-p, --provider-config <file>`)**:
@@ -435,7 +435,7 @@ Use the `-p` flag to override environment variables with an explicit credentials
 ```
 
 **How it works**: 
-1. The CLI parses your manifest's `apiVersion` (e.g., `aws.project-planton.org/v1`)
+1. The CLI parses your manifest's `apiVersion` (e.g., `aws.openmcf.org/v1`)
 2. Determines the required provider (e.g., AWS)
 3. Loads credentials from environment variables OR from the file specified with `-p`
 
@@ -477,7 +477,7 @@ See [Credentials Guide](/docs/guides/credentials) for complete list of provider-
 Downloaded URL manifests are cached in:
 
 ```
-~/.project-planton/manifests/downloaded/
+~/.openmcf/manifests/downloaded/
 ```
 
 ### Module Cache
@@ -485,7 +485,7 @@ Downloaded URL manifests are cached in:
 Cloned IaC modules are cached in:
 
 ```
-~/.project-planton/modules/
+~/.openmcf/modules/
 ```
 
 ---
@@ -496,18 +496,18 @@ Cloned IaC modules are cached in:
 
 ```bash
 # Unified kubectl-style (recommended)
-project-planton validate -f database.yaml
-project-planton apply -f database.yaml
+openmcf validate -f database.yaml
+openmcf apply -f database.yaml
 
 # Using Pulumi directly
-project-planton validate -f database.yaml
-project-planton pulumi up -f database.yaml
+openmcf validate -f database.yaml
+openmcf pulumi up -f database.yaml
 
 # Using OpenTofu directly
-project-planton validate -f database.yaml
-project-planton tofu init -f database.yaml
-project-planton tofu plan -f database.yaml
-project-planton tofu apply -f database.yaml
+openmcf validate -f database.yaml
+openmcf tofu init -f database.yaml
+openmcf tofu plan -f database.yaml
+openmcf tofu apply -f database.yaml
 ```
 
 ### Multi-Environment Deployment
@@ -515,7 +515,7 @@ project-planton tofu apply -f database.yaml
 ```bash
 # Deploy across environments with unified command
 for env in dev staging prod; do
-    project-planton apply \
+    openmcf apply \
         --kustomize-dir services/api/kustomize \
         --overlay $env \
         --yes
@@ -526,7 +526,7 @@ done
 
 ```bash
 # Non-interactive with dynamic values (unified command)
-project-planton apply \
+openmcf apply \
   -f deployment.yaml \
   --set spec.container.image.tag=$CI_COMMIT_SHA \
   --yes
@@ -536,7 +536,7 @@ project-planton apply \
 
 ```bash
 # Point to local module during development
-project-planton pulumi preview \
+openmcf pulumi preview \
   -f test.yaml \
   --module-dir ~/dev/my-module
 ```
@@ -559,14 +559,14 @@ project-planton pulumi preview \
 
 ```bash
 # General help
-project-planton --help
+openmcf --help
 
 # Command-specific help
-project-planton pulumi --help
-project-planton tofu apply --help
+openmcf pulumi --help
+openmcf tofu apply --help
 ```
 
-**Found an issue?** [Open an issue](https://github.com/plantonhq/project-planton/issues)
+**Found an issue?** [Open an issue](https://github.com/plantonhq/openmcf/issues)
 
 **Need support?** Check existing issues or discussions
 

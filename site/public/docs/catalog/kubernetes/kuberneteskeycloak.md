@@ -14,7 +14,7 @@ For years, the conventional wisdom around deploying Keycloak—the industry-stan
 
 The problem? **Keycloak is inherently stateful**. It relies on an embedded Infinispan cache to store critical runtime data including user authentication sessions, offline tokens, and login failure tracking. When you deploy multiple replicas using a standard `kind: Deployment`, each pod boots as a standalone instance with no awareness of its siblings. The result is a "split-brain" scenario where a user authenticates against pod-A, but their next request lands on pod-B, which has no knowledge of their session, forcing them to re-authenticate and completely breaking the Single Sign-On promise that Keycloak exists to deliver.
 
-This document explores the landscape of Keycloak deployment methods on Kubernetes, from common mistakes through intermediate approaches to production-ready solutions. More importantly, it explains **why** Project Planton has made specific architectural choices that prioritize open-source sustainability, operational simplicity, and Day 2 lifecycle management over mere Day 1 installation convenience.
+This document explores the landscape of Keycloak deployment methods on Kubernetes, from common mistakes through intermediate approaches to production-ready solutions. More importantly, it explains **why** OpenMCF has made specific architectural choices that prioritize open-source sustainability, operational simplicity, and Day 2 lifecycle management over mere Day 1 installation convenience.
 
 ## The Evolution: From Naive Deployments to Operator-Driven Lifecycle Management
 
@@ -101,11 +101,11 @@ Keycloak itself is licensed under **Apache 2.0**—a permissive open-source lice
 
 The Bitnami licensing change represents a cautionary tale about dependency risk. For years, Bitnami built goodwill by providing high-quality, well-maintained charts and images. But a corporate acquisition changed the business model overnight, creating a "licensing time bomb" set to detonate in mid-2025. Any infrastructure built on Bitnami charts will face a forced migration or subscription requirement.
 
-For Project Planton—an open-source IaC framework—building abstractions on Bitnami would expose every user to this risk. The only sustainable path is to standardize on the official Apache 2.0 stack or community-driven alternatives like Codecentric that explicitly commit to open-source principles.
+For OpenMCF—an open-source IaC framework—building abstractions on Bitnami would expose every user to this risk. The only sustainable path is to standardize on the official Apache 2.0 stack or community-driven alternatives like Codecentric that explicitly commit to open-source principles.
 
-## Project Planton's Approach: Emulating the Operator's Declarative Surface
+## OpenMCF's Approach: Emulating the Operator's Declarative Surface
 
-Project Planton's `KeycloakKubernetes` resource is designed to mirror the clean, declarative API surface of the Official Keycloak Operator's CRD, not the sprawling `values.yaml` of a Helm chart.
+OpenMCF's `KeycloakKubernetes` resource is designed to mirror the clean, declarative API surface of the Official Keycloak Operator's CRD, not the sprawling `values.yaml` of a Helm chart.
 
 ### Why This Matters: Day 2 vs. Day 1 Philosophy
 
@@ -113,7 +113,7 @@ Helm charts are optimized for the "Day 1" problem: parameterizing installation. 
 
 Operators are optimized for the "Day 2" problem: ongoing lifecycle management. They hide the 80% of complexity that represents implementation details (which port Infinispan uses, how JGroups is configured, which probes to use) and expose only the 20% of essential fields that define your deployment's identity (replicas, hostname, database, TLS).
 
-Project Planton follows this philosophy: **the abstraction should make strong, production-ready decisions on behalf of the user, exposing only the fields that genuinely vary between environments.**
+OpenMCF follows this philosophy: **the abstraction should make strong, production-ready decisions on behalf of the user, exposing only the fields that genuinely vary between environments.**
 
 ### The "80/20" API Surface
 
@@ -142,7 +142,7 @@ The minimal, production-ready configuration for `KeycloakKubernetes` includes:
 Here's what a production-ready `KeycloakKubernetes` resource looks like:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KeycloakKubernetes
 metadata:
   name: keycloak-prod
@@ -178,7 +178,7 @@ This configuration:
 - Exposes the admin console at a separate, more restrictive hostname for security
 - Automatically creates Prometheus metrics endpoints and `ServiceMonitor` resources
 
-The fields you **don't** see are equally important: the API doesn't expose JGroups configuration, Infinispan cache tuning, probe definitions, or port mappings. These are implementation details that Project Planton handles internally using production best practices.
+The fields you **don't** see are equally important: the API doesn't expose JGroups configuration, Infinispan cache tuning, probe definitions, or port mappings. These are implementation details that OpenMCF handles internally using production best practices.
 
 ## Production Best Practices
 
@@ -215,7 +215,7 @@ Keycloak's disaster recovery strategy revolves around the database, which contai
 
 ### Observability: Metrics, Logs, and Health Monitoring
 
-Keycloak exposes comprehensive Prometheus-format metrics via the `/metrics` endpoint, including JVM statistics, cache hit rates, and per-endpoint performance data. When monitoring is enabled, Project Planton automatically creates a Prometheus `ServiceMonitor` resource for seamless integration with the Prometheus Operator.
+Keycloak exposes comprehensive Prometheus-format metrics via the `/metrics` endpoint, including JVM statistics, cache hit rates, and per-endpoint performance data. When monitoring is enabled, OpenMCF automatically creates a Prometheus `ServiceMonitor` resource for seamless integration with the Prometheus Operator.
 
 Keycloak logs are emitted in structured JSON format, making them easily parseable by log aggregation tools like Loki, Fluent Bit, or Elasticsearch.
 
@@ -225,9 +225,9 @@ The Keycloak deployment landscape has matured from "just run a Deployment" anti-
 
 Helm charts solve the Day 1 problem elegantly, but they leave Day 2 operations—upgrades, scaling, healing, and configuration management—as manual, error-prone tasks. The Operator pattern, by contrast, encodes operational expertise into automated controllers, enabling zero-downtime upgrades, declarative realm management, and self-healing infrastructure.
 
-Project Planton's `KeycloakKubernetes` resource follows this philosophy: it provides a clean, minimal API surface modeled on the Official Keycloak Operator's CRD, hiding implementation complexity while exposing only the fields that genuinely vary between environments. This approach prioritizes long-term operational excellence over short-term installation convenience.
+OpenMCF's `KeycloakKubernetes` resource follows this philosophy: it provides a clean, minimal API surface modeled on the Official Keycloak Operator's CRD, hiding implementation complexity while exposing only the fields that genuinely vary between environments. This approach prioritizes long-term operational excellence over short-term installation convenience.
 
-By standardizing on the Apache 2.0-licensed official Keycloak stack and avoiding licensing risks like the Bitnami paywall, Project Planton ensures that your identity infrastructure remains open-source, sustainable, and free from vendor lock-in.
+By standardizing on the Apache 2.0-licensed official Keycloak stack and avoiding licensing risks like the Bitnami paywall, OpenMCF ensures that your identity infrastructure remains open-source, sustainable, and free from vendor lock-in.
 
-**The modern paradigm for Keycloak on Kubernetes isn't about choosing between Helm and Operators—it's about recognizing that production infrastructure requires lifecycle management, not just installation tooling.** Project Planton delivers that guarantee through a declarative, production-ready API that lets you focus on your application's identity needs, not the operational complexity of distributed state management.
+**The modern paradigm for Keycloak on Kubernetes isn't about choosing between Helm and Operators—it's about recognizing that production infrastructure requires lifecycle management, not just installation tooling.** OpenMCF delivers that guarantee through a declarative, production-ready API that lets you focus on your application's identity needs, not the operational complexity of distributed state management.
 

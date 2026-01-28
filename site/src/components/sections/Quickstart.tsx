@@ -16,17 +16,17 @@ export default function Quickstart() {
   };
 
   const steps = [
-    { id: "install", title: "1. Install", code: "brew install plantonhq/tap/project-planton" },
+    { id: "install", title: "1. Install", code: "brew install plantonhq/tap/openmcf" },
     {
       id: "manifest",
       title: "2. Create manifest with provisioner label",
       code: `cat > manifest.yaml <<EOF
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: my-database
   labels:
-    project-planton.org/provisioner: pulumi  # or tofu
+    openmcf.org/provisioner: pulumi  # or tofu
 spec:
   container:
     replicas: 1
@@ -36,20 +36,20 @@ spec:
         memory: 1Gi
 EOF`,
     },
-    { id: "validate", title: "3. Validate", code: "project-planton validate -f manifest.yaml" },
+    { id: "validate", title: "3. Validate", code: "openmcf validate -f manifest.yaml" },
     {
       id: "deploy",
       title: "4. Deploy (kubectl-style! 🚀)",
       code: `# Auto-detects provisioner from label
-project-planton apply -f manifest.yaml
+openmcf apply -f manifest.yaml
 
 # With field overrides
-project-planton apply -f manifest.yaml --set spec.container.replicas=3`,
+openmcf apply -f manifest.yaml --set spec.container.replicas=3`,
     },
     {
       id: "destroy",
       title: "5. Destroy (optional)",
-      code: `project-planton destroy -f manifest.yaml`,
+      code: `openmcf destroy -f manifest.yaml`,
     },
   ];
 
@@ -106,7 +106,7 @@ project-planton apply -f manifest.yaml --set spec.container.replicas=3`,
           <h3 className="text-lg font-bold text-white mb-4">✨ What&apos;s New</h3>
           <ul className="text-slate-300 space-y-2">
             <li>• <strong>kubectl-style commands</strong>: Use <code className="text-purple-400">apply</code> and <code className="text-purple-400">destroy</code> for all deployments</li>
-            <li>• <strong>Auto-detection</strong>: Provisioner automatically detected from <code className="text-purple-400">project-planton.org/provisioner</code> label</li>
+            <li>• <strong>Auto-detection</strong>: Provisioner automatically detected from <code className="text-purple-400">openmcf.org/provisioner</code> label</li>
             <li>• <strong>Interactive prompts</strong>: If label is missing, CLI prompts you to choose (defaults to Pulumi)</li>
             <li>• <strong>Backward compatible</strong>: Traditional <code className="text-purple-400">pulumi</code> and <code className="text-purple-400">tofu</code> commands still work</li>
           </ul>

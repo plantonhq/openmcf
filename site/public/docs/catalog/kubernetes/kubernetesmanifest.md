@@ -12,9 +12,9 @@ componentName: "kubernetesmanifest"
 
 Every Kubernetes practitioner knows the fundamental command: `kubectl apply -f manifest.yaml`. It's the gateway to Kubernetes—simple, direct, and powerful. Yet this simplicity masks significant operational challenges when deploying at scale: no state tracking, no rollback mechanism, no dependency ordering for CRDs, and no integration with broader infrastructure-as-code workflows.
 
-The KubernetesManifest component addresses a specific gap in the Project Planton ecosystem: the need to deploy arbitrary Kubernetes resources that don't fit into more specialized components. While components like KubernetesDeployment and KubernetesHelmRelease excel at their specific use cases, there's always a need for a "raw" deployment mechanism—an escape hatch that provides all the benefits of IaC (state management, drift detection, dependency tracking) without imposing any abstraction on the manifest content itself.
+The KubernetesManifest component addresses a specific gap in the OpenMCF ecosystem: the need to deploy arbitrary Kubernetes resources that don't fit into more specialized components. While components like KubernetesDeployment and KubernetesHelmRelease excel at their specific use cases, there's always a need for a "raw" deployment mechanism—an escape hatch that provides all the benefits of IaC (state management, drift detection, dependency tracking) without imposing any abstraction on the manifest content itself.
 
-This document explores the landscape of Kubernetes manifest deployment methods, explains why Project Planton's approach matters, and details the design decisions behind the KubernetesManifest component.
+This document explores the landscape of Kubernetes manifest deployment methods, explains why OpenMCF's approach matters, and details the design decisions behind the KubernetesManifest component.
 
 ## The Problem Space
 
@@ -305,13 +305,13 @@ data:
 | Kustomize | ❌ | ❌ | ✅ | ❌ | ⚠️ Script-based |
 | Terraform | ✅ | ⚠️ Manual | ⚠️ Complex | ✅ | ✅ Native |
 | Pulumi yaml/v2 | ✅ | ✅ Auto | ✅ Native | ✅ | ✅ Native |
-| Project Planton | ✅ | ✅ Auto | ✅ Native | ✅ | ✅ Native |
+| OpenMCF | ✅ | ✅ Auto | ✅ Native | ✅ | ✅ Native |
 
-## The Project Planton Approach
+## The OpenMCF Approach
 
 ### Design Philosophy
 
-KubernetesManifest follows Project Planton's core principle: **make the correct choice the easy choice**. This means:
+KubernetesManifest follows OpenMCF's core principle: **make the correct choice the easy choice**. This means:
 
 1. **Zero abstraction**: The manifest YAML is applied exactly as written
 2. **Automatic CRD ordering**: No manual dependency management required
@@ -329,7 +329,7 @@ While Pulumi's yaml/v2 is excellent, using it directly requires:
 KubernetesManifest wraps this complexity in a declarative API:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesManifest
 metadata:
   name: my-resources
@@ -346,7 +346,7 @@ This provides:
 - Declarative YAML interface
 - Automatic provider setup
 - Consistent credential handling
-- Integration with Project Planton's ecosystem
+- Integration with OpenMCF's ecosystem
 
 ### API Design Decisions
 
@@ -434,7 +434,7 @@ For large deployments, organize manifests logically:
 
 ```yaml
 # Option 1: Multiple KubernetesManifest resources
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesManifest
 metadata:
   name: rbac-resources
@@ -444,7 +444,7 @@ spec:
     # RBAC resources only
     ...
 ---
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesManifest
 metadata:
   name: network-policies
@@ -473,14 +473,14 @@ spec:
 
 ## Conclusion
 
-The KubernetesManifest component fills an essential gap in the Project Planton ecosystem: deploying arbitrary Kubernetes resources with full IaC benefits. By wrapping Pulumi's yaml/v2 in a declarative API, it provides:
+The KubernetesManifest component fills an essential gap in the OpenMCF ecosystem: deploying arbitrary Kubernetes resources with full IaC benefits. By wrapping Pulumi's yaml/v2 in a declarative API, it provides:
 
 - **Simplicity**: Declare what you want, the platform handles the rest
 - **Flexibility**: Deploy any Kubernetes resource type
 - **Safety**: Automatic CRD ordering prevents timing issues
-- **Consistency**: Same patterns as all other Project Planton components
+- **Consistency**: Same patterns as all other OpenMCF components
 
-For teams migrating from kubectl-based workflows, KubernetesManifest provides a smooth transition path. For teams already using Project Planton, it's the escape hatch that handles everything the specialized components don't.
+For teams migrating from kubectl-based workflows, KubernetesManifest provides a smooth transition path. For teams already using OpenMCF, it's the escape hatch that handles everything the specialized components don't.
 
 The right tool for the job isn't always the most specialized one—sometimes it's the most flexible one that integrates seamlessly with your existing workflow.
 

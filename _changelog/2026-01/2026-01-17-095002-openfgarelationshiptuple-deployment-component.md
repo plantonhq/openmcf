@@ -19,7 +19,7 @@ Relationship tuples are the core data structure in OpenFGA:
 - **Object**: The resource being accessed (e.g., `document:budget-2024`)
 - **Condition** (optional): Dynamic rules evaluated at check time
 
-Without this component, users would need to manually create tuples outside of the Project Planton workflow.
+Without this component, users would need to manually create tuples outside of the OpenMCF workflow.
 
 ## Solution / What's New
 
@@ -90,7 +90,7 @@ message OpenFgaRelationshipTupleStackOutputs {
 ```
 
 **api.proto** - KRM envelope:
-- apiVersion: `open-fga.project-planton.org/v1`
+- apiVersion: `open-fga.openmcf.org/v1`
 - kind: `OpenFgaRelationshipTuple`
 - Standard metadata, spec, status structure
 
@@ -174,7 +174,7 @@ output "object" { value = openfga_relationship_tuple.this.object }
 
 ### Direct
 
-- Users can now manage OpenFGA relationship tuples through Project Planton
+- Users can now manage OpenFGA relationship tuples through OpenMCF
 - Complete OpenFGA workflow: Store → Model → Tuple
 - CLI supports OpenFgaRelationshipTuple manifests with `--openfga-provider-config` flag
 
@@ -194,7 +194,7 @@ output "object" { value = openfga_relationship_tuple.this.object }
 ### Basic Tuple
 
 ```yaml
-apiVersion: open-fga.project-planton.org/v1
+apiVersion: open-fga.openmcf.org/v1
 kind: OpenFgaRelationshipTuple
 metadata:
   name: anne-views-budget
@@ -210,7 +210,7 @@ spec:
 ### With Condition
 
 ```yaml
-apiVersion: open-fga.project-planton.org/v1
+apiVersion: open-fga.openmcf.org/v1
 kind: OpenFgaRelationshipTuple
 metadata:
   name: anne-conditional-access
@@ -231,7 +231,7 @@ spec:
 
 ```bash
 # Deploy using Terraform/Tofu (required - no Pulumi provider)
-project-planton apply --manifest relationship-tuple.yaml \
+openmcf apply --manifest relationship-tuple.yaml \
   --openfga-provider-config openfga-creds.yaml \
   --provisioner tofu
 ```

@@ -1,6 +1,6 @@
 package valuefrom
 
-import v1 "github.com/plantonhq/project-planton/apis/org/project_planton/shared/foreignkey/v1"
+import v1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
 
 func ToStringArray(input []*v1.StringValueOrRef) []string {
 	resp := make([]string, 0)

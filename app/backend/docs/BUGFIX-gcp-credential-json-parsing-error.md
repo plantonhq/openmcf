@@ -8,10 +8,10 @@ Deployments of GCP cloud resources were failing with the following error:
 error: an unhandled error occurred: program failed:
 1 error occurred:
 	* failed to load stack-input: failed to load json into proto message:
-	  proto: syntax error (line 1:3754): unexpected token "project-planton-testing"
+	  proto: syntax error (line 1:3754): unexpected token "openmcf-testing"
 ```
 
-The error occurred at character position 3754 in the JSON, where an unquoted string "project-planton-testing" (the GCP project ID from the service account key) was encountered.
+The error occurred at character position 3754 in the JSON, where an unquoted string "openmcf-testing" (the GCP project ID from the service account key) was encountered.
 
 ## Root Cause
 

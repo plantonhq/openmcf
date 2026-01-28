@@ -3,7 +3,7 @@ import { create } from '@bufbuild/protobuf';
 // Connect RPC clients accept messages directly, no wrapping needed
 import { AppContext } from '@/contexts';
 import { useConnectRpcClient } from '@/hooks';
-import { CloudResourceCommandController } from '@/gen/org/project_planton/app/cloudresource/v1/command_pb';
+import { CloudResourceCommandController } from '@/gen/org/openmcf/app/cloudresource/v1/command_pb';
 import {
   CreateCloudResourceRequestSchema,
   CreateCloudResourceResponse,
@@ -11,8 +11,8 @@ import {
   UpdateCloudResourceResponse,
   DeleteCloudResourceRequestSchema,
   DeleteCloudResourceResponse,
-} from '@/gen/org/project_planton/app/cloudresource/v1/io_pb';
-import { CloudResource } from '@/gen/org/project_planton/app/cloudresource/v1/api_pb';
+} from '@/gen/org/openmcf/app/cloudresource/v1/io_pb';
+import { CloudResource } from '@/gen/org/openmcf/app/cloudresource/v1/api_pb';
 
 interface CommandType {
   create: (manifest: string) => Promise<CloudResource>;

@@ -1,7 +1,0 @@
-apiVersion: kubernetes.project-planton.org/v1
-kind: TemporalKubernetes
-metadata:
-  name: project-planton-test-temporal
-spec:
-  database:
-    backend: cassandra

@@ -14,7 +14,7 @@ If you've deployed databases on AWS, you've faced a choice: use standard RDS ins
 
 The landscape has evolved dramatically. What once required deep AWS expertise and careful orchestration of DB clusters, subnet groups, parameter groups, and security policies can now be expressed as declarative configuration. But the path from "point and click in the console" to "production-ready IaC" is littered with anti-patterns, cost surprises, and availability pitfalls.
 
-This document maps the Aurora deployment landscape—from the approaches you should avoid, through intermediate solutions, to production-grade practices. We'll explore how Aurora differs fundamentally from traditional RDS, why Infrastructure as Code matters more for databases than almost any other resource, and how Project Planton abstracts the complexity while preserving the power.
+This document maps the Aurora deployment landscape—from the approaches you should avoid, through intermediate solutions, to production-grade practices. We'll explore how Aurora differs fundamentally from traditional RDS, why Infrastructure as Code matters more for databases than almost any other resource, and how OpenMCF abstracts the complexity while preserving the power.
 
 ## The Aurora Advantage: Why It's Not Just "RDS with Training Wheels"
 
@@ -272,19 +272,19 @@ A Crossplane controller watches this resource and creates the Aurora cluster in 
 **When this makes sense:**  
 For platform engineering teams building internal developer platforms on Kubernetes, Crossplane provides a consistent interface. Developers request a "database" and get Aurora (or Cloud SQL, or RDS) depending on context. The platform team maintains the compositions and policies.
 
-For Project Planton's multi-cloud vision, this level of abstraction is interesting—but typically as an internal implementation detail, not what users interact with directly.
+For OpenMCF's multi-cloud vision, this level of abstraction is interesting—but typically as an internal implementation detail, not what users interact with directly.
 
 **Verdict:** Powerful for platform engineering at scale. Overkill for teams just needing to deploy Aurora. Best used when building a platform that abstracts cloud differences for application teams.
 
-## What Project Planton Supports (And Why)
+## What OpenMCF Supports (And Why)
 
-Project Planton's philosophy is **pragmatic abstraction**: expose the 20% of configuration that 80% of users need, while making advanced options accessible for those who need them.
+OpenMCF's philosophy is **pragmatic abstraction**: expose the 20% of configuration that 80% of users need, while making advanced options accessible for those who need them.
 
 For Aurora, this means:
 
 ### Default Approach: Pulumi-Backed Provisioned Clusters
 
-Project Planton uses **Pulumi** under the hood to provision Aurora clusters. Why Pulumi over Terraform?
+OpenMCF uses **Pulumi** under the hood to provision Aurora clusters. Why Pulumi over Terraform?
 
 1. **Code as configuration**: Easier to embed complex logic (like conditional read replicas, dynamic parameter groups)
 2. **Type safety**: Catch configuration errors at compile time
@@ -303,7 +303,7 @@ The protobuf API (`AwsRdsClusterSpec`) captures essential configuration:
 **You don't specify:**
 - Low-level parameter group details (unless you have custom requirements)
 - Subnet group creation (derived from your VPC configuration)
-- Security group minutiae (Project Planton creates appropriate rules)
+- Security group minutiae (OpenMCF creates appropriate rules)
 
 **You do get:**
 - Automatic secret management (master credentials in Secrets Manager)
@@ -329,18 +329,18 @@ Research shows most Aurora deployments configure:
 - Encryption (almost always enabled)
 - Network placement (VPC, subnets)
 
-Advanced configurations like Backtrack, multi-master, or custom engine modes are rarely used. Project Planton's spec focuses on the common cases while allowing advanced users to drop down to Pulumi/Terraform modules when needed.
+Advanced configurations like Backtrack, multi-master, or custom engine modes are rarely used. OpenMCF's spec focuses on the common cases while allowing advanced users to drop down to Pulumi/Terraform modules when needed.
 
 ### Why Not CloudFormation?
 
-CloudFormation is AWS-native and powerful, but Project Planton is a **multi-cloud** framework. Using Pulumi (or Terraform/OpenTofu) provides consistency across AWS, GCP, and Azure. You learn one approach to databases, not three different ones.
+CloudFormation is AWS-native and powerful, but OpenMCF is a **multi-cloud** framework. Using Pulumi (or Terraform/OpenTofu) provides consistency across AWS, GCP, and Azure. You learn one approach to databases, not three different ones.
 
 ### Example: Minimal Production Aurora Cluster
 
-In Project Planton, defining a production Aurora cluster might look like:
+In OpenMCF, defining a production Aurora cluster might look like:
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsRdsCluster
 metadata:
   name: app-production-db
@@ -371,7 +371,7 @@ This minimal configuration gets you:
 - IAM database authentication available
 - Protection against accidental deletion
 
-Project Planton fills in the rest: security groups allowing your application, appropriate instance classes based on environment (dev vs prod), Performance Insights enabled, etc.
+OpenMCF fills in the rest: security groups allowing your application, appropriate instance classes based on environment (dev vs prod), Performance Insights enabled, etc.
 
 For serverless:
 
@@ -627,7 +627,7 @@ Confidence-driven: "Our infrastructure is versioned in Git. We've tested failove
 
 Infrastructure as Code—whether Terraform, Pulumi, CloudFormation, or Crossplane—is the foundation of that confidence. It transforms Aurora deployment from art (requiring deep AWS expertise and careful console navigation) to engineering (declarative, reviewable, testable configuration).
 
-Project Planton's approach is to meet you where production infrastructure should be: sensible defaults, essential security baked in, and the flexibility to customize when your needs demand it. You're not clicking checkboxes in a wizard. You're declaring intent in protobuf, and infrastructure emerges, repeatable and auditable.
+OpenMCF's approach is to meet you where production infrastructure should be: sensible defaults, essential security baked in, and the flexibility to customize when your needs demand it. You're not clicking checkboxes in a wizard. You're declaring intent in protobuf, and infrastructure emerges, repeatable and auditable.
 
 Aurora's promise—cloud-native performance, automatic scaling, near-zero-downtime failover—is real. But it's only realized when deployed with discipline. Use Infrastructure as Code. Enable encryption and deletion protection. Deploy multi-AZ. Monitor proactively. Manage secrets properly. Do these things, and Aurora becomes what it was designed to be: a database that gets out of your way so you can focus on your application.
 

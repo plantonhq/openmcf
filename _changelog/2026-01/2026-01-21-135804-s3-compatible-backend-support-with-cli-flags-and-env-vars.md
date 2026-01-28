@@ -225,7 +225,7 @@ type ValidationResult struct {
 type MissingField struct {
     Name        string  // "endpoint"
     FlagName    string  // "--backend-endpoint"
-    LabelName   string  // "terraform.project-planton.org/backend.endpoint"
+    LabelName   string  // "terraform.openmcf.org/backend.endpoint"
     Description string  // Human-readable description
     Example     string  // Example value
     Required    bool
@@ -237,7 +237,7 @@ type MissingField struct {
 ### CLI-Based R2 Configuration
 
 ```bash
-project-planton apply -f manifest.yaml \
+openmcf apply -f manifest.yaml \
     --backend-type s3 \
     --backend-bucket my-r2-bucket \
     --backend-key env/prod/terraform.tfstate \
@@ -254,7 +254,7 @@ export PROJECT_PLANTON_BACKEND_REGION=auto
 export PROJECT_PLANTON_BACKEND_ENDPOINT=https://account-id.r2.cloudflarestorage.com
 
 # Key from manifest or flag
-project-planton apply -f manifest.yaml --backend-key path/to/state.tfstate
+openmcf apply -f manifest.yaml --backend-key path/to/state.tfstate
 ```
 
 ### GitHub Actions Example
@@ -271,7 +271,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy infrastructure
-        run: project-planton apply -f manifest.yaml
+        run: openmcf apply -f manifest.yaml
 ```
 
 ### Manifest Labels (Existing)
@@ -279,12 +279,12 @@ jobs:
 ```yaml
 metadata:
   labels:
-    project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: s3
-    terraform.project-planton.org/backend.bucket: my-r2-bucket
-    terraform.project-planton.org/backend.key: path/to/state.tfstate
-    terraform.project-planton.org/backend.region: auto
-    terraform.project-planton.org/backend.endpoint: https://account-id.r2.cloudflarestorage.com
+    openmcf.org/provisioner: terraform
+    terraform.openmcf.org/backend.type: s3
+    terraform.openmcf.org/backend.bucket: my-r2-bucket
+    terraform.openmcf.org/backend.key: path/to/state.tfstate
+    terraform.openmcf.org/backend.region: auto
+    terraform.openmcf.org/backend.endpoint: https://account-id.r2.cloudflarestorage.com
 ```
 
 ## Benefits

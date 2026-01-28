@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package org.openmcf.provider.kubernetes.kuberneteszalandopostgresoperator.v1;
+
+import "buf/validate/validate.proto";
+import "org/openmcf/provider/kubernetes/kubernetes.proto";
+import "org/openmcf/provider/kubernetes/options.proto";
+import "org/openmcf/provider/kubernetes/target_cluster.proto";
+import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
+
+// **KubernetesZalandoPostgresOperatorSpec** defines the configuration for deploying the Zalando Postgres Operator on a Kubernetes cluster.
+// This message specifies the parameters needed to create and manage the operator deployment within a Kubernetes environment.
+// It includes container specifications and backup configuration settings to control resource allocation and data protection.
+message KubernetesZalandoPostgresOperatorSpec {
+  // Target Kubernetes Cluster
+  org.openmcf.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+
+  // Kubernetes Namespace
+  org.openmcf.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+    (buf.validate.field).required = true,
+    (org.openmcf.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  // flag to indicate if the namespace should be created
+  bool create_namespace = 3;
+
+  // The container specifications for the operator deployment.
+  KubernetesZalandoPostgresOperatorSpecContainer container = 4 [(buf.validate.field).required = true];
+  // Optional: Backup configuration for all databases managed by this operator
+  KubernetesZalandoPostgresOperatorBackupConfig backup_config = 5;
+}
+
+// **KubernetesZalandoPostgresOperatorSpecContainer** specifies the container configuration for the Zalando Postgres Operator.
+// It includes resource allocations for CPU and memory to ensure the operator runs efficiently.
+message KubernetesZalandoPostgresOperatorSpecContainer {
+  // The CPU and memory resources allocated to the operator container.
+  org.openmcf.provider.kubernetes.ContainerResources resources = 1 [(org.openmcf.provider.kubernetes.default_container_resources) = {
+    limits: {
+      cpu: "1000m"
+      memory: "1Gi"
+    }
+    requests: {
+      cpu: "50m"
+      memory: "100Mi"
+    }
+  }];
+}
+
+// Cloudflare R2-specific storage configuration for PostgreSQL backups.
+// This is separate to allow future support for other S3-compatible backends.
+message KubernetesZalandoPostgresOperatorBackupR2Config {
+  // Cloudflare R2 account ID (used to construct endpoint URL)
+  // The endpoint will be: https://<account_id>.r2.cloudflarestorage.com
+  string cloudflare_account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // R2 bucket name for storing backups
+  string bucket_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // R2 Access Key ID
+  // The Pulumi module will create a Kubernetes Secret from these credentials
+  string access_key_id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // R2 Secret Access Key
+  // The Pulumi module will create a Kubernetes Secret from these credentials
+  string secret_access_key = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// Zalando-specific backup configuration for all PostgreSQL databases managed by this operator.
+// This configures the pod_environment_configmap used by Zalando operator for WAL-G backups.
+// The Pulumi module will automatically create a Kubernetes Secret from the R2 credentials.
+message KubernetesZalandoPostgresOperatorBackupConfig {
+  // Cloudflare R2 storage configuration (includes credentials)
+  KubernetesZalandoPostgresOperatorBackupR2Config r2_config = 1 [(buf.validate.field).required = true];
+
+  // Optional: Custom S3 prefix template for WAL-G
+  // Default: "backups/$(SCOPE)/$(PGVERSION)"
+  // Zalando variables: $(SCOPE) = cluster name, $(PGVERSION) = postgres version
+  string s3_prefix_template = 2;
+
+  // Cron schedule for base backups (e.g., "0 2 * * *" for 2 AM daily)
+  // This maps to Zalando's BACKUP_SCHEDULE environment variable
+  string backup_schedule = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Enable WAL-G for backups (default: true)
+  // Maps to USE_WALG_BACKUP environment variable
+  bool enable_wal_g_backup = 4;
+
+  // Enable WAL-G for restores (default: true)
+  // Maps to USE_WALG_RESTORE environment variable
+  bool enable_wal_g_restore = 5;
+
+  // Enable WAL-G for clone operations (default: true)
+  // Maps to CLONE_USE_WALG_RESTORE environment variable
+  bool enable_clone_wal_g_restore = 6;
+}

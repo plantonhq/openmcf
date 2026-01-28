@@ -1,0 +1,5 @@
+apiVersion: cloudflare.openmcf.org/v1
+kind: CloudflareLoadBalancer
+metadata:
+  name: first-certificate
+spec:

@@ -16,11 +16,11 @@ site/!.yarn/cache
 
 .terraform.lock.hcl
 terraform.tfplan
-bazel-project-planton-clone
+bazel-openmcf-clone
 bazel-bin
 bazel-out
 bazel-testlogs
-bazel-project-planton
+bazel-openmcf
 Pulumi.*.yaml
 !Pulumi.yaml
 test-*.log

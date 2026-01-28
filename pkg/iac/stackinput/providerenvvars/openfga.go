@@ -2,7 +2,7 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	openfgaprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/openfga"
+	openfgaprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/openfga"
 )
 
 // loadOpenFgaEnvVars loads OpenFGA provider config and returns environment variables.

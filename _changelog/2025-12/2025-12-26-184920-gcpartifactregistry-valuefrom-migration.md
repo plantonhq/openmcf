@@ -26,10 +26,10 @@ Implemented the `StringValueOrRef` pattern for the `project_id` field, following
 ### StringValueOrRef Pattern
 
 ```protobuf
-org.project_planton.shared.foreignkey.v1.StringValueOrRef project_id = 2 [
+org.openmcf.shared.foreignkey.v1.StringValueOrRef project_id = 2 [
   (buf.validate.field).required = true,
-  (org.project_planton.shared.foreignkey.v1.default_kind) = GcpProject,
-  (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  (org.openmcf.shared.foreignkey.v1.default_kind) = GcpProject,
+  (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
 ];
 ```
 
@@ -75,13 +75,13 @@ spec:
 
 **Proto Schema** (`spec.proto`):
 ```protobuf
-import "org/project_planton/shared/foreignkey/v1/foreign_key.proto";
+import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
 
 message GcpArtifactRegistryRepoSpec {
-  org.project_planton.shared.foreignkey.v1.StringValueOrRef project_id = 2 [
+  org.openmcf.shared.foreignkey.v1.StringValueOrRef project_id = 2 [
     (buf.validate.field).required = true,
-    (org.project_planton.shared.foreignkey.v1.default_kind) = GcpProject,
-    (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+    (org.openmcf.shared.foreignkey.v1.default_kind) = GcpProject,
+    (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 }
 ```

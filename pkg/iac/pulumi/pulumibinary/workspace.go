@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/pkg/fileutil"
+	"github.com/plantonhq/openmcf/pkg/fileutil"
 )
 
 const (
@@ -34,7 +34,7 @@ type WorkspaceResult struct {
 }
 
 // GetWorkspaceDir returns the base directory for binary workspaces
-// (~/.project-planton/pulumi/workspaces/)
+// (~/.openmcf/pulumi/workspaces/)
 func GetWorkspaceDir() (string, error) {
 	pulumiBaseDir, err := GetPulumiBaseDir()
 	if err != nil {
@@ -44,7 +44,7 @@ func GetWorkspaceDir() (string, error) {
 }
 
 // GetStackWorkspaceDir returns the workspace directory for a specific stack
-// (~/.project-planton/pulumi/workspaces/{stack-fqdn}/)
+// (~/.openmcf/pulumi/workspaces/{stack-fqdn}/)
 func GetStackWorkspaceDir(stackFqdn string) (string, error) {
 	baseDir, err := GetWorkspaceDir()
 	if err != nil {

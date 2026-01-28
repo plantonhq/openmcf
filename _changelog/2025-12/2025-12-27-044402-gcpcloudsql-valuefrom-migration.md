@@ -72,10 +72,10 @@ string project_id = 1 [
 ];
 
 // After
-org.project_planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+org.openmcf.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
   (buf.validate.field).required = true,
-  (org.project_planton.shared.foreignkey.v1.default_kind) = GcpProject,
-  (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  (org.openmcf.shared.foreignkey.v1.default_kind) = GcpProject,
+  (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
 ];
 ```
 

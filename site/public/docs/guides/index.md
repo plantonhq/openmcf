@@ -1,13 +1,13 @@
 ---
 title: "Guides"
-description: "In-depth guides for using Project Planton - manifests, credentials, kustomize, and advanced techniques"
+description: "In-depth guides for using OpenMCF - manifests, credentials, kustomize, and advanced techniques"
 icon: "book"
 order: 20
 ---
 
-# Project Planton Guides
+# OpenMCF Guides
 
-Comprehensive guides to help you master Project Planton.
+Comprehensive guides to help you master OpenMCF.
 
 ---
 
@@ -15,7 +15,7 @@ Comprehensive guides to help you master Project Planton.
 
 ### [Manifest Structure](/docs/guides/manifests)
 
-Learn everything about writing Project Planton manifests.
+Learn everything about writing OpenMCF manifests.
 
 **Topics covered**:
 - What manifests are and why they matter
@@ -24,7 +24,7 @@ Learn everything about writing Project Planton manifests.
 - Default values system
 - Best practices for writing maintainable manifests
 
-**Read this if**: You're new to Project Planton or want to understand manifests deeply.
+**Read this if**: You're new to OpenMCF or want to understand manifests deeply.
 
 ---
 
@@ -39,7 +39,7 @@ Complete guide to providing cloud provider credentials securely.
 - CI/CD credential injection
 - Troubleshooting authentication failures
 
-**Read this if**: You're setting up Project Planton for the first time or deploying to a new cloud provider.
+**Read this if**: You're setting up OpenMCF for the first time or deploying to a new cloud provider.
 
 ---
 
@@ -76,7 +76,7 @@ Configure state storage for Pulumi, OpenTofu, and Terraform.
 
 ### [Advanced Usage](/docs/guides/advanced-usage)
 
-Master advanced Project Planton techniques.
+Master advanced OpenMCF techniques.
 
 **Topics covered**:
 - Runtime value overrides with `--set`
@@ -121,16 +121,16 @@ Master advanced Project Planton techniques.
 
 ```bash
 # Validate manifest
-project-planton validate -f resource.yaml
+openmcf validate -f resource.yaml
 
 # Deploy with Pulumi
-project-planton pulumi up -f resource.yaml
+openmcf pulumi up -f resource.yaml
 
 # Deploy with OpenTofu
-project-planton tofu apply -f resource.yaml
+openmcf tofu apply -f resource.yaml
 
 # View effective manifest (with defaults)
-project-planton load-manifest -f resource.yaml
+openmcf load-manifest -f resource.yaml
 ```
 
 ### Common Flags
@@ -155,9 +155,9 @@ project-planton load-manifest -f resource.yaml
 
 ## Getting Help
 
-**Questions?** [GitHub Discussions](https://github.com/plantonhq/project-planton/discussions)
+**Questions?** [GitHub Discussions](https://github.com/plantonhq/openmcf/discussions)
 
-**Found a bug?** [Open an issue](https://github.com/plantonhq/project-planton/issues)
+**Found a bug?** [Open an issue](https://github.com/plantonhq/openmcf/issues)
 
 **Want to contribute?** Pull requests welcome!
 

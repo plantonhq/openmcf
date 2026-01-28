@@ -7,13 +7,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/plantonhq/project-planton/app/backend/internal/database"
-	"github.com/plantonhq/project-planton/app/backend/internal/service"
+	"github.com/plantonhq/openmcf/app/backend/internal/database"
+	"github.com/plantonhq/openmcf/app/backend/internal/service"
 	"github.com/sirupsen/logrus"
 
-	cloudresourcev1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/cloudresource/v1/cloudresourcev1connect"
-	credentialv1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1/credentialv1connect"
-	stackupdatev1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/stackupdate/v1/stackupdatev1connect"
+	cloudresourcev1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/cloudresource/v1/cloudresourcev1connect"
+	credentialv1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1/credentialv1connect"
+	stackupdatev1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/stackupdate/v1/stackupdatev1connect"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -158,7 +158,7 @@ func NewServer(cfg *Config) *Server {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		response := fmt.Sprintf(`{"status":"ok","service":"project-planton-backend","timestamp":"%s"}`,
+		response := fmt.Sprintf(`{"status":"ok","service":"openmcf-backend","timestamp":"%s"}`,
 			time.Now().Format(time.RFC3339))
 		w.Write([]byte(response))
 	})

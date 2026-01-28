@@ -14,7 +14,7 @@ For years, managed Kubernetes was synonymous with complexity. Provisioning a clu
 
 The result is a platform that provisions clusters in minutes, charges **$0 for the control plane**, and integrates seamlessly with DigitalOcean's developer-friendly ecosystem—all while delivering the full power of CNCF-certified Kubernetes.
 
-This document explains the deployment methods available for DigitalOcean Kubernetes clusters, from manual provisioning to fully automated Infrastructure as Code (IaC) patterns, and how Project Planton exposes this platform through a minimal, security-first API.
+This document explains the deployment methods available for DigitalOcean Kubernetes clusters, from manual provisioning to fully automated Infrastructure as Code (IaC) patterns, and how OpenMCF exposes this platform through a minimal, security-first API.
 
 ## Why DigitalOcean Kubernetes Exists
 
@@ -472,13 +472,13 @@ For production, deploy a comprehensive monitoring stack:
 ❌ **`:latest` tags**: Pin image versions in production  
 ❌ **Mixing environments**: Never run dev, staging, and prod in the same cluster
 
-## The Project Planton Choice
+## The OpenMCF Choice
 
-Project Planton's `DigitalOceanKubernetesCluster/v1` API is designed following the **80/20 principle**: expose the 20% of configuration that 80% of users need, enforce security by default, and make production-readiness the path of least resistance.
+OpenMCF's `DigitalOceanKubernetesCluster/v1` API is designed following the **80/20 principle**: expose the 20% of configuration that 80% of users need, enforce security by default, and make production-readiness the path of least resistance.
 
 ### Minimal, Opinionated API
 
-The Project Planton API **mandates** the following fields:
+The OpenMCF API **mandates** the following fields:
 
 | Field | Type | Rationale |
 |-------|------|-----------|
@@ -506,12 +506,12 @@ The Project Planton API **mandates** the following fields:
 
 ### Default Deployment Strategy
 
-Project Planton uses **Pulumi** as the default IaC engine for DigitalOcean Kubernetes clusters, leveraging:
+OpenMCF uses **Pulumi** as the default IaC engine for DigitalOcean Kubernetes clusters, leveraging:
 
 - The official `@pulumi/digitalocean` provider (complete resource coverage)
 - Built-in encrypted secret management for API tokens and kubeconfig
 - Stack-based multi-environment management
-- Integration with Project Planton's unified resource lifecycle
+- Integration with OpenMCF's unified resource lifecycle
 
 The underlying Pulumi module is located at:
 
@@ -671,7 +671,7 @@ DigitalOcean Kubernetes represents a compelling alternative to hyperscaler compl
 
 The platform is mature, fully automatable via official Terraform and Pulumi providers, and production-ready for workloads that value **velocity, predictability, and cost efficiency** over deep cloud ecosystem lock-in.
 
-**Project Planton's opinionated API design enforces security by default** (requiring network and firewall configuration for production), exposes the critical configuration surface (Kubernetes version, node pools, autoscaling, HA), and abstracts away the complexity of multi-cloud infrastructure management—making DigitalOcean Kubernetes accessible to teams of any size.
+**OpenMCF's opinionated API design enforces security by default** (requiring network and firewall configuration for production), exposes the critical configuration surface (Kubernetes version, node pools, autoscaling, HA), and abstracts away the complexity of multi-cloud infrastructure management—making DigitalOcean Kubernetes accessible to teams of any size.
 
 For organizations that don't need the full AWS/GCP/Azure ecosystem, DOKS provides a refreshingly simple path to production Kubernetes—backed by the reliability of a managed service and the flexibility of Infrastructure as Code.
 

@@ -26,8 +26,8 @@ SEQUENTIAL STEPS
 3) Write+Build: `cat <<'PROTO' | python3 _rules/deployment-component/_scripts/stack_input_write_and_build.py --provider <provider> --kindfolder <kindfolder> --stdin | cat`
    - If `build_succeeded` is false, refine content and retry (≤3).
 4) Generate Go stubs: After ALL proto files (spec.proto, stack_outputs.proto, api.proto, stack_input.proto) are created, run:
-   - `cd /path/to/project-planton && make protos` OR
-   - `cd /path/to/project-planton/apis && make protos`
+   - `cd /path/to/openmcf && make protos` OR
+   - `cd /path/to/openmcf/apis && make protos`
    - This generates all Go stub files (*.pb.go) from the proto definitions.
 
 OUTPUT

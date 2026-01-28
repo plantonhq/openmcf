@@ -14,7 +14,7 @@ For years, conventional wisdom held that cloud firewalls were just "security gro
 
 Civo's firewall architecture reflects this modern reality. As a Kubernetes-native cloud built on K3s, Civo treats firewalls as first-class infrastructure resources that integrate cleanly with networks, instances, and clusters. They're stateful (return traffic is automatically allowed), default-deny for security, and scoped to virtual networks for proper segmentation. Unlike legacy security groups that evolved from manual VM management, Civo firewalls were designed for an IaC-first world where your firewall rules should live in Git alongside your application deployments.
 
-This document explores the deployment methods available for Civo firewalls—from manual dashboard clicks to full infrastructure-as-code automation. We'll examine why some approaches create technical debt while others enable production-grade security at scale, compare the mature IaC options (Terraform and Pulumi), and explain Project Planton's choice to build on Pulumi with a protobuf-based abstraction layer.
+This document explores the deployment methods available for Civo firewalls—from manual dashboard clicks to full infrastructure-as-code automation. We'll examine why some approaches create technical debt while others enable production-grade security at scale, compare the mature IaC options (Terraform and Pulumi), and explain OpenMCF's choice to build on Pulumi with a protobuf-based abstraction layer.
 
 ## The Maturity Spectrum: From Manual to Declarative
 
@@ -67,17 +67,17 @@ Deploying Civo firewalls follows a clear evolution from quick-and-dirty manual m
 
 **Verdict:** Infrastructure-as-Code with Terraform or Pulumi is the **production-ready baseline**. This is where most teams should land for anything beyond experimentation. The choice between Terraform and Pulumi comes down to team preference (HCL vs. programming languages) and existing toolchain investment.
 
-### Level 3: Abstraction Layers and Multi-Cloud APIs (Project Planton's Approach)
+### Level 3: Abstraction Layers and Multi-Cloud APIs (OpenMCF's Approach)
 
-**What it is:** Wrapping lower-level IaC tools (like Pulumi) with higher-level abstractions that hide provider-specific details behind a unified API. In Project Planton's case, this means defining firewalls using protobuf messages that express **intent** (e.g., "create a firewall for this network with these inbound rules"), and letting a Pulumi module translate that intent into the specific Civo API calls.
+**What it is:** Wrapping lower-level IaC tools (like Pulumi) with higher-level abstractions that hide provider-specific details behind a unified API. In OpenMCF's case, this means defining firewalls using protobuf messages that express **intent** (e.g., "create a firewall for this network with these inbound rules"), and letting a Pulumi module translate that intent into the specific Civo API calls.
 
 **Why it matters:** Direct use of Terraform/Pulumi providers is powerful, but each cloud has its own quirks. AWS security groups use separate ingress/egress rules with different syntax than Civo. GCP firewall rules work differently still. If you're deploying to multiple clouds or want to offer a simplified experience (like an internal platform team providing "firewall as a service" to app developers), abstracting these differences behind a common schema reduces cognitive load.
 
-**How Project Planton does it:** 
+**How OpenMCF does it:** 
 - **Protobuf API:** Firewalls are defined in structured protobuf messages (`CivoFirewallSpec`). This provides strong typing, validation, and cross-language support.
 - **Unified model:** The spec captures the 80/20 of firewall needs—name, network, inbound rules, outbound rules, tags—without exposing every provider-specific knob.
 - **Pulumi modules:** Under the hood, a Go-based Pulumi module reads the protobuf spec and creates the actual `civo.Firewall` and `civo.FirewallRule` resources. This keeps the deployment engine (Pulumi) but hides its complexity behind a consistent interface.
-- **Foreign key references:** Network IDs can reference other Project Planton resources (like `CivoVpc`) by name, and the system resolves them automatically. You don't manually copy-paste UUIDs.
+- **Foreign key references:** Network IDs can reference other OpenMCF resources (like `CivoVpc`) by name, and the system resolves them automatically. You don't manually copy-paste UUIDs.
 
 **Benefits:**
 - **Multi-cloud portability:** The same protobuf schema could be adapted to provision AWS security groups, Azure NSGs, or GCP firewall rules, with provider-specific modules handling translation.
@@ -89,7 +89,7 @@ Deploying Civo firewalls follows a clear evolution from quick-and-dirty manual m
 - **Abstraction overhead:** You introduce a layer between intent and implementation. For users who want full control of every Civo-specific flag, this can feel limiting.
 - **Maintenance burden:** Keeping the abstraction in sync with provider updates requires discipline. When Civo adds a new firewall feature, someone must update the protobuf schema and the Pulumi module.
 
-**Verdict:** Abstraction layers like Project Planton's are ideal for **platform engineering teams** building multi-cloud internal developer platforms. If you're managing infrastructure for a single cloud and a small team, the direct Terraform/Pulumi approach is simpler. But for organizations with cross-cloud ambitions or wanting to offer infrastructure as a self-service platform, a unified API backed by proven IaC engines provides the right balance of flexibility and standardization.
+**Verdict:** Abstraction layers like OpenMCF's are ideal for **platform engineering teams** building multi-cloud internal developer platforms. If you're managing infrastructure for a single cloud and a small team, the direct Terraform/Pulumi approach is simpler. But for organizations with cross-cloud ambitions or wanting to offer infrastructure as a self-service platform, a unified API backed by proven IaC engines provides the right balance of flexibility and standardization.
 
 ## Comparing Production IaC: Terraform vs. Pulumi
 
@@ -125,7 +125,7 @@ When you've moved past manual and scripting approaches, the choice narrows to tw
 - **Abstraction complexity:** The code-first approach can lead to over-abstraction. It's easy to build intricate class hierarchies that make simple firewall definitions harder to understand. Discipline is required.
 - **State management:** Pulumi's state model is conceptually similar to Terraform's but uses its own format. Migrating between the two isn't trivial (though possible).
 
-**Best for:** Teams with strong software engineering culture, projects where infrastructure logic is complex (e.g., generating dozens of dynamic rules), or those building platform abstractions (like Project Planton) where programming language features are essential.
+**Best for:** Teams with strong software engineering culture, projects where infrastructure logic is complex (e.g., generating dozens of dynamic rules), or those building platform abstractions (like OpenMCF) where programming language features are essential.
 
 ### Side-by-Side Example: Web Server Firewall
 
@@ -244,13 +244,13 @@ Both tools are **open source**:
 
 Neither locks you into proprietary tooling for managing Civo firewalls. If you're committed to avoiding vendor lock-in, both are safe choices.
 
-## Project Planton's Choice: Pulumi + Protobuf Abstraction
+## OpenMCF's Choice: Pulumi + Protobuf Abstraction
 
-Project Planton uses **Pulumi** as the deployment engine for Civo firewalls, wrapped behind a **protobuf-defined API**. This choice reflects a deliberate balance between flexibility, type safety, and multi-cloud portability.
+OpenMCF uses **Pulumi** as the deployment engine for Civo firewalls, wrapped behind a **protobuf-defined API**. This choice reflects a deliberate balance between flexibility, type safety, and multi-cloud portability.
 
 ### Why Pulumi?
 
-1. **Language-native infrastructure:** Project Planton's IaC modules are written in Go. Pulumi's Go SDK provides idiomatic Go code for infrastructure, enabling compile-time type checking and seamless integration with existing Go tooling.
+1. **Language-native infrastructure:** OpenMCF's IaC modules are written in Go. Pulumi's Go SDK provides idiomatic Go code for infrastructure, enabling compile-time type checking and seamless integration with existing Go tooling.
 
 2. **Programmatic abstraction:** Building a platform that abstracts multiple clouds requires logic—mapping high-level specs to provider-specific resources, resolving foreign key references, applying defaults. Pulumi's programming model makes this logic straightforward without the contortions HCL would require.
 
@@ -260,14 +260,14 @@ Project Planton uses **Pulumi** as the deployment engine for Civo firewalls, wra
 
 ### Why Protobuf Abstraction?
 
-Directly exposing Pulumi code to end users would couple them to Civo-specific details and Go expertise. Instead, Project Planton defines a **protobuf schema** (`CivoFirewallSpec`) that captures the essential firewall configuration:
+Directly exposing Pulumi code to end users would couple them to Civo-specific details and Go expertise. Instead, OpenMCF defines a **protobuf schema** (`CivoFirewallSpec`) that captures the essential firewall configuration:
 
 - **name:** Human-readable firewall identifier
 - **network_id:** Reference to the VPC (with foreign key resolution)
 - **inbound_rules / outbound_rules:** Lists of protocol, port range, CIDRs, and labels
 - **tags:** Future support for tag-based instance auto-assignment
 
-This protobuf message becomes the **contract** between users and the platform. Users (or other systems) generate YAML or JSON matching the schema, and Project Planton's Pulumi module translates it into Civo API calls. The benefits:
+This protobuf message becomes the **contract** between users and the platform. Users (or other systems) generate YAML or JSON matching the schema, and OpenMCF's Pulumi module translates it into Civo API calls. The benefits:
 
 - **Multi-cloud potential:** Tomorrow, a `GcpFirewallSpec` with similar structure could provision GCP firewall rules using a different Pulumi module. The user-facing API stays consistent.
 - **Validation and documentation:** Protobuf validation rules enforce constraints (e.g., protocol must match `tcp|udp|icmp`). The schema self-documents what's required.
@@ -276,7 +276,7 @@ This protobuf message becomes the **contract** between users and the platform. U
 
 ### The 80/20 Design Philosophy
 
-Project Planton's protobuf spec deliberately covers the **80% of firewall use cases** most users need:
+OpenMCF's protobuf spec deliberately covers the **80% of firewall use cases** most users need:
 - Creating a firewall in a specified network
 - Defining inbound rules (SSH, HTTP/HTTPS, application ports) with protocol, ports, and source CIDRs
 - Defining outbound rules (often a single "allow all" rule for internet access)
@@ -299,10 +299,10 @@ This architecture keeps the **user-facing API stable and simple** while leveragi
 
 Abstraction has costs:
 - **Indirection:** Users don't directly see the Pulumi code being executed. Debugging requires understanding both the protobuf spec *and* the underlying module.
-- **Maintenance:** When Civo adds new firewall features, Project Planton must update the schema and module to expose them.
+- **Maintenance:** When Civo adds new firewall features, OpenMCF must update the schema and module to expose them.
 - **Learning curve:** Teams must understand the protobuf API in addition to general Civo concepts.
 
-These trade-offs are acceptable for Project Planton's goals: **providing a consistent, multi-cloud platform** where infrastructure is managed via declarative specs rather than imperative code. For teams using Project Planton, the abstraction is a feature—it hides complexity. For teams preferring full control, direct Terraform or Pulumi usage remains an option.
+These trade-offs are acceptable for OpenMCF's goals: **providing a consistent, multi-cloud platform** where infrastructure is managed via declarative specs rather than imperative code. For teams using OpenMCF, the abstraction is a feature—it hides complexity. For teams preferring full control, direct Terraform or Pulumi usage remains an option.
 
 ## Alternatives Considered (and Why They're Not the Default)
 
@@ -310,7 +310,7 @@ These trade-offs are acceptable for Project Planton's goals: **providing a consi
 
 **What it is:** A Kubernetes-based control plane that provisions cloud resources via Custom Resource Definitions (CRDs). The `crossplane-contrib/provider-civo` exists but is in early stages (v0.1).
 
-**Why not the default:** As of 2025, the Civo Crossplane provider **doesn't support firewall resources**—only Kubernetes clusters and instances. Crossplane is powerful for teams fully bought into Kubernetes-native workflows (GitOps with Flux/ArgoCD), but the Civo provider isn't mature enough yet. For organizations already running Crossplane and wanting to add Civo, it's promising. For Project Planton's multi-cloud needs, Pulumi offers broader coverage and stability.
+**Why not the default:** As of 2025, the Civo Crossplane provider **doesn't support firewall resources**—only Kubernetes clusters and instances. Crossplane is powerful for teams fully bought into Kubernetes-native workflows (GitOps with Flux/ArgoCD), but the Civo provider isn't mature enough yet. For organizations already running Crossplane and wanting to add Civo, it's promising. For OpenMCF's multi-cloud needs, Pulumi offers broader coverage and stability.
 
 **Future potential:** If the Civo Crossplane provider evolves to include firewalls, it could become a viable option for Kubernetes-centric deployments. Watch this space.
 
@@ -332,7 +332,7 @@ The evolution of Civo firewall deployment mirrors the broader shift in infrastru
 
 For most teams deploying on Civo, **Terraform or Pulumi** is the right answer. Both are production-ready, offer full firewall support, and integrate with modern CI/CD workflows. The choice between them comes down to preference: HCL's simplicity vs. programming language power.
 
-For platform teams building multi-cloud abstractions or internal developer platforms, **protobuf-based APIs backed by Pulumi** (as Project Planton demonstrates) provide a unified interface that hides provider quirks while retaining the benefits of mature IaC engines.
+For platform teams building multi-cloud abstractions or internal developer platforms, **protobuf-based APIs backed by Pulumi** (as OpenMCF demonstrates) provide a unified interface that hides provider quirks while retaining the benefits of mature IaC engines.
 
 Manual dashboard management and CLI scripting remain useful for learning and experimentation, but they don't scale. Production infrastructure demands repeatability, auditability, and change preview—qualities that only declarative IaC tools deliver.
 

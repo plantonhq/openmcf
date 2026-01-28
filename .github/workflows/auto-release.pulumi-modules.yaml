@@ -35,7 +35,7 @@ on:
         required: true
         type: string
       path:
-        description: 'Path to the Pulumi module (e.g., apis/org/project_planton/provider/aws/awsecsservice/v1/iac/pulumi)'
+        description: 'Path to the Pulumi module (e.g., apis/org/openmcf/provider/aws/awsecsservice/v1/iac/pulumi)'
         required: true
         type: string
 
@@ -112,13 +112,13 @@ jobs:
 
           ## Usage with IaC Runner
 
-          This binary is designed to be used with the Project Planton IaC Runner.
+          This binary is designed to be used with the OpenMCF IaC Runner.
 
           ---
 
           ## Source Code
 
-          \`apis/org/project_planton/provider/${PROVIDER}/${COMPONENT}/v1/iac/pulumi/\`
+          \`apis/org/openmcf/provider/${PROVIDER}/${COMPONENT}/v1/iac/pulumi/\`
           EOF
             
             gh release create "${TAG}" \

@@ -14,7 +14,7 @@ For years, the conventional wisdom about deploying microservices to Kubernetes h
 
 The uncomfortable reality is that a basic Kubernetes Deployment with just an image and replica count is an **anti-pattern for production**. Without health probes, the orchestrator routes traffic to dead pods. Without resource limits, you're assigned to the BestEffort QoS class, meaning your service is the first to be evicted when the node runs out of memory. Without a Pod Disruption Budget, a routine node drain can terminate all your replicas simultaneously, causing an outage.
 
-This document explores the maturity spectrum of Kubernetes microservice deployments—from these dangerous anti-patterns to production-ready configurations that deliver genuine zero-downtime reliability. More importantly, it explains **why** Project Planton's KubernetesDeployment API is designed the way it is: to make the **secure, resilient path the easiest path**, by encoding battle-tested production practices into sensible defaults.
+This document explores the maturity spectrum of Kubernetes microservice deployments—from these dangerous anti-patterns to production-ready configurations that deliver genuine zero-downtime reliability. More importantly, it explains **why** OpenMCF's KubernetesDeployment API is designed the way it is: to make the **secure, resilient path the easiest path**, by encoding battle-tested production practices into sensible defaults.
 
 ## The Deployment Maturity Spectrum
 
@@ -165,7 +165,7 @@ Most engineers understand the importance of these patterns, but implementing the
 
 **The Solution: Opinionated IaC APIs**
 
-Project Planton's KubernetesDeployment API solves this by providing environment profiles that encode production best practices into defaults:
+OpenMCF's KubernetesDeployment API solves this by providing environment profiles that encode production best practices into defaults:
 
 **Development Profile**: Fast iteration, minimal overhead
 - 1 replica
@@ -245,8 +245,8 @@ replicas: 3
 - Complexity increases with deeply nested templates
 - Type safety is non-existent
 
-**Project Planton's Position:**
-The Helm Library Chart pattern and Project Planton's Protobuf-based API solve the **same problem**—abstracting common Kubernetes boilerplate into reusable definitions—but Protobuf APIs provide superior **type safety**, **programmatic validation**, and **cross-language stub generation**. Think of it as "Helm Library Charts, but as compiled code instead of brittle string templates."
+**OpenMCF's Position:**
+The Helm Library Chart pattern and OpenMCF's Protobuf-based API solve the **same problem**—abstracting common Kubernetes boilerplate into reusable definitions—but Protobuf APIs provide superior **type safety**, **programmatic validation**, and **cross-language stub generation**. Think of it as "Helm Library Charts, but as compiled code instead of brittle string templates."
 
 ## GitOps: Continuous Deployment at Scale
 
@@ -264,10 +264,10 @@ GitOps treats Git as the single source of truth for declarative infrastructure. 
 
 **Both are production-ready.** ArgoCD's UI is invaluable for organizations prioritizing observability. Flux's CRD-driven model is ideal for teams who prefer declarative, `kubectl`-native workflows.
 
-**Project Planton Integration:**
+**OpenMCF Integration:**
 KubernetesDeployment generates standard Kubernetes manifests that work seamlessly with both tools:
 1. Developer defines service in a Protobuf API
-2. CI pipeline runs Project Planton to generate Kubernetes YAML
+2. CI pipeline runs OpenMCF to generate Kubernetes YAML
 3. YAML is committed to a Git repository
 4. ArgoCD or Flux detects changes and deploys automatically
 
@@ -313,7 +313,7 @@ spec:
         averageUtilization: 70
 ```
 
-**Project Planton Default (Prod Profile):**
+**OpenMCF Default (Prod Profile):**
 - Enabled by default
 - Min replicas: 3, max replicas: 10
 - Target CPU: 70% (conservative to allow burst capacity)
@@ -368,7 +368,7 @@ An Ingress resource defines HTTP routing rules. An Ingress Controller is the rev
 - Native integration with WAF, ACM, cloud IAM
 - **Caution:** Can be expensive; some controllers create one LB per Ingress resource
 
-**Project Planton Approach:**
+**OpenMCF Approach:**
 Generate standard Ingress resources that work with **any** controller. The cluster administrator selects and configures the controller; the microservice author is decoupled from this infrastructure decision.
 
 ### TLS Certificate Automation
@@ -390,7 +390,7 @@ Generate standard Ingress resources that work with **any** controller. The clust
    ```
 4. cert-manager automatically requests, validates, and renews certificates
 
-**Project Planton Simplification:**
+**OpenMCF Simplification:**
 Setting `ingress.tls: true` in your KubernetesDeployment spec automatically generates the TLS block and cert-manager annotations, eliminating manual configuration.
 
 ### Service Mesh: When Is It Worth the Complexity?
@@ -453,7 +453,7 @@ Kubernetes assigns every pod a **QoS class** based on its resource configuration
 | **Medium** | 500m | 512Mi | Standard microservices |
 | **Large** | 1000m (1 CPU) | 1Gi | Compute-intensive services |
 
-**Project Planton Prod Profile Defaults:**
+**OpenMCF Prod Profile Defaults:**
 - CPU request: 500m
 - CPU limit: Unset (allows bursting)
 - Memory request: 512Mi
@@ -499,7 +499,7 @@ spec:
 
 Then explicitly allow-list only necessary traffic (e.g., "allow ingress from NGINX controller," "allow egress to DNS").
 
-**Project Planton Prod Profile:**
+**OpenMCF Prod Profile:**
 Automatically generates default-deny policies and baseline allow-list rules. This is a profound security improvement delivered "for free."
 
 ### 3. Secrets Management
@@ -527,7 +527,7 @@ By default, pods run as the `default` ServiceAccount, which often has excessive 
 - If API access is needed, create a minimal Role with only the required permissions
 - Bind the Role to the ServiceAccount via RoleBinding
 
-**Project Planton:**
+**OpenMCF:**
 Automatically generates a dedicated ServiceAccount for every microservice with `automountServiceAccountToken: false` by default.
 
 ## Observability: Logs, Metrics, and Traces
@@ -555,7 +555,7 @@ Production microservices require three pillars of observability.
 - Run Prometheus Operator in the cluster
 - Create a `ServiceMonitor` CRD that tells Prometheus how to discover and scrape the service
 
-**Project Planton Value-Add:**
+**OpenMCF Value-Add:**
 Automatically generates both the Service and the ServiceMonitor for every microservice. This loops the service into the cluster's monitoring stack with **zero developer effort**.
 
 ### Tracing: OpenTelemetry + Jaeger/Tempo
@@ -568,10 +568,10 @@ Automatically generates both the Service and the ServiceMonitor for every micros
 - Run an OpenTelemetry Collector (as a DaemonSet or sidecar)
 - Forward traces to a backend (Jaeger, Grafana Tempo)
 
-**Project Planton Facilitation:**
+**OpenMCF Facilitation:**
 Automatically injects environment variables for OTel SDK configuration (e.g., `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`).
 
-| Pillar | Application Provides | Platform Provides | Project Planton Automates |
+| Pillar | Application Provides | Platform Provides | OpenMCF Automates |
 |--------|---------------------|-------------------|---------------------------|
 | **Logging** | Logs to stdout/stderr (JSON) | Fluent Bit DaemonSet → Loki | N/A (cluster-level) |
 | **Metrics** | `/metrics` endpoint (Prometheus format) | Prometheus Operator | Service + ServiceMonitor generation |
@@ -605,7 +605,7 @@ Just as APIs should focus on the 20% of configuration that 80% of users need, de
 - **Custom Volumes**: Persistent storage, ConfigMap mounts beyond env vars
 - **KEDA**: Scale-to-zero for queue processors
 
-## Project Planton's Production-Ready Defaults
+## OpenMCF's Production-Ready Defaults
 
 KubernetesDeployment is designed around the principle that **the secure, resilient path should be the easiest path**.
 
@@ -670,7 +670,7 @@ The gap between "runs in Kubernetes" and "runs reliably in production" is enormo
 
 Manually configuring this for every microservice is error-prone and toil-heavy. Copy-pasting manifests leads to configuration drift. Helm templates become fragile mazes of nested conditionals.
 
-Project Planton's KubernetesDeployment API solves this by encoding production best practices into **environment-aware defaults**. Developers declare their intent at a high level; the platform generates complete, battle-tested Kubernetes manifests.
+OpenMCF's KubernetesDeployment API solves this by encoding production best practices into **environment-aware defaults**. Developers declare their intent at a high level; the platform generates complete, battle-tested Kubernetes manifests.
 
 This is not about hiding Kubernetes. It's about **hiding complexity while preserving power**. Advanced users can override any default. But for the 80% use case—deploying a stateless HTTP microservice with production-grade reliability—the secure, resilient path is now also the **easiest** path.
 

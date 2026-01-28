@@ -1,4 +1,4 @@
 // MongoDB initialization script
-db = db.getSiblingDB('project_planton');
+db = db.getSiblingDB('openmcf');
 
-print('MongoDB initialized successfully for project_planton database');
+print('MongoDB initialized successfully for openmcf database');

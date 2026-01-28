@@ -18,7 +18,7 @@ What makes Civo's block storage compelling is its simplicity and cost-effectiven
 
 But simplicity doesn't mean limitation. Civo Volumes integrate seamlessly with both Civo Compute (as attachable disks) and Civo Kubernetes (as PersistentVolumes via the `civo-volume` StorageClass). They're region-scoped, meaning a volume in LON1 stays in LON1, and they can only attach to one instance at a time—no multi-attach scenarios. They also lack native snapshot capabilities on the public cloud, which means backup strategies require a bit more thought than simply clicking "Create Snapshot."
 
-This guide explains the landscape of deployment methods for Civo Volumes, from manual console clicks to production-grade Infrastructure-as-Code, and shows how Project Planton abstracts these choices into a clean, protobuf-defined API.
+This guide explains the landscape of deployment methods for Civo Volumes, from manual console clicks to production-grade Infrastructure-as-Code, and shows how OpenMCF abstracts these choices into a clean, protobuf-defined API.
 
 ---
 
@@ -268,9 +268,9 @@ Civo supports **offline volume expansion**:
 
 ---
 
-## Project Planton's Approach: Abstraction with Pragmatism
+## OpenMCF's Approach: Abstraction with Pragmatism
 
-Project Planton abstracts Civo Volume provisioning behind a clean, protobuf-defined API (`CivoVolume`). This provides a consistent interface across clouds while respecting Civo's unique characteristics.
+OpenMCF abstracts Civo Volume provisioning behind a clean, protobuf-defined API (`CivoVolume`). This provides a consistent interface across clouds while respecting Civo's unique characteristics.
 
 ### What We Abstract
 
@@ -293,7 +293,7 @@ This follows the **80/20 principle**: 80% of users need only these fields. Advan
 
 ### Under the Hood: Pulumi or Terraform?
 
-Project Planton currently uses **Pulumi (Go)** for Civo Volume provisioning. Why?
+OpenMCF currently uses **Pulumi (Go)** for Civo Volume provisioning. Why?
 
 - **Language Flexibility:** Pulumi's Go SDK fits naturally into our broader multi-cloud orchestration (which is also Go-based).
 - **Equivalent Coverage:** Pulumi's Civo provider (bridged from Terraform) supports all volume operations we need.
@@ -310,7 +310,7 @@ That said, Terraform would work equally well. The choice is implementation detai
 **Use Case:** Small test database for a developer's sandbox.
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoVolume
 metadata:
   name: dev-db-data
@@ -337,7 +337,7 @@ spec:
 **Use Case:** Staging database with periodic backups to object storage.
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoVolume
 metadata:
   name: staging-db-data
@@ -364,7 +364,7 @@ spec:
 **Use Case:** Production database with 1 TiB storage and application-level backups.
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoVolume
 metadata:
   name: prod-db-data
@@ -400,7 +400,7 @@ spec:
 
 5. **For Kubernetes, the CSI driver is king.** Use PersistentVolumeClaims and let the `civo-volume` StorageClass handle provisioning automatically.
 
-6. **Project Planton abstracts the API** into a clean protobuf spec, making multi-cloud deployments consistent while respecting Civo's unique characteristics.
+6. **OpenMCF abstracts the API** into a clean protobuf spec, making multi-cloud deployments consistent while respecting Civo's unique characteristics.
 
 ---
 
@@ -414,5 +414,5 @@ spec:
 
 ---
 
-**Bottom Line:** Civo Volumes give you persistent, SSD-backed block storage with straightforward pricing and no performance tier complexity. Manage them with Terraform or Pulumi, implement backups at the application layer, and leverage the CSI driver for Kubernetes. Project Planton makes this simple with a protobuf API that hides the complexity while exposing the essential configuration you actually need.
+**Bottom Line:** Civo Volumes give you persistent, SSD-backed block storage with straightforward pricing and no performance tier complexity. Manage them with Terraform or Pulumi, implement backups at the application layer, and leverage the CSI driver for Kubernetes. OpenMCF makes this simple with a protobuf API that hides the complexity while exposing the essential configuration you actually need.
 

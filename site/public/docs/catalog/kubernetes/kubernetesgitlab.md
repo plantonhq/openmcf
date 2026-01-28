@@ -16,7 +16,7 @@ But here's the paradox: **the only officially supported production architecture 
 
 This isn't a limitation of Kubernetes or a shortcoming of GitLab's engineering. It's a pragmatic architectural decision driven by a single, critical constraint: **Gitaly**, GitLab's Git repository storage service, requires high-performance local storage and predictable infrastructure that Kubernetes pods—with their ephemeral, network-attached storage and automated lifecycle management—cannot reliably provide at production scale.
 
-This document explains the deployment landscape for GitLab on Kubernetes, presents the evolution from naive approaches to production-ready architectures, and clarifies what Project Planton supports and why.
+This document explains the deployment landscape for GitLab on Kubernetes, presents the evolution from naive approaches to production-ready architectures, and clarifies what OpenMCF supports and why.
 
 ## The Maturity Spectrum: From Anti-Pattern to Production
 
@@ -583,18 +583,18 @@ GitLab data is distributed across three storage systems, each requiring a differ
 
 ---
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton's `GitlabKubernetes` API is designed **hybrid-first**. This is not a limitation—it's a deliberate design choice that aligns with GitLab's official production guidance.
+OpenMCF's `GitlabKubernetes` API is designed **hybrid-first**. This is not a limitation—it's a deliberate design choice that aligns with GitLab's official production guidance.
 
-### What Project Planton Provides
+### What OpenMCF Provides
 
 - **API Abstraction:** A Protobuf-defined API that captures the essential 80/20 configuration
 - **Hybrid Model by Default:** The API assumes external dependencies are the primary path
 - **Connection Configuration:** The API configures GitLab to connect to your external PostgreSQL, Redis, object storage, and Gitaly—it does not provision those services for you
 - **Production Patterns:** Sensible defaults for resource allocation, scaling, and security
 
-### What Project Planton Doesn't Do
+### What OpenMCF Doesn't Do
 
 - **Provision External Infrastructure:** You are responsible for provisioning your RDS instance, ElastiCache cluster, S3 buckets, and Gitaly VMs
 - **Manage Day 2 Operations:** Backups, upgrades, and monitoring of external dependencies are your responsibility
@@ -602,7 +602,7 @@ Project Planton's `GitlabKubernetes` API is designed **hybrid-first**. This is n
 
 ### Why This Design?
 
-Because attempting to abstract away the hybrid architecture—to make it appear simpler than it is—would be dishonest and would lead to production failures. The Cloud-Native Hybrid model is the reality of production GitLab on Kubernetes. Project Planton's role is to make that model easier to configure and deploy correctly, not to hide its inherent complexity.
+Because attempting to abstract away the hybrid architecture—to make it appear simpler than it is—would be dishonest and would lead to production failures. The Cloud-Native Hybrid model is the reality of production GitLab on Kubernetes. OpenMCF's role is to make that model easier to configure and deploy correctly, not to hide its inherent complexity.
 
 ---
 

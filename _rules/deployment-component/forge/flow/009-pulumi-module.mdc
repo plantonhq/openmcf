@@ -42,9 +42,9 @@ NOTES
 - Rule 010 handles entrypoint `iac/pulumi/main.go`, `Pulumi.yaml`, `Makefile`, and binary BUILD.
 - Use in-repo patterns (e.g., `awsalb`, `awsrdsinstance`) as guidance; always derive names/types/outputs from the proto files you read.
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
-- Fields with `(org.project_planton.shared.options.default)` are `optional` (pointer types in Go)
+- Fields with `(org.openmcf.shared.options.default)` are `optional` (pointer types in Go)
 - ALWAYS use getter methods: `spec.GetFieldName()` instead of `spec.FieldName`
-- NO defensive coding needed - Project Planton middleware applies defaults before IaC modules run
+- NO defensive coding needed - OpenMCF middleware applies defaults before IaC modules run
 - Example:
   ```go
   // CORRECT: Use getter (safe, framework guarantees defaults)

@@ -3,13 +3,13 @@ import { create } from '@bufbuild/protobuf';
 // Connect RPC clients accept messages directly, no wrapping needed
 import { AppContext } from '@/contexts';
 import { useConnectRpcClient } from '@/hooks';
-import { CredentialQueryController } from '@/gen/org/project_planton/app/credential/v1/query_pb';
+import { CredentialQueryController } from '@/gen/org/openmcf/app/credential/v1/query_pb';
 import {
   ListCredentialsRequest,
   ListCredentialsResponse,
   GetCredentialRequestSchema,
-} from '@/gen/org/project_planton/app/credential/v1/io_pb';
-import { Credential } from '@/gen/org/project_planton/app/credential/v1/api_pb';
+} from '@/gen/org/openmcf/app/credential/v1/io_pb';
+import { Credential } from '@/gen/org/openmcf/app/credential/v1/api_pb';
 
 interface QueryType {
   listCredentials: (input: ListCredentialsRequest) => Promise<ListCredentialsResponse>;

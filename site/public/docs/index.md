@@ -1,17 +1,17 @@
 ---
 title: "Documentation"
-description: "Comprehensive guides for ProjectPlanton - the open-source multi-cloud infrastructure framework"
+description: "Comprehensive guides for OpenMCF - the open-source multi-cloud infrastructure framework"
 icon: "📚"
 order: 1
 ---
 
-# Welcome to ProjectPlanton Documentation
+# Welcome to OpenMCF Documentation
 
-ProjectPlanton is an open-source multi-cloud infrastructure framework that lets you author KRM-style YAML manifests once, validate them with Protobuf + Buf, and deploy with Pulumi or OpenTofu.
+OpenMCF is an open-source multi-cloud infrastructure framework that lets you author KRM-style YAML manifests once, validate them with Protobuf + Buf, and deploy with Pulumi or OpenTofu.
 
 ## Getting Started
 
-New to ProjectPlanton? Start here:
+New to OpenMCF? Start here:
 
 - Install the CLI via Homebrew
 - Validate your first manifest
@@ -19,7 +19,7 @@ New to ProjectPlanton? Start here:
 
 ## CLI Reference
 
-Master the Project Planton command-line interface:
+Master the OpenMCF command-line interface:
 
 - **[Unified Commands](/docs/cli/unified-commands)** - NEW! kubectl-style `apply` and `destroy` commands 🚀
 - **[Complete CLI Reference](/docs/cli/cli-reference)** - All commands, flags, and options
@@ -123,12 +123,12 @@ Browse deployment components by cloud provider in the [Catalog](/docs/catalog):
 ## Quick Example
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: my-redis
   labels:
-    project-planton.org/provisioner: pulumi
+    openmcf.org/provisioner: pulumi
 spec:
   replicas: 3
   resources:
@@ -139,11 +139,11 @@ spec:
 
 ```bash
 # Simple kubectl-style workflow
-project-planton validate redis.yaml
-project-planton apply -f redis.yaml
+openmcf validate redis.yaml
+openmcf apply -f redis.yaml
 
 # Or use provisioner-specific commands
-project-planton pulumi up -f redis.yaml --stack myorg/project/dev
+openmcf pulumi up -f redis.yaml --stack myorg/project/dev
 ```
 
 ## Troubleshooting
@@ -157,7 +157,7 @@ Having issues? Check our **[Troubleshooting Guide](/docs/troubleshooting)** for 
 
 ## Resources
 
-- [GitHub Repository](https://github.com/plantonhq/project-planton)
-- [Buf Schema Registry](https://buf.build/project-planton/apis)
-- [Issue Tracker](https://github.com/plantonhq/project-planton/issues)
+- [GitHub Repository](https://github.com/plantonhq/openmcf)
+- [Buf Schema Registry](https://buf.build/openmcf/apis)
+- [Issue Tracker](https://github.com/plantonhq/openmcf/issues)
 

@@ -6,7 +6,7 @@
 
 ## Summary
 
-Renamed the directory from `externalsecretskubernetes` to `externalsecrets` to align with Project Planton's naming conventions for Kubernetes addon operators. Unlike other addons, ExternalSecrets proto definitions were already correctly named without the redundant "Kubernetes" suffix—this change simply brings the directory structure into alignment with the API naming.
+Renamed the directory from `externalsecretskubernetes` to `externalsecrets` to align with OpenMCF's naming conventions for Kubernetes addon operators. Unlike other addons, ExternalSecrets proto definitions were already correctly named without the redundant "Kubernetes" suffix—this change simply brings the directory structure into alignment with the API naming.
 
 ## Problem Statement / Motivation
 
@@ -47,7 +47,7 @@ message ExternalSecrets {
 
 ```
 # Before
-apis/org/project_planton/provider/kubernetes/addon/externalsecretskubernetes/v1/
+apis/org/openmcf/provider/kubernetes/addon/externalsecretskubernetes/v1/
 ├── api.proto
 ├── spec.proto
 ├── stack_input.proto
@@ -55,7 +55,7 @@ apis/org/project_planton/provider/kubernetes/addon/externalsecretskubernetes/v1/
 └── iac/
 
 # After
-apis/org/project_planton/provider/kubernetes/addon/externalsecrets/v1/
+apis/org/openmcf/provider/kubernetes/addon/externalsecrets/v1/
 ├── api.proto
 ├── spec.proto
 ├── stack_input.proto
@@ -69,20 +69,20 @@ The package namespace was updated to match the new directory:
 
 ```protobuf
 // Before
-package org.project_planton.provider.kubernetes.addon.externalsecretskubernetes.v1;
+package org.openmcf.provider.kubernetes.addon.externalsecretskubernetes.v1;
 
 // After
-package org.project_planton.provider.kubernetes.addon.externalsecrets.v1;
+package org.openmcf.provider.kubernetes.addon.externalsecrets.v1;
 ```
 
 ### Go Import Paths
 
 ```go
 // Before
-externalsecretsv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/externalsecretskubernetes/v1"
+externalsecretsv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/externalsecretskubernetes/v1"
 
 // After
-externalsecretsv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/externalsecrets/v1"
+externalsecretsv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/externalsecrets/v1"
 ```
 
 ### Registry Entry
@@ -123,7 +123,7 @@ The API kind was already `ExternalSecrets`, so users' YAML manifests require no 
 
 ```yaml
 # Users continue to use the same kind name
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: ExternalSecrets  # Already correct
 metadata:
   name: external-secrets-prod

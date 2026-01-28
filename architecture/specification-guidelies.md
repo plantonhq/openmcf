@@ -167,7 +167,7 @@ MongodbKubernetesContainer container = 1 [
 
 Users can deploy MongoDB with just:
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: MongodbKubernetes
 metadata:
   name: my-db

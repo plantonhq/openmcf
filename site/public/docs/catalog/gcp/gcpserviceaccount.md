@@ -176,13 +176,13 @@ roles.forEach((role, index) => {
 ### Which to Choose?
 
 - **Terraform** is ideal if your organization has existing Terraform infrastructure, prefers a purely declarative approach, and values the mature module ecosystem. The recent ephemeral resource improvements address previous security concerns around keys in state.
-- **Pulumi** shines in scenarios requiring complex logic, custom abstractions, or when building a platform with its own higher-level API (like Project Planton). The ability to write infrastructure in the same language as application code can simplify cognitive load for full-stack teams.
+- **Pulumi** shines in scenarios requiring complex logic, custom abstractions, or when building a platform with its own higher-level API (like OpenMCF). The ability to write infrastructure in the same language as application code can simplify cognitive load for full-stack teams.
 
 For **multi-cloud platforms**, either tool works—the key is to leverage them to implement keyless patterns, not just automate key creation.
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton adopts a **minimal-configuration, security-first** philosophy for service account management:
+OpenMCF adopts a **minimal-configuration, security-first** philosophy for service account management:
 
 **Default behavior:**
 - **No keys by default:** The `create_key` field defaults to `false`. Users must explicitly opt into key creation, which discourages the anti-pattern.
@@ -205,7 +205,7 @@ This is reflected in the API design: there's no field for "distribute this key t
 **Example usage (declarative YAML):**
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpServiceAccount
 metadata:
   name: prod-app-logger
@@ -234,7 +234,7 @@ These guides will cover specific implementation details without overwhelming thi
 
 The evolution from key-based authentication to keyless patterns represents more than a technical improvement—it's a shift in how we think about identity in cloud infrastructure. Long-lived credentials made sense in an era of static servers and manual provisioning, but modern cloud platforms provide better primitives: short-lived tokens, platform-provided identities, and federated trust.
 
-**Project Planton's service account API embraces this paradigm:** it makes the secure path the easy path. By defaulting to no keys, exposing only essential configuration, and integrating naturally with Workload Identity and federation, it helps teams avoid the anti-patterns that have plagued cloud security for years.
+**OpenMCF's service account API embraces this paradigm:** it makes the secure path the easy path. By defaulting to no keys, exposing only essential configuration, and integrating naturally with Workload Identity and federation, it helps teams avoid the anti-patterns that have plagued cloud security for years.
 
 Whether you're migrating legacy workloads or building greenfield infrastructure, the principle is the same: treat service accounts as identities that workloads *assume* through platform mechanisms, not as credentials that you distribute. The result is infrastructure that's more secure, easier to audit, and simpler to operate—because the platform handles the complexity of credential management, leaving you to focus on building.
 

@@ -88,7 +88,7 @@ Based on updated requirements from user:
 4. **Update Rule 015** - Make `examples.md` generation optional or remove it
 
 #### Must Update
-5. **Update `forge-project-planton-component.mdc`**
+5. **Update `forge-openmcf-component.mdc`**
    - Include rules 016-019 in the sequence
    - Add rule 020 (research doc)
    - Optionally add rule 021 (overview.md)

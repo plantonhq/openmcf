@@ -11,32 +11,32 @@ func TestLabelConversionPrometheusFormat(t *testing.T) {
 		expectedPrometheusLabel string
 	}{
 		{
-			testName:                "project-planton org label should be converted to prometheus label",
-			inputLabel:              "project-planton.org/org",
-			expectedPrometheusLabel: "project_planton_org_org",
+			testName:                "openmcf org label should be converted to prometheus label",
+			inputLabel:              "openmcf.org/org",
+			expectedPrometheusLabel: "openmcf_org_org",
 		},
 		{
-			testName:                "project-planton service label should be converted to prometheus label",
-			inputLabel:              "project-planton.org/service",
-			expectedPrometheusLabel: "project_planton_org_service",
+			testName:                "openmcf service label should be converted to prometheus label",
+			inputLabel:              "openmcf.org/service",
+			expectedPrometheusLabel: "openmcf_org_service",
 		},
 		{
-			testName:                "project-planton service-env label should be converted to prometheus label",
-			inputLabel:              "project-planton.org/env",
-			expectedPrometheusLabel: "project_planton_org_env",
+			testName:                "openmcf service-env label should be converted to prometheus label",
+			inputLabel:              "openmcf.org/env",
+			expectedPrometheusLabel: "openmcf_org_env",
 		},
 		{
-			testName:                "project-planton kind label should be converted to prometheus label",
-			inputLabel:              "project-planton.org/kind",
-			expectedPrometheusLabel: "project_planton_org_kind",
+			testName:                "openmcf kind label should be converted to prometheus label",
+			inputLabel:              "openmcf.org/kind",
+			expectedPrometheusLabel: "openmcf_org_kind",
 		},
 		{
-			testName:                "project-planton id label should be converted to prometheus label",
-			inputLabel:              "project-planton.org/id",
-			expectedPrometheusLabel: "project_planton_org_id",
+			testName:                "openmcf id label should be converted to prometheus label",
+			inputLabel:              "openmcf.org/id",
+			expectedPrometheusLabel: "openmcf_org_id",
 		},
 	}
-	t.Run("test project-planton label conversion to prometheus format labels", func(t *testing.T) {
+	t.Run("test openmcf label conversion to prometheus format labels", func(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.testName, func(t *testing.T) {
 				r := WithPrometheusFormat(tc.inputLabel)

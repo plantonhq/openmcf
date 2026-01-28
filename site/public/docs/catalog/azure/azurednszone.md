@@ -14,7 +14,7 @@ When Azure first launched its DNS service, the conventional wisdom was that it w
 
 The reality today is quite different. Azure DNS has matured into a strategic component for cloud-native architectures, not merely a commodity service. It offers seamless Azure integration, global anycast infrastructure, and unique features like **alias records** (eliminating hardcoded IPs), **private DNS zones** (for internal VNet resolution), and **DNSSEC support** (for cryptographic validation). For organizations building on Azure, hosting DNS outside the platform means managing yet another integration point, maintaining separate access controls, and missing out on unified infrastructure-as-code.
 
-This document examines how to deploy Azure DNS zones effectively – from anti-patterns to production-ready solutions – and explains Project Planton's approach to DNS management in a multi-cloud world.
+This document examines how to deploy Azure DNS zones effectively – from anti-patterns to production-ready solutions – and explains OpenMCF's approach to DNS management in a multi-cloud world.
 
 ## The Azure DNS Landscape
 
@@ -415,7 +415,7 @@ records:
 
 ### Minimal API Design
 
-Based on the 80/20 analysis, Project Planton's `AzureDnsZoneSpec` focuses on essentials:
+Based on the 80/20 analysis, OpenMCF's `AzureDnsZoneSpec` focuses on essentials:
 
 - `zone_name`: The DNS domain (e.g., `example.com`)
 - `resource_group`: Azure resource group for the zone
@@ -467,9 +467,9 @@ This minimal schema covers 95% of use cases while keeping the API simple and clo
 - Link zone to VNets that need to resolve the private endpoint
 - Azure can auto-create DNS records when you provision the endpoint (or manage via IaC)
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton's `AzureDnsZone` API provides a **cloud-agnostic, protobuf-defined interface** for managing Azure DNS zones as code. The implementation uses **Pulumi with Azure Native provider** for several strategic reasons:
+OpenMCF's `AzureDnsZone` API provides a **cloud-agnostic, protobuf-defined interface** for managing Azure DNS zones as code. The implementation uses **Pulumi with Azure Native provider** for several strategic reasons:
 
 **Why Pulumi?**
 1. **Real programming languages**: Write DNS logic in Go, TypeScript, Python. Use loops, conditionals, data structures – not limited to DSL constraints.
@@ -485,7 +485,7 @@ The protobuf spec exposes only essential fields (zone name, resource group, reco
 
 **Deployment workflow**:
 1. Define `AzureDnsZone` resource in protobuf/YAML
-2. Project Planton CLI generates Pulumi stack
+2. OpenMCF CLI generates Pulumi stack
 3. Pulumi creates Azure DNS zone and records
 4. Stack outputs return nameserver addresses
 5. Update domain registrar with those nameservers (manual step, one-time)
@@ -505,7 +505,7 @@ The path to production-ready DNS management is clear:
 - **Focus** on the 20% of DNS features that solve 80% of problems (A, AAAA, CNAME, TXT, MX)
 - **Monitor** and back up (zone exports, IaC as source of truth)
 
-Project Planton's `AzureDnsZone` API distills these lessons into a minimal, multi-cloud interface backed by production-proven Pulumi automation. Whether you're hosting a single domain or orchestrating DNS across hundreds of zones, the principles remain: treat DNS as code, automate relentlessly, and keep configurations simple.
+OpenMCF's `AzureDnsZone` API distills these lessons into a minimal, multi-cloud interface backed by production-proven Pulumi automation. Whether you're hosting a single domain or orchestrating DNS across hundreds of zones, the principles remain: treat DNS as code, automate relentlessly, and keep configurations simple.
 
 ---
 

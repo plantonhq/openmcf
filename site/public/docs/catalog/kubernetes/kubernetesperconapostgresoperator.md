@@ -68,7 +68,7 @@ kubectl apply --server-side \
 
 **How it works**: Percona maintains official Helm charts at `https://percona.github.io/percona-helm-charts/`. Critically, there are **two separate charts**:
 
-1. **`percona/pg-operator`**: Installs the operator controller, CRDs, and RBAC. **This is what Project Planton's API targets.**
+1. **`percona/pg-operator`**: Installs the operator controller, CRDs, and RBAC. **This is what OpenMCF's API targets.**
 2. **`percona/pg-db`**: A helper chart that creates a `PerconaPGCluster` custom resource. This is for convenience—not the operator itself.
 
 ```bash
@@ -370,13 +370,13 @@ Understanding Percona's position requires context. Here's how it compares to the
 
 ---
 
-## Why Project Planton Supports Percona
+## Why OpenMCF Supports Percona
 
-After evaluating the landscape, we integrated the **Percona Operator for PostgreSQL** into Project Planton's IaC framework for the following reasons:
+After evaluating the landscape, we integrated the **Percona Operator for PostgreSQL** into OpenMCF's IaC framework for the following reasons:
 
 ### 1. Unambiguous Open Source
 
-Percona's entire stack—operator code, container images, and the PostgreSQL distribution it deploys—is fully open source with no production restrictions. This aligns with Project Planton's open-source philosophy and avoids the legal landmines present in competitors.
+Percona's entire stack—operator code, container images, and the PostgreSQL distribution it deploys—is fully open source with no production restrictions. This aligns with OpenMCF's open-source philosophy and avoids the legal landmines present in competitors.
 
 ### 2. Production-Proven Architecture
 
@@ -392,7 +392,7 @@ As a fork of PGO, Percona benefits from the upstream's continuous innovation whi
 
 ---
 
-## The Project Planton API
+## The OpenMCF API
 
 Our `KubernetesPerconaPostgresOperator` API (see `spec.proto`) abstracts the Helm chart complexity into a minimal, production-ready Protobuf specification. The API exposes only the essential 20% of configuration that 80% of users need:
 

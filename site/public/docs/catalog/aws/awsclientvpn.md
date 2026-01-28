@@ -16,9 +16,9 @@ AWS Client VPN represents a paradigm shift: a fully-managed, elastic, OpenVPN-ba
 
 But here's the critical insight that many platform teams discover too late: **an AWS Client VPN endpoint is not a single resource**. It is a composite service construct requiring at least three distinct, interdependent AWS resources to be functional: the Endpoint itself, Target Network Associations (linking the endpoint to VPC subnets), and Authorization Rules (defining access control policies). An endpoint created in isolation exists in a `pending-associate` state and cannot accept a single client connection.
 
-This composite nature is the central challenge for any infrastructure automation effort. A high-level API—like the one Project Planton provides—must manage this collection of underlying resources as a single, atomic, declarative unit to be truly effective.
+This composite nature is the central challenge for any infrastructure automation effort. A high-level API—like the one OpenMCF provides—must manage this collection of underlying resources as a single, atomic, declarative unit to be truly effective.
 
-This document explores the landscape of AWS Client VPN deployment methods, from manual console operations to production-grade automation. It examines the critical architectural decisions—authentication methods, network topology, and availability models—and explains how Project Planton abstracts these complexities into a developer-friendly API that balances simplicity with production readiness.
+This document explores the landscape of AWS Client VPN deployment methods, from manual console operations to production-grade automation. It examines the critical architectural decisions—authentication methods, network topology, and availability models—and explains how OpenMCF abstracts these complexities into a developer-friendly API that balances simplicity with production readiness.
 
 ## Understanding AWS Client VPN: Architecture and Strategic Fit
 
@@ -146,7 +146,7 @@ This is verbose and requires manually wiring all the dependencies, but it is ful
 
 1. **L1 Construct (CfnClientVpnEndpoint)**: A direct, auto-generated 1:1 mapping to the CloudFormation resource. Using it is identical to writing CloudFormation, requiring manual creation and linking of all associated resources.
 
-2. **L2 Construct (ec2.ClientVpnEndpoint)**: This is a high-level, human-designed abstraction and serves as a **primary model for Project Planton's API**. This construct's constructor accepts the VPC and target subnets directly, then *automatically creates and manages* the underlying `ClientVpnTargetNetworkAssociation` resources. It provides helper methods like `.addRoute()` and `.addAuthorizationRule()`, which handle the creation of dependent resources. **This L2 construct solves the composite resource problem**, presenting an atomic, logical `ClientVpn` object to the developer.
+2. **L2 Construct (ec2.ClientVpnEndpoint)**: This is a high-level, human-designed abstraction and serves as a **primary model for OpenMCF's API**. This construct's constructor accepts the VPC and target subnets directly, then *automatically creates and manages* the underlying `ClientVpnTargetNetworkAssociation` resources. It provides helper methods like `.addRoute()` and `.addAuthorizationRule()`, which handle the creation of dependent resources. **This L2 construct solves the composite resource problem**, presenting an atomic, logical `ClientVpn` object to the developer.
 
 **Verdict**: CDK L2 is the gold standard for AWS-native teams. CloudFormation is suitable for those already invested in CFN. Neither is ideal for multi-cloud infrastructure management.
 
@@ -193,9 +193,9 @@ The `provider-aws` defines granular CRDs for `ClientVpnEndpoint`, `NetworkAssoci
 
 The key feature for platform engineering is **Composition**: Crossplane allows a platform engineer to define a new, high-level `CompositeResourceDefinition` (XRD) (e.g., `kind: XEC2ClientVpn`). A corresponding `Composition` object then *composes* this high-level abstraction from the granular, primitive resources. This provides a clean, Kubernetes-native API to application teams while hiding the complexity of the composite resource model.
 
-This is the exact architectural pattern Project Planton implements, but with a **Protobuf API** as the high-level specification instead of a Kubernetes CRD.
+This is the exact architectural pattern OpenMCF implements, but with a **Protobuf API** as the high-level specification instead of a Kubernetes CRD.
 
-**Verdict**: Crossplane is the gold standard for Kubernetes-native platform engineering. Its composition model validates the approach Project Planton takes with Protobuf APIs.
+**Verdict**: Crossplane is the gold standard for Kubernetes-native platform engineering. Its composition model validates the approach OpenMCF takes with Protobuf APIs.
 
 ## Authentication Architectures: The Most Important Decision
 
@@ -349,21 +349,21 @@ By default, a client connecting to the VPN will continue to use its locally-conf
 - **Default Security Group**: Relying on the VPC's default security group, which is not designed for VPN access and violates the principle of least privilege.
 - **Single-AZ Production**: Associating a production endpoint with only one subnet to save costs. This creates a single point of failure for all remote access if that AZ has an issue.
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton provides a unified, Protobuf-defined API for deploying AWS Client VPN endpoints that abstracts the composite resource model into a single, declarative specification.
+OpenMCF provides a unified, Protobuf-defined API for deploying AWS Client VPN endpoints that abstracts the composite resource model into a single, declarative specification.
 
 ### Design Philosophy: Hiding Complexity, Not Capability
 
 The primary challenge with AWS Client VPN is its composite nature—requiring the orchestration of Endpoint, NetworkAssociation, and AuthorizationRule resources. The official Terraform provider exposes this complexity directly to the user, requiring manual linking of separate resources.
 
-**Project Planton's approach**: Abstract the composite resource model entirely. The `AwsClientVpnSpec` message accepts parameters for the endpoint, the subnet associations, and the authorization rules in a single, high-level message. The framework's Pulumi controller is responsible for fanning out this single specification into the 3+ underlying AWS API calls, managing dependencies and ensuring atomic deployment.
+**OpenMCF's approach**: Abstract the composite resource model entirely. The `AwsClientVpnSpec` message accepts parameters for the endpoint, the subnet associations, and the authorization rules in a single, high-level message. The framework's Pulumi controller is responsible for fanning out this single specification into the 3+ underlying AWS API calls, managing dependencies and ensuring atomic deployment.
 
 This is the same pattern used by the AWS CDK L2 construct (`ec2.ClientVpnEndpoint`)—the gold standard for AWS-native abstractions.
 
 ### Current Implementation (v1)
 
-The Project Planton AWS Client VPN API (see `spec.proto`) provides:
+The OpenMCF AWS Client VPN API (see `spec.proto`) provides:
 
 **Essential Fields (80% Case)**:
 - `vpc_id`: The target VPC to attach the endpoint to
@@ -410,16 +410,16 @@ Authorization rules are specified as a list of IPv4 CIDRs in the `cidr_authoriza
 
 ### Multi-Environment Best Practice
 
-Following AWS best practices, Project Planton encourages separate Client VPN endpoints for each environment:
+Following AWS best practices, OpenMCF encourages separate Client VPN endpoints for each environment:
 - `company-dev-vpn` → Development VPC
 - `company-staging-vpn` → Staging VPC
 - `company-prod-vpn` → Production VPC
 
 Each endpoint is associated with its respective VPC, providing complete isolation for network access, logging, and security policies.
 
-### What Project Planton Abstracts Away
+### What OpenMCF Abstracts Away
 
-By using the Project Planton API, platform teams avoid:
+By using the OpenMCF API, platform teams avoid:
 - **Manual resource linking**: No need to manually create and link `NetworkAssociation` and `AuthorizationRule` resources
 - **Dependency management**: The controller handles the proper sequencing of resource creation (endpoint → associations → rules)
 - **State management**: Pulumi manages all underlying resource state, enabling drift detection and reconciliation
@@ -429,9 +429,9 @@ By using the Project Planton API, platform teams avoid:
 
 AWS Client VPN represents a fundamental shift from bastion hosts to managed, elastic remote access. But its composite resource model creates significant complexity for infrastructure automation. Teams that attempt to manually manage the endpoint, associations, and authorization rules with low-level Terraform or CloudFormation resources quickly encounter operational friction, especially when scaling to multi-environment, multi-region deployments.
 
-Project Planton abstracts this complexity into a single, declarative API that makes the simple case simple (single-region, certificate-based access for developers) while making the advanced case possible (multi-AZ HA, CloudWatch logging, custom security groups).
+OpenMCF abstracts this complexity into a single, declarative API that makes the simple case simple (single-region, certificate-based access for developers) while making the advanced case possible (multi-AZ HA, CloudWatch logging, custom security groups).
 
 The paradigm shift is clear: AWS Client VPN eliminates bastion host operational overhead; infrastructure as code eliminates deployment inconsistency. Together, they represent the modern path to secure, scalable remote access infrastructure.
 
-**For production deployments**: Plan to adopt SAML-based federated authentication (coming in v2) to eliminate the administrative burden of certificate lifecycle management. Use split-tunnel mode to control costs. Deploy across multiple AZs for high availability. Enable CloudWatch logging for observability. And most importantly—use Project Planton's abstraction to manage the composite resource model as a single, atomic unit.
+**For production deployments**: Plan to adopt SAML-based federated authentication (coming in v2) to eliminate the administrative burden of certificate lifecycle management. Use split-tunnel mode to control costs. Deploy across multiple AZs for high availability. Enable CloudWatch logging for observability. And most importantly—use OpenMCF's abstraction to manage the composite resource model as a single, atomic unit.
 

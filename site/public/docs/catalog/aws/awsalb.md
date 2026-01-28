@@ -12,7 +12,7 @@ componentName: "awsalb"
 
 The AWS Application Load Balancer (ALB) sits at a critical junction in modern cloud architectures: it's the entry point for user traffic, the routing layer for microservices, and the SSL termination point that protects application backends. Despite its ubiquity, ALB deployment remains surprisingly error-prone when managed manually, with common misconfigurations that undermine high availability, security, and operational stability.
 
-This document traces the evolution of ALB deployment methodologies—from manual console provisioning to modern control-plane-based automation. It examines what makes ALBs architecturally complex (the interplay of listeners, target groups, health checks, and security groups), compares the major Infrastructure as Code (IaC) tools, and explains how Project Planton abstracts this complexity into a developer-friendly API designed for the 80% use case while enabling the 20% of advanced scenarios.
+This document traces the evolution of ALB deployment methodologies—from manual console provisioning to modern control-plane-based automation. It examines what makes ALBs architecturally complex (the interplay of listeners, target groups, health checks, and security groups), compares the major Infrastructure as Code (IaC) tools, and explains how OpenMCF abstracts this complexity into a developer-friendly API designed for the 80% use case while enabling the 20% of advanced scenarios.
 
 The paradigm shift is clear: production ALBs should never be created through the AWS Console. They should be declared as code, version-controlled, and continuously reconciled by a control plane.
 
@@ -133,7 +133,7 @@ This is the most advanced deployment method, shifting from user-run CLI tools to
 
 **The Fundamental Difference**: A CLI-based tool like Terraform runs, applies changes, and exits. A control plane **continuously observes** infrastructure state and reconciles it against the desired state. This GitOps-style continuous reconciliation is the defining characteristic.
 
-**Project Planton Context**: Project Planton, with its protobuf-defined APIs, is conceptually an API specification for this type of control plane, not just another CLI tool.
+**OpenMCF Context**: OpenMCF, with its protobuf-defined APIs, is conceptually an API specification for this type of control plane, not just another CLI tool.
 
 ## Production-Grade ALB Architecture
 
@@ -297,11 +297,11 @@ ALB pricing consists of a fixed hourly charge plus a variable charge based on **
 ### Classic Load Balancer (CLB)
 
 **Status**: **Legacy only**  
-**Use Case**: Not recommended for any new applications. Lacks advanced routing of ALB and performance/static IPs of NLB. Project Planton should **not** implement a resource for Classic Load Balancers.
+**Use Case**: Not recommended for any new applications. Lacks advanced routing of ALB and performance/static IPs of NLB. OpenMCF should **not** implement a resource for Classic Load Balancers.
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton provides a Kubernetes-native API for deploying AWS Application Load Balancers that balances the 80% use case (simple, secure defaults) with extensibility for advanced scenarios.
+OpenMCF provides a Kubernetes-native API for deploying AWS Application Load Balancers that balances the 80% use case (simple, secure defaults) with extensibility for advanced scenarios.
 
 ### Design Philosophy: 80/20 API Structure
 
@@ -333,7 +333,7 @@ The current API (see `spec.proto`) focuses squarely on the 80% use case with a s
 
 ### Foreign Key References
 
-Project Planton uses a sophisticated `StringValueOrRef` pattern for references to other resources:
+OpenMCF uses a sophisticated `StringValueOrRef` pattern for references to other resources:
 - `subnets` can reference `AwsVpc` resources
 - `security_groups` can reference `AwsSecurityGroup` resources
 - `route53_zone_id` can reference `AwsRoute53Zone` resources
@@ -391,7 +391,7 @@ string waf_web_acl_arn = N;
 
 ### Multi-Environment Best Practice
 
-Following AWS best practices, Project Planton encourages using separate VPCs (and thus separate ALBs) for each environment:
+Following AWS best practices, OpenMCF encourages using separate VPCs (and thus separate ALBs) for each environment:
 - `company-dev-vpc` → Dev ALBs
 - `company-staging-vpc` → Staging ALBs
 - `company-prod-vpc` → Production ALBs
@@ -424,13 +424,13 @@ The research makes clear that:
 - **IaC is the modern standard**, with Terraform serving as the canonical implementation
 - **Control planes represent the future**, continuously observing and reconciling infrastructure state
 
-Project Planton builds on this foundation, providing a Kubernetes-native API that:
+OpenMCF builds on this foundation, providing a Kubernetes-native API that:
 - **Enforces best practices** (multi-AZ validation, deletion protection defaults)
 - **Makes the simple case simple** (80% use case with flat, intuitive fields)
 - **Makes the advanced case possible** (extensible for future 20% features)
 - **Operates as a control plane**, not a one-shot CLI tool
 
-The paradigm shift is complete: production load balancers should be declared as code, version-controlled in Git, and continuously reconciled by a control plane. Project Planton embodies this philosophy, translating complex AWS primitives into developer-friendly abstractions that make doing the right thing the easy thing.
+The paradigm shift is complete: production load balancers should be declared as code, version-controlled in Git, and continuously reconciled by a control plane. OpenMCF embodies this philosophy, translating complex AWS primitives into developer-friendly abstractions that make doing the right thing the easy thing.
 
-By codifying AWS best practices into validation rules, providing intelligent defaults, and abstracting security patterns, Project Planton helps teams deploy production-ready ALBs with confidence—eliminating the common pitfalls that plague manual and ad-hoc scripted approaches.
+By codifying AWS best practices into validation rules, providing intelligent defaults, and abstracting security patterns, OpenMCF helps teams deploy production-ready ALBs with confidence—eliminating the common pitfalls that plague manual and ad-hoc scripted approaches.
 

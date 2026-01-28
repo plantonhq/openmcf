@@ -14,7 +14,7 @@ Argo CD is a declarative GitOps continuous delivery tool for Kubernetes. It's th
 
 The "getting started" guides make it look trivial—a single `kubectl apply` command. Yet production deployments require careful consideration of high availability, security, observability, and lifecycle management. The gap between "hello world" and "production ready" is substantial.
 
-This document explains the deployment landscape for Argo CD, from anti-patterns to production-ready approaches, and clarifies what Project Planton abstracts and why.
+This document explains the deployment landscape for Argo CD, from anti-patterns to production-ready approaches, and clarifies what OpenMCF abstracts and why.
 
 ## The Deployment Maturity Spectrum
 
@@ -90,7 +90,7 @@ The official Helm chart is:
 
 **For installing a complex, third-party application like Argo CD, Helm is the purpose-built tool.** While Kustomize is powerful for *patching*, Helm is designed for *packaging* and distributing configurable software releases.
 
-**Verdict**: This is the production standard and what Project Planton abstracts.
+**Verdict**: This is the production standard and what OpenMCF abstracts.
 
 ### Level 3: The Operator-Managed Install (Delegated Lifecycle)
 
@@ -106,13 +106,13 @@ The operator provides the most "hands-off" automated lifecycle, actively reconci
 
 **Why not abstract the Operator?**
 
-The Operator's `ArgoCD` CRD is *already an abstraction* over the Helm chart. It's a higher-level API with ~100 fields, compared to the Helm chart's 1000+ lines of configuration. Building a Project Planton abstraction on top of the Operator would be an **abstraction of an abstraction**—an architectural anti-pattern that:
+The Operator's `ArgoCD` CRD is *already an abstraction* over the Helm chart. It's a higher-level API with ~100 fields, compared to the Helm chart's 1000+ lines of configuration. Building a OpenMCF abstraction on top of the Operator would be an **abstraction of an abstraction**—an architectural anti-pattern that:
 - Limits configuration granularity
 - Creates debugging complexity (three layers to troubleshoot)
 - Depends on the operator's update cycle for new Argo CD features
 - Has lower community adoption than Helm
 
-**Verdict**: Excellent for managed, "hands-off" platforms (especially OpenShift), but Helm provides better alignment with Project Planton's philosophy of abstracting the most widely-used, production-ready patterns.
+**Verdict**: Excellent for managed, "hands-off" platforms (especially OpenShift), but Helm provides better alignment with OpenMCF's philosophy of abstracting the most widely-used, production-ready patterns.
 
 ### Level 4: GitOps Bootstrapping (Self-Management)
 
@@ -197,7 +197,7 @@ Terminate SSL at the Ingress controller using two separate Ingress objects on di
 
 This is more complex—requiring two DNS records, two TLS certificates, and users must configure their CLI to point to the separate gRPC hostname.
 
-**Project Planton's approach**: The abstraction is built around the simpler and more common **SSL Passthrough pattern**.
+**OpenMCF's approach**: The abstraction is built around the simpler and more common **SSL Passthrough pattern**.
 
 ### Observability
 
@@ -390,9 +390,9 @@ configs:
 | **DR** | Store all configs (Apps, Projects, Argo install) in Git | Relying on `argocd admin export` for DR | N/A (GitOps pattern) |
 | **Metrics** | Enable ServiceMonitor for Prometheus | No monitoring of app sync/health state | `controller.metrics.serviceMonitor.enabled: true` |
 
-## Project Planton's Choice: Helm Chart Abstraction
+## OpenMCF's Choice: Helm Chart Abstraction
 
-Project Planton's `ArgocdKubernetes` resource abstracts the official **Helm chart's `values.yaml` API**, not the Operator's CRD.
+OpenMCF's `ArgocdKubernetes` resource abstracts the official **Helm chart's `values.yaml` API**, not the Operator's CRD.
 
 **Why Helm over the Operator?**
 
@@ -411,7 +411,7 @@ This simplifies the user experience and enforces production best practices by de
 
 ## Licensing and Distribution
 
-**License**: Argo CD is licensed under **Apache 2.0**, a permissive open-source license that allows for commercial use, modification, and distribution. Fully compatible with open-source platforms like Project Planton.
+**License**: Argo CD is licensed under **Apache 2.0**, a permissive open-source license that allows for commercial use, modification, and distribution. Fully compatible with open-source platforms like OpenMCF.
 
 **Container Images**: Official images are hosted at `quay.io/argoproj/argocd`. **Critical note**: Images on Docker Hub are deprecated and no longer updated—always use the quay.io registry.
 
@@ -427,5 +427,5 @@ The path from "getting started" to production-ready is not about adding complexi
 
 Helm provides the robust package management foundation for this journey. The Operator offers an alternative for fully automated lifecycle management. Kustomize serves teams committed to patch-based workflows. And raw manifests... well, they serve as a reminder that "simple to start" doesn't always mean "safe to run."
 
-Project Planton abstracts the Helm chart—the production standard—while providing the structured, opinionated API that makes production best practices the default, not an afterthought. Because the best platform is one where doing the right thing is also the easiest thing.
+OpenMCF abstracts the Helm chart—the production standard—while providing the structured, opinionated API that makes production best practices the default, not an afterthought. Because the best platform is one where doing the right thing is also the easiest thing.
 

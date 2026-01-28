@@ -371,9 +371,9 @@ All ECR API calls are logged in AWS CloudTrail, providing:
 - **Compliance**: Immutable audit trail of image pushes
 - **Debugging**: Identification of which principal pushed a specific image
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-The `AwsEcrRepo` API in Project Planton follows the principle of **secure defaults with escape hatches for advanced use cases**.
+The `AwsEcrRepo` API in OpenMCF follows the principle of **secure defaults with escape hatches for advanced use cases**.
 
 ### What's Included
 
@@ -384,16 +384,16 @@ The `AwsEcrRepo` API in Project Planton follows the principle of **secure defaul
 
 ### Philosophy
 
-Project Planton's API design prioritizes:
+OpenMCF's API design prioritizes:
 
 1. **Minimal Required Configuration**: Only `repository_name` is mandatory
 2. **Secure Defaults**: Encryption enabled by default (AES256)
 3. **Flexibility for Compliance**: KMS encryption available when needed
 4. **Safety First**: Force delete disabled by default to prevent data loss
 
-The API intentionally stays focused on repository provisioning fundamentals. For advanced features like lifecycle policies, repository policies, and scanning configuration, Project Planton follows the philosophy of composability—these can be managed through companion configurations or post-deployment automation.
+The API intentionally stays focused on repository provisioning fundamentals. For advanced features like lifecycle policies, repository policies, and scanning configuration, OpenMCF follows the philosophy of composability—these can be managed through companion configurations or post-deployment automation.
 
-### When to Use Project Planton's AwsEcrRepo
+### When to Use OpenMCF's AwsEcrRepo
 
 - **Multi-cloud teams**: Consistent API patterns across AWS, GCP, Azure
 - **GitOps workflows**: Declarative, protobuf-defined infrastructure
@@ -412,5 +412,5 @@ For production ECR deployments, the non-negotiables are clear:
 - **Lifecycle policies** for cost control
 - **Appropriate encryption** (AES256 for most, KMS for compliance)
 
-Project Planton's `AwsEcrRepo` API embraces these principles, providing a minimal, secure-by-default interface that works seamlessly in multi-cloud, GitOps-driven environments. The true power lies not in the number of configuration options, but in making the right choices the easy choices.
+OpenMCF's `AwsEcrRepo` API embraces these principles, providing a minimal, secure-by-default interface that works seamlessly in multi-cloud, GitOps-driven environments. The true power lies not in the number of configuration options, but in making the right choices the easy choices.
 

@@ -12,7 +12,7 @@ componentName: "kubernetesneo4j"
 
 "Just use a Deployment with a PersistentVolume" — a phrase that has doomed more than a few production Neo4j installations. While Kubernetes has matured the deployment patterns for stateless web applications, stateful workloads like graph databases demand a fundamentally different approach. The challenge isn't just keeping Neo4j running; it's ensuring data consistency, enabling fault tolerance, and providing the operational automation that production systems require.
 
-This document explores the evolution of Neo4j deployment on Kubernetes, from common anti-patterns through intermediate solutions to production-ready approaches. It explains what Project Planton supports and why, grounded in the realities of running graph databases at scale.
+This document explores the evolution of Neo4j deployment on Kubernetes, from common anti-patterns through intermediate solutions to production-ready approaches. It explains what OpenMCF supports and why, grounded in the realities of running graph databases at scale.
 
 ## The Maturity Spectrum: Understanding Your Options
 
@@ -77,10 +77,10 @@ A Kubernetes Operator extends the Kubernetes API with Custom Resources and runs 
 - **No Official Self-Managed Operator:** Neo4j has explicitly stated they have "no immediate plans to make an operator available for users who want to run self-managed instances." While Neo4j uses a sophisticated internal operator to power their AuraDB managed service, this is proprietary and not available to customers
 - **Community Operators Not Production-Ready:** The most visible community operator hasn't been actively maintained for years and is incompatible with modern Neo4j versions
 
-**Project Planton's Role:**  
-This is where Project Planton fits. The `Neo4jKubernetes` resource provides the operator-like experience users expect (declarative API, automated management, Day 2 operations), while building on the reliable foundation of the official Helm chart. Project Planton's controller translates the simple `Neo4jKubernetes` API into the complex Helm chart configuration, then manages the ongoing lifecycle.
+**OpenMCF's Role:**  
+This is where OpenMCF fits. The `Neo4jKubernetes` resource provides the operator-like experience users expect (declarative API, automated management, Day 2 operations), while building on the reliable foundation of the official Helm chart. OpenMCF's controller translates the simple `Neo4jKubernetes` API into the complex Helm chart configuration, then manages the ongoing lifecycle.
 
-**Verdict:** The ideal user experience requires operator-like automation built on the stable, vendor-supported Helm chart foundation. This is exactly what Project Planton delivers.
+**Verdict:** The ideal user experience requires operator-like automation built on the stable, vendor-supported Helm chart foundation. This is exactly what OpenMCF delivers.
 
 ## Community vs. Enterprise: The Most Critical Decision
 
@@ -146,7 +146,7 @@ The Raft consensus protocol manages all write operations:
 4. The transaction commits only after a majority of Core servers acknowledge it
 5. If the Leader fails, remaining Followers detect this and automatically elect a new Leader
 
-Project Planton doesn't configure Raft directly—the Neo4j software handles this automatically. Project Planton's responsibility is ensuring the prerequisites for Raft are met: stable network identities (via StatefulSets) and reliable cluster discovery (via the Helm chart's Kubernetes API integration).
+OpenMCF doesn't configure Raft directly—the Neo4j software handles this automatically. OpenMCF's responsibility is ensuring the prerequisites for Raft are met: stable network identities (via StatefulSets) and reliable cluster discovery (via the Helm chart's Kubernetes API integration).
 
 ### Connection Routing with Smart Clients
 
@@ -166,7 +166,7 @@ The routing table contains internal Kubernetes DNS names by default (like `neo4j
 
 For true fault tolerance, Core server pods must be deployed with **Pod Anti-Affinity** rules. Without these rules, Kubernetes might schedule all Core pods on the same physical worker node. If that node fails, your entire "HA" cluster goes down simultaneously.
 
-Anti-affinity rules instruct Kubernetes to place each Core pod on a different worker node (ideally in different availability zones). Project Planton should automatically configure these rules for any deployment with more than one Core server.
+Anti-affinity rules instruct Kubernetes to place each Core pod on a different worker node (ideally in different availability zones). OpenMCF should automatically configure these rules for any deployment with more than one Core server.
 
 ## Backup and Disaster Recovery
 
@@ -189,11 +189,11 @@ The best-practice approach uses Kubernetes-native automation:
 3. The container executes an online backup against the live cluster
 4. A second container in the job pod copies the backup artifact to off-site object storage (AWS S3, GCS, Azure Blob)
 
-This provides fully automated, application-consistent backups with no downtime. A significant value-add for Project Planton would be to provide a simple `backup.cron` API field that automatically creates and manages this entire workflow.
+This provides fully automated, application-consistent backups with no downtime. A significant value-add for OpenMCF would be to provide a simple `backup.cron` API field that automatically creates and manages this entire workflow.
 
-## Project Planton's Approach: The 80/20 Abstraction
+## OpenMCF's Approach: The 80/20 Abstraction
 
-Project Planton's `Neo4jKubernetes` resource is designed around the principle that 80% of users need only 20% of the configuration options, while the remaining 20% of advanced users need access to 100% of features.
+OpenMCF's `Neo4jKubernetes` resource is designed around the principle that 80% of users need only 20% of the configuration options, while the remaining 20% of advanced users need access to 100% of features.
 
 ### Current API Philosophy
 
@@ -215,8 +215,8 @@ The critical constraint is: **Heap + Page Cache + OS Headroom < Container Memory
 
 The problem: Neo4j doesn't automatically size these pools to fit the container limit. If users don't explicitly configure them, they'll either use small defaults (poor performance) or try to allocate more memory than the container allows (instant OOMKill).
 
-**Project Planton's Solution:**  
-Users should only specify the total container memory (e.g., `resources.memory: "16Gi"`). The Project Planton controller should automatically calculate and configure the heap and page cache settings, reserving ~1-2Gi for OS overhead and splitting the remaining memory appropriately between heap and cache. This automation transforms the #1 operational pitfall into a zero-configuration best practice.
+**OpenMCF's Solution:**  
+Users should only specify the total container memory (e.g., `resources.memory: "16Gi"`). The OpenMCF controller should automatically calculate and configure the heap and page cache settings, reserving ~1-2Gi for OS overhead and splitting the remaining memory appropriately between heap and cache. This automation transforms the #1 operational pitfall into a zero-configuration best practice.
 
 ### Growth Path: Enterprise and Advanced Features
 
@@ -245,9 +245,9 @@ The current minimal API provides a solid foundation for development and testing 
 
 The Neo4j on Kubernetes deployment landscape has evolved significantly. What once required managing multiple deprecated charts, wrestling with StatefulSet configurations, and manually calculating memory parameters has consolidated into a single, vendor-supported path: the official `neo4j/neo4j` Helm chart.
 
-Project Planton builds on this stable foundation, providing the operator-like automation and user-friendly API that developers expect, while maintaining compatibility with Neo4j's official deployment method. The result is a deployment experience that's simultaneously simple for common cases and flexible for advanced needs.
+OpenMCF builds on this stable foundation, providing the operator-like automation and user-friendly API that developers expect, while maintaining compatibility with Neo4j's official deployment method. The result is a deployment experience that's simultaneously simple for common cases and flexible for advanced needs.
 
 Whether you're deploying a development instance or building a production-grade, fault-tolerant cluster, understanding this evolution—from anti-patterns through StatefulSets to Helm charts and operator-style automation—provides the foundation for making informed architectural decisions.
 
-Start with the fundamentals (StatefulSets and the official Helm chart), understand the distinction between Community and Enterprise editions, and leverage Project Planton's abstractions to eliminate common operational pitfalls. That's the path to production-ready Neo4j on Kubernetes.
+Start with the fundamentals (StatefulSets and the official Helm chart), understand the distinction between Community and Enterprise editions, and leverage OpenMCF's abstractions to eliminate common operational pitfalls. That's the path to production-ready Neo4j on Kubernetes.
 

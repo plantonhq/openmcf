@@ -14,7 +14,7 @@ When Kubernetes first emerged, the conventional wisdom was simple: expose your s
 
 Enter the **Ingress** concept: a single entry point that routes traffic based on hostnames and paths. And among ingress controllers, **NGINX Ingress Controller** (kubernetes-ingress-nginx) has become the de facto standard for production Kubernetes deployments. It's not just popular—it's proven. With 19,000+ GitHub stars, battle-tested at massive scale, and a vibrant community, it represents the sweet spot between power and practicality.
 
-But here's the challenge: deploying kubernetes-ingress-nginx properly across different clouds (GKE, EKS, AKS) involves navigating a maze of annotations, load balancer configurations, and cloud-specific quirks. Project Planton abstracts this complexity, providing a unified API to deploy production-grade ingress controllers anywhere.
+But here's the challenge: deploying kubernetes-ingress-nginx properly across different clouds (GKE, EKS, AKS) involves navigating a maze of annotations, load balancer configurations, and cloud-specific quirks. OpenMCF abstracts this complexity, providing a unified API to deploy production-grade ingress controllers anywhere.
 
 This document explores:
 1. **The deployment landscape** – from raw manifests to managed services
@@ -69,7 +69,7 @@ controller:
 
 **Alternative charts:** Bitnami previously maintained an kubernetes-ingress-nginx chart, but even Bitnami now recommends the official kubernetes/kubernetes-ingress-nginx chart. It's the most current and broadly supported option.
 
-**Verdict:** This is the **production standard**. Project Planton uses the official Helm chart under the hood, augmenting it with cloud-aware configuration generation.
+**Verdict:** This is the **production standard**. OpenMCF uses the official Helm chart under the hood, augmenting it with cloud-aware configuration generation.
 
 ### Level 2: Cloud-Managed Ingress Controllers
 
@@ -403,7 +403,7 @@ Most teams don't need these initially but should know they exist:
 - **Canary Deployments**: Traffic splitting via annotations
 - **GeoIP, JWT Auth**: Available via modules/annotations
 
-Project Planton's API focuses on the essential 80%, with escape hatches for advanced use cases.
+OpenMCF's API focuses on the essential 80%, with escape hatches for advanced use cases.
 
 ## Production Best Practices
 
@@ -561,9 +561,9 @@ controller:
 
 For most teams, **NGINX is the safe, proven default**. It balances power, flexibility, and operational maturity.
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton abstracts cloud-specific complexity while preserving NGINX's power:
+OpenMCF abstracts cloud-specific complexity while preserving NGINX's power:
 
 **Unified API:**
 - `scope: external | internal` → Generates correct cloud annotations
@@ -583,13 +583,13 @@ Project Planton abstracts cloud-specific complexity while preserving NGINX's pow
 - Sensible resource requests/limits
 
 **Escape Hatches:**
-For advanced needs (custom Lua, ModSecurity tuning), Project Planton allows injecting custom Helm values or ConfigMap snippets.
+For advanced needs (custom Lua, ModSecurity tuning), OpenMCF allows injecting custom Helm values or ConfigMap snippets.
 
 ## Conclusion
 
 The journey from "just expose services" to production-grade ingress has been a maturation story. Raw manifests gave way to Helm charts. Cloud providers offered managed alternatives, but teams discovered the need for portability and advanced features. NGINX emerged as the battle-tested standard—not because it's the newest or flashiest, but because it's **proven, powerful, and portable**.
 
-Deploying kubernetes-ingress-nginx correctly requires understanding cloud-specific load balancer provisioning, TLS management, and operational best practices. Project Planton distills this complexity into a clean API, letting you focus on your applications rather than annotation arcana.
+Deploying kubernetes-ingress-nginx correctly requires understanding cloud-specific load balancer provisioning, TLS management, and operational best practices. OpenMCF distills this complexity into a clean API, letting you focus on your applications rather than annotation arcana.
 
 **Key Takeaways:**
 1. Use the **official kubernetes-ingress-nginx Helm chart** for production
@@ -598,5 +598,5 @@ Deploying kubernetes-ingress-nginx correctly requires understanding cloud-specif
 4. **Production readiness** means HA, TLS automation, monitoring, and security hardening
 5. **NGINX remains the best choice** for teams needing multi-cloud portability and advanced routing
 
-Whether you're running in GKE, EKS, AKS, or bare metal, kubernetes-ingress-nginx provides a consistent, powerful gateway to your applications. And with Project Planton, it's just a few lines of protobuf away.
+Whether you're running in GKE, EKS, AKS, or bare metal, kubernetes-ingress-nginx provides a consistent, powerful gateway to your applications. And with OpenMCF, it's just a few lines of protobuf away.
 

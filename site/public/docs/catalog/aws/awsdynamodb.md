@@ -16,7 +16,7 @@ The paradox of DynamoDB is that it's simultaneously the simplest database to *cr
 
 This architectural reality makes infrastructure automation not just convenient but essential. Manual provisioning through the AWS Console encourages a dangerous "create-then-configure" workflow that is fundamentally incompatible with DynamoDB's "design-for-access-patterns" requirement. Production-grade DynamoDB deployment demands declarative infrastructure as code that codifies design decisions, enforces guardrails, and makes the implicit explicit.
 
-This document explores the full spectrum of DynamoDB deployment methods—from manual console operations to sophisticated declarative automation—and examines how Project Planton abstracts the complexity of the AWS API into a production-ready, protobuf-defined specification.
+This document explores the full spectrum of DynamoDB deployment methods—from manual console operations to sophisticated declarative automation—and examines how OpenMCF abstracts the complexity of the AWS API into a production-ready, protobuf-defined specification.
 
 ## The DynamoDB Deployment Spectrum
 
@@ -82,7 +82,7 @@ OpenTofu is an open-source, community-driven fork of Terraform created after Has
 
 **State Management**: Both tools manage explicit state files. In production, this **must** be remote (e.g., S3 backend with DynamoDB locking) to prevent corruption from concurrent runs and enable team collaboration.
 
-**Verdict**: The gold standard for production, multi-cloud infrastructure as code. This is the foundation upon which Project Planton builds its abstractions.
+**Verdict**: The gold standard for production, multi-cloud infrastructure as code. This is the foundation upon which OpenMCF builds its abstractions.
 
 #### Kubernetes-Native: Crossplane (Control Plane as Infrastructure)
 
@@ -90,7 +90,7 @@ Crossplane extends the Kubernetes API to manage external cloud resources. Instea
 
 A `Table` custom resource (e.g., `Table.dynamodb.aws.crossplane.io/v1alpha1`) maps 1:1 to the AWS API, with fields like `forProvider.attributeDefinitions` and `forProvider.billingMode`.
 
-**The Composition Model**: Crossplane's power lies in its ability to create higher-level abstractions. A team can define a simplified `XDynamoDBTable` composition that wraps the underlying `Table` resource with opinionated defaults (on-demand billing, PITR enabled, encryption with CMK). This pattern is directly analogous to Project Planton's philosophy of abstraction.
+**The Composition Model**: Crossplane's power lies in its ability to create higher-level abstractions. A team can define a simplified `XDynamoDBTable` composition that wraps the underlying `Table` resource with opinionated defaults (on-demand billing, PITR enabled, encryption with CMK). This pattern is directly analogous to OpenMCF's philosophy of abstraction.
 
 **Trade-off**: Adds Kubernetes as a dependency for infrastructure management. Excellent for Kubernetes-centric organizations; additional complexity for teams not already running Kubernetes for control plane purposes.
 
@@ -278,13 +278,13 @@ DynamoDB Streams provides a time-ordered log of item-level changes (INSERT, MODI
 - Not using separate IAM roles for different application components
 - Storing sensitive data without field-level encryption
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton provides a Kubernetes-style, protobuf-defined API for deploying AWS DynamoDB tables. The design philosophy balances completeness with usability.
+OpenMCF provides a Kubernetes-style, protobuf-defined API for deploying AWS DynamoDB tables. The design philosophy balances completeness with usability.
 
 ### API Design: Explicit Over Implicit
 
-Unlike higher-level abstractions (like AWS CDK's L2 constructs), Project Planton's `AwsDynamodbSpec` maintains a close mapping to the AWS API surface. This is a deliberate architectural choice prioritizing:
+Unlike higher-level abstractions (like AWS CDK's L2 constructs), OpenMCF's `AwsDynamodbSpec` maintains a close mapping to the AWS API surface. This is a deliberate architectural choice prioritizing:
 
 1. **Completeness**: Full access to DynamoDB features without "abstraction gaps"
 2. **Predictability**: Explicit field names map directly to AWS documentation
@@ -335,14 +335,14 @@ These validations prevent common configuration errors at API submission time, be
 
 ### Multi-Environment Pattern
 
-Following AWS best practices, Project Planton deployments should use distinct AWS accounts or at minimum separate IAM roles for each environment:
+Following AWS best practices, OpenMCF deployments should use distinct AWS accounts or at minimum separate IAM roles for each environment:
 - Development: Lower-cost instance sizes, on-demand billing, PITR optional
 - Staging: Production-equivalent sizing, on-demand billing, PITR enabled
 - Production: On-demand or provisioned with autoscaling, PITR enabled, deletion protection, CMK encryption
 
 ### Deployment Target
 
-Project Planton's Pulumi-based implementation generates the AWS resources:
+OpenMCF's Pulumi-based implementation generates the AWS resources:
 - DynamoDB table with specified configuration
 - Optional Application Auto Scaling target and policies (for provisioned + autoscaling pattern)
 - CloudWatch alarms for throttling detection (optional)
@@ -399,7 +399,7 @@ The tooling hierarchy is clear:
 - **AWS-Centric Teams**: AWS CDK for superior developer experience with automatic CloudFormation state management
 - **Kubernetes-Native Teams**: Crossplane for control-plane-driven reconciliation
 
-Project Planton builds upon this foundation, positioning the `AwsDynamodb` API as a complete, explicit specification that maps closely to AWS's API surface while adding critical validation guardrails. The protobuf-defined schema prevents common misconfiguration at submission time, and the Pulumi-based implementation ensures idempotent, convergent deployments.
+OpenMCF builds upon this foundation, positioning the `AwsDynamodb` API as a complete, explicit specification that maps closely to AWS's API surface while adding critical validation guardrails. The protobuf-defined schema prevents common misconfiguration at submission time, and the Pulumi-based implementation ensures idempotent, convergent deployments.
 
 The paradigm shift is architectural: DynamoDB's serverless model eliminates operational database management; infrastructure as code eliminates deployment inconsistency. Combined with immutable key schema design principles—high-cardinality partition keys, sparse sort keys for range queries, intentional index design—teams can deploy DynamoDB tables with confidence that the infrastructure will scale to meet demand without the burden of server management.
 

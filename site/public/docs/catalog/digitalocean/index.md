@@ -1,13 +1,13 @@
 ---
 title: "DIGITALOCEAN"
-description: "Deploy DIGITALOCEAN resources using Project Planton"
+description: "Deploy DIGITALOCEAN resources using OpenMCF"
 icon: "cloud"
 order: 10
 ---
 
 # DIGITALOCEAN
 
-The following DIGITALOCEAN resources can be deployed using Project Planton:
+The following DIGITALOCEAN resources can be deployed using OpenMCF:
 
 - [App Platform Service](/docs/catalog/digitalocean/digitaloceanappplatformservice)
 - [Bucket](/docs/catalog/digitalocean/digitaloceanbucket)

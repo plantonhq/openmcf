@@ -6,7 +6,7 @@ go_library(
         "binary.go",
         "provisioner.go",
     ],
-    importpath = "github.com/plantonhq/project-planton/pkg/iac/provisioner",
+    importpath = "github.com/plantonhq/openmcf/pkg/iac/provisioner",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/iac/provisionerlabels",

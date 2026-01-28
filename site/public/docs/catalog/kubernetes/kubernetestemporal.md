@@ -14,7 +14,7 @@ For years, the conventional wisdom was straightforward: "Temporal is complex, ru
 
 The challenge has never been whether Temporal _can_ run on Kubernetes. The challenge has been navigating the bewildering array of deployment methods, database choices, and configuration complexity that can make or break a production deployment. Choose the wrong database backend? You've permanently capped your throughput. Use the default Helm chart settings? You've deployed a development toy, not a production system. Skip schema management? Your cluster won't even start.
 
-This guide synthesizes production experience and deployment patterns to illuminate the path from development to production-grade Temporal on Kubernetes. We'll explore the deployment method landscape, examine why certain approaches fail, compare database backends with honest trade-off analysis, and explain the architectural decisions behind Project Planton's `TemporalKubernetes` resource.
+This guide synthesizes production experience and deployment patterns to illuminate the path from development to production-grade Temporal on Kubernetes. We'll explore the deployment method landscape, examine why certain approaches fail, compare database backends with honest trade-off analysis, and explain the architectural decisions behind OpenMCF's `TemporalKubernetes` resource.
 
 ## The Deployment Maturity Spectrum
 
@@ -69,7 +69,7 @@ The emerging production pattern involves tools that solve Helm's Day 2 limitatio
 - Perform state-aware, graceful cluster upgrades service-by-service
 - Watch external resources and react to configuration changes
 
-**IaC Abstractions** (like Project Planton's `TemporalKubernetes`) combine infrastructure-as-code principles with Kubernetes-native resource management. The typical workflow:
+**IaC Abstractions** (like OpenMCF's `TemporalKubernetes`) combine infrastructure-as-code principles with Kubernetes-native resource management. The typical workflow:
 
 1. **Terraform/Pulumi**: Provision cloud infrastructure (VPC, Kubernetes cluster, RDS database, OpenSearch cluster) and write connection details to Kubernetes Secrets.
 2. **GitOps (ArgoCD/Flux)**: Monitor Git repositories for Kubernetes manifests, including `TemporalKubernetes` resources.
@@ -175,7 +175,7 @@ Elasticsearch is purpose-built for the exact query and indexing patterns that ad
 
 This architectural separation is a first-class concept in Temporal's configuration and should be reflected in any declarative API.
 
-## Project Planton's Approach: External-First, Production-Default
+## OpenMCF's Approach: External-First, Production-Default
 
 The `TemporalKubernetes` resource is designed around lessons learned from production deployments, with a philosophy of **external-first** and **safe defaults**.
 
@@ -214,7 +214,7 @@ The API focuses on the 20% of configuration that 80% of users need. Essential fi
 **Minimal production configuration:**
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: TemporalKubernetes
 metadata:
   name: temporal-prod
@@ -266,19 +266,19 @@ The number of history shards (`numHistoryShards`) is an **immutable** Day 0 deci
 
 If you deploy with the default, you've permanently capped your cluster's scalability. Increasing shard count requires creating a new cluster and migrating all data—a complex, manual operation.
 
-**Project Planton's solution**: The controller uses a high, safe default (e.g., 1024 or higher) to prevent this permanent scalability ceiling.
+**OpenMCF's solution**: The controller uses a high, safe default (e.g., 1024 or higher) to prevent this permanent scalability ceiling.
 
 ### Pitfall 2: Forgetting Schema Management
 
 The most common deployment failure: connecting to an external database without initializing the schema. The Temporal services fail to start, logs show database errors, and the deployment is broken.
 
-**Project Planton's solution**: Automated schema management via Kubernetes Jobs that run `temporal-sql-tool` or `temporal-cassandra-tool` during initial deployment and upgrades.
+**OpenMCF's solution**: Automated schema management via Kubernetes Jobs that run `temporal-sql-tool` or `temporal-cassandra-tool` during initial deployment and upgrades.
 
 ### Pitfall 3: Choosing SQL Without an Exit Strategy
 
 Teams choose PostgreSQL for its simplicity, deploy to production, scale to moderate load, and hit the single-node bottleneck. At this point, migrating to Cassandra is a major infrastructure project.
 
-**Project Planton's solution**: The API makes it equally simple to choose Cassandra or PostgreSQL from Day 0. We provide honest guidance about when each is appropriate, removing the "default to SQL" bias.
+**OpenMCF's solution**: The API makes it equally simple to choose Cassandra or PostgreSQL from Day 0. We provide honest guidance about when each is appropriate, removing the "default to SQL" bias.
 
 ### Pitfall 4: Treating Workers as an Afterthought
 
@@ -294,7 +294,7 @@ The landscape of deploying Temporal on Kubernetes has matured significantly. Wha
 
 The shift from "Helm for everything" to "Helm for services, external for state" to "IaC abstractions with automated lifecycle" represents the natural evolution of production Kubernetes workloads. As teams gained experience, they identified gaps, built better abstractions, and codified best practices.
 
-Project Planton's `TemporalKubernetes` resource embodies these lessons: external-first for production readiness, automated schema management for Day 2 operations, clean abstractions for complex configuration, and honest defaults that prevent common pitfalls.
+OpenMCF's `TemporalKubernetes` resource embodies these lessons: external-first for production readiness, automated schema management for Day 2 operations, clean abstractions for complex configuration, and honest defaults that prevent common pitfalls.
 
 Whether you're deploying your first Temporal cluster or migrating from manual Helm configurations, the key insight remains: **complexity doesn't disappear, but thoughtful architecture can make it manageable**. Choose your database for the scale you'll reach, not the scale you're at today. Design for external dependencies from the start. Automate what can be automated. And most importantly, learn from the production war stories of teams who've run Temporal at scale.
 
@@ -304,7 +304,7 @@ The Temporal Workflow Engine is powerful. Running it on Kubernetes is viable. An
 
 ## Further Reading
 
-- **Database Schema Management**: Deep dive into automated schema setup, migrations, and the Kubernetes Job patterns used by Project Planton's controller
+- **Database Schema Management**: Deep dive into automated schema setup, migrations, and the Kubernetes Job patterns used by OpenMCF's controller
 - **High Availability Patterns**: Multi-AZ deployments, pod anti-affinity, and disaster recovery strategies for self-hosted Temporal
 - **Monitoring and Alerting**: Essential metrics, Grafana dashboards, and alerting rules for production Temporal clusters
 - **Security**: mTLS configuration, network policies, secrets management, and encryption patterns

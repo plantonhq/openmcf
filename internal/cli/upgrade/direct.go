@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
 )
 
 // UpgradeViaDirect upgrades the CLI by downloading the binary directly from GitHub
@@ -30,7 +30,7 @@ func UpgradeViaDirect(version string) error {
 
 	// Step 1: Download archive to temp file
 	fmt.Println()
-	cliprint.PrintStep(fmt.Sprintf("Downloading project-planton %s...", version))
+	cliprint.PrintStep(fmt.Sprintf("Downloading openmcf %s...", version))
 	fmt.Printf("  %s\n", dim(downloadURL))
 
 	tempArchive, err := downloadToTemp(downloadURL)
@@ -39,7 +39,7 @@ func UpgradeViaDirect(version string) error {
 	}
 	defer os.Remove(tempArchive)
 
-	cliprint.PrintSuccess(fmt.Sprintf("Downloaded project-planton %s", version))
+	cliprint.PrintSuccess(fmt.Sprintf("Downloaded openmcf %s", version))
 
 	// Step 2: Verify checksum
 	cliprint.PrintStep("Verifying checksum...")
@@ -52,7 +52,7 @@ func UpgradeViaDirect(version string) error {
 	// Step 3: Extract binary from archive
 	cliprint.PrintStep("Extracting binary...")
 
-	tempDir, err := os.MkdirTemp("", "project-planton-upgrade-*")
+	tempDir, err := os.MkdirTemp("", "openmcf-upgrade-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -123,19 +123,19 @@ func getInstallPath(goos string) (string, string) {
 	if err != nil {
 		// Last resort fallback
 		if goos == "windows" {
-			return filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "project-planton", "project-planton.exe"), ""
+			return filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "openmcf", "openmcf.exe"), ""
 		}
-		return "/usr/local/bin/project-planton", ""
+		return "/usr/local/bin/openmcf", ""
 	}
 
 	if goos == "windows" {
-		installPath := filepath.Join(homeDir, "AppData", "Local", "Programs", "project-planton", "project-planton.exe")
+		installPath := filepath.Join(homeDir, "AppData", "Local", "Programs", "openmcf", "openmcf.exe")
 		return installPath, fmt.Sprintf("Add %s to your PATH if not already configured.", filepath.Dir(installPath))
 	}
 
 	// macOS and Linux: use ~/.local/bin (XDG standard)
 	installDir := filepath.Join(homeDir, ".local", "bin")
-	installPath := filepath.Join(installDir, "project-planton")
+	installPath := filepath.Join(installDir, "openmcf")
 
 	// Check if ~/.local/bin is in PATH
 	pathEnv := os.Getenv("PATH")
@@ -166,9 +166,9 @@ func downloadToTemp(url string) (string, error) {
 	var tempFile *os.File
 	var err error
 	if strings.HasSuffix(url, ".zip") {
-		tempFile, err = os.CreateTemp("", "project-planton-upgrade-*.zip")
+		tempFile, err = os.CreateTemp("", "openmcf-upgrade-*.zip")
 	} else {
-		tempFile, err = os.CreateTemp("", "project-planton-upgrade-*.tar.gz")
+		tempFile, err = os.CreateTemp("", "openmcf-upgrade-*.tar.gz")
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
@@ -236,8 +236,8 @@ func extractFromTarGz(archivePath, destDir string) (string, error) {
 			return "", fmt.Errorf("failed to read tar entry: %w", err)
 		}
 
-		// Look for the project-planton binary
-		if header.Typeflag == tar.TypeReg && header.Name == "project-planton" {
+		// Look for the openmcf binary
+		if header.Typeflag == tar.TypeReg && header.Name == "openmcf" {
 			binaryPath = filepath.Join(destDir, header.Name)
 			outFile, err := os.OpenFile(binaryPath, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
 			if err != nil {
@@ -270,8 +270,8 @@ func extractFromZip(archivePath, destDir string) (string, error) {
 
 	var binaryPath string
 	for _, file := range reader.File {
-		// Look for the project-planton.exe binary
-		if file.Name == "project-planton.exe" {
+		// Look for the openmcf.exe binary
+		if file.Name == "openmcf.exe" {
 			binaryPath = filepath.Join(destDir, file.Name)
 
 			rc, err := file.Open()

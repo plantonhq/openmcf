@@ -3,7 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "tfvars",
     srcs = ["tfvars.go"],
-    importpath = "github.com/plantonhq/project-planton/pkg/iac/tofu/tfvars",
+    importpath = "github.com/plantonhq/openmcf/pkg/iac/tofu/tfvars",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/fileutil",
@@ -19,9 +19,9 @@ go_test(
     srcs = ["tfvars_test.go"],
     embed = [":tfvars"],
     deps = [
-        "//apis/org/project_planton/provider/kubernetes",
-        "//apis/org/project_planton/provider/kubernetes/kubernetesredis/v1:kubernetesredis",
-        "//apis/org/project_planton/shared",
+        "//apis/org/openmcf/provider/kubernetes",
+        "//apis/org/openmcf/provider/kubernetes/kubernetesredis/v1:kubernetesredis",
+        "//apis/org/openmcf/shared",
         "@com_github_hashicorp_hcl_v2//hcldec",
         "@com_github_hashicorp_hcl_v2//hclparse",
         "@com_github_zclconf_go_cty//cty",

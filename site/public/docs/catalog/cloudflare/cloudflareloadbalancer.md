@@ -42,7 +42,7 @@ Use Cloudflare Load Balancer when you need:
 
 **vs. Cloudflare Spectrum**: The standard Load Balancer is a Layer 7 (HTTP/S) product. Spectrum is a Layer 4 (TCP/UDP) reverse proxy for non-web applications like game servers, databases, and IoT protocols. You can combine them: the Load Balancer provides GSLB logic (health checks, steering) for applications proxied by Spectrum.
 
-This document walks through the evolution of deployment methods for Cloudflare Load Balancer—from manual anti-patterns to production-grade Infrastructure-as-Code—and explains how Project Planton abstracts the complexity into a clean, developer-friendly API.
+This document walks through the evolution of deployment methods for Cloudflare Load Balancer—from manual anti-patterns to production-grade Infrastructure-as-Code—and explains how OpenMCF abstracts the complexity into a clean, developer-friendly API.
 
 ---
 
@@ -321,7 +321,7 @@ terraform/
 | **State Management** | Manual setup for remote state (e.g., S3) | Managed service (Pulumi Service) is the default |
 | **Multi-Env Pattern** | Requires disciplined directory structure or workspaces | Same. Requires disciplined code/stack structure |
 
-**Project Planton's Choice**: The superior secret management and modern SDK experience make Pulumi a strong fit for teams prioritizing security and developer experience. However, Terraform's ecosystem maturity and Cloudflare's internal endorsement make it the safe, conservative choice.
+**OpenMCF's Choice**: The superior secret management and modern SDK experience make Pulumi a strong fit for teams prioritizing security and developer experience. However, Terraform's ecosystem maturity and Cloudflare's internal endorsement make it the safe, conservative choice.
 
 ---
 
@@ -430,7 +430,7 @@ The *true* trade-off is not cost-vs-frequency, but **Plan vs. Failover Speed**. 
 
 ---
 
-## Project Planton's Abstraction: Simplifying the Complexity
+## OpenMCF's Abstraction: Simplifying the Complexity
 
 ### The Core Complexity: Account-Level vs. Zone-Level Resources
 
@@ -446,9 +446,9 @@ When using Terraform directly, the workflow looks like this:
 
 This is verbose, error-prone, and requires deep knowledge of Cloudflare's resource model.
 
-### Project Planton's Solution: A Denormalized, Inline API
+### OpenMCF's Solution: A Denormalized, Inline API
 
-Project Planton simplifies this by providing a **denormalized, "flattened" API resource**. The `CloudflareLoadBalancerSpec` allows users to define origins inline, without worrying about the underlying Pool and Monitor resources:
+OpenMCF simplifies this by providing a **denormalized, "flattened" API resource**. The `CloudflareLoadBalancerSpec` allows users to define origins inline, without worrying about the underlying Pool and Monitor resources:
 
 ```protobuf
 message CloudflareLoadBalancerSpec {
@@ -483,7 +483,7 @@ message CloudflareLoadBalancerOrigin {
 
 **What this abstraction provides**:
 
-1. **No Resource Fan-Out**: The user defines origins inline. The Project Planton controller handles the "fan-out" logic of creating the underlying Cloudflare Monitor, Pool, and Load Balancer resources and linking them by ID.
+1. **No Resource Fan-Out**: The user defines origins inline. The OpenMCF controller handles the "fan-out" logic of creating the underlying Cloudflare Monitor, Pool, and Load Balancer resources and linking them by ID.
 
 2. **Intuitive Defaults**: `proxied` defaults to `true` (the 80% case). `health_probe_path` defaults to `/` (the most common health endpoint).
 
@@ -491,10 +491,10 @@ message CloudflareLoadBalancerOrigin {
 
 4. **80/20 Configuration**: The API exposes only the fields that 80% of users need 80% of the time. Advanced use cases (custom health check headers, per-origin TLS settings, dynamic latency steering) can be added later without breaking the core API.
 
-### Example: Active-Passive Failover with Project Planton
+### Example: Active-Passive Failover with OpenMCF
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareLoadBalancer
 metadata:
   name: app-lb
@@ -515,7 +515,7 @@ spec:
       weight: 1
 ```
 
-Behind the scenes, the Project Planton controller:
+Behind the scenes, the OpenMCF controller:
 1. Creates a Cloudflare Monitor (type: `https`, path: `/health`, expected_codes: `200`)
 2. Creates two Cloudflare Pools (one for each origin), both referencing the Monitor
 3. Creates a Cloudflare Load Balancer with:
@@ -524,7 +524,7 @@ Behind the scenes, the Project Planton controller:
    - `fallback_pool_id` set to the secondary pool ID
    - `session_affinity = "cookie"`
 
-The user sees a simple, intuitive API. Project Planton handles the complexity.
+The user sees a simple, intuitive API. OpenMCF handles the complexity.
 
 ### Best Practices Codified in the API
 
@@ -547,9 +547,9 @@ Cloudflare Load Balancer represents a fundamental shift in how we think about tr
 
 The challenge has always been the operational complexity. Cloudflare's API model—with account-level Pools and Monitors referencing zone-level Load Balancers—optimizes for reusability at the cost of user-facing simplicity. Deploying a load balancer with raw Terraform requires orchestrating 3-4 dependent resources, managing IDs, and understanding Cloudflare's architectural quirks.
 
-**Project Planton abstracts this complexity**. By providing a denormalized, protobuf-defined API that allows inline origin definitions, it reduces the cognitive load on developers and operators. You define *what* you want—a load balancer for `app.example.com` with two origins and health checks—and Project Planton handles the *how*.
+**OpenMCF abstracts this complexity**. By providing a denormalized, protobuf-defined API that allows inline origin definitions, it reduces the cognitive load on developers and operators. You define *what* you want—a load balancer for `app.example.com` with two origins and health checks—and OpenMCF handles the *how*.
 
 This is the 80/20 principle in action: focus the API on the 20% of configuration that 80% of users need, and make it trivial to get right. Active-passive failover, geo-routing, and session affinity become simple YAML declarations, not multi-step orchestration puzzles.
 
-For teams building multi-cloud, globally distributed systems, Cloudflare Load Balancer is an essential tool. And for teams using Project Planton, deploying and managing it is as simple as defining a resource and letting the platform do the rest.
+For teams building multi-cloud, globally distributed systems, Cloudflare Load Balancer is an essential tool. And for teams using OpenMCF, deploying and managing it is as simple as defining a resource and letting the platform do the rest.
 

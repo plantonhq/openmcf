@@ -20,7 +20,7 @@ AWS now encourages a fundamentally different approach: **roles for workloads, fe
 
 Yet IAM users haven't disappeared – and won't. Legacy applications still need them. Third-party integrations sometimes require them. Some CI/CD systems can't use OIDC yet. Cross-account access patterns occasionally demand them. When you truly need a long-lived service account with programmatic access keys, IAM users remain the mechanism.
 
-This document explores the deployment landscape for AWS IAM users: from manual console clicks to sophisticated Infrastructure as Code, from anti-patterns that lead to breaches to production-ready patterns that minimize risk. We'll examine what Project Planton supports and why – focusing on the essential 20% of configuration that covers 80% of real-world needs, while embedding security best practices by default.
+This document explores the deployment landscape for AWS IAM users: from manual console clicks to sophisticated Infrastructure as Code, from anti-patterns that lead to breaches to production-ready patterns that minimize risk. We'll examine what OpenMCF supports and why – focusing on the essential 20% of configuration that covers 80% of real-world needs, while embedding security best practices by default.
 
 ## The Deployment Spectrum: From Manual to Modern
 
@@ -148,19 +148,19 @@ When deploying IAM users at scale, the choice of IaC tool matters. Here's how th
 
 For most teams, **Terraform/OpenTofu or Pulumi** emerge as the strongest choices due to multi-cloud flexibility and mature ecosystems. For AWS-centric organizations, **CloudFormation or CDK** offer deep integration and official support. All four can manage IAM users in production – the choice is about team preference, existing skills, and broader infrastructure needs.
 
-## The Project Planton Choice: Pulumi with Minimalist Configuration
+## The OpenMCF Choice: Pulumi with Minimalist Configuration
 
-Project Planton uses **Pulumi** as its underlying deployment engine, wrapped in a protobuf-based API that presents a Kubernetes-style declarative interface. For AWS IAM users, this means you interact with a simple, focused API while Pulumi handles the complexity underneath.
+OpenMCF uses **Pulumi** as its underlying deployment engine, wrapped in a protobuf-based API that presents a Kubernetes-style declarative interface. For AWS IAM users, this means you interact with a simple, focused API while Pulumi handles the complexity underneath.
 
 **Why Pulumi?**
 
-1. **Multi-cloud by default**: Project Planton is a multi-cloud framework. Using Pulumi allows deploying IAM users on AWS, service principals on Azure, and service accounts on GCP with the same underlying engine.
+1. **Multi-cloud by default**: OpenMCF is a multi-cloud framework. Using Pulumi allows deploying IAM users on AWS, service principals on Azure, and service accounts on GCP with the same underlying engine.
 
 2. **Automatic secret encryption**: IAM user access keys are sensitive. Pulumi's native secret encryption means keys are never stored in plaintext in state files or logs – a critical security requirement.
 
-3. **Programming power when needed**: While Project Planton abstracts most complexity, the Pulumi foundation allows advanced users to extend or customize deployments with full programming language capabilities.
+3. **Programming power when needed**: While OpenMCF abstracts most complexity, the Pulumi foundation allows advanced users to extend or customize deployments with full programming language capabilities.
 
-4. **Open source with no licensing concerns**: Pulumi is Apache 2.0 licensed, aligning with Project Planton's open-source philosophy.
+4. **Open source with no licensing concerns**: Pulumi is Apache 2.0 licensed, aligning with OpenMCF's open-source philosophy.
 
 **The 80/20 Configuration Philosophy**
 
@@ -172,7 +172,7 @@ Research into production IAM user deployments reveals a pattern: **most IAM user
 
 These use cases share common needs: a username, one or more policies (usually managed policies like `AmazonS3ReadOnlyAccess` or custom policies), programmatic access keys, and tags for tracking. They rarely need console access, SSH keys for CodeCommit, permissions boundaries, or multiple MFA devices.
 
-Project Planton's IAM User API reflects this 80/20 reality:
+OpenMCF's IAM User API reflects this 80/20 reality:
 
 ```protobuf
 message AwsIamUserSpec {
@@ -188,7 +188,7 @@ message AwsIamUserSpec {
 - **user_name**: The IAM username, validated against AWS naming rules (1-64 characters, alphanumeric plus `+=,.@_-`)
 - **managed_policy_arns**: A list of managed policy ARNs to attach (e.g., `arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess`)
 - **inline_policies**: A map of policy names to policy documents (as JSON structs) for cases requiring tightly-scoped custom permissions
-- **disable_access_keys**: By default, Project Planton creates an access key for the user (since programmatic access is the primary use case). Set this to `true` if you only need the IAM user identity without keys.
+- **disable_access_keys**: By default, OpenMCF creates an access key for the user (since programmatic access is the primary use case). Set this to `true` if you only need the IAM user identity without keys.
 
 **What's intentionally omitted:**
 
@@ -201,11 +201,11 @@ This minimalism serves two purposes: **simplicity** (developers don't need to le
 
 **Secret Handling**
 
-When Project Planton creates an IAM user with access keys, the secret access key is automatically encrypted by Pulumi and made available as a secure output. You can retrieve it once for distribution (e.g., storing in a secret manager or CI/CD secret store), and it's never exposed in plaintext logs or unencrypted state.
+When OpenMCF creates an IAM user with access keys, the secret access key is automatically encrypted by Pulumi and made available as a secure output. You can retrieve it once for distribution (e.g., storing in a secret manager or CI/CD secret store), and it's never exposed in plaintext logs or unencrypted state.
 
 The recommended pattern:
 
-1. Create IAM user via Project Planton
+1. Create IAM user via OpenMCF
 2. Retrieve the encrypted secret access key from outputs
 3. Store it in AWS Secrets Manager, HashiCorp Vault, or your CI/CD system's secret store
 4. Configure your application/pipeline to fetch credentials from that secret store
@@ -215,7 +215,7 @@ This flow ensures keys are never hardcoded, never committed to Git, and have a c
 
 ## Real-World Patterns and Examples
 
-To ground this in practice, here are three common IAM user patterns and how Project Planton handles them:
+To ground this in practice, here are three common IAM user patterns and how OpenMCF handles them:
 
 ### Pattern 1: CI/CD Pipeline User (GitHub Actions ECR/ECS Deployment)
 
@@ -223,10 +223,10 @@ To ground this in practice, here are three common IAM user patterns and how Proj
 
 **Traditional approach**: Create an IAM user manually, attach `AmazonEC2ContainerRegistryFullAccess` and `AmazonECS_FullAccess` managed policies, generate access keys, and store in GitHub Secrets.
 
-**Project Planton approach**:
+**OpenMCF approach**:
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsIamUser
 metadata:
   name: cicd-deployer
@@ -239,7 +239,7 @@ spec:
   # Encrypted secret available in outputs
 ```
 
-**Better approach (when possible)**: Instead of a static IAM user, use GitHub's OIDC federation with AWS to assume an IAM role. This eliminates long-lived credentials entirely. Project Planton encourages this pattern but supports IAM users for workflows not yet on OIDC.
+**Better approach (when possible)**: Instead of a static IAM user, use GitHub's OIDC federation with AWS to assume an IAM role. This eliminates long-lived credentials entirely. OpenMCF encourages this pattern but supports IAM users for workflows not yet on OIDC.
 
 ### Pattern 2: Least-Privilege Application Service Account
 
@@ -247,10 +247,10 @@ spec:
 
 **Traditional approach**: Attach broad managed policies, or spend hours crafting a custom policy JSON.
 
-**Project Planton approach**:
+**OpenMCF approach**:
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsIamUser
 metadata:
   name: payment-service-user
@@ -276,10 +276,10 @@ This creates a user with exactly the permissions needed, demonstrating **least p
 
 **Scenario**: A compliance tool needs read-only access to AWS resources for auditing and security scanning.
 
-**Project Planton approach**:
+**OpenMCF approach**:
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsIamUser
 metadata:
   name: compliance-auditor
@@ -294,7 +294,7 @@ Using AWS's `ReadOnlyAccess` managed policy gives broad read access across servi
 
 ## Security Best Practices Embedded by Default
 
-Project Planton's IAM user implementation embeds AWS security best practices:
+OpenMCF's IAM user implementation embeds AWS security best practices:
 
 **Least Privilege by Design**
 
@@ -302,11 +302,11 @@ By requiring explicit policy ARNs or inline policy documents, there's no "defaul
 
 **No Console Access by Default**
 
-IAM users created through Project Planton are service accounts: programmatic access only. This eliminates password management, MFA complexity, and the risk of console credential leakage. For human access, AWS IAM Identity Center or federated SSO is the recommended path.
+IAM users created through OpenMCF are service accounts: programmatic access only. This eliminates password management, MFA complexity, and the risk of console credential leakage. For human access, AWS IAM Identity Center or federated SSO is the recommended path.
 
 **Automatic Tagging Support**
 
-While not shown in the minimal examples above, Project Planton allows adding tags to IAM users (e.g., `Environment: Production`, `Owner: Platform-Team`). These tags are crucial for:
+While not shown in the minimal examples above, OpenMCF allows adding tags to IAM users (e.g., `Environment: Production`, `Owner: Platform-Team`). These tags are crucial for:
 
 - Cost allocation (seeing IAM-related activity in AWS Cost Explorer)
 - Compliance reporting (e.g., SOC 2 audits asking "who owns this identity?")
@@ -314,11 +314,11 @@ While not shown in the minimal examples above, Project Planton allows adding tag
 
 **Secret Encryption by Default**
 
-Access key secrets are never stored unencrypted. Pulumi's encryption ensures they're protected in state and logs, and Project Planton outputs make it easy to pipe secrets directly into secure stores.
+Access key secrets are never stored unencrypted. Pulumi's encryption ensures they're protected in state and logs, and OpenMCF outputs make it easy to pipe secrets directly into secure stores.
 
 **Drift Detection and Reconciliation**
 
-Because Project Planton uses Pulumi, any manual changes to an IAM user (someone attaching an extra policy via the console) will be detected on the next deployment. This prevents configuration drift and maintains the IaC-defined state as the source of truth.
+Because OpenMCF uses Pulumi, any manual changes to an IAM user (someone attaching an extra policy via the console) will be detected on the next deployment. This prevents configuration drift and maintains the IaC-defined state as the source of truth.
 
 ## When NOT to Use IAM Users
 
@@ -351,7 +351,7 @@ If you have a mobile or web app where end users need limited AWS access (e.g., u
 - Break-glass emergency access accounts (with strong MFA and tight policies)
 - Specific use cases like AWS CodeCommit Git credentials (though IAM Identity Center is preferred)
 
-The trend is clear: **minimize IAM users, maximize roles and federation**. Project Planton supports IAM users because real-world infrastructure still needs them, but the framework encourages modern patterns through defaults and documentation.
+The trend is clear: **minimize IAM users, maximize roles and federation**. OpenMCF supports IAM users because real-world infrastructure still needs them, but the framework encourages modern patterns through defaults and documentation.
 
 ## Lifecycle and Operations
 
@@ -361,7 +361,7 @@ Deploying an IAM user is only the beginning. Production management requires ongo
 
 Access keys should rotate every 90 days (a common compliance requirement for PCI DSS, SOC 2, and internal security policies). AWS allows up to two active keys per user to facilitate rotation:
 
-1. Generate a second access key (via Project Planton or Pulumi update)
+1. Generate a second access key (via OpenMCF or Pulumi update)
 2. Update all applications/pipelines to use the new key
 3. Verify the new key works
 4. Deactivate the old key
@@ -378,7 +378,7 @@ Regularly review IAM users and their permissions:
 - **CloudTrail logs**: Audit what actions each IAM user performed
 - **AWS Config rules**: Automate checks like "flag IAM users without MFA" or "flag access keys older than 90 days"
 
-Project Planton deployments are auditable by design: because IAM users are defined in version-controlled YAML, you have a Git history of every permission change.
+OpenMCF deployments are auditable by design: because IAM users are defined in version-controlled YAML, you have a Git history of every permission change.
 
 **Offboarding and Deletion**
 
@@ -386,10 +386,10 @@ When a service is decommissioned or an integration is removed, delete the IAM us
 
 1. Verify no applications are still using the credentials (check CloudTrail for recent activity)
 2. Deactivate access keys to test impact (AWS allows toggling keys to inactive without deletion)
-3. Remove the IAM user from Project Planton configuration and apply
+3. Remove the IAM user from OpenMCF configuration and apply
 4. Pulumi will handle cleanup: detaching policies, deleting access keys, removing the user
 
-If deletion fails (e.g., user is in groups managed outside Project Planton), manually clean up dependencies first.
+If deletion fails (e.g., user is in groups managed outside OpenMCF), manually clean up dependencies first.
 
 **Monitoring and Alerting**
 
@@ -410,15 +410,15 @@ For organizations subject to compliance frameworks (HIPAA, GDPR, SOC 2), IAM use
 - **HIPAA**: Least privilege access to PHI, MFA for privileged accounts, audit logging (CloudTrail)
 - **GDPR**: Data access minimization (only necessary personnel have access), audit trails (who accessed what data)
 
-Project Planton supports these through IaC-based access control (every permission change is code-reviewed), automatic tagging (owner/purpose documentation), and integration with AWS's native compliance tools (CloudTrail, Config, GuardDuty).
+OpenMCF supports these through IaC-based access control (every permission change is code-reviewed), automatic tagging (owner/purpose documentation), and integration with AWS's native compliance tools (CloudTrail, Config, GuardDuty).
 
 ## Conclusion: Security Through Simplicity
 
 The evolution of AWS IAM users tells a story of growing sophistication: from manual console creation to Infrastructure as Code, from static credentials to federated identity, from permissive policies to least privilege.
 
-Project Planton's approach embraces this maturity while respecting pragmatic reality. The framework makes it **easy to do the right thing** (create minimally-privileged service accounts with encrypted secrets) and **hard to do the wrong thing** (no default passwords, no overly permissive templates, no plaintext secrets).
+OpenMCF's approach embraces this maturity while respecting pragmatic reality. The framework makes it **easy to do the right thing** (create minimally-privileged service accounts with encrypted secrets) and **hard to do the wrong thing** (no default passwords, no overly permissive templates, no plaintext secrets).
 
-By focusing on the essential 20% of configuration (username, policies, access keys) and omitting rarely-used complexity (console passwords, SSH keys, permissions boundaries), Project Planton presents a clean API that guides users toward secure patterns. The Pulumi foundation provides power when needed, while the protobuf interface hides unnecessary detail.
+By focusing on the essential 20% of configuration (username, policies, access keys) and omitting rarely-used complexity (console passwords, SSH keys, permissions boundaries), OpenMCF presents a clean API that guides users toward secure patterns. The Pulumi foundation provides power when needed, while the protobuf interface hides unnecessary detail.
 
 **The best IAM user deployment is:**
 
@@ -428,7 +428,7 @@ By focusing on the essential 20% of configuration (username, policies, access ke
 - **Auditable**: Tagged with owner/purpose, monitored with CloudTrail
 - **Time-bounded**: Keys rotated regularly, user deleted when no longer needed
 
-When you do need an IAM user, Project Planton makes it straightforward to create one that meets all these criteria. And when you don't need one, the framework encourages better alternatives.
+When you do need an IAM user, OpenMCF makes it straightforward to create one that meets all these criteria. And when you don't need one, the framework encourages better alternatives.
 
 Because in the modern cloud, the best credential is the one you never have to manage.
 

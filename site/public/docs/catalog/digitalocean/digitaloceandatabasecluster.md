@@ -180,7 +180,7 @@ A severe, business-critical limitation exists for DigitalOcean Managed MySQL tha
 
 **The Risk**: This limitation became apparent to one user only when attempting to sell their SaaS company—the buyer could not migrate the data. The user described it as "The Hotel California of Managed Services: You can check in, but you can never leave."
 
-**Recommendation**: If you anticipate operating a large (>500GB) MySQL database and value migration flexibility, seriously consider alternative platforms or self-hosted solutions where you retain full administrative privileges. Project Planton users must be aware of this risk before committing MySQL workloads to DigitalOcean.
+**Recommendation**: If you anticipate operating a large (>500GB) MySQL database and value migration flexibility, seriously consider alternative platforms or self-hosted solutions where you retain full administrative privileges. OpenMCF users must be aware of this risk before committing MySQL workloads to DigitalOcean.
 
 ### The Redis-to-Valkey Migration: Future-Proof Your Configuration
 
@@ -188,7 +188,7 @@ As of June 30, 2025, DigitalOcean is discontinuing "Managed Caching" (Redis) and
 
 All existing Redis clusters will be automatically migrated, retaining all data. However, **all new caching clusters should target the `valkey` engine**, not `redis`.
 
-**Project Planton Implementation Note**: The `spec.proto` currently defines `redis = 3` in the `DigitalOceanDatabaseEngine` enum. This should be updated to `valkey = 3` to align with DigitalOcean's platform evolution and prevent future deprecation warnings.
+**OpenMCF Implementation Note**: The `spec.proto` currently defines `redis = 3` in the `DigitalOceanDatabaseEngine` enum. This should be updated to `valkey = 3` to align with DigitalOcean's platform evolution and prevent future deprecation warnings.
 
 **Valkey Limitations**:
 - No managed daily backups (PITR)
@@ -205,7 +205,7 @@ DigitalOcean recently introduced **Storage Autoscaling**, a crucial production f
 
 This is a significant gap in the automation ecosystem. Production teams relying on Terraform or Pulumi cannot currently enable this critical feature declaratively.
 
-**Project Planton Opportunity**: This represents a significant value-add opportunity. Project Planton should track this feature gap and, if/when DigitalOcean adds IaC support, immediately incorporate it into the `DigitalOceanDatabaseClusterSpec`. Until then, users must enable Storage Autoscaling manually via the Control Panel after IaC provisioning.
+**OpenMCF Opportunity**: This represents a significant value-add opportunity. OpenMCF should track this feature gap and, if/when DigitalOcean adds IaC support, immediately incorporate it into the `DigitalOceanDatabaseClusterSpec`. Until then, users must enable Storage Autoscaling manually via the Control Panel after IaC provisioning.
 
 ### MongoDB: The Sharding Limitation
 
@@ -278,9 +278,9 @@ The most secure pattern decouples infrastructure provisioning from application s
 1. **Kubernetes Secrets**: The IaC tool provisions the database user, then uses the password output to create a `kubernetes_secret` resource directly in the target cluster. The application pod mounts this secret as an environment variable.
 2. **HashiCorp Vault (Dynamic Secrets)**: The IaC tool provisions the database and configures Vault's Database Secrets Engine with the credentials. Applications authenticate to Vault (e.g., via the Vault CSI driver) to request dynamic, short-lived credentials that are automatically rotated and revoked. This eliminates the problem of static, long-lived database credentials entirely.
 
-## Project Planton's Choice: Universal IaC Abstraction
+## OpenMCF's Choice: Universal IaC Abstraction
 
-Project Planton supports DigitalOcean Managed Databases through a **universal, cloud-agnostic API** that abstracts the underlying IaC provider (Terraform, Pulumi, or custom Golang modules).
+OpenMCF supports DigitalOcean Managed Databases through a **universal, cloud-agnostic API** that abstracts the underlying IaC provider (Terraform, Pulumi, or custom Golang modules).
 
 The `DigitalOceanDatabaseClusterSpec` (defined in `spec.proto`) follows the **80/20 principle**: it exposes only the essential fields required for 80% of use cases, keeping the API simple, predictable, and maintainable.
 

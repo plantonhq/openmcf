@@ -54,7 +54,7 @@ With background deletion:
 
 ### 1. Namespace Resource Annotation
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetessolroperator/v1/iac/pulumi/module/main.go`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetessolroperator/v1/iac/pulumi/module/main.go`
 
 Added detailed inline documentation and the annotation to the namespace metadata:
 

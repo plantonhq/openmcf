@@ -16,7 +16,7 @@ The problem isn't that the Azure Portal exists. It's that what works for learnin
 
 Modern Azure networking has matured beyond these manual workflows. Infrastructure-as-Code (IaC) tools have become production-ready, Azure itself has introduced native declarative languages, and Kubernetes-native approaches have emerged for teams operating at scale. The challenge isn't finding a way to deploy a VNet—it's choosing the right approach for your production requirements.
 
-This document explains the maturity spectrum of Azure VNet deployment methods, compares the leading IaC tools, and clarifies how Project Planton leverages these foundations to provide a simplified, production-ready abstraction for teams building on Azure.
+This document explains the maturity spectrum of Azure VNet deployment methods, compares the leading IaC tools, and clarifies how OpenMCF leverages these foundations to provide a simplified, production-ready abstraction for teams building on Azure.
 
 ## The Maturity Spectrum: From Manual to Production-Ready
 
@@ -201,11 +201,11 @@ Azure VNets expose dozens of configuration options, but most production deployme
 - **BGP community** (auto-set by Azure for ExpressRoute)
 - **Encryption** (rarely enabled due to NIC support requirements)
 
-Project Planton's API focuses on the essential and common fields, allowing teams to deploy production-ready VNets without navigating Azure's full complexity.
+OpenMCF's API focuses on the essential and common fields, allowing teams to deploy production-ready VNets without navigating Azure's full complexity.
 
-## How Project Planton Approaches Azure VNets
+## How OpenMCF Approaches Azure VNets
 
-Project Planton uses **Pulumi** as the underlying IaC engine to deploy Azure VNets. Why Pulumi?
+OpenMCF uses **Pulumi** as the underlying IaC engine to deploy Azure VNets. Why Pulumi?
 
 1. **Multi-cloud consistency**: Planton's protobuf-defined APIs work across AWS, GCP, Azure, and Kubernetes. Pulumi's support for multiple languages and clouds aligns with this philosophy.
 
@@ -216,7 +216,7 @@ Project Planton uses **Pulumi** as the underlying IaC engine to deploy Azure VNe
 Planton abstracts Pulumi's complexity by exposing a minimal, opinionated API via protobuf:
 
 ```yaml
-apiVersion: azure.project-planton.org/v1
+apiVersion: azure.openmcf.org/v1
 kind: AzureVpc
 metadata:
   name: prod-vnet
@@ -240,7 +240,7 @@ For teams deploying AKS clusters, Planton's `AzureVpc` resource is typically cre
 
 The journey from clicking through the Azure Portal to managing VNets as declarative, version-controlled code represents a fundamental shift in how we think about cloud infrastructure. Manual workflows are learning tools, not production strategies. Declarative IaC tools—whether Terraform for multi-cloud flexibility, Bicep for Azure-native simplicity, Pulumi for code-first infrastructure, or Crossplane for Kubernetes-native control planes—are now the standard.
 
-Project Planton builds on these foundations by providing a simplified, opinionated abstraction layer. Teams get the production-readiness of Pulumi and Azure best practices without needing to master subnet CIDR math, NAT Gateway configuration, or NSG rule syntax. The result is infrastructure that's easier to deploy, safer to operate, and faster to understand—whether you're a platform engineer managing dozens of clusters or a developer who just needs a network to deploy into.
+OpenMCF builds on these foundations by providing a simplified, opinionated abstraction layer. Teams get the production-readiness of Pulumi and Azure best practices without needing to master subnet CIDR math, NAT Gateway configuration, or NSG rule syntax. The result is infrastructure that's easier to deploy, safer to operate, and faster to understand—whether you're a platform engineer managing dozens of clusters or a developer who just needs a network to deploy into.
 
-For teams building on Azure, the choice isn't whether to use IaC—it's which tool best fits your workflow. And for teams using Project Planton, that choice has already been made, letting you focus on what matters: shipping applications on production-ready infrastructure.
+For teams building on Azure, the choice isn't whether to use IaC—it's which tool best fits your workflow. And for teams using OpenMCF, that choice has already been made, letting you focus on what matters: shipping applications on production-ready infrastructure.
 

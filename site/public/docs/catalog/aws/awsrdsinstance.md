@@ -14,7 +14,7 @@ Amazon RDS represents one of AWS's most mature managed services—a database pla
 
 The fundamental question isn't whether you *can* create an RDS instance—the AWS console makes that trivial. The question is whether you can create it **consistently**, **securely**, and **reproducibly** across development, staging, and production environments while maintaining the discipline needed for enterprise operations.
 
-This document explores the landscape of RDS deployment methods, from anti-patterns that plague many organizations to production-ready infrastructure-as-code solutions. More importantly, it explains why Project Planton standardizes on specific approaches and what that means for teams building reliable database infrastructure.
+This document explores the landscape of RDS deployment methods, from anti-patterns that plague many organizations to production-ready infrastructure-as-code solutions. More importantly, it explains why OpenMCF standardizes on specific approaches and what that means for teams building reliable database infrastructure.
 
 ## The Deployment Maturity Spectrum
 
@@ -293,23 +293,23 @@ const database = new rds.DatabaseInstance(this, 'ProductionDatabase', {
 - Your team is comfortable with TypeScript/Python/Java and wants infrastructure in the same language as applications
 - You value higher-level abstractions over granular control
 
-## The Project Planton Choice: Dual-Track IaC Support
+## The OpenMCF Choice: Dual-Track IaC Support
 
-Project Planton takes a pragmatic, inclusive approach: **support both Terraform and Pulumi as first-class deployment targets.**
+OpenMCF takes a pragmatic, inclusive approach: **support both Terraform and Pulumi as first-class deployment targets.**
 
 ### Why This Decision Makes Sense
 
-Different teams have different needs, histories, and preferences. Rather than forcing a choice, Project Planton's API-driven architecture allows the same declarative specification to be deployed via either tool:
+Different teams have different needs, histories, and preferences. Rather than forcing a choice, OpenMCF's API-driven architecture allows the same declarative specification to be deployed via either tool:
 
-1. **Define once**: Specify your RDS instance configuration in Project Planton's minimal, validated API schema (the 80/20 fields that matter for most use cases)
+1. **Define once**: Specify your RDS instance configuration in OpenMCF's minimal, validated API schema (the 80/20 fields that matter for most use cases)
 
-2. **Deploy with your preferred tool**: Project Planton generates appropriate Terraform HCL or Pulumi code from that specification
+2. **Deploy with your preferred tool**: OpenMCF generates appropriate Terraform HCL or Pulumi code from that specification
 
 3. **Maintain flexibility**: Teams can choose the IaC tool that fits their culture and requirements without changing their database specifications
 
 ### The Terraform Module (Default)
 
-Terraform serves as Project Planton's default deployment path for several reasons:
+Terraform serves as OpenMCF's default deployment path for several reasons:
 
 - **Industry momentum**: Terraform remains the most widely adopted IaC tool across industries and cloud providers
 - **Mature ecosystem**: Extensive community resources, training materials, and operational expertise
@@ -329,19 +329,19 @@ Pulumi support recognizes that many development teams prefer infrastructure-as-a
 - **Advanced patterns**: Complex conditional logic, dynamic resource creation based on application needs
 - **Tight integration**: Infrastructure code living alongside application code in the same repository, language, and testing framework
 
-Project Planton's Pulumi module provides equivalent functionality to the Terraform version, ensuring feature parity regardless of deployment choice.
+OpenMCF's Pulumi module provides equivalent functionality to the Terraform version, ensuring feature parity regardless of deployment choice.
 
 ### What We Don't Support (And Why)
 
-**CloudFormation/CDK**: While excellent tools for AWS-only workloads, Project Planton's mission includes multi-cloud support. Standardizing on Terraform and Pulumi—both multi-cloud by design—aligns with that vision. Teams preferring CloudFormation can still use Project Planton's specifications as documentation and manually translate to CFN templates.
+**CloudFormation/CDK**: While excellent tools for AWS-only workloads, OpenMCF's mission includes multi-cloud support. Standardizing on Terraform and Pulumi—both multi-cloud by design—aligns with that vision. Teams preferring CloudFormation can still use OpenMCF's specifications as documentation and manually translate to CFN templates.
 
 **Ansible/Configuration Management**: These tools excel at application deployment and configuration, not infrastructure lifecycle management. For RDS deployment specifically, dedicated IaC tools provide superior state management, drift detection, and change planning.
 
 ## The 80/20 Configuration Philosophy
 
-AWS RDS exposes hundreds of configuration parameters. Most teams need to configure about 20% of them for 80% of use cases. Project Planton's API reflects this.
+AWS RDS exposes hundreds of configuration parameters. Most teams need to configure about 20% of them for 80% of use cases. OpenMCF's API reflects this.
 
-### The Essential Fields (What Project Planton Exposes)
+### The Essential Fields (What OpenMCF Exposes)
 
 #### Networking (Placement and Security)
 - **Subnet IDs** (or subnet group name): Where your database lives—typically private subnets across availability zones
@@ -403,7 +403,7 @@ For production databases, Multi-AZ deployment is fundamental. AWS maintains a sy
 - Cross-region snapshot copies for geographic disaster recovery if required
 - **Deletion protection** enabled (prevents accidental database deletion)
 
-**Final snapshots**: When deleting a database, RDS can create a final snapshot. CloudFormation defaults to creating one (safe); Terraform defaults to skipping (fast but dangerous). Project Planton enforces final snapshots for production-profile databases.
+**Final snapshots**: When deleting a database, RDS can create a final snapshot. CloudFormation defaults to creating one (safe); Terraform defaults to skipping (fast but dangerous). OpenMCF enforces final snapshots for production-profile databases.
 
 ### Network Isolation: Private Subnets Only
 
@@ -412,7 +412,7 @@ Production databases should **never** have public IP addresses. They belong in p
 - Bastion hosts or VPN for administrative access
 - Specific CIDR ranges if connecting from on-premises via Direct Connect/VPN
 
-The `publicly_accessible = false` setting is enforced by default in Project Planton's production profiles.
+The `publicly_accessible = false` setting is enforced by default in OpenMCF's production profiles.
 
 ### Encryption: Always, At Rest and In Transit
 
@@ -431,7 +431,7 @@ Production databases require comprehensive monitoring:
 - **Performance Insights**: Query-level performance analysis (which queries consume resources)
 - **CloudWatch Logs**: Export slow query logs, general logs for analysis and alerting
 
-Project Planton's Terraform/Pulumi modules automatically configure these for production-profile databases while keeping dev/test lightweight.
+OpenMCF's Terraform/Pulumi modules automatically configure these for production-profile databases while keeping dev/test lightweight.
 
 ### Credential Management: No Passwords in Code
 
@@ -441,7 +441,7 @@ Hardcoded passwords in infrastructure code is an anti-pattern. Modern approaches
 
 2. **IAM Database Authentication**: For MySQL/PostgreSQL, allow connection using IAM tokens instead of passwords (15-minute validity, no long-lived credentials)
 
-Project Planton's API encourages Secrets Manager integration by default, with password fields available only for specific migration scenarios requiring manual credential control.
+OpenMCF's API encourages Secrets Manager integration by default, with password fields available only for specific migration scenarios requiring manual credential control.
 
 ## Engine-Specific Considerations
 
@@ -550,7 +550,7 @@ The journey from clicking "Create Database" in the console to sophisticated infr
 
 Manual operations might seem faster for a single database, but they scale linearly with human effort—every new environment, every configuration change requires someone to remember the right settings, click the right checkboxes, and hope they didn't miss anything. Infrastructure as code scales logarithmically: the initial investment in defining resources properly pays dividends across every subsequent deployment, update, and disaster recovery scenario.
 
-Project Planton's approach—providing a minimal, validated API focused on essential configuration combined with production-ready Terraform and Pulumi implementations—aims to make that maturity accessible. Teams shouldn't need to become RDS experts, understanding every nuance of parameter groups and option groups, to deploy a secure, well-configured database. They should declare their intent (PostgreSQL 15, production-grade, private network, Multi-AZ) and trust that the infrastructure code translates that intent into AWS API calls with appropriate security defaults, monitoring, and operational best practices.
+OpenMCF's approach—providing a minimal, validated API focused on essential configuration combined with production-ready Terraform and Pulumi implementations—aims to make that maturity accessible. Teams shouldn't need to become RDS experts, understanding every nuance of parameter groups and option groups, to deploy a secure, well-configured database. They should declare their intent (PostgreSQL 15, production-grade, private network, Multi-AZ) and trust that the infrastructure code translates that intent into AWS API calls with appropriate security defaults, monitoring, and operational best practices.
 
 Whether you choose Terraform for its mature ecosystem, Pulumi for its developer-friendly approach, or maintain CloudFormation for AWS-native operations, the key is moving beyond ephemeral, undocumented manual operations to **infrastructure as reviewable, testable, versionable code**. Your databases—and your future selves—will thank you.
 

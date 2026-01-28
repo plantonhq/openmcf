@@ -10,11 +10,11 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/internal/cli/ui"
-	"github.com/plantonhq/project-planton/internal/cli/workspace"
-	"github.com/plantonhq/project-planton/internal/manifest/protodefaults"
-	"github.com/plantonhq/project-planton/pkg/crkreflect"
-	"github.com/plantonhq/project-planton/pkg/ulidgen"
+	"github.com/plantonhq/openmcf/internal/cli/ui"
+	"github.com/plantonhq/openmcf/internal/cli/workspace"
+	"github.com/plantonhq/openmcf/internal/manifest/protodefaults"
+	"github.com/plantonhq/openmcf/pkg/crkreflect"
+	"github.com/plantonhq/openmcf/pkg/ulidgen"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"sigs.k8s.io/yaml"
@@ -176,11 +176,11 @@ func formatUnsupportedResourceError(kindName string) error {
 	msg.WriteString("   • Misspelled resource name (e.g., 'AwsEks" + bold("Clster") + "')\n\n")
 
 	msg.WriteString(yellow("2. If the kind is correct, update your CLI to the latest version:\n\n"))
-	msg.WriteString("   " + green("brew update && brew upgrade project-planton") + "\n\n")
+	msg.WriteString("   " + green("brew update && brew upgrade openmcf") + "\n\n")
 	msg.WriteString("   Or if you haven't installed via Homebrew:\n\n")
-	msg.WriteString("   " + green("brew install plantonhq/tap/project-planton") + "\n\n")
+	msg.WriteString("   " + green("brew install plantonhq/tap/openmcf") + "\n\n")
 	msg.WriteString("   Then verify:\n\n")
-	msg.WriteString("   " + green("project-planton version") + "\n\n")
+	msg.WriteString("   " + green("openmcf version") + "\n\n")
 
 	msg.WriteString(yellow("3. Retry your command\n\n"))
 

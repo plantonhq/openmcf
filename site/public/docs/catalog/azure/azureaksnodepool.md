@@ -18,7 +18,7 @@ The paradigm shifted when Azure introduced **node pools**—independent groups o
 
 But with this flexibility came complexity. How do you deploy and manage multiple node pools across environments? What's the right balance between isolation and operational overhead? Which infrastructure-as-code tool handles the lifecycle of these pools most effectively?
 
-This document explores the landscape of AKS node pool deployment methods, from anti-patterns to avoid to production-ready approaches that have been battle-tested at scale. We'll examine why Project Planton chose its particular abstraction and how it distills production best practices into a streamlined API that teams actually want to use.
+This document explores the landscape of AKS node pool deployment methods, from anti-patterns to avoid to production-ready approaches that have been battle-tested at scale. We'll examine why OpenMCF chose its particular abstraction and how it distills production best practices into a streamlined API that teams actually want to use.
 
 ## The Maturity Spectrum: How Teams Deploy Node Pools
 
@@ -153,7 +153,7 @@ const appPool = new azure.containerservice.KubernetesClusterNodePool("apppool", 
 
 **Verdict**: Both are production-ready. Choose Terraform if you value a massive community, extensive third-party modules, and a proven track record. Choose Pulumi if you want the expressiveness of a full programming language and appreciate modern developer tooling (like IDE autocomplete for cloud resources).
 
-### Level 4: GitOps and Higher-Level Abstractions (Crossplane, Argo CD, Project Planton)
+### Level 4: GitOps and Higher-Level Abstractions (Crossplane, Argo CD, OpenMCF)
 
 At the highest level of maturity, teams treat infrastructure as declarative Kubernetes-style resources, managed through GitOps workflows.
 
@@ -169,7 +169,7 @@ At the highest level of maturity, teams treat infrastructure as declarative Kube
 - Adds operational complexity (you're running controllers in Kubernetes to manage Kubernetes infrastructure—a meta-problem)
 - Debugging can be opaque (errors surface as Kubernetes events rather than direct API feedback)
 
-**Project Planton's Approach**: Sits atop Pulumi, providing a curated, opinionated API that distills production best practices into a simple resource definition. Instead of exposing every knob and lever (50+ fields in the raw AKS API), Project Planton focuses on the 20% of configuration that 80% of teams actually need:
+**OpenMCF's Approach**: Sits atop Pulumi, providing a curated, opinionated API that distills production best practices into a simple resource definition. Instead of exposing every knob and lever (50+ fields in the raw AKS API), OpenMCF focuses on the 20% of configuration that 80% of teams actually need:
 
 - **Cluster association**: Which AKS cluster does this pool belong to?
 - **VM size**: What instance type?
@@ -180,7 +180,7 @@ At the highest level of maturity, teams treat infrastructure as declarative Kube
 
 The underlying Pulumi module handles the boilerplate—subnet assignment, proper taints for system pools, orchestrator version alignment, upgrade surge settings. You get the power of Pulumi with guardrails that prevent common mistakes.
 
-**Verdict**: For teams seeking simplicity without sacrificing production-readiness, abstractions like Project Planton deliver the best developer experience. For those needing fine-grained control of every Azure feature, Terraform/Pulumi's raw providers are better. Crossplane shines in Kubernetes-centric, multi-cloud environments where treating infrastructure as Kubernetes resources aligns with operational culture.
+**Verdict**: For teams seeking simplicity without sacrificing production-readiness, abstractions like OpenMCF deliver the best developer experience. For those needing fine-grained control of every Azure feature, Terraform/Pulumi's raw providers are better. Crossplane shines in Kubernetes-centric, multi-cloud environments where treating infrastructure as Kubernetes resources aligns with operational culture.
 
 ## IaC Tool Comparison: The Details
 
@@ -338,9 +338,9 @@ Can't change: VM size, OS type, disk type.
 - **PDB Blocking Upgrades**: If a Pod Disruption Budget sets `maxUnavailable: 0` and you only have one replica, the node can't drain. AKS will retry for hours. Fix: Add more replicas or temporarily relax the PDB.
 - **Forgetting to Upgrade All Pools**: You upgrade the control plane to 1.28 but leave a pool on 1.26. Works, but you're now managing version skew. Update your IaC to bump all pools together.
 
-## What Project Planton Supports (and Why)
+## What OpenMCF Supports (and Why)
 
-Project Planton's `AzureAksNodePool` resource distills the research and production patterns above into a focused API. Here's what we chose to include:
+OpenMCF's `AzureAksNodePool` resource distills the research and production patterns above into a focused API. Here's what we chose to include:
 
 **Included** (The Essential 20%):
 - `cluster_name`: Reference to the parent AKS cluster
@@ -366,7 +366,7 @@ Project Planton's `AzureAksNodePool` resource distills the research and producti
 
 **The Philosophy**: 80% of teams need straightforward, reliable node pools with HA, autoscaling, and cost controls. The API should make that trivial. The 20% with specialized needs (FIPS mode, custom kubelets) can use lower-level tools or contribute enhancements to the Pulumi module.
 
-**Integration with AKS Clusters**: `AzureAksNodePool` references an `AzureAksCluster` by name. The Project Planton orchestrator ensures the cluster exists before creating pools, handles cleanup on deletion, and can manage multiple pools declaratively from a single spec.
+**Integration with AKS Clusters**: `AzureAksNodePool` references an `AzureAksCluster` by name. The OpenMCF orchestrator ensures the cluster exists before creating pools, handles cleanup on deletion, and can manage multiple pools declaratively from a single spec.
 
 ## Conclusion: The Paradigm Shift
 
@@ -380,9 +380,9 @@ Today, production AKS clusters routinely run:
 
 Managing this complexity manually through the portal is untenable. Azure CLI scripts approximate repeatability but lack state management. ARM/Bicep provides Azure-native declarative IaC. Terraform and Pulumi bring battle-tested state management and multi-cloud portability.
 
-Project Planton sits atop Pulumi, curating the 20% of configuration that matters most and encoding production best practices (zones, autoscaling, Spot isolation) into a simple, validated resource definition. You get the power of IaC without drowning in boilerplate.
+OpenMCF sits atop Pulumi, curating the 20% of configuration that matters most and encoding production best practices (zones, autoscaling, Spot isolation) into a simple, validated resource definition. You get the power of IaC without drowning in boilerplate.
 
-The strategic choice is clear: **treat node pools as code**, manage them declaratively, and use tools that catch mistakes before they reach production. Whether you choose Terraform, Pulumi, ARM, or a higher-level abstraction like Project Planton, the anti-pattern is the same: manual, undocumented, one-off changes that can't be reviewed, tested, or rolled back.
+The strategic choice is clear: **treat node pools as code**, manage them declaratively, and use tools that catch mistakes before they reach production. Whether you choose Terraform, Pulumi, ARM, or a higher-level abstraction like OpenMCF, the anti-pattern is the same: manual, undocumented, one-off changes that can't be reviewed, tested, or rolled back.
 
 The clusters you deploy today will run for years. Make sure the infrastructure that powers them is as robust, version-controlled, and well-architected as the applications running on top.
 

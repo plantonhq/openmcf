@@ -2,8 +2,8 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind"
-	"github.com/plantonhq/project-planton/pkg/crkreflect"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/cloudresourcekind"
+	"github.com/plantonhq/openmcf/pkg/crkreflect"
 	"gopkg.in/yaml.v3"
 )
 

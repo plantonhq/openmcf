@@ -12,7 +12,7 @@ componentName: "kubernetesprometheus"
 
 "Just deploy Prometheus as a simple Deployment, it's just another container, right?" This misconception has derailed countless monitoring initiatives. Prometheus is fundamentally a **stateful time-series database**, not a stateless application. The journey from a basic setup that works in development to a production-grade monitoring stack that scales organizationally and technically requires understanding a critical evolution in deployment methods.
 
-Prometheus on Kubernetes has matured from imperative, manual configurations to declarative, operator-driven ecosystems. This document explores that evolution, explains what deployment methods exist across the industry, and reveals why Project Planton chose the **kube-prometheus-stack** as its foundation for production monitoring.
+Prometheus on Kubernetes has matured from imperative, manual configurations to declarative, operator-driven ecosystems. This document explores that evolution, explains what deployment methods exist across the industry, and reveals why OpenMCF chose the **kube-prometheus-stack** as its foundation for production monitoring.
 
 ## The Evolution: From Anti-Patterns to Production Solutions
 
@@ -144,9 +144,9 @@ While self-hosting provides complete control and data sovereignty, long-term sto
 
 Any production-grade deployment tool must support `remoteWrite` configuration as a first-class feature.
 
-## Project Planton's Choice: kube-prometheus-stack
+## OpenMCF's Choice: kube-prometheus-stack
 
-Project Planton deploys the **kube-prometheus-stack Helm chart** as the underlying implementation for its `PrometheusKubernetes` resource.
+OpenMCF deploys the **kube-prometheus-stack Helm chart** as the underlying implementation for its `PrometheusKubernetes` resource.
 
 **Why kube-prometheus-stack**:
 1. **Production-proven**: This is the undisputed industry standard for production Prometheus on Kubernetes
@@ -155,7 +155,7 @@ Project Planton deploys the **kube-prometheus-stack Helm chart** as the underlyi
 4. **100% open source**: The entire stack and all components are licensed under the permissive Apache-2.0 license
 5. **Organizational scalability**: The ServiceMonitor/PodMonitor pattern is the only method that scales in multi-team clusters, removing the platform team as a bottleneck
 
-**The abstraction principle**: Project Planton's protobuf API provides a high-level, opinionated schema that translates into the kube-prometheus-stack chart's `values.yaml`. The API focuses on the **"80% essentials"** that most users need, while providing escape hatches for advanced features.
+**The abstraction principle**: OpenMCF's protobuf API provides a high-level, opinionated schema that translates into the kube-prometheus-stack chart's `values.yaml`. The API focuses on the **"80% essentials"** that most users need, while providing escape hatches for advanced features.
 
 **Essential configuration** (the "80%"):
 - Replicas (1 for staging, 2 for production HA)
@@ -254,7 +254,7 @@ When a Prometheus pod is OOMKilled, the cause is almost always one of three issu
 
 ## Licensing: 100% Open Source
 
-Project Planton requires a 100% open-source deployment path. The entire recommended stack is permissively licensed:
+OpenMCF requires a 100% open-source deployment path. The entire recommended stack is permissively licensed:
 
 | Component | License | Source |
 |:---|:---|:---|
@@ -277,7 +277,7 @@ Project Planton requires a 100% open-source deployment path. The entire recommen
 
 The evolution from manual StatefulSets to the Prometheus Operator represents a fundamental paradigm shift. Monitoring is no longer an external tool _running on_ Kubernetes—it is a truly Kubernetes-native service, managed declaratively via CRDs and scaled organizationally through decentralized, GitOps-driven workflows.
 
-Project Planton embraces this paradigm by building on the battle-tested kube-prometheus-stack. The result is a production-grade monitoring solution that is open source, declarative, and ready to scale from development clusters to large, multi-team production environments.
+OpenMCF embraces this paradigm by building on the battle-tested kube-prometheus-stack. The result is a production-grade monitoring solution that is open source, declarative, and ready to scale from development clusters to large, multi-team production environments.
 
 For comprehensive implementation details, operator configuration deep dives, and Thanos integration guides, explore the additional documentation in this directory.
 

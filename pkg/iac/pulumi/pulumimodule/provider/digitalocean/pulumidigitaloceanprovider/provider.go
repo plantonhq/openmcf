@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	digitaloceanprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
+	digitaloceanprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/digitalocean"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-digitalocean/sdk/v4/go/digitalocean"

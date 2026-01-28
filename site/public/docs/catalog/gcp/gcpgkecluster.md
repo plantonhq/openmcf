@@ -28,7 +28,7 @@ A production-ready GKE cluster is not just "create cluster and go." It involves:
 
 The reality: **getting all of this right is hard**. Miss a secondary IP range configuration? Your pods can't schedule. Forget Cloud NAT? Your private nodes can't pull Docker images. Misconfigure Workload Identity? Your pods can't access GCP services.
 
-Project Planton's `GcpGkeCluster` API abstracts this complexity into a focused, production-ready specification. This document explains why GKE is designed this way, how deployment methods evolved, and what the 80/20 scoping decisions mean for your infrastructure.
+OpenMCF's `GcpGkeCluster` API abstracts this complexity into a focused, production-ready specification. This document explains why GKE is designed this way, how deployment methods evolved, and what the 80/20 scoping decisions mean for your infrastructure.
 
 ## The Evolution: From Manual to Declarative
 
@@ -263,7 +263,7 @@ Crossplane extends the Kubernetes-native infrastructure pattern with:
 
 ---
 
-## Project Planton's Approach: Guard Rails, Not Handcuffs
+## OpenMCF's Approach: Guard Rails, Not Handcuffs
 
 The `GcpGkeCluster` API resource is designed around a principle: **make the right thing easy and the wrong thing hard**.
 
@@ -358,7 +358,7 @@ Master authorized networks restrict API server access to specific CIDR ranges (e
 
 ## The 80/20 Scoping Decisions
 
-Project Planton's `GcpGkeCluster` is opinionated but extensible. The goal: **80% of users get production-ready defaults; 20% with advanced needs can drop to Terraform/Pulumi**.
+OpenMCF's `GcpGkeCluster` is opinionated but extensible. The goal: **80% of users get production-ready defaults; 20% with advanced needs can drop to Terraform/Pulumi**.
 
 | Feature | Included? | Why? |
 |---------|-----------|------|
@@ -407,7 +407,7 @@ Project Planton's `GcpGkeCluster` is opinionated but extensible. The goal: **80%
 - **GKE Dataplane V2** (eBPF-based networking) requires VPC-native
 - **Shared VPC** patterns work better with VPC-native
 
-**Verdict**: Always use VPC-native. Project Planton enforces this by requiring secondary range names in the spec.
+**Verdict**: Always use VPC-native. OpenMCF enforces this by requiring secondary range names in the spec.
 
 ---
 
@@ -444,7 +444,7 @@ gcloud iam service-accounts add-iam-policy-binding \
 
 **Result**: The `app-sa` service account in the `production` namespace gets exactly the IAM permissions of `app@my-project.iam.gserviceaccount.com`. No other pods can impersonate this GSA.
 
-**Verdict**: Enable Workload Identity by default. Project Planton does this via `disable_workload_identity: false`.
+**Verdict**: Enable Workload Identity by default. OpenMCF does this via `disable_workload_identity: false`.
 
 ---
 
@@ -498,7 +498,7 @@ spec:
 
 **Result**: Backend pods reject traffic from anything except frontend pods on port 8080.
 
-**Verdict**: Enable network policies by default. Project Planton does this via `disable_network_policy: false`.
+**Verdict**: Enable network policies by default. OpenMCF does this via `disable_network_policy: false`.
 
 ---
 
@@ -515,9 +515,9 @@ Private nodes have no public IPs. How do they:
 - Auto-scales with your cluster (no VM-based NAT bottlenecks)
 - Logs all outbound connections for audit trails
 
-**Configuration**: Create a Cloud Router and Cloud NAT in the same region as your cluster. Project Planton's `router_nat_name` field ensures this is validated at spec definition time.
+**Configuration**: Create a Cloud Router and Cloud NAT in the same region as your cluster. OpenMCF's `router_nat_name` field ensures this is validated at spec definition time.
 
-**Verdict**: Required for private clusters. Project Planton enforces this by making `router_nat_name` a required field.
+**Verdict**: Required for private clusters. OpenMCF enforces this by making `router_nat_name` a required field.
 
 ---
 
@@ -552,7 +552,7 @@ This separation is intentional:
 2. **Node pool changes** (machine types, autoscaling, labels) don't risk control plane disruptions
 3. **Node pool lifecycles** are independent (create/update/delete pools without recreating the cluster)
 
-Project Planton's API reflects this:
+OpenMCF's API reflects this:
 - `GcpGkeCluster`: Control plane configuration (networking, security, upgrade strategy)
 - `GcpGkeNodePool`: Node configuration (machine types, autoscaling, taints, labels)
 
@@ -560,7 +560,7 @@ This mirrors Terraform and Pulumi best practices: `google_container_cluster` (co
 
 **Anti-pattern**: Inline node pools within cluster definitions. Terraform docs explicitly warn this can cause IaC tools to "struggle with complex changes" and risk unintended cluster recreation.
 
-**Verdict**: Keep them separate. Project Planton enforces this architectural boundary.
+**Verdict**: Keep them separate. OpenMCF enforces this architectural boundary.
 
 ---
 
@@ -585,7 +585,7 @@ Every GKE private cluster requires a **master CIDR block**—a /28 range (16 IPs
 - `172.16.0.32/28` → Cluster 3 masters
 - ...up to 4096 clusters in `172.16.0.0/16`
 
-**Verdict**: Plan your master CIDR allocation strategy before creating clusters. Project Planton's `master_ipv4_cidr_block` field enforces /28 via regex validation.
+**Verdict**: Plan your master CIDR allocation strategy before creating clusters. OpenMCF's `master_ipv4_cidr_block` field enforces /28 via regex validation.
 
 ---
 
@@ -603,7 +603,7 @@ In enterprise GCP organizations, networking is centralized:
 
 **Why it matters**: Separates network administration (platform team) from application deployment (product teams). Platform team controls IP allocation and security policies; product teams deploy clusters within those guard rails.
 
-**Project Planton support**: The `subnetwork_self_link` field can reference subnets from any project (host or same project). For Shared VPC, use:
+**OpenMCF support**: The `subnetwork_self_link` field can reference subnets from any project (host or same project). For Shared VPC, use:
 - `project_id`: Service project (where cluster is created)
 - `subnetwork_self_link`: Subnet from host project
 
@@ -617,7 +617,7 @@ GKE enables several add-ons by default:
 - **Cloud Logging**: Exports cluster logs to Cloud Logging
 - **Cloud Monitoring**: Exports cluster metrics to Cloud Monitoring
 
-Most production clusters keep these enabled. Project Planton does not expose granular add-on toggles to reduce API surface area.
+Most production clusters keep these enabled. OpenMCF does not expose granular add-on toggles to reduce API surface area.
 
 **Advanced use cases**: If you need custom Ingress controllers (e.g., NGINX, Traefik) or third-party observability (e.g., Datadog, Prometheus), you can disable GCP's HTTP Load Balancing. This is rare. For most users, the defaults are production-ready.
 
@@ -647,7 +647,7 @@ resource "google_container_node_pool" "custom" {
 
 **Why?** The default node pool has generic settings. Production workloads need customized pools (machine types, autoscaling, labels, taints).
 
-Project Planton's Pulumi implementation follows this pattern: `remove_default_node_pool = true`, then separately provision `GcpGkeNodePool` resources.
+OpenMCF's Pulumi implementation follows this pattern: `remove_default_node_pool = true`, then separately provision `GcpGkeNodePool` resources.
 
 ---
 
@@ -656,7 +656,7 @@ Project Planton's Pulumi implementation follows this pattern: `remove_default_no
 ### Minimal Production Cluster (Private, Regional, Auto-Upgrades)
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeCluster
 metadata:
   name: prod-cluster
@@ -701,7 +701,7 @@ spec:
 ### Dev Cluster (Zonal, Cost-Optimized)
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeCluster
 metadata:
   name: dev-cluster
@@ -731,7 +731,7 @@ spec:
 ### High-Security Prod Cluster (Stable Channel, All Security Features)
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeCluster
 metadata:
   name: secure-prod
@@ -766,7 +766,7 @@ GKE clusters are **not monolithic**. They're composed of:
 
 This separation is architectural and intentional. It mirrors GKE's API design, Terraform best practices, Pulumi patterns, and real-world production stability requirements.
 
-Project Planton's `GcpGkeCluster` API encodes the lessons learned from thousands of production GKE deployments:
+OpenMCF's `GcpGkeCluster` API encodes the lessons learned from thousands of production GKE deployments:
 - Private clusters with VPC-native networking by default
 - Workload Identity for IAM-per-pod without shared secrets
 - Network policies for microsegmentation
@@ -778,5 +778,5 @@ The goal: **production-ready GKE clusters in 10 lines of YAML, not 100 lines of 
 
 The 80/20 philosophy ensures that simple use cases remain simple, while the remaining 20% (advanced security, add-on customization, specialized networking) can be addressed by extending the API or dropping to Terraform/Pulumi.
 
-From pet clusters maintained by tribal knowledge to cattle infrastructure defined in Git—this is the evolution Project Planton enables.
+From pet clusters maintained by tribal knowledge to cattle infrastructure defined in Git—this is the evolution OpenMCF enables.
 

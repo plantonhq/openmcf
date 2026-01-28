@@ -41,7 +41,7 @@ SUCCESS CRITERIA
 - CEL expressions are robust (no runtime panics) and enforce intended constraints.
 
 TESTING OPTIONAL FIELDS
-- Fields with `(org.project_planton.shared.options.default)` are marked `optional`
+- Fields with `(org.openmcf.shared.options.default)` are marked `optional`
 - Generated Go code uses pointer types (`*string` vs `string`)
 - Tests must assign via pointers:
   ```go

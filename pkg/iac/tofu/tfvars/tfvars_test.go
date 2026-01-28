@@ -1,9 +1,9 @@
 package tfvars
 
 import (
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes"
-	kubernetesredisv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/kubernetesredis/v1"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes"
+	kubernetesredisv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/kubernetesredis/v1"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2/hcldec"
@@ -14,7 +14,7 @@ import (
 func TestGeneratedTFVarsParsing(t *testing.T) {
 	// Create a test proto message with some fields.
 	msg := &kubernetesredisv1.KubernetesRedis{
-		ApiVersion: "kubernetes.project-planton.org/v1",
+		ApiVersion: "kubernetes.openmcf.org/v1",
 		Kind:       "KubernetesRedis",
 		Metadata: &shared.CloudResourceMetadata{
 			Name: "red-one",
@@ -50,7 +50,7 @@ func TestGeneratedTFVarsParsing(t *testing.T) {
 	// Note: Top-level keys are NOT quoted, but nested keys ARE quoted to handle
 	// special characters (periods, slashes, etc.) common in Kubernetes-style labels.
 	got = `
-apiVersion = "kubernetes.project-planton.org/v1"
+apiVersion = "kubernetes.openmcf.org/v1"
 kind = "KubernetesRedis"
 metadata = {
   "name" = "red-one"
@@ -102,8 +102,8 @@ spec = {
 
 	// Validate top-level fields
 	apiVersion := val.GetAttr("apiVersion").AsString()
-	if apiVersion != "kubernetes.project-planton.org/v1" {
-		t.Errorf("expected apiVersion = 'kubernetes.project-planton.org/v1', got %q", apiVersion)
+	if apiVersion != "kubernetes.openmcf.org/v1" {
+		t.Errorf("expected apiVersion = 'kubernetes.openmcf.org/v1', got %q", apiVersion)
 	}
 
 	kind := val.GetAttr("kind").AsString()

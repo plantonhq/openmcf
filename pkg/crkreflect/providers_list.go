@@ -1,6 +1,6 @@
 package crkreflect
 
-import "github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind"
+import "github.com/plantonhq/openmcf/apis/org/openmcf/shared/cloudresourcekind"
 
 func ProvidersList() []cloudresourcekind.CloudResourceProvider {
 	resp := make([]cloudresourcekind.CloudResourceProvider, 0)

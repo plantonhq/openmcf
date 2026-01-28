@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/plantonhq/project-planton/app/backend/internal/database"
-	"github.com/plantonhq/project-planton/app/backend/internal/server"
+	"github.com/plantonhq/openmcf/app/backend/internal/database"
+	"github.com/plantonhq/openmcf/app/backend/internal/server"
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,7 +17,7 @@ func main() {
 	// Parse command line flags
 	port := flag.String("port", getEnv("SERVER_PORT", "50051"), "Server port")
 	mongoURI := flag.String("mongo-uri", getEnv("MONGODB_URI", "mongodb://localhost:27017"), "MongoDB connection URI")
-	mongoDatabase := flag.String("mongo-database", getEnv("MONGODB_DATABASE", "project_planton"), "MongoDB database name")
+	mongoDatabase := flag.String("mongo-database", getEnv("MONGODB_DATABASE", "openmcf"), "MongoDB database name")
 	flag.Parse()
 
 	// Set up logging

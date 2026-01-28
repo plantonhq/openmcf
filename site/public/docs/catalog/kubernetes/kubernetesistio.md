@@ -16,7 +16,7 @@ That narrative has fundamentally changed.
 
 Modern Istio (1.18+) is dramatically simpler to deploy and operate than earlier versions. The project has consolidated its components, refined its installation methods, and developed proven patterns for production deployments across thousands of organizations. What was once a sprawling collection of microservices (Mixer, Pilot, Citadel, Galley) is now a single control plane binary (istiod) that's straightforward to manage and reason about.
 
-This document explores how to deploy Istio on Kubernetes in a way that balances production-readiness with operational simplicity. We'll examine the landscape of deployment methods – from manual CLI tools to fully managed cloud services – and explain which approaches Project Planton supports and why. Whether you're running a single cluster in development or orchestrating multi-cloud service mesh deployments, understanding these patterns will help you make informed decisions.
+This document explores how to deploy Istio on Kubernetes in a way that balances production-readiness with operational simplicity. We'll examine the landscape of deployment methods – from manual CLI tools to fully managed cloud services – and explain which approaches OpenMCF supports and why. Whether you're running a single cluster in development or orchestrating multi-cloud service mesh deployments, understanding these patterns will help you make informed decisions.
 
 ## The Evolution of Istio Deployment
 
@@ -50,7 +50,7 @@ The **istioctl** CLI is Istio's official installation tool – a single binary t
 - **Imperative**: It's a CLI tool, not a declarative resource, making it less natural for GitOps workflows
 - **Automation**: While scriptable, it requires wrapping in automation for repeatable deployments
 
-**Use cases**: Interactive installations, proof-of-concepts, development environments, and as the engine behind higher-level automation (which is exactly how Project Planton uses it under the hood).
+**Use cases**: Interactive installations, proof-of-concepts, development environments, and as the engine behind higher-level automation (which is exactly how OpenMCF uses it under the hood).
 
 ### Level 2: Declarative Installation with Helm
 
@@ -67,7 +67,7 @@ Istio publishes official **Helm charts** for all its components (base, istiod, g
 - **Configuration surface**: More knobs to understand compared to istioctl profiles
 - **Upgrade coordination**: Need to carefully orchestrate chart upgrades
 
-**Use cases**: Production deployments, CI/CD pipelines, GitOps workflows, and Infrastructure-as-Code frameworks (like Project Planton).
+**Use cases**: Production deployments, CI/CD pipelines, GitOps workflows, and Infrastructure-as-Code frameworks (like OpenMCF).
 
 Users report that Terraform with the Helm provider is "generally fine" and often "the fastest method to provision a full setup." This aligns with modern platform engineering practices where infrastructure is version-controlled and continuously delivered.
 
@@ -99,7 +99,7 @@ Cloud providers offer managed service mesh solutions that eliminate operational 
 
 Modern platform engineering treats service mesh as infrastructure – declaratively defined, version-controlled, and continuously delivered. Tools like **Pulumi** and **Terraform** can deploy Istio by wrapping Helm charts or invoking istioctl.
 
-**Pulumi** (what Project Planton uses):
+**Pulumi** (what OpenMCF uses):
 - Write infrastructure in real programming languages (Go, TypeScript, Python)
 - Compose Istio deployment with other infrastructure resources
 - Strong typing catches configuration errors at compile time
@@ -112,7 +112,7 @@ Modern platform engineering treats service mesh as infrastructure – declarativ
 
 **Use cases**: Multi-cloud deployments, complex platform automation, teams already using IaC tools.
 
-This is where **Project Planton** sits: providing a high-level Kubernetes-like API (defined in protobuf) that automatically generates Pulumi code to deploy Istio with production-ready defaults. You declare your desired state in a simple manifest, and Pulumi handles the orchestration.
+This is where **OpenMCF** sits: providing a high-level Kubernetes-like API (defined in protobuf) that automatically generates Pulumi code to deploy Istio with production-ready defaults. You declare your desired state in a simple manifest, and Pulumi handles the orchestration.
 
 ## Production Installation Methods Compared
 
@@ -132,7 +132,7 @@ When deploying Istio in production, two approaches dominate: **istioctl** and **
 
 As Istio maintainer @howardjohn notes: *"Istioctl and Helm are roughly equivalent in stability; use whichever fits best... Helm tends to integrate much better with other tooling like Terraform, ArgoCD, etc., so is a reasonable first choice."*
 
-**Project Planton's choice**: We use Helm under the hood because it integrates naturally with Pulumi and supports declarative, version-controlled deployments. The KubernetesIstio API abstracts away Helm's complexity while exposing the 20% of configuration that 80% of users need.
+**OpenMCF's choice**: We use Helm under the hood because it integrates naturally with Pulumi and supports declarative, version-controlled deployments. The KubernetesIstio API abstracts away Helm's complexity while exposing the 20% of configuration that 80% of users need.
 
 ### Installation Profiles: Choosing the Right Starting Point
 
@@ -160,7 +160,7 @@ All deployment methods discussed (istioctl, Helm, IaC tools) deploy the open sou
 
 These are optional value-adds for organizations needing enterprise features or support. For most deployments, open source Istio is production-ready without commercial extensions.
 
-**Project Planton** deploys the open source Apache 2.0 Istio distribution, ensuring maximum compatibility and zero licensing costs.
+**OpenMCF** deploys the open source Apache 2.0 Istio distribution, ensuring maximum compatibility and zero licensing costs.
 
 ## The 80/20 Configuration Principle
 
@@ -347,7 +347,7 @@ Istio is naturally GitOps-friendly:
 - **Configuration**: Store VirtualServices, DestinationRules, etc. in Git alongside application configs
 - **Drift Detection**: GitOps controllers will detect and reconcile manual changes
 
-This aligns perfectly with Project Planton's philosophy: declare desired state in version-controlled manifests, let automation handle the rest.
+This aligns perfectly with OpenMCF's philosophy: declare desired state in version-controlled manifests, let automation handle the rest.
 
 ### Service Mesh Interface (SMI)
 
@@ -375,12 +375,12 @@ Istio supports connecting multiple clusters into a unified service mesh, enablin
 
 For multi-cloud deployments, multi-primary on different networks is typical, with east-west gateways facilitating cross-cluster communication.
 
-## The Project Planton Approach
+## The OpenMCF Approach
 
-Project Planton provides a Kubernetes-like API for deploying Istio that hides low-level complexity while exposing essential configuration:
+OpenMCF provides a Kubernetes-like API for deploying Istio that hides low-level complexity while exposing essential configuration:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesIstio
 metadata:
   name: production-mesh
@@ -393,7 +393,7 @@ spec:
   # Additional high-level settings...
 ```
 
-**What Project Planton abstracts**:
+**What OpenMCF abstracts**:
 - Helm chart installation and ordering
 - Component selection (base, istiod, gateways)
 - Profile defaults and reasonable production settings
@@ -404,7 +404,7 @@ spec:
 - High availability settings (replica counts)
 - Optional components (egress gateway, CNI)
 
-Behind the scenes, Project Planton generates Pulumi code that:
+Behind the scenes, OpenMCF generates Pulumi code that:
 1. Installs Istio Helm charts in correct order
 2. Applies production-ready defaults based on the 80/20 principle
 3. Honors your customizations without exposing every Helm value
@@ -425,7 +425,7 @@ The landscape of Istio deployment has matured dramatically. What was once a comp
 
 5. **Ecosystem integration is mature**: Istio works seamlessly with cert-manager, Prometheus, GitOps tools, and modern IaC frameworks.
 
-Project Planton builds on these insights to provide the simplest possible path to production-ready service mesh: declare your desired state in a high-level API, let automation handle the complexity. Whether you're deploying to a single cluster in development or orchestrating multi-cloud service meshes in production, the patterns and practices outlined here will help you succeed.
+OpenMCF builds on these insights to provide the simplest possible path to production-ready service mesh: declare your desired state in a high-level API, let automation handle the complexity. Whether you're deploying to a single cluster in development or orchestrating multi-cloud service meshes in production, the patterns and practices outlined here will help you succeed.
 
 The era of service mesh complexity is over. Welcome to service mesh as infrastructure-as-code.
 

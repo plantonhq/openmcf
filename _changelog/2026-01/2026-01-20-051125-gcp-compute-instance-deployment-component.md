@@ -10,11 +10,11 @@ Added a complete `GcpComputeInstance` deployment component for provisioning Goog
 
 ## Problem Statement / Motivation
 
-Google Compute Engine is a foundational IaaS offering that was missing from Project Planton's GCP provider suite. Teams needed a standardized, declarative way to provision VMs with consistent patterns matching other deployment components.
+Google Compute Engine is a foundational IaaS offering that was missing from OpenMCF's GCP provider suite. Teams needed a standardized, declarative way to provision VMs with consistent patterns matching other deployment components.
 
 ### Pain Points
 
-- No Project Planton component for GCP Compute Engine VMs
+- No OpenMCF component for GCP Compute Engine VMs
 - Manual VM provisioning lacks validation and consistency
 - Cross-resource references (project, VPC, subnet, service account) required manual coordination
 - No unified interface for Pulumi and Terraform VM deployments
@@ -135,7 +135,7 @@ GcpComputeInstance = 617 [(kind_meta) = {
 ### For Users
 
 - **Declarative VM Provisioning**: Define VMs in YAML with validation
-- **Cross-Resource Composition**: Reference other Project Planton resources
+- **Cross-Resource Composition**: Reference other OpenMCF resources
 - **Dual IaC Support**: Choose Pulumi or Terraform based on preference
 - **Cost Optimization**: Built-in Spot VM support
 - **Security Integration**: Service account attachment with value_from references
@@ -150,7 +150,7 @@ GcpComputeInstance = 617 [(kind_meta) = {
 
 **Literal Values:**
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpComputeInstance
 metadata:
   name: my-vm
@@ -168,7 +168,7 @@ spec:
 
 **Value From References:**
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpComputeInstance
 metadata:
   name: prod-vm

@@ -11,7 +11,7 @@ Purpose: create Go tests that exercise `spec.proto` validations (field options a
 - `buf.build/go/protovalidate`
 - `. "github.com/onsi/ginkgo/v2"`
 - `. "github.com/onsi/gomega"`
-- Optionally: `github.com/plantonhq/project-planton/apis/org/project_planton/shared/validateutil`
+- Optionally: `github.com/plantonhq/openmcf/apis/org/openmcf/shared/validateutil`
 
 ## Test Coverage
 - Positive: minimal valid `<Kind>Spec` passes.
@@ -122,7 +122,7 @@ ginkgo.Context("with custom runner image", func() {
 
 ### Why This Matters
 
-Fields with `(org.project_planton.shared.options.default)` must be `optional`. This changes the generated Go type from `string` to `*string`. Tests that directly assign string literals will fail to compile after proto changes.
+Fields with `(org.openmcf.shared.options.default)` must be `optional`. This changes the generated Go type from `string` to `*string`. Tests that directly assign string literals will fail to compile after proto changes.
 
 ## Notes
 - Keep tests focused and robust; avoid brittle provider-format regexes unless necessary.

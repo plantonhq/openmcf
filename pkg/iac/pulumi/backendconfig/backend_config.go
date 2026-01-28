@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumilabels"
-	"github.com/plantonhq/project-planton/pkg/reflection/metadatareflect"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumilabels"
+	"github.com/plantonhq/openmcf/pkg/reflection/metadatareflect"
 	"google.golang.org/protobuf/proto"
 )
 

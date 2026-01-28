@@ -14,7 +14,7 @@ For years, the conventional wisdom around managed databases was simple: "They're
 
 Google Cloud SQL is GCP's fully managed relational database service for MySQL, PostgreSQL, and SQL Server. It promises to eliminate the operational burden of running traditional RDBMSs—no patching, no backup management, no replication configuration. But "fully managed" doesn't mean "zero configuration." The path from a working dev database to a resilient, secure, production-grade instance requires understanding a spectrum of deployment approaches and making informed architectural choices.
 
-This guide explores **how to deploy Cloud SQL**, from anti-patterns to production-ready automation. We examine the tools developers actually use—from Console wizards to Infrastructure-as-Code frameworks—and explain what Project Planton supports and why.
+This guide explores **how to deploy Cloud SQL**, from anti-patterns to production-ready automation. We examine the tools developers actually use—from Console wizards to Infrastructure-as-Code frameworks—and explain what OpenMCF supports and why.
 
 ## The Deployment Maturity Spectrum
 
@@ -99,7 +99,7 @@ This guide explores **how to deploy Cloud SQL**, from anti-patterns to productio
 - **Operational complexity:** You need a running, healthy Kubernetes cluster to manage your database. If the cluster is down, you can't provision or modify Cloud SQL instances (though existing instances keep running—they're managed by GCP, not K8s).
 - **Not universal:** This pattern only makes sense for teams already operating on Kubernetes. For everyone else, it's over-engineering.
 
-**Verdict:** Production-grade for Kubernetes-centric organizations. Overkill for most teams. The key lesson here is the **API design patterns** these tools use—Project Planton should emulate their nested, composable structure.
+**Verdict:** Production-grade for Kubernetes-centric organizations. Overkill for most teams. The key lesson here is the **API design patterns** these tools use—OpenMCF should emulate their nested, composable structure.
 
 ### Level -1: The Deprecated Path—Cloud Deployment Manager
 
@@ -218,9 +218,9 @@ Standard Cloud Monitoring metrics (CPU, memory, disk I/O) are automatically avai
 
 **Recommendation:** Use shared-core only for dev. Use Enterprise for standard production. Use Enterprise Plus for mission-critical, high-transaction workloads.
 
-## What Project Planton Supports and Why
+## What OpenMCF Supports and Why
 
-Project Planton's `GcpCloudSql` API is designed to orchestrate **Terraform** (or OpenTofu) to provision Cloud SQL instances. Here's why:
+OpenMCF's `GcpCloudSql` API is designed to orchestrate **Terraform** (or OpenTofu) to provision Cloud SQL instances. Here's why:
 
 ### Why Terraform (and OpenTofu)?
 
@@ -231,7 +231,7 @@ Project Planton's `GcpCloudSql` API is designed to orchestrate **Terraform** (or
 
 ### API Design Philosophy: The 80/20 Principle
 
-Most IaC tools expose every API parameter, leading to sprawling, 50+ field resource definitions. Project Planton takes a different approach: **focus on the 20% of configuration that 80% of users need**.
+Most IaC tools expose every API parameter, leading to sprawling, 50+ field resource definitions. OpenMCF takes a different approach: **focus on the 20% of configuration that 80% of users need**.
 
 **Essential Fields (The 80%):**
 - `name`: Instance ID
@@ -334,9 +334,9 @@ Cloud SQL is the right choice for 90% of traditional relational database workloa
 
 The journey from "just a managed MySQL instance" to a production-grade, resilient, secure Cloud SQL deployment is a journey through architectural choices. A single toggle—`availability_type: REGIONAL`—transforms a fragile, single-zone instance into a near-zero-downtime, multi-zone system. A properly configured network (the Smart Hybrid pattern) balances security and flexibility, allowing in-VPC resources to connect privately while enabling serverless platforms and developers to use the IAM-authorized Cloud SQL Proxy.
 
-Google's deprecation of Cloud Deployment Manager in favor of a managed Terraform service sends a clear strategic signal: the Terraform provider ecosystem is the industry standard for GCP infrastructure. Project Planton's choice to orchestrate Terraform (and OpenTofu) for Cloud SQL provisioning aligns with this reality, leveraging a mature, battle-tested toolchain.
+Google's deprecation of Cloud Deployment Manager in favor of a managed Terraform service sends a clear strategic signal: the Terraform provider ecosystem is the industry standard for GCP infrastructure. OpenMCF's choice to orchestrate Terraform (and OpenTofu) for Cloud SQL provisioning aligns with this reality, leveraging a mature, battle-tested toolchain.
 
-By focusing on the 80/20 principle—providing first-class support for the fields that matter most (HA, backups, networking, machine sizing) while still exposing an escape hatch for advanced tuning (database flags)—Project Planton's `GcpCloudSql` API aims to be both simple for common cases and powerful for production-grade deployments.
+By focusing on the 80/20 principle—providing first-class support for the fields that matter most (HA, backups, networking, machine sizing) while still exposing an escape hatch for advanced tuning (database flags)—OpenMCF's `GcpCloudSql` API aims to be both simple for common cases and powerful for production-grade deployments.
 
 Cloud SQL is not magic. It's a managed service that eliminates the *operational* burden of database administration. But it still requires thoughtful *configuration* to achieve production-grade resilience, security, and performance. This guide is your roadmap from "click to create" to "deploy with confidence."
 

@@ -18,7 +18,7 @@ The result? **True zero cold starts.** Workers execute in all 330+ Cloudflare da
 
 But this architectural choice isn't free. Workers don't run arbitrary binaries. They don't have full Node.js APIs or filesystem access. They're designed for a specific class of problem: **intercepting, transforming, and routing HTTP requests at the edge**—API gateways, authentication middleware, A/B testing, webhook handlers, and lightweight data aggregation. Not heavyweight data processing or long-running batch jobs.
 
-This guide explains the deployment landscape for Cloudflare Workers, from manual dashboard clicks to production-grade Infrastructure as Code, and shows how Project Planton solves the most challenging aspect of Workers deployment: **managing the separation between code artifacts and infrastructure configuration**.
+This guide explains the deployment landscape for Cloudflare Workers, from manual dashboard clicks to production-grade Infrastructure as Code, and shows how OpenMCF solves the most challenging aspect of Workers deployment: **managing the separation between code artifacts and infrastructure configuration**.
 
 ---
 
@@ -266,13 +266,13 @@ The correct pattern is to split secret management from Worker deployment:
 - **Worker Deployment Resource (declarative):** Manages the script, bindings, routes, and non-sensitive environment variables
 - **Secret Provisioning (imperative, write-only):** Handled via a separate process (CI/CD pipeline step, sealed secrets in Kubernetes, external secret manager)
 
-Project Planton follows this pattern, as explained below.
+OpenMCF follows this pattern, as explained below.
 
 ---
 
-## Project Planton's Approach: R2-Based Artifact Storage
+## OpenMCF's Approach: R2-Based Artifact Storage
 
-Project Planton's `CloudflareWorker` API solves the two hardest problems in Workers deployment: **artifact management** and **secret handling**.
+OpenMCF's `CloudflareWorker` API solves the two hardest problems in Workers deployment: **artifact management** and **secret handling**.
 
 ### The R2 Bundle Model
 
@@ -301,7 +301,7 @@ message CloudflareWorkerScriptBundleR2Object {
 
 ```yaml
 # cloudflareworker.yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: api-gateway-prod
@@ -394,7 +394,7 @@ These can be added as optional fields when needed, but most Workers are simple r
 **Use Case:** Simple webhook handler for a staging environment.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: webhook-handler-dev
@@ -422,7 +422,7 @@ spec:
 **Use Case:** Production API gateway with KV caching and custom domain.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: api-gateway-prod
@@ -468,7 +468,7 @@ spec:
 **staging.yaml:**
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: api-gateway-staging
@@ -496,7 +496,7 @@ spec:
 **production.yaml:**
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: api-gateway-prod
@@ -578,7 +578,7 @@ Because secrets are write-only, implement a rotation process:
 
 4. **Secrets are write-only.** This is a security feature, not a bug. Treat secret management as a separate, imperative process, not part of the declarative Worker spec.
 
-5. **Project Planton solves artifact storage.** By referencing R2-hosted bundles, the `CloudflareWorker` API decouples build from deploy, enabling immutable artifacts and GitOps workflows.
+5. **OpenMCF solves artifact storage.** By referencing R2-hosted bundles, the `CloudflareWorker` API decouples build from deploy, enabling immutable artifacts and GitOps workflows.
 
 6. **Workers are primitives, not platforms.** Cloudflare Pages is the opinionated, GitOps-native platform. Workers are the low-level primitive for teams that want declarative control.
 
@@ -594,5 +594,5 @@ Because secrets are write-only, implement a rotation process:
 
 ---
 
-**Bottom Line:** Cloudflare Workers deliver true edge computing with zero cold starts by running code in V8 isolates instead of containers. They're production-ready for latency-sensitive request interception, but they require careful artifact management and a clear understanding of their constraints. Project Planton's R2-based bundle model and separation of secret management make Workers deployable in a fully declarative, GitOps-native way—solving the hardest problems in Workers IaC while keeping the API minimal and focused on what 80% of users actually need.
+**Bottom Line:** Cloudflare Workers deliver true edge computing with zero cold starts by running code in V8 isolates instead of containers. They're production-ready for latency-sensitive request interception, but they require careful artifact management and a clear understanding of their constraints. OpenMCF's R2-based bundle model and separation of secret management make Workers deployable in a fully declarative, GitOps-native way—solving the hardest problems in Workers IaC while keeping the API minimal and focused on what 80% of users actually need.
 

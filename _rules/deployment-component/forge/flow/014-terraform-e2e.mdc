@@ -5,7 +5,7 @@ RULE NUMBER
 014
 
 TITLE
-Forge: Terraform end-to-end via ProjectPlanton CLI (tofu)
+Forge: Terraform end-to-end via OpenMCF CLI (tofu)
 
 ROLE
 You are the PlantonCloud Code Partner working inside the developer’s local workspace in Cursor. This rule runs an end-to-end Terraform flow using the local CLI and the resource’s hack manifest.

@@ -18,7 +18,7 @@ What makes DigitalOcean's approach compelling is its clarity. Unlike cloud provi
 
 But simplicity can be deceptive. The API is a **discriminated union**—a type field determines which other fields are valid—and choosing the wrong combination will leave your certificate stuck in a `pending` state. Let's Encrypt certificates require DNS to be managed by DigitalOcean (for automated DNS-01 challenges), and custom certificates demand perfect PEM formatting with complete certificate chains. Miss one detail, and browsers will show "untrusted certificate" errors even though the DigitalOcean API accepted your upload.
 
-This guide explains the landscape of certificate deployment methods, from manual console workflows to production-grade Infrastructure-as-Code, and shows how Project Planton abstracts these choices into a secure, type-safe protobuf API.
+This guide explains the landscape of certificate deployment methods, from manual console workflows to production-grade Infrastructure-as-Code, and shows how OpenMCF abstracts these choices into a secure, type-safe protobuf API.
 
 ---
 
@@ -426,13 +426,13 @@ Fail the deployment if this check fails—better to catch a broken chain in stag
 
 ---
 
-## Project Planton's Approach: Type-Safe, Secure by Default
+## OpenMCF's Approach: Type-Safe, Secure by Default
 
-Project Planton abstracts DigitalOcean Certificate management into a clean, protobuf-defined API that enforces the discriminated union pattern at the type level and guides users toward secure practices.
+OpenMCF abstracts DigitalOcean Certificate management into a clean, protobuf-defined API that enforces the discriminated union pattern at the type level and guides users toward secure practices.
 
 ### The API Design: A True Discriminated Union
 
-Unlike Terraform's HCL (which allows you to set `type = "lets_encrypt"` and `private_key` in the same resource, causing runtime errors), Project Planton's protobuf spec makes invalid states **impossible** at compile-time.
+Unlike Terraform's HCL (which allows you to set `type = "lets_encrypt"` and `private_key` in the same resource, causing runtime errors), OpenMCF's protobuf spec makes invalid states **impossible** at compile-time.
 
 **From `spec.proto`:**
 ```protobuf
@@ -467,7 +467,7 @@ message DigitalOceanCertificateLetsEncryptParams {
 
 **Example YAML:**
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanCertificate
 metadata:
   name: prod-wildcard-cert
@@ -486,7 +486,7 @@ spec:
 **What we abstract:**
 - **DNS Validation:** Handled by DigitalOcean. The user just lists domains.
 - **Renewal:** Automatic by default. `disable_auto_renew` exists for edge cases (e.g., testing renewal failures) but should almost never be used.
-- **Lifecycle States:** Project Planton's controller polls the DigitalOcean API during provisioning, transitioning from `pending` to `verified` automatically. Users see a "Ready" status in their dashboard.
+- **Lifecycle States:** OpenMCF's controller polls the DigitalOcean API during provisioning, transitioning from `pending` to `verified` automatically. Users see a "Ready" status in their dashboard.
 
 ---
 
@@ -504,12 +504,12 @@ message DigitalOceanCertificateCustomParams {
 **Critical Design Choice:** Unlike the research recommendation (which suggested `private_key_secret_ref`), the current implementation **accepts PEM strings directly**. This mirrors the DigitalOcean API exactly, pushing secret management to the orchestration layer.
 
 **Why this works:**
-- **Separation of Concerns:** Project Planton's orchestration (Pulumi-based) handles secrets via Pulumi's built-in secret encryption or external systems (Vault, K8s Secrets).
+- **Separation of Concerns:** OpenMCF's orchestration (Pulumi-based) handles secrets via Pulumi's built-in secret encryption or external systems (Vault, K8s Secrets).
 - **API Fidelity:** The protobuf spec matches the underlying DigitalOcean API's data model exactly, making the implementation straightforward.
 
 **Example YAML (with placeholder for secret injection):**
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanCertificate
 metadata:
   name: prod-ev-cert
@@ -561,7 +561,7 @@ These outputs are critical for integration:
 
 ## The 80/20 Configuration Philosophy
 
-Project Planton's API follows the **80/20 principle**: 80% of users need only 20% of the configuration surface area.
+OpenMCF's API follows the **80/20 principle**: 80% of users need only 20% of the configuration surface area.
 
 ### Essential Fields (The 80%)
 
@@ -584,7 +584,7 @@ Five fields for the BYOC path.
 ### Optional Fields (The 20%)
 
 - **`description`**: Free-form text for documentation (max 128 chars). Useful for noting renewal dates, CA names, or ticket references.
-- **`tags`**: Organizational metadata (e.g., `env:prod`, `cost-center:engineering`). DigitalOcean doesn't natively support tags on certificates, but Project Planton includes them for consistent multi-cloud tagging.
+- **`tags`**: Organizational metadata (e.g., `env:prod`, `cost-center:engineering`). DigitalOcean doesn't natively support tags on certificates, but OpenMCF includes them for consistent multi-cloud tagging.
 - **`disable_auto_renew`**: For Let's Encrypt certs. Almost never used in production (you *want* auto-renewal).
 
 These fields add clarity but aren't required for basic functionality.
@@ -598,7 +598,7 @@ These fields add clarity but aren't required for basic functionality.
 **Use Case:** Secure all dynamic preview environments under `*.staging.example.com`.
 
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanCertificate
 metadata:
   name: staging-wildcard-cert
@@ -627,7 +627,7 @@ spec:
 **Use Case:** Secure the apex domain and key subdomains for a production web app.
 
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanCertificate
 metadata:
   name: prod-web-cert
@@ -657,7 +657,7 @@ spec:
 **Use Case:** Uploading a commercial Extended Validation certificate for a domain hosted on Cloudflare DNS.
 
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanCertificate
 metadata:
   name: prod-ev-cert
@@ -700,7 +700,7 @@ spec:
 
 7. **Monitor independently**: Set up DigitalOcean Uptime alerts (SSL Cert Expire) and external monitoring (SSL Labs, Prometheus). Let's Encrypt auto-renewal can fail; custom certs expire silently.
 
-8. **Project Planton makes this type-safe**: The protobuf `oneof` enforces the discriminated union at compile-time, eliminating entire classes of configuration errors.
+8. **OpenMCF makes this type-safe**: The protobuf `oneof` enforces the discriminated union at compile-time, eliminating entire classes of configuration errors.
 
 ---
 
@@ -715,5 +715,5 @@ spec:
 
 ---
 
-**Bottom Line:** DigitalOcean Certificates simplify SSL/TLS management with two clear paths: fully-automated Let's Encrypt (requires DigitalOcean DNS) and custom BYOC (maximum flexibility, manual renewal). Manage them with Terraform or Pulumi, store private keys in Vault or secret managers, implement zero-downtime rotation, and monitor expiration independently. Project Planton's protobuf API makes the discriminated union type-safe, guiding you toward secure, production-ready configurations by default.
+**Bottom Line:** DigitalOcean Certificates simplify SSL/TLS management with two clear paths: fully-automated Let's Encrypt (requires DigitalOcean DNS) and custom BYOC (maximum flexibility, manual renewal). Manage them with Terraform or Pulumi, store private keys in Vault or secret managers, implement zero-downtime rotation, and monitor expiration independently. OpenMCF's protobuf API makes the discriminated union type-safe, guiding you toward secure, production-ready configurations by default.
 

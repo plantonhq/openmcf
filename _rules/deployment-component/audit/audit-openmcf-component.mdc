@@ -1,0 +1,773 @@
+---
+alwaysApply: false
+---
+
+# Audit OpenMCF Deployment Component
+
+## Purpose
+
+Audit a specific deployment component against the ideal state defined in `architecture/deployment-component.md` and generate a comprehensive, timestamped audit report.
+
+## Role
+
+You are the OpenMCF Code Auditor. Your job is to systematically evaluate a deployment component's completeness, identify gaps, and provide actionable recommendations.
+
+## Usage
+
+```
+User: @audit-openmcf-component <ComponentName>
+```
+
+**Examples:**
+- `@audit-openmcf-component MongodbAtlas`
+- `@audit-openmcf-component GcpCertManagerCert`
+- `@audit-openmcf-component postgresKubernetes` (case-insensitive)
+
+## Workflow
+
+### Step 1: Validate Input and Locate Component
+
+1. **Accept component name** in various formats:
+   - PascalCase: `MongodbAtlas`, `GcpCertManagerCert`
+   - lowercase: `mongodbatlas`, `gcpcertmanagercert`
+   - With spaces: `Mongodb Atlas` → normalize to `MongodbAtlas`
+
+2. **Lookup in cloud_resource_kind.proto**:
+   - Read `~/scm/github.com/plantonhq/openmcf/apis/org/openmcf/shared/cloudresourcekind/cloud_resource_kind.proto`
+   - Search for enum entry matching the component name
+   - Extract metadata: provider, id_prefix, version, kubernetes_meta (if applicable)
+
+3. **Determine component path**:
+   - For non-Kubernetes: `apis/org/openmcf/provider/<provider>/<component_lowercase>/v1/`
+   - For Kubernetes: `apis/org/openmcf/provider/kubernetes/<category>/<component_lowercase>/v1/`
+     - Category determined from `kubernetes_meta.category` (addon, workload, or config)
+
+4. **Verify base path exists**:
+   - If path doesn't exist, report error and suggest possible reasons
+   - If exists, proceed with audit
+
+### Step 2: Run Audit Checks
+
+For each category, check files and record results. Use the following structure to track findings:
+
+#### Category 1: Cloud Resource Registry (Critical - 4.44%)
+
+**Checks:**
+- [ ] Enum entry exists in `cloud_resource_kind.proto`
+- [ ] Enum value is within correct provider range:
+  - Test/dev/custom: 1-49
+  - SaaS platforms: 50-199
+  - AWS: 200-399
+  - Azure: 400-599
+  - GCP: 600-799
+  - Kubernetes: 800-999
+  - DigitalOcean: 1200-1499
+  - Civo: 1500-1799
+  - Cloudflare: 1800-2099
+- [ ] `id_prefix` is unique (no other component uses it)
+- [ ] `kind_meta` includes provider, version, id_prefix
+- [ ] For Kubernetes: `kubernetes_meta` includes category and namespace_prefix (if workload)
+
+**Scoring:** Pass all checks = 4.44%, partial = proportional, fail all = 0%
+
+#### Category 2: Folder Structure (Critical - 4.44%)
+
+**Checks:**
+- [ ] Folder exists under correct provider hierarchy
+- [ ] For Kubernetes: folder is under correct category (addon/workload/config)
+- [ ] Folder name is lowercase version of enum name
+- [ ] `v1/` subfolder exists
+
+**Scoring:** Pass all checks = 4.44%, partial = proportional, fail all = 0%
+
+#### Category 3: Protobuf API Definitions (Critical - 22.20% total)
+
+**Proto Files (3.33% each = 13.32% total):**
+- [ ] `api.proto` exists and is non-empty (>500 bytes)
+- [ ] `spec.proto` exists and is non-empty (>500 bytes)
+- [ ] `stack_input.proto` exists and is non-empty (>300 bytes)
+- [ ] `stack_outputs.proto` exists and is non-empty (>300 bytes)
+
+**Generated Stubs (3.33%):**
+- [ ] `api.pb.go` exists
+- [ ] `spec.pb.go` exists
+- [ ] `stack_input.pb.go` exists
+- [ ] `stack_outputs.pb.go` exists
+
+**Unit Tests - File Presence (2.77%):**
+- [ ] `spec_test.go` exists and is non-empty (>500 bytes)
+- [ ] File contains test functions for validation rules
+- [ ] File imports testing framework (testing, testify, etc.)
+
+**Unit Tests - Execution (2.78%):**
+- [ ] Tests compile (no syntax errors)
+- [ ] Tests execute successfully when running:
+  ```bash
+  go test ./apis/org/openmcf/provider/<provider>/<component>/v1/
+  ```
+- [ ] All tests pass (no failures)
+- [ ] Tests validate buf.validate rules are correct
+
+**Critical:** A component with failing tests is considered incomplete. Test execution is mandatory for production-readiness.
+
+**Scoring:** Each sub-category scored independently
+
+#### Category 4: IaC Modules - Pulumi (Critical - 13.32% total)
+
+**Module Files (6.66%):**
+- [ ] `iac/pulumi/module/main.go` exists
+- [ ] `iac/pulumi/module/locals.go` exists
+- [ ] `iac/pulumi/module/outputs.go` exists
+
+**Entrypoint Files (6.66%):**
+- [ ] `iac/pulumi/main.go` exists
+- [ ] `iac/pulumi/Pulumi.yaml` exists
+- [ ] `iac/pulumi/Makefile` exists
+
+**Scoring:** Each sub-category scored independently
+
+#### Category 5: IaC Modules - Terraform (Critical - 4.44%)
+
+**Checks:**
+- [ ] `iac/tf/variables.tf` exists and is substantial (>1KB)
+- [ ] `iac/tf/provider.tf` exists
+- [ ] `iac/tf/locals.tf` exists
+- [ ] `iac/tf/main.tf` exists and is substantial (>1KB)
+- [ ] `iac/tf/outputs.tf` exists
+
+**Scoring:** Pass all checks = 4.44%, partial = proportional
+
+#### Category 6: Documentation - Research (Important - 13.34% total)
+
+**Research Doc (10.00%):**
+- [ ] `docs/README.md` exists
+- [ ] File size is substantial (>10KB = comprehensive, 5-10KB = moderate, <5KB = minimal)
+
+**Content Quality (3.34%):**
+- [ ] Contains landscape analysis sections (check for headers like "Level", "Approach", "Method", "Comparison")
+- [ ] Contains best practices or recommendations section
+- [ ] Explains 80/20 scoping decisions (what's included and why)
+- [ ] Documents deployment methods comparison
+
+**Note:** This document is the **primary source of truth** for understanding:
+- Component's purpose and design philosophy
+- Why certain features are in-scope vs out-of-scope
+- Provider-specific considerations and gotchas
+- Deployment architecture and best practices
+
+**When auditing, assess not just presence but quality** - a well-researched docs/README.md is essential for maintainability.
+
+**Scoring:** Research doc scored by size, content quality separate
+
+#### Category 7: Documentation - User-Facing (Important - 13.33% total)
+
+**README (6.67%):**
+- [ ] `README.md` exists (at v1/ level)
+- [ ] File size is substantial (>2KB = good, 1-2KB = minimal, <1KB = stub)
+
+**Examples (6.66%):**
+- [ ] `examples.md` exists
+- [ ] File size is substantial (>1KB = multiple examples, <1KB = minimal)
+
+**Scoring:** Each scored independently by file size
+
+#### Category 8: Supporting Files (Important - 13.33% total)
+
+**Pulumi Supporting Docs (6.67%):**
+- [ ] `iac/pulumi/README.md` exists
+- [ ] `iac/pulumi/overview.md` exists
+
+**Terraform Supporting Docs (3.33%):**
+- [ ] `iac/tf/README.md` exists
+
+**Helper Files (3.33%):**
+- [ ] `iac/hack/manifest.yaml` exists
+- [ ] `iac/pulumi/debug.sh` exists
+
+**Scoring:** Each sub-category scored independently
+
+#### Category 9: Supporting Files - Nice to Have (Nice to Have - 20%)
+
+**Additional Documentation (10%):**
+- [ ] `iac/pulumi/examples.md` exists (optional, not required per updated requirements)
+- [ ] `iac/tf/examples.md` exists (optional, not required per updated requirements)
+
+**Build Files (10%):**
+- [ ] BUILD.bazel files exist (auto-generated, optional check)
+
+**Scoring:** Bonus points only
+
+### Step 3: Calculate Completion Score
+
+**Scoring Formula:**
+
+```
+Total Score = (Critical Items Score) + (Important Items Score) + (Nice to Have Score)
+
+Where:
+- Critical Items = 48.64% weight:
+  - Cloud Resource Registry: 4.44%
+  - Folder Structure: 4.44%
+  - Protobuf API Definitions: 22.20% (includes test execution)
+  - IaC Modules - Pulumi: 13.32%
+  - IaC Modules - Terraform: 4.24%
+  
+- Important Items = 36.36% weight:
+  - Documentation - Research: 13.18%
+  - Documentation - User-Facing: 13.09%
+  - Supporting Files: 10.09%
+  
+- Nice to Have = 15% weight
+```
+
+**Interpretation:**
+- **100%** - Fully complete, production-ready, all tests passing
+- **80-99%** - Functionally complete, minor improvements needed
+- **60-79%** - Partially complete, significant work remaining
+- **40-59%** - Skeleton exists, major implementation needed
+- **<40%** - Early stage or abandoned
+
+**Critical Change:** Test execution (2.78%) is now part of the critical path. Components with failing tests cannot be considered complete.
+
+### Step 4: Generate Audit Report
+
+**Get accurate timestamp:**
+```bash
+date +"%Y-%m-%d-%H%M%S"
+```
+
+This produces format like: `2025-11-13-143022`
+
+---
+
+**CRITICAL: Markdown Formatting Requirements**
+
+The audit report MUST use proper markdown formatting for excellent readability:
+
+**1. Headings:**
+- Use `#` for main title (Audit Report)
+- Use `##` for major sections (Summary, Detailed Findings, etc.)
+- Use `###` for subsections (1., 2., 3., etc.)
+- Use `####` for sub-subsections if needed
+- **Always add blank line before and after headings**
+
+**2. Tables:**
+- Use proper markdown table syntax with alignment
+- Always include header separator line with `|---|---|---|`
+- Align columns using spaces for readability
+- Example:
+  ```markdown
+  | Category | Weight | Score | Status |
+  |----------|--------|-------|--------|
+  | Cloud Resource Registry | 4.44% | 4.44% | ✅ |
+  | Protobuf API Definitions | 17.76% | 15.20% | ⚠️ |
+  ```
+
+**3. Lists:**
+- Use `-` for unordered lists (not `*` or `+`)
+- Use `1.`, `2.`, `3.` for ordered lists
+- Indent nested lists with 2 spaces
+- **Always add blank line before and after lists**
+
+**4. Code Blocks:**
+- Use triple backticks with language identifier
+- Examples: ``` ```typescript ```, ``` ```bash ```, ``` ```protobuf ```
+- **Always add blank line before and after code blocks**
+
+**5. Emphasis:**
+- Use `**bold**` for critical items and scores
+- Use `*italic*` sparingly
+- Use `✅`, `⚠️`, `❌` for visual status indicators
+
+**6. Horizontal Rules:**
+- Use `---` (three dashes) on its own line
+- **Always add blank line before and after**
+
+**7. Links:**
+- Use proper markdown links: `[text](url)`
+- For file paths, use inline code: `` `path/to/file.ts` ``
+
+**8. Blockquotes (for important notes):**
+- Use `>` for important warnings or notes
+- Example:
+  ```markdown
+  > **Critical:** Tests are failing. Component cannot be marked production-ready.
+  ```
+
+**9. Spacing:**
+- **One blank line** between paragraphs
+- **One blank line** before and after sections
+- **One blank line** before and after tables, lists, code blocks
+
+**10. Escaping:**
+- Escape special characters in regular text if needed
+- Don't escape inside code blocks
+
+**VALIDATION BEFORE WRITING:**
+Before writing the report file, verify:
+- [ ] All tables have proper header separators
+- [ ] All headings have blank lines around them
+- [ ] All code blocks specify language
+- [ ] All lists have blank lines around them
+- [ ] Status indicators (✅⚠️❌) are used consistently
+- [ ] Section structure is hierarchical (##, ###, ####)
+
+---
+
+**Report Structure:**
+
+**IMPORTANT:** Follow the markdown formatting requirements above. Every section below must have:
+- Blank lines before and after headings
+- Blank lines before and after tables
+- Blank lines before and after code blocks
+- Blank lines before and after lists
+- Proper table header separators
+
+```markdown
+# Audit Report: <ComponentName>
+
+**Audit Date:** <YYYY-MM-DD HH:MM:SS>  
+**Component Kind:** <Kind>  
+**Provider:** <provider>  
+**Component Path:** `<full-path>`  
+**Enum Value:** <number>  
+**ID Prefix:** <id_prefix>
+
+---
+
+## Overall Completion Score
+
+**Score: XX%**
+
+[Visual indicator using progress bar simulation]
+```
+████████░░ 80% Complete
+```
+
+**Status:** <Fully Complete | Functionally Complete | Partially Complete | Skeleton | Early Stage>
+
+---
+
+## Summary by Category
+
+| Category | Weight | Score | Status |
+|----------|--------|-------|--------|
+| Cloud Resource Registry | 4.44% | X.XX% | ✅/⚠️/❌ |
+| Folder Structure | 4.44% | X.XX% | ✅/⚠️/❌ |
+| Protobuf API Definitions | 17.76% | X.XX% | ✅/⚠️/❌ |
+| IaC Modules - Pulumi | 13.32% | X.XX% | ✅/⚠️/❌ |
+| IaC Modules - Terraform | 4.44% | X.XX% | ✅/⚠️/❌ |
+| Documentation - Research | 13.34% | X.XX% | ✅/⚠️/❌ |
+| Documentation - User-Facing | 13.33% | X.XX% | ✅/⚠️/❌ |
+| Supporting Files | 13.33% | X.XX% | ✅/⚠️/❌ |
+| Nice to Have | 20.00% | X.XX% | ✅/⚠️/❌ |
+
+**Legend:** ✅ Complete | ⚠️ Partial | ❌ Missing
+
+---
+
+## Quick Wins
+
+Items that are easy to fix and would improve the score:
+
+1. **<Item>**
+   - **Why:** <Importance>
+   - **How:** <Steps or command>
+   - **File:** `<path>`
+
+2. **<Item>**
+   - **Why:** <Importance>
+   - **How:** <Steps or command>
+   - **File:** `<path>`
+
+3. **<Item>**
+   - **Why:** <Importance>
+   - **How:** <Steps or command>
+   - **File:** `<path>`
+
+---
+
+## Critical Gaps
+
+Blocking issues that prevent production readiness:
+
+1. **<Item>**
+   - **Why it blocks:** <Explanation>
+   - **What to do:** <Action>
+   - **File:** `<path>`
+
+2. **<Item>**
+   - **Why it blocks:** <Explanation>
+   - **What to do:** <Action>
+   - **File:** `<path>`
+
+---
+
+## Detailed Findings
+
+### 1. Cloud Resource Registry (4.44%)
+
+✅ **Passed:**
+
+- Enum entry exists in `cloud_resource_kind.proto`
+- Enum value 51 is in correct range for provider (atlas: 50-199)
+- ID prefix `mongodb-atlas` is unique
+
+❌ **Failed:**
+
+- Missing `kubernetes_meta` field (only applicable to Kubernetes components)
+
+⚠️ **Warnings:**
+
+- None
+
+**Score:** X.XX% / 4.44%
+
+---
+
+### 2. Folder Structure (4.44%)
+
+✅ **Passed:**
+
+- Folder exists: `apis/org/openmcf/provider/atlas/mongodbatlas/v1/`
+- Folder name matches lowercase enum name
+- `v1/` subfolder exists
+
+❌ **Failed:**
+
+- None
+
+**Score:** X.XX% / 4.44%
+
+---
+
+### 3. Protobuf API Definitions (17.76%)
+
+#### 3.1 Proto Files (13.32%)
+
+✅ **Passed:**
+
+- `api.proto` exists (2.5 KB)
+- `spec.proto` exists (8.3 KB)
+- `stack_input.proto` exists (450 bytes)
+- `stack_outputs.proto` exists (1.2 KB)
+
+❌ **Failed:**
+
+- None
+
+**Score:** X.XX% / 13.32%
+
+#### 3.2 Generated Stubs (3.33%)
+
+✅ **Passed:**
+
+- All `.pb.go` files exist and are up-to-date
+
+**Score:** X.XX% / 3.33%
+
+#### 3.3 Unit Tests - Presence (2.77%)
+
+✅ **Passed:**
+
+- `spec_test.go` exists (3.2 KB)
+- Contains test functions
+- Imports testing framework
+
+**Score:** X.XX% / 2.77%
+
+#### 3.4 Unit Tests - Execution (2.78%)
+
+To verify tests, run:
+
+```bash
+cd apis/org/openmcf/provider/atlas/mongodbatlas/v1/
+go test -v
+```
+
+✅ **Passed:**
+
+- Tests compile without errors
+- All 15 tests pass
+- Validation rules verified
+
+❌ **Failed:**
+
+- None
+
+> **Note:** Test execution is mandatory for production-readiness. Failing tests block completion.
+
+**Score:** X.XX% / 2.78%
+
+**Total Protobuf API Score:** X.XX% / 17.76%
+
+---
+
+### 4. IaC Modules - Pulumi (13.32%)
+
+#### 4.1 Module Files (6.66%)
+
+✅ **Passed:**
+
+- `iac/pulumi/module/main.go` exists (12.4 KB)
+- `iac/pulumi/module/locals.go` exists (2.1 KB)
+- `iac/pulumi/module/outputs.go` exists (1.8 KB)
+
+❌ **Failed:**
+
+- None
+
+**Score:** X.XX% / 6.66%
+
+#### 4.2 Entrypoint Files (6.66%)
+
+✅ **Passed:**
+
+- `iac/pulumi/main.go` exists
+- `iac/pulumi/Pulumi.yaml` exists
+- `iac/pulumi/Makefile` exists
+
+❌ **Failed:**
+
+- None
+
+**Score:** X.XX% / 6.66%
+
+**Total Pulumi Score:** X.XX% / 13.32%
+
+---
+
+### 5. IaC Modules - Terraform (4.44%)
+
+✅ **Passed:**
+
+- `iac/tf/variables.tf` exists (5.2 KB)
+- `iac/tf/provider.tf` exists
+- `iac/tf/locals.tf` exists (3.8 KB)
+- `iac/tf/main.tf` exists (18.5 KB)
+- `iac/tf/outputs.tf` exists (2.1 KB)
+
+❌ **Failed:**
+
+- None
+
+**Score:** X.XX% / 4.44%
+
+---
+
+### 6. Documentation - Research (13.34%)
+
+<Same structure>
+
+---
+
+### 7. Documentation - User-Facing (13.33%)
+
+<Same structure>
+
+---
+
+### 8. Supporting Files (13.33%)
+
+<Same structure>
+
+---
+
+### 9. Nice to Have (20%)
+
+<Same structure>
+
+---
+
+## Prioritized Recommendations
+
+### High Priority (Do First)
+
+1. **<Action>**
+   - **File:** `<path>`
+   - **Why:** <Importance>
+   - **How:** <Steps or reference to forge rule>
+
+### Medium Priority (Do Next)
+
+<Same structure>
+
+### Low Priority (Polish)
+
+<Same structure>
+
+---
+
+## Reference to Forge Rules
+
+To complete missing items, consider running these forge rules in sequence:
+
+- **Rule 001** - spec.proto generation (if spec.proto is missing/incomplete)
+- **Rule 002** - spec validations (if validations missing)
+- **Rule 003** - spec tests (if spec_test.go missing)
+- **Rule 004** - stack_outputs.proto (if missing)
+- **Rule 005** - api.proto (if missing)
+- **Rule 006** - stack_input.proto (if missing)
+- **Rule 007** - docs/README.md (if missing)
+- **Rule 009** - Pulumi module (if Pulumi missing)
+- **Rule 013** - Terraform module (if Terraform missing)
+- **Rule 016** - cloud_resource_kind.proto entry (if enum missing)
+
+---
+
+## Comparison to Complete Components
+
+**Most Similar Complete Component:** <ComponentName>
+
+**What it has that this component lacks:**
+- <List key differences>
+
+**Path to reference:** `<path-to-similar-component>`
+
+---
+
+## Next Steps
+
+1. Address critical gaps (blocking issues)
+2. Implement quick wins (easy improvements)
+3. Work through medium priority items
+4. Polish with low priority items
+5. Re-run audit to verify improvements
+
+---
+
+## Appendix: Full Checklist
+
+<Complete checklist with checkbox status>
+
+### Critical Items (40%)
+
+#### Cloud Resource Registry (4.44%)
+- [x/  ] Enum entry exists
+- [x/  ] Enum value in correct range
+- [x/  ] Unique id_prefix
+- [x/  ] Complete metadata
+- [x/  ] Kubernetes metadata (if applicable)
+
+<Continue for all categories>
+
+---
+
+**Audit completed at:** <timestamp>  
+**Reference:** See `architecture/deployment-component.md` for ideal state definition
+
+```
+
+### Step 5: Write Report to File
+
+1. **Create directory structure** (if doesn't exist):
+   ```bash
+   mkdir -p <component-path>/docs/audit/
+   ```
+
+2. **Write report**:
+   - File path: `<component-path>/docs/audit/<timestamp>.md`
+   - Use the timestamp from `date` command
+
+3. **Handle errors gracefully**:
+   - If directory creation fails, report error
+   - If file write fails, output report to chat instead
+
+### Step 6: Display Summary in Chat
+
+After writing the report, display a concise summary in the chat:
+
+```
+## Audit Complete: <ComponentName>
+
+**Overall Score:** XX% 
+**Status:** <Status>
+
+**Report Location:** `<path-to-report>`
+
+### Key Findings:
+
+✅ **Strengths:**
+- <Top 3 things that are complete>
+
+❌ **Critical Gaps:**
+- <Top 3 blocking issues>
+
+⚠️ **Quick Wins:**
+- <Top 3 easy fixes>
+
+### Next Steps:
+
+1. <Most important action>
+2. <Second most important>
+3. <Third most important>
+
+Run `@forge` rules to complete missing items, or view full report for detailed recommendations.
+```
+
+## Important Notes
+
+1. **Be thorough but fast** - Most checks are file existence, which is quick
+2. **Provide context** - Always explain why something is important
+3. **Be actionable** - Every gap should have a clear path to resolution
+4. **Reference documentation** - Point to `architecture/deployment-component.md` for details
+5. **Handle edge cases** - Component might be partially implemented, completely missing, or in unusual state
+6. **Use accurate timestamps** - Always run `date` command, never hardcode or guess
+7. **Create directories as needed** - Don't fail if `docs/audit/` doesn't exist yet
+8. **Follow markdown formatting** - Use proper tables, code blocks, spacing, and hierarchy as defined in Step 4
+
+## Error Handling
+
+**Component Not Found:**
+```
+❌ Component '<name>' not found in cloud_resource_kind.proto
+
+Possible reasons:
+1. Component name is misspelled (check cloud_resource_kind.proto for exact name)
+2. Component hasn't been registered yet (run forge rule 016)
+3. Component is in a different repository
+
+Please verify the component name and try again.
+```
+
+**Path Not Found:**
+```
+⚠️ Component '<name>' is registered but path doesn't exist
+
+This suggests the component registration exists but implementation is missing.
+
+Expected path: <path>
+
+Recommendation: Run forge rules 001-015 to bootstrap the component.
+```
+
+**File System Error:**
+```
+❌ Failed to write audit report to disk
+
+Error: <error-message>
+
+Displaying report in chat instead...
+<report-content>
+```
+
+## Example Execution
+
+**Input:**
+```
+@audit-openmcf-component MongodbAtlas
+```
+
+**Expected behavior:**
+1. Search cloud_resource_kind.proto for `MongodbAtlas` enum entry
+2. Find: `MongodbAtlas = 51` with provider `atlas`
+3. Determine path: `apis/org/openmcf/provider/atlas/mongodbatlas/v1/`
+4. Run all audit checks
+5. Calculate score (e.g., 65%)
+6. Get timestamp: `2025-11-13-143022`
+7. Write report to: `apis/org/openmcf/provider/atlas/mongodbatlas/v1/docs/audit/2025-11-13-143022.md`
+8. Display summary in chat with key findings
+
+---
+
+**Remember:** The goal is to provide a comprehensive, actionable audit that helps developers understand exactly what needs to be done to bring a component to production-ready status.

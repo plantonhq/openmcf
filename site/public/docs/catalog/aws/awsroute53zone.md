@@ -25,7 +25,7 @@ The stakes are higher than you think:
 - **Alias records** are Route53's killer feature for AWS integrations—pointing your apex domain to CloudFront or ALB without the CNAME limitations. But only if you know when and how to use them.
 - **Health checks and failover** can automatically route traffic away from failed endpoints. Or they can silently fail if you set up the wrong TTL or forget to attach the health check ID.
 
-This guide explains the deployment landscape—from manual console work to full IaC automation—and why Project Planton defaults to **declarative configuration with Pulumi** for production-grade DNS management.
+This guide explains the deployment landscape—from manual console work to full IaC automation—and why OpenMCF defaults to **declarative configuration with Pulumi** for production-grade DNS management.
 
 ---
 
@@ -367,9 +367,9 @@ Run `octodns-sync`, and it applies changes to all configured providers.
 
 ---
 
-## What Project Planton Supports: Pulumi for Production DNS
+## What OpenMCF Supports: Pulumi for Production DNS
 
-Project Planton defaults to **Pulumi** for managing AWS Route53 zones and records.
+OpenMCF defaults to **Pulumi** for managing AWS Route53 zones and records.
 
 **Why Pulumi?**
 
@@ -424,7 +424,7 @@ Route53 is feature-rich, but production DNS for most applications uses a **small
 - **CAA Records**: Restrict which Certificate Authorities can issue certificates for your domain. Good security practice but not universally adopted.
 - **SRV Records**: Mainly for legacy services like Active Directory or SIP. Modern cloud-native apps rarely use them.
 
-**Project Planton's API focuses on the 80%**: zones (public/private), core record types, alias targets, and basic routing policies. Advanced features can be added as needed, but the API remains simple by default.
+**OpenMCF's API focuses on the 80%**: zones (public/private), core record types, alias targets, and basic routing policies. Advanced features can be added as needed, but the API remains simple by default.
 
 ---
 
@@ -496,7 +496,7 @@ AWS Route53 is the DNS service. The question is not "which DNS provider" but "ho
 
 **Declarative Infrastructure-as-Code** with Pulumi gives you version control, change previews, repeatable deployments, and the ability to test your DNS configurations before they go live. It's the only approach that scales to production.
 
-Project Planton's Route53 modules abstract the boilerplate while giving you full control over records, routing policies, and health checks. Your DNS becomes part of your GitOps workflow—reviewed in pull requests, tested in CI, and deployed with confidence.
+OpenMCF's Route53 modules abstract the boilerplate while giving you full control over records, routing policies, and health checks. Your DNS becomes part of your GitOps workflow—reviewed in pull requests, tested in CI, and deployed with confidence.
 
 DNS is foundational. When it works, nobody notices. When it breaks, everything breaks.
 

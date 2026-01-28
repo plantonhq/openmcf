@@ -4,10 +4,10 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/pulumi"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/flag"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumistack"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/pulumi"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumistack"
 	"github.com/spf13/cobra"
 )
 

@@ -136,7 +136,7 @@ The **production-ready, enterprise-grade solution** from Percona is the **Percon
 
 The PS Operator, by contrast, uses traditional asynchronous replication or MySQL Group Replication and requires the external Orchestrator tool for failover—a significantly less mature and integrated architecture.
 
-**Project Planton's decision:** We deploy the operator infrastructure that **supports both PS and PXC**. However, users building production workloads should create `PerconaXtraDBCluster` custom resources, not `PerconaServerMySQL` resources. The naming of our API resource acknowledges the operator package but doesn't constrain users to the tech-preview PS implementation.
+**OpenMCF's decision:** We deploy the operator infrastructure that **supports both PS and PXC**. However, users building production workloads should create `PerconaXtraDBCluster` custom resources, not `PerconaServerMySQL` resources. The naming of our API resource acknowledges the operator package but doesn't constrain users to the tech-preview PS implementation.
 
 ## Why Galera (PXC) Changes the Game
 
@@ -246,13 +246,13 @@ This single configuration block triggers the operator to automatically inject `p
 - **Symptom:** Pods randomly OOMKilled or experiencing severe CPU throttling.
 - **Fix:** Always define `spec.pxc.resources` with requests and limits. Use the operator's auto-tuning: `innodb_buffer_pool_size={{containerMemoryLimit * 3 / 4}}` to automatically set MySQL's critical memory parameter to 75% of the container limit.
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton's `KubernetesPerconaMysqlOperator` resource deploys the Percona Operator infrastructure to your Kubernetes cluster. This operator is the **control plane** that enables you to declaratively manage MySQL databases.
+OpenMCF's `KubernetesPerconaMysqlOperator` resource deploys the Percona Operator infrastructure to your Kubernetes cluster. This operator is the **control plane** that enables you to declaratively manage MySQL databases.
 
 ### What Gets Deployed
 
-When you deploy a `KubernetesPerconaMysqlOperator` resource, Project Planton installs:
+When you deploy a `KubernetesPerconaMysqlOperator` resource, OpenMCF installs:
 - The Percona Operator deployment (the controller application)
 - Custom Resource Definitions (CRDs) for `PerconaXtraDBCluster`, `PerconaServerMySQL`, `PerconaXtraDBClusterBackup`, `PerconaXtraDBClusterRestore`
 - RBAC (ServiceAccounts, Roles, RoleBindings) required for the operator to function
@@ -319,23 +319,23 @@ spec:
 
 ### Why This Architecture
 
-Project Planton's philosophy is **separation of concerns**:
+OpenMCF's philosophy is **separation of concerns**:
 1. The `KubernetesPerconaMysqlOperator` resource manages the **operator lifecycle** (installation, upgrades, resource allocation for the operator itself)
 2. The operator's native CRDs manage the **database lifecycle** (clusters, backups, restores)
 
 This separation allows:
 - **Operator upgrades** without touching database configurations
 - **Multiple database clusters** managed by a single operator instance
-- **Flexibility** to use the full power of the operator's CRDs without Project Planton abstracting away critical features
+- **Flexibility** to use the full power of the operator's CRDs without OpenMCF abstracting away critical features
 
 ### Abstraction Philosophy
 
-Project Planton **does not** create a simplified API wrapper around database cluster creation. The operator's CRDs (`PerconaXtraDBCluster`, etc.) are already well-designed, declarative, and stable. Adding an abstraction layer would:
+OpenMCF **does not** create a simplified API wrapper around database cluster creation. The operator's CRDs (`PerconaXtraDBCluster`, etc.) are already well-designed, declarative, and stable. Adding an abstraction layer would:
 - Hide powerful features users need for production
 - Create a maintenance burden (keeping the abstraction in sync with operator updates)
 - Force users to learn two APIs instead of one
 
-Instead, Project Planton focuses on the **platform layer**: deploying and managing the operator itself, ensuring it runs reliably with appropriate resource allocation and RBAC configurations.
+Instead, OpenMCF focuses on the **platform layer**: deploying and managing the operator itself, ensuring it runs reliably with appropriate resource allocation and RBAC configurations.
 
 ## Conclusion: The Operator Revolution
 

@@ -7,7 +7,7 @@ import { StyledGrid2 } from '@/app/dashboard/styled';
 import { StatCard } from '@/components/shared/stat-card';
 import { CloudResourcesList } from '@/components/shared/cloud-resources-list';
 import { useCloudResourceQuery } from '@/app/cloud-resources/_services';
-import { ListCloudResourcesRequestSchema } from '@/gen/org/project_planton/app/cloudresource/v1/io_pb';
+import { ListCloudResourcesRequestSchema } from '@/gen/org/openmcf/app/cloudresource/v1/io_pb';
 import { SectionHeader } from '@/components/shared/section-header';
 
 export default function DashboardPage() {

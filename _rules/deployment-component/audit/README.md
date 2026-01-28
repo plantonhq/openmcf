@@ -32,23 +32,23 @@ You can't improve what you don't measure. Audit provides:
 **Quality Assurance:**
 ```bash
 # After creating component
-@forge-project-planton-component NewComponent --provider aws
-@audit-project-planton-component NewComponent  # Expect 95-100%
+@forge-openmcf-component NewComponent --provider aws
+@audit-openmcf-component NewComponent  # Expect 95-100%
 ```
 
 **Gap Identification:**
 ```bash
 # Check existing component
-@audit-project-planton-component MongodbAtlas  # Shows 65% complete
+@audit-openmcf-component MongodbAtlas  # Shows 65% complete
 # Report lists missing items
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
 ```
 
 **Progress Tracking:**
 ```bash
 # Monthly audit of all components
 for component in $(list-all-components); do
-  @audit-project-planton-component $component
+  @audit-openmcf-component $component
 done
 # Track improvement over time
 ```
@@ -56,7 +56,7 @@ done
 **Pre-Commit Validation:**
 ```bash
 # Before committing changes
-@audit-project-planton-component ModifiedComponent
+@audit-openmcf-component ModifiedComponent
 # Ensure score didn't decrease
 ```
 
@@ -202,7 +202,7 @@ Where:
 **Audit Date:** 2025-11-13 14:30:22
 **Component Kind:** MongodbAtlas
 **Provider:** atlas
-**Component Path:** `apis/org/project_planton/provider/atlas/mongodbatlas/v1/`
+**Component Path:** `apis/org/openmcf/provider/atlas/mongodbatlas/v1/`
 **Enum Value:** 51
 **ID Prefix:** mdbatl
 ```
@@ -273,7 +273,7 @@ Blocking issues that prevent production readiness:
 
 1. **Missing Terraform Module** - 4.44% missing
    - **Why it matters:** Users need choice between Pulumi and Terraform
-   - **What to do:** Run `@update-project-planton-component MongodbAtlas --scenario fill-gaps`
+   - **What to do:** Run `@update-openmcf-component MongodbAtlas --scenario fill-gaps`
    - **Forge rules:** 013-015
 
 2. **Missing Research Documentation** - 13.34% missing
@@ -302,7 +302,7 @@ Blocking issues that prevent production readiness:
 ### 2. Folder Structure (4.44%)
 
 ✅ **Passed:**
-- Correct provider hierarchy: apis/org/project_planton/provider/atlas/
+- Correct provider hierarchy: apis/org/openmcf/provider/atlas/
 - Lowercase folder naming: mongodbatlas (matches enum)
 - v1/ subfolder exists
 
@@ -348,7 +348,7 @@ Blocking issues that prevent production readiness:
 
 **Score:** 0.00% / 4.44% ❌
 
-**Fix:** Run `@update-project-planton-component MongodbAtlas --scenario fill-gaps`
+**Fix:** Run `@update-openmcf-component MongodbAtlas --scenario fill-gaps`
 
 ---
 
@@ -377,7 +377,7 @@ Blocking issues that prevent production readiness:
 1. **Create Terraform Module**
    - **File:** `iac/tf/` (multiple files)
    - **Why:** Critical for feature parity between IaC tools
-   - **How:** `@update-project-planton-component MongodbAtlas --scenario fill-gaps`
+   - **How:** `@update-openmcf-component MongodbAtlas --scenario fill-gaps`
    - **Impact:** +4.44% (65% → 69.44%)
 
 2. **Create Research Documentation**
@@ -423,7 +423,7 @@ Blocking issues that prevent production readiness:
 - Pulumi architecture overview
 - Complete IaC documentation
 
-**Path to Reference:** `apis/org/project_planton/provider/gcp/gcpcertmanagercert/v1/`
+**Path to Reference:** `apis/org/openmcf/provider/gcp/gcpcertmanagercert/v1/`
 
 **Recommendation:** Review GcpCertManagerCert as a template for completeness.
 ```
@@ -436,11 +436,11 @@ Blocking issues that prevent production readiness:
 1. Address critical gaps (Terraform + research docs)
 2. Run update to fill gaps:
    ```
-   @update-project-planton-component MongodbAtlas --scenario fill-gaps
+   @update-openmcf-component MongodbAtlas --scenario fill-gaps
    ```
 3. Re-run audit to verify improvements:
    ```
-   @audit-project-planton-component MongodbAtlas
+   @audit-openmcf-component MongodbAtlas
    ```
 4. Expected result: 95-100% complete
 
@@ -452,7 +452,7 @@ Blocking issues that prevent production readiness:
 Audit reports are saved with timestamps:
 
 ```
-apis/org/project_planton/provider/atlas/mongodbatlas/v1/docs/audit/
+apis/org/openmcf/provider/atlas/mongodbatlas/v1/docs/audit/
 ├── 2025-11-10-091500.md  # First audit (60%)
 ├── 2025-11-11-143000.md  # After adding Terraform (75%)
 └── 2025-11-13-143022.md  # After adding docs (98%)
@@ -470,10 +470,10 @@ apis/org/project_planton/provider/atlas/mongodbatlas/v1/docs/audit/
 
 ```bash
 # After forge
-@forge-project-planton-component NewComponent --provider gcp
+@forge-openmcf-component NewComponent --provider gcp
 
 # Verify completeness
-@audit-project-planton-component NewComponent
+@audit-openmcf-component NewComponent
 
 # Expected: 95-100% complete
 # If lower, identifies what's missing
@@ -483,14 +483,14 @@ apis/org/project_planton/provider/atlas/mongodbatlas/v1/docs/audit/
 
 ```bash
 # Audit existing component
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 # Result: 65% complete (missing Terraform, docs)
 
 # Fill gaps
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
 
 # Verify improvement
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 # Result: 98% complete
 ```
 
@@ -498,7 +498,7 @@ apis/org/project_planton/provider/atlas/mongodbatlas/v1/docs/audit/
 
 ```bash
 # Before committing
-@audit-project-planton-component ModifiedComponent
+@audit-openmcf-component ModifiedComponent
 
 # If score decreased:
 # - Investigate what was lost
@@ -576,14 +576,14 @@ apis/org/project_planton/provider/atlas/mongodbatlas/v1/docs/audit/
 
 ```bash
 # 1. Initial audit
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 # Result: 65%
 
 # 2. Fill gaps
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
 
 # 3. Verify improvement
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 # Result: 98%
 ```
 
@@ -591,10 +591,10 @@ apis/org/project_planton/provider/atlas/mongodbatlas/v1/docs/audit/
 
 ```bash
 # 1. Create component
-@forge-project-planton-component NewComponent --provider aws
+@forge-openmcf-component NewComponent --provider aws
 
 # 2. Validate
-@audit-project-planton-component NewComponent
+@audit-openmcf-component NewComponent
 # Result: Should be 95-100%
 ```
 
@@ -602,11 +602,11 @@ apis/org/project_planton/provider/atlas/mongodbatlas/v1/docs/audit/
 
 ```bash
 # 1. Check if worth keeping
-@audit-project-planton-component OldComponent
+@audit-openmcf-component OldComponent
 # Result: 35% (very incomplete)
 
 # 2. Decision: Not worth fixing
-@delete-project-planton-component OldComponent --backup
+@delete-openmcf-component OldComponent --backup
 ```
 
 ## Best Practices
@@ -694,17 +694,17 @@ Good audit outcomes:
 
 ## Related Commands
 
-- `@forge-project-planton-component` - Create new component
-- `@update-project-planton-component` - Fill gaps, enhance component
-- `@complete-project-planton-component` - Auto-improve to 95%+ (audit + update + audit)
-- `@fix-project-planton-component` - Targeted fixes with cascading updates
-- `@delete-project-planton-component` - Remove component
+- `@forge-openmcf-component` - Create new component
+- `@update-openmcf-component` - Fill gaps, enhance component
+- `@complete-openmcf-component` - Auto-improve to 95%+ (audit + update + audit)
+- `@fix-openmcf-component` - Targeted fixes with cascading updates
+- `@delete-openmcf-component` - Remove component
 
 ## Reference
 
 - **Ideal State Definition:** `architecture/deployment-component.md`
-- **Audit Rule:** `_rules/deployment-component/audit/audit-project-planton-component.mdc`
+- **Audit Rule:** `_rules/deployment-component/audit/audit-openmcf-component.mdc`
 
 ---
 
-**Ready to audit?** Run `@audit-project-planton-component <ComponentName>` to generate a comprehensive report!
+**Ready to audit?** Run `@audit-openmcf-component <ComponentName>` to generate a comprehensive report!

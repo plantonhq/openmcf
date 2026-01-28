@@ -10,13 +10,13 @@ This document describes how to author or update `spec.proto` for a Planton resou
 
 ## Syntax and Package
 - `syntax = "proto3";`
-- `package org.project_planton.provider.<provider>.<kindfolder>.v1;`
+- `package org.openmcf.provider.<provider>.<kindfolder>.v1;`
 - Do NOT include `go_package` in new proto files.
 
 ## Imports
 - No validations in this step (do not import `buf/validate/validate.proto`).
 - Optional when needed for value-or-reference fields:
-  - `import "org/project_planton/shared/foreignkey/v1/foreign_key.proto";`
+  - `import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";`
 
 ## Message Structure
 - Define a single top-level message named `<Kind>Spec`.
@@ -25,11 +25,11 @@ This document describes how to author or update `spec.proto` for a Planton resou
 ## Field Guidelines (80/20)
 - Include only essential fields most users need.
 - For cross-resource identifiers (IDs/ARNs such as IAM role ARN, KMS key ARN, security group IDs, subnet IDs, Route53 zone IDs, etc.), prefer the shared foreign key wrappers:
-  - `org.project_planton.shared.foreignkey.v1.StringValueOrRef`
-  - `org.project_planton.shared.foreignkey.v1.Int32ValueOrRef`
+  - `org.openmcf.shared.foreignkey.v1.StringValueOrRef`
+  - `org.openmcf.shared.foreignkey.v1.Int32ValueOrRef`
 - When using `StringValueOrRef` for well-known kinds, you may set default hints using field options to improve Canvas wiring later:
-  - `(org.project_planton.shared.foreignkey.v1.default_kind) = <CloudResourceKind>`
-  - `(org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.<field>"`
+  - `(org.openmcf.shared.foreignkey.v1.default_kind) = <CloudResourceKind>`
+  - `(org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.<field>"`
 - Common examples for defaults:
   - Subnets: default_kind = AwsVpc
   - Security groups: default_kind = AwsSecurityGroup, default_kind_field_path = "status.outputs.security_group_id"
@@ -90,10 +90,10 @@ message KubernetesNamespaceResourceProfile {
 ## Example Skeleton (adapt kind/package)
 ```proto
 syntax = "proto3";
-package org.project_planton.provider.aws.awscloudfront.v1;
+package org.openmcf.provider.aws.awscloudfront.v1;
 
 // Optional if you need value-or-ref wrappers
-// import "org/project_planton/shared/foreignkey/v1/foreign_key.proto";
+// import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
 
 message AwsCloudFrontSpec {
   // Add essential 80/20 fields here
@@ -102,17 +102,17 @@ message AwsCloudFrontSpec {
 
 ## Default Field Options
 
-When a field should have a default value that Project Planton applies if the user doesn't specify it:
+When a field should have a default value that OpenMCF applies if the user doesn't specify it:
 
 ### Requirements
 
 1. **Mark the field as `optional`**: This generates a pointer type (`*string`) in Go with presence tracking
-2. **Add the `(org.project_planton.shared.options.default)` field option**: Specifies the default value
+2. **Add the `(org.openmcf.shared.options.default)` field option**: Specifies the default value
 
 ### Import Required
 
 ```proto
-import "org/project_planton/shared/options/options.proto";
+import "org/openmcf/shared/options/options.proto";
 ```
 
 ### Syntax
@@ -120,11 +120,11 @@ import "org/project_planton/shared/options/options.proto";
 ```proto
 // Container image repository.
 // Default: ghcr.io/actions/actions-runner
-optional string repository = 1 [(org.project_planton.shared.options.default) = "ghcr.io/actions/actions-runner"];
+optional string repository = 1 [(org.openmcf.shared.options.default) = "ghcr.io/actions/actions-runner"];
 
 // Port number for the service.
 // Default: 443
-optional int32 port = 2 [(org.project_planton.shared.options.default) = "443"];
+optional int32 port = 2 [(org.openmcf.shared.options.default) = "443"];
 ```
 
 **Note:** Default values are always specified as strings, regardless of field type.
@@ -132,11 +132,11 @@ optional int32 port = 2 [(org.project_planton.shared.options.default) = "443"];
 ### Why Both Are Required
 
 1. **`optional` keyword**: Enables field presence tracking in Go (generates `*string` vs `string`)
-2. **Default field option**: Tells Project Planton middleware what value to apply when field isn't set
+2. **Default field option**: Tells OpenMCF middleware what value to apply when field isn't set
 
 ### Build Enforcement
 
-The custom linter `DEFAULT_REQUIRES_OPTIONAL` in `buf/lint/optional-linter` fails builds if a field has `(org.project_planton.shared.options.default)` but is NOT marked as `optional`.
+The custom linter `DEFAULT_REQUIRES_OPTIONAL` in `buf/lint/optional-linter` fails builds if a field has `(org.openmcf.shared.options.default)` but is NOT marked as `optional`.
 
 ### What NOT to Do
 
@@ -151,7 +151,7 @@ string runner_group = 7;
 ```proto
 // Runner group name.
 // Default: default
-optional string runner_group = 7 [(org.project_planton.shared.options.default) = "default"];
+optional string runner_group = 7 [(org.openmcf.shared.options.default) = "default"];
 ```
 
 ### Impact on IaC Modules
@@ -159,7 +159,7 @@ optional string runner_group = 7 [(org.project_planton.shared.options.default) =
 When fields become `optional`:
 - Generated Go code changes from `string` to `*string`
 - IaC modules must use getter methods: `spec.GetFieldName()` instead of `spec.FieldName`
-- Project Planton middleware guarantees defaults are applied before IaC modules run
+- OpenMCF middleware guarantees defaults are applied before IaC modules run
 - **No defensive coding needed** in IaC modules
 
 ## Notes

@@ -14,7 +14,7 @@ The decision to use a managed database service versus self-managing databases on
 
 Civo Database challenges this binary by targeting a different value proposition entirely: **radical simplicity with transparent, predictable pricing**. Unlike hyperscaler database services (AWS RDS, GCP Cloud SQL) that layer complexity upon complexity, Civo takes a developer-first approach. The service bundles CPU, RAM, and NVMe storage into fixed tiers and—most notably—charges **no separate fees for egress or I/O operations**. What you see on the pricing page is exactly what you pay.
 
-This document explores the landscape of deployment methods for Civo's managed MySQL and PostgreSQL databases, from manual console clicks to declarative Infrastructure as Code, and explains why Project Planton provides a critical, missing piece in the Civo cloud-native ecosystem.
+This document explores the landscape of deployment methods for Civo's managed MySQL and PostgreSQL databases, from manual console clicks to declarative Infrastructure as Code, and explains why OpenMCF provides a critical, missing piece in the Civo cloud-native ecosystem.
 
 ## The Database Deployment Spectrum on Civo
 
@@ -169,7 +169,7 @@ const dbSecret = new k8s.core.v1.Secret("db-credentials", {
 
 **What this means:** The primary use case for Crossplane—managing an application's database dependency from within Kubernetes—is currently **impossible** on Civo. There is no way to simply `kubectl apply -f database.yaml` and have a Civo database provisioned as a Kubernetes Custom Resource.
 
-**The Project Planton opportunity:** This gap creates a perfect, well-defined opportunity. By providing a `civo.project-planton.org/v1` database resource, Project Planton becomes **the first and only solution** to provide true, Kubernetes-native, declarative management for Civo databases.
+**The OpenMCF opportunity:** This gap creates a perfect, well-defined opportunity. By providing a `civo.openmcf.org/v1` database resource, OpenMCF becomes **the first and only solution** to provide true, Kubernetes-native, declarative management for Civo databases.
 
 This isn't just "another IaC tool"—it's filling a critical missing piece in the Civo cloud-native ecosystem.
 
@@ -256,7 +256,7 @@ ingress_rule {
 
 **Credential management pattern:**
 
-1. IaC provider (Project Planton) creates the `civo_database`
+1. IaC provider (OpenMCF) creates the `civo_database`
 2. Provider automatically creates a Kubernetes `Secret` in the cluster with connection details:
 
 ```yaml
@@ -306,13 +306,13 @@ This pattern ensures secrets are never hardcoded and flow securely from Civo API
 - **Vertical scaling (scale-up):** Modify the `size_slug` (e.g., `g3.db.medium` → `g3.db.large`). Requires downtime as the instance is reprovisioned.
 - **Horizontal scaling (scale-out):** Increase `replicas` count. Preferred method for read-heavy workloads; also improves high availability.
 
-## The Project Planton Approach
+## The OpenMCF Approach
 
-Project Planton's `CivoDatabase` resource embodies the **80/20 principle**: expose only the fields that 80% of users need, while keeping the API clean and opinionated.
+OpenMCF's `CivoDatabase` resource embodies the **80/20 principle**: expose only the fields that 80% of users need, while keeping the API clean and opinionated.
 
 ### Essential Configuration Fields
 
-Based on comprehensive analysis of the Civo API, Terraform provider, and production patterns, the Project Planton API includes these essential fields:
+Based on comprehensive analysis of the Civo API, Terraform provider, and production patterns, the OpenMCF API includes these essential fields:
 
 1. **`db_instance_name`**: Unique identifier for the database
 2. **`engine`**: Database engine (MySQL or PostgreSQL)
@@ -372,13 +372,13 @@ replicas: 2  # 1 master + 2 replicas = 3 nodes
 
 ### Kubernetes-Native Workflow
 
-With Project Planton, provisioning a Civo database becomes a standard Kubernetes operation:
+With OpenMCF, provisioning a Civo database becomes a standard Kubernetes operation:
 
 ```bash
 kubectl apply -f civo-database.yaml
 ```
 
-The Project Planton controller:
+The OpenMCF controller:
 1. Parses the custom resource definition
 2. Calls the Civo API to create the database (via `civogo` Go SDK)
 3. Handles multi-step provisioning (create → attach firewall → configure replicas)
@@ -403,7 +403,7 @@ This fills the **critical gap** left by the community Crossplane provider and pr
 
 **Bundled storage:** Cannot scale storage independently of compute. A database with large storage needs but low CPU requirements must overprovision (and overpay).
 
-**Nascent ecosystem:** Beyond Terraform/Pulumi, the IaC ecosystem is limited. No native Ansible modules, and the Crossplane provider doesn't support databases—creating the opportunity for Project Planton.
+**Nascent ecosystem:** Beyond Terraform/Pulumi, the IaC ecosystem is limited. No native Ansible modules, and the Crossplane provider doesn't support databases—creating the opportunity for OpenMCF.
 
 ## Conclusion
 
@@ -411,7 +411,7 @@ The landscape of database deployment on Civo presents a clear strategic choice: 
 
 The IaC tooling landscape, however, has a critical gap. While Terraform and Pulumi provide mature, production-ready solutions, the cloud-native community lacks a Kubernetes-native way to manage Civo databases. The Crossplane provider doesn't support them, and manual configuration is error-prone.
 
-Project Planton's `CivoDatabase` resource fills this gap. By providing a Kubernetes Custom Resource backed by intelligent API abstraction, it enables teams to declare their entire infrastructure—including databases—using standard Kubernetes manifests. This isn't just convenience; it's bringing the declarative, GitOps-friendly workflow that teams already use for applications to the infrastructure layer.
+OpenMCF's `CivoDatabase` resource fills this gap. By providing a Kubernetes Custom Resource backed by intelligent API abstraction, it enables teams to declare their entire infrastructure—including databases—using standard Kubernetes manifests. This isn't just convenience; it's bringing the declarative, GitOps-friendly workflow that teams already use for applications to the infrastructure layer.
 
-For Civo users building cloud-native applications on Kubernetes, Project Planton becomes the **first and only** way to achieve this vision. That's not marketing—it's architectural necessity, grounded in the current state of the ecosystem.
+For Civo users building cloud-native applications on Kubernetes, OpenMCF becomes the **first and only** way to achieve this vision. That's not marketing—it's architectural necessity, grounded in the current state of the ecosystem.
 

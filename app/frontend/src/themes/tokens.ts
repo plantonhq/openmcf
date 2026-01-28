@@ -1,5 +1,5 @@
 /**
- * Design Tokens for Project Planton
+ * Design Tokens for OpenMCF
  * 
  * A modern, semantic design system inspired by Linear, Vercel, and Stripe.
  * Tokens are organized by purpose rather than arbitrary number scales.

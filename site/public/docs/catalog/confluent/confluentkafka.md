@@ -14,7 +14,7 @@ For years, the conventional wisdom in the Apache Kafka community was clear: if y
 
 That paradigm has fundamentally shifted. Confluent Cloud represents not just "managed Kafka," but a complete re-architecture of Apache Kafka as a cloud-native, serverless data streaming platform. The strategic question is no longer "Can we afford to use a managed service?" but rather "Can we afford not to?"
 
-This document explains the deployment landscape for Apache Kafka, compares self-managed versus fully-managed approaches, and details why Project Planton provides first-class support for Confluent Cloud as the production-ready default for teams building event-driven architectures.
+This document explains the deployment landscape for Apache Kafka, compares self-managed versus fully-managed approaches, and details why OpenMCF provides first-class support for Confluent Cloud as the production-ready default for teams building event-driven architectures.
 
 ## The Kafka Deployment Maturity Spectrum
 
@@ -430,16 +430,16 @@ This approach enables live, gradual migration without downtime or data loss.
 1. **Active/Passive**: Primary cluster in Region A replicates to standby cluster in Region B. Failover during disaster.
 2. **Active/Active**: Multiple clusters in different regions serve live traffic with bi-directional replication.
 
-## Project Planton's Approach: Simplified, Secure, Production-Ready
+## OpenMCF's Approach: Simplified, Secure, Production-Ready
 
-Project Planton provides first-class support for Confluent Cloud through the `ConfluentKafka` resource (`confluent.project-planton.org/v1`). The API is designed according to the **80/20 principle**: expose the 20% of configuration that 80% of users actually need.
+OpenMCF provides first-class support for Confluent Cloud through the `ConfluentKafka` resource (`confluent.openmcf.org/v1`). The API is designed according to the **80/20 principle**: expose the 20% of configuration that 80% of users actually need.
 
 ### The 80/20 Configuration Philosophy
 
 Based on analysis of real-world Terraform and Pulumi deployments, most users configure only these essential fields:
 
 **Essential (Required):**
-- **Environment**: The parent container for the cluster (via `metadata.org` in Project Planton)
+- **Environment**: The parent container for the cluster (via `metadata.org` in OpenMCF)
 - **Cloud Provider**: AWS, GCP, or Azure
 - **Region**: Cloud-specific region (e.g., `us-east-2`)
 - **Availability**: `SINGLE_ZONE` or `MULTI_ZONE`
@@ -474,7 +474,7 @@ message ConfluentKafkaSpec {
 
 This design optimizes for the common case: teams want "a production Kafka cluster in AWS us-east-2 in our prod environment" without needing to specify every parameter.
 
-### What Project Planton Handles for You
+### What OpenMCF Handles for You
 
 1. **Environment Management**: Integrates with Confluent Cloud's environment hierarchy
 2. **Credential Management**: Securely handles Cloud API Keys and Resource API Keys
@@ -486,7 +486,7 @@ This design optimizes for the common case: teams want "a production Kafka cluste
 **Development Cluster:**
 
 ```yaml
-apiVersion: confluent.project-planton.org/v1
+apiVersion: confluent.openmcf.org/v1
 kind: ConfluentKafka
 metadata:
   name: dev-kafka
@@ -499,7 +499,7 @@ spec:
 **Production Cluster:**
 
 ```yaml
-apiVersion: confluent.project-planton.org/v1
+apiVersion: confluent.openmcf.org/v1
 kind: ConfluentKafka
 metadata:
   name: prod-orders-kafka
@@ -515,12 +515,12 @@ For advanced configurations (private networking, Dedicated clusters with specifi
 
 The strategic insight behind Confluent Cloud is a shift from infrastructure thinking to platform thinking. Teams no longer ask "How do I deploy Kafka brokers?" but rather "How do I build real-time data pipelines?"
 
-This shift is why Project Planton provides Confluent Cloud as a first-class resource. By abstracting the operational complexity of Kafka infrastructure, development teams can focus on the 20% of decisions that matter (cloud, region, availability, environment) and leave the other 80% to the platform.
+This shift is why OpenMCF provides Confluent Cloud as a first-class resource. By abstracting the operational complexity of Kafka infrastructure, development teams can focus on the 20% of decisions that matter (cloud, region, availability, environment) and leave the other 80% to the platform.
 
-For teams building event-driven architectures, microservices, or data streaming applications, Confluent Cloud combined with Project Planton's declarative API provides the fastest path from idea to production-grade infrastructure.
+For teams building event-driven architectures, microservices, or data streaming applications, Confluent Cloud combined with OpenMCF's declarative API provides the fastest path from idea to production-grade infrastructure.
 
 **Next Steps:**
-- Explore [Project Planton's ConfluentKafka examples](../examples.md)
+- Explore [OpenMCF's ConfluentKafka examples](../examples.md)
 - Review the [Pulumi implementation](../iac/pulumi/README.md) for advanced customization
 - Learn about integrating Schema Registry and Kafka Connect in your deployment
 

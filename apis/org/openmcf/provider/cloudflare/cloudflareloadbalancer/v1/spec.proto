@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package org.openmcf.provider.cloudflare.cloudflareloadbalancer.v1;
+
+import "buf/validate/validate.proto";
+import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
+import "org/openmcf/shared/options/options.proto";
+
+// CloudflareLoadBalancerSpec captures the essential fields to create a Cloudflare Load Balancer.
+message CloudflareLoadBalancerSpec {
+  string hostname = 1 [(buf.validate.field).required = true];
+
+  // Foreign key reference to a Cloudflare DNS zone that contains the hostname.
+  org.openmcf.shared.foreignkey.v1.StringValueOrRef zone_id = 2 [
+    (buf.validate.field).required = true,
+    (org.openmcf.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // List of origin servers behind this load balancer. At least one origin is required.
+  repeated CloudflareLoadBalancerOrigin origins = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1
+  ];
+
+  // Whether Cloudflare's proxy is enabled for this hostname (orange cloud). Defaults to true.
+  bool proxied = 4 [(org.openmcf.shared.options.recommended_default) = "true"];
+
+  // HTTP path to use for health monitoring of origins. Defaults to "/".
+  string health_probe_path = 5 [(org.openmcf.shared.options.recommended_default) = "/"];
+
+  // Session affinity setting (e.g., "cookie" to bind clients to an origin). Defaults to none.
+  CloudflareLoadBalancerSessionAffinity session_affinity = 6;
+
+  // Traffic steering policy. "off" for static/failover (default), "geo" for geo-routing, "random" for weighted distribution.
+  CloudflareLoadBalancerSteeringPolicy steering_policy = 7;
+}
+
+// Definition of an origin server in the Cloudflare load balancer.
+message CloudflareLoadBalancerOrigin {
+  // A name to identify the origin.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The origin address (IP or DNS hostname) reachable via HTTP(S).
+  string address = 2 [(buf.validate.field).required = true];
+
+  // Weight for this origin (relative traffic share). Defaults to 1.
+  int32 weight = 3 [(org.openmcf.shared.options.recommended_default) = "1"];
+}
+
+// Supported session affinity options for Cloudflare load balancers.
+// Values match Cloudflare API expected strings.
+enum CloudflareLoadBalancerSessionAffinity {
+  none = 0; // No session affinity
+  cookie = 1; // Cookie-based session affinity
+}
+
+// Supported traffic steering policies for Cloudflare load balancers.
+// Values match Cloudflare API expected strings.
+enum CloudflareLoadBalancerSteeringPolicy {
+  off = 0; // Static/failover (default)
+  geo = 1; // Geo-routing
+  random = 2; // Weighted random distribution
+}

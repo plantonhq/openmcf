@@ -19,7 +19,7 @@ This architectural choice has profound implications:
 - The CDN configuration lives as a `cdn_policy` block on either a `BackendService` or `BackendBucket` resource
 - All the power of Cloud CDN—caching, SSL/TLS termination, DDoS protection—flows from its tight integration with Google's global edge infrastructure (the Google Front End, or GFE)
 
-This document explains how to think about deploying Cloud CDN, what deployment methods exist across the maturity spectrum, and how Project Planton abstracts this complexity into a clean, declarative API.
+This document explains how to think about deploying Cloud CDN, what deployment methods exist across the maturity spectrum, and how OpenMCF abstracts this complexity into a clean, declarative API.
 
 ## The Architecture: CDN as a Load Balancer Feature
 
@@ -324,7 +324,7 @@ resource "google_compute_backend_bucket_signed_url_key" "default" {
 }
 ```
 
-**Note**: For `BackendService`, the API is inconsistent—you must use an imperative `gcloud` command or direct API call. This is a pain point that higher-level abstractions (like Project Planton) can smooth over.
+**Note**: For `BackendService`, the API is inconsistent—you must use an imperative `gcloud` command or direct API call. This is a pain point that higher-level abstractions (like OpenMCF) can smooth over.
 
 ### Observability: Measuring Cache Hit Ratio
 
@@ -427,7 +427,7 @@ resource "google_compute_backend_service" "webapp" {
 - Serverless Network Endpoint Group (NEG)
 - `BackendService` pointing to the NEG with CDN enabled
 
-**Planton Abstraction**: Project Planton would automatically create the serverless NEG and wire it to the backend service, abstracting this complexity from users.
+**Planton Abstraction**: OpenMCF would automatically create the serverless NEG and wire it to the backend service, abstracting this complexity from users.
 
 ### Pattern 4: Kubernetes (GKE + BackendConfig CRD)
 
@@ -435,7 +435,7 @@ resource "google_compute_backend_service" "webapp" {
 
 **GKE-Specific Abstraction**: Use a `BackendConfig` CRD instead of managing GCP resources directly. The GKE Ingress controller handles all the underlying infrastructure.
 
-**Note for Project Planton**: This pattern requires a separate resource type (e.g., `GkeCloudCdnPolicy`) rather than the standard `GcpCloudCdn` resource, as the management model is fundamentally different.
+**Note for OpenMCF**: This pattern requires a separate resource type (e.g., `GkeCloudCdnPolicy`) rather than the standard `GcpCloudCdn` resource, as the management model is fundamentally different.
 
 ### Pattern 5: Hybrid/Multi-Cloud (Internet NEG)
 
@@ -476,9 +476,9 @@ Cloud CDN **only works on Google's Premium Network Tier**. This is non-negotiabl
 4. **Enable negative caching**: Cache 404s to prevent origin overload
 5. **Use cache tags** (advanced): Invalidate by tag instead of URL for bulk operations
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton's `GcpCloudCdn` resource provides a **compositional abstraction** over GCP's complex networking stack. Rather than forcing users to manually create and wire together load balancers, backend services/buckets, SSL certificates, and CDN policies, Planton presents a unified resource that manages this entire stack as a cohesive unit.
+OpenMCF's `GcpCloudCdn` resource provides a **compositional abstraction** over GCP's complex networking stack. Rather than forcing users to manually create and wire together load balancers, backend services/buckets, SSL certificates, and CDN policies, Planton presents a unified resource that manages this entire stack as a cohesive unit.
 
 ### Design Philosophy: Composition Over References
 
@@ -524,7 +524,7 @@ Google Cloud CDN challenges conventional assumptions about how CDNs are deployed
 
 For teams choosing Cloud CDN, the decision is typically driven by existing GCP investments: if your origin is already on GCS, Compute Engine, GKE, or Cloud Run, Cloud CDN provides the fastest, most seamless integration.
 
-For Project Planton, this architecture dictates a **compositional resource model**. Rather than asking users to separately manage backends and CDN policies, Planton's API will treat the origin and CDN as a single, cohesive unit—abstracting away GCP's complexity while preserving the full power of its configuration model.
+For OpenMCF, this architecture dictates a **compositional resource model**. Rather than asking users to separately manage backends and CDN policies, Planton's API will treat the origin and CDN as a single, cohesive unit—abstracting away GCP's complexity while preserving the full power of its configuration model.
 
 The next evolution of the `GcpCloudCdn` API will embrace this reality, providing a clean 80/20 interface that makes the simple case trivial (static website CDN in 10 lines of YAML) while making the advanced cases possible (signed URLs, custom cache keys, multi-region failover).
 

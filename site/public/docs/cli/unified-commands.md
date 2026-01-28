@@ -21,18 +21,18 @@ Previously, you had to remember different commands for different provisioners:
 
 ```bash
 # Pulumi
-project-planton pulumi init -f app.yaml
-project-planton pulumi preview -f app.yaml
-project-planton pulumi up -f app.yaml --stack org/project/env
-project-planton pulumi refresh -f app.yaml
-project-planton pulumi destroy -f app.yaml
+openmcf pulumi init -f app.yaml
+openmcf pulumi preview -f app.yaml
+openmcf pulumi up -f app.yaml --stack org/project/env
+openmcf pulumi refresh -f app.yaml
+openmcf pulumi destroy -f app.yaml
 
 # OpenTofu
-project-planton tofu init -f app.yaml
-project-planton tofu plan -f app.yaml
-project-planton tofu apply -f app.yaml
-project-planton tofu refresh -f app.yaml
-project-planton tofu destroy -f app.yaml
+openmcf tofu init -f app.yaml
+openmcf tofu plan -f app.yaml
+openmcf tofu apply -f app.yaml
+openmcf tofu refresh -f app.yaml
+openmcf tofu destroy -f app.yaml
 
 # Different commands, different flags, cognitive overhead!
 ```
@@ -43,15 +43,15 @@ Now, use the same commands regardless of provisioner:
 
 ```bash
 # Works for Pulumi, Tofu, or Terraform - complete lifecycle
-project-planton init -f app.yaml
-project-planton plan -f app.yaml       # or 'preview'
-project-planton apply -f app.yaml
-project-planton refresh -f app.yaml
-project-planton destroy -f app.yaml
+openmcf init -f app.yaml
+openmcf plan -f app.yaml       # or 'preview'
+openmcf apply -f app.yaml
+openmcf refresh -f app.yaml
+openmcf destroy -f app.yaml
 ```
 
 The CLI automatically:
-1. Reads the `project-planton.org/provisioner` label from your manifest
+1. Reads the `openmcf.org/provisioner` label from your manifest
 2. Routes to the appropriate provisioner
 3. Passes through all relevant flags
 
@@ -62,12 +62,12 @@ The CLI automatically:
 Add this label to your manifest metadata:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: my-database
   labels:
-    project-planton.org/provisioner: pulumi  # or tofu or terraform
+    openmcf.org/provisioner: pulumi  # or tofu or terraform
 spec:
   # ... your spec
 ```
@@ -88,32 +88,32 @@ Deploy infrastructure changes.
 **Usage**:
 
 ```bash
-project-planton apply -f <file> [flags]
-project-planton apply -f <file> [flags]
+openmcf apply -f <file> [flags]
+openmcf apply -f <file> [flags]
 ```
 
 **Examples**:
 
 ```bash
 # Basic usage
-project-planton apply -f database.yaml
+openmcf apply -f database.yaml
 
 # With kustomize
-project-planton apply --kustomize-dir services/api --overlay prod
+openmcf apply --kustomize-dir services/api --overlay prod
 
 # With field overrides
-project-planton apply -f app.yaml --set spec.replicas=5
+openmcf apply -f app.yaml --set spec.replicas=5
 
 # Auto-approve (Pulumi)
-project-planton apply -f app.yaml --yes
+openmcf apply -f app.yaml --yes
 
 # Auto-approve (Tofu/Terraform)
-project-planton apply -f app.yaml --auto-approve
+openmcf apply -f app.yaml --auto-approve
 ```
 
 **What it does**:
 1. Loads and validates your manifest
-2. Detects provisioner from `project-planton.org/provisioner` label
+2. Detects provisioner from `openmcf.org/provisioner` label
 3. If label missing, prompts interactively (defaults to Pulumi)
 4. Routes to appropriate provisioner:
    - **Pulumi**: Runs `pulumi update`
@@ -129,24 +129,24 @@ Teardown infrastructure.
 **Usage**:
 
 ```bash
-project-planton destroy -f <file> [flags]
-project-planton delete -f <file> [flags]  # kubectl-style alias
+openmcf destroy -f <file> [flags]
+openmcf delete -f <file> [flags]  # kubectl-style alias
 ```
 
 **Examples**:
 
 ```bash
 # Basic usage
-project-planton destroy -f database.yaml
+openmcf destroy -f database.yaml
 
 # kubectl-style delete
-project-planton delete -f database.yaml
+openmcf delete -f database.yaml
 
 # With kustomize
-project-planton destroy --kustomize-dir services/api --overlay staging
+openmcf destroy --kustomize-dir services/api --overlay staging
 
 # Auto-approve
-project-planton destroy -f app.yaml --auto-approve
+openmcf destroy -f app.yaml --auto-approve
 ```
 
 **What it does**:
@@ -166,20 +166,20 @@ Initialize infrastructure backend or stack.
 **Usage**:
 
 ```bash
-project-planton init -f <file> [flags]
+openmcf init -f <file> [flags]
 ```
 
 **Examples**:
 
 ```bash
 # Basic usage
-project-planton init -f database.yaml
+openmcf init -f database.yaml
 
 # With kustomize
-project-planton init --kustomize-dir services/api --overlay prod
+openmcf init --kustomize-dir services/api --overlay prod
 
 # With OpenTofu backend config
-project-planton init -f app.yaml \
+openmcf init -f app.yaml \
     --backend-type s3 \
     --backend-config bucket=my-terraform-state \
     --backend-config key=app/terraform.tfstate \
@@ -208,27 +208,27 @@ Preview infrastructure changes without applying them.
 **Usage**:
 
 ```bash
-project-planton plan -f <file> [flags]
-project-planton preview -f <file> [flags]  # Pulumi-style alias
+openmcf plan -f <file> [flags]
+openmcf preview -f <file> [flags]  # Pulumi-style alias
 ```
 
 **Examples**:
 
 ```bash
 # Basic preview
-project-planton plan -f database.yaml
+openmcf plan -f database.yaml
 
 # Using Pulumi-style alias
-project-planton preview -f database.yaml
+openmcf preview -f database.yaml
 
 # With kustomize
-project-planton plan --kustomize-dir services/api --overlay staging
+openmcf plan --kustomize-dir services/api --overlay staging
 
 # Preview destroy plan (OpenTofu)
-project-planton plan -f app.yaml --destroy
+openmcf plan -f app.yaml --destroy
 
 # Show detailed diffs (Pulumi)
-project-planton plan -f app.yaml --diff
+openmcf plan -f app.yaml --diff
 ```
 
 **What it does**:
@@ -256,20 +256,20 @@ Sync state with cloud reality.
 **Usage**:
 
 ```bash
-project-planton refresh -f <file> [flags]
+openmcf refresh -f <file> [flags]
 ```
 
 **Examples**:
 
 ```bash
 # Basic refresh
-project-planton refresh -f database.yaml
+openmcf refresh -f database.yaml
 
 # With kustomize
-project-planton refresh --kustomize-dir services/api --overlay prod
+openmcf refresh --kustomize-dir services/api --overlay prod
 
 # Show detailed diffs (Pulumi)
-project-planton refresh -f app.yaml --diff
+openmcf refresh -f app.yaml --diff
 ```
 
 **What it does**:
@@ -293,10 +293,10 @@ project-planton refresh -f app.yaml --diff
 
 ## Interactive Provisioner Selection
 
-If your manifest doesn't have the `project-planton.org/provisioner` label, the CLI prompts you:
+If your manifest doesn't have the `openmcf.org/provisioner` label, the CLI prompts you:
 
 ```bash
-$ project-planton apply -f database.yaml
+$ openmcf apply -f database.yaml
 
 ✓ Manifest loaded
 ✓ Manifest validated
@@ -354,13 +354,13 @@ By default, the CLI reads credentials from **environment variables** - the same 
 
 ```bash
 # AWS - uses AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
-project-planton apply -f aws-vpc.yaml
+openmcf apply -f aws-vpc.yaml
 
 # GCP - uses GOOGLE_APPLICATION_CREDENTIALS
-project-planton apply -f gcp-cluster.yaml
+openmcf apply -f gcp-cluster.yaml
 
 # Azure - uses ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID
-project-planton apply -f azure-aks.yaml
+openmcf apply -f azure-aks.yaml
 ```
 
 **Explicit Credentials (Override with `-p` flag)**:
@@ -373,10 +373,10 @@ Use the `-p` flag when you need to explicitly specify credentials, such as for m
 
 ```bash
 # Use explicit AWS credentials file
-project-planton apply -f aws-vpc.yaml -p ~/.config/aws-prod-creds.yaml
+openmcf apply -f aws-vpc.yaml -p ~/.config/aws-prod-creds.yaml
 
 # Use explicit GCP credentials file
-project-planton apply -f gcp-cluster.yaml -p ~/.config/gcp-prod-creds.yaml
+openmcf apply -f gcp-cluster.yaml -p ~/.config/gcp-prod-creds.yaml
 ```
 
 The CLI auto-detects which provider is needed from your manifest's `apiVersion`. See the [Credentials Guide](/docs/guides/credentials) for environment variable details per provider.
@@ -390,13 +390,13 @@ The CLI auto-detects which provider is needed from your manifest's `apiVersion`.
 **Manifest** (`postgres.yaml`):
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
   labels:
-    project-planton.org/provisioner: pulumi
-    pulumi.project-planton.org/stack.name: prod.PostgresKubernetes.app-database
+    openmcf.org/provisioner: pulumi
+    pulumi.openmcf.org/stack.name: prod.PostgresKubernetes.app-database
 spec:
   container:
     replicas: 1
@@ -410,13 +410,13 @@ spec:
 
 ```bash
 # Deploy
-project-planton apply -f postgres.yaml
+openmcf apply -f postgres.yaml
 
 # Update with more replicas
-project-planton apply -f postgres.yaml --set spec.container.replicas=3
+openmcf apply -f postgres.yaml --set spec.container.replicas=3
 
 # Destroy
-project-planton destroy -f postgres.yaml
+openmcf destroy -f postgres.yaml
 ```
 
 ---
@@ -426,16 +426,16 @@ project-planton destroy -f postgres.yaml
 **Manifest** (`vpc.yaml`):
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsVpc
 metadata:
   name: production-vpc
   labels:
-    project-planton.org/provisioner: tofu
-    tofu.project-planton.org/backend.type: s3
-    tofu.project-planton.org/backend.bucket: terraform-state
-    tofu.project-planton.org/backend.key: vpc/prod.tfstate
-    tofu.project-planton.org/backend.region: us-west-2
+    openmcf.org/provisioner: tofu
+    tofu.openmcf.org/backend.type: s3
+    tofu.openmcf.org/backend.bucket: terraform-state
+    tofu.openmcf.org/backend.key: vpc/prod.tfstate
+    tofu.openmcf.org/backend.region: us-west-2
 spec:
   cidrBlock: 10.0.0.0/16
   region: us-west-2
@@ -445,13 +445,13 @@ spec:
 
 ```bash
 # Deploy
-project-planton apply -f vpc.yaml --auto-approve
+openmcf apply -f vpc.yaml --auto-approve
 
 # If backend config changed, use --reconfigure
-project-planton apply -f vpc.yaml --auto-approve --reconfigure
+openmcf apply -f vpc.yaml --auto-approve --reconfigure
 
 # Destroy
-project-planton delete -f vpc.yaml --auto-approve
+openmcf delete -f vpc.yaml --auto-approve
 ```
 
 ---
@@ -478,7 +478,7 @@ services/api/
 ```bash
 for env in dev staging prod; do
     echo "Deploying to $env..."
-    project-planton apply \
+    openmcf apply \
         --kustomize-dir services/api \
         --overlay $env \
         --yes
@@ -494,19 +494,19 @@ done
 cd my-infrastructure/
 
 # 1. Initialize backend/stack
-project-planton init -f database.yaml
+openmcf init -f database.yaml
 
 # 2. Preview changes before applying
-project-planton plan -f database.yaml
+openmcf plan -f database.yaml
 
 # 3. Apply infrastructure
-project-planton apply -f database.yaml --yes
+openmcf apply -f database.yaml --yes
 
 # 4. Refresh state after manual changes
-project-planton refresh -f database.yaml
+openmcf refresh -f database.yaml
 
 # 5. Destroy when done
-project-planton destroy -f database.yaml --yes
+openmcf destroy -f database.yaml --yes
 ```
 
 ---
@@ -524,17 +524,17 @@ IMAGE_TAG="${CI_COMMIT_SHA}"
 ENVIRONMENT="${CI_ENVIRONMENT_NAME}"
 
 # Initialize (idempotent)
-project-planton init -f deployment.yaml
+openmcf init -f deployment.yaml
 
 # Preview changes in pull requests
 if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
-    project-planton plan -f deployment.yaml \
+    openmcf plan -f deployment.yaml \
         --set spec.container.image.tag="$IMAGE_TAG"
     exit 0
 fi
 
 # Deploy to environment
-project-planton apply \
+openmcf apply \
     -f deployment.yaml \
     --set spec.container.image.tag="$IMAGE_TAG" \
     --set metadata.labels.environment="$ENVIRONMENT" \
@@ -553,29 +553,29 @@ The unified commands are **fully backward compatible**. You can migrate graduall
 
 ```bash
 # Pulumi - complete workflow
-project-planton pulumi init -f app.yaml --stack org/project/dev
-project-planton pulumi preview -f app.yaml --stack org/project/dev
-project-planton pulumi up -f app.yaml --stack org/project/dev
-project-planton pulumi refresh -f app.yaml --stack org/project/dev
-project-planton pulumi destroy -f app.yaml --stack org/project/dev
+openmcf pulumi init -f app.yaml --stack org/project/dev
+openmcf pulumi preview -f app.yaml --stack org/project/dev
+openmcf pulumi up -f app.yaml --stack org/project/dev
+openmcf pulumi refresh -f app.yaml --stack org/project/dev
+openmcf pulumi destroy -f app.yaml --stack org/project/dev
 
 # OpenTofu - complete workflow
-project-planton tofu init -f app.yaml
-project-planton tofu plan -f app.yaml
-project-planton tofu apply -f app.yaml
-project-planton tofu refresh -f app.yaml
-project-planton tofu destroy -f app.yaml
+openmcf tofu init -f app.yaml
+openmcf tofu plan -f app.yaml
+openmcf tofu apply -f app.yaml
+openmcf tofu refresh -f app.yaml
+openmcf tofu destroy -f app.yaml
 ```
 
 ### After (Unified)
 
 ```bash
 # Works for both Pulumi and OpenTofu!
-project-planton init -f app.yaml
-project-planton plan -f app.yaml        # or 'preview'
-project-planton apply -f app.yaml
-project-planton refresh -f app.yaml
-project-planton destroy -f app.yaml     # or 'delete'
+openmcf init -f app.yaml
+openmcf plan -f app.yaml        # or 'preview'
+openmcf apply -f app.yaml
+openmcf refresh -f app.yaml
+openmcf destroy -f app.yaml     # or 'delete'
 ```
 
 ### Migration Steps
@@ -584,7 +584,7 @@ project-planton destroy -f app.yaml     # or 'delete'
    ```yaml
    metadata:
      labels:
-       project-planton.org/provisioner: pulumi  # or tofu
+       openmcf.org/provisioner: pulumi  # or tofu
    ```
 
 2. **Replace commands** in your scripts:
@@ -613,11 +613,11 @@ project-planton destroy -f app.yaml     # or 'delete'
 Unified commands for the entire infrastructure lifecycle:
 
 ```bash
-project-planton init -f <manifest>      # Initialize
-project-planton plan -f <manifest>      # Preview
-project-planton apply -f <manifest>     # Deploy
-project-planton refresh -f <manifest>   # Sync
-project-planton destroy -f <manifest>   # Teardown
+openmcf init -f <manifest>      # Initialize
+openmcf plan -f <manifest>      # Preview
+openmcf apply -f <manifest>     # Deploy
+openmcf refresh -f <manifest>   # Sync
+openmcf destroy -f <manifest>   # Teardown
 ```
 
 ### 2. Simplified Mental Model
@@ -630,10 +630,10 @@ Familiar kubectl patterns throughout:
 
 ```bash
 kubectl apply -f deployment.yaml
-project-planton apply -f deployment.yaml
+openmcf apply -f deployment.yaml
 
 kubectl delete -f deployment.yaml
-project-planton delete -f deployment.yaml
+openmcf delete -f deployment.yaml
 ```
 
 ### 4. Easier Automation
@@ -642,9 +642,9 @@ Write scripts that work regardless of provisioner:
 
 ```bash
 for manifest in manifests/*.yaml; do
-    project-planton init -f "$manifest"
-    project-planton plan -f "$manifest"
-    project-planton apply -f "$manifest" --yes
+    openmcf init -f "$manifest"
+    openmcf plan -f "$manifest"
+    openmcf apply -f "$manifest" --yes
 done
 ```
 
@@ -654,10 +654,10 @@ Use the same commands across all pipelines:
 
 ```bash
 # Pull Request - preview only
-project-planton plan -f app.yaml
+openmcf plan -f app.yaml
 
 # Main branch - deploy
-project-planton apply -f app.yaml --yes
+openmcf apply -f app.yaml --yes
 ```
 
 ### 6. Lower Barrier to Entry
@@ -692,14 +692,14 @@ Invalid provisioner in manifest: invalid provisioner value 'pulum': must be one 
    ```yaml
    metadata:
      labels:
-       project-planton.org/provisioner: pulumi
+       openmcf.org/provisioner: pulumi
    ```
 
 2. **Select interactively**: Type your choice when prompted
 
 3. **Use provisioner-specific commands** if you prefer:
    ```bash
-   project-planton pulumi up -f app.yaml
+   openmcf pulumi up -f app.yaml
    ```
 
 ---
@@ -733,21 +733,21 @@ pulumi login
 ```yaml
 metadata:
   labels:
-    project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: s3
-    terraform.project-planton.org/backend.bucket: my-terraform-state
-    terraform.project-planton.org/backend.key: path/to/state.tfstate
-    terraform.project-planton.org/backend.region: us-west-2
+    openmcf.org/provisioner: terraform
+    terraform.openmcf.org/backend.type: s3
+    terraform.openmcf.org/backend.bucket: my-terraform-state
+    terraform.openmcf.org/backend.key: path/to/state.tfstate
+    terraform.openmcf.org/backend.region: us-west-2
 ```
 
 **For OpenTofu (GCS):**
 ```yaml
 metadata:
   labels:
-    project-planton.org/provisioner: tofu
-    tofu.project-planton.org/backend.type: gcs
-    tofu.project-planton.org/backend.bucket: my-tofu-state
-    tofu.project-planton.org/backend.key: path/to/state
+    openmcf.org/provisioner: tofu
+    tofu.openmcf.org/backend.type: gcs
+    tofu.openmcf.org/backend.bucket: my-tofu-state
+    tofu.openmcf.org/backend.key: path/to/state
 ```
 
 For complete backend configuration options, see the [State Backends Guide](/docs/guides/state-backends).
@@ -761,10 +761,10 @@ For complete backend configuration options, see the [State Backends Guide](/docs
 **Solution**: Use the `--reconfigure` flag:
 
 ```bash
-project-planton init -f manifest.yaml --reconfigure
+openmcf init -f manifest.yaml --reconfigure
 
 # Also works with apply, destroy, plan, refresh
-project-planton apply -f manifest.yaml --reconfigure
+openmcf apply -f manifest.yaml --reconfigure
 ```
 
 ---
@@ -778,7 +778,7 @@ Include the provisioner label in all manifests:
 ```yaml
 metadata:
   labels:
-    project-planton.org/provisioner: pulumi
+    openmcf.org/provisioner: pulumi
 ```
 
 This enables fully automated workflows.
@@ -791,19 +791,19 @@ Use all commands for a robust workflow:
 
 ```bash
 # 1. Initialize (first time or after cleaning cache)
-project-planton init -f app.yaml
+openmcf init -f app.yaml
 
 # 2. Always preview before applying
-project-planton plan -f app.yaml
+openmcf plan -f app.yaml
 
 # 3. Apply changes
-project-planton apply -f app.yaml --yes
+openmcf apply -f app.yaml --yes
 
 # 4. Refresh after manual changes
-project-planton refresh -f app.yaml
+openmcf refresh -f app.yaml
 
 # 5. Clean up when done
-project-planton destroy -f app.yaml
+openmcf destroy -f app.yaml
 ```
 
 ---
@@ -814,11 +814,11 @@ Prefer `-f` over `-f` to match kubectl style:
 
 ```bash
 # Good (kubectl-style)
-project-planton plan -f app.yaml
-project-planton apply -f app.yaml
+openmcf plan -f app.yaml
+openmcf apply -f app.yaml
 
 # Also works
-project-planton apply -f app.yaml
+openmcf apply -f app.yaml
 ```
 
 ---
@@ -831,13 +831,13 @@ Add preview step to pull request pipelines:
 # .gitlab-ci.yml or similar
 preview:
   script:
-    - project-planton plan -f deployment.yaml
+    - openmcf plan -f deployment.yaml
   only:
     - merge_requests
 
 deploy:
   script:
-    - project-planton apply -f deployment.yaml --yes
+    - openmcf apply -f deployment.yaml --yes
   only:
     - main
 ```
@@ -849,9 +849,9 @@ deploy:
 Always validate before applying in production:
 
 ```bash
-project-planton validate -f app.yaml && \
-project-planton plan -f app.yaml && \
-project-planton apply -f app.yaml --yes
+openmcf validate -f app.yaml && \
+openmcf plan -f app.yaml && \
+openmcf apply -f app.yaml --yes
 ```
 
 ---
@@ -862,10 +862,10 @@ If you make manual changes via console or CLI, refresh state:
 
 ```bash
 # Made manual changes to database in cloud console
-project-planton refresh -f database.yaml
+openmcf refresh -f database.yaml
 
 # Now apply can work with accurate state
-project-planton apply -f database.yaml
+openmcf apply -f database.yaml
 ```
 
 ---
@@ -875,9 +875,9 @@ project-planton apply -f database.yaml
 Organize environments with kustomize:
 
 ```bash
-project-planton init --kustomize-dir services/api --overlay prod
-project-planton plan --kustomize-dir services/api --overlay prod
-project-planton apply --kustomize-dir services/api --overlay prod
+openmcf init --kustomize-dir services/api --overlay prod
+openmcf plan --kustomize-dir services/api --overlay prod
+openmcf apply --kustomize-dir services/api --overlay prod
 ```
 
 ---
@@ -887,7 +887,7 @@ project-planton apply --kustomize-dir services/api --overlay prod
 Use `--set` for dynamic values in pipelines:
 
 ```bash
-project-planton apply -f app.yaml \
+openmcf apply -f app.yaml \
     --set spec.image.tag="$CI_COMMIT_SHA" \
     --set metadata.labels.build="$CI_BUILD_ID"
 ```
@@ -900,13 +900,13 @@ Use command aliases that match your background:
 
 ```bash
 # Pulumi users might prefer
-project-planton preview -f app.yaml
+openmcf preview -f app.yaml
 
 # Terraform/Tofu users might prefer
-project-planton plan -f app.yaml
+openmcf plan -f app.yaml
 
 # kubectl users might prefer
-project-planton delete -f app.yaml
+openmcf delete -f app.yaml
 ```
 
 ---
@@ -924,5 +924,5 @@ project-planton delete -f app.yaml
 
 ## Feedback
 
-Found an issue or have a suggestion? [Open an issue](https://github.com/plantonhq/project-planton/issues) on GitHub.
+Found an issue or have a suggestion? [Open an issue](https://github.com/plantonhq/openmcf/issues) on GitHub.
 

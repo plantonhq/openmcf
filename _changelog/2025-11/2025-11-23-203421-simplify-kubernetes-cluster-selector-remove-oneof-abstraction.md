@@ -40,7 +40,7 @@ Simplified the API by using `KubernetesClusterSelector` directly as the target c
 // Simplified - no wrapper, direct usage
 message KubernetesClusterSelector {
   // Can be one of the supported kubernetes cluster kinds
-  org.project_planton.shared.cloudresourcekind.CloudResourceKind cluster_kind = 1 [(buf.validate.field).enum = {
+  org.openmcf.shared.cloudresourcekind.CloudResourceKind cluster_kind = 1 [(buf.validate.field).enum = {
     in: [
       400,  //AzureAksCluster
       207,  //AwsEksCluster
@@ -68,7 +68,7 @@ message KubernetesClusterSelector {
 
 ### Proto Changes
 
-**File**: `apis/org/project_planton/provider/kubernetes/target_cluster.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/target_cluster.proto`
 
 Removed the `KubernetesAddonTargetCluster` message entirely and updated `KubernetesClusterSelector`:
 
@@ -84,7 +84,7 @@ Removed the `KubernetesAddonTargetCluster` message entirely and updated `Kuberne
  // **KubernetesClusterSelector** defines a selector for a Kubernetes cluster in the same environment as the addon.
  message KubernetesClusterSelector {
 -  //can be either gcp-gke-cluster-core
-   org.project_planton.shared.cloudresourcekind.CloudResourceKind cluster_kind = 1 [(buf.validate.field).enum = {
+   org.openmcf.shared.cloudresourcekind.CloudResourceKind cluster_kind = 1 [(buf.validate.field).enum = {
      in: [
 -      400, //AzureAksCluster
 -      615, //GcpGkeClusterCore
@@ -107,8 +107,8 @@ All Kubernetes addon specs were updated to use the direct type:
 
 ```diff
  message KubernetesZalandoPostgresOperatorSpec {
--  org.project_planton.provider.kubernetes.KubernetesAddonTargetCluster target_cluster = 1;
-+  org.project_planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+-  org.openmcf.provider.kubernetes.KubernetesAddonTargetCluster target_cluster = 1;
++  org.openmcf.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
    KubernetesZalandoPostgresOperatorSpecContainer container = 2;
    KubernetesZalandoPostgresOperatorBackupConfig backup_config = 3;
  }

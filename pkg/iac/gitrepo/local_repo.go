@@ -5,34 +5,34 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/plantonhq/project-planton/internal/cli/flag"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
 	"github.com/spf13/cobra"
 )
 
 const (
-	// ProjectPlantonGitRepoEnvVar is the environment variable name for the local project-planton repo path
-	ProjectPlantonGitRepoEnvVar = "PROJECT_PLANTON_GIT_REPO"
+	// OpenMCFGitRepoEnvVar is the environment variable name for the local openmcf repo path
+	OpenMCFGitRepoEnvVar = "PROJECT_PLANTON_GIT_REPO"
 )
 
-// GetLocalRepoPath determines the project-planton repo location with priority:
-// 1. --project-planton-git-repo flag if explicitly set
+// GetLocalRepoPath determines the openmcf repo location with priority:
+// 1. --openmcf-git-repo flag if explicitly set
 // 2. PROJECT_PLANTON_GIT_REPO environment variable
 // 3. Flag's default value
 // Always returns a valid path string (expands ~ to home directory). Never returns an error.
 func GetLocalRepoPath(cmd *cobra.Command) string {
 	// Priority 1: Flag explicitly set by user
-	if cmd.Flags().Changed(string(flag.ProjectPlantonGitRepo)) {
-		val, _ := cmd.Flags().GetString(string(flag.ProjectPlantonGitRepo))
+	if cmd.Flags().Changed(string(flag.OpenMCFGitRepo)) {
+		val, _ := cmd.Flags().GetString(string(flag.OpenMCFGitRepo))
 		return expandHomePath(val)
 	}
 
 	// Priority 2: Environment variable
-	if envVal := os.Getenv(ProjectPlantonGitRepoEnvVar); envVal != "" {
+	if envVal := os.Getenv(OpenMCFGitRepoEnvVar); envVal != "" {
 		return expandHomePath(envVal)
 	}
 
 	// Priority 3: Flag's default value
-	val, _ := cmd.Flags().GetString(string(flag.ProjectPlantonGitRepo))
+	val, _ := cmd.Flags().GetString(string(flag.OpenMCFGitRepo))
 	return expandHomePath(val)
 }
 

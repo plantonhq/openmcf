@@ -49,7 +49,7 @@ def build_spec_proto_path(repo_root: str, provider: str, kind_folder: str) -> Tu
     relative_path = os.path.join(
         "apis",
         "org",
-        "project_planton",
+        "openmcf",
         "provider",
         provider,
         kind_folder,

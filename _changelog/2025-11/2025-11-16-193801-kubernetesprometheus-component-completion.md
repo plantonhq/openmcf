@@ -165,7 +165,7 @@ This improves code maintainability by separating concerns.
 
 **File**: `iac/hack/manifest.yaml` (17 lines)
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPrometheus
 metadata:
   name: test-prometheus
@@ -229,12 +229,12 @@ All validation checks pass:
 
 ```bash
 # Component tests
-cd apis/org/project_planton/provider/kubernetes/kubernetesprometheus/v1
+cd apis/org/openmcf/provider/kubernetes/kubernetesprometheus/v1
 go test -v
 # Result: 1 Passed | 0 Failed (0.005 seconds)
 
 # Bazel test
-bazel test //apis/org/project_planton/provider/kubernetes/kubernetesprometheus/v1:kubernetesprometheus_test
+bazel test //apis/org/openmcf/provider/kubernetes/kubernetesprometheus/v1:kubernetesprometheus_test
 # Result: PASSED in 1.1s
 
 # Go build
@@ -317,12 +317,12 @@ The Terraform module creates only the namespace because:
 4. **Separation of Concerns**: Infrastructure (namespace) vs. application (Helm chart) deployment
 5. **Configuration Flexibility**: Helm values provide richer configuration than Terraform resources
 
-This pattern is consistent with other operator-based components in Project Planton.
+This pattern is consistent with other operator-based components in OpenMCF.
 
 ## Files Changed
 
 ```
-apis/org/project_planton/provider/kubernetes/kubernetesprometheus/v1/
+apis/org/openmcf/provider/kubernetes/kubernetesprometheus/v1/
   M  BUILD.bazel
   M  iac/pulumi/module/BUILD.bazel
   M  iac/tf/main.tf (0 bytes → 14 lines)

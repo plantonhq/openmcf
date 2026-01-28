@@ -10,7 +10,7 @@ Refactored the `--local-module` flag implementation from duplicated code blocks 
 
 ## Problem Statement / Motivation
 
-After implementing the initial `--local-module` flag (which auto-detects and uses IaC modules from a locally cloned project-planton repo), we identified two significant issues:
+After implementing the initial `--local-module` flag (which auto-detects and uses IaC modules from a locally cloned openmcf repo), we identified two significant issues:
 
 ### Pain Points
 
@@ -89,12 +89,12 @@ type Error struct {
 
 ```
 ✖ Failed to resolve local module (locating local repository)
-  Context: repo path: ~/scm/github.com/plantonhq/project-planton
+  Context: repo path: ~/scm/github.com/plantonhq/openmcf
 
-  The project-planton repository was not found at '~/scm/github.com/plantonhq/project-planton'.
+  The openmcf repository was not found at '~/scm/github.com/plantonhq/openmcf'.
   Options:
-  1. Clone the repo: git clone https://github.com/plantonhq/project-planton ~/scm/github.com/plantonhq/project-planton
-  2. Set a different path: --project-planton-git-repo /your/path
+  1. Clone the repo: git clone https://github.com/plantonhq/openmcf ~/scm/github.com/plantonhq/openmcf
+  2. Set a different path: --openmcf-git-repo /your/path
   3. Use environment variable: export PROJECT_PLANTON_GIT_REPO=/your/path
 ```
 
@@ -179,22 +179,22 @@ if localModule {
 | `pkg/iac/localmodule/local_module.go` | **New** - Centralized GetModuleDir function |
 | `pkg/iac/localmodule/BUILD.bazel` | **New** - Bazel build file |
 | `pkg/crkreflect/kind_name_by_kind.go` | **Modified** - Added fallback to `kind.String()` |
-| `cmd/project-planton/root/pulumi/*.go` | **Modified** - 7 files refactored to use localmodule |
-| `cmd/project-planton/root/tofu/*.go` | **Modified** - 5 files refactored to use localmodule |
-| `cmd/project-planton/root/*.go` | **Modified** - 5 files refactored to use localmodule |
+| `cmd/openmcf/root/pulumi/*.go` | **Modified** - 7 files refactored to use localmodule |
+| `cmd/openmcf/root/tofu/*.go` | **Modified** - 5 files refactored to use localmodule |
+| `cmd/openmcf/root/*.go` | **Modified** - 5 files refactored to use localmodule |
 
 ## Usage Example
 
 ```bash
-# Use local module from default repo path (~/.../project-planton)
-project-planton pulumi up --manifest nats.yaml --local-module
+# Use local module from default repo path (~/.../openmcf)
+openmcf pulumi up --manifest nats.yaml --local-module
 
 # Use local module with custom repo path
-project-planton pulumi up --manifest nats.yaml --local-module --project-planton-git-repo /custom/path
+openmcf pulumi up --manifest nats.yaml --local-module --openmcf-git-repo /custom/path
 
 # Environment variable also works
 export PROJECT_PLANTON_GIT_REPO=/custom/path
-project-planton tofu apply --manifest nats.yaml --local-module
+openmcf tofu apply --manifest nats.yaml --local-module
 ```
 
 ## Related Work

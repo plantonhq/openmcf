@@ -16,7 +16,7 @@ This isn't a bug. It's a structural consequence of modeling node pools as nested
 
 The community-evolved workaround is elegant: create a minimal, immutable "sacrificial default pool" (one tiny node that you never touch again) and provision all real workloads on *additional* node pools managed as standalone resources. This pattern decouples cluster lifecycle from node pool lifecycle, enabling safe resizing, upgrades, and deletion without risking the control plane.
 
-This document explores the full landscape of DOKS node pool deployment methods—from manual UI operations to Kubernetes-native control planes—and explains why Project Planton's abstraction treats every node pool as a first-class, cluster-independent resource. We'll examine the production-ready approaches, decode the "80/20" configuration surface, and show how labels, taints, and autoscaling combine to create robust multi-pool architectures.
+This document explores the full landscape of DOKS node pool deployment methods—from manual UI operations to Kubernetes-native control planes—and explains why OpenMCF's abstraction treats every node pool as a first-class, cluster-independent resource. We'll examine the production-ready approaches, decode the "80/20" configuration surface, and show how labels, taints, and autoscaling combine to create robust multi-pool architectures.
 
 ## The Deployment Methods Landscape
 
@@ -841,12 +841,12 @@ The `labels` field is for Kubernetes scheduling. The `tags` field is for Digital
 
 This reinforces the need to expose `labels`, `taints`, and `tags` as three distinct, first-class fields in any API abstraction.
 
-## Project Planton's Abstraction Layer
+## OpenMCF's Abstraction Layer
 
-Project Planton provides a **cloud-agnostic, protobuf-defined API** for node pool management. Instead of learning DigitalOcean's specific API patterns, Terraform resource syntax, or Pulumi's programming model, you declare intent using a consistent schema:
+OpenMCF provides a **cloud-agnostic, protobuf-defined API** for node pool management. Instead of learning DigitalOcean's specific API patterns, Terraform resource syntax, or Pulumi's programming model, you declare intent using a consistent schema:
 
 ```yaml
-apiVersion: digitalocean.project-planton.org/v1
+apiVersion: digitalocean.openmcf.org/v1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: production-workers
@@ -878,7 +878,7 @@ spec:
 
 ### The 80/20 Principle in Practice
 
-Project Planton's `DigitalOceanKubernetesNodePoolSpec` exposes only the essential fields identified in the 80/20 analysis:
+OpenMCF's `DigitalOceanKubernetesNodePoolSpec` exposes only the essential fields identified in the 80/20 analysis:
 
 **Core (80%):**
 - `cluster_ref`: Links to parent cluster (lifecycle independence)
@@ -904,7 +904,7 @@ This simplification means:
 
 ### Lifecycle Independence by Design
 
-Unlike the Terraform provider's default model (inline default pool in cluster resource), Project Planton treats **every node pool as a first-class, standalone resource**.
+Unlike the Terraform provider's default model (inline default pool in cluster resource), OpenMCF treats **every node pool as a first-class, standalone resource**.
 
 The `cluster_ref` field creates a loose reference, not a nested ownership. This mirrors the "sacrificial default pool" production pattern: all pools are lifecycle-independent from the cluster.
 
@@ -923,9 +923,9 @@ The same protobuf schema pattern works across providers. Compare:
 
 The concepts map cleanly: size, scaling, labels, taints. A team managing infrastructure across clouds learns one API instead of four vendor-specific ones.
 
-### What Project Planton Isn't
+### What OpenMCF Isn't
 
-It's not a replacement for Terraform, Pulumi, or Crossplane—it's a **higher-level orchestrator**. Under the hood, Project Planton likely generates IaC code or calls cloud APIs directly.
+It's not a replacement for Terraform, Pulumi, or Crossplane—it's a **higher-level orchestrator**. Under the hood, OpenMCF likely generates IaC code or calls cloud APIs directly.
 
 The value is:
 - **Opinionated defaults**: Production-ready configurations without deep cloud expertise
@@ -1021,13 +1021,13 @@ The journey from manual UI operations to production-grade node pool management r
 
 For DigitalOcean Kubernetes node pools, the production baseline is clear: **use Infrastructure-as-Code** (Terraform, Pulumi, or Crossplane), adopt the **sacrificial default pool pattern**, and embrace a **multi-pool architecture** that leverages labels, taints, and the Cluster Autoscaler for robust workload isolation and cost optimization.
 
-The "default node pool problem" teaches a valuable lesson: infrastructure resources should be lifecycle-independent, modular, and replaceable. Project Planton's abstraction embodies this principle by treating every node pool as a first-class resource with a loose cluster reference, not a nested child.
+The "default node pool problem" teaches a valuable lesson: infrastructure resources should be lifecycle-independent, modular, and replaceable. OpenMCF's abstraction embodies this principle by treating every node pool as a first-class resource with a loose cluster reference, not a nested child.
 
 The 80/20 API surface—cluster reference, name, size, scaling config, plus optional labels/taints/tags—covers the vast majority of use cases while keeping the cognitive load manageable. The remaining 20% of edge cases (custom networking, specialized instance configurations) can be handled through provider-specific extensions or manual overrides.
 
 DigitalOcean's free control plane and VPC-native architecture create a compelling foundation. When combined with the Cluster Autoscaler (the primary cost optimization tool in the absence of Spot Instances), multi-pool isolation patterns, and proper capacity planning (≥ 2.5GB allocatable memory), DOKS becomes a production-ready platform for Kubernetes workloads.
 
-The future of node pool management isn't more parameters and complexity—it's **smarter defaults, stronger abstractions, and automation that fades into the background**. Project Planton's cloud-agnostic API, the maturity of Terraform/Pulumi providers, and the Kubernetes-native model of Crossplane all push in that direction.
+The future of node pool management isn't more parameters and complexity—it's **smarter defaults, stronger abstractions, and automation that fades into the background**. OpenMCF's cloud-agnostic API, the maturity of Terraform/Pulumi providers, and the Kubernetes-native model of Crossplane all push in that direction.
 
 Whether you choose Terraform's widespread ecosystem, Pulumi's unified programming model, or Crossplane's continuous reconciliation, the principles remain constant: declare your intent, version it in Git, let tooling reconcile reality, and design for lifecycle independence from day one.
 

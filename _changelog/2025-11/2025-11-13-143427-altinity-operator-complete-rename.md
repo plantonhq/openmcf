@@ -6,7 +6,7 @@
 
 ## Summary
 
-Completed a comprehensive rename of the Altinity ClickHouse Operator component, eliminating the redundant "Kubernetes" suffix from all layers: directory structure (`altinityoperatorkubernetes` → `altinityoperator`), package namespace (`org.project_planton.provider.kubernetes.addon.altinityoperator.v1`), proto message types (`AltinityOperatorKubernetes` → `AltinityOperator`), and API kind name. This refactoring aligns with Project Planton's naming conventions and improves consistency across all Kubernetes addon operators.
+Completed a comprehensive rename of the Altinity ClickHouse Operator component, eliminating the redundant "Kubernetes" suffix from all layers: directory structure (`altinityoperatorkubernetes` → `altinityoperator`), package namespace (`org.openmcf.provider.kubernetes.addon.altinityoperator.v1`), proto message types (`AltinityOperatorKubernetes` → `AltinityOperator`), and API kind name. This refactoring aligns with OpenMCF's naming conventions and improves consistency across all Kubernetes addon operators.
 
 ## Problem Statement / Motivation
 
@@ -15,7 +15,7 @@ The Altinity ClickHouse Operator was originally structured with "kubernetes" app
 ### Pain Points
 
 - **Directory Name**: `altinityoperatorkubernetes` - unnecessarily verbose and inconsistent
-- **Package Namespace**: `org.project_planton.provider.kubernetes.addon.altinityoperatorkubernetes.v1` - "kubernetes" appears twice (in `addon` path and in component name)
+- **Package Namespace**: `org.openmcf.provider.kubernetes.addon.altinityoperatorkubernetes.v1` - "kubernetes" appears twice (in `addon` path and in component name)
 - **Proto Messages**: `AltinityOperatorKubernetes`, `AltinityOperatorKubernetesSpec`, etc. - redundant suffixes
 - **API Kind**: `kind: AltinityOperatorKubernetes` - verbose in user manifests
 - **Import Paths**: Go import paths were unnecessarily long
@@ -31,10 +31,10 @@ Performed a complete, multi-layer refactoring:
 
 ```
 Before:
-apis/org/project_planton/provider/kubernetes/addon/altinityoperatorkubernetes/v1/
+apis/org/openmcf/provider/kubernetes/addon/altinityoperatorkubernetes/v1/
 
 After:
-apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/
+apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/
 ```
 
 **Impact**: All file paths, imports, and references updated
@@ -43,10 +43,10 @@ apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/
 
 ```protobuf
 // Before
-package org.project_planton.provider.kubernetes.addon.altinityoperatorkubernetes.v1;
+package org.openmcf.provider.kubernetes.addon.altinityoperatorkubernetes.v1;
 
 // After
-package org.project_planton.provider.kubernetes.addon.altinityoperator.v1;
+package org.openmcf.provider.kubernetes.addon.altinityoperator.v1;
 ```
 
 **Impact**: Proto imports and generated code use cleaner namespace
@@ -75,11 +75,11 @@ message AltinityOperatorStackOutputs { ... }
 
 ```yaml
 # Before
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: AltinityOperatorKubernetes
 
 # After
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: AltinityOperator
 ```
 
@@ -111,8 +111,8 @@ The entire component directory was moved/renamed:
 
 ```bash
 # Conceptual operation (actual Git operation)
-git mv apis/org/project_planton/provider/kubernetes/addon/altinityoperatorkubernetes \
-       apis/org/project_planton/provider/kubernetes/addon/altinityoperator
+git mv apis/org/openmcf/provider/kubernetes/addon/altinityoperatorkubernetes \
+       apis/org/openmcf/provider/kubernetes/addon/altinityoperator
 ```
 
 All subdirectories maintained their structure:
@@ -124,58 +124,58 @@ All subdirectories maintained their structure:
 
 ### Proto Files Updated
 
-**File**: `apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/api.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/api.proto`
 
 ```protobuf
 syntax = "proto3";
 
-package org.project_planton.provider.kubernetes.addon.altinityoperator.v1;
+package org.openmcf.provider.kubernetes.addon.altinityoperator.v1;
 
-import "org/project_planton/provider/kubernetes/addon/altinityoperator/v1/spec.proto";
-import "org/project_planton/provider/kubernetes/addon/altinityoperator/v1/stack_outputs.proto";
+import "org/openmcf/provider/kubernetes/addon/altinityoperator/v1/spec.proto";
+import "org/openmcf/provider/kubernetes/addon/altinityoperator/v1/stack_outputs.proto";
 
 message AltinityOperator {
-  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.project-planton.org/v1'];
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.openmcf.org/v1'];
   string kind = 2 [(buf.validate.field).string.const = 'AltinityOperator'];
-  org.project_planton.shared.CloudResourceMetadata metadata = 3;
+  org.openmcf.shared.CloudResourceMetadata metadata = 3;
   AltinityOperatorSpec spec = 4;
   AltinityOperatorStatus status = 5;
 }
 ```
 
-**File**: `apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/spec.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/spec.proto`
 
 ```protobuf
-package org.project_planton.provider.kubernetes.addon.altinityoperator.v1;
+package org.openmcf.provider.kubernetes.addon.altinityoperator.v1;
 
 message AltinityOperatorSpec {
-  org.project_planton.shared.kubernetes.KubernetesAddonTargetCluster target_cluster = 1;
+  org.openmcf.shared.kubernetes.KubernetesAddonTargetCluster target_cluster = 1;
   string namespace = 2;
   AltinityOperatorSpecContainer container = 3;
 }
 
 message AltinityOperatorSpecContainer {
-  org.project_planton.shared.kubernetes.ContainerResources resources = 1;
+  org.openmcf.shared.kubernetes.ContainerResources resources = 1;
 }
 ```
 
-**File**: `apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/stack_input.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/stack_input.proto`
 
 ```protobuf
-package org.project_planton.provider.kubernetes.addon.altinityoperator.v1;
+package org.openmcf.provider.kubernetes.addon.altinityoperator.v1;
 
-import "org/project_planton/provider/kubernetes/addon/altinityoperator/v1/api.proto";
+import "org/openmcf/provider/kubernetes/addon/altinityoperator/v1/api.proto";
 
 message AltinityOperatorStackInput {
   AltinityOperator target = 1;
-  org.project_planton.provider.kubernetes.KubernetesProviderConfig provider_config = 2;
+  org.openmcf.provider.kubernetes.KubernetesProviderConfig provider_config = 2;
 }
 ```
 
-**File**: `apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/stack_outputs.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/stack_outputs.proto`
 
 ```protobuf
-package org.project_planton.provider.kubernetes.addon.altinityoperator.v1;
+package org.openmcf.provider.kubernetes.addon.altinityoperator.v1;
 
 message AltinityOperatorStackOutputs {
   string namespace = 1;
@@ -187,7 +187,7 @@ message AltinityOperatorStackOutputs {
 **Before**:
 ```go
 import (
-  altinityoperatorkubernetesv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperatorkubernetes/v1"
+  altinityoperatorkubernetesv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperatorkubernetes/v1"
 )
 
 stackInput := &altinityoperatorkubernetesv1.AltinityOperatorKubernetesStackInput{}
@@ -196,7 +196,7 @@ stackInput := &altinityoperatorkubernetesv1.AltinityOperatorKubernetesStackInput
 **After**:
 ```go
 import (
-  altinityoperatorv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1"
+  altinityoperatorv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1"
 )
 
 stackInput := &altinityoperatorv1.AltinityOperatorStackInput{}
@@ -204,16 +204,16 @@ stackInput := &altinityoperatorv1.AltinityOperatorStackInput{}
 
 ### Implementation Files Updated
 
-**File**: `apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/iac/pulumi/main.go`
+**File**: `apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/iac/pulumi/main.go`
 
 ```go
 package main
 
 import (
   "github.com/pkg/errors"
-  altinityoperatorv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1"
-  "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/iac/pulumi/module"
-  "github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumimodule/stackinput"
+  altinityoperatorv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1"
+  "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/iac/pulumi/module"
+  "github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumimodule/stackinput"
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -228,13 +228,13 @@ func main() {
 }
 ```
 
-**File**: `apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/iac/pulumi/module/altinity_operator.go`
+**File**: `apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/iac/pulumi/module/altinity_operator.go`
 
 ```go
 package module
 
 import (
-  altinityoperatorv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1"
+  altinityoperatorv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1"
   // ... other imports
 )
 
@@ -258,10 +258,10 @@ All documentation files updated to reflect new paths and names:
 
 ### Test Fixture Updated
 
-**File**: `apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1/iac/hack/manifest.yaml`
+**File**: `apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1/iac/hack/manifest.yaml`
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: AltinityOperator
 metadata:
   name: altinity-operator-test
@@ -298,8 +298,8 @@ After:  .../addon/altinityoperator/v1/
 
 **Package Namespace** (10 characters shorter):
 ```
-Before: org.project_planton.provider.kubernetes.addon.altinityoperatorkubernetes.v1
-After:  org.project_planton.provider.kubernetes.addon.altinityoperator.v1
+Before: org.openmcf.provider.kubernetes.addon.altinityoperatorkubernetes.v1
+After:  org.openmcf.provider.kubernetes.addon.altinityoperator.v1
 ```
 
 **Proto Message Names**:
@@ -327,12 +327,12 @@ Shorter import aliases and type names make code significantly more readable.
 
 ### Naming Consistency
 
-Now aligns with Project Planton's pattern where provider namespace provides context:
+Now aligns with OpenMCF's pattern where provider namespace provides context:
 
 ```
-✅ org.project_planton.provider.kubernetes.addon.certmanager.v1     → CertManager
-✅ org.project_planton.provider.kubernetes.addon.externaldns.v1     → ExternalDns
-✅ org.project_planton.provider.kubernetes.addon.altinityoperator.v1 → AltinityOperator
+✅ org.openmcf.provider.kubernetes.addon.certmanager.v1     → CertManager
+✅ org.openmcf.provider.kubernetes.addon.externaldns.v1     → ExternalDns
+✅ org.openmcf.provider.kubernetes.addon.altinityoperator.v1 → AltinityOperator
 ```
 
 The "kubernetes" context is clear from the provider path, not from redundant suffixes.
@@ -365,12 +365,12 @@ kind: AltinityOperator
 
 **Before**:
 ```go
-import altinityoperatorkubernetesv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperatorkubernetes/v1"
+import altinityoperatorkubernetesv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperatorkubernetes/v1"
 ```
 
 **After**:
 ```go
-import altinityoperatorv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1"
+import altinityoperatorv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1"
 ```
 
 #### 3. Proto Import Paths
@@ -379,17 +379,17 @@ Any custom proto files importing these definitions must update:
 
 ```protobuf
 // Before
-import "org/project_planton/provider/kubernetes/addon/altinityoperatorkubernetes/v1/api.proto";
+import "org/openmcf/provider/kubernetes/addon/altinityoperatorkubernetes/v1/api.proto";
 
 // After
-import "org/project_planton/provider/kubernetes/addon/altinityoperator/v1/api.proto";
+import "org/openmcf/provider/kubernetes/addon/altinityoperator/v1/api.proto";
 ```
 
 ### Non-Breaking Aspects
 
 - **Enum Value**: Still `831` in cloud_resource_kind.proto
 - **ID Prefix**: Still `altopk8s` for resource ID generation
-- **API Version**: Still `kubernetes.project-planton.org/v1`
+- **API Version**: Still `kubernetes.openmcf.org/v1`
 - **Provider**: Still `kubernetes`
 - **Functionality**: Zero behavioral changes
 
@@ -438,13 +438,13 @@ find . -name "*.yaml" -type f -exec sed -i '' 's/kind: AltinityOperatorKubernete
 **Step 2**: Validate manifests
 
 ```bash
-project-planton validate --manifest your-manifest.yaml
+openmcf validate --manifest your-manifest.yaml
 ```
 
 **Step 3**: Deploy with new kind
 
 ```bash
-project-planton pulumi up --manifest your-manifest.yaml
+openmcf pulumi up --manifest your-manifest.yaml
 ```
 
 ### For SDK Users (Go Code Updates)
@@ -454,8 +454,8 @@ project-planton pulumi up --manifest your-manifest.yaml
 ```go
 // Replace in all Go files
 import (
-  - altinityoperatorkubernetesv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperatorkubernetes/v1"
-  + altinityoperatorv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/altinityoperator/v1"
+  - altinityoperatorkubernetesv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperatorkubernetes/v1"
+  + altinityoperatorv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/altinityoperator/v1"
 )
 ```
 
@@ -484,8 +484,8 @@ go mod tidy
 Update proto imports in any custom proto files:
 
 ```protobuf
-- import "org/project_planton/provider/kubernetes/addon/altinityoperatorkubernetes/v1/api.proto";
-+ import "org/project_planton/provider/kubernetes/addon/altinityoperator/v1/api.proto";
+- import "org/openmcf/provider/kubernetes/addon/altinityoperatorkubernetes/v1/api.proto";
++ import "org/openmcf/provider/kubernetes/addon/altinityoperator/v1/api.proto";
 ```
 
 Regenerate stubs:
@@ -496,13 +496,13 @@ buf generate
 
 ## Related Work
 
-This refactoring is part of a broader initiative to improve naming consistency across Project Planton's Kubernetes addon operators:
+This refactoring is part of a broader initiative to improve naming consistency across OpenMCF's Kubernetes addon operators:
 
 ### Pattern Established
 
 This change establishes the pattern for addon operators:
 - ✅ **Directory**: `provider/kubernetes/addon/{operatorname}/`
-- ✅ **Package**: `org.project_planton.provider.kubernetes.addon.{operatorname}.v1`
+- ✅ **Package**: `org.openmcf.provider.kubernetes.addon.{operatorname}.v1`
 - ✅ **Kind**: `{OperatorName}` (no "Kubernetes" suffix)
 - ✅ **Message**: `{OperatorName}`, `{OperatorName}Spec`, etc.
 

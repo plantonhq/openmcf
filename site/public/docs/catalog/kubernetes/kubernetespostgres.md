@@ -334,7 +334,7 @@ A successful v1 API is defined by what it **omits**:
 Single replica, no backups, small storage. Uses all defaults.
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: PostgresKubernetes
 metadata:
   name: dev-db
@@ -349,7 +349,7 @@ spec:
 Two replicas for high availability, daily backups to Cloudflare R2.
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: PostgresKubernetes
 metadata:
   name: staging-db
@@ -380,7 +380,7 @@ spec:
 Three replicas, production-grade resources, restoring from an existing backup to a specific point in time.
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: PostgresKubernetes
 metadata:
   name: prod-db-restored
