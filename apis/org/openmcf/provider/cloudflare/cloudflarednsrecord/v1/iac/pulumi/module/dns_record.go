@@ -9,30 +9,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// recordTypeToString converts the proto enum to the Cloudflare API string.
-func recordTypeToString(recordType cloudflarednsrecordv1.CloudflareDnsRecordSpec_RecordType) string {
-	switch recordType {
-	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_A:
-		return "A"
-	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_AAAA:
-		return "AAAA"
-	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_CNAME:
-		return "CNAME"
-	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_MX:
-		return "MX"
-	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_TXT:
-		return "TXT"
-	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_SRV:
-		return "SRV"
-	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_NS:
-		return "NS"
-	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_CAA:
-		return "CAA"
-	default:
-		return "A" // Default fallback
-	}
-}
-
 // dnsRecord provisions the Cloudflare DNS record and exports outputs.
 func dnsRecord(
 	ctx *pulumi.Context,
@@ -40,7 +16,6 @@ func dnsRecord(
 	cloudflareProvider *cloudflare.Provider,
 ) (*cloudflare.DnsRecord, error) {
 	spec := locals.CloudflareDnsRecord.Spec
-	recordTypeStr := recordTypeToString(spec.Type)
 
 	// Determine TTL (1 = automatic, or specified value).
 	ttl := float64(1)
@@ -58,7 +33,7 @@ func dnsRecord(
 	recordArgs := &cloudflare.DnsRecordArgs{
 		ZoneId:  pulumi.String(zoneId),
 		Name:    pulumi.String(spec.Name),
-		Type:    pulumi.String(recordTypeStr),
+		Type:    pulumi.String(spec.Type.String()),
 		Content: pulumi.String(spec.Value),
 		Proxied: pulumi.Bool(spec.Proxied),
 		Ttl:     pulumi.Float64(ttl),
@@ -89,7 +64,7 @@ func dnsRecord(
 	// Export required outputs.
 	ctx.Export(OpRecordId, createdRecord.ID())
 	ctx.Export(OpHostname, createdRecord.Name)
-	ctx.Export(OpRecordType, pulumi.String(recordTypeStr))
+	ctx.Export(OpRecordType, pulumi.String(spec.Type.String()))
 	ctx.Export(OpProxied, createdRecord.Proxied)
 
 	return createdRecord, nil
