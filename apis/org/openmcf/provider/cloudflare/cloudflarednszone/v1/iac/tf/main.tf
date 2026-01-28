@@ -30,4 +30,3 @@ resource "cloudflare_zone_settings_override" "main" {
     # the proxied state explicitly when creating each DNS record.
   }
 }
-

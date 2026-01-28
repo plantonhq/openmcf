@@ -23,28 +23,28 @@ const (
 )
 
 // Available Cloudflare zone plan options.
-type CloudflareDnsZonePlan int32
+type CloudflareDnsZoneSpec_Plan int32
 
 const (
 	// Free plan (default).
-	CloudflareDnsZonePlan_FREE CloudflareDnsZonePlan = 0
+	CloudflareDnsZoneSpec_FREE CloudflareDnsZoneSpec_Plan = 0
 	// Pro plan.
-	CloudflareDnsZonePlan_PRO CloudflareDnsZonePlan = 1
+	CloudflareDnsZoneSpec_PRO CloudflareDnsZoneSpec_Plan = 1
 	// Business plan.
-	CloudflareDnsZonePlan_BUSINESS CloudflareDnsZonePlan = 2
+	CloudflareDnsZoneSpec_BUSINESS CloudflareDnsZoneSpec_Plan = 2
 	// Enterprise plan.
-	CloudflareDnsZonePlan_ENTERPRISE CloudflareDnsZonePlan = 3
+	CloudflareDnsZoneSpec_ENTERPRISE CloudflareDnsZoneSpec_Plan = 3
 )
 
-// Enum value maps for CloudflareDnsZonePlan.
+// Enum value maps for CloudflareDnsZoneSpec_Plan.
 var (
-	CloudflareDnsZonePlan_name = map[int32]string{
+	CloudflareDnsZoneSpec_Plan_name = map[int32]string{
 		0: "FREE",
 		1: "PRO",
 		2: "BUSINESS",
 		3: "ENTERPRISE",
 	}
-	CloudflareDnsZonePlan_value = map[string]int32{
+	CloudflareDnsZoneSpec_Plan_value = map[string]int32{
 		"FREE":       0,
 		"PRO":        1,
 		"BUSINESS":   2,
@@ -52,31 +52,109 @@ var (
 	}
 )
 
-func (x CloudflareDnsZonePlan) Enum() *CloudflareDnsZonePlan {
-	p := new(CloudflareDnsZonePlan)
+func (x CloudflareDnsZoneSpec_Plan) Enum() *CloudflareDnsZoneSpec_Plan {
+	p := new(CloudflareDnsZoneSpec_Plan)
 	*p = x
 	return p
 }
 
-func (x CloudflareDnsZonePlan) String() string {
+func (x CloudflareDnsZoneSpec_Plan) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (CloudflareDnsZonePlan) Descriptor() protoreflect.EnumDescriptor {
+func (CloudflareDnsZoneSpec_Plan) Descriptor() protoreflect.EnumDescriptor {
 	return file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (CloudflareDnsZonePlan) Type() protoreflect.EnumType {
+func (CloudflareDnsZoneSpec_Plan) Type() protoreflect.EnumType {
 	return &file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_enumTypes[0]
 }
 
-func (x CloudflareDnsZonePlan) Number() protoreflect.EnumNumber {
+func (x CloudflareDnsZoneSpec_Plan) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use CloudflareDnsZonePlan.Descriptor instead.
-func (CloudflareDnsZonePlan) EnumDescriptor() ([]byte, []int) {
-	return file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use CloudflareDnsZoneSpec_Plan.Descriptor instead.
+func (CloudflareDnsZoneSpec_Plan) EnumDescriptor() ([]byte, []int) {
+	return file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDescGZIP(), []int{0, 0}
+}
+
+// Supported DNS record types.
+// Using UPPERCASE as per DNS standard conventions.
+type CloudflareDnsZoneRecord_RecordType int32
+
+const (
+	// Unspecified record type (invalid).
+	CloudflareDnsZoneRecord_record_type_unspecified CloudflareDnsZoneRecord_RecordType = 0
+	// IPv4 address record.
+	CloudflareDnsZoneRecord_A CloudflareDnsZoneRecord_RecordType = 1
+	// IPv6 address record.
+	CloudflareDnsZoneRecord_AAAA CloudflareDnsZoneRecord_RecordType = 2
+	// Canonical name (alias) record.
+	CloudflareDnsZoneRecord_CNAME CloudflareDnsZoneRecord_RecordType = 3
+	// Mail exchange record.
+	CloudflareDnsZoneRecord_MX CloudflareDnsZoneRecord_RecordType = 4
+	// Text record (SPF, DKIM, verification, etc.).
+	CloudflareDnsZoneRecord_TXT CloudflareDnsZoneRecord_RecordType = 5
+	// Service locator record.
+	CloudflareDnsZoneRecord_SRV CloudflareDnsZoneRecord_RecordType = 6
+	// Nameserver record.
+	CloudflareDnsZoneRecord_NS CloudflareDnsZoneRecord_RecordType = 7
+	// Certificate Authority Authorization record.
+	CloudflareDnsZoneRecord_CAA CloudflareDnsZoneRecord_RecordType = 8
+)
+
+// Enum value maps for CloudflareDnsZoneRecord_RecordType.
+var (
+	CloudflareDnsZoneRecord_RecordType_name = map[int32]string{
+		0: "record_type_unspecified",
+		1: "A",
+		2: "AAAA",
+		3: "CNAME",
+		4: "MX",
+		5: "TXT",
+		6: "SRV",
+		7: "NS",
+		8: "CAA",
+	}
+	CloudflareDnsZoneRecord_RecordType_value = map[string]int32{
+		"record_type_unspecified": 0,
+		"A":                       1,
+		"AAAA":                    2,
+		"CNAME":                   3,
+		"MX":                      4,
+		"TXT":                     5,
+		"SRV":                     6,
+		"NS":                      7,
+		"CAA":                     8,
+	}
+)
+
+func (x CloudflareDnsZoneRecord_RecordType) Enum() *CloudflareDnsZoneRecord_RecordType {
+	p := new(CloudflareDnsZoneRecord_RecordType)
+	*p = x
+	return p
+}
+
+func (x CloudflareDnsZoneRecord_RecordType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CloudflareDnsZoneRecord_RecordType) Descriptor() protoreflect.EnumDescriptor {
+	return file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (CloudflareDnsZoneRecord_RecordType) Type() protoreflect.EnumType {
+	return &file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_enumTypes[1]
+}
+
+func (x CloudflareDnsZoneRecord_RecordType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CloudflareDnsZoneRecord_RecordType.Descriptor instead.
+func (CloudflareDnsZoneRecord_RecordType) EnumDescriptor() ([]byte, []int) {
+	return file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDescGZIP(), []int{1, 0}
 }
 
 // **CloudflareDnsZoneSpec** defines the configuration for creating a Cloudflare DNS Zone.
@@ -90,15 +168,18 @@ type CloudflareDnsZoneSpec struct {
 	AccountId string `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	// The subscription plan for the zone (e.g., free, pro, business, enterprise).
 	// Defaults to the Free plan if unspecified.
-	Plan CloudflareDnsZonePlan `protobuf:"varint,3,opt,name=plan,proto3,enum=org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZonePlan" json:"plan,omitempty"`
+	Plan CloudflareDnsZoneSpec_Plan `protobuf:"varint,3,opt,name=plan,proto3,enum=org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec_Plan" json:"plan,omitempty"`
 	// Indicates if the zone is created in a paused state (DNS-only mode with no security or performance features).
 	// If true, the zone will not receive Cloudflare's proxy/CDN services. Defaults to false.
 	Paused bool `protobuf:"varint,4,opt,name=paused,proto3" json:"paused,omitempty"`
 	// If true, new DNS records in this zone will default to being proxied (orange-cloud) through Cloudflare.
 	// Defaults to false.
 	DefaultProxied bool `protobuf:"varint,5,opt,name=default_proxied,json=defaultProxied,proto3" json:"default_proxied,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// DNS records to create in this zone.
+	// This allows managing DNS records as part of the zone configuration.
+	Records       []*CloudflareDnsZoneRecord `protobuf:"bytes,6,rep,name=records,proto3" json:"records,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CloudflareDnsZoneSpec) Reset() {
@@ -145,11 +226,11 @@ func (x *CloudflareDnsZoneSpec) GetAccountId() string {
 	return ""
 }
 
-func (x *CloudflareDnsZoneSpec) GetPlan() CloudflareDnsZonePlan {
+func (x *CloudflareDnsZoneSpec) GetPlan() CloudflareDnsZoneSpec_Plan {
 	if x != nil {
 		return x.Plan
 	}
-	return CloudflareDnsZonePlan_FREE
+	return CloudflareDnsZoneSpec_FREE
 }
 
 func (x *CloudflareDnsZoneSpec) GetPaused() bool {
@@ -166,25 +247,177 @@ func (x *CloudflareDnsZoneSpec) GetDefaultProxied() bool {
 	return false
 }
 
+func (x *CloudflareDnsZoneSpec) GetRecords() []*CloudflareDnsZoneRecord {
+	if x != nil {
+		return x.Records
+	}
+	return nil
+}
+
+// CloudflareDnsZoneRecord defines the configuration for a DNS record within a Cloudflare zone.
+// This message supports creating individual DNS records with common record types.
+type CloudflareDnsZoneRecord struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The name of the DNS record (e.g., "www", "api", "@" for root).
+	// Use "@" to create a record at the zone apex (root domain).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The type of DNS record to create.
+	Type CloudflareDnsZoneRecord_RecordType `protobuf:"varint,2,opt,name=type,proto3,enum=org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneRecord_RecordType" json:"type,omitempty"`
+	// The value/target of the DNS record.
+	// For A records: IPv4 address (e.g., "192.0.2.1")
+	// For AAAA records: IPv6 address (e.g., "2001:db8::1")
+	// For CNAME records: target hostname (e.g., "example.com")
+	// For MX records: mail server hostname (e.g., "mail.example.com")
+	// For TXT records: text value (e.g., "v=spf1 include:_spf.google.com ~all")
+	Value string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	// Whether the record is proxied through Cloudflare (orange cloud).
+	// When true: traffic flows through Cloudflare's CDN/WAF (hides origin IP).
+	// When false: DNS-only resolution (grey cloud, reveals origin IP).
+	// Only applicable to A, AAAA, and CNAME records.
+	// Defaults to false.
+	Proxied bool `protobuf:"varint,4,opt,name=proxied,proto3" json:"proxied,omitempty"`
+	// Time to live (TTL) for the DNS record in seconds.
+	// Set to 1 for automatic TTL (recommended for proxied records).
+	// Valid values: 1 (auto), or 60-86400 seconds.
+	// Defaults to 1 (automatic).
+	Ttl int32 `protobuf:"varint,5,opt,name=ttl,proto3" json:"ttl,omitempty"`
+	// Priority for MX and SRV records.
+	// Lower values indicate higher priority.
+	// Required for MX records, optional for SRV records.
+	// Range: 0-65535.
+	Priority int32 `protobuf:"varint,6,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Optional comment/note for the DNS record.
+	// Useful for documenting the purpose of the record.
+	// Maximum 100 characters.
+	Comment       string `protobuf:"bytes,7,opt,name=comment,proto3" json:"comment,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareDnsZoneRecord) Reset() {
+	*x = CloudflareDnsZoneRecord{}
+	mi := &file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareDnsZoneRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareDnsZoneRecord) ProtoMessage() {}
+
+func (x *CloudflareDnsZoneRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareDnsZoneRecord.ProtoReflect.Descriptor instead.
+func (*CloudflareDnsZoneRecord) Descriptor() ([]byte, []int) {
+	return file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CloudflareDnsZoneRecord) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareDnsZoneRecord) GetType() CloudflareDnsZoneRecord_RecordType {
+	if x != nil {
+		return x.Type
+	}
+	return CloudflareDnsZoneRecord_record_type_unspecified
+}
+
+func (x *CloudflareDnsZoneRecord) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *CloudflareDnsZoneRecord) GetProxied() bool {
+	if x != nil {
+		return x.Proxied
+	}
+	return false
+}
+
+func (x *CloudflareDnsZoneRecord) GetTtl() int32 {
+	if x != nil {
+		return x.Ttl
+	}
+	return 0
+}
+
+func (x *CloudflareDnsZoneRecord) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *CloudflareDnsZoneRecord) GetComment() string {
+	if x != nil {
+		return x.Comment
+	}
+	return ""
+}
+
 var File_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto protoreflect.FileDescriptor
 
 const file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?org/openmcf/provider/cloudflare/cloudflarednszone/v1/spec.proto\x124org.openmcf.provider.cloudflare.cloudflarednszone.v1\x1a\x1bbuf/validate/validate.proto\"\xb3\x03\n" +
+	"?org/openmcf/provider/cloudflare/cloudflarednszone/v1/spec.proto\x124org.openmcf.provider.cloudflare.cloudflarednszone.v1\x1a\x1bbuf/validate/validate.proto\"\xda\x04\n" +
 	"\x15CloudflareDnsZoneSpec\x12\xd0\x01\n" +
 	"\tzone_name\x18\x01 \x01(\tB\xb2\x01\xbaH\xae\x01\xba\x01\xa7\x01\n" +
 	"\tzone_name\x125zone_name must be a valid fully qualified domain name\x1acthis.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)$')\xc8\x01\x01R\bzoneName\x12%\n" +
 	"\n" +
-	"account_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\taccountId\x12_\n" +
-	"\x04plan\x18\x03 \x01(\x0e2K.org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZonePlanR\x04plan\x12\x16\n" +
+	"account_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\taccountId\x12d\n" +
+	"\x04plan\x18\x03 \x01(\x0e2P.org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec.PlanR\x04plan\x12\x16\n" +
 	"\x06paused\x18\x04 \x01(\bR\x06paused\x12'\n" +
-	"\x0fdefault_proxied\x18\x05 \x01(\bR\x0edefaultProxied*H\n" +
-	"\x15CloudflareDnsZonePlan\x12\b\n" +
+	"\x0fdefault_proxied\x18\x05 \x01(\bR\x0edefaultProxied\x12g\n" +
+	"\arecords\x18\x06 \x03(\v2M.org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneRecordR\arecords\"7\n" +
+	"\x04Plan\x12\b\n" +
 	"\x04FREE\x10\x00\x12\a\n" +
 	"\x03PRO\x10\x01\x12\f\n" +
 	"\bBUSINESS\x10\x02\x12\x0e\n" +
 	"\n" +
-	"ENTERPRISE\x10\x03B\xa8\x03\n" +
+	"ENTERPRISE\x10\x03\"\xe8\b\n" +
+	"\x17CloudflareDnsZoneRecord\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xd9\x01\n" +
+	"\x04type\x18\x02 \x01(\x0e2X.org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneRecord.RecordTypeBk\xbaHh\xba\x01]\n" +
+	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x1c\n" +
+	"\x05value\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12\x18\n" +
+	"\aproxied\x18\x04 \x01(\bR\aproxied\x12\xa0\x01\n" +
+	"\x03ttl\x18\x05 \x01(\x05B\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"\x0fttl.valid_range\x129ttl must be 1 (automatic) or between 60 and 86400 seconds\x1a7this == 0 || this == 1 || (this >= 60 && this <= 86400)R\x03ttl\x12z\n" +
+	"\bpriority\x18\x06 \x01(\x05B^\xbaH[\xba\x01X\n" +
+	"\x14priority.valid_range\x12$priority must be between 0 and 65535\x1a\x1athis >= 0 && this <= 65535R\bpriority\x12o\n" +
+	"\acomment\x18\a \x01(\tBU\xbaHR\xba\x01O\n" +
+	"\x12comment.max_length\x12&comment must not exceed 100 characters\x1a\x11size(this) <= 100R\acomment\"p\n" +
+	"\n" +
+	"RecordType\x12\x1b\n" +
+	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
+	"\x01A\x10\x01\x12\b\n" +
+	"\x04AAAA\x10\x02\x12\t\n" +
+	"\x05CNAME\x10\x03\x12\x06\n" +
+	"\x02MX\x10\x04\x12\a\n" +
+	"\x03TXT\x10\x05\x12\a\n" +
+	"\x03SRV\x10\x06\x12\x06\n" +
+	"\x02NS\x10\a\x12\a\n" +
+	"\x03CAA\x10\b:\x9a\x02\xbaH\x96\x02\x1a\xa6\x01\n" +
+	"'record.proxied_only_for_supported_types\x126proxied can only be true for A, AAAA, or CNAME records\x1aC!this.proxied || this.type == 1 || this.type == 2 || this.type == 3\x1ak\n" +
+	"\x1frecord.priority_required_for_mx\x12#priority is required for MX records\x1a#this.type != 4 || this.priority > 0B\xa8\x03\n" +
 	"8com.org.openmcf.provider.cloudflare.cloudflarednszone.v1B\tSpecProtoP\x01Zjgithub.com/plantonhq/openmcf/apis/org/openmcf/provider/cloudflare/cloudflarednszone/v1;cloudflarednszonev1\xa2\x02\x05OOPCC\xaa\x024Org.Openmcf.Provider.Cloudflare.Cloudflarednszone.V1\xca\x024Org\\Openmcf\\Provider\\Cloudflare\\Cloudflarednszone\\V1\xe2\x02@Org\\Openmcf\\Provider\\Cloudflare\\Cloudflarednszone\\V1\\GPBMetadata\xea\x029Org::Openmcf::Provider::Cloudflare::Cloudflarednszone::V1b\x06proto3"
 
 var (
@@ -199,19 +432,23 @@ func file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDes
 	return file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDescData
 }
 
-var file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_goTypes = []any{
-	(CloudflareDnsZonePlan)(0),    // 0: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZonePlan
-	(*CloudflareDnsZoneSpec)(nil), // 1: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec
+	(CloudflareDnsZoneSpec_Plan)(0),         // 0: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec.Plan
+	(CloudflareDnsZoneRecord_RecordType)(0), // 1: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneRecord.RecordType
+	(*CloudflareDnsZoneSpec)(nil),           // 2: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec
+	(*CloudflareDnsZoneRecord)(nil),         // 3: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneRecord
 }
 var file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_depIdxs = []int32{
-	0, // 0: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec.plan:type_name -> org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZonePlan
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // 0: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec.plan:type_name -> org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec.Plan
+	3, // 1: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneSpec.records:type_name -> org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneRecord
+	1, // 2: org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneRecord.type:type_name -> org.openmcf.provider.cloudflare.cloudflarednszone.v1.CloudflareDnsZoneRecord.RecordType
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_init() }
@@ -224,8 +461,8 @@ func file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_init()
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDesc), len(file_org_openmcf_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   1,
+			NumEnums:      2,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

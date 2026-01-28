@@ -4,12 +4,37 @@ package org.openmcf.provider.gcp.gcpdnsrecord.v1;
 
 import "buf/validate/validate.proto";
 import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
-import "org/openmcf/shared/networking/enums/dnsrecordtype/dns_record_type.proto";
 import "org/openmcf/shared/options/options.proto";
 
 // GcpDnsRecordSpec defines the configuration for creating a DNS record in a Google Cloud DNS Managed Zone.
 // This component creates individual DNS records (A, AAAA, CNAME, MX, TXT, etc.) within an existing zone.
 message GcpDnsRecordSpec {
+  // Supported DNS record types for GCP Cloud DNS.
+  enum RecordType {
+    // Unspecified record type (invalid).
+    record_type_unspecified = 0;
+    // IPv4 address record.
+    A = 1;
+    // IPv6 address record.
+    AAAA = 2;
+    // Canonical name (alias) record.
+    CNAME = 3;
+    // Mail exchange record.
+    MX = 4;
+    // Text record (SPF, DKIM, verification, etc.).
+    TXT = 5;
+    // Service locator record.
+    SRV = 6;
+    // Nameserver record.
+    NS = 7;
+    // Pointer record (reverse DNS).
+    PTR = 8;
+    // Certificate Authority Authorization record.
+    CAA = 9;
+    // Start of Authority record.
+    SOA = 10;
+  }
+
   // The ID of the GCP project where the Managed Zone exists.
   // This is used to locate the DNS zone where the record will be created.
   org.openmcf.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
@@ -29,12 +54,12 @@ message GcpDnsRecordSpec {
 
   // The DNS record type to create.
   // Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA.
-  org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType record_type = 3 [
+  RecordType type = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).cel = {
-      id: "record_type.not_unspecified"
-      message: "record_type must be specified (cannot be unspecified)"
+      id: "type.not_unspecified"
+      message: "type must be specified (cannot be record_type_unspecified)"
       expression: "this != 0"
     }
   ];

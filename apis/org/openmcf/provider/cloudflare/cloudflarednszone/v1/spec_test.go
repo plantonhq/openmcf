@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("CloudflareDnsZoneSpec Custom Validation Tests", func() 
 					Spec: &CloudflareDnsZoneSpec{
 						ZoneName:       "example.com",
 						AccountId:      "test-account-123",
-						Plan:           CloudflareDnsZonePlan_PRO,
+						Plan:           CloudflareDnsZoneSpec_PRO,
 						Paused:         false,
 						DefaultProxied: true,
 					},
@@ -64,7 +64,7 @@ var _ = ginkgo.Describe("CloudflareDnsZoneSpec Custom Validation Tests", func() 
 					Spec: &CloudflareDnsZoneSpec{
 						ZoneName:  "free-example.com",
 						AccountId: "test-account-123",
-						Plan:      CloudflareDnsZonePlan_FREE,
+						Plan:      CloudflareDnsZoneSpec_FREE,
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -81,7 +81,7 @@ var _ = ginkgo.Describe("CloudflareDnsZoneSpec Custom Validation Tests", func() 
 					Spec: &CloudflareDnsZoneSpec{
 						ZoneName:  "business.example.com",
 						AccountId: "test-account-123",
-						Plan:      CloudflareDnsZonePlan_BUSINESS,
+						Plan:      CloudflareDnsZoneSpec_BUSINESS,
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -98,7 +98,7 @@ var _ = ginkgo.Describe("CloudflareDnsZoneSpec Custom Validation Tests", func() 
 					Spec: &CloudflareDnsZoneSpec{
 						ZoneName:  "enterprise.example.com",
 						AccountId: "test-account-123",
-						Plan:      CloudflareDnsZonePlan_ENTERPRISE,
+						Plan:      CloudflareDnsZoneSpec_ENTERPRISE,
 					},
 				}
 				err := protovalidate.Validate(input)

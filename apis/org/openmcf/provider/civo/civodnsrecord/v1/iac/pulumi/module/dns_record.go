@@ -9,28 +9,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// recordTypeToString converts the proto enum to the Civo API string.
-func recordTypeToString(recordType civodnsrecordv1.CivoDnsRecordType) string {
-	switch recordType {
-	case civodnsrecordv1.CivoDnsRecordType_A:
-		return "A"
-	case civodnsrecordv1.CivoDnsRecordType_AAAA:
-		return "AAAA"
-	case civodnsrecordv1.CivoDnsRecordType_CNAME:
-		return "CNAME"
-	case civodnsrecordv1.CivoDnsRecordType_MX:
-		return "MX"
-	case civodnsrecordv1.CivoDnsRecordType_TXT:
-		return "TXT"
-	case civodnsrecordv1.CivoDnsRecordType_SRV:
-		return "SRV"
-	case civodnsrecordv1.CivoDnsRecordType_NS:
-		return "NS"
-	default:
-		return "A" // Default fallback
-	}
-}
-
 // dnsRecord provisions the Civo DNS record and exports outputs.
 func dnsRecord(
 	ctx *pulumi.Context,
@@ -38,7 +16,6 @@ func dnsRecord(
 	civoProvider *civo.Provider,
 ) (*civo.DnsDomainRecord, error) {
 	spec := locals.CivoDnsRecord.Spec
-	recordTypeStr := recordTypeToString(spec.Type)
 
 	// Determine TTL (default to 3600 if not specified).
 	ttl := 3600
@@ -50,14 +27,14 @@ func dnsRecord(
 	recordArgs := &civo.DnsDomainRecordArgs{
 		DomainId: pulumi.String(locals.ZoneId),
 		Name:     pulumi.String(spec.Name),
-		Type:     pulumi.String(recordTypeStr),
+		Type:     pulumi.String(spec.Type.String()),
 		Value:    pulumi.String(spec.Value),
 		Ttl:      pulumi.Int(ttl),
 	}
 
 	// Set priority for MX/SRV records.
-	if spec.Type == civodnsrecordv1.CivoDnsRecordType_MX ||
-		spec.Type == civodnsrecordv1.CivoDnsRecordType_SRV {
+	if spec.Type == civodnsrecordv1.CivoDnsRecordSpec_MX ||
+		spec.Type == civodnsrecordv1.CivoDnsRecordSpec_SRV {
 		recordArgs.Priority = pulumi.Int(int(spec.Priority))
 	}
 
@@ -75,7 +52,7 @@ func dnsRecord(
 	// Export required outputs.
 	ctx.Export(OpRecordId, createdRecord.ID())
 	ctx.Export(OpHostname, createdRecord.Name)
-	ctx.Export(OpRecordType, pulumi.String(recordTypeStr))
+	ctx.Export(OpRecordType, pulumi.String(spec.Type.String()))
 	ctx.Export(OpAccountId, createdRecord.AccountId)
 
 	return createdRecord, nil

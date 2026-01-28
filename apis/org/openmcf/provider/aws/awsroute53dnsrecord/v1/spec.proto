@@ -4,7 +4,6 @@ package org.openmcf.provider.aws.awsroute53dnsrecord.v1;
 
 import "buf/validate/validate.proto";
 import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
-import "org/openmcf/shared/networking/enums/dnsrecordtype/dns_record_type.proto";
 
 // AwsRoute53DnsRecordSpec defines the configuration for creating a DNS record in an AWS Route53 hosted zone.
 // This component supports creating individual DNS records with common record types, alias records,
@@ -14,6 +13,28 @@ import "org/openmcf/shared/networking/enums/dnsrecordtype/dns_record_type.proto"
 // Alias records are Route53's killer feature - they allow pointing zone apex domains to AWS resources
 // without CNAME restrictions and with no query charges.
 message AwsRoute53DnsRecordSpec {
+  // Supported DNS record types for AWS Route53.
+  enum RecordType {
+    // Unspecified record type (invalid).
+    record_type_unspecified = 0;
+    // IPv4 address record.
+    A = 1;
+    // IPv6 address record.
+    AAAA = 2;
+    // Canonical name (alias) record.
+    CNAME = 3;
+    // Mail exchange record.
+    MX = 4;
+    // Text record (SPF, DKIM, verification, etc.).
+    TXT = 5;
+    // Service locator record.
+    SRV = 6;
+    // Nameserver record.
+    NS = 7;
+    // Certificate Authority Authorization record.
+    CAA = 8;
+  }
+
   // The Route53 hosted zone ID where this DNS record will be created.
   // Can be provided as a literal value or referenced from an AwsRoute53Zone resource.
   //
@@ -43,12 +64,12 @@ message AwsRoute53DnsRecordSpec {
 
   // The type of DNS record to create.
   // Common types: A (IPv4), AAAA (IPv6), CNAME, MX, TXT, NS, SRV, CAA
-  org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType type = 3 [
+  RecordType type = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).cel = {
       id: "type.not_unspecified"
-      message: "type must be specified (cannot be unspecified)"
+      message: "type must be specified (cannot be record_type_unspecified)"
       expression: "this != 0"
     }
   ];

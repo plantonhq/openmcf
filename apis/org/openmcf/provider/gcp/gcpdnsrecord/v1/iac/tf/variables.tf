@@ -29,7 +29,7 @@ variable "spec" {
 
     # The DNS record type to create.
     # Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA.
-    record_type = string
+    type = string
 
     # The fully qualified domain name for this record.
     # Must end with a trailing dot to indicate FQDN.

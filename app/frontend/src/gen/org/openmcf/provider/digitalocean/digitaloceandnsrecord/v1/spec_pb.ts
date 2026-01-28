@@ -2,13 +2,11 @@
 // @generated from file org/openmcf/provider/digitalocean/digitaloceandnsrecord/v1/spec.proto (package org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../../../../buf/validate/validate_pb";
 import type { StringValueOrRef } from "../../../../shared/foreignkey/v1/foreign_key_pb";
 import { file_org_openmcf_shared_foreignkey_v1_foreign_key } from "../../../../shared/foreignkey/v1/foreign_key_pb";
-import type { DnsRecordType } from "../../../../shared/networking/enums/dnsrecordtype/dns_record_type_pb";
-import { file_org_openmcf_shared_networking_enums_dnsrecordtype_dns_record_type } from "../../../../shared/networking/enums/dnsrecordtype/dns_record_type_pb";
 import { file_org_openmcf_shared_options_options } from "../../../../shared/options/options_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -16,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file org/openmcf/provider/digitalocean/digitaloceandnsrecord/v1/spec.proto.
  */
 export const file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec: GenFile = /*@__PURE__*/
-  fileDesc("CkVvcmcvb3Blbm1jZi9wcm92aWRlci9kaWdpdGFsb2NlYW4vZGlnaXRhbG9jZWFuZG5zcmVjb3JkL3YxL3NwZWMucHJvdG8SOm9yZy5vcGVubWNmLnByb3ZpZGVyLmRpZ2l0YWxvY2Vhbi5kaWdpdGFsb2NlYW5kbnNyZWNvcmQudjEizAYKGURpZ2l0YWxPY2VhbkRuc1JlY29yZFNwZWMSawoGZG9tYWluGAEgASgLMjIub3JnLm9wZW5tY2Yuc2hhcmVkLmZvcmVpZ25rZXkudjEuU3RyaW5nVmFsdWVPclJlZkInukgDyAEBiNRhtAmS1GEYc3RhdHVzLm91dHB1dHMuem9uZV9uYW1lEhQKBG5hbWUYAiABKAlCBrpIA8gBARKvAQoEdHlwZRgDIAEoDjJALm9yZy5vcGVubWNmLnNoYXJlZC5uZXR3b3JraW5nLmVudW1zLmRuc3JlY29yZHR5cGUuRG5zUmVjb3JkVHlwZUJfukhcugFRChR0eXBlLm5vdF91bnNwZWNpZmllZBIudHlwZSBtdXN0IGJlIHNwZWNpZmllZCAoY2Fubm90IGJlIHVuc3BlY2lmaWVkKRoJdGhpcyAhPSAwyAEBggECEAESSQoFdmFsdWUYBCABKAsyMi5vcmcub3Blbm1jZi5zaGFyZWQuZm9yZWlnbmtleS52MS5TdHJpbmdWYWx1ZU9yUmVmQga6SAPIAQESLQoLdHRsX3NlY29uZHMYBSABKAVCE7pICBoGGICjBSgeiqYdBDE4MDBIAIgBARIdCghwcmlvcml0eRgGIAEoBUILukgIGgYY//8DKAASGwoGd2VpZ2h0GAcgASgFQgu6SAgaBhj//wMoABIZCgRwb3J0GAggASgFQgu6SAgaBhj//wMoABIZCgVmbGFncxgJIAEoBUIKukgHGgUY/wEoABILCgN0YWcYCiABKAk68AG6SOwBGmUKGnNwZWMucG9ydF9yZXF1aXJlZF9mb3Jfc3J2EiZwb3J0IG11c3QgYmUgc3BlY2lmaWVkIGZvciBTUlYgcmVjb3JkcxofdGhpcy50eXBlICE9IDkgfHwgdGhpcy5wb3J0ID4gMBqCAQoZc3BlYy50YWdfcmVxdWlyZWRfZm9yX2NhYRJCdGFnIG11c3QgYmUgc3BlY2lmaWVkIGZvciBDQUEgcmVjb3JkcyAoaXNzdWUsIGlzc3Vld2lsZCwgb3IgaW9kZWYpGiF0aGlzLnR5cGUgIT0gMTEgfHwgdGhpcy50YWcgIT0gJydCDgoMX3R0bF9zZWNvbmRzQtADCj5jb20ub3JnLm9wZW5tY2YucHJvdmlkZXIuZGlnaXRhbG9jZWFuLmRpZ2l0YWxvY2VhbmRuc3JlY29yZC52MUIJU3BlY1Byb3RvUAFadGdpdGh1Yi5jb20vcGxhbnRvbmhxL29wZW5tY2YvYXBpcy9vcmcvb3Blbm1jZi9wcm92aWRlci9kaWdpdGFsb2NlYW4vZGlnaXRhbG9jZWFuZG5zcmVjb3JkL3YxO2RpZ2l0YWxvY2VhbmRuc3JlY29yZHYxogIFT09QRESqAjpPcmcuT3Blbm1jZi5Qcm92aWRlci5EaWdpdGFsb2NlYW4uRGlnaXRhbG9jZWFuZG5zcmVjb3JkLlYxygI6T3JnXE9wZW5tY2ZcUHJvdmlkZXJcRGlnaXRhbG9jZWFuXERpZ2l0YWxvY2VhbmRuc3JlY29yZFxWMeICRk9yZ1xPcGVubWNmXFByb3ZpZGVyXERpZ2l0YWxvY2VhblxEaWdpdGFsb2NlYW5kbnNyZWNvcmRcVjFcR1BCTWV0YWRhdGHqAj9Pcmc6Ok9wZW5tY2Y6OlByb3ZpZGVyOjpEaWdpdGFsb2NlYW46OkRpZ2l0YWxvY2VhbmRuc3JlY29yZDo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_org_openmcf_shared_foreignkey_v1_foreign_key, file_org_openmcf_shared_networking_enums_dnsrecordtype_dns_record_type, file_org_openmcf_shared_options_options]);
+  fileDesc("CkVvcmcvb3Blbm1jZi9wcm92aWRlci9kaWdpdGFsb2NlYW4vZGlnaXRhbG9jZWFuZG5zcmVjb3JkL3YxL3NwZWMucHJvdG8SOm9yZy5vcGVubWNmLnByb3ZpZGVyLmRpZ2l0YWxvY2Vhbi5kaWdpdGFsb2NlYW5kbnNyZWNvcmQudjEi6QcKGURpZ2l0YWxPY2VhbkRuc1JlY29yZFNwZWMSawoGZG9tYWluGAEgASgLMjIub3JnLm9wZW5tY2Yuc2hhcmVkLmZvcmVpZ25rZXkudjEuU3RyaW5nVmFsdWVPclJlZkInukgDyAEBiNRhtAmS1GEYc3RhdHVzLm91dHB1dHMuem9uZV9uYW1lEhQKBG5hbWUYAiABKAlCBrpIA8gBARLbAQoEdHlwZRgDIAEoDjJgLm9yZy5vcGVubWNmLnByb3ZpZGVyLmRpZ2l0YWxvY2Vhbi5kaWdpdGFsb2NlYW5kbnNyZWNvcmQudjEuRGlnaXRhbE9jZWFuRG5zUmVjb3JkU3BlYy5SZWNvcmRUeXBlQmu6SGi6AV0KFHR5cGUubm90X3Vuc3BlY2lmaWVkEjp0eXBlIG11c3QgYmUgc3BlY2lmaWVkIChjYW5ub3QgYmUgcmVjb3JkX3R5cGVfdW5zcGVjaWZpZWQpGgl0aGlzICE9IDDIAQGCAQIQARJJCgV2YWx1ZRgEIAEoCzIyLm9yZy5vcGVubWNmLnNoYXJlZC5mb3JlaWdua2V5LnYxLlN0cmluZ1ZhbHVlT3JSZWZCBrpIA8gBARItCgt0dGxfc2Vjb25kcxgFIAEoBUITukgIGgYYgKMFKB6Kph0EMTgwMEgAiAEBEh0KCHByaW9yaXR5GAYgASgFQgu6SAgaBhj//wMoABIbCgZ3ZWlnaHQYByABKAVCC7pICBoGGP//AygAEhkKBHBvcnQYCCABKAVCC7pICBoGGP//AygAEhkKBWZsYWdzGAkgASgFQgq6SAcaBRj/ASgAEgsKA3RhZxgKIAEoCSJwCgpSZWNvcmRUeXBlEhsKF3JlY29yZF90eXBlX3Vuc3BlY2lmaWVkEAASBQoBQRABEggKBEFBQUEQAhIJCgVDTkFNRRADEgYKAk1YEAQSBwoDVFhUEAUSBwoDU1JWEAYSBgoCTlMQBxIHCgNDQUEQCDrvAbpI6wEaZQoac3BlYy5wb3J0X3JlcXVpcmVkX2Zvcl9zcnYSJnBvcnQgbXVzdCBiZSBzcGVjaWZpZWQgZm9yIFNSViByZWNvcmRzGh90aGlzLnR5cGUgIT0gNiB8fCB0aGlzLnBvcnQgPiAwGoEBChlzcGVjLnRhZ19yZXF1aXJlZF9mb3JfY2FhEkJ0YWcgbXVzdCBiZSBzcGVjaWZpZWQgZm9yIENBQSByZWNvcmRzIChpc3N1ZSwgaXNzdWV3aWxkLCBvciBpb2RlZikaIHRoaXMudHlwZSAhPSA4IHx8IHRoaXMudGFnICE9ICcnQg4KDF90dGxfc2Vjb25kc0LQAwo+Y29tLm9yZy5vcGVubWNmLnByb3ZpZGVyLmRpZ2l0YWxvY2Vhbi5kaWdpdGFsb2NlYW5kbnNyZWNvcmQudjFCCVNwZWNQcm90b1ABWnRnaXRodWIuY29tL3BsYW50b25ocS9vcGVubWNmL2FwaXMvb3JnL29wZW5tY2YvcHJvdmlkZXIvZGlnaXRhbG9jZWFuL2RpZ2l0YWxvY2VhbmRuc3JlY29yZC92MTtkaWdpdGFsb2NlYW5kbnNyZWNvcmR2MaICBU9PUEREqgI6T3JnLk9wZW5tY2YuUHJvdmlkZXIuRGlnaXRhbG9jZWFuLkRpZ2l0YWxvY2VhbmRuc3JlY29yZC5WMcoCOk9yZ1xPcGVubWNmXFByb3ZpZGVyXERpZ2l0YWxvY2VhblxEaWdpdGFsb2NlYW5kbnNyZWNvcmRcVjHiAkZPcmdcT3Blbm1jZlxQcm92aWRlclxEaWdpdGFsb2NlYW5cRGlnaXRhbG9jZWFuZG5zcmVjb3JkXFYxXEdQQk1ldGFkYXRh6gI/T3JnOjpPcGVubWNmOjpQcm92aWRlcjo6RGlnaXRhbG9jZWFuOjpEaWdpdGFsb2NlYW5kbnNyZWNvcmQ6OlYxYgZwcm90bzM", [file_buf_validate_validate, file_org_openmcf_shared_foreignkey_v1_foreign_key, file_org_openmcf_shared_options_options]);
 
 /**
  * DigitalOceanDnsRecordSpec defines the configuration for creating a DNS record in a DigitalOcean DNS zone (domain).
@@ -51,9 +49,9 @@ export type DigitalOceanDnsRecordSpec = Message<"org.openmcf.provider.digitaloce
    * The type of DNS record to create.
    * Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, CAA.
    *
-   * @generated from field: org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType type = 3;
+   * @generated from field: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.RecordType type = 3;
    */
-  type: DnsRecordType;
+  type: DigitalOceanDnsRecordSpec_RecordType;
 
   /**
    * The value/target of the DNS record.
@@ -145,4 +143,80 @@ export type DigitalOceanDnsRecordSpec = Message<"org.openmcf.provider.digitaloce
  */
 export const DigitalOceanDnsRecordSpecSchema: GenMessage<DigitalOceanDnsRecordSpec> = /*@__PURE__*/
   messageDesc(file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec, 0);
+
+/**
+ * Supported DNS record types for DigitalOcean.
+ *
+ * @generated from enum org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.RecordType
+ */
+export enum DigitalOceanDnsRecordSpec_RecordType {
+  /**
+   * Unspecified record type (invalid).
+   *
+   * @generated from enum value: record_type_unspecified = 0;
+   */
+  record_type_unspecified = 0,
+
+  /**
+   * IPv4 address record.
+   *
+   * @generated from enum value: A = 1;
+   */
+  A = 1,
+
+  /**
+   * IPv6 address record.
+   *
+   * @generated from enum value: AAAA = 2;
+   */
+  AAAA = 2,
+
+  /**
+   * Canonical name (alias) record.
+   *
+   * @generated from enum value: CNAME = 3;
+   */
+  CNAME = 3,
+
+  /**
+   * Mail exchange record.
+   *
+   * @generated from enum value: MX = 4;
+   */
+  MX = 4,
+
+  /**
+   * Text record (SPF, DKIM, verification, etc.).
+   *
+   * @generated from enum value: TXT = 5;
+   */
+  TXT = 5,
+
+  /**
+   * Service locator record.
+   *
+   * @generated from enum value: SRV = 6;
+   */
+  SRV = 6,
+
+  /**
+   * Nameserver record.
+   *
+   * @generated from enum value: NS = 7;
+   */
+  NS = 7,
+
+  /**
+   * Certificate Authority Authorization record.
+   *
+   * @generated from enum value: CAA = 8;
+   */
+  CAA = 8,
+}
+
+/**
+ * Describes the enum org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.RecordType.
+ */
+export const DigitalOceanDnsRecordSpec_RecordTypeSchema: GenEnum<DigitalOceanDnsRecordSpec_RecordType> = /*@__PURE__*/
+  enumDesc(file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec, 0, 0);
 

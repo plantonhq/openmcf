@@ -1,0 +1,60 @@
+package module
+
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+	cloudflarednszonev1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/cloudflare/cloudflarednszone/v1"
+	"github.com/pulumi/pulumi-cloudflare/sdk/v6/go/cloudflare"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// records creates DNS records within the zone.
+func records(
+	ctx *pulumi.Context,
+	zone *cloudflare.Zone,
+	recordsList []*cloudflarednszonev1.CloudflareDnsZoneRecord,
+	cloudflareProvider *cloudflare.Provider,
+) error {
+	for _, record := range recordsList {
+		resourceName := fmt.Sprintf("%s-%s", record.Name, record.Type.String())
+
+		recordArgs := &cloudflare.RecordArgs{
+			ZoneId:  zone.ID(),
+			Name:    pulumi.String(record.Name),
+			Type:    pulumi.String(record.Type.String()),
+			Content: pulumi.String(record.Value),
+			Ttl:     pulumi.Float64(float64(record.Ttl)),
+		}
+
+		// proxied is only applicable to A, AAAA, and CNAME records
+		if record.Type == cloudflarednszonev1.CloudflareDnsZoneRecord_A ||
+			record.Type == cloudflarednszonev1.CloudflareDnsZoneRecord_AAAA ||
+			record.Type == cloudflarednszonev1.CloudflareDnsZoneRecord_CNAME {
+			recordArgs.Proxied = pulumi.Bool(record.Proxied)
+		}
+
+		// priority is only used for MX and SRV records
+		if record.Type == cloudflarednszonev1.CloudflareDnsZoneRecord_MX ||
+			record.Type == cloudflarednszonev1.CloudflareDnsZoneRecord_SRV {
+			recordArgs.Priority = pulumi.Float64Ptr(float64(record.Priority))
+		}
+
+		// comment for the DNS record
+		if record.Comment != "" {
+			recordArgs.Comment = pulumi.String(record.Comment)
+		}
+
+		_, err := cloudflare.NewRecord(
+			ctx,
+			resourceName,
+			recordArgs,
+			pulumi.Provider(cloudflareProvider),
+			pulumi.DependsOn([]pulumi.Resource{zone}),
+		)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create dns record %s", resourceName)
+		}
+	}
+	return nil
+}

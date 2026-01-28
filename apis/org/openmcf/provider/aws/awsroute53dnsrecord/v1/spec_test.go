@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
 	foreignkeyv1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/openmcf/apis/org/openmcf/shared/networking/enums/dnsrecordtype"
 )
 
 func TestAwsRoute53DnsRecordSpec(t *testing.T) {
@@ -38,7 +37,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 					},
@@ -57,7 +56,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_AAAA,
+						Type:   AwsRoute53DnsRecordSpec_AAAA,
 						Ttl:    300,
 						Values: []string{"2001:db8::1"},
 					},
@@ -76,7 +75,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "app.example.com",
-						Type:   dnsrecordtype.DnsRecordType_CNAME,
+						Type:   AwsRoute53DnsRecordSpec_CNAME,
 						Ttl:    300,
 						Values: []string{"target.example.com"},
 					},
@@ -95,7 +94,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "example.com",
-						Type:   dnsrecordtype.DnsRecordType_MX,
+						Type:   AwsRoute53DnsRecordSpec_MX,
 						Ttl:    3600,
 						Values: []string{"10 mail1.example.com", "20 mail2.example.com"},
 					},
@@ -114,7 +113,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "example.com",
-						Type:   dnsrecordtype.DnsRecordType_TXT,
+						Type:   AwsRoute53DnsRecordSpec_TXT,
 						Ttl:    300,
 						Values: []string{"v=spf1 include:_spf.google.com ~all"},
 					},
@@ -133,7 +132,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1", "192.0.2.2", "192.0.2.3"},
 					},
@@ -152,7 +151,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						AliasTarget: &AwsRoute53AliasTarget{
 							DnsName: stringValue("d1234abcd.cloudfront.net"),
 							ZoneId:  stringValue("Z2FDTNDATAQYW2"),
@@ -173,7 +172,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "api.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						AliasTarget: &AwsRoute53AliasTarget{
 							DnsName:              stringValue("my-alb-1234567890.us-east-1.elb.amazonaws.com"),
 							ZoneId:               stringValue("Z35SXDOTRQ7X7K"),
@@ -195,7 +194,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "*.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 					},
@@ -214,7 +213,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 						RoutingPolicy: &AwsRoute53RoutingPolicy{
@@ -241,7 +240,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "api.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    60,
 						Values: []string{"192.0.2.1"},
 						RoutingPolicy: &AwsRoute53RoutingPolicy{
@@ -268,7 +267,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    60,
 						Values: []string{"192.0.2.1"},
 						RoutingPolicy: &AwsRoute53RoutingPolicy{
@@ -296,7 +295,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 						RoutingPolicy: &AwsRoute53RoutingPolicy{
@@ -323,7 +322,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 						RoutingPolicy: &AwsRoute53RoutingPolicy{
@@ -350,7 +349,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "example.com",
-						Type:   dnsrecordtype.DnsRecordType_CAA,
+						Type:   AwsRoute53DnsRecordSpec_CAA,
 						Ttl:    3600,
 						Values: []string{"0 issue \"letsencrypt.org\""},
 					},
@@ -373,7 +372,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					},
 					Spec: &AwsRoute53DnsRecordSpec{
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 					},
@@ -391,7 +390,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					},
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 					},
@@ -410,7 +409,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_unspecified,
+						Type:   AwsRoute53DnsRecordSpec_record_type_unspecified,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 					},
@@ -429,7 +428,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 					},
 				}
@@ -447,7 +446,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 						AliasTarget: &AwsRoute53AliasTarget{
@@ -470,7 +469,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    700000,
 						Values: []string{"192.0.2.1"},
 					},
@@ -489,7 +488,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						AliasTarget: &AwsRoute53AliasTarget{
 							ZoneId: stringValue("Z2FDTNDATAQYW2"),
 						},
@@ -509,7 +508,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						AliasTarget: &AwsRoute53AliasTarget{
 							DnsName: stringValue("d1234abcd.cloudfront.net"),
 						},
@@ -529,7 +528,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 						RoutingPolicy: &AwsRoute53RoutingPolicy{
@@ -555,7 +554,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 						RoutingPolicy: &AwsRoute53RoutingPolicy{
@@ -580,7 +579,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "www.example.com",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 						RoutingPolicy: &AwsRoute53RoutingPolicy{
@@ -607,7 +606,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func(
 					Spec: &AwsRoute53DnsRecordSpec{
 						ZoneId: stringValue("Z1234567890ABC"),
 						Name:   "invalid name with spaces",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   AwsRoute53DnsRecordSpec_A,
 						Ttl:    300,
 						Values: []string{"192.0.2.1"},
 					},

@@ -8,6 +8,7 @@ package cloudflarednsrecordv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,33 +25,33 @@ const (
 
 // Supported DNS record types.
 // Using UPPERCASE as per DNS standard conventions.
-type CloudflareDnsRecordType int32
+type CloudflareDnsRecordSpec_RecordType int32
 
 const (
 	// Unspecified record type (invalid).
-	CloudflareDnsRecordType_dns_record_type_unspecified CloudflareDnsRecordType = 0
+	CloudflareDnsRecordSpec_record_type_unspecified CloudflareDnsRecordSpec_RecordType = 0
 	// IPv4 address record.
-	CloudflareDnsRecordType_A CloudflareDnsRecordType = 1
+	CloudflareDnsRecordSpec_A CloudflareDnsRecordSpec_RecordType = 1
 	// IPv6 address record.
-	CloudflareDnsRecordType_AAAA CloudflareDnsRecordType = 2
+	CloudflareDnsRecordSpec_AAAA CloudflareDnsRecordSpec_RecordType = 2
 	// Canonical name (alias) record.
-	CloudflareDnsRecordType_CNAME CloudflareDnsRecordType = 3
+	CloudflareDnsRecordSpec_CNAME CloudflareDnsRecordSpec_RecordType = 3
 	// Mail exchange record.
-	CloudflareDnsRecordType_MX CloudflareDnsRecordType = 4
+	CloudflareDnsRecordSpec_MX CloudflareDnsRecordSpec_RecordType = 4
 	// Text record (SPF, DKIM, verification, etc.).
-	CloudflareDnsRecordType_TXT CloudflareDnsRecordType = 5
+	CloudflareDnsRecordSpec_TXT CloudflareDnsRecordSpec_RecordType = 5
 	// Service locator record.
-	CloudflareDnsRecordType_SRV CloudflareDnsRecordType = 6
+	CloudflareDnsRecordSpec_SRV CloudflareDnsRecordSpec_RecordType = 6
 	// Nameserver record.
-	CloudflareDnsRecordType_NS CloudflareDnsRecordType = 7
+	CloudflareDnsRecordSpec_NS CloudflareDnsRecordSpec_RecordType = 7
 	// Certificate Authority Authorization record.
-	CloudflareDnsRecordType_CAA CloudflareDnsRecordType = 8
+	CloudflareDnsRecordSpec_CAA CloudflareDnsRecordSpec_RecordType = 8
 )
 
-// Enum value maps for CloudflareDnsRecordType.
+// Enum value maps for CloudflareDnsRecordSpec_RecordType.
 var (
-	CloudflareDnsRecordType_name = map[int32]string{
-		0: "dns_record_type_unspecified",
+	CloudflareDnsRecordSpec_RecordType_name = map[int32]string{
+		0: "record_type_unspecified",
 		1: "A",
 		2: "AAAA",
 		3: "CNAME",
@@ -60,44 +61,44 @@ var (
 		7: "NS",
 		8: "CAA",
 	}
-	CloudflareDnsRecordType_value = map[string]int32{
-		"dns_record_type_unspecified": 0,
-		"A":                           1,
-		"AAAA":                        2,
-		"CNAME":                       3,
-		"MX":                          4,
-		"TXT":                         5,
-		"SRV":                         6,
-		"NS":                          7,
-		"CAA":                         8,
+	CloudflareDnsRecordSpec_RecordType_value = map[string]int32{
+		"record_type_unspecified": 0,
+		"A":                       1,
+		"AAAA":                    2,
+		"CNAME":                   3,
+		"MX":                      4,
+		"TXT":                     5,
+		"SRV":                     6,
+		"NS":                      7,
+		"CAA":                     8,
 	}
 )
 
-func (x CloudflareDnsRecordType) Enum() *CloudflareDnsRecordType {
-	p := new(CloudflareDnsRecordType)
+func (x CloudflareDnsRecordSpec_RecordType) Enum() *CloudflareDnsRecordSpec_RecordType {
+	p := new(CloudflareDnsRecordSpec_RecordType)
 	*p = x
 	return p
 }
 
-func (x CloudflareDnsRecordType) String() string {
+func (x CloudflareDnsRecordSpec_RecordType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (CloudflareDnsRecordType) Descriptor() protoreflect.EnumDescriptor {
+func (CloudflareDnsRecordSpec_RecordType) Descriptor() protoreflect.EnumDescriptor {
 	return file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (CloudflareDnsRecordType) Type() protoreflect.EnumType {
+func (CloudflareDnsRecordSpec_RecordType) Type() protoreflect.EnumType {
 	return &file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_enumTypes[0]
 }
 
-func (x CloudflareDnsRecordType) Number() protoreflect.EnumNumber {
+func (x CloudflareDnsRecordSpec_RecordType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use CloudflareDnsRecordType.Descriptor instead.
-func (CloudflareDnsRecordType) EnumDescriptor() ([]byte, []int) {
-	return file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use CloudflareDnsRecordSpec_RecordType.Descriptor instead.
+func (CloudflareDnsRecordSpec_RecordType) EnumDescriptor() ([]byte, []int) {
+	return file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_rawDescGZIP(), []int{0, 0}
 }
 
 // CloudflareDnsRecordSpec defines the configuration for creating a DNS record in a Cloudflare zone.
@@ -105,13 +106,14 @@ func (CloudflareDnsRecordType) EnumDescriptor() ([]byte, []int) {
 type CloudflareDnsRecordSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Cloudflare Zone ID where this DNS record will be created.
-	// Can be obtained from CloudflareDnsZone outputs or from the Cloudflare dashboard.
-	ZoneId string `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
+	// Can be provided as a literal string or as a reference to a CloudflareDnsZone resource.
+	// When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+	ZoneId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	// The name of the DNS record (e.g., "www", "api", "@" for root).
 	// Use "@" to create a record at the zone apex (root domain).
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of DNS record to create.
-	Type CloudflareDnsRecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordType" json:"type,omitempty"`
+	Type CloudflareDnsRecordSpec_RecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec_RecordType" json:"type,omitempty"`
 	// The value/target of the DNS record.
 	// For A records: IPv4 address (e.g., "192.0.2.1")
 	// For AAAA records: IPv6 address (e.g., "2001:db8::1")
@@ -173,11 +175,11 @@ func (*CloudflareDnsRecordSpec) Descriptor() ([]byte, []int) {
 	return file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *CloudflareDnsRecordSpec) GetZoneId() string {
+func (x *CloudflareDnsRecordSpec) GetZoneId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ZoneId
 	}
-	return ""
+	return nil
 }
 
 func (x *CloudflareDnsRecordSpec) GetName() string {
@@ -187,11 +189,11 @@ func (x *CloudflareDnsRecordSpec) GetName() string {
 	return ""
 }
 
-func (x *CloudflareDnsRecordSpec) GetType() CloudflareDnsRecordType {
+func (x *CloudflareDnsRecordSpec) GetType() CloudflareDnsRecordSpec_RecordType {
 	if x != nil {
 		return x.Type
 	}
-	return CloudflareDnsRecordType_dns_record_type_unspecified
+	return CloudflareDnsRecordSpec_record_type_unspecified
 }
 
 func (x *CloudflareDnsRecordSpec) GetValue() string {
@@ -233,12 +235,12 @@ var File_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto proto
 
 const file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Aorg/openmcf/provider/cloudflare/cloudflarednsrecord/v1/spec.proto\x126org.openmcf.provider.cloudflare.cloudflarednsrecord.v1\x1a\x1bbuf/validate/validate.proto\"\x8e\b\n" +
-	"\x17CloudflareDnsRecordSpec\x12\x1f\n" +
-	"\azone_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06zoneId\x12\x1a\n" +
-	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xd4\x01\n" +
-	"\x04type\x18\x03 \x01(\x0e2O.org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordTypeBo\xbaHl\xba\x01a\n" +
-	"\x14type.not_unspecified\x12>type must be specified (cannot be dns_record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x1c\n" +
+	"Aorg/openmcf/provider/cloudflare/cloudflarednsrecord/v1/spec.proto\x126org.openmcf.provider.cloudflare.cloudflarednsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\"\xda\t\n" +
+	"\x17CloudflareDnsRecordSpec\x12r\n" +
+	"\azone_id\x18\x01 \x01(\v22.org.openmcf.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1a\n" +
+	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xdb\x01\n" +
+	"\x04type\x18\x03 \x01(\x0e2Z.org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
+	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x1c\n" +
 	"\x05value\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12\x18\n" +
 	"\aproxied\x18\x05 \x01(\bR\aproxied\x12\xa0\x01\n" +
 	"\x03ttl\x18\x06 \x01(\x05B\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
@@ -246,11 +248,10 @@ const file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_raw
 	"\bpriority\x18\a \x01(\x05B^\xbaH[\xba\x01X\n" +
 	"\x14priority.valid_range\x12$priority must be between 0 and 65535\x1a\x1athis >= 0 && this <= 65535R\bpriority\x12o\n" +
 	"\acomment\x18\b \x01(\tBU\xbaHR\xba\x01O\n" +
-	"\x12comment.max_length\x12&comment must not exceed 100 characters\x1a\x11size(this) <= 100R\acomment:\x96\x02\xbaH\x92\x02\x1a\xa4\x01\n" +
-	"%spec.proxied_only_for_supported_types\x126proxied can only be true for A, AAAA, or CNAME records\x1aC!this.proxied || this.type == 1 || this.type == 2 || this.type == 3\x1ai\n" +
-	"\x1dspec.priority_required_for_mx\x12#priority is required for MX records\x1a#this.type != 4 || this.priority > 0*\x81\x01\n" +
-	"\x17CloudflareDnsRecordType\x12\x1f\n" +
-	"\x1bdns_record_type_unspecified\x10\x00\x12\x05\n" +
+	"\x12comment.max_length\x12&comment must not exceed 100 characters\x1a\x11size(this) <= 100R\acomment\"p\n" +
+	"\n" +
+	"RecordType\x12\x1b\n" +
+	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
 	"\x01A\x10\x01\x12\b\n" +
 	"\x04AAAA\x10\x02\x12\t\n" +
 	"\x05CNAME\x10\x03\x12\x06\n" +
@@ -258,7 +259,9 @@ const file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_raw
 	"\x03TXT\x10\x05\x12\a\n" +
 	"\x03SRV\x10\x06\x12\x06\n" +
 	"\x02NS\x10\a\x12\a\n" +
-	"\x03CAA\x10\bB\xb6\x03\n" +
+	"\x03CAA\x10\b:\x96\x02\xbaH\x92\x02\x1a\xa4\x01\n" +
+	"%spec.proxied_only_for_supported_types\x126proxied can only be true for A, AAAA, or CNAME records\x1aC!this.proxied || this.type == 1 || this.type == 2 || this.type == 3\x1ai\n" +
+	"\x1dspec.priority_required_for_mx\x12#priority is required for MX records\x1a#this.type != 4 || this.priority > 0B\xb6\x03\n" +
 	":com.org.openmcf.provider.cloudflare.cloudflarednsrecord.v1B\tSpecProtoP\x01Zngithub.com/plantonhq/openmcf/apis/org/openmcf/provider/cloudflare/cloudflarednsrecord/v1;cloudflarednsrecordv1\xa2\x02\x05OOPCC\xaa\x026Org.Openmcf.Provider.Cloudflare.Cloudflarednsrecord.V1\xca\x026Org\\Openmcf\\Provider\\Cloudflare\\Cloudflarednsrecord\\V1\xe2\x02BOrg\\Openmcf\\Provider\\Cloudflare\\Cloudflarednsrecord\\V1\\GPBMetadata\xea\x02;Org::Openmcf::Provider::Cloudflare::Cloudflarednsrecord::V1b\x06proto3"
 
 var (
@@ -276,16 +279,18 @@ func file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_rawD
 var file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_goTypes = []any{
-	(CloudflareDnsRecordType)(0),    // 0: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordType
-	(*CloudflareDnsRecordSpec)(nil), // 1: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec
+	(CloudflareDnsRecordSpec_RecordType)(0), // 0: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.RecordType
+	(*CloudflareDnsRecordSpec)(nil),         // 1: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec
+	(*v1.StringValueOrRef)(nil),             // 2: org.openmcf.shared.foreignkey.v1.StringValueOrRef
 }
 var file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_depIdxs = []int32{
-	0, // 0: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.type:type_name -> org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordType
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.zone_id:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
+	0, // 1: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.type:type_name -> org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.RecordType
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_init() }

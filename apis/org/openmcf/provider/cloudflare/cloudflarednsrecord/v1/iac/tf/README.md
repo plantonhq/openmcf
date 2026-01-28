@@ -28,7 +28,7 @@ module "dns_record" {
   }
 
   spec = {
-    zone_id = "your-zone-id"
+    zone_id = { value = "your-zone-id" }
     name    = "www"
     type    = "A"
     value   = "192.0.2.1"
@@ -62,7 +62,7 @@ module "dns_record" {
 
 | Name | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `zone_id` | string | Yes | - | Cloudflare Zone ID |
+| `zone_id` | object | Yes | - | Cloudflare Zone ID (StringValueOrRef) |
 | `name` | string | Yes | - | DNS record name |
 | `type` | string | Yes | - | Record type (A, AAAA, CNAME, MX, TXT, SRV, NS, CAA) |
 | `value` | string | Yes | - | Record value |
@@ -86,7 +86,7 @@ module "dns_record" {
 
 ```hcl
 spec = {
-  zone_id = "abc123"
+  zone_id = { value = "abc123" }
   name    = "www"
   type    = "A"
   value   = "192.0.2.1"
@@ -98,7 +98,7 @@ spec = {
 
 ```hcl
 spec = {
-  zone_id  = "abc123"
+  zone_id  = { value = "abc123" }
   name     = "@"
   type     = "MX"
   value    = "mail.example.com"
@@ -110,7 +110,7 @@ spec = {
 
 ```hcl
 spec = {
-  zone_id = "abc123"
+  zone_id = { value = "abc123" }
   name    = "@"
   type    = "TXT"
   value   = "v=spf1 include:_spf.google.com ~all"

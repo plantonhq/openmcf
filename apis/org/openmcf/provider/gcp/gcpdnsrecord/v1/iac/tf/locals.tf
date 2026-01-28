@@ -11,7 +11,7 @@ locals {
 
   # Extract managed zone from StringValueOrRef
   managed_zone = var.spec.managed_zone.value
-  record_type  = var.spec.record_type
+  record_type  = var.spec.type
   name         = var.spec.name
   values       = var.spec.values
   ttl_seconds  = var.spec.ttl_seconds

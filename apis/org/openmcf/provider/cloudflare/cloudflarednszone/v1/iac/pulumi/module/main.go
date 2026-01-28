@@ -22,7 +22,7 @@ func Resources(
 	}
 
 	// 3. Create the DNS zone.
-	if _, err := dnsZone(ctx, locals, cloudflareProvider); err != nil {
+	if _, err := zone(ctx, locals, cloudflareProvider); err != nil {
 		return errors.Wrap(err, "failed to create cloudflare dns zone")
 	}
 

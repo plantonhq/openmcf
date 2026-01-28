@@ -2,6 +2,34 @@
 
 Concrete, copy-and-paste examples for common Cloudflare DNS record deployment scenarios.
 
+## Zone ID Configuration
+
+The `zoneId` field supports two formats:
+
+### 1. Direct Value (String Literal)
+
+Provide the zone ID directly:
+
+```yaml
+spec:
+  zoneId: "abc123def456"
+```
+
+### 2. Reference to CloudflareDnsZone Resource
+
+Reference an existing CloudflareDnsZone resource by name:
+
+```yaml
+spec:
+  zoneId:
+    valueFrom:
+      name: my-dns-zone
+```
+
+This automatically resolves to `status.outputs.zone_id` of the referenced CloudflareDnsZone resource.
+
+---
+
 ## Table of Contents
 
 - [A Record (IPv4)](#a-record-ipv4)
@@ -45,6 +73,29 @@ planton apply -f www-a-record.yaml
 ```
 
 **Use Case:** Web servers, load balancers, any HTTP/HTTPS services.
+
+### A Record with Zone Reference
+
+Reference an existing CloudflareDnsZone instead of hardcoding the zone ID:
+
+```yaml
+apiVersion: cloudflare.openmcf.org/v1
+kind: CloudflareDnsRecord
+metadata:
+  name: www-a-record
+spec:
+  zoneId:
+    valueFrom:
+      name: example-com-zone
+  name: "www"
+  type: A
+  value: "192.0.2.1"
+  proxied: true
+  ttl: 1
+  comment: "Primary web server"
+```
+
+This approach is recommended when managing both the zone and records together, as it creates an implicit dependency and automatically resolves the zone ID.
 
 ---
 

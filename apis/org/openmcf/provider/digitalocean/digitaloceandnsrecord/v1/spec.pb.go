@@ -9,7 +9,6 @@ package digitaloceandnsrecordv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/openmcf/apis/org/openmcf/shared/networking/enums/dnsrecordtype"
 	_ "github.com/plantonhq/openmcf/apis/org/openmcf/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -24,6 +23,83 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+// Supported DNS record types for DigitalOcean.
+type DigitalOceanDnsRecordSpec_RecordType int32
+
+const (
+	// Unspecified record type (invalid).
+	DigitalOceanDnsRecordSpec_record_type_unspecified DigitalOceanDnsRecordSpec_RecordType = 0
+	// IPv4 address record.
+	DigitalOceanDnsRecordSpec_A DigitalOceanDnsRecordSpec_RecordType = 1
+	// IPv6 address record.
+	DigitalOceanDnsRecordSpec_AAAA DigitalOceanDnsRecordSpec_RecordType = 2
+	// Canonical name (alias) record.
+	DigitalOceanDnsRecordSpec_CNAME DigitalOceanDnsRecordSpec_RecordType = 3
+	// Mail exchange record.
+	DigitalOceanDnsRecordSpec_MX DigitalOceanDnsRecordSpec_RecordType = 4
+	// Text record (SPF, DKIM, verification, etc.).
+	DigitalOceanDnsRecordSpec_TXT DigitalOceanDnsRecordSpec_RecordType = 5
+	// Service locator record.
+	DigitalOceanDnsRecordSpec_SRV DigitalOceanDnsRecordSpec_RecordType = 6
+	// Nameserver record.
+	DigitalOceanDnsRecordSpec_NS DigitalOceanDnsRecordSpec_RecordType = 7
+	// Certificate Authority Authorization record.
+	DigitalOceanDnsRecordSpec_CAA DigitalOceanDnsRecordSpec_RecordType = 8
+)
+
+// Enum value maps for DigitalOceanDnsRecordSpec_RecordType.
+var (
+	DigitalOceanDnsRecordSpec_RecordType_name = map[int32]string{
+		0: "record_type_unspecified",
+		1: "A",
+		2: "AAAA",
+		3: "CNAME",
+		4: "MX",
+		5: "TXT",
+		6: "SRV",
+		7: "NS",
+		8: "CAA",
+	}
+	DigitalOceanDnsRecordSpec_RecordType_value = map[string]int32{
+		"record_type_unspecified": 0,
+		"A":                       1,
+		"AAAA":                    2,
+		"CNAME":                   3,
+		"MX":                      4,
+		"TXT":                     5,
+		"SRV":                     6,
+		"NS":                      7,
+		"CAA":                     8,
+	}
+)
+
+func (x DigitalOceanDnsRecordSpec_RecordType) Enum() *DigitalOceanDnsRecordSpec_RecordType {
+	p := new(DigitalOceanDnsRecordSpec_RecordType)
+	*p = x
+	return p
+}
+
+func (x DigitalOceanDnsRecordSpec_RecordType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DigitalOceanDnsRecordSpec_RecordType) Descriptor() protoreflect.EnumDescriptor {
+	return file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (DigitalOceanDnsRecordSpec_RecordType) Type() protoreflect.EnumType {
+	return &file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_enumTypes[0]
+}
+
+func (x DigitalOceanDnsRecordSpec_RecordType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DigitalOceanDnsRecordSpec_RecordType.Descriptor instead.
+func (DigitalOceanDnsRecordSpec_RecordType) EnumDescriptor() ([]byte, []int) {
+	return file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_rawDescGZIP(), []int{0, 0}
+}
 
 // DigitalOceanDnsRecordSpec defines the configuration for creating a DNS record in a DigitalOcean DNS zone (domain).
 // This component supports creating individual DNS records with common record types including A, AAAA, CNAME, MX, TXT, SRV, NS, and CAA.
@@ -43,7 +119,7 @@ type DigitalOceanDnsRecordSpec struct {
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of DNS record to create.
 	// Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, CAA.
-	Type dnsrecordtype.DnsRecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType" json:"type,omitempty"`
+	Type DigitalOceanDnsRecordSpec_RecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec_RecordType" json:"type,omitempty"`
 	// The value/target of the DNS record.
 	// This can be a direct value or a reference to another resource's output.
 	// Format depends on record type:
@@ -142,11 +218,11 @@ func (x *DigitalOceanDnsRecordSpec) GetName() string {
 	return ""
 }
 
-func (x *DigitalOceanDnsRecordSpec) GetType() dnsrecordtype.DnsRecordType {
+func (x *DigitalOceanDnsRecordSpec) GetType() DigitalOceanDnsRecordSpec_RecordType {
 	if x != nil {
 		return x.Type
 	}
-	return dnsrecordtype.DnsRecordType(0)
+	return DigitalOceanDnsRecordSpec_record_type_unspecified
 }
 
 func (x *DigitalOceanDnsRecordSpec) GetValue() *v1.StringValueOrRef {
@@ -202,12 +278,12 @@ var File_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto p
 
 const file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Eorg/openmcf/provider/digitalocean/digitaloceandnsrecord/v1/spec.proto\x12:org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\x1aGorg/openmcf/shared/networking/enums/dnsrecordtype/dns_record_type.proto\x1a(org/openmcf/shared/options/options.proto\"\x97\a\n" +
+	"Eorg/openmcf/provider/digitalocean/digitaloceandnsrecord/v1/spec.proto\x12:org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\x1a(org/openmcf/shared/options/options.proto\"\xb4\b\n" +
 	"\x19DigitalOceanDnsRecordSpec\x12s\n" +
 	"\x06domain\x18\x01 \x01(\v22.org.openmcf.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb4\t\x92\xd4a\x18status.outputs.zone_nameR\x06domain\x12\x1a\n" +
-	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xb5\x01\n" +
-	"\x04type\x18\x03 \x01(\x0e2@.org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordTypeB_\xbaH\\\xba\x01Q\n" +
-	"\x14type.not_unspecified\x12.type must be specified (cannot be unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12P\n" +
+	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xe1\x01\n" +
+	"\x04type\x18\x03 \x01(\x0e2`.org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
+	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12P\n" +
 	"\x05value\x18\x04 \x01(\v22.org.openmcf.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x05value\x129\n" +
 	"\vttl_seconds\x18\x05 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\x80\xa3\x05(\x1e\x8a\xa6\x1d\x041800H\x00R\n" +
 	"ttlSeconds\x88\x01\x01\x12'\n" +
@@ -217,9 +293,20 @@ const file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto
 	"\x05flags\x18\t \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xff\x01(\x00R\x05flags\x12\x10\n" +
 	"\x03tag\x18\n" +
-	" \x01(\tR\x03tag:\xf0\x01\xbaH\xec\x01\x1ae\n" +
-	"\x1aspec.port_required_for_srv\x12&port must be specified for SRV records\x1a\x1fthis.type != 9 || this.port > 0\x1a\x82\x01\n" +
-	"\x19spec.tag_required_for_caa\x12Btag must be specified for CAA records (issue, issuewild, or iodef)\x1a!this.type != 11 || this.tag != ''B\x0e\n" +
+	" \x01(\tR\x03tag\"p\n" +
+	"\n" +
+	"RecordType\x12\x1b\n" +
+	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
+	"\x01A\x10\x01\x12\b\n" +
+	"\x04AAAA\x10\x02\x12\t\n" +
+	"\x05CNAME\x10\x03\x12\x06\n" +
+	"\x02MX\x10\x04\x12\a\n" +
+	"\x03TXT\x10\x05\x12\a\n" +
+	"\x03SRV\x10\x06\x12\x06\n" +
+	"\x02NS\x10\a\x12\a\n" +
+	"\x03CAA\x10\b:\xef\x01\xbaH\xeb\x01\x1ae\n" +
+	"\x1aspec.port_required_for_srv\x12&port must be specified for SRV records\x1a\x1fthis.type != 6 || this.port > 0\x1a\x81\x01\n" +
+	"\x19spec.tag_required_for_caa\x12Btag must be specified for CAA records (issue, issuewild, or iodef)\x1a this.type != 8 || this.tag != ''B\x0e\n" +
 	"\f_ttl_secondsB\xd0\x03\n" +
 	">com.org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1B\tSpecProtoP\x01Ztgithub.com/plantonhq/openmcf/apis/org/openmcf/provider/digitalocean/digitaloceandnsrecord/v1;digitaloceandnsrecordv1\xa2\x02\x05OOPDD\xaa\x02:Org.Openmcf.Provider.Digitalocean.Digitaloceandnsrecord.V1\xca\x02:Org\\Openmcf\\Provider\\Digitalocean\\Digitaloceandnsrecord\\V1\xe2\x02FOrg\\Openmcf\\Provider\\Digitalocean\\Digitaloceandnsrecord\\V1\\GPBMetadata\xea\x02?Org::Openmcf::Provider::Digitalocean::Digitaloceandnsrecord::V1b\x06proto3"
 
@@ -235,16 +322,17 @@ func file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_
 	return file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_rawDescData
 }
 
+var file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_goTypes = []any{
-	(*DigitalOceanDnsRecordSpec)(nil), // 0: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec
-	(*v1.StringValueOrRef)(nil),       // 1: org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	(dnsrecordtype.DnsRecordType)(0),  // 2: org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType
+	(DigitalOceanDnsRecordSpec_RecordType)(0), // 0: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.RecordType
+	(*DigitalOceanDnsRecordSpec)(nil),         // 1: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec
+	(*v1.StringValueOrRef)(nil),               // 2: org.openmcf.shared.foreignkey.v1.StringValueOrRef
 }
 var file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_depIdxs = []int32{
-	1, // 0: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.domain:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.type:type_name -> org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType
-	1, // 2: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.value:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
+	2, // 0: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.domain:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
+	0, // 1: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.type:type_name -> org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.RecordType
+	2, // 2: org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.value:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -263,13 +351,14 @@ func file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_rawDesc), len(file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_goTypes,
 		DependencyIndexes: file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_depIdxs,
+		EnumInfos:         file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_enumTypes,
 		MessageInfos:      file_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto_msgTypes,
 	}.Build()
 	File_org_openmcf_provider_digitalocean_digitaloceandnsrecord_v1_spec_proto = out.File

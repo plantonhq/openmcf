@@ -28,15 +28,15 @@ locals {
   final_tags = merge(local.base_tags, local.org_tag, local.env_tag)
 
   # Record type checks
-  is_a_record     = var.spec.record_type == "A"
-  is_aaaa_record  = var.spec.record_type == "AAAA"
-  is_cname_record = var.spec.record_type == "CNAME"
-  is_mx_record    = var.spec.record_type == "MX"
-  is_txt_record   = var.spec.record_type == "TXT"
-  is_ns_record    = var.spec.record_type == "NS"
-  is_caa_record   = var.spec.record_type == "CAA"
-  is_srv_record   = var.spec.record_type == "SRV"
-  is_ptr_record   = var.spec.record_type == "PTR"
+  is_a_record     = var.spec.type == "A"
+  is_aaaa_record  = var.spec.type == "AAAA"
+  is_cname_record = var.spec.type == "CNAME"
+  is_mx_record    = var.spec.type == "MX"
+  is_txt_record   = var.spec.type == "TXT"
+  is_ns_record    = var.spec.type == "NS"
+  is_caa_record   = var.spec.type == "CAA"
+  is_srv_record   = var.spec.type == "SRV"
+  is_ptr_record   = var.spec.type == "PTR"
 
   # Compute FQDN for the record
   fqdn = var.spec.name == "@" ? var.spec.zone_name : "${var.spec.name}.${var.spec.zone_name}"

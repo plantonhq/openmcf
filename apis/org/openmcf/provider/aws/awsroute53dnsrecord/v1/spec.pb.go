@@ -9,7 +9,6 @@ package awsroute53dnsrecordv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/openmcf/apis/org/openmcf/shared/networking/enums/dnsrecordtype"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -23,6 +22,83 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+// Supported DNS record types for AWS Route53.
+type AwsRoute53DnsRecordSpec_RecordType int32
+
+const (
+	// Unspecified record type (invalid).
+	AwsRoute53DnsRecordSpec_record_type_unspecified AwsRoute53DnsRecordSpec_RecordType = 0
+	// IPv4 address record.
+	AwsRoute53DnsRecordSpec_A AwsRoute53DnsRecordSpec_RecordType = 1
+	// IPv6 address record.
+	AwsRoute53DnsRecordSpec_AAAA AwsRoute53DnsRecordSpec_RecordType = 2
+	// Canonical name (alias) record.
+	AwsRoute53DnsRecordSpec_CNAME AwsRoute53DnsRecordSpec_RecordType = 3
+	// Mail exchange record.
+	AwsRoute53DnsRecordSpec_MX AwsRoute53DnsRecordSpec_RecordType = 4
+	// Text record (SPF, DKIM, verification, etc.).
+	AwsRoute53DnsRecordSpec_TXT AwsRoute53DnsRecordSpec_RecordType = 5
+	// Service locator record.
+	AwsRoute53DnsRecordSpec_SRV AwsRoute53DnsRecordSpec_RecordType = 6
+	// Nameserver record.
+	AwsRoute53DnsRecordSpec_NS AwsRoute53DnsRecordSpec_RecordType = 7
+	// Certificate Authority Authorization record.
+	AwsRoute53DnsRecordSpec_CAA AwsRoute53DnsRecordSpec_RecordType = 8
+)
+
+// Enum value maps for AwsRoute53DnsRecordSpec_RecordType.
+var (
+	AwsRoute53DnsRecordSpec_RecordType_name = map[int32]string{
+		0: "record_type_unspecified",
+		1: "A",
+		2: "AAAA",
+		3: "CNAME",
+		4: "MX",
+		5: "TXT",
+		6: "SRV",
+		7: "NS",
+		8: "CAA",
+	}
+	AwsRoute53DnsRecordSpec_RecordType_value = map[string]int32{
+		"record_type_unspecified": 0,
+		"A":                       1,
+		"AAAA":                    2,
+		"CNAME":                   3,
+		"MX":                      4,
+		"TXT":                     5,
+		"SRV":                     6,
+		"NS":                      7,
+		"CAA":                     8,
+	}
+)
+
+func (x AwsRoute53DnsRecordSpec_RecordType) Enum() *AwsRoute53DnsRecordSpec_RecordType {
+	p := new(AwsRoute53DnsRecordSpec_RecordType)
+	*p = x
+	return p
+}
+
+func (x AwsRoute53DnsRecordSpec_RecordType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AwsRoute53DnsRecordSpec_RecordType) Descriptor() protoreflect.EnumDescriptor {
+	return file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AwsRoute53DnsRecordSpec_RecordType) Type() protoreflect.EnumType {
+	return &file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[0]
+}
+
+func (x AwsRoute53DnsRecordSpec_RecordType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AwsRoute53DnsRecordSpec_RecordType.Descriptor instead.
+func (AwsRoute53DnsRecordSpec_RecordType) EnumDescriptor() ([]byte, []int) {
+	return file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP(), []int{0, 0}
+}
 
 // Failover type enum
 type AwsRoute53FailoverPolicy_FailoverType int32
@@ -61,11 +137,11 @@ func (x AwsRoute53FailoverPolicy_FailoverType) String() string {
 }
 
 func (AwsRoute53FailoverPolicy_FailoverType) Descriptor() protoreflect.EnumDescriptor {
-	return file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[0].Descriptor()
+	return file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[1].Descriptor()
 }
 
 func (AwsRoute53FailoverPolicy_FailoverType) Type() protoreflect.EnumType {
-	return &file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[0]
+	return &file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes[1]
 }
 
 func (x AwsRoute53FailoverPolicy_FailoverType) Number() protoreflect.EnumNumber {
@@ -108,7 +184,7 @@ type AwsRoute53DnsRecordSpec struct {
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of DNS record to create.
 	// Common types: A (IPv4), AAAA (IPv6), CNAME, MX, TXT, NS, SRV, CAA
-	Type dnsrecordtype.DnsRecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType" json:"type,omitempty"`
+	Type AwsRoute53DnsRecordSpec_RecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec_RecordType" json:"type,omitempty"`
 	// Time to live (TTL) for the DNS record in seconds.
 	// TTL specifies how long DNS resolvers should cache the record.
 	// Common values:
@@ -206,11 +282,11 @@ func (x *AwsRoute53DnsRecordSpec) GetName() string {
 	return ""
 }
 
-func (x *AwsRoute53DnsRecordSpec) GetType() dnsrecordtype.DnsRecordType {
+func (x *AwsRoute53DnsRecordSpec) GetType() AwsRoute53DnsRecordSpec_RecordType {
 	if x != nil {
 		return x.Type
 	}
-	return dnsrecordtype.DnsRecordType(0)
+	return AwsRoute53DnsRecordSpec_record_type_unspecified
 }
 
 func (x *AwsRoute53DnsRecordSpec) GetTtl() int32 {
@@ -708,19 +784,30 @@ var File_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto protoreflect
 
 const file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	":org/openmcf/provider/aws/awsroute53dnsrecord/v1/spec.proto\x12/org.openmcf.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\x1aGorg/openmcf/shared/networking/enums/dnsrecordtype/dns_record_type.proto\"\x87\x0e\n" +
+	":org/openmcf/provider/aws/awsroute53dnsrecord/v1/spec.proto\x12/org.openmcf.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\"\x98\x0f\n" +
 	"\x17AwsRoute53DnsRecordSpec\x12r\n" +
 	"\azone_id\x18\x01 \x01(\v22.org.openmcf.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12h\n" +
-	"\x04name\x18\x02 \x01(\tBT\xbaHQ\xc8\x01\x01rL2J^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9\\-\\.]+)$R\x04name\x12\xb5\x01\n" +
-	"\x04type\x18\x03 \x01(\x0e2@.org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordTypeB_\xbaH\\\xba\x01Q\n" +
-	"\x14type.not_unspecified\x12.type must be specified (cannot be unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x8e\x01\n" +
+	"\x04name\x18\x02 \x01(\tBT\xbaHQ\xc8\x01\x01rL2J^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9\\-\\.]+)$R\x04name\x12\xd4\x01\n" +
+	"\x04type\x18\x03 \x01(\x0e2S.org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
+	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x8e\x01\n" +
 	"\x03ttl\x18\x04 \x01(\x05B|\xbaHy\xba\x01v\n" +
 	"\x0fttl.valid_range\x12Fttl must be 0 (for alias) or between 1 and 604800 seconds (1 week max)\x1a\x1bthis >= 0 && this <= 604800R\x03ttl\x12\x16\n" +
 	"\x06values\x18\x05 \x03(\tR\x06values\x12i\n" +
 	"\falias_target\x18\x06 \x01(\v2F.org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTargetR\valiasTarget\x12o\n" +
 	"\x0erouting_policy\x18\a \x01(\v2H.org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicyR\rroutingPolicy\x12&\n" +
 	"\x0fhealth_check_id\x18\b \x01(\tR\rhealthCheckId\x12%\n" +
-	"\x0eset_identifier\x18\t \x01(\tR\rsetIdentifier:\x81\a\xbaH\xfd\x06\x1a\x9e\x02\n" +
+	"\x0eset_identifier\x18\t \x01(\tR\rsetIdentifier\"p\n" +
+	"\n" +
+	"RecordType\x12\x1b\n" +
+	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
+	"\x01A\x10\x01\x12\b\n" +
+	"\x04AAAA\x10\x02\x12\t\n" +
+	"\x05CNAME\x10\x03\x12\x06\n" +
+	"\x02MX\x10\x04\x12\a\n" +
+	"\x03TXT\x10\x05\x12\a\n" +
+	"\x03SRV\x10\x06\x12\x06\n" +
+	"\x02NS\x10\a\x12\a\n" +
+	"\x03CAA\x10\b:\x81\a\xbaH\xfd\x06\x1a\x9e\x02\n" +
 	"\x1espec.values_or_alias_exclusive\x12Ivalues and alias_target are mutually exclusive - specify one or the other\x1a\xb0\x01size(this.values) == 0 || !has(this.alias_target) || (!has(this.alias_target.dns_name) && !has(this.alias_target.dns_name.value) && !has(this.alias_target.dns_name.value_from))\x1a\x80\x02\n" +
 	"\x1dspec.values_or_alias_required\x12/either values or alias_target must be specified\x1a\xad\x01size(this.values) > 0 || (has(this.alias_target) && has(this.alias_target.dns_name) && (has(this.alias_target.dns_name.value) || has(this.alias_target.dns_name.value_from)))\x1a\xd6\x02\n" +
 	"&spec.set_identifier_for_routing_policy\x12Yset_identifier is required when using weighted, latency, failover, or geolocation routing\x1a\xd0\x01!has(this.routing_policy) || !has(this.routing_policy.weighted) && !has(this.routing_policy.latency) && !has(this.routing_policy.failover) && !has(this.routing_policy.geolocation) || this.set_identifier != ''\"\xdd\x02\n" +
@@ -763,32 +850,32 @@ func file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescGZIP
 	return file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDescData
 }
 
-var file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_goTypes = []any{
-	(AwsRoute53FailoverPolicy_FailoverType)(0), // 0: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverType
-	(*AwsRoute53DnsRecordSpec)(nil),            // 1: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec
-	(*AwsRoute53AliasTarget)(nil),              // 2: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
-	(*AwsRoute53RoutingPolicy)(nil),            // 3: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
-	(*AwsRoute53WeightedPolicy)(nil),           // 4: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
-	(*AwsRoute53LatencyPolicy)(nil),            // 5: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
-	(*AwsRoute53FailoverPolicy)(nil),           // 6: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
-	(*AwsRoute53GeolocationPolicy)(nil),        // 7: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
-	(*v1.StringValueOrRef)(nil),                // 8: org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	(dnsrecordtype.DnsRecordType)(0),           // 9: org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType
+	(AwsRoute53DnsRecordSpec_RecordType)(0),    // 0: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.RecordType
+	(AwsRoute53FailoverPolicy_FailoverType)(0), // 1: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverType
+	(*AwsRoute53DnsRecordSpec)(nil),            // 2: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec
+	(*AwsRoute53AliasTarget)(nil),              // 3: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
+	(*AwsRoute53RoutingPolicy)(nil),            // 4: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
+	(*AwsRoute53WeightedPolicy)(nil),           // 5: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
+	(*AwsRoute53LatencyPolicy)(nil),            // 6: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
+	(*AwsRoute53FailoverPolicy)(nil),           // 7: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
+	(*AwsRoute53GeolocationPolicy)(nil),        // 8: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
+	(*v1.StringValueOrRef)(nil),                // 9: org.openmcf.shared.foreignkey.v1.StringValueOrRef
 }
 var file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_depIdxs = []int32{
-	8,  // 0: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.zone_id:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	9,  // 1: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.type:type_name -> org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType
-	2,  // 2: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.alias_target:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
-	3,  // 3: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.routing_policy:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
-	8,  // 4: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.dns_name:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	8,  // 5: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.zone_id:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	4,  // 6: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.weighted:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
-	5,  // 7: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.latency:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
-	6,  // 8: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.failover:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
-	7,  // 9: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.geolocation:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
-	0,  // 10: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.failover_type:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverType
+	9,  // 0: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.zone_id:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
+	0,  // 1: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.type:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.RecordType
+	3,  // 2: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.alias_target:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget
+	4,  // 3: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.routing_policy:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy
+	9,  // 4: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.dns_name:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
+	9,  // 5: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTarget.zone_id:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
+	5,  // 6: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.weighted:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicy
+	6,  // 7: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.latency:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53LatencyPolicy
+	7,  // 8: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.failover:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy
+	8,  // 9: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicy.geolocation:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53GeolocationPolicy
+	1,  // 10: org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.failover_type:type_name -> org.openmcf.provider.aws.awsroute53dnsrecord.v1.AwsRoute53FailoverPolicy.FailoverType
 	11, // [11:11] is the sub-list for method output_type
 	11, // [11:11] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
@@ -812,7 +899,7 @@ func file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc), len(file_org_openmcf_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,

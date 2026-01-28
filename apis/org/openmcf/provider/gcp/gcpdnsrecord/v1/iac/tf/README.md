@@ -25,7 +25,7 @@ module "dns_record" {
       value = "my-gcp-project"
     }
     managed_zone = "example-zone"
-    record_type  = "A"
+    type         = "A"
     name         = "www.example.com."
     values       = ["192.0.2.1"]
     ttl_seconds  = 300
@@ -53,7 +53,7 @@ module "dns_record" {
 | metadata | Resource metadata including name | object | yes |
 | spec.project_id | GCP project ID (StringValueOrRef) | object | yes |
 | spec.managed_zone | Name of the Cloud DNS Managed Zone | string | yes |
-| spec.record_type | DNS record type (A, AAAA, CNAME, etc.) | string | yes |
+| spec.type | DNS record type (A, AAAA, CNAME, etc.) | string | yes |
 | spec.name | FQDN for the record (must end with dot) | string | yes |
 | spec.values | Record values (supports multiple for round-robin) | list(string) | yes |
 | spec.ttl_seconds | TTL in seconds (default: 300) | number | no |
@@ -84,7 +84,7 @@ Or more restrictive:
 spec = {
   project_id   = { value = "my-project" }
   managed_zone = "example-zone"
-  record_type  = "A"
+  type         = "A"
   name         = "www.example.com."
   values       = ["192.0.2.1"]
 }
@@ -96,7 +96,7 @@ spec = {
 spec = {
   project_id   = { value = "my-project" }
   managed_zone = "example-zone"
-  record_type  = "CNAME"
+  type         = "CNAME"
   name         = "blog.example.com."
   values       = ["example.github.io."]
 }
@@ -108,7 +108,7 @@ spec = {
 spec = {
   project_id   = { value = "my-project" }
   managed_zone = "example-zone"
-  record_type  = "A"
+  type         = "A"
   name         = "api.example.com."
   values       = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
   ttl_seconds  = 60
