@@ -1,7 +1,7 @@
 .PHONY: build
 build: lint fmt
-	rm -rf generated/stubs
-	mkdir -p generated/stubs
+	rm -rf generated/stubs ../app/frontend/src/gen
+	mkdir -p generated/stubs ../app/frontend/src/gen
 	buf generate
 	cp -R generated/stubs/go/github.com/plantonhq/openmcf/apis/. .
 	cp -R generated/stubs/ts/. ../app/frontend/src/gen/

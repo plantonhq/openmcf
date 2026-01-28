@@ -5135,6 +5135,44 @@ __metadata:
   languageName: node
   linkType: hard
 
+"openmcf-frontend@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "openmcf-frontend@workspace:."
+  dependencies:
+    "@bufbuild/protobuf": ^2.5.1
+    "@connectrpc/connect": ^2.0.2
+    "@connectrpc/connect-web": ^2.0.2
+    "@emotion/react": ^11.13.3
+    "@emotion/styled": ^11.13.0
+    "@mui/icons-material": ^6.1.2
+    "@mui/material": ^6.1.2
+    "@mui/styles": ^6.1.2
+    "@svgr/webpack": ^8.1.0
+    "@types/moment": ^2.13.0
+    "@types/node": ^22.7.5
+    "@types/react": ^18.3.11
+    "@types/react-dom": ^18.3.0
+    "@types/react-syntax-highlighter": ^15.5.13
+    "@typescript-eslint/eslint-plugin": ^8.8.1
+    "@typescript-eslint/parser": ^8.8.1
+    ace-builds: ^1.36.2
+    dotenv: ^16.4.5
+    eslint: ^8.0.0
+    eslint-config-next: ^14.2.14
+    eslint-plugin-import: ^2.31.0
+    eslint-plugin-react: ^7.37.1
+    moment: ^2.30.1
+    next: ^14.2.14
+    prettier: ^3.3.3
+    react: ^18.3.1
+    react-ace: ^12.0.0
+    react-dom: ^18.3.1
+    react-hook-form: ^7.68.0
+    react-syntax-highlighter: ^16.1.0
+    typescript: ^5.6.2
+  languageName: unknown
+  linkType: soft
+
 "optionator@npm:^0.9.3":
   version: 0.9.4
   resolution: "optionator@npm:0.9.4"
@@ -5313,44 +5351,6 @@ __metadata:
   checksum: a68eddd4c5f1c506badb5434b0b28a7cc2479ed1df91bc4218e6833c7971ef40c50ec481ea49749ac964256acb78d8b66a6bd11554938e8998e46c18b5f9a580
   languageName: node
   linkType: hard
-
-"openmcf-frontend@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "openmcf-frontend@workspace:."
-  dependencies:
-    "@bufbuild/protobuf": ^2.5.1
-    "@connectrpc/connect": ^2.0.2
-    "@connectrpc/connect-web": ^2.0.2
-    "@emotion/react": ^11.13.3
-    "@emotion/styled": ^11.13.0
-    "@mui/icons-material": ^6.1.2
-    "@mui/material": ^6.1.2
-    "@mui/styles": ^6.1.2
-    "@svgr/webpack": ^8.1.0
-    "@types/moment": ^2.13.0
-    "@types/node": ^22.7.5
-    "@types/react": ^18.3.11
-    "@types/react-dom": ^18.3.0
-    "@types/react-syntax-highlighter": ^15.5.13
-    "@typescript-eslint/eslint-plugin": ^8.8.1
-    "@typescript-eslint/parser": ^8.8.1
-    ace-builds: ^1.36.2
-    dotenv: ^16.4.5
-    eslint: ^8.0.0
-    eslint-config-next: ^14.2.14
-    eslint-plugin-import: ^2.31.0
-    eslint-plugin-react: ^7.37.1
-    moment: ^2.30.1
-    next: ^14.2.14
-    prettier: ^3.3.3
-    react: ^18.3.1
-    react-ace: ^12.0.0
-    react-dom: ^18.3.1
-    react-hook-form: ^7.68.0
-    react-syntax-highlighter: ^16.1.0
-    typescript: ^5.6.2
-  languageName: unknown
-  linkType: soft
 
 "prop-types@npm:^15.6.2, prop-types@npm:^15.8.1":
   version: 15.8.1

@@ -17,9 +17,9 @@ endif
 
 BAZEL?=./bazelw
 
-# If BUILDBUDDY_API_KEY is set, enable the :bb config and inject only the header.
-ifneq ($(strip $(BUILDBUDDY_API_KEY)),)
-BAZEL_REMOTE_FLAGS=--config=bb --remote_header=x-buildbuddy-api-key=$$BUILDBUDDY_API_KEY
+# If OPENMCF_BUILDBUDDY_API_KEY is set, enable the :bb config and inject only the header.
+ifneq ($(strip $(OPENMCF_BUILDBUDDY_API_KEY)),)
+BAZEL_REMOTE_FLAGS=--config=bb --remote_header=x-buildbuddy-api-key=$$OPENMCF_BUILDBUDDY_API_KEY
 else
 BAZEL_REMOTE_FLAGS=
 endif
