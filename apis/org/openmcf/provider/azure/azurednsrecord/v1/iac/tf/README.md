@@ -22,7 +22,7 @@ module "dns_record" {
   spec = {
     resource_group = "my-dns-rg"
     zone_name      = "example.com"
-    record_type    = "A"
+    type           = "A"
     name           = "www"
     values         = ["192.0.2.1"]
     ttl_seconds    = 300
@@ -37,7 +37,7 @@ module "dns_record" {
 | `metadata` | Resource metadata (name, org, env, labels) | object | yes |
 | `spec.resource_group` | Azure resource group containing the DNS zone | string | yes |
 | `spec.zone_name` | DNS zone name | string | yes |
-| `spec.record_type` | DNS record type (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA, PTR) | string | yes |
+| `spec.type` | DNS record type (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA, PTR) | string | yes |
 | `spec.name` | Record name (use @ for apex) | string | yes |
 | `spec.values` | Record values | list(string) | yes |
 | `spec.ttl_seconds` | TTL in seconds | number | no (default: 300) |
@@ -71,7 +71,7 @@ module "dns_record" {
 spec = {
   resource_group = "dns-rg"
   zone_name      = "example.com"
-  record_type    = "A"
+  type           = "A"
   name           = "www"
   values         = ["192.0.2.1", "192.0.2.2"]
 }
@@ -82,7 +82,7 @@ spec = {
 spec = {
   resource_group = "dns-rg"
   zone_name      = "example.com"
-  record_type    = "MX"
+  type           = "MX"
   name           = "@"
   values         = ["mail1.example.com", "mail2.example.com"]
   mx_priority    = 10
@@ -94,7 +94,7 @@ spec = {
 spec = {
   resource_group = "dns-rg"
   zone_name      = "example.com"
-  record_type    = "TXT"
+  type           = "TXT"
   name           = "@"
   values         = ["v=spf1 include:_spf.google.com ~all"]
 }

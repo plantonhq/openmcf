@@ -22,7 +22,7 @@ variable "spec" {
     zone_name = string
 
     # The DNS record type to create (A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA).
-    record_type = string
+    type = string
 
     # The name of the DNS record (relative to the zone).
     # Use "@" for zone apex or specify a subdomain name.

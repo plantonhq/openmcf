@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
 	foreignkeyv1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/openmcf/apis/org/openmcf/shared/networking/enums/dnsrecordtype"
 )
 
 func TestDigitalOceanDnsRecordSpec(t *testing.T) {
@@ -43,7 +42,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "www",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   DigitalOceanDnsRecordSpec_A,
 						Value:  strVal("192.0.2.1"),
 					},
 				}
@@ -61,7 +60,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "www",
-						Type:   dnsrecordtype.DnsRecordType_AAAA,
+						Type:   DigitalOceanDnsRecordSpec_AAAA,
 						Value:  strVal("2001:db8::1"),
 					},
 				}
@@ -79,7 +78,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "app",
-						Type:   dnsrecordtype.DnsRecordType_CNAME,
+						Type:   DigitalOceanDnsRecordSpec_CNAME,
 						Value:  strVal("target.example.com"),
 					},
 				}
@@ -97,7 +96,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:   strVal("example.com"),
 						Name:     "@",
-						Type:     dnsrecordtype.DnsRecordType_MX,
+						Type:     DigitalOceanDnsRecordSpec_MX,
 						Value:    strVal("mail.example.com"),
 						Priority: 10,
 					},
@@ -116,7 +115,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "@",
-						Type:   dnsrecordtype.DnsRecordType_TXT,
+						Type:   DigitalOceanDnsRecordSpec_TXT,
 						Value:  strVal("v=spf1 include:_spf.google.com ~all"),
 					},
 				}
@@ -134,7 +133,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:   strVal("example.com"),
 						Name:     "_sip._tcp",
-						Type:     dnsrecordtype.DnsRecordType_SRV,
+						Type:     DigitalOceanDnsRecordSpec_SRV,
 						Value:    strVal("sipserver.example.com"),
 						Priority: 10,
 						Weight:   5,
@@ -155,7 +154,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "@",
-						Type:   dnsrecordtype.DnsRecordType_CAA,
+						Type:   DigitalOceanDnsRecordSpec_CAA,
 						Value:  strVal("letsencrypt.org"),
 						Flags:  0,
 						Tag:    "issue",
@@ -176,7 +175,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:     strVal("example.com"),
 						Name:       "www",
-						Type:       dnsrecordtype.DnsRecordType_A,
+						Type:       DigitalOceanDnsRecordSpec_A,
 						Value:      strVal("192.0.2.1"),
 						TtlSeconds: &ttlSeconds,
 					},
@@ -195,7 +194,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "@",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   DigitalOceanDnsRecordSpec_A,
 						Value:  strVal("192.0.2.1"),
 					},
 				}
@@ -213,7 +212,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "@",
-						Type:   dnsrecordtype.DnsRecordType_NS,
+						Type:   DigitalOceanDnsRecordSpec_NS,
 						Value:  strVal("ns1.digitalocean.com"),
 					},
 				}
@@ -235,7 +234,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					},
 					Spec: &DigitalOceanDnsRecordSpec{
 						Name:  "www",
-						Type:  dnsrecordtype.DnsRecordType_A,
+						Type:  DigitalOceanDnsRecordSpec_A,
 						Value: strVal("192.0.2.1"),
 					},
 				}
@@ -252,7 +251,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					},
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   DigitalOceanDnsRecordSpec_A,
 						Value:  strVal("192.0.2.1"),
 					},
 				}
@@ -270,7 +269,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "www",
-						Type:   dnsrecordtype.DnsRecordType_unspecified,
+						Type:   DigitalOceanDnsRecordSpec_record_type_unspecified,
 						Value:  strVal("192.0.2.1"),
 					},
 				}
@@ -288,7 +287,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "www",
-						Type:   dnsrecordtype.DnsRecordType_A,
+						Type:   DigitalOceanDnsRecordSpec_A,
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -306,7 +305,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:     strVal("example.com"),
 						Name:       "www",
-						Type:       dnsrecordtype.DnsRecordType_A,
+						Type:       DigitalOceanDnsRecordSpec_A,
 						Value:      strVal("192.0.2.1"),
 						TtlSeconds: &ttlSeconds,
 					},
@@ -326,7 +325,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:     strVal("example.com"),
 						Name:       "www",
-						Type:       dnsrecordtype.DnsRecordType_A,
+						Type:       DigitalOceanDnsRecordSpec_A,
 						Value:      strVal("192.0.2.1"),
 						TtlSeconds: &ttlSeconds,
 					},
@@ -345,7 +344,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:   strVal("example.com"),
 						Name:     "@",
-						Type:     dnsrecordtype.DnsRecordType_MX,
+						Type:     DigitalOceanDnsRecordSpec_MX,
 						Value:    strVal("mail.example.com"),
 						Priority: -1,
 					},
@@ -364,7 +363,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:   strVal("example.com"),
 						Name:     "@",
-						Type:     dnsrecordtype.DnsRecordType_MX,
+						Type:     DigitalOceanDnsRecordSpec_MX,
 						Value:    strVal("mail.example.com"),
 						Priority: 70000,
 					},
@@ -383,7 +382,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:   strVal("example.com"),
 						Name:     "_sip._tcp",
-						Type:     dnsrecordtype.DnsRecordType_SRV,
+						Type:     DigitalOceanDnsRecordSpec_SRV,
 						Value:    strVal("sipserver.example.com"),
 						Priority: 10,
 						Weight:   5,
@@ -403,7 +402,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "@",
-						Type:   dnsrecordtype.DnsRecordType_CAA,
+						Type:   DigitalOceanDnsRecordSpec_CAA,
 						Value:  strVal("letsencrypt.org"),
 						Flags:  0,
 					},
@@ -422,7 +421,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain:   strVal("example.com"),
 						Name:     "_sip._tcp",
-						Type:     dnsrecordtype.DnsRecordType_SRV,
+						Type:     DigitalOceanDnsRecordSpec_SRV,
 						Value:    strVal("sipserver.example.com"),
 						Priority: 10,
 						Weight:   5,
@@ -443,7 +442,7 @@ var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", fun
 					Spec: &DigitalOceanDnsRecordSpec{
 						Domain: strVal("example.com"),
 						Name:   "@",
-						Type:   dnsrecordtype.DnsRecordType_CAA,
+						Type:   DigitalOceanDnsRecordSpec_CAA,
 						Value:  strVal("letsencrypt.org"),
 						Flags:  256,
 						Tag:    "issue",

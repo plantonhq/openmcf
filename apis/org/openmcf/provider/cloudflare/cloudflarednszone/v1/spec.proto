@@ -7,6 +7,18 @@ import "buf/validate/validate.proto";
 // This message includes parameters needed to create and manage a DNS zone on Cloudflare,
 // such as the zone's domain name, account context, and plan level.
 message CloudflareDnsZoneSpec {
+  // Available Cloudflare zone plan options.
+  enum Plan {
+    // Free plan (default).
+    FREE = 0;
+    // Pro plan.
+    PRO = 1;
+    // Business plan.
+    BUSINESS = 2;
+    // Enterprise plan.
+    ENTERPRISE = 3;
+  }
+
   // The fully qualified domain name of the DNS zone (e.g., "example.com").
   string zone_name = 1 [
     (buf.validate.field).required = true,
@@ -22,7 +34,7 @@ message CloudflareDnsZoneSpec {
 
   // The subscription plan for the zone (e.g., free, pro, business, enterprise).
   // Defaults to the Free plan if unspecified.
-  CloudflareDnsZonePlan plan = 3;
+  Plan plan = 3;
 
   // Indicates if the zone is created in a paused state (DNS-only mode with no security or performance features).
   // If true, the zone will not receive Cloudflare's proxy/CDN services. Defaults to false.
@@ -31,16 +43,108 @@ message CloudflareDnsZoneSpec {
   // If true, new DNS records in this zone will default to being proxied (orange-cloud) through Cloudflare.
   // Defaults to false.
   bool default_proxied = 5;
+
+  // DNS records to create in this zone.
+  // This allows managing DNS records as part of the zone configuration.
+  repeated CloudflareDnsZoneRecord records = 6;
 }
 
-// Available Cloudflare zone plan options.
-enum CloudflareDnsZonePlan {
-  // Free plan (default).
-  FREE = 0;
-  // Pro plan.
-  PRO = 1;
-  // Business plan.
-  BUSINESS = 2;
-  // Enterprise plan.
-  ENTERPRISE = 3;
+// CloudflareDnsZoneRecord defines the configuration for a DNS record within a Cloudflare zone.
+// This message supports creating individual DNS records with common record types.
+message CloudflareDnsZoneRecord {
+  // Supported DNS record types.
+  // Using UPPERCASE as per DNS standard conventions.
+  enum RecordType {
+    // Unspecified record type (invalid).
+    record_type_unspecified = 0;
+    // IPv4 address record.
+    A = 1;
+    // IPv6 address record.
+    AAAA = 2;
+    // Canonical name (alias) record.
+    CNAME = 3;
+    // Mail exchange record.
+    MX = 4;
+    // Text record (SPF, DKIM, verification, etc.).
+    TXT = 5;
+    // Service locator record.
+    SRV = 6;
+    // Nameserver record.
+    NS = 7;
+    // Certificate Authority Authorization record.
+    CAA = 8;
+  }
+
+  // The name of the DNS record (e.g., "www", "api", "@" for root).
+  // Use "@" to create a record at the zone apex (root domain).
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The type of DNS record to create.
+  RecordType type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).cel = {
+      id: "type.not_unspecified"
+      message: "type must be specified (cannot be record_type_unspecified)"
+      expression: "this != 0"
+    }
+  ];
+
+  // The value/target of the DNS record.
+  // For A records: IPv4 address (e.g., "192.0.2.1")
+  // For AAAA records: IPv6 address (e.g., "2001:db8::1")
+  // For CNAME records: target hostname (e.g., "example.com")
+  // For MX records: mail server hostname (e.g., "mail.example.com")
+  // For TXT records: text value (e.g., "v=spf1 include:_spf.google.com ~all")
+  string value = 3 [(buf.validate.field).required = true];
+
+  // Whether the record is proxied through Cloudflare (orange cloud).
+  // When true: traffic flows through Cloudflare's CDN/WAF (hides origin IP).
+  // When false: DNS-only resolution (grey cloud, reveals origin IP).
+  // Only applicable to A, AAAA, and CNAME records.
+  // Defaults to false.
+  bool proxied = 4;
+
+  // Time to live (TTL) for the DNS record in seconds.
+  // Set to 1 for automatic TTL (recommended for proxied records).
+  // Valid values: 1 (auto), or 60-86400 seconds.
+  // Defaults to 1 (automatic).
+  int32 ttl = 5 [(buf.validate.field).cel = {
+    id: "ttl.valid_range"
+    message: "ttl must be 1 (automatic) or between 60 and 86400 seconds"
+    expression: "this == 0 || this == 1 || (this >= 60 && this <= 86400)"
+  }];
+
+  // Priority for MX and SRV records.
+  // Lower values indicate higher priority.
+  // Required for MX records, optional for SRV records.
+  // Range: 0-65535.
+  int32 priority = 6 [(buf.validate.field).cel = {
+    id: "priority.valid_range"
+    message: "priority must be between 0 and 65535"
+    expression: "this >= 0 && this <= 65535"
+  }];
+
+  // Optional comment/note for the DNS record.
+  // Useful for documenting the purpose of the record.
+  // Maximum 100 characters.
+  string comment = 7 [(buf.validate.field).cel = {
+    id: "comment.max_length"
+    message: "comment must not exceed 100 characters"
+    expression: "size(this) <= 100"
+  }];
+
+  // Cross-field validation: proxied only valid for A, AAAA, CNAME records
+  option (buf.validate.message).cel = {
+    id: "record.proxied_only_for_supported_types"
+    message: "proxied can only be true for A, AAAA, or CNAME records"
+    expression: "!this.proxied || this.type == 1 || this.type == 2 || this.type == 3"
+  };
+
+  // Cross-field validation: priority required for MX records
+  option (buf.validate.message).cel = {
+    id: "record.priority_required_for_mx"
+    message: "priority is required for MX records"
+    expression: "this.type != 4 || this.priority > 0"
+  };
 }

@@ -2,13 +2,11 @@
 // @generated from file org/openmcf/provider/gcp/gcpdnsrecord/v1/spec.proto (package org.openmcf.provider.gcp.gcpdnsrecord.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../../../../buf/validate/validate_pb";
 import type { StringValueOrRef } from "../../../../shared/foreignkey/v1/foreign_key_pb";
 import { file_org_openmcf_shared_foreignkey_v1_foreign_key } from "../../../../shared/foreignkey/v1/foreign_key_pb";
-import type { DnsRecordType } from "../../../../shared/networking/enums/dnsrecordtype/dns_record_type_pb";
-import { file_org_openmcf_shared_networking_enums_dnsrecordtype_dns_record_type } from "../../../../shared/networking/enums/dnsrecordtype/dns_record_type_pb";
 import { file_org_openmcf_shared_options_options } from "../../../../shared/options/options_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -16,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file org/openmcf/provider/gcp/gcpdnsrecord/v1/spec.proto.
  */
 export const file_org_openmcf_provider_gcp_gcpdnsrecord_v1_spec: GenFile = /*@__PURE__*/
-  fileDesc("CjNvcmcvb3Blbm1jZi9wcm92aWRlci9nY3AvZ2NwZG5zcmVjb3JkL3YxL3NwZWMucHJvdG8SKG9yZy5vcGVubWNmLnByb3ZpZGVyLmdjcC5nY3BkbnNyZWNvcmQudjEigQYKEEdjcERuc1JlY29yZFNwZWMScAoKcHJvamVjdF9pZBgBIAEoCzIyLm9yZy5vcGVubWNmLnNoYXJlZC5mb3JlaWdua2V5LnYxLlN0cmluZ1ZhbHVlT3JSZWZCKLpIA8gBAYjUYeEEktRhGXN0YXR1cy5vdXRwdXRzLnByb2plY3RfaWQScQoMbWFuYWdlZF96b25lGAIgASgLMjIub3JnLm9wZW5tY2Yuc2hhcmVkLmZvcmVpZ25rZXkudjEuU3RyaW5nVmFsdWVPclJlZkInukgDyAEBiNRh3QSS1GEYc3RhdHVzLm91dHB1dHMuem9uZV9uYW1lEsQBCgtyZWNvcmRfdHlwZRgDIAEoDjJALm9yZy5vcGVubWNmLnNoYXJlZC5uZXR3b3JraW5nLmVudW1zLmRuc3JlY29yZHR5cGUuRG5zUmVjb3JkVHlwZUJtukhqugFfChtyZWNvcmRfdHlwZS5ub3RfdW5zcGVjaWZpZWQSNXJlY29yZF90eXBlIG11c3QgYmUgc3BlY2lmaWVkIChjYW5ub3QgYmUgdW5zcGVjaWZpZWQpGgl0aGlzICE9IDDIAQGCAQIQARLoAQoEbmFtZRgEIAEoCULZAbpI1QG6Ac4BCg9uYW1lLnZhbGlkX2ZxZG4SWG5hbWUgbXVzdCBiZSBhIHZhbGlkIEROUyBkb21haW4gbmFtZSBlbmRpbmcgd2l0aCBhIHRyYWlsaW5nIGRvdCAoZS5nLiwgd3d3LmV4YW1wbGUuY29tLikaYXRoaXMuZW5kc1dpdGgoJy4nKSAmJiB0aGlzLm1hdGNoZXMoJ14oPzpbKl1bLl0pPyg/OltfYS16MC05XSg/OltfYS16MC05LV17MCw2MX1bYS16MC05XSk/Wy5dKSskJynIAQESGAoGdmFsdWVzGAUgAygJQgi6SAWSAQIIARIsCgt0dGxfc2Vjb25kcxgGIAEoBUISukgIGgYYgKMFKAGKph0DMzAwSACIAQFCDgoMX3R0bF9zZWNvbmRzQtsCCixjb20ub3JnLm9wZW5tY2YucHJvdmlkZXIuZ2NwLmdjcGRuc3JlY29yZC52MUIJU3BlY1Byb3RvUAFaWWdpdGh1Yi5jb20vcGxhbnRvbmhxL29wZW5tY2YvYXBpcy9vcmcvb3Blbm1jZi9wcm92aWRlci9nY3AvZ2NwZG5zcmVjb3JkL3YxO2djcGRuc3JlY29yZHYxogIFT09QR0eqAihPcmcuT3Blbm1jZi5Qcm92aWRlci5HY3AuR2NwZG5zcmVjb3JkLlYxygIoT3JnXE9wZW5tY2ZcUHJvdmlkZXJcR2NwXEdjcGRuc3JlY29yZFxWMeICNE9yZ1xPcGVubWNmXFByb3ZpZGVyXEdjcFxHY3BkbnNyZWNvcmRcVjFcR1BCTWV0YWRhdGHqAi1Pcmc6Ok9wZW5tY2Y6OlByb3ZpZGVyOjpHY3A6OkdjcGRuc3JlY29yZDo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_org_openmcf_shared_foreignkey_v1_foreign_key, file_org_openmcf_shared_networking_enums_dnsrecordtype_dns_record_type, file_org_openmcf_shared_options_options]);
+  fileDesc("CjNvcmcvb3Blbm1jZi9wcm92aWRlci9nY3AvZ2NwZG5zcmVjb3JkL3YxL3NwZWMucHJvdG8SKG9yZy5vcGVubWNmLnByb3ZpZGVyLmdjcC5nY3BkbnNyZWNvcmQudjEiggcKEEdjcERuc1JlY29yZFNwZWMScAoKcHJvamVjdF9pZBgBIAEoCzIyLm9yZy5vcGVubWNmLnNoYXJlZC5mb3JlaWdua2V5LnYxLlN0cmluZ1ZhbHVlT3JSZWZCKLpIA8gBAYjUYeEEktRhGXN0YXR1cy5vdXRwdXRzLnByb2plY3RfaWQScQoMbWFuYWdlZF96b25lGAIgASgLMjIub3JnLm9wZW5tY2Yuc2hhcmVkLmZvcmVpZ25rZXkudjEuU3RyaW5nVmFsdWVPclJlZkInukgDyAEBiNRh3QSS1GEYc3RhdHVzLm91dHB1dHMuem9uZV9uYW1lEsABCgR0eXBlGAMgASgOMkUub3JnLm9wZW5tY2YucHJvdmlkZXIuZ2NwLmdjcGRuc3JlY29yZC52MS5HY3BEbnNSZWNvcmRTcGVjLlJlY29yZFR5cGVCa7pIaLoBXQoUdHlwZS5ub3RfdW5zcGVjaWZpZWQSOnR5cGUgbXVzdCBiZSBzcGVjaWZpZWQgKGNhbm5vdCBiZSByZWNvcmRfdHlwZV91bnNwZWNpZmllZCkaCXRoaXMgIT0gMMgBAYIBAhABEugBCgRuYW1lGAQgASgJQtkBukjVAboBzgEKD25hbWUudmFsaWRfZnFkbhJYbmFtZSBtdXN0IGJlIGEgdmFsaWQgRE5TIGRvbWFpbiBuYW1lIGVuZGluZyB3aXRoIGEgdHJhaWxpbmcgZG90IChlLmcuLCB3d3cuZXhhbXBsZS5jb20uKRphdGhpcy5lbmRzV2l0aCgnLicpICYmIHRoaXMubWF0Y2hlcygnXig/OlsqXVsuXSk/KD86W19hLXowLTldKD86W19hLXowLTktXXswLDYxfVthLXowLTldKT9bLl0pKyQnKcgBARIYCgZ2YWx1ZXMYBSADKAlCCLpIBZIBAggBEiwKC3R0bF9zZWNvbmRzGAYgASgFQhK6SAgaBhiAowUoAYqmHQMzMDBIAIgBASKCAQoKUmVjb3JkVHlwZRIbChdyZWNvcmRfdHlwZV91bnNwZWNpZmllZBAAEgUKAUEQARIICgRBQUFBEAISCQoFQ05BTUUQAxIGCgJNWBAEEgcKA1RYVBAFEgcKA1NSVhAGEgYKAk5TEAcSBwoDUFRSEAgSBwoDQ0FBEAkSBwoDU09BEApCDgoMX3R0bF9zZWNvbmRzQtsCCixjb20ub3JnLm9wZW5tY2YucHJvdmlkZXIuZ2NwLmdjcGRuc3JlY29yZC52MUIJU3BlY1Byb3RvUAFaWWdpdGh1Yi5jb20vcGxhbnRvbmhxL29wZW5tY2YvYXBpcy9vcmcvb3Blbm1jZi9wcm92aWRlci9nY3AvZ2NwZG5zcmVjb3JkL3YxO2djcGRuc3JlY29yZHYxogIFT09QR0eqAihPcmcuT3Blbm1jZi5Qcm92aWRlci5HY3AuR2NwZG5zcmVjb3JkLlYxygIoT3JnXE9wZW5tY2ZcUHJvdmlkZXJcR2NwXEdjcGRuc3JlY29yZFxWMeICNE9yZ1xPcGVubWNmXFByb3ZpZGVyXEdjcFxHY3BkbnNyZWNvcmRcVjFcR1BCTWV0YWRhdGHqAi1Pcmc6Ok9wZW5tY2Y6OlByb3ZpZGVyOjpHY3A6OkdjcGRuc3JlY29yZDo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_org_openmcf_shared_foreignkey_v1_foreign_key, file_org_openmcf_shared_options_options]);
 
 /**
  * GcpDnsRecordSpec defines the configuration for creating a DNS record in a Google Cloud DNS Managed Zone.
@@ -46,9 +44,9 @@ export type GcpDnsRecordSpec = Message<"org.openmcf.provider.gcp.gcpdnsrecord.v1
    * The DNS record type to create.
    * Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA.
    *
-   * @generated from field: org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType record_type = 3;
+   * @generated from field: org.openmcf.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.RecordType type = 3;
    */
-  recordType: DnsRecordType;
+  type: GcpDnsRecordSpec_RecordType;
 
   /**
    * The fully qualified domain name for this record.
@@ -89,4 +87,94 @@ export type GcpDnsRecordSpec = Message<"org.openmcf.provider.gcp.gcpdnsrecord.v1
  */
 export const GcpDnsRecordSpecSchema: GenMessage<GcpDnsRecordSpec> = /*@__PURE__*/
   messageDesc(file_org_openmcf_provider_gcp_gcpdnsrecord_v1_spec, 0);
+
+/**
+ * Supported DNS record types for GCP Cloud DNS.
+ *
+ * @generated from enum org.openmcf.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.RecordType
+ */
+export enum GcpDnsRecordSpec_RecordType {
+  /**
+   * Unspecified record type (invalid).
+   *
+   * @generated from enum value: record_type_unspecified = 0;
+   */
+  record_type_unspecified = 0,
+
+  /**
+   * IPv4 address record.
+   *
+   * @generated from enum value: A = 1;
+   */
+  A = 1,
+
+  /**
+   * IPv6 address record.
+   *
+   * @generated from enum value: AAAA = 2;
+   */
+  AAAA = 2,
+
+  /**
+   * Canonical name (alias) record.
+   *
+   * @generated from enum value: CNAME = 3;
+   */
+  CNAME = 3,
+
+  /**
+   * Mail exchange record.
+   *
+   * @generated from enum value: MX = 4;
+   */
+  MX = 4,
+
+  /**
+   * Text record (SPF, DKIM, verification, etc.).
+   *
+   * @generated from enum value: TXT = 5;
+   */
+  TXT = 5,
+
+  /**
+   * Service locator record.
+   *
+   * @generated from enum value: SRV = 6;
+   */
+  SRV = 6,
+
+  /**
+   * Nameserver record.
+   *
+   * @generated from enum value: NS = 7;
+   */
+  NS = 7,
+
+  /**
+   * Pointer record (reverse DNS).
+   *
+   * @generated from enum value: PTR = 8;
+   */
+  PTR = 8,
+
+  /**
+   * Certificate Authority Authorization record.
+   *
+   * @generated from enum value: CAA = 9;
+   */
+  CAA = 9,
+
+  /**
+   * Start of Authority record.
+   *
+   * @generated from enum value: SOA = 10;
+   */
+  SOA = 10,
+}
+
+/**
+ * Describes the enum org.openmcf.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordSpec.RecordType.
+ */
+export const GcpDnsRecordSpec_RecordTypeSchema: GenEnum<GcpDnsRecordSpec_RecordType> = /*@__PURE__*/
+  enumDesc(file_org_openmcf_provider_gcp_gcpdnsrecord_v1_spec, 0, 0);
 

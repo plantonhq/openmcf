@@ -9,7 +9,6 @@ package azurednsrecordv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/openmcf/apis/org/openmcf/shared/networking/enums/dnsrecordtype"
 	_ "github.com/plantonhq/openmcf/apis/org/openmcf/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -24,6 +23,87 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+// Supported DNS record types for Azure DNS.
+type AzureDnsRecordSpec_RecordType int32
+
+const (
+	// Unspecified record type (invalid).
+	AzureDnsRecordSpec_record_type_unspecified AzureDnsRecordSpec_RecordType = 0
+	// IPv4 address record.
+	AzureDnsRecordSpec_A AzureDnsRecordSpec_RecordType = 1
+	// IPv6 address record.
+	AzureDnsRecordSpec_AAAA AzureDnsRecordSpec_RecordType = 2
+	// Canonical name (alias) record.
+	AzureDnsRecordSpec_CNAME AzureDnsRecordSpec_RecordType = 3
+	// Mail exchange record.
+	AzureDnsRecordSpec_MX AzureDnsRecordSpec_RecordType = 4
+	// Text record (SPF, DKIM, verification, etc.).
+	AzureDnsRecordSpec_TXT AzureDnsRecordSpec_RecordType = 5
+	// Service locator record.
+	AzureDnsRecordSpec_SRV AzureDnsRecordSpec_RecordType = 6
+	// Nameserver record.
+	AzureDnsRecordSpec_NS AzureDnsRecordSpec_RecordType = 7
+	// Pointer record (reverse DNS).
+	AzureDnsRecordSpec_PTR AzureDnsRecordSpec_RecordType = 8
+	// Certificate Authority Authorization record.
+	AzureDnsRecordSpec_CAA AzureDnsRecordSpec_RecordType = 9
+)
+
+// Enum value maps for AzureDnsRecordSpec_RecordType.
+var (
+	AzureDnsRecordSpec_RecordType_name = map[int32]string{
+		0: "record_type_unspecified",
+		1: "A",
+		2: "AAAA",
+		3: "CNAME",
+		4: "MX",
+		5: "TXT",
+		6: "SRV",
+		7: "NS",
+		8: "PTR",
+		9: "CAA",
+	}
+	AzureDnsRecordSpec_RecordType_value = map[string]int32{
+		"record_type_unspecified": 0,
+		"A":                       1,
+		"AAAA":                    2,
+		"CNAME":                   3,
+		"MX":                      4,
+		"TXT":                     5,
+		"SRV":                     6,
+		"NS":                      7,
+		"PTR":                     8,
+		"CAA":                     9,
+	}
+)
+
+func (x AzureDnsRecordSpec_RecordType) Enum() *AzureDnsRecordSpec_RecordType {
+	p := new(AzureDnsRecordSpec_RecordType)
+	*p = x
+	return p
+}
+
+func (x AzureDnsRecordSpec_RecordType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureDnsRecordSpec_RecordType) Descriptor() protoreflect.EnumDescriptor {
+	return file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureDnsRecordSpec_RecordType) Type() protoreflect.EnumType {
+	return &file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureDnsRecordSpec_RecordType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureDnsRecordSpec_RecordType.Descriptor instead.
+func (AzureDnsRecordSpec_RecordType) EnumDescriptor() ([]byte, []int) {
+	return file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP(), []int{0, 0}
+}
 
 // AzureDnsRecordSpec defines the configuration for creating a DNS record in an Azure DNS Zone.
 // This component creates individual DNS records (A, AAAA, CNAME, MX, TXT, etc.) within an existing zone.
@@ -49,7 +129,7 @@ type AzureDnsRecordSpec struct {
 	ZoneName *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=zone_name,json=zoneName,proto3" json:"zone_name,omitempty"`
 	// The DNS record type to create.
 	// Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA.
-	RecordType dnsrecordtype.DnsRecordType `protobuf:"varint,3,opt,name=record_type,json=recordType,proto3,enum=org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType" json:"record_type,omitempty"`
+	Type AzureDnsRecordSpec_RecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec_RecordType" json:"type,omitempty"`
 	// The name of the DNS record (relative to the zone).
 	// Use "@" for zone apex (root domain) or specify a subdomain name.
 	// Examples:
@@ -79,7 +159,7 @@ type AzureDnsRecordSpec struct {
 	// MX record specific: Priority value for mail exchange records.
 	// Lower values indicate higher priority. Required for MX records.
 	// Common values: 10 (primary), 20 (secondary), 30 (tertiary).
-	// Only applicable when record_type is MX.
+	// Only applicable when type is MX.
 	MxPriority    *int32 `protobuf:"varint,7,opt,name=mx_priority,json=mxPriority,proto3,oneof" json:"mx_priority,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -129,11 +209,11 @@ func (x *AzureDnsRecordSpec) GetZoneName() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureDnsRecordSpec) GetRecordType() dnsrecordtype.DnsRecordType {
+func (x *AzureDnsRecordSpec) GetType() AzureDnsRecordSpec_RecordType {
 	if x != nil {
-		return x.RecordType
+		return x.Type
 	}
-	return dnsrecordtype.DnsRecordType(0)
+	return AzureDnsRecordSpec_record_type_unspecified
 }
 
 func (x *AzureDnsRecordSpec) GetName() string {
@@ -168,13 +248,12 @@ var File_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto protoreflect.Fi
 
 const file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7org/openmcf/provider/azure/azurednsrecord/v1/spec.proto\x12,org.openmcf.provider.azure.azurednsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\x1aGorg/openmcf/shared/networking/enums/dnsrecordtype/dns_record_type.proto\x1a(org/openmcf/shared/options/options.proto\"\xdf\a\n" +
+	"7org/openmcf/provider/azure/azurednsrecord/v1/spec.proto\x12,org.openmcf.provider.azure.azurednsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\x1a(org/openmcf/shared/options/options.proto\"\xce\b\n" +
 	"\x12AzureDnsRecordSpec\x12-\n" +
 	"\x0eresource_group\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rresourceGroup\x12x\n" +
-	"\tzone_name\x18\x02 \x01(\v22.org.openmcf.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x03\x92\xd4a\x18status.outputs.zone_nameR\bzoneName\x12\xd0\x01\n" +
-	"\vrecord_type\x18\x03 \x01(\x0e2@.org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordTypeBm\xbaHj\xba\x01_\n" +
-	"\x1brecord_type.not_unspecified\x125record_type must be specified (cannot be unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\n" +
-	"recordType\x12\x8c\x02\n" +
+	"\tzone_name\x18\x02 \x01(\v22.org.openmcf.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x03\x92\xd4a\x18status.outputs.zone_nameR\bzoneName\x12\xcc\x01\n" +
+	"\x04type\x18\x03 \x01(\x0e2K.org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
+	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x8c\x02\n" +
 	"\x04name\x18\x04 \x01(\tB\xf7\x01\xbaH\xf3\x01\xba\x01\xec\x01\n" +
 	"\x14name.valid_dns_label\x12\x81\x01name must be '@' for apex, '*' for wildcard, or a valid DNS label (lowercase alphanumeric with hyphens, dots allowed for nesting)\x1aPthis == '@' || this == '*' || this.matches('^[a-z0-9]([a-z0-9-\\\\.]*[a-z0-9])?$')\xc8\x01\x01R\x04name\x12 \n" +
 	"\x06values\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\x12:\n" +
@@ -182,8 +261,20 @@ const file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_rawDesc = "" 
 	"\x1a\b\x18\xff\xff\xff\xff\a(\x01\x8a\xa6\x1d\x03300H\x00R\n" +
 	"ttlSeconds\x88\x01\x01\x121\n" +
 	"\vmx_priority\x18\a \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00H\x01R\n" +
-	"mxPriority\x88\x01\x01:\x8c\x01\xbaH\x88\x01\x1a\x85\x01\n" +
-	"\x1fspec.mx_priority_for_mx_records\x121mx_priority is only applicable for MX record type\x1a/!has(this.mx_priority) || this.record_type == 5B\x0e\n" +
+	"mxPriority\x88\x01\x01\"y\n" +
+	"\n" +
+	"RecordType\x12\x1b\n" +
+	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
+	"\x01A\x10\x01\x12\b\n" +
+	"\x04AAAA\x10\x02\x12\t\n" +
+	"\x05CNAME\x10\x03\x12\x06\n" +
+	"\x02MX\x10\x04\x12\a\n" +
+	"\x03TXT\x10\x05\x12\a\n" +
+	"\x03SRV\x10\x06\x12\x06\n" +
+	"\x02NS\x10\a\x12\a\n" +
+	"\x03PTR\x10\b\x12\a\n" +
+	"\x03CAA\x10\t:\x84\x01\xbaH\x80\x01\x1a~\n" +
+	"\x1fspec.mx_priority_for_mx_records\x121mx_priority is only applicable for MX record type\x1a(!has(this.mx_priority) || this.type == 4B\x0e\n" +
 	"\f_ttl_secondsB\x0e\n" +
 	"\f_mx_priorityB\xf5\x02\n" +
 	"0com.org.openmcf.provider.azure.azurednsrecord.v1B\tSpecProtoP\x01Z_github.com/plantonhq/openmcf/apis/org/openmcf/provider/azure/azurednsrecord/v1;azurednsrecordv1\xa2\x02\x05OOPAA\xaa\x02,Org.Openmcf.Provider.Azure.Azurednsrecord.V1\xca\x02,Org\\Openmcf\\Provider\\Azure\\Azurednsrecord\\V1\xe2\x028Org\\Openmcf\\Provider\\Azure\\Azurednsrecord\\V1\\GPBMetadata\xea\x021Org::Openmcf::Provider::Azure::Azurednsrecord::V1b\x06proto3"
@@ -200,15 +291,16 @@ func file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_rawDescGZIP() 
 	return file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_rawDescData
 }
 
+var file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_goTypes = []any{
-	(*AzureDnsRecordSpec)(nil),       // 0: org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec
-	(*v1.StringValueOrRef)(nil),      // 1: org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	(dnsrecordtype.DnsRecordType)(0), // 2: org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType
+	(AzureDnsRecordSpec_RecordType)(0), // 0: org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordType
+	(*AzureDnsRecordSpec)(nil),         // 1: org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec
+	(*v1.StringValueOrRef)(nil),        // 2: org.openmcf.shared.foreignkey.v1.StringValueOrRef
 }
 var file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_depIdxs = []int32{
-	1, // 0: org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.zone_name:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.record_type:type_name -> org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType
+	2, // 0: org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.zone_name:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
+	0, // 1: org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.type:type_name -> org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordType
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -227,13 +319,14 @@ func file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_rawDesc), len(file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_goTypes,
 		DependencyIndexes: file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_depIdxs,
+		EnumInfos:         file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_enumTypes,
 		MessageInfos:      file_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto_msgTypes,
 	}.Build()
 	File_org_openmcf_provider_azure_azurednsrecord_v1_spec_proto = out.File

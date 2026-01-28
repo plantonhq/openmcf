@@ -10,23 +10,23 @@ import (
 )
 
 // recordTypeToString converts the proto enum to the Cloudflare API string.
-func recordTypeToString(recordType cloudflarednsrecordv1.CloudflareDnsRecordType) string {
+func recordTypeToString(recordType cloudflarednsrecordv1.CloudflareDnsRecordSpec_RecordType) string {
 	switch recordType {
-	case cloudflarednsrecordv1.CloudflareDnsRecordType_A:
+	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_A:
 		return "A"
-	case cloudflarednsrecordv1.CloudflareDnsRecordType_AAAA:
+	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_AAAA:
 		return "AAAA"
-	case cloudflarednsrecordv1.CloudflareDnsRecordType_CNAME:
+	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_CNAME:
 		return "CNAME"
-	case cloudflarednsrecordv1.CloudflareDnsRecordType_MX:
+	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_MX:
 		return "MX"
-	case cloudflarednsrecordv1.CloudflareDnsRecordType_TXT:
+	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_TXT:
 		return "TXT"
-	case cloudflarednsrecordv1.CloudflareDnsRecordType_SRV:
+	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_SRV:
 		return "SRV"
-	case cloudflarednsrecordv1.CloudflareDnsRecordType_NS:
+	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_NS:
 		return "NS"
-	case cloudflarednsrecordv1.CloudflareDnsRecordType_CAA:
+	case cloudflarednsrecordv1.CloudflareDnsRecordSpec_CAA:
 		return "CAA"
 	default:
 		return "A" // Default fallback
@@ -48,9 +48,15 @@ func dnsRecord(
 		ttl = float64(spec.Ttl)
 	}
 
+	// Resolve zone_id from literal value or reference.
+	zoneId := ""
+	if spec.ZoneId != nil {
+		zoneId = spec.ZoneId.GetValue()
+	}
+
 	// Build the record arguments.
 	recordArgs := &cloudflare.DnsRecordArgs{
-		ZoneId:  pulumi.String(spec.ZoneId),
+		ZoneId:  pulumi.String(zoneId),
 		Name:    pulumi.String(spec.Name),
 		Type:    pulumi.String(recordTypeStr),
 		Content: pulumi.String(spec.Value),
@@ -59,8 +65,8 @@ func dnsRecord(
 	}
 
 	// Set priority for MX/SRV records.
-	if spec.Type == cloudflarednsrecordv1.CloudflareDnsRecordType_MX ||
-		spec.Type == cloudflarednsrecordv1.CloudflareDnsRecordType_SRV {
+	if spec.Type == cloudflarednsrecordv1.CloudflareDnsRecordSpec_MX ||
+		spec.Type == cloudflarednsrecordv1.CloudflareDnsRecordSpec_SRV {
 		recordArgs.Priority = pulumi.Float64(float64(spec.Priority))
 	}
 

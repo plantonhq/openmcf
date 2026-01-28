@@ -2,13 +2,11 @@
 // @generated from file org/openmcf/provider/azure/azurednsrecord/v1/spec.proto (package org.openmcf.provider.azure.azurednsrecord.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../../../../buf/validate/validate_pb";
 import type { StringValueOrRef } from "../../../../shared/foreignkey/v1/foreign_key_pb";
 import { file_org_openmcf_shared_foreignkey_v1_foreign_key } from "../../../../shared/foreignkey/v1/foreign_key_pb";
-import type { DnsRecordType } from "../../../../shared/networking/enums/dnsrecordtype/dns_record_type_pb";
-import { file_org_openmcf_shared_networking_enums_dnsrecordtype_dns_record_type } from "../../../../shared/networking/enums/dnsrecordtype/dns_record_type_pb";
 import { file_org_openmcf_shared_options_options } from "../../../../shared/options/options_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -16,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file org/openmcf/provider/azure/azurednsrecord/v1/spec.proto.
  */
 export const file_org_openmcf_provider_azure_azurednsrecord_v1_spec: GenFile = /*@__PURE__*/
-  fileDesc("Cjdvcmcvb3Blbm1jZi9wcm92aWRlci9henVyZS9henVyZWRuc3JlY29yZC92MS9zcGVjLnByb3RvEixvcmcub3Blbm1jZi5wcm92aWRlci5henVyZS5henVyZWRuc3JlY29yZC52MSKUBwoSQXp1cmVEbnNSZWNvcmRTcGVjEh4KDnJlc291cmNlX2dyb3VwGAEgASgJQga6SAPIAQESbgoJem9uZV9uYW1lGAIgASgLMjIub3JnLm9wZW5tY2Yuc2hhcmVkLmZvcmVpZ25rZXkudjEuU3RyaW5nVmFsdWVPclJlZkInukgDyAEBiNRhkwOS1GEYc3RhdHVzLm91dHB1dHMuem9uZV9uYW1lEsQBCgtyZWNvcmRfdHlwZRgDIAEoDjJALm9yZy5vcGVubWNmLnNoYXJlZC5uZXR3b3JraW5nLmVudW1zLmRuc3JlY29yZHR5cGUuRG5zUmVjb3JkVHlwZUJtukhqugFfChtyZWNvcmRfdHlwZS5ub3RfdW5zcGVjaWZpZWQSNXJlY29yZF90eXBlIG11c3QgYmUgc3BlY2lmaWVkIChjYW5ub3QgYmUgdW5zcGVjaWZpZWQpGgl0aGlzICE9IDDIAQGCAQIQARKGAgoEbmFtZRgEIAEoCUL3AbpI8wG6AewBChRuYW1lLnZhbGlkX2Ruc19sYWJlbBKBAW5hbWUgbXVzdCBiZSAnQCcgZm9yIGFwZXgsICcqJyBmb3Igd2lsZGNhcmQsIG9yIGEgdmFsaWQgRE5TIGxhYmVsIChsb3dlcmNhc2UgYWxwaGFudW1lcmljIHdpdGggaHlwaGVucywgZG90cyBhbGxvd2VkIGZvciBuZXN0aW5nKRpQdGhpcyA9PSAnQCcgfHwgdGhpcyA9PSAnKicgfHwgdGhpcy5tYXRjaGVzKCdeW2EtejAtOV0oW2EtejAtOS1cXC5dKlthLXowLTldKT8kJynIAQESGAoGdmFsdWVzGAUgAygJQgi6SAWSAQIIARIuCgt0dGxfc2Vjb25kcxgGIAEoBUIUukgKGggY/////wcoAYqmHQMzMDBIAIgBARIlCgtteF9wcmlvcml0eRgHIAEoBUILukgIGgYY//8DKABIAYgBATqMAbpIiAEahQEKH3NwZWMubXhfcHJpb3JpdHlfZm9yX214X3JlY29yZHMSMW14X3ByaW9yaXR5IGlzIG9ubHkgYXBwbGljYWJsZSBmb3IgTVggcmVjb3JkIHR5cGUaLyFoYXModGhpcy5teF9wcmlvcml0eSkgfHwgdGhpcy5yZWNvcmRfdHlwZSA9PSA1Qg4KDF90dGxfc2Vjb25kc0IOCgxfbXhfcHJpb3JpdHlC9QIKMGNvbS5vcmcub3Blbm1jZi5wcm92aWRlci5henVyZS5henVyZWRuc3JlY29yZC52MUIJU3BlY1Byb3RvUAFaX2dpdGh1Yi5jb20vcGxhbnRvbmhxL29wZW5tY2YvYXBpcy9vcmcvb3Blbm1jZi9wcm92aWRlci9henVyZS9henVyZWRuc3JlY29yZC92MTthenVyZWRuc3JlY29yZHYxogIFT09QQUGqAixPcmcuT3Blbm1jZi5Qcm92aWRlci5BenVyZS5BenVyZWRuc3JlY29yZC5WMcoCLE9yZ1xPcGVubWNmXFByb3ZpZGVyXEF6dXJlXEF6dXJlZG5zcmVjb3JkXFYx4gI4T3JnXE9wZW5tY2ZcUHJvdmlkZXJcQXp1cmVcQXp1cmVkbnNyZWNvcmRcVjFcR1BCTWV0YWRhdGHqAjFPcmc6Ok9wZW5tY2Y6OlByb3ZpZGVyOjpBenVyZTo6QXp1cmVkbnNyZWNvcmQ6OlYxYgZwcm90bzM", [file_buf_validate_validate, file_org_openmcf_shared_foreignkey_v1_foreign_key, file_org_openmcf_shared_networking_enums_dnsrecordtype_dns_record_type, file_org_openmcf_shared_options_options]);
+  fileDesc("Cjdvcmcvb3Blbm1jZi9wcm92aWRlci9henVyZS9henVyZWRuc3JlY29yZC92MS9zcGVjLnByb3RvEixvcmcub3Blbm1jZi5wcm92aWRlci5henVyZS5henVyZWRuc3JlY29yZC52MSKJCAoSQXp1cmVEbnNSZWNvcmRTcGVjEh4KDnJlc291cmNlX2dyb3VwGAEgASgJQga6SAPIAQESbgoJem9uZV9uYW1lGAIgASgLMjIub3JnLm9wZW5tY2Yuc2hhcmVkLmZvcmVpZ25rZXkudjEuU3RyaW5nVmFsdWVPclJlZkInukgDyAEBiNRhkwOS1GEYc3RhdHVzLm91dHB1dHMuem9uZV9uYW1lEsYBCgR0eXBlGAMgASgOMksub3JnLm9wZW5tY2YucHJvdmlkZXIuYXp1cmUuYXp1cmVkbnNyZWNvcmQudjEuQXp1cmVEbnNSZWNvcmRTcGVjLlJlY29yZFR5cGVCa7pIaLoBXQoUdHlwZS5ub3RfdW5zcGVjaWZpZWQSOnR5cGUgbXVzdCBiZSBzcGVjaWZpZWQgKGNhbm5vdCBiZSByZWNvcmRfdHlwZV91bnNwZWNpZmllZCkaCXRoaXMgIT0gMMgBAYIBAhABEoYCCgRuYW1lGAQgASgJQvcBukjzAboB7AEKFG5hbWUudmFsaWRfZG5zX2xhYmVsEoEBbmFtZSBtdXN0IGJlICdAJyBmb3IgYXBleCwgJyonIGZvciB3aWxkY2FyZCwgb3IgYSB2YWxpZCBETlMgbGFiZWwgKGxvd2VyY2FzZSBhbHBoYW51bWVyaWMgd2l0aCBoeXBoZW5zLCBkb3RzIGFsbG93ZWQgZm9yIG5lc3RpbmcpGlB0aGlzID09ICdAJyB8fCB0aGlzID09ICcqJyB8fCB0aGlzLm1hdGNoZXMoJ15bYS16MC05XShbYS16MC05LVxcLl0qW2EtejAtOV0pPyQnKcgBARIYCgZ2YWx1ZXMYBSADKAlCCLpIBZIBAggBEi4KC3R0bF9zZWNvbmRzGAYgASgFQhS6SAoaCBj/////BygBiqYdAzMwMEgAiAEBEiUKC214X3ByaW9yaXR5GAcgASgFQgu6SAgaBhj//wMoAEgBiAEBInkKClJlY29yZFR5cGUSGwoXcmVjb3JkX3R5cGVfdW5zcGVjaWZpZWQQABIFCgFBEAESCAoEQUFBQRACEgkKBUNOQU1FEAMSBgoCTVgQBBIHCgNUWFQQBRIHCgNTUlYQBhIGCgJOUxAHEgcKA1BUUhAIEgcKA0NBQRAJOoQBukiAARp+Ch9zcGVjLm14X3ByaW9yaXR5X2Zvcl9teF9yZWNvcmRzEjFteF9wcmlvcml0eSBpcyBvbmx5IGFwcGxpY2FibGUgZm9yIE1YIHJlY29yZCB0eXBlGighaGFzKHRoaXMubXhfcHJpb3JpdHkpIHx8IHRoaXMudHlwZSA9PSA0Qg4KDF90dGxfc2Vjb25kc0IOCgxfbXhfcHJpb3JpdHlC9QIKMGNvbS5vcmcub3Blbm1jZi5wcm92aWRlci5henVyZS5henVyZWRuc3JlY29yZC52MUIJU3BlY1Byb3RvUAFaX2dpdGh1Yi5jb20vcGxhbnRvbmhxL29wZW5tY2YvYXBpcy9vcmcvb3Blbm1jZi9wcm92aWRlci9henVyZS9henVyZWRuc3JlY29yZC92MTthenVyZWRuc3JlY29yZHYxogIFT09QQUGqAixPcmcuT3Blbm1jZi5Qcm92aWRlci5BenVyZS5BenVyZWRuc3JlY29yZC5WMcoCLE9yZ1xPcGVubWNmXFByb3ZpZGVyXEF6dXJlXEF6dXJlZG5zcmVjb3JkXFYx4gI4T3JnXE9wZW5tY2ZcUHJvdmlkZXJcQXp1cmVcQXp1cmVkbnNyZWNvcmRcVjFcR1BCTWV0YWRhdGHqAjFPcmc6Ok9wZW5tY2Y6OlByb3ZpZGVyOjpBenVyZTo6QXp1cmVkbnNyZWNvcmQ6OlYxYgZwcm90bzM", [file_buf_validate_validate, file_org_openmcf_shared_foreignkey_v1_foreign_key, file_org_openmcf_shared_options_options]);
 
 /**
  * AzureDnsRecordSpec defines the configuration for creating a DNS record in an Azure DNS Zone.
@@ -56,9 +54,9 @@ export type AzureDnsRecordSpec = Message<"org.openmcf.provider.azure.azurednsrec
    * The DNS record type to create.
    * Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA.
    *
-   * @generated from field: org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType record_type = 3;
+   * @generated from field: org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordType type = 3;
    */
-  recordType: DnsRecordType;
+  type: AzureDnsRecordSpec_RecordType;
 
   /**
    * The name of the DNS record (relative to the zone).
@@ -104,7 +102,7 @@ export type AzureDnsRecordSpec = Message<"org.openmcf.provider.azure.azurednsrec
    * MX record specific: Priority value for mail exchange records.
    * Lower values indicate higher priority. Required for MX records.
    * Common values: 10 (primary), 20 (secondary), 30 (tertiary).
-   * Only applicable when record_type is MX.
+   * Only applicable when type is MX.
    *
    * @generated from field: optional int32 mx_priority = 7;
    */
@@ -117,4 +115,87 @@ export type AzureDnsRecordSpec = Message<"org.openmcf.provider.azure.azurednsrec
  */
 export const AzureDnsRecordSpecSchema: GenMessage<AzureDnsRecordSpec> = /*@__PURE__*/
   messageDesc(file_org_openmcf_provider_azure_azurednsrecord_v1_spec, 0);
+
+/**
+ * Supported DNS record types for Azure DNS.
+ *
+ * @generated from enum org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordType
+ */
+export enum AzureDnsRecordSpec_RecordType {
+  /**
+   * Unspecified record type (invalid).
+   *
+   * @generated from enum value: record_type_unspecified = 0;
+   */
+  record_type_unspecified = 0,
+
+  /**
+   * IPv4 address record.
+   *
+   * @generated from enum value: A = 1;
+   */
+  A = 1,
+
+  /**
+   * IPv6 address record.
+   *
+   * @generated from enum value: AAAA = 2;
+   */
+  AAAA = 2,
+
+  /**
+   * Canonical name (alias) record.
+   *
+   * @generated from enum value: CNAME = 3;
+   */
+  CNAME = 3,
+
+  /**
+   * Mail exchange record.
+   *
+   * @generated from enum value: MX = 4;
+   */
+  MX = 4,
+
+  /**
+   * Text record (SPF, DKIM, verification, etc.).
+   *
+   * @generated from enum value: TXT = 5;
+   */
+  TXT = 5,
+
+  /**
+   * Service locator record.
+   *
+   * @generated from enum value: SRV = 6;
+   */
+  SRV = 6,
+
+  /**
+   * Nameserver record.
+   *
+   * @generated from enum value: NS = 7;
+   */
+  NS = 7,
+
+  /**
+   * Pointer record (reverse DNS).
+   *
+   * @generated from enum value: PTR = 8;
+   */
+  PTR = 8,
+
+  /**
+   * Certificate Authority Authorization record.
+   *
+   * @generated from enum value: CAA = 9;
+   */
+  CAA = 9,
+}
+
+/**
+ * Describes the enum org.openmcf.provider.azure.azurednsrecord.v1.AzureDnsRecordSpec.RecordType.
+ */
+export const AzureDnsRecordSpec_RecordTypeSchema: GenEnum<AzureDnsRecordSpec_RecordType> = /*@__PURE__*/
+  enumDesc(file_org_openmcf_provider_azure_azurednsrecord_v1_spec, 0, 0);
 

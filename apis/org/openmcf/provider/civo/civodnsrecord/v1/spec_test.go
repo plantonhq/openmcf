@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 				}
 				err := protovalidate.Validate(spec)
@@ -41,7 +41,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_AAAA,
+					Type:   CivoDnsRecordSpec_AAAA,
 					Value:  "2001:db8::1",
 				}
 				err := protovalidate.Validate(spec)
@@ -52,7 +52,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "app",
-					Type:   CivoDnsRecordType_CNAME,
+					Type:   CivoDnsRecordSpec_CNAME,
 					Value:  "www.example.com",
 				}
 				err := protovalidate.Validate(spec)
@@ -63,7 +63,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId:   strVal("zone-abc123"),
 					Name:     "@",
-					Type:     CivoDnsRecordType_MX,
+					Type:     CivoDnsRecordSpec_MX,
 					Value:    "mail.example.com",
 					Priority: 10,
 				}
@@ -75,7 +75,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "@",
-					Type:   CivoDnsRecordType_TXT,
+					Type:   CivoDnsRecordSpec_TXT,
 					Value:  "v=spf1 include:_spf.google.com ~all",
 				}
 				err := protovalidate.Validate(spec)
@@ -86,7 +86,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId:   strVal("zone-abc123"),
 					Name:     "_sip._tcp",
-					Type:     CivoDnsRecordType_SRV,
+					Type:     CivoDnsRecordSpec_SRV,
 					Value:    "sip.example.com",
 					Priority: 10,
 				}
@@ -98,7 +98,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "subdomain",
-					Type:   CivoDnsRecordType_NS,
+					Type:   CivoDnsRecordSpec_NS,
 					Value:  "ns1.example.com",
 				}
 				err := protovalidate.Validate(spec)
@@ -109,7 +109,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 					Ttl:    3600,
 				}
@@ -121,7 +121,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 					Ttl:    60,
 				}
@@ -133,7 +133,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 					Ttl:    86400,
 				}
@@ -145,7 +145,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 					Ttl:    0,
 				}
@@ -157,7 +157,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "@",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 				}
 				err := protovalidate.Validate(spec)
@@ -172,7 +172,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 			ginkgo.It("should return a validation error when zone_id is missing", func() {
 				spec := &CivoDnsRecordSpec{
 					Name:  "www",
-					Type:  CivoDnsRecordType_A,
+					Type:  CivoDnsRecordSpec_A,
 					Value: "192.0.2.1",
 				}
 				err := protovalidate.Validate(spec)
@@ -182,7 +182,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 			ginkgo.It("should return a validation error when name is missing", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 				}
 				err := protovalidate.Validate(spec)
@@ -193,7 +193,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_dns_record_type_unspecified,
+					Type:   CivoDnsRecordSpec_record_type_unspecified,
 					Value:  "192.0.2.1",
 				}
 				err := protovalidate.Validate(spec)
@@ -204,7 +204,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 				}
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).ToNot(gomega.BeNil())
@@ -214,7 +214,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 					Ttl:    30,
 				}
@@ -226,7 +226,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "www",
-					Type:   CivoDnsRecordType_A,
+					Type:   CivoDnsRecordSpec_A,
 					Value:  "192.0.2.1",
 					Ttl:    100000,
 				}
@@ -238,7 +238,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId:   strVal("zone-abc123"),
 					Name:     "@",
-					Type:     CivoDnsRecordType_MX,
+					Type:     CivoDnsRecordSpec_MX,
 					Value:    "mail.example.com",
 					Priority: -1,
 				}
@@ -250,7 +250,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId:   strVal("zone-abc123"),
 					Name:     "@",
-					Type:     CivoDnsRecordType_MX,
+					Type:     CivoDnsRecordSpec_MX,
 					Value:    "mail.example.com",
 					Priority: 70000,
 				}
@@ -262,7 +262,7 @@ var _ = ginkgo.Describe("CivoDnsRecordSpec Custom Validation Tests", func() {
 				spec := &CivoDnsRecordSpec{
 					ZoneId: strVal("zone-abc123"),
 					Name:   "@",
-					Type:   CivoDnsRecordType_MX,
+					Type:   CivoDnsRecordSpec_MX,
 					Value:  "mail.example.com",
 				}
 				err := protovalidate.Validate(spec)

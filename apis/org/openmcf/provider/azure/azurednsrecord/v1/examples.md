@@ -15,7 +15,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: A
+  type: A
   name: www
   values:
     - "192.0.2.1"
@@ -35,7 +35,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: A
+  type: A
   name: "@"
   values:
     - "192.0.2.1"
@@ -56,7 +56,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: AAAA
+  type: AAAA
   name: www
   values:
     - "2001:db8::1"
@@ -76,7 +76,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: CNAME
+  type: CNAME
   name: blog
   values:
     - "example.ghost.io"
@@ -96,7 +96,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: MX
+  type: MX
   name: "@"
   values:
     - "aspmx.l.google.com"
@@ -118,7 +118,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: TXT
+  type: TXT
   name: "@"
   values:
     - "v=spf1 include:_spf.google.com ~all"
@@ -138,7 +138,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: TXT
+  type: TXT
   name: "@"
   values:
     - "google-site-verification=abc123xyz"
@@ -158,7 +158,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: CAA
+  type: CAA
   name: "@"
   values:
     - "letsencrypt.org"
@@ -179,7 +179,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: A
+  type: A
   name: "*"
   values:
     - "192.0.2.100"
@@ -201,7 +201,7 @@ spec:
   zone_name:
     value_from:
       name: production-dns-zone
-  record_type: A
+  type: A
   name: api
   values:
     - "192.0.2.50"
@@ -221,7 +221,7 @@ spec:
   resource_group: production-dns-rg
   zone_name:
     value: example.com
-  record_type: NS
+  type: NS
   name: staging
   values:
     - "ns1.staging-provider.com"

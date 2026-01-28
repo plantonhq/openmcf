@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
 	foreignkeyv1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/openmcf/apis/org/openmcf/shared/networking/enums/dnsrecordtype"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -36,9 +35,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www",
-						Values:     []string{"192.0.2.1"},
+						Type:   AzureDnsRecordSpec_A,
+						Name:   "www",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -59,9 +58,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "@",
-						Values:     []string{"192.0.2.1"},
+						Type:   AzureDnsRecordSpec_A,
+						Name:   "@",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -82,9 +81,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "*",
-						Values:     []string{"192.0.2.1"},
+						Type:   AzureDnsRecordSpec_A,
+						Name:   "*",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -105,7 +104,7 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_MX,
+						Type:       AzureDnsRecordSpec_MX,
 						Name:       "@",
 						Values:     []string{"mail.example.com"},
 						MxPriority: proto.Int32(10),
@@ -129,9 +128,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_CNAME,
-						Name:       "alias",
-						Values:     []string{"target.example.com"},
+						Type:   AzureDnsRecordSpec_CNAME,
+						Name:   "alias",
+						Values: []string{"target.example.com"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -152,9 +151,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_TXT,
-						Name:       "@",
-						Values:     []string{"v=spf1 include:_spf.google.com ~all"},
+						Type:   AzureDnsRecordSpec_TXT,
+						Name:   "@",
+						Values: []string{"v=spf1 include:_spf.google.com ~all"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -175,9 +174,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "api.v1",
-						Values:     []string{"192.0.2.1"},
+						Type:   AzureDnsRecordSpec_A,
+						Name:   "api.v1",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -200,9 +199,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								},
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www",
-						Values:     []string{"192.0.2.1"},
+						Type:   AzureDnsRecordSpec_A,
+						Name:   "www",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -227,9 +226,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www",
-						Values:     []string{"192.0.2.1"},
+						Type:   AzureDnsRecordSpec_A,
+						Name:   "www",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -245,7 +244,7 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 					},
 					Spec: &AzureDnsRecordSpec{
 						ResourceGroup: "test-resource-group",
-						RecordType:    dnsrecordtype.DnsRecordType_A,
+						Type:          AzureDnsRecordSpec_A,
 						Name:          "www",
 						Values:        []string{"192.0.2.1"},
 					},
@@ -268,9 +267,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_unspecified,
-						Name:       "www",
-						Values:     []string{"192.0.2.1"},
+						Type:   AzureDnsRecordSpec_record_type_unspecified,
+						Name:   "www",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -291,8 +290,8 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Values:     []string{"192.0.2.1"},
+						Type:   AzureDnsRecordSpec_A,
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -313,9 +312,9 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www",
-						Values:     []string{},
+						Type:   AzureDnsRecordSpec_A,
+						Name:   "www",
+						Values: []string{},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -336,7 +335,7 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
+						Type:       AzureDnsRecordSpec_A,
 						Name:       "www",
 						Values:     []string{"192.0.2.1"},
 						MxPriority: proto.Int32(10),
@@ -360,7 +359,7 @@ var _ = ginkgo.Describe("AzureDnsRecordSpec Custom Validation Tests", func() {
 								Value: "example.com",
 							},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
+						Type:       AzureDnsRecordSpec_A,
 						Name:       "www",
 						Values:     []string{"192.0.2.1"},
 						TtlSeconds: proto.Int32(0),

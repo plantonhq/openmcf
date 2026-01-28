@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	azurednsrecordv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/azure/azurednsrecord/v1"
-	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/networking/enums/dnsrecordtype"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/dns"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -29,7 +28,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 	}
 
 	spec := locals.AzureDnsRecord.Spec
-	recordType := spec.RecordType
+	recordType := spec.Type
 	recordName := locals.RecordName
 	zoneName := locals.ZoneName
 	resourceGroup := locals.ResourceGroup
@@ -40,7 +39,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 
 	// Create the appropriate DNS record based on record type
 	switch recordType {
-	case dnsrecordtype.DnsRecordType_A:
+	case azurednsrecordv1.AzureDnsRecordSpec_A:
 		record, err := dns.NewARecord(ctx,
 			"dns-a-record",
 			&dns.ARecordArgs{
@@ -58,7 +57,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 		recordId = record.ID()
 		fqdn = record.Fqdn
 
-	case dnsrecordtype.DnsRecordType_AAAA:
+	case azurednsrecordv1.AzureDnsRecordSpec_AAAA:
 		record, err := dns.NewAaaaRecord(ctx,
 			"dns-aaaa-record",
 			&dns.AaaaRecordArgs{
@@ -76,7 +75,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 		recordId = record.ID()
 		fqdn = record.Fqdn
 
-	case dnsrecordtype.DnsRecordType_CNAME:
+	case azurednsrecordv1.AzureDnsRecordSpec_CNAME:
 		if len(spec.Values) == 0 {
 			return errors.New("CNAME record requires at least one value")
 		}
@@ -97,7 +96,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 		recordId = record.ID()
 		fqdn = record.Fqdn
 
-	case dnsrecordtype.DnsRecordType_MX:
+	case azurednsrecordv1.AzureDnsRecordSpec_MX:
 		mxRecords := make(dns.MxRecordRecordArray, 0)
 		for _, value := range spec.Values {
 			mxRecords = append(mxRecords, &dns.MxRecordRecordArgs{
@@ -122,7 +121,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 		recordId = record.ID()
 		fqdn = record.Fqdn
 
-	case dnsrecordtype.DnsRecordType_TXT:
+	case azurednsrecordv1.AzureDnsRecordSpec_TXT:
 		txtRecords := make(dns.TxtRecordRecordArray, 0)
 		for _, value := range spec.Values {
 			txtRecords = append(txtRecords, &dns.TxtRecordRecordArgs{
@@ -146,7 +145,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 		recordId = record.ID()
 		fqdn = record.Fqdn
 
-	case dnsrecordtype.DnsRecordType_NS:
+	case azurednsrecordv1.AzureDnsRecordSpec_NS:
 		record, err := dns.NewNsRecord(ctx,
 			"dns-ns-record",
 			&dns.NsRecordArgs{
@@ -164,7 +163,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 		recordId = record.ID()
 		fqdn = record.Fqdn
 
-	case dnsrecordtype.DnsRecordType_SRV:
+	case azurednsrecordv1.AzureDnsRecordSpec_SRV:
 		srvRecords := make(dns.SrvRecordRecordArray, 0)
 		for _, value := range spec.Values {
 			// SRV records should be in format "priority weight port target"
@@ -193,7 +192,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 		recordId = record.ID()
 		fqdn = record.Fqdn
 
-	case dnsrecordtype.DnsRecordType_CAA:
+	case azurednsrecordv1.AzureDnsRecordSpec_CAA:
 		caaRecords := make(dns.CaaRecordRecordArray, 0)
 		for _, value := range spec.Values {
 			caaRecords = append(caaRecords, &dns.CaaRecordRecordArgs{
@@ -219,7 +218,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurednsrecordv1.AzureDnsRecordS
 		recordId = record.ID()
 		fqdn = record.Fqdn
 
-	case dnsrecordtype.DnsRecordType_PTR:
+	case azurednsrecordv1.AzureDnsRecordSpec_PTR:
 		record, err := dns.NewPtrRecord(ctx,
 			"dns-ptr-record",
 			&dns.PtrRecordArgs{

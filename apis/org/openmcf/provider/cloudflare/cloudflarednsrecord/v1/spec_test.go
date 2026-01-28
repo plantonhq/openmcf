@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
+	foreignkeyv1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
 )
 
 func TestCloudflareDnsRecordSpec(t *testing.T) {
@@ -27,9 +28,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-a-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "www",
-						Type:   CloudflareDnsRecordType_A,
+						Type:   CloudflareDnsRecordSpec_A,
 						Value:  "192.0.2.1",
 					},
 				}
@@ -45,9 +46,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-aaaa-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "www",
-						Type:   CloudflareDnsRecordType_AAAA,
+						Type:   CloudflareDnsRecordSpec_AAAA,
 						Value:  "2001:db8::1",
 					},
 				}
@@ -63,9 +64,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-cname-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "app",
-						Type:   CloudflareDnsRecordType_CNAME,
+						Type:   CloudflareDnsRecordSpec_CNAME,
 						Value:  "www.example.com",
 					},
 				}
@@ -81,9 +82,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-mx-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId:   "abc123def456",
+						ZoneId:   &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:     "@",
-						Type:     CloudflareDnsRecordType_MX,
+						Type:     CloudflareDnsRecordSpec_MX,
 						Value:    "mail.example.com",
 						Priority: 10,
 					},
@@ -100,9 +101,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-txt-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "@",
-						Type:   CloudflareDnsRecordType_TXT,
+						Type:   CloudflareDnsRecordSpec_TXT,
 						Value:  "v=spf1 include:_spf.google.com ~all",
 					},
 				}
@@ -118,9 +119,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-proxied-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId:  "abc123def456",
+						ZoneId:  &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:    "www",
-						Type:    CloudflareDnsRecordType_A,
+						Type:    CloudflareDnsRecordSpec_A,
 						Value:   "192.0.2.1",
 						Proxied: true,
 					},
@@ -137,9 +138,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-auto-ttl-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "www",
-						Type:   CloudflareDnsRecordType_A,
+						Type:   CloudflareDnsRecordSpec_A,
 						Value:  "192.0.2.1",
 						Ttl:    1,
 					},
@@ -156,9 +157,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-ttl-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "www",
-						Type:   CloudflareDnsRecordType_A,
+						Type:   CloudflareDnsRecordSpec_A,
 						Value:  "192.0.2.1",
 						Ttl:    3600,
 					},
@@ -175,9 +176,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-comment-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId:  "abc123def456",
+						ZoneId:  &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:    "www",
-						Type:    CloudflareDnsRecordType_A,
+						Type:    CloudflareDnsRecordSpec_A,
 						Value:   "192.0.2.1",
 						Comment: "Main web server",
 					},
@@ -194,9 +195,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-caa-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "@",
-						Type:   CloudflareDnsRecordType_CAA,
+						Type:   CloudflareDnsRecordSpec_CAA,
 						Value:  "0 issue \"letsencrypt.org\"",
 					},
 				}
@@ -218,7 +219,7 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 					},
 					Spec: &CloudflareDnsRecordSpec{
 						Name:  "www",
-						Type:  CloudflareDnsRecordType_A,
+						Type:  CloudflareDnsRecordSpec_A,
 						Value: "192.0.2.1",
 					},
 				}
@@ -234,8 +235,8 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
-						Type:   CloudflareDnsRecordType_A,
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
+						Type:   CloudflareDnsRecordSpec_A,
 						Value:  "192.0.2.1",
 					},
 				}
@@ -251,9 +252,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "www",
-						Type:   CloudflareDnsRecordType_dns_record_type_unspecified,
+						Type:   CloudflareDnsRecordSpec_record_type_unspecified,
 						Value:  "192.0.2.1",
 					},
 				}
@@ -269,9 +270,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "www",
-						Type:   CloudflareDnsRecordType_A,
+						Type:   CloudflareDnsRecordSpec_A,
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -286,9 +287,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "www",
-						Type:   CloudflareDnsRecordType_A,
+						Type:   CloudflareDnsRecordSpec_A,
 						Value:  "192.0.2.1",
 						Ttl:    30,
 					},
@@ -305,9 +306,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "www",
-						Type:   CloudflareDnsRecordType_A,
+						Type:   CloudflareDnsRecordSpec_A,
 						Value:  "192.0.2.1",
 						Ttl:    100000,
 					},
@@ -324,9 +325,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId:   "abc123def456",
+						ZoneId:   &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:     "@",
-						Type:     CloudflareDnsRecordType_MX,
+						Type:     CloudflareDnsRecordSpec_MX,
 						Value:    "mail.example.com",
 						Priority: -1,
 					},
@@ -343,9 +344,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId:   "abc123def456",
+						ZoneId:   &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:     "@",
-						Type:     CloudflareDnsRecordType_MX,
+						Type:     CloudflareDnsRecordSpec_MX,
 						Value:    "mail.example.com",
 						Priority: 70000,
 					},
@@ -362,9 +363,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId:  "abc123def456",
+						ZoneId:  &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:    "www",
-						Type:    CloudflareDnsRecordType_A,
+						Type:    CloudflareDnsRecordSpec_A,
 						Value:   "192.0.2.1",
 						Comment: "This is a very long comment that exceeds the 100 character limit for DNS record comments in Cloudflare's system.",
 					},
@@ -381,9 +382,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId:  "abc123def456",
+						ZoneId:  &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:    "@",
-						Type:    CloudflareDnsRecordType_TXT,
+						Type:    CloudflareDnsRecordSpec_TXT,
 						Value:   "test",
 						Proxied: true,
 					},
@@ -400,9 +401,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId:   "abc123def456",
+						ZoneId:   &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:     "@",
-						Type:     CloudflareDnsRecordType_MX,
+						Type:     CloudflareDnsRecordSpec_MX,
 						Value:    "mail.example.com",
 						Priority: 10,
 						Proxied:  true,
@@ -420,9 +421,9 @@ var _ = ginkgo.Describe("CloudflareDnsRecordSpec Custom Validation Tests", func(
 						Name: "test-record",
 					},
 					Spec: &CloudflareDnsRecordSpec{
-						ZoneId: "abc123def456",
+						ZoneId: &foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "abc123def456"}},
 						Name:   "@",
-						Type:   CloudflareDnsRecordType_MX,
+						Type:   CloudflareDnsRecordSpec_MX,
 						Value:  "mail.example.com",
 					},
 				}

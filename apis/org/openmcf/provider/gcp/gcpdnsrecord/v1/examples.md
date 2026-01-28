@@ -14,7 +14,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: A
+  type: A
   name: www.example.com.
   values:
     - 192.0.2.1
@@ -32,7 +32,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: A
+  type: A
   name: api.example.com.
   values:
     - 192.0.2.1
@@ -53,7 +53,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: CNAME
+  type: CNAME
   name: blog.example.com.
   values:
     - example.github.io.
@@ -71,7 +71,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: A
+  type: A
   name: "*.example.com."
   values:
     - 192.0.2.1
@@ -90,7 +90,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: MX
+  type: MX
   name: example.com.
   values:
     - "10 aspmx.l.google.com."
@@ -113,7 +113,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: TXT
+  type: TXT
   name: example.com.
   values:
     - "v=spf1 include:_spf.google.com ~all"
@@ -132,7 +132,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: TXT
+  type: TXT
   name: example.com.
   values:
     - "google-site-verification=abc123xyz"
@@ -150,7 +150,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: AAAA
+  type: AAAA
   name: www.example.com.
   values:
     - "2001:db8::1"
@@ -168,7 +168,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: CAA
+  type: CAA
   name: example.com.
   values:
     - '0 issue "letsencrypt.org"'
@@ -188,7 +188,7 @@ metadata:
 spec:
   projectId: my-gcp-project
   managedZone: example-zone
-  recordType: SRV
+  type: SRV
   name: _xmpp-server._tcp.example.com.
   values:
     - "10 5 5269 xmpp.example.com."
@@ -206,7 +206,7 @@ metadata:
 spec:
   projectId: production-project
   managedZone: production-zone
-  recordType: A
+  type: A
   name: api.example.com.
   values:
     - 203.0.113.10
@@ -229,7 +229,7 @@ spec:
       name: my-gcp-project-resource
       fieldPath: status.outputs.project_id
   managedZone: example-zone
-  recordType: A
+  type: A
   name: app.example.com.
   values:
     - 192.0.2.100

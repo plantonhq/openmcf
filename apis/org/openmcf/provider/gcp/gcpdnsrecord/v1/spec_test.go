@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
 	foreignkeyv1 "github.com/plantonhq/openmcf/apis/org/openmcf/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/openmcf/apis/org/openmcf/shared/networking/enums/dnsrecordtype"
 )
 
 func TestGcpDnsRecordSpec(t *testing.T) {
@@ -35,9 +34,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www.example.com.",
-						Values:     []string{"192.0.2.1"},
+						Type:   GcpDnsRecordSpec_A,
+						Name:   "www.example.com.",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -58,9 +57,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_CNAME,
-						Name:       "alias.example.com.",
-						Values:     []string{"target.example.com."},
+						Type:   GcpDnsRecordSpec_CNAME,
+						Name:   "alias.example.com.",
+						Values: []string{"target.example.com."},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -81,9 +80,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "api.example.com.",
-						Values:     []string{"192.0.2.1", "192.0.2.2", "192.0.2.3"},
+						Type:   GcpDnsRecordSpec_A,
+						Name:   "api.example.com.",
+						Values: []string{"192.0.2.1", "192.0.2.2", "192.0.2.3"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -105,7 +104,7 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_TXT,
+						Type:       GcpDnsRecordSpec_TXT,
 						Name:       "example.com.",
 						Values:     []string{"v=spf1 include:_spf.google.com ~all"},
 						TtlSeconds: &ttl,
@@ -129,9 +128,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "*.example.com.",
-						Values:     []string{"192.0.2.1"},
+						Type:   GcpDnsRecordSpec_A,
+						Name:   "*.example.com.",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -154,9 +153,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www.example.com.",
-						Values:     []string{"192.0.2.1"},
+						Type:   GcpDnsRecordSpec_A,
+						Name:   "www.example.com.",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -174,9 +173,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ProjectId: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-project-123"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www.example.com.",
-						Values:     []string{"192.0.2.1"},
+						Type:   GcpDnsRecordSpec_A,
+						Name:   "www.example.com.",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -197,9 +196,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_unspecified,
-						Name:       "www.example.com.",
-						Values:     []string{"192.0.2.1"},
+						Type:   GcpDnsRecordSpec_record_type_unspecified,
+						Name:   "www.example.com.",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -220,8 +219,8 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Values:     []string{"192.0.2.1"},
+						Type:   GcpDnsRecordSpec_A,
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -242,9 +241,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www.example.com.",
-						Values:     []string{},
+						Type:   GcpDnsRecordSpec_A,
+						Name:   "www.example.com.",
+						Values: []string{},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -268,9 +267,9 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
-						Name:       "www.example.com",
-						Values:     []string{"192.0.2.1"},
+						Type:   GcpDnsRecordSpec_A,
+						Name:   "www.example.com",
+						Values: []string{"192.0.2.1"},
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -292,7 +291,7 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
+						Type:       GcpDnsRecordSpec_A,
 						Name:       "www.example.com.",
 						Values:     []string{"192.0.2.1"},
 						TtlSeconds: &ttl,
@@ -317,7 +316,7 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 						ManagedZone: &foreignkeyv1.StringValueOrRef{
 							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example-zone"},
 						},
-						RecordType: dnsrecordtype.DnsRecordType_A,
+						Type:       GcpDnsRecordSpec_A,
 						Name:       "www.example.com.",
 						Values:     []string{"192.0.2.1"},
 						TtlSeconds: &ttl,

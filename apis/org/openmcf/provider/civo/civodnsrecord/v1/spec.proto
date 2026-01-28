@@ -7,6 +7,26 @@ import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
 // CivoDnsRecordSpec defines the configuration for creating a DNS record in a Civo DNS zone.
 // This component supports creating individual DNS records with common record types.
 message CivoDnsRecordSpec {
+  // Supported DNS record types for Civo.
+  enum RecordType {
+    // Unspecified record type (invalid).
+    record_type_unspecified = 0;
+    // IPv4 address record.
+    A = 1;
+    // IPv6 address record.
+    AAAA = 2;
+    // Canonical name (alias) record.
+    CNAME = 3;
+    // Mail exchange record.
+    MX = 4;
+    // Text record (SPF, DKIM, verification, etc.).
+    TXT = 5;
+    // Service locator record.
+    SRV = 6;
+    // Nameserver record.
+    NS = 7;
+  }
+
   // The ID of the Civo DNS Zone where this record will be created.
   // Can be provided as a literal value or referenced from a CivoDnsZone resource.
   //
@@ -27,12 +47,12 @@ message CivoDnsRecordSpec {
   string name = 2 [(buf.validate.field).required = true];
 
   // The type of DNS record to create.
-  CivoDnsRecordType type = 3 [
+  RecordType type = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).cel = {
       id: "type.not_unspecified"
-      message: "type must be specified (cannot be dns_record_type_unspecified)"
+      message: "type must be specified (cannot be record_type_unspecified)"
       expression: "this != 0"
     }
   ];
@@ -72,24 +92,4 @@ message CivoDnsRecordSpec {
     message: "priority must be set (> 0) for MX records"
     expression: "this.type != 4 || this.priority > 0"
   };
-}
-
-// Supported DNS record types for Civo.
-enum CivoDnsRecordType {
-  // Unspecified record type (invalid).
-  dns_record_type_unspecified = 0;
-  // IPv4 address record.
-  A = 1;
-  // IPv6 address record.
-  AAAA = 2;
-  // Canonical name (alias) record.
-  CNAME = 3;
-  // Mail exchange record.
-  MX = 4;
-  // Text record (SPF, DKIM, verification, etc.).
-  TXT = 5;
-  // Service locator record.
-  SRV = 6;
-  // Nameserver record.
-  NS = 7;
 }

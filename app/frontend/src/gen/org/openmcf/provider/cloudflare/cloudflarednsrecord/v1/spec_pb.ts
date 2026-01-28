@@ -5,13 +5,15 @@
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../../../../buf/validate/validate_pb";
+import type { StringValueOrRef } from "../../../../shared/foreignkey/v1/foreign_key_pb";
+import { file_org_openmcf_shared_foreignkey_v1_foreign_key } from "../../../../shared/foreignkey/v1/foreign_key_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file org/openmcf/provider/cloudflare/cloudflarednsrecord/v1/spec.proto.
  */
 export const file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec: GenFile = /*@__PURE__*/
-  fileDesc("CkFvcmcvb3Blbm1jZi9wcm92aWRlci9jbG91ZGZsYXJlL2Nsb3VkZmxhcmVkbnNyZWNvcmQvdjEvc3BlYy5wcm90bxI2b3JnLm9wZW5tY2YucHJvdmlkZXIuY2xvdWRmbGFyZS5jbG91ZGZsYXJlZG5zcmVjb3JkLnYxItIHChdDbG91ZGZsYXJlRG5zUmVjb3JkU3BlYxIXCgd6b25lX2lkGAEgASgJQga6SAPIAQESFAoEbmFtZRgCIAEoCUIGukgDyAEBEs4BCgR0eXBlGAMgASgOMk8ub3JnLm9wZW5tY2YucHJvdmlkZXIuY2xvdWRmbGFyZS5jbG91ZGZsYXJlZG5zcmVjb3JkLnYxLkNsb3VkZmxhcmVEbnNSZWNvcmRUeXBlQm+6SGy6AWEKFHR5cGUubm90X3Vuc3BlY2lmaWVkEj50eXBlIG11c3QgYmUgc3BlY2lmaWVkIChjYW5ub3QgYmUgZG5zX3JlY29yZF90eXBlX3Vuc3BlY2lmaWVkKRoJdGhpcyAhPSAwyAEBggECEAESFQoFdmFsdWUYBCABKAlCBrpIA8gBARIPCgdwcm94aWVkGAUgASgIEpsBCgN0dGwYBiABKAVCjQG6SIkBugGFAQoPdHRsLnZhbGlkX3JhbmdlEjl0dGwgbXVzdCBiZSAxIChhdXRvbWF0aWMpIG9yIGJldHdlZW4gNjAgYW5kIDg2NDAwIHNlY29uZHMaN3RoaXMgPT0gMCB8fCB0aGlzID09IDEgfHwgKHRoaXMgPj0gNjAgJiYgdGhpcyA8PSA4NjQwMCkScAoIcHJpb3JpdHkYByABKAVCXrpIW7oBWAoUcHJpb3JpdHkudmFsaWRfcmFuZ2USJHByaW9yaXR5IG11c3QgYmUgYmV0d2VlbiAwIGFuZCA2NTUzNRoadGhpcyA+PSAwICYmIHRoaXMgPD0gNjU1MzUSZgoHY29tbWVudBgIIAEoCUJVukhSugFPChJjb21tZW50Lm1heF9sZW5ndGgSJmNvbW1lbnQgbXVzdCBub3QgZXhjZWVkIDEwMCBjaGFyYWN0ZXJzGhFzaXplKHRoaXMpIDw9IDEwMDqWArpIkgIapAEKJXNwZWMucHJveGllZF9vbmx5X2Zvcl9zdXBwb3J0ZWRfdHlwZXMSNnByb3hpZWQgY2FuIG9ubHkgYmUgdHJ1ZSBmb3IgQSwgQUFBQSwgb3IgQ05BTUUgcmVjb3JkcxpDIXRoaXMucHJveGllZCB8fCB0aGlzLnR5cGUgPT0gMSB8fCB0aGlzLnR5cGUgPT0gMiB8fCB0aGlzLnR5cGUgPT0gMxppCh1zcGVjLnByaW9yaXR5X3JlcXVpcmVkX2Zvcl9teBIjcHJpb3JpdHkgaXMgcmVxdWlyZWQgZm9yIE1YIHJlY29yZHMaI3RoaXMudHlwZSAhPSA0IHx8IHRoaXMucHJpb3JpdHkgPiAwKoEBChdDbG91ZGZsYXJlRG5zUmVjb3JkVHlwZRIfChtkbnNfcmVjb3JkX3R5cGVfdW5zcGVjaWZpZWQQABIFCgFBEAESCAoEQUFBQRACEgkKBUNOQU1FEAMSBgoCTVgQBBIHCgNUWFQQBRIHCgNTUlYQBhIGCgJOUxAHEgcKA0NBQRAIQrYDCjpjb20ub3JnLm9wZW5tY2YucHJvdmlkZXIuY2xvdWRmbGFyZS5jbG91ZGZsYXJlZG5zcmVjb3JkLnYxQglTcGVjUHJvdG9QAVpuZ2l0aHViLmNvbS9wbGFudG9uaHEvb3Blbm1jZi9hcGlzL29yZy9vcGVubWNmL3Byb3ZpZGVyL2Nsb3VkZmxhcmUvY2xvdWRmbGFyZWRuc3JlY29yZC92MTtjbG91ZGZsYXJlZG5zcmVjb3JkdjGiAgVPT1BDQ6oCNk9yZy5PcGVubWNmLlByb3ZpZGVyLkNsb3VkZmxhcmUuQ2xvdWRmbGFyZWRuc3JlY29yZC5WMcoCNk9yZ1xPcGVubWNmXFByb3ZpZGVyXENsb3VkZmxhcmVcQ2xvdWRmbGFyZWRuc3JlY29yZFxWMeICQk9yZ1xPcGVubWNmXFByb3ZpZGVyXENsb3VkZmxhcmVcQ2xvdWRmbGFyZWRuc3JlY29yZFxWMVxHUEJNZXRhZGF0YeoCO09yZzo6T3Blbm1jZjo6UHJvdmlkZXI6OkNsb3VkZmxhcmU6OkNsb3VkZmxhcmVkbnNyZWNvcmQ6OlYxYgZwcm90bzM", [file_buf_validate_validate]);
+  fileDesc("CkFvcmcvb3Blbm1jZi9wcm92aWRlci9jbG91ZGZsYXJlL2Nsb3VkZmxhcmVkbnNyZWNvcmQvdjEvc3BlYy5wcm90bxI2b3JnLm9wZW5tY2YucHJvdmlkZXIuY2xvdWRmbGFyZS5jbG91ZGZsYXJlZG5zcmVjb3JkLnYxIp4JChdDbG91ZGZsYXJlRG5zUmVjb3JkU3BlYxJqCgd6b25lX2lkGAEgASgLMjIub3JnLm9wZW5tY2Yuc2hhcmVkLmZvcmVpZ25rZXkudjEuU3RyaW5nVmFsdWVPclJlZkIlukgDyAEBiNRhiA6S1GEWc3RhdHVzLm91dHB1dHMuem9uZV9pZBIUCgRuYW1lGAIgASgJQga6SAPIAQES1QEKBHR5cGUYAyABKA4yWi5vcmcub3Blbm1jZi5wcm92aWRlci5jbG91ZGZsYXJlLmNsb3VkZmxhcmVkbnNyZWNvcmQudjEuQ2xvdWRmbGFyZURuc1JlY29yZFNwZWMuUmVjb3JkVHlwZUJrukhougFdChR0eXBlLm5vdF91bnNwZWNpZmllZBI6dHlwZSBtdXN0IGJlIHNwZWNpZmllZCAoY2Fubm90IGJlIHJlY29yZF90eXBlX3Vuc3BlY2lmaWVkKRoJdGhpcyAhPSAwyAEBggECEAESFQoFdmFsdWUYBCABKAlCBrpIA8gBARIPCgdwcm94aWVkGAUgASgIEpsBCgN0dGwYBiABKAVCjQG6SIkBugGFAQoPdHRsLnZhbGlkX3JhbmdlEjl0dGwgbXVzdCBiZSAxIChhdXRvbWF0aWMpIG9yIGJldHdlZW4gNjAgYW5kIDg2NDAwIHNlY29uZHMaN3RoaXMgPT0gMCB8fCB0aGlzID09IDEgfHwgKHRoaXMgPj0gNjAgJiYgdGhpcyA8PSA4NjQwMCkScAoIcHJpb3JpdHkYByABKAVCXrpIW7oBWAoUcHJpb3JpdHkudmFsaWRfcmFuZ2USJHByaW9yaXR5IG11c3QgYmUgYmV0d2VlbiAwIGFuZCA2NTUzNRoadGhpcyA+PSAwICYmIHRoaXMgPD0gNjU1MzUSZgoHY29tbWVudBgIIAEoCUJVukhSugFPChJjb21tZW50Lm1heF9sZW5ndGgSJmNvbW1lbnQgbXVzdCBub3QgZXhjZWVkIDEwMCBjaGFyYWN0ZXJzGhFzaXplKHRoaXMpIDw9IDEwMCJwCgpSZWNvcmRUeXBlEhsKF3JlY29yZF90eXBlX3Vuc3BlY2lmaWVkEAASBQoBQRABEggKBEFBQUEQAhIJCgVDTkFNRRADEgYKAk1YEAQSBwoDVFhUEAUSBwoDU1JWEAYSBgoCTlMQBxIHCgNDQUEQCDqWArpIkgIapAEKJXNwZWMucHJveGllZF9vbmx5X2Zvcl9zdXBwb3J0ZWRfdHlwZXMSNnByb3hpZWQgY2FuIG9ubHkgYmUgdHJ1ZSBmb3IgQSwgQUFBQSwgb3IgQ05BTUUgcmVjb3JkcxpDIXRoaXMucHJveGllZCB8fCB0aGlzLnR5cGUgPT0gMSB8fCB0aGlzLnR5cGUgPT0gMiB8fCB0aGlzLnR5cGUgPT0gMxppCh1zcGVjLnByaW9yaXR5X3JlcXVpcmVkX2Zvcl9teBIjcHJpb3JpdHkgaXMgcmVxdWlyZWQgZm9yIE1YIHJlY29yZHMaI3RoaXMudHlwZSAhPSA0IHx8IHRoaXMucHJpb3JpdHkgPiAwQrYDCjpjb20ub3JnLm9wZW5tY2YucHJvdmlkZXIuY2xvdWRmbGFyZS5jbG91ZGZsYXJlZG5zcmVjb3JkLnYxQglTcGVjUHJvdG9QAVpuZ2l0aHViLmNvbS9wbGFudG9uaHEvb3Blbm1jZi9hcGlzL29yZy9vcGVubWNmL3Byb3ZpZGVyL2Nsb3VkZmxhcmUvY2xvdWRmbGFyZWRuc3JlY29yZC92MTtjbG91ZGZsYXJlZG5zcmVjb3JkdjGiAgVPT1BDQ6oCNk9yZy5PcGVubWNmLlByb3ZpZGVyLkNsb3VkZmxhcmUuQ2xvdWRmbGFyZWRuc3JlY29yZC5WMcoCNk9yZ1xPcGVubWNmXFByb3ZpZGVyXENsb3VkZmxhcmVcQ2xvdWRmbGFyZWRuc3JlY29yZFxWMeICQk9yZ1xPcGVubWNmXFByb3ZpZGVyXENsb3VkZmxhcmVcQ2xvdWRmbGFyZWRuc3JlY29yZFxWMVxHUEJNZXRhZGF0YeoCO09yZzo6T3Blbm1jZjo6UHJvdmlkZXI6OkNsb3VkZmxhcmU6OkNsb3VkZmxhcmVkbnNyZWNvcmQ6OlYxYgZwcm90bzM", [file_buf_validate_validate, file_org_openmcf_shared_foreignkey_v1_foreign_key]);
 
 /**
  * CloudflareDnsRecordSpec defines the configuration for creating a DNS record in a Cloudflare zone.
@@ -22,11 +24,12 @@ export const file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec: G
 export type CloudflareDnsRecordSpec = Message<"org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec"> & {
   /**
    * The Cloudflare Zone ID where this DNS record will be created.
-   * Can be obtained from CloudflareDnsZone outputs or from the Cloudflare dashboard.
+   * Can be provided as a literal string or as a reference to a CloudflareDnsZone resource.
+   * When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
    *
-   * @generated from field: string zone_id = 1;
+   * @generated from field: org.openmcf.shared.foreignkey.v1.StringValueOrRef zone_id = 1;
    */
-  zoneId: string;
+  zoneId?: StringValueOrRef;
 
   /**
    * The name of the DNS record (e.g., "www", "api", "@" for root).
@@ -39,9 +42,9 @@ export type CloudflareDnsRecordSpec = Message<"org.openmcf.provider.cloudflare.c
   /**
    * The type of DNS record to create.
    *
-   * @generated from field: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordType type = 3;
+   * @generated from field: org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.RecordType type = 3;
    */
-  type: CloudflareDnsRecordType;
+  type: CloudflareDnsRecordSpec_RecordType;
 
   /**
    * The value/target of the DNS record.
@@ -107,15 +110,15 @@ export const CloudflareDnsRecordSpecSchema: GenMessage<CloudflareDnsRecordSpec> 
  * Supported DNS record types.
  * Using UPPERCASE as per DNS standard conventions.
  *
- * @generated from enum org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordType
+ * @generated from enum org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.RecordType
  */
-export enum CloudflareDnsRecordType {
+export enum CloudflareDnsRecordSpec_RecordType {
   /**
    * Unspecified record type (invalid).
    *
-   * @generated from enum value: dns_record_type_unspecified = 0;
+   * @generated from enum value: record_type_unspecified = 0;
    */
-  dns_record_type_unspecified = 0,
+  record_type_unspecified = 0,
 
   /**
    * IPv4 address record.
@@ -175,8 +178,8 @@ export enum CloudflareDnsRecordType {
 }
 
 /**
- * Describes the enum org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordType.
+ * Describes the enum org.openmcf.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.RecordType.
  */
-export const CloudflareDnsRecordTypeSchema: GenEnum<CloudflareDnsRecordType> = /*@__PURE__*/
-  enumDesc(file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec, 0);
+export const CloudflareDnsRecordSpec_RecordTypeSchema: GenEnum<CloudflareDnsRecordSpec_RecordType> = /*@__PURE__*/
+  enumDesc(file_org_openmcf_provider_cloudflare_cloudflarednsrecord_v1_spec, 0, 0);
 

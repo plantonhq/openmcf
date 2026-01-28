@@ -10,21 +10,21 @@ import (
 )
 
 // recordTypeToString converts the proto enum to the Civo API string.
-func recordTypeToString(recordType civodnsrecordv1.CivoDnsRecordType) string {
+func recordTypeToString(recordType civodnsrecordv1.CivoDnsRecordSpec_RecordType) string {
 	switch recordType {
-	case civodnsrecordv1.CivoDnsRecordType_A:
+	case civodnsrecordv1.CivoDnsRecordSpec_A:
 		return "A"
-	case civodnsrecordv1.CivoDnsRecordType_AAAA:
+	case civodnsrecordv1.CivoDnsRecordSpec_AAAA:
 		return "AAAA"
-	case civodnsrecordv1.CivoDnsRecordType_CNAME:
+	case civodnsrecordv1.CivoDnsRecordSpec_CNAME:
 		return "CNAME"
-	case civodnsrecordv1.CivoDnsRecordType_MX:
+	case civodnsrecordv1.CivoDnsRecordSpec_MX:
 		return "MX"
-	case civodnsrecordv1.CivoDnsRecordType_TXT:
+	case civodnsrecordv1.CivoDnsRecordSpec_TXT:
 		return "TXT"
-	case civodnsrecordv1.CivoDnsRecordType_SRV:
+	case civodnsrecordv1.CivoDnsRecordSpec_SRV:
 		return "SRV"
-	case civodnsrecordv1.CivoDnsRecordType_NS:
+	case civodnsrecordv1.CivoDnsRecordSpec_NS:
 		return "NS"
 	default:
 		return "A" // Default fallback
@@ -56,8 +56,8 @@ func dnsRecord(
 	}
 
 	// Set priority for MX/SRV records.
-	if spec.Type == civodnsrecordv1.CivoDnsRecordType_MX ||
-		spec.Type == civodnsrecordv1.CivoDnsRecordType_SRV {
+	if spec.Type == civodnsrecordv1.CivoDnsRecordSpec_MX ||
+		spec.Type == civodnsrecordv1.CivoDnsRecordSpec_SRV {
 		recordArgs.Priority = pulumi.Int(int(spec.Priority))
 	}
 

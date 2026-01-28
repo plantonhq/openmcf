@@ -10,6 +10,8 @@ Concrete, copy-and-paste examples for common Cloudflare DNS zone deployment scen
 - [Business Plan Zone](#business-plan-zone)
 - [Paused Zone (DNS-Only)](#paused-zone-dns-only)
 - [Default Proxied Zone](#default-proxied-zone)
+- [Zone with DNS Records](#zone-with-dns-records)
+- [Complete Zone with Multiple Records](#complete-zone-with-multiple-records)
 - [Multi-Environment Setup](#multi-environment-setup)
 - [Pulumi Go Example](#pulumi-go-example)
 - [Terraform HCL Example](#terraform-hcl-example)
@@ -179,6 +181,132 @@ spec:
 - Prevents accidental origin IP exposure
 
 **Note:** You can still manually set individual records to grey-cloud when creating them.
+
+---
+
+## Zone with DNS Records
+
+Zone with inline DNS records managed together:
+
+\`\`\`yaml
+apiVersion: cloudflare.openmcf.org/v1
+kind: CloudflareDnsZone
+metadata:
+  name: zone-with-records
+spec:
+  zoneName: "myapp.com"
+  accountId: "abc123..."
+  plan: PRO
+  records:
+    # A record for root domain
+    - name: "@"
+      type: A
+      value: "192.0.2.1"
+      proxied: true
+      ttl: 1  # Automatic TTL
+
+    # A record for www subdomain
+    - name: "www"
+      type: A
+      value: "192.0.2.1"
+      proxied: true
+
+    # CNAME for API subdomain
+    - name: "api"
+      type: CNAME
+      value: "api-gateway.example.com"
+      proxied: true
+
+    # MX record for email
+    - name: "@"
+      type: MX
+      value: "mail.example.com"
+      priority: 10
+      ttl: 3600
+\`\`\`
+
+**Use Case:** Manage zone and DNS records together as a single deployment unit.
+
+---
+
+## Complete Zone with Multiple Records
+
+A production-ready zone with comprehensive DNS setup:
+
+\`\`\`yaml
+apiVersion: cloudflare.openmcf.org/v1
+kind: CloudflareDnsZone
+metadata:
+  name: production-zone
+  labels:
+    environment: production
+spec:
+  zoneName: "production.example.com"
+  accountId: "abc123..."
+  plan: BUSINESS
+  defaultProxied: true
+  records:
+    # Web traffic records (proxied)
+    - name: "@"
+      type: A
+      value: "203.0.113.50"
+      proxied: true
+      comment: "Production web server"
+
+    - name: "www"
+      type: CNAME
+      value: "production.example.com"
+      proxied: true
+
+    - name: "api"
+      type: A
+      value: "203.0.113.51"
+      proxied: true
+      comment: "API server"
+
+    # Email records (not proxied)
+    - name: "@"
+      type: MX
+      value: "mail1.example.com"
+      priority: 10
+      ttl: 3600
+      comment: "Primary mail server"
+
+    - name: "@"
+      type: MX
+      value: "mail2.example.com"
+      priority: 20
+      ttl: 3600
+      comment: "Secondary mail server"
+
+    # TXT records for verification and SPF
+    - name: "@"
+      type: TXT
+      value: "v=spf1 include:_spf.google.com ~all"
+      ttl: 3600
+      comment: "SPF record"
+
+    - name: "_dmarc"
+      type: TXT
+      value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"
+      ttl: 3600
+      comment: "DMARC policy"
+
+    # CAA record for certificate authority
+    - name: "@"
+      type: CAA
+      value: "0 issue \"letsencrypt.org\""
+      ttl: 3600
+      comment: "Allow Let's Encrypt certificates"
+\`\`\`
+
+**Features:**
+- Web traffic proxied through Cloudflare (CDN, WAF, DDoS protection)
+- Email records with proper MX priorities
+- SPF and DMARC for email security
+- CAA for certificate issuance control
+
+**Use Case:** Full production setup with web, email, and security configurations.
 
 ---
 

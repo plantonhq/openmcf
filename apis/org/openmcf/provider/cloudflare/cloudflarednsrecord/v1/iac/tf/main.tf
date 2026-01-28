@@ -2,7 +2,7 @@
 
 # Create the Cloudflare DNS Record
 resource "cloudflare_record" "main" {
-  zone_id = var.spec.zone_id
+  zone_id = var.spec.zone_id.value
   name    = var.spec.name
   type    = local.record_type
   content = var.spec.value

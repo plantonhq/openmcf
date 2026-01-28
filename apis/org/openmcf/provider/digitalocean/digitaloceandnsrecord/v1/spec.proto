@@ -4,13 +4,34 @@ package org.openmcf.provider.digitalocean.digitaloceandnsrecord.v1;
 
 import "buf/validate/validate.proto";
 import "org/openmcf/shared/foreignkey/v1/foreign_key.proto";
-import "org/openmcf/shared/networking/enums/dnsrecordtype/dns_record_type.proto";
 import "org/openmcf/shared/options/options.proto";
 
 // DigitalOceanDnsRecordSpec defines the configuration for creating a DNS record in a DigitalOcean DNS zone (domain).
 // This component supports creating individual DNS records with common record types including A, AAAA, CNAME, MX, TXT, SRV, NS, and CAA.
 // DNS records are created within an existing DigitalOcean DNS zone (domain) managed by DigitalOcean's DNS service.
 message DigitalOceanDnsRecordSpec {
+  // Supported DNS record types for DigitalOcean.
+  enum RecordType {
+    // Unspecified record type (invalid).
+    record_type_unspecified = 0;
+    // IPv4 address record.
+    A = 1;
+    // IPv6 address record.
+    AAAA = 2;
+    // Canonical name (alias) record.
+    CNAME = 3;
+    // Mail exchange record.
+    MX = 4;
+    // Text record (SPF, DKIM, verification, etc.).
+    TXT = 5;
+    // Service locator record.
+    SRV = 6;
+    // Nameserver record.
+    NS = 7;
+    // Certificate Authority Authorization record.
+    CAA = 8;
+  }
+
   // The DigitalOcean domain name (DNS zone) where this DNS record will be created.
   // This can be a direct value or a reference to a DigitalOceanDnsZone resource's output.
   // Example: "example.com"
@@ -30,12 +51,12 @@ message DigitalOceanDnsRecordSpec {
 
   // The type of DNS record to create.
   // Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, CAA.
-  org.openmcf.shared.networking.enums.dnsrecordtype.DnsRecordType type = 3 [
+  RecordType type = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).cel = {
       id: "type.not_unspecified"
-      message: "type must be specified (cannot be unspecified)"
+      message: "type must be specified (cannot be record_type_unspecified)"
       expression: "this != 0"
     }
   ];
@@ -117,13 +138,13 @@ message DigitalOceanDnsRecordSpec {
   option (buf.validate.message).cel = {
     id: "spec.port_required_for_srv"
     message: "port must be specified for SRV records"
-    expression: "this.type != 9 || this.port > 0"
+    expression: "this.type != 6 || this.port > 0"
   };
 
   // Cross-field validation: tag is required for CAA records
   option (buf.validate.message).cel = {
     id: "spec.tag_required_for_caa"
     message: "tag must be specified for CAA records (issue, issuewild, or iodef)"
-    expression: "this.type != 11 || this.tag != ''"
+    expression: "this.type != 8 || this.tag != ''"
   };
 }

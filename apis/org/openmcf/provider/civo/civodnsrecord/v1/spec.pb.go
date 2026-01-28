@@ -24,31 +24,31 @@ const (
 )
 
 // Supported DNS record types for Civo.
-type CivoDnsRecordType int32
+type CivoDnsRecordSpec_RecordType int32
 
 const (
 	// Unspecified record type (invalid).
-	CivoDnsRecordType_dns_record_type_unspecified CivoDnsRecordType = 0
+	CivoDnsRecordSpec_record_type_unspecified CivoDnsRecordSpec_RecordType = 0
 	// IPv4 address record.
-	CivoDnsRecordType_A CivoDnsRecordType = 1
+	CivoDnsRecordSpec_A CivoDnsRecordSpec_RecordType = 1
 	// IPv6 address record.
-	CivoDnsRecordType_AAAA CivoDnsRecordType = 2
+	CivoDnsRecordSpec_AAAA CivoDnsRecordSpec_RecordType = 2
 	// Canonical name (alias) record.
-	CivoDnsRecordType_CNAME CivoDnsRecordType = 3
+	CivoDnsRecordSpec_CNAME CivoDnsRecordSpec_RecordType = 3
 	// Mail exchange record.
-	CivoDnsRecordType_MX CivoDnsRecordType = 4
+	CivoDnsRecordSpec_MX CivoDnsRecordSpec_RecordType = 4
 	// Text record (SPF, DKIM, verification, etc.).
-	CivoDnsRecordType_TXT CivoDnsRecordType = 5
+	CivoDnsRecordSpec_TXT CivoDnsRecordSpec_RecordType = 5
 	// Service locator record.
-	CivoDnsRecordType_SRV CivoDnsRecordType = 6
+	CivoDnsRecordSpec_SRV CivoDnsRecordSpec_RecordType = 6
 	// Nameserver record.
-	CivoDnsRecordType_NS CivoDnsRecordType = 7
+	CivoDnsRecordSpec_NS CivoDnsRecordSpec_RecordType = 7
 )
 
-// Enum value maps for CivoDnsRecordType.
+// Enum value maps for CivoDnsRecordSpec_RecordType.
 var (
-	CivoDnsRecordType_name = map[int32]string{
-		0: "dns_record_type_unspecified",
+	CivoDnsRecordSpec_RecordType_name = map[int32]string{
+		0: "record_type_unspecified",
 		1: "A",
 		2: "AAAA",
 		3: "CNAME",
@@ -57,43 +57,43 @@ var (
 		6: "SRV",
 		7: "NS",
 	}
-	CivoDnsRecordType_value = map[string]int32{
-		"dns_record_type_unspecified": 0,
-		"A":                           1,
-		"AAAA":                        2,
-		"CNAME":                       3,
-		"MX":                          4,
-		"TXT":                         5,
-		"SRV":                         6,
-		"NS":                          7,
+	CivoDnsRecordSpec_RecordType_value = map[string]int32{
+		"record_type_unspecified": 0,
+		"A":                       1,
+		"AAAA":                    2,
+		"CNAME":                   3,
+		"MX":                      4,
+		"TXT":                     5,
+		"SRV":                     6,
+		"NS":                      7,
 	}
 )
 
-func (x CivoDnsRecordType) Enum() *CivoDnsRecordType {
-	p := new(CivoDnsRecordType)
+func (x CivoDnsRecordSpec_RecordType) Enum() *CivoDnsRecordSpec_RecordType {
+	p := new(CivoDnsRecordSpec_RecordType)
 	*p = x
 	return p
 }
 
-func (x CivoDnsRecordType) String() string {
+func (x CivoDnsRecordSpec_RecordType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (CivoDnsRecordType) Descriptor() protoreflect.EnumDescriptor {
+func (CivoDnsRecordSpec_RecordType) Descriptor() protoreflect.EnumDescriptor {
 	return file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (CivoDnsRecordType) Type() protoreflect.EnumType {
+func (CivoDnsRecordSpec_RecordType) Type() protoreflect.EnumType {
 	return &file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_enumTypes[0]
 }
 
-func (x CivoDnsRecordType) Number() protoreflect.EnumNumber {
+func (x CivoDnsRecordSpec_RecordType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use CivoDnsRecordType.Descriptor instead.
-func (CivoDnsRecordType) EnumDescriptor() ([]byte, []int) {
-	return file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use CivoDnsRecordSpec_RecordType.Descriptor instead.
+func (CivoDnsRecordSpec_RecordType) EnumDescriptor() ([]byte, []int) {
+	return file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_rawDescGZIP(), []int{0, 0}
 }
 
 // CivoDnsRecordSpec defines the configuration for creating a DNS record in a Civo DNS zone.
@@ -115,7 +115,7 @@ type CivoDnsRecordSpec struct {
 	// Use "@" to create a record at the zone apex (root domain).
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of DNS record to create.
-	Type CivoDnsRecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordType" json:"type,omitempty"`
+	Type CivoDnsRecordSpec_RecordType `protobuf:"varint,3,opt,name=type,proto3,enum=org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec_RecordType" json:"type,omitempty"`
 	// The value/target of the DNS record.
 	// For A records: IPv4 address (e.g., "192.0.2.1")
 	// For AAAA records: IPv6 address (e.g., "2001:db8::1")
@@ -182,11 +182,11 @@ func (x *CivoDnsRecordSpec) GetName() string {
 	return ""
 }
 
-func (x *CivoDnsRecordSpec) GetType() CivoDnsRecordType {
+func (x *CivoDnsRecordSpec) GetType() CivoDnsRecordSpec_RecordType {
 	if x != nil {
 		return x.Type
 	}
-	return CivoDnsRecordType_dns_record_type_unspecified
+	return CivoDnsRecordSpec_record_type_unspecified
 }
 
 func (x *CivoDnsRecordSpec) GetValue() string {
@@ -214,27 +214,28 @@ var File_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto protoreflect.File
 
 const file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5org/openmcf/provider/civo/civodnsrecord/v1/spec.proto\x12*org.openmcf.provider.civo.civodnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\"\x89\x06\n" +
+	"5org/openmcf/provider/civo/civodnsrecord/v1/spec.proto\x12*org.openmcf.provider.civo.civodnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2org/openmcf/shared/foreignkey/v1/foreign_key.proto\"\xf9\x06\n" +
 	"\x11CivoDnsRecordSpec\x12r\n" +
 	"\azone_id\x18\x01 \x01(\v22.org.openmcf.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\v\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1a\n" +
-	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xc2\x01\n" +
-	"\x04type\x18\x03 \x01(\x0e2=.org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordTypeBo\xbaHl\xba\x01a\n" +
-	"\x14type.not_unspecified\x12>type must be specified (cannot be dns_record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x1c\n" +
+	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xc9\x01\n" +
+	"\x04type\x18\x03 \x01(\x0e2H.org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
+	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x1c\n" +
 	"\x05value\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12\x8e\x01\n" +
 	"\x03ttl\x18\x05 \x01(\x05B|\xbaHy\xba\x01v\n" +
 	"\x0fttl.valid_range\x127ttl must be 0 (default) or between 60 and 86400 seconds\x1a*this == 0 || (this >= 60 && this <= 86400)R\x03ttl\x12z\n" +
 	"\bpriority\x18\x06 \x01(\x05B^\xbaH[\xba\x01X\n" +
-	"\x14priority.valid_range\x12$priority must be between 0 and 65535\x1a\x1athis >= 0 && this <= 65535R\bpriority:t\xbaHq\x1ao\n" +
-	"\x1dspec.priority_required_for_mx\x12)priority must be set (> 0) for MX records\x1a#this.type != 4 || this.priority > 0*r\n" +
-	"\x11CivoDnsRecordType\x12\x1f\n" +
-	"\x1bdns_record_type_unspecified\x10\x00\x12\x05\n" +
+	"\x14priority.valid_range\x12$priority must be between 0 and 65535\x1a\x1athis >= 0 && this <= 65535R\bpriority\"g\n" +
+	"\n" +
+	"RecordType\x12\x1b\n" +
+	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
 	"\x01A\x10\x01\x12\b\n" +
 	"\x04AAAA\x10\x02\x12\t\n" +
 	"\x05CNAME\x10\x03\x12\x06\n" +
 	"\x02MX\x10\x04\x12\a\n" +
 	"\x03TXT\x10\x05\x12\a\n" +
 	"\x03SRV\x10\x06\x12\x06\n" +
-	"\x02NS\x10\aB\xe8\x02\n" +
+	"\x02NS\x10\a:t\xbaHq\x1ao\n" +
+	"\x1dspec.priority_required_for_mx\x12)priority must be set (> 0) for MX records\x1a#this.type != 4 || this.priority > 0B\xe8\x02\n" +
 	".com.org.openmcf.provider.civo.civodnsrecord.v1B\tSpecProtoP\x01Z\\github.com/plantonhq/openmcf/apis/org/openmcf/provider/civo/civodnsrecord/v1;civodnsrecordv1\xa2\x02\x05OOPCC\xaa\x02*Org.Openmcf.Provider.Civo.Civodnsrecord.V1\xca\x02*Org\\Openmcf\\Provider\\Civo\\Civodnsrecord\\V1\xe2\x026Org\\Openmcf\\Provider\\Civo\\Civodnsrecord\\V1\\GPBMetadata\xea\x02/Org::Openmcf::Provider::Civo::Civodnsrecord::V1b\x06proto3"
 
 var (
@@ -252,13 +253,13 @@ func file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_rawDescGZIP() []
 var file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_goTypes = []any{
-	(CivoDnsRecordType)(0),      // 0: org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordType
-	(*CivoDnsRecordSpec)(nil),   // 1: org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec
-	(*v1.StringValueOrRef)(nil), // 2: org.openmcf.shared.foreignkey.v1.StringValueOrRef
+	(CivoDnsRecordSpec_RecordType)(0), // 0: org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec.RecordType
+	(*CivoDnsRecordSpec)(nil),         // 1: org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec
+	(*v1.StringValueOrRef)(nil),       // 2: org.openmcf.shared.foreignkey.v1.StringValueOrRef
 }
 var file_org_openmcf_provider_civo_civodnsrecord_v1_spec_proto_depIdxs = []int32{
 	2, // 0: org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec.zone_id:type_name -> org.openmcf.shared.foreignkey.v1.StringValueOrRef
-	0, // 1: org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec.type:type_name -> org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordType
+	0, // 1: org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec.type:type_name -> org.openmcf.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec.RecordType
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
