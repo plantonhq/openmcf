@@ -16,8 +16,9 @@ func records(
 	recordsList []*cloudflarednszonev1.CloudflareDnsZoneRecord,
 	cloudflareProvider *cloudflare.Provider,
 ) error {
-	for _, record := range recordsList {
-		resourceName := fmt.Sprintf("%s-%s", record.Name, record.Type.String())
+	for idx, record := range recordsList {
+		// Include index to ensure uniqueness when multiple records have same name and type
+		resourceName := fmt.Sprintf("%s-%s-%d", record.Name, record.Type.String(), idx)
 
 		recordArgs := &cloudflare.RecordArgs{
 			ZoneId:  zone.ID(),
