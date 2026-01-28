@@ -23,9 +23,9 @@ Purpose: produce `README.md` and `examples.md` for a resource after its protos e
   - `## <Scenario name>` — realistic example(s)
 - Include complete YAML manifests in fenced blocks
 - CLI flows
-  - Validate: `project-planton validate --manifest <file>`
-  - Pulumi deploy: `project-planton pulumi update --manifest <file> --stack <org/project/stack> --module-dir <path>`
-  - Terraform deploy: `project-planton tofu apply --manifest <file> --auto-approve`
+  - Validate: `openmcf validate --manifest <file>`
+  - Pulumi deploy: `openmcf pulumi update --manifest <file> --stack <org/project/stack> --module-dir <path>`
+  - Terraform deploy: `openmcf tofu apply --manifest <file> --auto-approve`
 
 ## Notes
 - Keep concise and practical (80/20). Avoid secrets in examples.

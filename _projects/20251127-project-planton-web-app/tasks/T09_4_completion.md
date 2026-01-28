@@ -46,7 +46,7 @@ if s.stackUpdateService != nil {
 
 ### 2. Refactored CLI Command to Use ApplyCloudResource API
 
-**File:** `cmd/project-planton/root/cloud_resource_apply.go`
+**File:** `cmd/openmcf/root/cloud_resource_apply.go`
 
 **Before:** Manual implementation that:
 
@@ -86,12 +86,12 @@ Updated At: 2025-12-11 08:50:26
 
 🚀 Pulumi deployment has been triggered automatically.
    Deployment is running in the background.
-   Use 'project-planton stack-update:list' to check deployment status.
+   Use 'openmcf stack-update:list' to check deployment status.
 ```
 
 ### 3. Updated CLI Documentation
 
-**File:** `cmd/project-planton/CLI-HELP.md`
+**File:** `cmd/openmcf/CLI-HELP.md`
 
 Updated the `cloud-resource:apply` documentation to:
 
@@ -140,14 +140,14 @@ Now all three cloud resource operations have consistent behavior:
 
 ### CLI
 
-- `cmd/project-planton/root/cloud_resource_apply.go` (+66 lines, -22 lines)
+- `cmd/openmcf/root/cloud_resource_apply.go` (+66 lines, -22 lines)
   - Refactored to use `ApplyCloudResource` API
   - Added YAML validation
   - Improved user feedback
 
 ### Documentation
 
-- `cmd/project-planton/CLI-HELP.md` (+50 lines modified)
+- `cmd/openmcf/CLI-HELP.md` (+50 lines modified)
   - Updated documentation to match actual behavior
   - Added deployment status information
 
@@ -173,4 +173,4 @@ No migration required. This is a backward-compatible enhancement that adds funct
 **Completion Date:** December 11, 2025
 **Status:** ✅ Production Ready
 **Timeline:** Single-day enhancement
-**Location:** `app/backend/internal/service/cloud_resource_service.go`, `cmd/project-planton/root/cloud_resource_apply.go`
+**Location:** `app/backend/internal/service/cloud_resource_service.go`, `cmd/openmcf/root/cloud_resource_apply.go`

@@ -1,4 +1,4 @@
-# Project Planton Web App
+# OpenMCF Web App
 
 A Next.js application with Material-UI, ConnectRPC, and Buf integration.
 

@@ -2,7 +2,7 @@
 alwaysApply: false
 ---
 
-# Audit Project Planton Deployment Component
+# Audit OpenMCF Deployment Component
 
 ## Purpose
 
@@ -10,18 +10,18 @@ Audit a specific deployment component against the ideal state defined in `archit
 
 ## Role
 
-You are the Project Planton Code Auditor. Your job is to systematically evaluate a deployment component's completeness, identify gaps, and provide actionable recommendations.
+You are the OpenMCF Code Auditor. Your job is to systematically evaluate a deployment component's completeness, identify gaps, and provide actionable recommendations.
 
 ## Usage
 
 ```
-User: @audit-project-planton-component <ComponentName>
+User: @audit-openmcf-component <ComponentName>
 ```
 
 **Examples:**
-- `@audit-project-planton-component MongodbAtlas`
-- `@audit-project-planton-component GcpCertManagerCert`
-- `@audit-project-planton-component postgresKubernetes` (case-insensitive)
+- `@audit-openmcf-component MongodbAtlas`
+- `@audit-openmcf-component GcpCertManagerCert`
+- `@audit-openmcf-component postgresKubernetes` (case-insensitive)
 
 ## Workflow
 
@@ -33,13 +33,13 @@ User: @audit-project-planton-component <ComponentName>
    - With spaces: `Mongodb Atlas` → normalize to `MongodbAtlas`
 
 2. **Lookup in cloud_resource_kind.proto**:
-   - Read `~/scm/github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind/cloud_resource_kind.proto`
+   - Read `~/scm/github.com/plantonhq/openmcf/apis/org/openmcf/shared/cloudresourcekind/cloud_resource_kind.proto`
    - Search for enum entry matching the component name
    - Extract metadata: provider, id_prefix, version, kubernetes_meta (if applicable)
 
 3. **Determine component path**:
-   - For non-Kubernetes: `apis/org/project_planton/provider/<provider>/<component_lowercase>/v1/`
-   - For Kubernetes: `apis/org/project_planton/provider/kubernetes/<category>/<component_lowercase>/v1/`
+   - For non-Kubernetes: `apis/org/openmcf/provider/<provider>/<component_lowercase>/v1/`
+   - For Kubernetes: `apis/org/openmcf/provider/kubernetes/<category>/<component_lowercase>/v1/`
      - Category determined from `kubernetes_meta.category` (addon, workload, or config)
 
 4. **Verify base path exists**:
@@ -103,7 +103,7 @@ For each category, check files and record results. Use the following structure t
 - [ ] Tests compile (no syntax errors)
 - [ ] Tests execute successfully when running:
   ```bash
-  go test ./apis/org/project_planton/provider/<provider>/<component>/v1/
+  go test ./apis/org/openmcf/provider/<provider>/<component>/v1/
   ```
 - [ ] All tests pass (no failures)
 - [ ] Tests validate buf.validate rules are correct
@@ -429,7 +429,7 @@ Blocking issues that prevent production readiness:
 
 ✅ **Passed:**
 
-- Folder exists: `apis/org/project_planton/provider/atlas/mongodbatlas/v1/`
+- Folder exists: `apis/org/openmcf/provider/atlas/mongodbatlas/v1/`
 - Folder name matches lowercase enum name
 - `v1/` subfolder exists
 
@@ -481,7 +481,7 @@ Blocking issues that prevent production readiness:
 To verify tests, run:
 
 ```bash
-cd apis/org/project_planton/provider/atlas/mongodbatlas/v1/
+cd apis/org/openmcf/provider/atlas/mongodbatlas/v1/
 go test -v
 ```
 
@@ -755,17 +755,17 @@ Displaying report in chat instead...
 
 **Input:**
 ```
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 ```
 
 **Expected behavior:**
 1. Search cloud_resource_kind.proto for `MongodbAtlas` enum entry
 2. Find: `MongodbAtlas = 51` with provider `atlas`
-3. Determine path: `apis/org/project_planton/provider/atlas/mongodbatlas/v1/`
+3. Determine path: `apis/org/openmcf/provider/atlas/mongodbatlas/v1/`
 4. Run all audit checks
 5. Calculate score (e.g., 65%)
 6. Get timestamp: `2025-11-13-143022`
-7. Write report to: `apis/org/project_planton/provider/atlas/mongodbatlas/v1/docs/audit/2025-11-13-143022.md`
+7. Write report to: `apis/org/openmcf/provider/atlas/mongodbatlas/v1/docs/audit/2025-11-13-143022.md`
 8. Display summary in chat with key findings
 
 ---

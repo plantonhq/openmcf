@@ -1,6 +1,0 @@
-apiVersion: aws.project-planton.org/v1
-kind: AwsEcsCluster
-metadata:
-  name: awsecscluster-demo
-spec:
-  enableContainerInsights: true

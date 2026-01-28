@@ -8,7 +8,7 @@
 
 ## Overview
 
-Successfully transformed the Project Planton Web App from a multi-step installation process into a **one-command installable solution** managed entirely through the CLI.
+Successfully transformed the OpenMCF Web App from a multi-step installation process into a **one-command installable solution** managed entirely through the CLI.
 
 ---
 
@@ -38,7 +38,7 @@ A single Docker container that includes:
 
 ### 2. CLI Web App Management Commands ✅
 
-**Created:** `cmd/project-planton/root/webapp/` (8 files)
+**Created:** `cmd/openmcf/root/webapp/` (8 files)
 
 Complete CLI command suite for managing the web app:
 
@@ -79,7 +79,7 @@ Complete CLI command suite for managing the web app:
 
 ### 4. Extended CLI Configuration System ✅
 
-**Modified:** `cmd/project-planton/root/config.go`
+**Modified:** `cmd/openmcf/root/config.go`
 
 **New Config Fields:**
 ```go
@@ -94,13 +94,13 @@ type Config struct {
 - `LoadConfigPublic()` - For webapp package access
 - `SaveConfigPublic()` - For webapp package access
 
-**Storage:** `~/.project-planton/config.yaml`
+**Storage:** `~/.openmcf/config.yaml`
 
 ---
 
 ### 5. CLI Integration ✅
 
-**Modified:** `cmd/project-planton/root.go`
+**Modified:** `cmd/openmcf/root.go`
 
 - Added webapp command group import
 - Registered webapp commands alongside existing infrastructure commands
@@ -141,7 +141,7 @@ type Config struct {
    - Known limitations
    - Next steps
 
-5. **Updated CLI Help** (`cmd/project-planton/CLI-HELP.md`)
+5. **Updated CLI Help** (`cmd/openmcf/CLI-HELP.md`)
    - Added Web App Management section
    - Quick start guide
    - All command examples
@@ -186,7 +186,7 @@ Unified Container (supervisord)
 ### Installation
 ```bash
 # Step 1: Install CLI
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # Step 2: Initialize web app
 planton webapp init
@@ -225,29 +225,29 @@ planton webapp stop     # Stop in the evening
 3. `app/entrypoint-unified.sh`
 
 ### CLI Commands (8 files)
-1. `cmd/project-planton/root/webapp/webapp.go`
-2. `cmd/project-planton/root/webapp/init.go`
-3. `cmd/project-planton/root/webapp/start.go`
-4. `cmd/project-planton/root/webapp/stop.go`
-5. `cmd/project-planton/root/webapp/status.go`
-6. `cmd/project-planton/root/webapp/logs.go`
-7. `cmd/project-planton/root/webapp/restart.go`
-8. `cmd/project-planton/root/webapp/uninstall.go`
+1. `cmd/openmcf/root/webapp/webapp.go`
+2. `cmd/openmcf/root/webapp/init.go`
+3. `cmd/openmcf/root/webapp/start.go`
+4. `cmd/openmcf/root/webapp/stop.go`
+5. `cmd/openmcf/root/webapp/status.go`
+6. `cmd/openmcf/root/webapp/logs.go`
+7. `cmd/openmcf/root/webapp/restart.go`
+8. `cmd/openmcf/root/webapp/uninstall.go`
 
 ### Documentation (4 files)
-1. `_projects/20251127-project-planton-web-app/docs/installation-guide.md`
-2. `_projects/20251127-project-planton-web-app/docs/cli-commands.md`
-3. `_projects/20251127-project-planton-web-app/docs/testing-summary.md`
+1. `_projects/20251127-openmcf-web-app/docs/installation-guide.md`
+2. `_projects/20251127-openmcf-web-app/docs/cli-commands.md`
+3. `_projects/20251127-openmcf-web-app/docs/testing-summary.md`
 4. `app/README.md`
 
 ---
 
 ## Files Modified (4 files)
 
-1. `cmd/project-planton/root.go` - Added webapp command
-2. `cmd/project-planton/root/config.go` - Extended config, exported functions
+1. `cmd/openmcf/root.go` - Added webapp command
+2. `cmd/openmcf/root/config.go` - Extended config, exported functions
 3. `app/backend/internal/database/mongodb.go` - Added retry logic
-4. `cmd/project-planton/CLI-HELP.md` - Added webapp section
+4. `cmd/openmcf/CLI-HELP.md` - Added webapp section
 
 ---
 
@@ -346,7 +346,7 @@ planton webapp stop     # Stop in the evening
 ### 1. Build & Test Docker Image
 ```bash
 docker build -f app/Dockerfile.unified \
-  -t satishlleftbin/project-planton:latest .
+  -t satishlleftbin/openmcf:latest .
 ```
 
 ### 2. Manual Testing
@@ -357,7 +357,7 @@ docker build -f app/Dockerfile.unified \
 
 ### 3. Push to Registry
 ```bash
-docker push satishlleftbin/project-planton:latest
+docker push satishlleftbin/openmcf:latest
 ```
 
 ### 4. Update Homebrew Formula

@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package org.project_planton.provider.cloudflare.cloudflarekvnamespace.v1;
-
-// CloudflareKvNamespaceStackOutputs captures the key outputs after provisioning a Cloudflare KV namespace.
-message CloudflareKvNamespaceStackOutputs {
-  // The unique identifier (ID) of the created KV namespace.
-  string namespace_id = 1;
-}

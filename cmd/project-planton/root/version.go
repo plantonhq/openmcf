@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
-	"github.com/plantonhq/project-planton/internal/cli/upgrade"
-	"github.com/plantonhq/project-planton/internal/cli/version"
+	"github.com/plantonhq/openmcf/internal/cli/upgrade"
+	"github.com/plantonhq/openmcf/internal/cli/version"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +44,7 @@ func PrintVersion() {
 		orange := color.New(color.FgYellow, color.Bold).SprintFunc()
 		fmt.Printf("%s A new version is available!\n", orange("⚡"))
 		fmt.Println()
-		fmt.Printf("Run %s to update.\n", cyan("project-planton upgrade"))
+		fmt.Printf("Run %s to update.\n", cyan("openmcf upgrade"))
 	} else {
 		// Up to date or couldn't check - show green current version
 		fmt.Printf("Current version: %s\n", green(currentVersion))

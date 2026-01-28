@@ -7,17 +7,17 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/plantonhq/project-planton/cmd/project-planton/root"
+	"github.com/plantonhq/openmcf/cmd/openmcf/root"
 	"github.com/spf13/cobra"
 )
 
 const (
-	DockerImageName   = "ghcr.io/plantonhq/project-planton"
+	DockerImageName   = "ghcr.io/plantonhq/openmcf"
 	DockerImageTag    = "latest"
-	ContainerName     = "project-planton-webapp"
-	MongoDBVolume     = "project-planton-mongodb-data"
-	PulumiVolume      = "project-planton-pulumi-state"
-	GoCacheVolume     = "project-planton-go-cache"
+	ContainerName     = "openmcf-webapp"
+	MongoDBVolume     = "openmcf-mongodb-data"
+	PulumiVolume      = "openmcf-pulumi-state"
+	GoCacheVolume     = "openmcf-go-cache"
 	BackendPort       = "50051"
 	FrontendPort      = "3000"
 	DefaultBackendURL = "http://localhost:50051"
@@ -25,8 +25,8 @@ const (
 
 var InitCmd = &cobra.Command{
 	Use:   "init",
-	Short: "initialize and configure the Project Planton web app",
-	Long: `Initialize the Project Planton web app by:
+	Short: "initialize and configure the OpenMCF web app",
+	Long: `Initialize the OpenMCF web app by:
   - Checking Docker availability
   - Pulling the unified Docker image
   - Creating Docker volumes for data persistence
@@ -37,7 +37,7 @@ var InitCmd = &cobra.Command{
 
 func initHandler(cmd *cobra.Command, args []string) {
 	fmt.Println("========================================")
-	fmt.Println("🚀 Project Planton Web App Initialization")
+	fmt.Println("🚀 OpenMCF Web App Initialization")
 	fmt.Println("========================================")
 	fmt.Println()
 
@@ -135,7 +135,7 @@ func printDockerInstallInstructions() {
 	fmt.Println()
 	fmt.Println("❌ Error: Docker Engine is not installed or not running")
 	fmt.Println()
-	fmt.Println("Project Planton web app requires Docker Engine to run.")
+	fmt.Println("OpenMCF web app requires Docker Engine to run.")
 	fmt.Println()
 	fmt.Println("Installation instructions:")
 

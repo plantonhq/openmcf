@@ -11,27 +11,27 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/version"
-	"github.com/plantonhq/project-planton/internal/cli/workspace"
-	"github.com/plantonhq/project-planton/pkg/fileutil"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/version"
+	"github.com/plantonhq/openmcf/internal/cli/workspace"
+	"github.com/plantonhq/openmcf/pkg/fileutil"
 )
 
 const (
 	// PulumiDirName is the base directory name for all Pulumi-related files
-	// All Pulumi files are stored under ~/.project-planton/pulumi/
+	// All Pulumi files are stored under ~/.openmcf/pulumi/
 	PulumiDirName = "pulumi"
 
 	// BinariesSubDir is the subdirectory for cached binaries
-	// Full path: ~/.project-planton/pulumi/binaries/{version}/
+	// Full path: ~/.openmcf/pulumi/binaries/{version}/
 	BinariesSubDir = "binaries"
 
 	// WorkspacesSubDir is the subdirectory for Pulumi workspaces
-	// Full path: ~/.project-planton/pulumi/workspaces/{stack-fqdn}/
+	// Full path: ~/.openmcf/pulumi/workspaces/{stack-fqdn}/
 	WorkspacesSubDir = "workspaces"
 
 	// GitHubReleaseBaseURL is the base URL for GitHub releases
-	GitHubReleaseBaseURL = "https://github.com/plantonhq/project-planton/releases/download"
+	GitHubReleaseBaseURL = "https://github.com/plantonhq/openmcf/releases/download"
 
 	// BinaryPrefix is the prefix for Pulumi component binaries
 	BinaryPrefix = "pulumi-"
@@ -44,7 +44,7 @@ func GetPlatformSuffix() string {
 }
 
 // GetPulumiBaseDir returns the base directory for all Pulumi-related files
-// (~/.project-planton/pulumi/)
+// (~/.openmcf/pulumi/)
 func GetPulumiBaseDir() (string, error) {
 	workspaceDir, err := workspace.GetWorkspaceDir()
 	if err != nil {
@@ -54,7 +54,7 @@ func GetPulumiBaseDir() (string, error) {
 }
 
 // GetBinaryCacheDir returns the path to the binary cache directory
-// (~/.project-planton/pulumi/binaries/{version}/)
+// (~/.openmcf/pulumi/binaries/{version}/)
 func GetBinaryCacheDir(releaseVersion string) (string, error) {
 	pulumiBaseDir, err := GetPulumiBaseDir()
 	if err != nil {
@@ -99,15 +99,15 @@ func BuildBinaryName(componentName string) string {
 
 // BuildDownloadURL constructs the download URL for a platform-specific component binary.
 // The release version can be:
-// - A semantic version like "v0.3.2" (downloads from main project-planton release)
+// - A semantic version like "v0.3.2" (downloads from main openmcf release)
 // - An auto-release version like "v0.3.1-pulumi-awsecsservice-20260107.01" (downloads from component-specific release)
 //
 // The URL includes the platform suffix based on the current OS and architecture.
 // Examples (on darwin/arm64):
 //   - BuildDownloadURL("AwsEcsService", "v0.3.2")
-//     -> https://github.com/plantonhq/project-planton/releases/download/v0.3.2/pulumi-awsecsservice_darwin_arm64.gz
+//     -> https://github.com/plantonhq/openmcf/releases/download/v0.3.2/pulumi-awsecsservice_darwin_arm64.gz
 //   - BuildDownloadURL("AwsEcsService", "v0.3.1-pulumi-awsecsservice-20260107.01")
-//     -> https://github.com/plantonhq/project-planton/releases/download/v0.3.1-pulumi-awsecsservice-20260107.01/pulumi-awsecsservice_darwin_arm64.gz
+//     -> https://github.com/plantonhq/openmcf/releases/download/v0.3.1-pulumi-awsecsservice-20260107.01/pulumi-awsecsservice_darwin_arm64.gz
 func BuildDownloadURL(componentName, releaseVersion string) string {
 	binaryName := BuildBinaryName(componentName)
 	artifactName := binaryName + ".gz"
@@ -142,7 +142,7 @@ func IsBinaryCached(componentName, releaseVersion string) (bool, error) {
 
 // EnsureBinary ensures the binary for a component is downloaded and cached.
 // The releaseVersion can be:
-// - CLI version like "v0.3.2" (uses main project-planton release)
+// - CLI version like "v0.3.2" (uses main openmcf release)
 // - Module version like "v0.3.1-pulumi-awsecsservice-20260107.01" (uses component-specific release)
 // Returns the path to the binary.
 func EnsureBinary(componentName, releaseVersion string) (string, error) {

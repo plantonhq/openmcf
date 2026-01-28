@@ -1,10 +1,10 @@
 # Tofu Labels Package
 
-This package defines standardized Kubernetes labels for configuring Terraform/OpenTofu backend state management directly within ProjectPlanton resource manifests.
+This package defines standardized Kubernetes labels for configuring Terraform/OpenTofu backend state management directly within OpenMCF resource manifests.
 
 ## Overview
 
-The `tofulabels` package provides functions and constants for labels that can be applied to any ProjectPlanton resource manifest to specify backend configuration for Terraform/OpenTofu operations. This enables infrastructure deployments to be fully portable with backend configuration embedded in the manifest.
+The `tofulabels` package provides functions and constants for labels that can be applied to any OpenMCF resource manifest to specify backend configuration for Terraform/OpenTofu operations. This enables infrastructure deployments to be fully portable with backend configuration embedded in the manifest.
 
 ## Provisioner-Specific Labels
 
@@ -12,8 +12,8 @@ Backend labels are now provisioner-aware. Use the appropriate prefix based on yo
 
 | Provisioner | Backend Type Label | Backend Object Label |
 |-------------|-------------------|---------------------|
-| Terraform | `terraform.project-planton.org/backend.type` | `terraform.project-planton.org/backend.object` |
-| OpenTofu | `tofu.project-planton.org/backend.type` | `tofu.project-planton.org/backend.object` |
+| Terraform | `terraform.openmcf.org/backend.type` | `terraform.openmcf.org/backend.object` |
+| OpenTofu | `tofu.openmcf.org/backend.type` | `tofu.openmcf.org/backend.object` |
 
 ## Label Functions
 
@@ -37,8 +37,8 @@ Returns the backend object label key for the given provisioner.
 
 For backward compatibility, legacy constants with the `terraform.*` prefix are still available:
 
-- `LegacyBackendTypeLabelKey` - `terraform.project-planton.org/backend.type`
-- `LegacyBackendObjectLabelKey` - `terraform.project-planton.org/backend.object`
+- `LegacyBackendTypeLabelKey` - `terraform.openmcf.org/backend.type`
+- `LegacyBackendObjectLabelKey` - `terraform.openmcf.org/backend.object`
 
 When using OpenTofu, if the `tofu.*` labels are not found, the system falls back to the legacy `terraform.*` labels.
 
@@ -55,14 +55,14 @@ Supported backend type values:
 ### Terraform with S3 Backend
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsRdsInstance
 metadata:
   name: app-database
   labels:
-    project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: "s3"
-    terraform.project-planton.org/backend.object: "terraform-states-bucket/rds/production/app-db"
+    openmcf.org/provisioner: terraform
+    terraform.openmcf.org/backend.type: "s3"
+    terraform.openmcf.org/backend.object: "terraform-states-bucket/rds/production/app-db"
 spec:
   engine: "postgres"
   instanceClass: "db.t3.medium"
@@ -71,14 +71,14 @@ spec:
 ### OpenTofu with GCS Backend
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpCloudRun
 metadata:
   name: api-service
   labels:
-    project-planton.org/provisioner: tofu
-    tofu.project-planton.org/backend.type: "gcs"
-    tofu.project-planton.org/backend.object: "my-tfstate-bucket/cloud-run/prod/api"
+    openmcf.org/provisioner: tofu
+    tofu.openmcf.org/backend.type: "gcs"
+    tofu.openmcf.org/backend.object: "my-tfstate-bucket/cloud-run/prod/api"
 spec:
   region: "us-central1"
   image: "gcr.io/project/api:latest"
@@ -87,14 +87,14 @@ spec:
 ### Azure Storage Backend (Terraform)
 
 ```yaml
-apiVersion: azure.project-planton.org/v1
+apiVersion: azure.openmcf.org/v1
 kind: AzureAksCluster
 metadata:
   name: main-cluster
   labels:
-    project-planton.org/provisioner: terraform
-    terraform.project-planton.org/backend.type: "azurerm"
-    terraform.project-planton.org/backend.object: "tfstate-container/aks/production"
+    openmcf.org/provisioner: terraform
+    terraform.openmcf.org/backend.type: "azurerm"
+    terraform.openmcf.org/backend.object: "tfstate-container/aks/production"
 spec:
   location: "eastus"
   nodeCount: 3
@@ -103,14 +103,14 @@ spec:
 ### Local Backend (Development)
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: MicroserviceKubernetes
 metadata:
   name: test-service
   labels:
-    project-planton.org/provisioner: tofu
-    tofu.project-planton.org/backend.type: "local"
-    tofu.project-planton.org/backend.object: "/tmp/test-service.tfstate"
+    openmcf.org/provisioner: tofu
+    tofu.openmcf.org/backend.type: "local"
+    tofu.openmcf.org/backend.object: "/tmp/test-service.tfstate"
 spec:
   replicas: 1
 ```
@@ -157,17 +157,17 @@ spec:
 
 ## Integration with CLI
 
-The ProjectPlanton CLI processes these labels to configure Terraform/OpenTofu backends:
+The OpenMCF CLI processes these labels to configure Terraform/OpenTofu backends:
 
 ```bash
 # Uses backend config from manifest labels
-project-planton tofu apply --manifest vpc.yaml
+openmcf tofu apply --manifest vpc.yaml
 
 # Or from a URL with embedded backend config
-project-planton tofu apply --manifest https://example.com/manifests/vpc.yaml
+openmcf tofu apply --manifest https://example.com/manifests/vpc.yaml
 
 # CLI flags can override if needed
-project-planton tofu apply --manifest vpc.yaml --backend-config s3://other-bucket/state
+openmcf tofu apply --manifest vpc.yaml --backend-config s3://other-bucket/state
 ```
 
 ## Best Practices

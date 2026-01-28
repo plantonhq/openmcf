@@ -1,12 +1,12 @@
 ---
 title: "CONFLUENT"
-description: "Deploy CONFLUENT resources using Project Planton"
+description: "Deploy CONFLUENT resources using OpenMCF"
 icon: "cloud"
 order: 10
 ---
 
 # CONFLUENT
 
-The following CONFLUENT resources can be deployed using Project Planton:
+The following CONFLUENT resources can be deployed using OpenMCF:
 
 - [Kafka](/docs/catalog/confluent/confluentkafka)

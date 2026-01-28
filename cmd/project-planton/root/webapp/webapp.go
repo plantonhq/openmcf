@@ -7,8 +7,8 @@ import (
 // WebAppCmd is the main command for web app management
 var WebAppCmd = &cobra.Command{
 	Use:   "webapp",
-	Short: "manage the Project Planton web app",
-	Long: `Manage the Project Planton web app - a unified Docker container that provides
+	Short: "manage the OpenMCF web app",
+	Long: `Manage the OpenMCF web app - a unified Docker container that provides
 a web interface for managing cloud resources and deployments.
 
 The web app includes:

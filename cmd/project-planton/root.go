@@ -1,22 +1,22 @@
-// Package project_planton provides the root command for the Project Planton CLI.
+// Package openmcf provides the root command for the OpenMCF CLI.
 // Auto-release test: CLI change triggers v{semver}.{YYYYMMDD}.{N} tag format.
-package project_planton
+package openmcf
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/project-planton/cmd/project-planton/root"
-	"github.com/plantonhq/project-planton/cmd/project-planton/root/webapp"
-	"github.com/plantonhq/project-planton/internal/cli/flag"
+	"github.com/plantonhq/openmcf/cmd/openmcf/root"
+	"github.com/plantonhq/openmcf/cmd/openmcf/root/webapp"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
 	"github.com/spf13/cobra"
 )
 
-// DefaultProjectPlantonGitRepo is the default path for the local project-planton git repository
-const DefaultProjectPlantonGitRepo = "~/scm/github.com/plantonhq/project-planton"
+// DefaultOpenMCFGitRepo is the default path for the local openmcf git repository
+const DefaultOpenMCFGitRepo = "~/scm/github.com/plantonhq/openmcf"
 
 var rootCmd = &cobra.Command{
-	Use:   "project-planton",
+	Use:   "openmcf",
 	Short: "Unified Interface for Multi-Cloud Infrastructure",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check if version flag was passed
@@ -39,9 +39,9 @@ func init() {
 
 	// Local module flags - inherited by all subcommands
 	rootCmd.PersistentFlags().Bool(string(flag.LocalModule), false,
-		"Use local project-planton git repository for IaC modules instead of downloading")
-	rootCmd.PersistentFlags().String(string(flag.ProjectPlantonGitRepo), DefaultProjectPlantonGitRepo,
-		"Path to local project-planton git repository (used with --local-module)")
+		"Use local openmcf git repository for IaC modules instead of downloading")
+	rootCmd.PersistentFlags().String(string(flag.OpenMCFGitRepo), DefaultOpenMCFGitRepo,
+		"Path to local openmcf git repository (used with --local-module)")
 
 	rootCmd.AddCommand(
 		root.Apply,

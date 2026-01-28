@@ -9,9 +9,9 @@ import { YamlEditor } from '@/components/shared/yaml-editor';
 import { AlertDialog } from '@/components/shared/alert-dialog';
 import { Refresh, Add } from '@mui/icons-material';
 import { useCloudResourceQuery, useCloudResourceCommand } from '@/app/cloud-resources/_services';
-import { ListCloudResourcesRequestSchema } from '@/gen/org/project_planton/app/cloudresource/v1/io_pb';
-import { CloudResource } from '@/gen/org/project_planton/app/cloudresource/v1/api_pb';
-import { PageInfoSchema } from '@/gen/org/project_planton/app/commons/page_info_pb';
+import { ListCloudResourcesRequestSchema } from '@/gen/org/openmcf/app/cloudresource/v1/io_pb';
+import { CloudResource } from '@/gen/org/openmcf/app/cloudresource/v1/api_pb';
+import { PageInfoSchema } from '@/gen/org/openmcf/app/commons/page_info_pb';
 import { formatTimestampToDate } from '@/lib';
 import { StackUpdatesDrawer } from '@/components/shared/stack-update';
 

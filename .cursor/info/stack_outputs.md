@@ -8,7 +8,7 @@ Purpose: define `stack_outputs.proto` for a resource with observable, non-secret
 
 ## Syntax and Package
 - `syntax = "proto3";`
-- `package org.project_planton.provider.<provider>.<kindfolder>.v1;`
+- `package org.openmcf.provider.<provider>.<kindfolder>.v1;`
 - No `go_package` option.
 
 ## Message
@@ -24,7 +24,7 @@ Purpose: define `stack_outputs.proto` for a resource with observable, non-secret
 ## Example Skeleton
 ```proto
 syntax = "proto3";
-package org.project_planton.provider.aws.awscloudfront.v1;
+package org.openmcf.provider.aws.awscloudfront.v1;
 
 // AwsCloudFrontStackOutputs captures observable identifiers from CloudFront.
 message AwsCloudFrontStackOutputs {

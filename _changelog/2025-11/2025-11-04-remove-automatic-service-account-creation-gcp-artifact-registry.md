@@ -336,12 +336,12 @@ This refactoring prepares for:
 **Test Commands**:
 ```bash
 # Create public artifact registry repository
-project-planton pulumi up \
+openmcf pulumi up \
   --manifest gcp-artifact-registry-repo.yaml \
   --module-dir ${MODULE}
 
 # Verify outputs
-project-planton stack-outputs \
+openmcf stack-outputs \
   --manifest gcp-artifact-registry-repo.yaml
 ```
 

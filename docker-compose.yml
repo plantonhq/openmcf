@@ -1,19 +1,19 @@
 services:
   # Unified container with MongoDB, Backend, and Frontend
   planton:
-    image: ${PLANTON_IMAGE:-ghcr.io/plantonhq/project-planton:latest}
-    container_name: project-planton
+    image: ${PLANTON_IMAGE:-ghcr.io/plantonhq/openmcf:latest}
+    container_name: openmcf
     restart: unless-stopped
     ports:
       - '3000:3000'    # Frontend
       - '50051:50051'  # Backend gRPC
     networks:
-      - project-planton-network
+      - openmcf-network
     environment:
       - HOME=/home/appuser
       # MongoDB configuration (runs internally in the container)
-      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/project_planton}
-      - MONGODB_DATABASE=${MONGODB_DATABASE:-project_planton}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/openmcf}
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-openmcf}
       # Backend configuration
       - SERVER_PORT=50051
       # CORS configuration (optional - defaults work for most users)
@@ -25,7 +25,7 @@ services:
       # Backend is automatically configured by entrypoint.sh via 'pulumi login --local'
       - PULUMI_HOME=/home/appuser/.pulumi
       - PULUMI_STATE_DIR=/home/appuser/.pulumi/state
-      - PULUMI_CONFIG_PASSPHRASE=${PULUMI_CONFIG_PASSPHRASE:-project-planton-default-passphrase}
+      - PULUMI_CONFIG_PASSPHRASE=${PULUMI_CONFIG_PASSPHRASE:-openmcf-default-passphrase}
       - PULUMI_SKIP_UPDATE_CHECK=true
       - PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK=true
       # Frontend configuration
@@ -54,7 +54,7 @@ services:
       start_period: 60s
 
 networks:
-  project-planton-network:
+  openmcf-network:
     driver: bridge
 
 volumes:

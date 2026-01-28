@@ -1,4 +1,4 @@
-module github.com/plantonhq/project-planton
+module github.com/plantonhq/openmcf
 
 go 1.25.0
 
@@ -180,4 +180,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
 )
 
-replace github.com/plantonhq/project-planton/app/backend => ./app/backend
+replace github.com/plantonhq/openmcf/app/backend => ./app/backend

@@ -173,7 +173,7 @@ Each change section should:
 - Be self-contained and reviewable independently
 - Include Mermaid diagrams when the change involves workflow or architecture modifications
 
-### Scope inference for each change (Project Planton)
+### Scope inference for each change (OpenMCF)
 
 Use the same scope heuristics as `@pr-info`:
 
@@ -188,7 +188,7 @@ Use the same scope heuristics as `@pr-info`:
   - Charts across multiple providers → `charts`
 
 - CLI
-  - `cmd/project-planton/**` → `cmd/project-planton`
+  - `cmd/openmcf/**` → `cmd/openmcf`
 
 - Internal packages
   - `internal/<pkg>/**` → `internal/<pkg>` (e.g., `internal/manifest`, `internal/cli/panic`)

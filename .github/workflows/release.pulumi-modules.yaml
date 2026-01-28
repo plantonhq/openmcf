@@ -13,7 +13,7 @@
 #
 # Matrix: 12 providers × 4 platforms = 48 parallel jobs
 #
-# Path pattern: apis/org/project_planton/provider/{provider}/{component}/v1/iac/pulumi
+# Path pattern: apis/org/openmcf/provider/{provider}/{component}/v1/iac/pulumi
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -28,7 +28,7 @@ permissions:
 
 env:
   GO_VERSION: '1.25'
-  PROVIDER_BASE_PATH: apis/org/project_planton/provider
+  PROVIDER_BASE_PATH: apis/org/openmcf/provider
 
 jobs:
   # ============================================================================

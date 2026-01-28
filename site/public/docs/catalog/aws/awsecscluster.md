@@ -18,7 +18,7 @@ At the heart of ECS is the **ECS cluster**, a logical grouping or namespace that
 2. **Cluster-wide settings**: CloudWatch Container Insights, ECS Exec auditing
 3. **Deployment target**: The logical destination for services and tasks
 
-This document explores the landscape of ECS cluster deployment methods, from manual console operations through production-grade Infrastructure as Code (IaC) tooling, and explains why Project Planton provides a streamlined, opinionated API that honors ECS's core value proposition: simplicity without sacrificing production-readiness.
+This document explores the landscape of ECS cluster deployment methods, from manual console operations through production-grade Infrastructure as Code (IaC) tooling, and explains why OpenMCF provides a streamlined, opinionated API that honors ECS's core value proposition: simplicity without sacrificing production-readiness.
 
 ## The Strategic Choice: ECS vs. EKS
 
@@ -212,11 +212,11 @@ Secrets are injected securely into containers at runtime, configured in the task
 - Overly-permissive security groups (allowing all traffic `0.0.0.0/0`)
 - On EC2 launch type only: ECScape risk (cross-task credential exposure when tasks with different privilege levels share the same host; Fargate avoids this by design)
 
-## Project Planton's Design: The 80/20 Principle in Action
+## OpenMCF's Design: The 80/20 Principle in Action
 
 The AWS CloudFormation `AWS::ECS::Cluster` resource is already minimal. The 80/20 rule for an ECS API is not about *removing* fields, but about *abstracting* and *elevating* the few key settings that transform a basic cluster into a production-ready one.
 
-### Current Project Planton API
+### Current OpenMCF API
 
 The existing `AwsEcsClusterSpec` protobuf includes:
 
@@ -317,7 +317,7 @@ message ExecLogConfiguration {
 **User Intent**: "I want a Fargate cluster to test my app. No Spot, minimal monitoring."
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsEcsCluster
 metadata:
   name: dev-cluster
@@ -334,7 +334,7 @@ spec:
 **User Intent**: "Production cluster, cost-optimized with Spot, fully monitored, all Exec commands audited to S3."
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsEcsCluster
 metadata:
   name: prod-cluster
@@ -434,11 +434,11 @@ This data-driven approach, combined with load testing, is the professional-grade
 
 Amazon ECS represents a deliberate choice: powerful simplicity and deep AWS integration over the ecosystem flexibility of Kubernetes. For teams committed to AWS who want to focus on application development rather than infrastructure complexity, ECS is the strategically sound choice.
 
-Project Planton's `AwsEcsCluster` API honors this decision by providing a streamlined, opinionated interface that abstracts the essential production features—monitoring, cost-optimization, debugging—without overwhelming users with low-level complexity. The cluster is intentionally minimal, but the few settings it exposes are the ones that matter most:
+OpenMCF's `AwsEcsCluster` API honors this decision by providing a streamlined, opinionated interface that abstracts the essential production features—monitoring, cost-optimization, debugging—without overwhelming users with low-level complexity. The cluster is intentionally minimal, but the few settings it exposes are the ones that matter most:
 
 - **CloudWatch Container Insights** for comprehensive observability
 - **Fargate and Fargate Spot capacity providers** with the base/weight strategy for cost optimization
 - **ECS Exec auditing configuration** for secure, production-grade debugging
 
-By elevating these features as first-class, high-level abstractions in the protobuf API, Project Planton delivers the same experience ECS itself provides: production-grade capabilities without the operational burden. The cluster becomes the solid, observable, cost-efficient foundation on which containerized applications thrive.
+By elevating these features as first-class, high-level abstractions in the protobuf API, OpenMCF delivers the same experience ECS itself provides: production-grade capabilities without the operational burden. The cluster becomes the solid, observable, cost-efficient foundation on which containerized applications thrive.
 

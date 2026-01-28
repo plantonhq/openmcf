@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/plantonhq/project-planton/pkg/iac/stackinput"
+	"github.com/plantonhq/openmcf/pkg/iac/stackinput"
 	"gopkg.in/yaml.v3"
 )
 

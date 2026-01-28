@@ -42,7 +42,7 @@ Purpose: add validation rules to an existing `spec.proto` without changing its s
 ## Example (adapt to your schema)
 ```proto
 syntax = "proto3";
-package org.project_planton.provider.aws.awscloudfront.v1;
+package org.openmcf.provider.aws.awscloudfront.v1;
 
 import "buf/validate/validate.proto";
 
@@ -74,21 +74,21 @@ Default values use a **separate** field option from buf.validate rules:
 ### Import
 
 ```proto
-import "org/project_planton/shared/options/options.proto";
+import "org/openmcf/shared/options/options.proto";
 ```
 
 ### Syntax
 
 When a field should have a default value:
 1. Mark as `optional`
-2. Add `(org.project_planton.shared.options.default)` option
+2. Add `(org.openmcf.shared.options.default)` option
 
 ```proto
 // Default: ghcr.io/actions/actions-runner
-optional string repository = 1 [(org.project_planton.shared.options.default) = "ghcr.io/actions/actions-runner"];
+optional string repository = 1 [(org.openmcf.shared.options.default) = "ghcr.io/actions/actions-runner"];
 
 // Default: 443
-optional int32 port = 2 [(org.project_planton.shared.options.default) = "443"];
+optional int32 port = 2 [(org.openmcf.shared.options.default) = "443"];
 ```
 
 ### Combining with Validation
@@ -97,25 +97,25 @@ Default options can be combined with buf.validate rules:
 
 ```proto
 optional string namespace = 1 [
-  (org.project_planton.shared.options.default) = "external-dns",
+  (org.openmcf.shared.options.default) = "external-dns",
   (buf.validate.field).string.min_len = 1
 ];
 ```
 
 ### Build Enforcement
 
-The `DEFAULT_REQUIRES_OPTIONAL` linter fails builds if `(org.project_planton.shared.options.default)` is set without `optional` keyword.
+The `DEFAULT_REQUIRES_OPTIONAL` linter fails builds if `(org.openmcf.shared.options.default)` is set without `optional` keyword.
 
 ### When to Use Defaults vs Validation
 
-- **Default option**: When Project Planton should automatically provide a sensible value
+- **Default option**: When OpenMCF should automatically provide a sensible value
 - **Validation**: When there are constraints on what values are acceptable
 
 Example:
 ```proto
 // Has default AND validation
 optional string image_tag = 1 [
-  (org.project_planton.shared.options.default) = "2.331.0",
+  (org.openmcf.shared.options.default) = "2.331.0",
   (buf.validate.field).string.min_len = 1
 ];
 ```

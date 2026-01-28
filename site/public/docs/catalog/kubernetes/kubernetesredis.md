@@ -16,7 +16,7 @@ This license change wasn't just a legal technicality. The Server-Side Public Lic
 
 The open-source community's response was swift and decisive. AWS, Google Cloud, Oracle, and the original Redis developers forked the last truly open-source version (Redis 7.2.4) and created **Valkey**—a drop-in replacement for Redis, permanently licensed under BSD-3-Clause and governed by the Linux Foundation.
 
-This schism has profound implications for infrastructure decisions. **Project Planton defaults to Valkey**, not Redis. This document explains the deployment landscape, the evolution from anti-patterns to production-ready solutions, and why certain architectural choices matter for your applications running on Kubernetes.
+This schism has profound implications for infrastructure decisions. **OpenMCF defaults to Valkey**, not Redis. This document explains the deployment landscape, the evolution from anti-patterns to production-ready solutions, and why certain architectural choices matter for your applications running on Kubernetes.
 
 ## The Maturity Spectrum: From Anti-Patterns to Production
 
@@ -135,7 +135,7 @@ Two operators built specifically for Valkey are production-ready:
 
 ## Redis vs. Valkey: The Licensing Decision
 
-For any open-source infrastructure framework like Project Planton, the licensing choice isn't optional—it's a fundamental responsibility to users.
+For any open-source infrastructure framework like OpenMCF, the licensing choice isn't optional—it's a fundamental responsibility to users.
 
 **The Risk of Default Redis**:
 
@@ -149,7 +149,7 @@ For any open-source infrastructure framework like Project Planton, the licensing
 - **Drop-In Replacement**: Binary-compatible with Redis 7.2.4
 - **Active Development**: Security patches, features, and community support
 
-**Project Planton's Choice**: Default to `valkey/valkey` images. The `RedisKubernetes` API name is retained for backward compatibility and familiarity (Redis remains the widely-recognized term), but the implementation uses Valkey to ensure legal safety and long-term viability.
+**OpenMCF's Choice**: Default to `valkey/valkey` images. The `RedisKubernetes` API name is retained for backward compatibility and familiarity (Redis remains the widely-recognized term), but the implementation uses Valkey to ensure legal safety and long-term viability.
 
 ## Deployment Modes: Standalone, Sentinel, and Cluster
 
@@ -218,9 +218,9 @@ The deployment mode determines your high availability, scaling strategy, and ope
 | **Multi-Key Operations** | Fully supported | Limited (keys must be in same slot) |
 | **Recommended For** | 80% of production use cases | Large datasets or extreme write load |
 
-## Project Planton's Implementation Strategy
+## OpenMCF's Implementation Strategy
 
-The `RedisKubernetes` API in Project Planton follows the 80/20 principle: expose the 20% of configuration that 80% of users need, and abstract away complexity.
+The `RedisKubernetes` API in OpenMCF follows the 80/20 principle: expose the 20% of configuration that 80% of users need, and abstract away complexity.
 
 ### Current API Design
 
@@ -252,7 +252,7 @@ Based on the research, future versions should consider:
 
 An infrastructure API should capture *intent*, not *implementation details*. Users should declare "I want a 50GB highly-available database" and the system should provision the StatefulSet, configure persistence, apply anti-affinity rules, create PodDisruptionBudgets, and set up monitoring—without requiring the user to understand every Kubernetes primitive.
 
-This is the core value proposition of Project Planton: translate high-level intent into production-ready infrastructure.
+This is the core value proposition of OpenMCF: translate high-level intent into production-ready infrastructure.
 
 ## Production Hardening Best Practices
 
@@ -313,7 +313,7 @@ A ClusterIP service load-balances to a random pod, hiding individual pod identit
 
 The Redis ecosystem underwent a seismic shift in 2024. The license change by Redis Ltd. forced the community to choose: accept restrictive terms or fork and preserve open-source principles. The Linux Foundation's Valkey project represents the latter—a commitment to openness, community governance, and legal safety.
 
-For infrastructure frameworks like Project Planton, this choice is clear. **Defaulting to Valkey** protects users from legal risk while maintaining full technical compatibility with the Redis they know.
+For infrastructure frameworks like OpenMCF, this choice is clear. **Defaulting to Valkey** protects users from legal risk while maintaining full technical compatibility with the Redis they know.
 
 The deployment landscape has matured from simple StatefulSets to sophisticated Operators that codify SRE best practices into software. Understanding the progression—from anti-patterns (Deployments) to foundational building blocks (StatefulSets) to production solutions (Operators)—informs better architectural decisions.
 
@@ -321,7 +321,7 @@ The deployment landscape has matured from simple StatefulSets to sophisticated O
 
 **Prioritize operational maturity**: Operators like OT-Operator automate the runbooks SREs would execute manually. In production, this automation isn't a luxury—it's essential for reliable, resilient infrastructure.
 
-The `RedisKubernetes` API in Project Planton embodies these principles: sensible defaults, abstraction of complexity, and a foundation built on truly open-source components that will remain available and maintained for the long term.
+The `RedisKubernetes` API in OpenMCF embodies these principles: sensible defaults, abstraction of complexity, and a foundation built on truly open-source components that will remain available and maintained for the long term.
 
 ---
 

@@ -6,11 +6,11 @@
 
 ## Summary
 
-Transformed the Project Planton Web App from a multi-step manual installation process into a **one-command installable solution** managed entirely through the CLI. Users can now install via Homebrew and run `planton webapp init` to get a fully functional web interface for managing cloud resources. The solution consolidates MongoDB, backend API, and frontend into a single Docker container orchestrated by supervisord, eliminating the need for separate service management.
+Transformed the OpenMCF Web App from a multi-step manual installation process into a **one-command installable solution** managed entirely through the CLI. Users can now install via Homebrew and run `planton webapp init` to get a fully functional web interface for managing cloud resources. The solution consolidates MongoDB, backend API, and frontend into a single Docker container orchestrated by supervisord, eliminating the need for separate service management.
 
 ## Problem Statement / Motivation
 
-The existing Project Planton Web App required a complex, multi-step setup process that created friction for users:
+The existing OpenMCF Web App required a complex, multi-step setup process that created friction for users:
 
 ### Pain Points
 
@@ -58,7 +58,7 @@ Before: Multi-Step Manual Process
 
 After: One-Command Installation
 ┌──────────────────────────────────────┐
-│ 1. brew install project-planton      │
+│ 1. brew install openmcf      │
 │ 2. planton webapp init               │
 │ 3. planton webapp start              │
 │ Done! Access http://localhost:3000   │
@@ -71,15 +71,15 @@ After: One-Command Installation
 Unified Docker Container (supervisord)
 ├── MongoDB (priority 1)
 │   ├── Port: 27017 (localhost only)
-│   ├── Database: project_planton
-│   └── Volume: project-planton-mongodb-data
+│   ├── Database: openmcf
+│   └── Volume: openmcf-mongodb-data
 │
 ├── Backend (priority 2, depends on MongoDB)
 │   ├── Port: 50051 (exposed)
 │   ├── Connect-RPC API server
 │   ├── Pulumi CLI integration
 │   ├── Retry logic for MongoDB connection
-│   └── Volume: project-planton-pulumi-state
+│   └── Volume: openmcf-pulumi-state
 │
 └── Frontend (priority 3, depends on Backend)
     ├── Port: 3000 (exposed)
@@ -91,7 +91,7 @@ Unified Docker Container (supervisord)
 ### CLI Command Structure
 
 ```
-project-planton webapp
+openmcf webapp
 ├── init          # One-time setup: pull image, create container, configure CLI
 ├── start         # Start all services and wait for health
 ├── stop          # Gracefully stop (preserves data)
@@ -186,7 +186,7 @@ priority=2
 user=appuser
 depends_on=mongodb    # Starts after MongoDB
 command=/app/backend/server
-environment=MONGODB_URI="mongodb://localhost:27017/project_planton"
+environment=MONGODB_URI="mongodb://localhost:27017/openmcf"
 
 [program:frontend]
 priority=3
@@ -207,13 +207,13 @@ Container startup orchestration:
 
 ### 3. CLI Web App Commands
 
-**Package**: `cmd/project-planton/root/webapp/`
+**Package**: `cmd/openmcf/root/webapp/`
 
 Seven new commands for complete lifecycle management:
 
 #### `webapp init` Command
 
-**File**: `cmd/project-planton/root/webapp/init.go`
+**File**: `cmd/openmcf/root/webapp/init.go`
 
 ```go
 func initHandler(cmd *cobra.Command, args []string) {
@@ -229,7 +229,7 @@ func initHandler(cmd *cobra.Command, args []string) {
     }
 
     // 3. Pull Docker image
-    fullImageName := "satishlleftbin/project-planton:latest"
+    fullImageName := "satishlleftbin/openmcf:latest"
     pullDockerImage(fullImageName)
 
     // 4. Create persistent volumes
@@ -252,7 +252,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 #### `webapp start` Command
 
-**File**: `cmd/project-planton/root/webapp/start.go`
+**File**: `cmd/openmcf/root/webapp/start.go`
 
 ```go
 func startHandler(cmd *cobra.Command, args []string) {
@@ -275,7 +275,7 @@ func waitForHealthy(timeoutSeconds int) error {
 
 #### `webapp logs` Command
 
-**File**: `cmd/project-planton/root/webapp/logs.go`
+**File**: `cmd/openmcf/root/webapp/logs.go`
 
 Supports streaming and filtering:
 
@@ -305,7 +305,7 @@ planton webapp logs -n 500
 
 #### `webapp status` Command
 
-**File**: `cmd/project-planton/root/webapp/status.go`
+**File**: `cmd/openmcf/root/webapp/status.go`
 
 Comprehensive health display:
 - Container status (running/stopped/paused/restarting)
@@ -317,13 +317,13 @@ Comprehensive health display:
 **Output**:
 ```
 ========================================
-📊 Project Planton Web App Status
+📊 OpenMCF Web App Status
 ========================================
 
 Container Information:
-  Name:       project-planton-webapp
+  Name:       openmcf-webapp
   Status:     🟢 running
-  Image:      satishlleftbin/project-planton:latest
+  Image:      satishlleftbin/openmcf:latest
 
 Service Status:
   MongoDB:     🟢 running (port 27017)
@@ -335,14 +335,14 @@ Access URLs:
   🔌 Backend:   http://localhost:50051
 
 Data Volumes:
-  MongoDB:     project-planton-mongodb-data
-  Pulumi:      project-planton-pulumi-state
-  Go Cache:    project-planton-go-cache
+  MongoDB:     openmcf-mongodb-data
+  Pulumi:      openmcf-pulumi-state
+  Go Cache:    openmcf-go-cache
 ```
 
 #### `webapp uninstall` Command
 
-**File**: `cmd/project-planton/root/webapp/uninstall.go`
+**File**: `cmd/openmcf/root/webapp/uninstall.go`
 
 Safe removal with data protection:
 
@@ -418,7 +418,7 @@ func Connect(ctx context.Context, uri, databaseName string) (*MongoDB, error) {
 
 ### 5. CLI Configuration Extension
 
-**File**: `cmd/project-planton/root/config.go`
+**File**: `cmd/openmcf/root/config.go`
 
 Extended configuration system to track web app installation:
 
@@ -439,12 +439,12 @@ func SaveConfigPublic(config *Config) error {
 }
 ```
 
-**Configuration file**: `~/.project-planton/config.yaml`
+**Configuration file**: `~/.openmcf/config.yaml`
 
 **Example**:
 ```yaml
 backend-url: http://localhost:50051
-webapp-container-id: project-planton-webapp
+webapp-container-id: openmcf-webapp
 webapp-version: latest
 ```
 
@@ -452,14 +452,14 @@ The `config list` command was also updated to display webapp-related fields.
 
 ### 6. CLI Integration
 
-**File**: `cmd/project-planton/root.go`
+**File**: `cmd/openmcf/root.go`
 
 Added webapp command group alongside existing infrastructure commands:
 
 ```go
 import (
-    "github.com/plantonhq/project-planton/cmd/project-planton/root"
-    "github.com/plantonhq/project-planton/cmd/project-planton/root/webapp"
+    "github.com/plantonhq/openmcf/cmd/openmcf/root"
+    "github.com/plantonhq/openmcf/cmd/openmcf/root/webapp"
 )
 
 func init() {
@@ -496,8 +496,8 @@ func init() {
 Before:
 ```bash
 # Step 1: Pull images
-docker pull satishlleftbin/project-planton-backend:latest
-docker pull satishlleftbin/project-planton-frontend:latest
+docker pull satishlleftbin/openmcf-backend:latest
+docker pull satishlleftbin/openmcf-frontend:latest
 
 # Step 2: Setup MongoDB
 brew install mongodb-community
@@ -512,7 +512,7 @@ EOF
 docker-compose up -d
 
 # Step 5: Install CLI
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # Step 6: Configure CLI
 planton config set backend-url http://localhost:50051
@@ -525,7 +525,7 @@ open http://localhost:3000
 After:
 ```bash
 # Step 1: Install CLI
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # Step 2: Initialize and start
 planton webapp init
@@ -575,9 +575,9 @@ All data survives container restarts via Docker volumes:
 
 | Volume | Contents | Purpose |
 |--------|----------|---------|
-| `project-planton-mongodb-data` | MongoDB database | Cloud resources, credentials, stack-updates |
-| `project-planton-pulumi-state` | Pulumi state files | Infrastructure state tracking |
-| `project-planton-go-cache` | Go build cache | Faster Pulumi deployments |
+| `openmcf-mongodb-data` | MongoDB database | Cloud resources, credentials, stack-updates |
+| `openmcf-pulumi-state` | Pulumi state files | Infrastructure state tracking |
+| `openmcf-go-cache` | Go build cache | Faster Pulumi deployments |
 
 **Test scenario**:
 ```bash
@@ -604,7 +604,7 @@ planton webapp start
 ### Users Affected
 
 **New Users**:
-- Can try Project Planton in < 5 minutes
+- Can try OpenMCF in < 5 minutes
 - Reduced friction in getting started
 - Better first impression
 
@@ -649,7 +649,7 @@ This work builds on:
   - Theme system
   - Server-side pagination
 
-See: `_projects/20251127-project-planton-web-app/next-task.md`
+See: `_projects/20251127-openmcf-web-app/next-task.md`
 
 ### Future Enhancements
 
@@ -723,27 +723,27 @@ Comprehensive checklist created in `testing-summary.md`:
 - `app/entrypoint-unified.sh`
 
 **CLI Commands** (8):
-- `cmd/project-planton/root/webapp/webapp.go`
-- `cmd/project-planton/root/webapp/init.go`
-- `cmd/project-planton/root/webapp/start.go`
-- `cmd/project-planton/root/webapp/stop.go`
-- `cmd/project-planton/root/webapp/status.go`
-- `cmd/project-planton/root/webapp/logs.go`
-- `cmd/project-planton/root/webapp/restart.go`
-- `cmd/project-planton/root/webapp/uninstall.go`
+- `cmd/openmcf/root/webapp/webapp.go`
+- `cmd/openmcf/root/webapp/init.go`
+- `cmd/openmcf/root/webapp/start.go`
+- `cmd/openmcf/root/webapp/stop.go`
+- `cmd/openmcf/root/webapp/status.go`
+- `cmd/openmcf/root/webapp/logs.go`
+- `cmd/openmcf/root/webapp/restart.go`
+- `cmd/openmcf/root/webapp/uninstall.go`
 
 **Documentation** (4):
-- `_projects/20251127-project-planton-web-app/docs/installation-guide.md`
-- `_projects/20251127-project-planton-web-app/docs/cli-commands.md`
-- `_projects/20251127-project-planton-web-app/docs/testing-summary.md`
+- `_projects/20251127-openmcf-web-app/docs/installation-guide.md`
+- `_projects/20251127-openmcf-web-app/docs/cli-commands.md`
+- `_projects/20251127-openmcf-web-app/docs/testing-summary.md`
 - `app/README.md`
 
 ### Files Modified: 4
 
-- `cmd/project-planton/root.go` - Added webapp command registration
-- `cmd/project-planton/root/config.go` - Extended config, exported functions
+- `cmd/openmcf/root.go` - Added webapp command registration
+- `cmd/openmcf/root/config.go` - Extended config, exported functions
 - `app/backend/internal/database/mongodb.go` - Added retry logic
-- `cmd/project-planton/CLI-HELP.md` - Added webapp section
+- `cmd/openmcf/CLI-HELP.md` - Added webapp section
 
 ### Lines of Code
 
@@ -758,11 +758,11 @@ Comprehensive checklist created in `testing-summary.md`:
 
 ```bash
 # Install CLI via Homebrew
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # Verify installation
 planton version
-# Output: project-planton version v1.x.x
+# Output: openmcf version v1.x.x
 
 # Initialize web app (one time)
 planton webapp init
@@ -771,7 +771,7 @@ planton webapp init
 **Output**:
 ```
 ========================================
-🚀 Project Planton Web App Initialization
+🚀 OpenMCF Web App Initialization
 ========================================
 
 📋 Step 1/5: Checking Docker availability...
@@ -781,10 +781,10 @@ planton webapp init
 ✅ No existing installation found
 
 📋 Step 3/5: Pulling Docker image...
-   Pulling satishlleftbin/project-planton:latest (this may take a few minutes)...
-latest: Pulling from satishlleftbin/project-planton
+   Pulling satishlleftbin/openmcf:latest (this may take a few minutes)...
+latest: Pulling from satishlleftbin/openmcf
 Digest: sha256:abc123...
-Status: Downloaded newer image for satishlleftbin/project-planton:latest
+Status: Downloaded newer image for satishlleftbin/openmcf:latest
 ✅ Docker image pulled successfully
 
 📋 Step 4/5: Creating Docker volumes and container...
@@ -820,7 +820,7 @@ planton webapp start
 **Output**:
 ```
 ========================================
-🚀 Starting Project Planton Web App
+🚀 Starting OpenMCF Web App
 ========================================
 
 🔄 Starting container...
@@ -951,7 +951,7 @@ If you previously used docker-compose:
 docker-compose down
 
 # Install new CLI (if not already installed)
-brew upgrade plantonhq/tap/project-planton
+brew upgrade plantonhq/tap/openmcf
 
 # Initialize new setup
 planton webapp init
@@ -978,19 +978,19 @@ planton webapp start
 
 ### User Documentation
 
-1. **Installation Guide**: `_projects/20251127-project-planton-web-app/docs/installation-guide.md`
+1. **Installation Guide**: `_projects/20251127-openmcf-web-app/docs/installation-guide.md`
    - Prerequisites and setup
    - Step-by-step instructions
    - Troubleshooting guide
    - Data persistence explanation
 
-2. **CLI Command Reference**: `_projects/20251127-project-planton-web-app/docs/cli-commands.md`
+2. **CLI Command Reference**: `_projects/20251127-openmcf-web-app/docs/cli-commands.md`
    - All commands with examples
    - Flag documentation
    - Common workflows
    - Error scenarios
 
-3. **CLI Help**: `cmd/project-planton/CLI-HELP.md`
+3. **CLI Help**: `cmd/openmcf/CLI-HELP.md`
    - Added Web App Management section
    - Integrated with existing help system
 
@@ -1003,7 +1003,7 @@ planton webapp start
    - Testing instructions
    - Build and deployment
 
-2. **Testing Summary**: `_projects/20251127-project-planton-web-app/docs/testing-summary.md`
+2. **Testing Summary**: `_projects/20251127-openmcf-web-app/docs/testing-summary.md`
    - Code verification results
    - Manual testing checklist
    - Known limitations

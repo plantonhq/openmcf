@@ -1,12 +1,12 @@
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsRdsInstance
 metadata:
   name: aws-postgres-example
   labels:
-    project-planton.org/provisioner: pulumi
-    pulumi.project-planton.org/organization: organization
-    pulumi.project-planton.org/project: project-planton-examples
-    pulumi.project-planton.org/stack.name: example-env.AwsRdsInstance.aws-postgres-example
+    openmcf.org/provisioner: pulumi
+    pulumi.openmcf.org/organization: organization
+    pulumi.openmcf.org/project: openmcf-examples
+    pulumi.openmcf.org/stack.name: example-env.AwsRdsInstance.aws-postgres-example
 spec:
   subnetIds:
     - value: subnet-abc123

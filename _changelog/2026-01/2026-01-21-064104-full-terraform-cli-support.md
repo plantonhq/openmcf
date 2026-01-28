@@ -6,7 +6,7 @@
 
 ## Summary
 
-Implemented complete Terraform support in the `project-planton` CLI, enabling users to deploy infrastructure using either OpenTofu or Terraform based on the `project-planton.org/provisioner` manifest label. The implementation follows a binary-agnostic architecture where Tofu and Terraform share the same HCL execution logic, with only the underlying CLI binary differing. This provides an identical user experience for both provisioners while respecting user choice.
+Implemented complete Terraform support in the `openmcf` CLI, enabling users to deploy infrastructure using either OpenTofu or Terraform based on the `openmcf.org/provisioner` manifest label. The implementation follows a binary-agnostic architecture where Tofu and Terraform share the same HCL execution logic, with only the underlying CLI binary differing. This provides an identical user experience for both provisioners while respecting user choice.
 
 ## Problem Statement / Motivation
 
@@ -14,9 +14,9 @@ Previously, when users set the provisioner label to `terraform` in their manifes
 
 ### Pain Points
 
-- Users with existing Terraform workflows couldn't use `project-planton` without switching to OpenTofu
+- Users with existing Terraform workflows couldn't use `openmcf` without switching to OpenTofu
 - The unified commands (`apply`, `destroy`, `plan`, `refresh`, `init`) rejected Terraform manifests
-- No `project-planton terraform` subcommand existed for direct Terraform operations
+- No `openmcf terraform` subcommand existed for direct Terraform operations
 - The codebase had Tofu-specific hardcoding that prevented Terraform usage
 
 ## Solution / What's New
@@ -28,7 +28,7 @@ Created a binary-agnostic HCL execution layer that parameterizes the CLI binary 
 ```mermaid
 flowchart TB
     subgraph "Unified Commands"
-        A[project-planton apply/destroy/plan/refresh/init]
+        A[openmcf apply/destroy/plan/refresh/init]
         A --> B{Detect Provisioner}
         B -->|pulumi| C[RunPulumi]
         B -->|tofu| D[RunTofu]
@@ -36,8 +36,8 @@ flowchart TB
     end
     
     subgraph "Provisioner-Specific Commands"
-        F[project-planton tofu apply/destroy/etc]
-        G[project-planton terraform apply/destroy/etc]
+        F[openmcf tofu apply/destroy/etc]
+        G[openmcf terraform apply/destroy/etc]
         F --> D
         G --> E
     end
@@ -159,7 +159,7 @@ case provisioner.ProvisionerTypeTerraform:
 
 ### New Terraform Command Tree
 
-Created `cmd/project-planton/root/terraform/` with full command parity:
+Created `cmd/openmcf/root/terraform/` with full command parity:
 
 ```
 terraform/
@@ -200,15 +200,15 @@ running command: terraform init ...
 
 ```bash
 # Direct terraform commands
-project-planton terraform apply --manifest postgres.yaml
-project-planton terraform plan --manifest postgres.yaml --destroy
-project-planton terraform destroy --manifest postgres.yaml --auto-approve
-project-planton terraform init --manifest postgres.yaml
-project-planton terraform refresh --manifest postgres.yaml
+openmcf terraform apply --manifest postgres.yaml
+openmcf terraform plan --manifest postgres.yaml --destroy
+openmcf terraform destroy --manifest postgres.yaml --auto-approve
+openmcf terraform init --manifest postgres.yaml
+openmcf terraform refresh --manifest postgres.yaml
 
 # Unified commands (auto-detect from manifest label)
-project-planton apply -f manifest.yaml      # Routes to terraform if label says so
-project-planton destroy -f manifest.yaml
+openmcf apply -f manifest.yaml      # Routes to terraform if label says so
+openmcf destroy -f manifest.yaml
 ```
 
 ## Files Changed
@@ -219,12 +219,12 @@ project-planton destroy -f manifest.yaml
 |------|---------|-------|
 | `pkg/iac/provisioner/binary.go` | HclBinary type and utilities | ~55 |
 | `internal/cli/iacrunner/run_terraform.go` | Terraform execution wrapper | ~12 |
-| `cmd/project-planton/root/terraform.go` | Parent command | ~48 |
-| `cmd/project-planton/root/terraform/apply.go` | terraform apply | ~148 |
-| `cmd/project-planton/root/terraform/destroy.go` | terraform destroy | ~148 |
-| `cmd/project-planton/root/terraform/plan.go` | terraform plan | ~146 |
-| `cmd/project-planton/root/terraform/refresh.go` | terraform refresh | ~142 |
-| `cmd/project-planton/root/terraform/init.go` | terraform init | ~165 |
+| `cmd/openmcf/root/terraform.go` | Parent command | ~48 |
+| `cmd/openmcf/root/terraform/apply.go` | terraform apply | ~148 |
+| `cmd/openmcf/root/terraform/destroy.go` | terraform destroy | ~148 |
+| `cmd/openmcf/root/terraform/plan.go` | terraform plan | ~146 |
+| `cmd/openmcf/root/terraform/refresh.go` | terraform refresh | ~142 |
+| `cmd/openmcf/root/terraform/init.go` | terraform init | ~165 |
 
 ### Modified Files (13)
 
@@ -234,13 +234,13 @@ project-planton destroy -f manifest.yaml
 | `pkg/iac/tofu/tofumodule/tofu_init.go` | Renamed TofuInit→Init, added binaryName |
 | `pkg/iac/tofu/tofumodule/run_command.go` | Added binaryName parameter |
 | `internal/cli/iacrunner/run_tofu.go` | Added runHcl(), binary check |
-| `cmd/project-planton/root/apply.go` | Route Terraform case |
-| `cmd/project-planton/root/destroy.go` | Route Terraform case |
-| `cmd/project-planton/root/plan.go` | Route Terraform case |
-| `cmd/project-planton/root/refresh.go` | Route Terraform case |
-| `cmd/project-planton/root/init.go` | Added initWithTerraform() |
-| `cmd/project-planton/root/tofu/*.go` | Pass "tofu" to RunCommand |
-| `cmd/project-planton/root.go` | Register Terraform command |
+| `cmd/openmcf/root/apply.go` | Route Terraform case |
+| `cmd/openmcf/root/destroy.go` | Route Terraform case |
+| `cmd/openmcf/root/plan.go` | Route Terraform case |
+| `cmd/openmcf/root/refresh.go` | Route Terraform case |
+| `cmd/openmcf/root/init.go` | Added initWithTerraform() |
+| `cmd/openmcf/root/tofu/*.go` | Pass "tofu" to RunCommand |
+| `cmd/openmcf/root.go` | Register Terraform command |
 
 ### Auto-Generated Files (3)
 
@@ -248,7 +248,7 @@ project-planton destroy -f manifest.yaml
 |------|--------|
 | `pkg/iac/provisioner/BUILD.bazel` | Include binary.go |
 | `internal/cli/iacrunner/BUILD.bazel` | Include run_terraform.go |
-| `cmd/project-planton/root/BUILD.bazel` | Include terraform directory |
+| `cmd/openmcf/root/BUILD.bazel` | Include terraform directory |
 
 ## Benefits
 
@@ -270,7 +270,7 @@ project-planton destroy -f manifest.yaml
 
 ### Who is Affected
 
-- **Terraform Users** - Can now use `project-planton` with existing Terraform installations
+- **Terraform Users** - Can now use `openmcf` with existing Terraform installations
 - **Enterprise Users** - Organizations with Terraform license requirements are unblocked
 - **CI/CD Pipelines** - Can use either provisioner based on environment configuration
 

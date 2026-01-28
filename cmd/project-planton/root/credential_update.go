@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	credentialv1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1"
-	credentialv1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1/credentialv1connect"
-	awsv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws"
-	azurev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure"
-	gcpv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp"
+	credentialv1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1"
+	credentialv1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1/credentialv1connect"
+	awsv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/aws"
+	azurev1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/azure"
+	gcpv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/gcp"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +59,7 @@ func credentialUpdateHandler(cmd *cobra.Command, args []string) {
 
 	if id == "" || name == "" || providerStr == "" {
 		fmt.Println("Error: --id, --name, and --provider flags are required")
-		fmt.Println("Usage: project-planton credential:update --id=<id> --name=<name> --provider=<provider> [provider-specific-flags]")
+		fmt.Println("Usage: openmcf credential:update --id=<id> --name=<name> --provider=<provider> [provider-specific-flags]")
 		os.Exit(1)
 	}
 

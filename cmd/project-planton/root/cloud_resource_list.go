@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	cloudresourcev1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/cloudresource/v1"
-	cloudresourcev1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/cloudresource/v1/cloudresourcev1connect"
-	commonsv1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/commons"
+	cloudresourcev1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/cloudresource/v1"
+	cloudresourcev1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/cloudresource/v1/cloudresourcev1connect"
+	commonsv1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/commons"
 	"github.com/spf13/cobra"
 )
 

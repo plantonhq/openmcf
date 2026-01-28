@@ -540,7 +540,7 @@ tekton.logs.<pipeline-run-id>
 
 Your UI subscribes to these subjects for real-time log streaming.
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
 The KubernetesTektonOperator component deploys Tekton via the official Tekton Operator with an opinionated, production-ready configuration:
 
@@ -551,7 +551,7 @@ The KubernetesTektonOperator component deploys Tekton via the official Tekton Op
 **Exposed configuration**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesTektonOperator
 metadata:
   name: tekton-ci

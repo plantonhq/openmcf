@@ -14,7 +14,7 @@ Block storage volumes are one of cloud infrastructure's most fundamental buildin
 
 The DigitalOcean Volumes ecosystem presents an interesting paradox: while the underlying API is refreshingly simple (just a handful of essential parameters), production deployment requires navigating critical constraints that aren't immediately obvious. Volumes can only attach to one Droplet at a time. They're strictly regional—a volume in NYC3 cannot attach to a Droplet in SFO3. Snapshots cannot be copied between regions, creating a disaster recovery gap. The built-in monitoring system aggregates all disk metrics into a single percentage, masking critical capacity alerts.
 
-This guide explains the deployment methods available for DigitalOcean Volumes, from manual provisioning to production-grade Infrastructure as Code (IaC). It explores the IaC ecosystem's unusual characteristic: nearly all declarative tools (Pulumi, Crossplane) ultimately wrap the same upstream Terraform provider, creating a "Terraform monoculture" where a native implementation can provide genuine differentiation. Most importantly, it explains what Project Planton supports and why, grounded in research and production patterns.
+This guide explains the deployment methods available for DigitalOcean Volumes, from manual provisioning to production-grade Infrastructure as Code (IaC). It explores the IaC ecosystem's unusual characteristic: nearly all declarative tools (Pulumi, Crossplane) ultimately wrap the same upstream Terraform provider, creating a "Terraform monoculture" where a native implementation can provide genuine differentiation. Most importantly, it explains what OpenMCF supports and why, grounded in research and production patterns.
 
 ## The Maturity Spectrum: Evolution of Volume Deployment
 
@@ -72,7 +72,7 @@ Ansible represents a more sophisticated approach using idempotent modules from t
 
 **Verdict:** Excellent for configuration management, but should be paired with a true IaC tool for infrastructure provisioning.
 
-### Level 3: Production Infrastructure as Code (Terraform, Pulumi, Project Planton)
+### Level 3: Production Infrastructure as Code (Terraform, Pulumi, OpenMCF)
 
 This is the production-ready tier where infrastructure is defined declaratively, state is managed, and drift is detectable.
 
@@ -114,13 +114,13 @@ An analysis of the DigitalOcean IaC ecosystem reveals a striking pattern:
 
 This creates a **monoculture** where nearly all declarative tools depend on a single upstream implementation. A native provider that talks directly to the DigitalOcean API—bypassing this shared dependency—offers genuine strategic value.
 
-## What Project Planton Supports and Why
+## What OpenMCF Supports and Why
 
-Project Planton provides a **native DigitalOcean Volume provider** implemented in Go using Pulumi's infrastructure engine. Unlike the bridged Pulumi provider, this is a direct implementation that doesn't inherit Terraform's architecture or constraints.
+OpenMCF provides a **native DigitalOcean Volume provider** implemented in Go using Pulumi's infrastructure engine. Unlike the bridged Pulumi provider, this is a direct implementation that doesn't inherit Terraform's architecture or constraints.
 
 ### The 80/20 API Design
 
-Based on comprehensive analysis of production configurations, Project Planton's protobuf API exposes the fields that 80% of users need 100% of the time:
+Based on comprehensive analysis of production configurations, OpenMCF's protobuf API exposes the fields that 80% of users need 100% of the time:
 
 **Essential (required):**
 - `volume_name`: Human-readable identifier (lowercase, alphanumeric + hyphens, max 64 chars)
@@ -142,7 +142,7 @@ Based on comprehensive analysis of production configurations, Project Planton's 
 
 1. **No Terraform dependency:** Features aren't gated by upstream Terraform releases.
 2. **Protobuf-native API:** Clean, strongly typed specifications with built-in validation.
-3. **Consistent abstraction:** Same philosophy and patterns as all other Project Planton providers, reducing cognitive load.
+3. **Consistent abstraction:** Same philosophy and patterns as all other OpenMCF providers, reducing cognitive load.
 
 ### Filesystem Type: The Usability Multiplier
 
@@ -274,7 +274,7 @@ DigitalOcean Volumes embody a design philosophy of constrained simplicity. The A
 
 But this simplicity is also a strength. There's no decision paralysis over IOPS provisioning. No complex attachment state machines. The constraints force clear architectural decisions: if you need ReadWriteMany, you architect around it (managed databases, object storage). If you need DR, you design for it explicitly (cross-region replication, managed services).
 
-Project Planton's native DigitalOcean Volume provider embraces this philosophy. It exposes the 20% of configuration that covers 80% of real-world needs, abstracts away the complexity where automation helps (pre-formatting, attachment orchestration), and documents the operational realities that code can't solve (resizing workflows, DR limitations, monitoring gaps).
+OpenMCF's native DigitalOcean Volume provider embraces this philosophy. It exposes the 20% of configuration that covers 80% of real-world needs, abstracts away the complexity where automation helps (pre-formatting, attachment orchestration), and documents the operational realities that code can't solve (resizing workflows, DR limitations, monitoring gaps).
 
 Block storage is infrastructure's foundation. Understanding how to deploy it well—and where its boundaries lie—is essential for building production systems that are both resilient and maintainable.
 

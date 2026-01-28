@@ -3,7 +3,7 @@ package manifest
 import (
 	"fmt"
 
-	"github.com/plantonhq/project-planton/internal/cli/ui"
+	"github.com/plantonhq/openmcf/internal/cli/ui"
 )
 
 // ClipboardEmptyError indicates clipboard has no content.

@@ -10,7 +10,7 @@ This rule makes targeted fixes to deployment components and automatically propag
 
 ## Role
 
-You are the Project Planton Code Partner. This rule orchestrates targeted fixes with intelligent propagation to maintain consistency across proto definitions, IaC modules, documentation, examples, and tests.
+You are the OpenMCF Code Partner. This rule orchestrates targeted fixes with intelligent propagation to maintain consistency across proto definitions, IaC modules, documentation, examples, and tests.
 
 ## Philosophy: Source Code is Truth
 
@@ -56,34 +56,34 @@ Use fix when you need to:
 ## Usage
 
 ```
-@fix-project-planton-component <ComponentName> --explain "<detailed description of fix needed>"
+@fix-openmcf-component <ComponentName> --explain "<detailed description of fix needed>"
 ```
 
 ### Examples
 
 **Fix validation logic:**
 ```bash
-@fix-project-planton-component GcpCertManagerCert --explain "primaryDomainName validation is too strict, should allow wildcards like *.example.com"
+@fix-openmcf-component GcpCertManagerCert --explain "primaryDomainName validation is too strict, should allow wildcards like *.example.com"
 ```
 
 **Fix IaC implementation:**
 ```bash
-@fix-project-planton-component AwsRdsInstance --explain "Pulumi module doesn't set backup_retention_period correctly, should use spec value instead of hardcoded 7 days"
+@fix-openmcf-component AwsRdsInstance --explain "Pulumi module doesn't set backup_retention_period correctly, should use spec value instead of hardcoded 7 days"
 ```
 
 **Fix documentation sync:**
 ```bash
-@fix-project-planton-component PostgresKubernetes --explain "examples.md shows old field 'database_name' but current spec uses 'db_identifier', update all examples to match"
+@fix-openmcf-component PostgresKubernetes --explain "examples.md shows old field 'database_name' but current spec uses 'db_identifier', update all examples to match"
 ```
 
 **Fix missing field:**
 ```bash
-@fix-project-planton-component MongodbAtlas --explain "spec.proto is missing 'region' field which is essential for multi-region deployments"
+@fix-openmcf-component MongodbAtlas --explain "spec.proto is missing 'region' field which is essential for multi-region deployments"
 ```
 
 **Fix test failures:**
 ```bash
-@fix-project-planton-component GcpCloudSql --explain "spec_test.go is failing because validation test expects error for empty project_id but validation rule is missing"
+@fix-openmcf-component GcpCloudSql --explain "spec_test.go is failing because validation test expects error for empty project_id but validation rule is missing"
 ```
 
 ## Workflow
@@ -113,7 +113,7 @@ Use fix when you need to:
    - Update spec.proto with the fix
    - Add/modify buf.validate rules
    - **Must execute**: `make protos` from project root to regenerate Go stubs
-   - **Must execute**: `go test ./apis/org/project_planton/provider/<provider>/<component>/v1/` to validate spec tests
+   - **Must execute**: `go test ./apis/org/openmcf/provider/<provider>/<component>/v1/` to validate spec tests
 
 2. **Fix IaC Modules** (if deployment logic change needed)
    - Update Pulumi module (main.go, locals.go, resource files)
@@ -124,7 +124,7 @@ Use fix when you need to:
 3. **Fix Tests** (if test logic change needed)
    - Update spec_test.go to validate new behavior
    - Add tests for the fix
-   - Run component tests: `go test ./apis/org/project_planton/provider/<provider>/<component>/v1/`
+   - Run component tests: `go test ./apis/org/openmcf/provider/<provider>/<component>/v1/`
 
 **Validation After Source Code Fix (Execute in Sequence):**
 ```bash
@@ -132,7 +132,7 @@ Use fix when you need to:
 make protos
 
 # 2. Always: Validate component tests (validates buf.validate rules)
-go test ./apis/org/project_planton/provider/<provider>/<component>/v1/
+go test ./apis/org/openmcf/provider/<provider>/<component>/v1/
 
 # 3. If Go/Pulumi code changed: Verify complete build
 make build
@@ -154,7 +154,7 @@ make test
    - Add new examples if new fields added
    - **Validate** each example against current schema:
      ```bash
-     project-planton validate --manifest example.yaml
+     openmcf validate --manifest example.yaml
      ```
 
 2. **Update README.md** (user-facing)
@@ -222,7 +222,7 @@ make protos
 # Must succeed - ensures .pb.go files are up to date
 
 # 2. Component-specific tests (validates buf.validate rules)
-go test ./apis/org/project_planton/provider/<provider>/<component>/v1/
+go test ./apis/org/openmcf/provider/<provider>/<component>/v1/
 # Must pass - validates validation logic is correct in spec.proto
 
 # 3. If Pulumi/Go code changed: Build validation
@@ -314,13 +314,13 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-project-planton-component GcpCloudSql --explain "spec.proto has 'disk_size' as int32 but should be int64 to support >2TB disks"
+@fix-openmcf-component GcpCloudSql --explain "spec.proto has 'disk_size' as int32 but should be int64 to support >2TB disks"
 ```
 
 **Actions:**
 1. Update spec.proto (int32 → int64)
 2. Regenerate stubs: `make protos`
-3. Run component tests: `go test ./apis/org/project_planton/provider/gcp/gcpcloudsql/v1/`
+3. Run component tests: `go test ./apis/org/openmcf/provider/gcp/gcpcloudsql/v1/`
 4. Update spec_test.go (test with large values)
 5. Update Terraform variables.tf (int → number)
 6. Update examples.md (show large disk example)
@@ -335,7 +335,7 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-project-planton-component AwsRdsInstance --explain "Pulumi module creates instance without backup_retention_period from spec, always uses default 7 days instead"
+@fix-openmcf-component AwsRdsInstance --explain "Pulumi module creates instance without backup_retention_period from spec, always uses default 7 days instead"
 ```
 
 **Actions:**
@@ -343,7 +343,7 @@ Next Steps:
 2. Update Terraform main.tf (ensure same logic)
 3. Run build: `make build`
 4. Update spec_test.go (test backup retention values)
-5. Run component tests: `go test ./apis/org/project_planton/provider/aws/awsrdsinstance/v1/`
+5. Run component tests: `go test ./apis/org/openmcf/provider/aws/awsrdsinstance/v1/`
 6. Update examples.md (show backup retention usage)
 7. Update iac/pulumi/overview.md (document backup behavior)
 8. Run E2E tests to verify fix works
@@ -356,7 +356,7 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-project-planton-component PostgresKubernetes --explain "examples.md uses deprecated field 'database_name' but spec.proto now uses 'db_identifier'"
+@fix-openmcf-component PostgresKubernetes --explain "examples.md uses deprecated field 'database_name' but spec.proto now uses 'db_identifier'"
 ```
 
 **Actions:**
@@ -376,7 +376,7 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-project-planton-component MongodbAtlas --explain "spec_test.go validation test expects error when cluster_tier is empty but validation rule doesn't exist in spec.proto"
+@fix-openmcf-component MongodbAtlas --explain "spec_test.go validation test expects error when cluster_tier is empty but validation rule doesn't exist in spec.proto"
 ```
 
 **Actions:**
@@ -385,7 +385,7 @@ Next Steps:
    - If validation SHOULD exist: Add to spec.proto, fix test
    - If validation SHOULDN'T exist: Fix test to not expect error
 3. If proto changed: Run `make protos` to regenerate stubs
-4. Run component tests: `go test ./apis/org/project_planton/provider/atlas/mongodbatlas/v1/`
+4. Run component tests: `go test ./apis/org/openmcf/provider/atlas/mongodbatlas/v1/`
 5. Run build: `make build`
 6. Update examples if validation behavior changed
 7. Update README if validation rules mentioned
@@ -397,7 +397,7 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-project-planton-component GcpGkeCluster --explain "Terraform module doesn't create node pool autoscaling like Pulumi does"
+@fix-openmcf-component GcpGkeCluster --explain "Terraform module doesn't create node pool autoscaling like Pulumi does"
 ```
 
 **Actions:**
@@ -415,13 +415,13 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-project-planton-component AwsVpc --explain "CIDR block validation rejects 10.0.0.0/8 (valid private range) due to overly strict regex"
+@fix-openmcf-component AwsVpc --explain "CIDR block validation rejects 10.0.0.0/8 (valid private range) due to overly strict regex"
 ```
 
 **Actions:**
 1. Update spec.proto (fix regex pattern)
 2. Regenerate stubs: `make protos`
-3. Run component tests: `go test ./apis/org/project_planton/provider/aws/awsvpc/v1/`
+3. Run component tests: `go test ./apis/org/openmcf/provider/aws/awsvpc/v1/`
 4. Update spec_test.go (test 10.0.0.0/8 is now valid)
 5. Update examples.md (show 10.0.0.0/8 example)
 6. Update docs/README.md (document valid CIDR ranges)
@@ -635,7 +635,7 @@ Source code fix complete!
   
 [3/4] ✅ Updated v1/docs/README.md
   - Updated comparison table (wildcard column)
-  - Updated "The Project Planton Choice" section
+  - Updated "The OpenMCF Choice" section
   - Added wildcard to best practices
   
 [4/4] ✅ Updated iac/pulumi/README.md
@@ -679,7 +679,7 @@ All consistency checks passed!
 🧪 Running validation...
 
 Component Tests:
-  Command: go test ./apis/org/project_planton/provider/gcp/gcpcertmanagercert/v1/
+  Command: go test ./apis/org/openmcf/provider/gcp/gcpcertmanagercert/v1/
   Result: ✅ PASS
   Tests run: 18
   Tests passed: 18
@@ -760,7 +760,7 @@ Git command:
 **Right:**
 1. Update spec.proto with new validation
 2. Update examples.md to meet new validation
-3. Validate examples: `project-planton validate --manifest example.yaml`
+3. Validate examples: `openmcf validate --manifest example.yaml`
 
 **Wrong:**
 1. Update examples.md with desired usage
@@ -947,7 +947,7 @@ git restore .
 ### Example 1: Fix Proto Validation
 
 ```bash
-@fix-project-planton-component GcpCertManagerCert --explain "primaryDomainName should allow wildcards *.example.com"
+@fix-openmcf-component GcpCertManagerCert --explain "primaryDomainName should allow wildcards *.example.com"
 
 # Fix executes:
 # 1. Update spec.proto pattern
@@ -968,7 +968,7 @@ git restore .
 ### Example 2: Fix IaC Implementation
 
 ```bash
-@fix-project-planton-component AwsRdsInstance --explain "backup_retention_period is hardcoded to 7, should use spec value"
+@fix-openmcf-component AwsRdsInstance --explain "backup_retention_period is hardcoded to 7, should use spec value"
 
 # Fix executes:
 # 1. Update Pulumi: use spec.BackupRetentionPeriod
@@ -989,7 +989,7 @@ git restore .
 ### Example 3: Fix Documentation Drift
 
 ```bash
-@fix-project-planton-component PostgresKubernetes --explain "examples use 'database_name' field but spec uses 'db_identifier'"
+@fix-openmcf-component PostgresKubernetes --explain "examples use 'database_name' field but spec uses 'db_identifier'"
 
 # Fix executes:
 # 1. Read spec.proto (confirm db_identifier is correct)
@@ -1008,7 +1008,7 @@ git restore .
 ### Example 4: Fix Test Failures
 
 ```bash
-@fix-project-planton-component MongodbAtlas --explain "spec_test.go expects validation error for empty cluster_tier but validation rule is missing"
+@fix-openmcf-component MongodbAtlas --explain "spec_test.go expects validation error for empty cluster_tier but validation rule is missing"
 
 # Fix executes:
 # 1. Read spec.proto (check if validation exists)
@@ -1028,7 +1028,7 @@ git restore .
 ### Example 5: Fix Feature Parity
 
 ```bash
-@fix-project-planton-component GcpGkeCluster --explain "Terraform doesn't create autoscaling config like Pulumi does"
+@fix-openmcf-component GcpGkeCluster --explain "Terraform doesn't create autoscaling config like Pulumi does"
 
 # Fix executes:
 # 1. Read Pulumi module (understand autoscaling logic)
@@ -1051,32 +1051,32 @@ git restore .
 
 ```bash
 # Audit reveals specific issue
-@audit-project-planton-component MyComponent
+@audit-openmcf-component MyComponent
 # Report: "examples.md uses deprecated fields"
 
 # Fix the issue
-@fix-project-planton-component MyComponent --explain "update examples.md to use current field names from spec.proto"
+@fix-openmcf-component MyComponent --explain "update examples.md to use current field names from spec.proto"
 ```
 
 ### Before Complete
 
 ```bash
 # Fix specific issue first
-@fix-project-planton-component MyComponent --explain "critical bug in validation logic"
+@fix-openmcf-component MyComponent --explain "critical bug in validation logic"
 
 # Then complete any remaining gaps
-@complete-project-planton-component MyComponent
+@complete-openmcf-component MyComponent
 ```
 
 ### During Update
 
 ```bash
 # Update identified an inconsistency
-@update-project-planton-component MyComponent --scenario proto-changed
+@update-openmcf-component MyComponent --scenario proto-changed
 # Warning: "Examples don't match new proto"
 
 # Fix the inconsistency
-@fix-project-planton-component MyComponent --explain "examples need updating after proto change"
+@fix-openmcf-component MyComponent --explain "examples need updating after proto change"
 ```
 
 ## Success Criteria
@@ -1097,13 +1097,13 @@ After fix completes:
 ## Reference
 
 - **Ideal State:** `architecture/deployment-component.md`
-- **Update Rule:** `_rules/deployment-component/update/update-project-planton-component.mdc`
-- **Audit Rule:** `_rules/deployment-component/audit/audit-project-planton-component.mdc`
+- **Update Rule:** `_rules/deployment-component/update/update-openmcf-component.mdc`
+- **Audit Rule:** `_rules/deployment-component/audit/audit-openmcf-component.mdc`
 - **Fix README:** `_rules/deployment-component/fix/README.md`
 
 ---
 
-**Ready to fix?** Run `@fix-project-planton-component <ComponentName> --explain "<what needs fixing>"` to apply targeted fixes with automatic propagation!
+**Ready to fix?** Run `@fix-openmcf-component <ComponentName> --explain "<what needs fixing>"` to apply targeted fixes with automatic propagation!
 
 ### Scenario 7: Fix Default Field Option Semantics
 
@@ -1111,14 +1111,14 @@ After fix completes:
 
 **Example:**
 ```bash
-@fix-project-planton-component KubernetesGhaRunnerScaleSet --explain "runner_group and runner image fields have defaults in comments but not in proto field options"
+@fix-openmcf-component KubernetesGhaRunnerScaleSet --explain "runner_group and runner image fields have defaults in comments but not in proto field options"
 ```
 
 **Actions:**
 1. Read spec.proto and identify fields with comment-only defaults
 2. For each field:
    - Add `optional` keyword
-   - Add `[(org.project_planton.shared.options.default) = "<value>"]`
+   - Add `[(org.openmcf.shared.options.default) = "<value>"]`
 3. Regenerate stubs: `make protos`
 4. Update spec_test.go to use pointers for optional fields
 5. Update IaC module to use getter methods: `GetFieldName()`
@@ -1129,7 +1129,7 @@ After fix completes:
 
 **Key Principle:** Don't just document defaults in comments - enforce them via:
 - `optional` keyword for presence tracking
-- `(org.project_planton.shared.options.default)` for middleware application
+- `(org.openmcf.shared.options.default)` for middleware application
 - `DEFAULT_REQUIRES_OPTIONAL` linter for build-time enforcement
 
-**Reference:** `apis/_rules/apply-project-planton-default-option-semantics.mdc`
+**Reference:** `apis/_rules/apply-openmcf-default-option-semantics.mdc`

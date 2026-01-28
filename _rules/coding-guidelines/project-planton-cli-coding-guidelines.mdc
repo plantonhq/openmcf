@@ -1,12 +1,12 @@
 ---
-description: CLI-specific coding guidelines for project-planton command layer
+description: CLI-specific coding guidelines for openmcf command layer
 globs:
   - "cmd/**/*.go"
   - "internal/cli/**/*.go"
 alwaysApply: true
 ---
 
-# Rule: Project Planton CLI Coding Guidelines
+# Rule: OpenMCF CLI Coding Guidelines
 
 Purpose: Enforces CLI-specific patterns for command handlers and CLI utilities.
 
@@ -46,7 +46,7 @@ func commandHandler(cmd *cobra.Command, args []string) {
 
 ## Layer Separation - MANDATORY
 
-### Command Layer (`cmd/project-planton/root/`)
+### Command Layer (`cmd/openmcf/root/`)
 
 Thin layer for cobra command definitions only. NO business logic.
 

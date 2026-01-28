@@ -1,4 +1,4 @@
-# T01: Initial Task Plan - Project Planton Web App
+# T01: Initial Task Plan - OpenMCF Web App
 
 **Status:** 📋 PENDING REVIEW  
 **Created:** November 27, 2025  
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This plan breaks down the development of Project Planton Web App into manageable phases, balancing the immediate need for a working demo (2 days) with the long-term goal of a production-ready full-stack application.
+This plan breaks down the development of OpenMCF Web App into manageable phases, balancing the immediate need for a working demo (2 days) with the long-term goal of a production-ready full-stack application.
 
 **Strategy**: Frontend-first with mock data, backend requirements emerge naturally, full integration follows.
 
@@ -221,9 +221,9 @@ This plan breaks down the development of Project Planton Web App into manageable
 - [ ] Add backend connection configuration
 - [ ] Implement API clients for backend services
 - [ ] Modify existing commands to use backend:
-  - `project-planton list` → query backend
-  - `project-planton create` → call backend API
-  - `project-planton get` → fetch from backend
+  - `openmcf list` → query backend
+  - `openmcf create` → call backend API
+  - `openmcf get` → fetch from backend
 
 **Backward Compatibility:**
 - [ ] CLI works standalone (without backend)
@@ -339,7 +339,7 @@ If time is tight, **absolute minimum for meetup demo**:
    - Visual polish
 
 2. Clear vision demonstrated:
-   - What Project Planton does
+   - What OpenMCF does
    - How web UI makes it accessible
    - Value proposition obvious
 
@@ -358,7 +358,7 @@ If time is tight, **absolute minimum for meetup demo**:
 ### For Meetup (November 29)
 - [ ] Working web interface accessible in browser
 - [ ] Attendees can interact with UI
-- [ ] Demonstrates Project Planton's capabilities
+- [ ] Demonstrates OpenMCF's capabilities
 - [ ] Visual appeal and polish
 - [ ] Clear value proposition
 

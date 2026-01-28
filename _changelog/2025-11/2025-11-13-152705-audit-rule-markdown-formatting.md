@@ -9,7 +9,7 @@
 
 ## Summary
 
-Enhanced the `audit-project-planton-component` rule with comprehensive markdown formatting requirements to ensure all generated audit reports render beautifully with proper tables, code blocks, spacing, and visual hierarchy.
+Enhanced the `audit-openmcf-component` rule with comprehensive markdown formatting requirements to ensure all generated audit reports render beautifully with proper tables, code blocks, spacing, and visual hierarchy.
 
 ---
 
@@ -75,7 +75,7 @@ Updated the report template with proper formatting examples:
 To verify tests, run:
 
 ```bash
-cd apis/org/project_planton/provider/atlas/mongodbatlas/v1/
+cd apis/org/openmcf/provider/atlas/mongodbatlas/v1/
 go test -v
 ```
 
@@ -104,7 +104,7 @@ go test -v
 ### Files Modified
 
 **Audit Rule:**
-- `_rules/deployment-component/audit/audit-project-planton-component.mdc`
+- `_rules/deployment-component/audit/audit-openmcf-component.mdc`
   - Added 80+ lines of formatting requirements (before report structure)
   - Added validation checklist
   - Enhanced report template with properly formatted examples
@@ -149,7 +149,7 @@ Enhanced template sections to demonstrate proper formatting:
 To verify tests, run:
 
 ```bash
-cd apis/org/project_planton/provider/atlas/mongodbatlas/v1/
+cd apis/org/openmcf/provider/atlas/mongodbatlas/v1/
 go test -v
 ```
 
@@ -232,7 +232,7 @@ Formatting requirements have been validated:
 This enhancement mirrors the same formatting requirements added to:
 - `planton-cloud/.cursor/rules/product/apis/infra-hub/cloud-resource/audit-planton-cloud-deployment-component.mdc`
 
-Both audit rules now follow the same markdown formatting standards for consistency across Project Planton and Planton Cloud audit reports.
+Both audit rules now follow the same markdown formatting standards for consistency across OpenMCF and Planton Cloud audit reports.
 
 ---
 
@@ -249,6 +249,6 @@ No migration needed - enhancement takes effect immediately for all future audits
 ---
 
 **Status**: ✅ Complete  
-**Version**: Project Planton (all versions)  
+**Version**: OpenMCF (all versions)  
 **Impact**: All future audit reports
 

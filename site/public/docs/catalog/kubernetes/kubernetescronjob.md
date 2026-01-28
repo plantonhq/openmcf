@@ -14,7 +14,7 @@ Every production system needs to run scheduled tasks: database backups at midnig
 
 The Kubernetes CronJob resource, stable since v1.21, provides a native, controller-based solution that mirrors the simplicity of traditional crontab while leveraging Kubernetes' declarative model. Yet the path from a simple `kubectl apply` to a production-ready, GitOps-managed, observable, and failure-resilient scheduling system is far from obvious. The native API's defaults are optimized for simplicity, not safety. Critical configuration fields are buried in deep nesting. Common deployment patterns can lead to catastrophic failure modes—from "thundering herd" database overloads to silent job failures with no trace evidence.
 
-This document maps the complete deployment landscape for Kubernetes CronJobs, from anti-patterns to production-proven approaches, and explains how Project Planton's `CronJobKubernetes` resource provides an opinionated abstraction that makes production-ready scheduling the path of least resistance.
+This document maps the complete deployment landscape for Kubernetes CronJobs, from anti-patterns to production-proven approaches, and explains how OpenMCF's `CronJobKubernetes` resource provides an opinionated abstraction that makes production-ready scheduling the path of least resistance.
 
 ---
 
@@ -120,18 +120,18 @@ resources:
 - Your organization has standardized on Terraform or Pulumi for all infrastructure, and treating Kubernetes workloads as just another resource simplifies operations.
 
 **The architectural divide: Push vs. Pull**
-- **Terraform/Pulumi/Project Planton**: *Push-based*. An external system (CI pipeline, developer laptop) runs a command to push state to the cluster.
+- **Terraform/Pulumi/OpenMCF**: *Push-based*. An external system (CI pipeline, developer laptop) runs a command to push state to the cluster.
 - **GitOps/Crossplane**: *Pull-based*. An in-cluster controller pulls desired state from a source (Git, CRDs) and continuously reconciles.
 
-**The ideal pattern:** Use IaC tools to *generate* GitOps artifacts. For example, Project Planton or Pulumi can generate Kubernetes manifests that are then committed to a Git repository and deployed by ArgoCD. This combines the benefits of programmatic infrastructure definition with continuous reconciliation.
+**The ideal pattern:** Use IaC tools to *generate* GitOps artifacts. For example, OpenMCF or Pulumi can generate Kubernetes manifests that are then committed to a Git repository and deployed by ArgoCD. This combines the benefits of programmatic infrastructure definition with continuous reconciliation.
 
 **Verdict:** Essential for teams managing both infrastructure and Kubernetes workloads. Best combined with GitOps for the actual deployment.
 
 ---
 
-### Level 4: The Defensive API — Project Planton's Production-Safe Abstraction
+### Level 4: The Defensive API — OpenMCF's Production-Safe Abstraction
 
-**What it is:** Project Planton's `CronJobKubernetes` resource provides an opinionated API that **flattens the 80% of commonly used fields** and **enforces safe-by-default production settings**.
+**What it is:** OpenMCF's `CronJobKubernetes` resource provides an opinionated API that **flattens the 80% of commonly used fields** and **enforces safe-by-default production settings**.
 
 **The core problem with the native API:**
 The native Kubernetes CronJob API has several fatal flaws for production use:
@@ -141,7 +141,7 @@ The native Kubernetes CronJob API has several fatal flaws for production use:
 4. **Ambiguous time zones**: Historically, CronJobs used the controller-manager's local time zone, causing jobs to run at incorrect times.
 5. **Silent failures**: The default `failedJobsHistoryLimit: 1` means failed job Pods are quickly garbage-collected, erasing all evidence for debugging.
 
-**How Project Planton solves this:**
+**How OpenMCF solves this:**
 
 **1. Safe defaults that prevent common disasters:**
 - `concurrencyPolicy: Forbid` (prevents concurrent runs)
@@ -166,7 +166,7 @@ spec:
                   cpu: "1"
 ```
 
-Project Planton flattens this:
+OpenMCF flattens this:
 ```yaml
 schedule: "0 0 * * *"
 image: "postgres:15"
@@ -180,9 +180,9 @@ resources:
 The API *fails validation* if `resources` (requests and limits) are not provided. This single constraint prevents the most dangerous anti-pattern: resource-unbounded "noisy neighbor" jobs.
 
 **4. Secure-by-default secret handling:**
-Instead of encouraging secrets as environment variables (which leak into logs and child processes), Project Planton provides a top-level `secret_volumes` field that mounts secrets as read-only files—the secure pattern.
+Instead of encouraging secrets as environment variables (which leak into logs and child processes), OpenMCF provides a top-level `secret_volumes` field that mounts secrets as read-only files—the secure pattern.
 
-**Verdict:** This is the recommended approach for teams using Project Planton. It codifies production best practices into the API itself, preventing entire categories of operational failures before they happen.
+**Verdict:** This is the recommended approach for teams using OpenMCF. It codifies production best practices into the API itself, preventing entire categories of operational failures before they happen.
 
 ---
 
@@ -216,7 +216,7 @@ startingDeadlineSeconds: 600  # 10 minutes
 
 The controller evaluates each missed job. If the current time is more than 600 seconds past the scheduled time, it skips the job. Only jobs within the valid window are run. This prevents the thundering herd.
 
-**Project Planton default:** `600` (10 minutes). The native Kubernetes default is `null` (no limit), which is unsafe.
+**OpenMCF default:** `600` (10 minutes). The native Kubernetes default is `null` (no limit), which is unsafe.
 
 ### The Debugging Requirement: failedJobsHistoryLimit
 
@@ -236,7 +236,7 @@ successfulJobsHistoryLimit: 1
 
 Keep 3 failed job histories for debugging. Keep only 1 successful history to save cluster resources (you rarely need to debug success).
 
-**Project Planton defaults:** `3` for failed, `1` for successful.
+**OpenMCF defaults:** `3` for failed, `1` for successful.
 
 ### The "Noisy Neighbor" Prevention: Resource Limits
 
@@ -258,7 +258,7 @@ This ensures:
 - The Pod is scheduled only on nodes with sufficient resources (`requests`)
 - The Pod is hard-capped and cannot exceed limits, protecting other workloads (`limits`)
 
-**Project Planton requirement:** The API *fails validation* if resources are not provided. This forces users into safe behavior.
+**OpenMCF requirement:** The API *fails validation* if resources are not provided. This forces users into safe behavior.
 
 ### The Secret Security Pattern: Volumes vs Environment Variables
 
@@ -295,7 +295,7 @@ The application explicitly reads `/etc/secrets/password`. The secret is:
 - Not easily inspectable
 - Mounted on an in-memory tmpfs (never written to disk)
 
-**Project Planton API:** Provides a top-level `secret_volumes` field to make this the easy path.
+**OpenMCF API:** Provides a top-level `secret_volumes` field to make this the easy path.
 
 ### The Time Zone Clarity: timeZone
 
@@ -309,7 +309,7 @@ timeZone: "Etc/UTC"  # or "America/New_York", "Asia/Tokyo"
 
 This makes the schedule explicit and portable.
 
-**Project Planton default:** `"Etc/UTC"`. Explicit, unambiguous, and the de facto standard for distributed systems.
+**OpenMCF default:** `"Etc/UTC"`. Explicit, unambiguous, and the de facto standard for distributed systems.
 
 ---
 
@@ -391,9 +391,9 @@ This is the only robust pattern for collecting custom application metrics from b
 
 ---
 
-## How Project Planton Makes This Simple
+## How OpenMCF Makes This Simple
 
-The `CronJobKubernetes` resource in Project Planton is designed to encode all of these production lessons into the API itself.
+The `CronJobKubernetes` resource in OpenMCF is designed to encode all of these production lessons into the API itself.
 
 ### Example 1: Simple Scheduled Task (Cache Warmer)
 
@@ -750,9 +750,9 @@ Kubernetes CronJobs are a powerful primitive for scheduled automation, but the n
 
 The key insight is that **production-readiness is not about adding features; it's about preventing failures before they happen**. The most common CronJob disasters—thundering herds, resource exhaustion, silent failures, security leaks—are all *preventable* with correct configuration. Yet the native API makes it easy to forget critical fields or accept dangerous defaults.
 
-Project Planton's `CronJobKubernetes` resource solves this by **codifying production best practices into the API itself**. Safe defaults prevent the common failure modes. Mandatory validation prevents resource unbounded jobs. A flattened, 80/20 API makes the correct path the easy path. The result: teams can deploy production-grade scheduled workloads without needing to become Kubernetes CronJob experts.
+OpenMCF's `CronJobKubernetes` resource solves this by **codifying production best practices into the API itself**. Safe defaults prevent the common failure modes. Mandatory validation prevents resource unbounded jobs. A flattened, 80/20 API makes the correct path the easy path. The result: teams can deploy production-grade scheduled workloads without needing to become Kubernetes CronJob experts.
 
-**Deployment recommendation:** Use Project Planton to define your CronJob resources, deploy them via GitOps (ArgoCD or Flux), monitor with kube-state-metrics and Prometheus PushGateway, and design your jobs to be idempotent. This combination provides the reliability, auditability, and operational excellence required for production systems.
+**Deployment recommendation:** Use OpenMCF to define your CronJob resources, deploy them via GitOps (ArgoCD or Flux), monitor with kube-state-metrics and Prometheus PushGateway, and design your jobs to be idempotent. This combination provides the reliability, auditability, and operational excellence required for production systems.
 
 **Remember:** A CronJob is only as reliable as its configuration, its deployment process, and its observability. Start with safe defaults, deploy declaratively, monitor continuously, and design for failure.
 

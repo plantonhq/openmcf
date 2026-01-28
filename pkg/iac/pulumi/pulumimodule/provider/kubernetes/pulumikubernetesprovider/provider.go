@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	kubernetesprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumimodule/provider/gcp/pulumigkekubernetesprovider"
+	kubernetesprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumimodule/provider/gcp/pulumigkekubernetesprovider"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )

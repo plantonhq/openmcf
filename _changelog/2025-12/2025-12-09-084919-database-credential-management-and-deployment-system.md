@@ -10,7 +10,7 @@ Implemented a complete database-driven credential management system with unified
 
 ## Problem Statement
 
-The Project Planton backend service needed a way to:
+The OpenMCF backend service needed a way to:
 
 1. Store cloud provider credentials (GCP, AWS, Azure) persistently
 2. Resolve credentials automatically based on the provider of the resource being deployed
@@ -250,19 +250,19 @@ This is the **key innovation** - credentials are resolved automatically based on
 
 ### 5. Unified CLI Command
 
-**File**: `cmd/project-planton/root/credential_create.go`
+**File**: `cmd/openmcf/root/credential_create.go`
 
 Single command with provider flag:
 
 ```bash
 # GCP credential
-project-planton credential:create \
+openmcf credential:create \
   --name=my-gcp-prod \
   --provider=gcp \
   --service-account-key=~/gcp-key.json
 
 # AWS credential
-project-planton credential:create \
+openmcf credential:create \
   --name=my-aws-prod \
   --provider=aws \
   --account-id=123456789012 \
@@ -270,7 +270,7 @@ project-planton credential:create \
   --secret-access-key=...
 
 # Azure credential
-project-planton credential:create \
+openmcf credential:create \
   --name=my-azure-prod \
   --provider=azure \
   --client-id=... \
@@ -374,7 +374,7 @@ passphrase must be set with PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE
 
 ```yaml
 environment:
-  - PULUMI_CONFIG_PASSPHRASE=${PULUMI_CONFIG_PASSPHRASE:-project-planton-default-passphrase}
+  - PULUMI_CONFIG_PASSPHRASE=${PULUMI_CONFIG_PASSPHRASE:-openmcf-default-passphrase}
 ```
 
 ### Issue 3: MongoDB DateTime Type Conversion Panic
@@ -543,7 +543,7 @@ After completing the backend credential management and Docker deployment fixes, 
 1. **User creates credential**:
 
    ```bash
-   project-planton credential:create \
+   openmcf credential:create \
      --name=my-gcp-prod \
      --provider=gcp \
      --service-account-key=~/gcp-key.json
@@ -556,7 +556,7 @@ After completing the backend credential management and Docker deployment fixes, 
 4. **User deploys resource**:
 
    ```bash
-   project-planton deploy --manifest gcp-postgres.yaml
+   openmcf deploy --manifest gcp-postgres.yaml
    ```
 
 5. **Backend creates stack-update**: Stored in `stack_jobs` collection
@@ -592,12 +592,12 @@ Complete successful deployment:
 ```
 DEBUG: deployWithPulumi started for jobID=69371f5df0252a928b927d9b, cloudResourceID=69370655e39947738c53cd73
 
-DEBUG: Getting Pulumi module path for kind=GcpCloudSql, stackFqdn=organization/project-planton-examples/example-env.GcpCloudSql.gcp-postgres-example-3, moduleDir=.
+DEBUG: Getting Pulumi module path for kind=GcpCloudSql, stackFqdn=organization/openmcf-examples/example-env.GcpCloudSql.gcp-postgres-example-3, moduleDir=.
 
-Cloning into '/home/appuser/.project-planton/pulumi/organization/project-planton-examples/example-env.GcpCloudSql.gcp-postgres-example-3/project-planton'...
+Cloning into '/home/appuser/.openmcf/pulumi/organization/openmcf-examples/example-env.GcpCloudSql.gcp-postgres-example-3/openmcf'...
 Updating files: 100% (5796/5796), done.
 
-DEBUG: Pulumi module path resolved: /home/appuser/.project-planton/pulumi/.../apis/org/project_planton/provider/gcp/gcpcloudsql/v1/iac/pulumi
+DEBUG: Pulumi module path resolved: /home/appuser/.openmcf/pulumi/.../apis/org/openmcf/provider/gcp/gcpcloudsql/v1/iac/pulumi
 
 DEBUG: StreamStackUpdateOutput called with jobID=69371f5df0252a928b927d9b
 DEBUG: Found 2 new responses (currentSeq=71)
@@ -724,9 +724,9 @@ Total freed: ~27GB
 
 ### CLI
 
-- `cmd/project-planton/root/credential_create.go` - New unified command
-- `cmd/project-planton/root/credential_create_gcp.go` - Deleted (replaced)
-- `cmd/project-planton/root.go` - Updated command registration
+- `cmd/openmcf/root/credential_create.go` - New unified command
+- `cmd/openmcf/root/credential_create_gcp.go` - Deleted (replaced)
+- `cmd/openmcf/root.go` - Updated command registration
 
 ### Frontend
 
@@ -751,7 +751,7 @@ Total freed: ~27GB
 # Pulumi
 PULUMI_HOME: /home/appuser/.pulumi
 PULUMI_STATE_DIR: /home/appuser/.pulumi/state
-PULUMI_CONFIG_PASSPHRASE: project-planton-default-passphrase
+PULUMI_CONFIG_PASSPHRASE: openmcf-default-passphrase
 PULUMI_SKIP_UPDATE_CHECK: true
 
 # Go
@@ -785,13 +785,13 @@ volumes:
 
 ```bash
 # GCP credential
-project-planton credential:create \
+openmcf credential:create \
   --name=production-gcp \
   --provider=gcp \
   --service-account-key=~/gcp-prod-key.json
 
 # AWS credential
-project-planton credential:create \
+openmcf credential:create \
   --name=production-aws \
   --provider=aws \
   --account-id=123456789012 \
@@ -799,7 +799,7 @@ project-planton credential:create \
   --secret-access-key=...
 
 # Azure credential
-project-planton credential:create \
+openmcf credential:create \
   --name=production-azure \
   --provider=azure \
   --client-id=... \
@@ -819,7 +819,7 @@ kind: GcpCloudSql
 metadata:
   name: production-db
   labels:
-    pulumi.project-planton.org/stack.fqdn: 'org/project/env.GcpCloudSql.prod-db'
+    pulumi.openmcf.org/stack.fqdn: 'org/project/env.GcpCloudSql.prod-db'
 spec:
   region: us-central1
   database_version: POSTGRES_15
@@ -828,7 +828,7 @@ spec:
 
 ```bash
 # Deploy - credentials automatically resolved from database
-project-planton deploy --manifest gcp-postgres.yaml
+openmcf deploy --manifest gcp-postgres.yaml
 ```
 
 Backend automatically:
@@ -866,7 +866,7 @@ Real-time streaming output:
 **Solution**: Create a credential for that provider:
 
 ```bash
-project-planton credential:create --name=my-gcp --provider=gcp --service-account-key=key.json
+openmcf credential:create --name=my-gcp --provider=gcp --service-account-key=key.json
 ```
 
 ### MongoDB DateTime Panic
@@ -901,7 +901,7 @@ project-planton credential:create --name=my-gcp --provider=gcp --service-account
 Check backend logs for debug output:
 
 ```bash
-docker logs -f project-planton-backend | grep -E "DEBUG|ERROR"
+docker logs -f openmcf-backend | grep -E "DEBUG|ERROR"
 ```
 
 Look for:
@@ -997,7 +997,7 @@ This work supersedes and combines:
 
 # Conclusion
 
-This work represents a complete transformation of credential management in Project Planton:
+This work represents a complete transformation of credential management in OpenMCF:
 
 **From**: Manual credential passing via CLI flags, provider-specific endpoints, fragmented code
 **To**: Database-driven automatic resolution, unified API, working end-to-end deployments

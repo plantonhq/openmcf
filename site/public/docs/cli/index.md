@@ -1,19 +1,19 @@
 ---
 title: "CLI Documentation"
-description: "Complete command-line interface documentation for Project Planton - Pulumi commands, OpenTofu commands, and CLI reference"
+description: "Complete command-line interface documentation for OpenMCF - Pulumi commands, OpenTofu commands, and CLI reference"
 icon: "terminal"
 order: 10
 ---
 
 # CLI Documentation
 
-Everything you need to know about the `project-planton` command-line interface.
+Everything you need to know about the `openmcf` command-line interface.
 
 ---
 
 ## Overview
 
-The Project Planton CLI is your gateway to deploying infrastructure across any cloud provider with a consistent, manifest-driven workflow. Whether you prefer Pulumi or OpenTofu as your IaC engine, the CLI experience is identical.
+The OpenMCF CLI is your gateway to deploying infrastructure across any cloud provider with a consistent, manifest-driven workflow. Whether you prefer Pulumi or OpenTofu as your IaC engine, the CLI experience is identical.
 
 ---
 
@@ -23,27 +23,27 @@ The Project Planton CLI is your gateway to deploying infrastructure across any c
 
 ```bash
 # Install via Homebrew
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # Verify installation
-project-planton version
+openmcf version
 ```
 
 ### Quick Example
 
 ```bash
 # Validate your manifest
-project-planton validate -f database.yaml
+openmcf validate -f database.yaml
 
 # Deploy with unified kubectl-style command (recommended)
-project-planton apply -f database.yaml
+openmcf apply -f database.yaml
 
 # Destroy with unified command
-project-planton destroy -f database.yaml
+openmcf destroy -f database.yaml
 
 # Or use provisioner-specific commands
-project-planton pulumi up -f database.yaml
-project-planton tofu apply -f database.yaml
+openmcf pulumi up -f database.yaml
+openmcf tofu apply -f database.yaml
 ```
 
 ---
@@ -142,7 +142,7 @@ Comprehensive guide to managing infrastructure with OpenTofu/Terraform.
 **Trade-offs**:
 - Requires Pulumi backend (Pulumi Cloud, S3, GCS, etc.)
 - Smaller community than Terraform
-- Modules written in Go (for Project Planton)
+- Modules written in Go (for OpenMCF)
 
 ### OpenTofu
 
@@ -157,7 +157,7 @@ Comprehensive guide to managing infrastructure with OpenTofu/Terraform.
 - State management is more manual
 - No real-time output streaming
 
-**The good news**: Project Planton supports both! You can switch between them based on your team's preference. The manifest format is identical—only the deployment command changes.
+**The good news**: OpenMCF supports both! You can switch between them based on your team's preference. The manifest format is identical—only the deployment command changes.
 
 ---
 
@@ -167,7 +167,7 @@ Comprehensive guide to managing infrastructure with OpenTofu/Terraform.
 
 ```bash
 # 1. Install CLI
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # 2. Install IaC engine
 brew install pulumi        # For Pulumi
@@ -180,19 +180,19 @@ export AWS_SECRET_ACCESS_KEY="..."
 
 # 4. Create your first manifest
 cat > database.yaml <<EOF
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsRdsInstance
 metadata:
   name: my-database
   labels:
-    project-planton.org/provisioner: pulumi
+    openmcf.org/provisioner: pulumi
 spec:
   engine: postgres
   instanceClass: db.t3.medium
 EOF
 
 # 5. Deploy (kubectl-style!)
-project-planton apply -f database.yaml
+openmcf apply -f database.yaml
 ```
 
 ### Daily Development
@@ -205,10 +205,10 @@ git pull
 vim ops/resources/api-deployment.yaml
 
 # Validate changes
-project-planton validate -f ops/resources/api-deployment.yaml
+openmcf validate -f ops/resources/api-deployment.yaml
 
 # Deploy with unified command (auto-detects provisioner)
-project-planton apply -f ops/resources/api-deployment.yaml
+openmcf apply -f ops/resources/api-deployment.yaml
 
 # Evening: commit changes
 git add ops/resources/api-deployment.yaml
@@ -233,12 +233,12 @@ git push
 **Quick help**:
 
 ```bash
-project-planton --help
-project-planton pulumi --help
-project-planton tofu apply --help
+openmcf --help
+openmcf pulumi --help
+openmcf tofu apply --help
 ```
 
-**Found an issue?** [Open an issue](https://github.com/plantonhq/project-planton/issues)
+**Found an issue?** [Open an issue](https://github.com/plantonhq/openmcf/issues)
 
-**Questions?** Check [GitHub Discussions](https://github.com/plantonhq/project-planton/discussions)
+**Questions?** Check [GitHub Discussions](https://github.com/plantonhq/openmcf/discussions)
 

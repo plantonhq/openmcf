@@ -14,7 +14,7 @@ In the early days of Google Cloud Platform, the default VPC network seemed like 
 
 This shift from auto-mode to custom mode isn't just about best practices—it's about treating network infrastructure as a first-class architectural decision. Subnetworks are the building blocks of your cloud network topology, defining where workloads live, how they communicate, and whether they can scale. Get subnet sizing wrong, and you'll face IP exhaustion in a growing GKE cluster. Forget to enable Private Google Access, and your locked-down VMs can't reach Cloud Storage. Overlap IP ranges, and you'll block future VPC peering or hybrid connectivity.
 
-This document explores the deployment methods for GCP subnetworks, from manual console clicks to declarative infrastructure-as-code, and explains how Project Planton abstracts the complexity while maintaining the flexibility you need for production environments.
+This document explores the deployment methods for GCP subnetworks, from manual console clicks to declarative infrastructure-as-code, and explains how OpenMCF abstracts the complexity while maintaining the flexibility you need for production environments.
 
 ## The Deployment Maturity Spectrum
 
@@ -253,9 +253,9 @@ You can configure sampling rates and metadata inclusion (VM tags, instance detai
 
 All three are production-ready. The choice comes down to team skills and architectural preferences.
 
-## The Project Planton Approach
+## The OpenMCF Approach
 
-Project Planton uses **Pulumi** under the hood to deploy GCP subnetworks, providing a simple, declarative API that abstracts away infrastructure details while maintaining full flexibility.
+OpenMCF uses **Pulumi** under the hood to deploy GCP subnetworks, providing a simple, declarative API that abstracts away infrastructure details while maintaining full flexibility.
 
 ### Why Pulumi?
 
@@ -265,10 +265,10 @@ Project Planton uses **Pulumi** under the hood to deploy GCP subnetworks, provid
 
 ### The GcpSubnetwork API
 
-Project Planton's `GcpSubnetwork` API distills subnet configuration to the essential 20% that covers 80% of use cases:
+OpenMCF's `GcpSubnetwork` API distills subnet configuration to the essential 20% that covers 80% of use cases:
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpSubnetwork
 metadata:
   name: prod-app-subnet
@@ -306,7 +306,7 @@ For high availability, you'll typically create one subnet per region:
 
 ```yaml
 # US East
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpSubnetwork
 metadata:
   name: app-subnet-us-east
@@ -318,7 +318,7 @@ spec:
   private_ip_google_access: true
 ---
 # Europe West
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpSubnetwork
 metadata:
   name: app-subnet-eu-west
@@ -337,7 +337,7 @@ Each region gets a non-overlapping CIDR block from your overall IP plan (e.g., 1
 For GKE clusters, define secondary ranges in the subnet, then reference them in your `GkeCluster` resource:
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpSubnetwork
 metadata:
   name: gke-cluster-subnet
@@ -410,7 +410,7 @@ GCP subnetworks are deceptively simple—just specify a region and CIDR range—
 
 The maturity progression is clear: move from manual console clicks to declarative infrastructure-as-code, whether that's Terraform, Pulumi, or Crossplane. All three are production-ready; the choice depends on your team's skills and existing toolchain.
 
-Project Planton abstracts this complexity with a minimal API surface—just six fields cover 80% of subnet configurations—while Pulumi handles the underlying deployment. This approach balances simplicity for common cases with the ability to scale to multi-region, multi-environment architectures.
+OpenMCF abstracts this complexity with a minimal API surface—just six fields cover 80% of subnet configurations—while Pulumi handles the underlying deployment. This approach balances simplicity for common cases with the ability to scale to multi-region, multi-environment architectures.
 
 The key insight? **Treat network design as a first-class architectural decision.** Spend time upfront planning your IP space, allocating CIDR blocks per environment and region, and documenting your choices. A few hours of CIDR planning now will save days of painful network redesign later.
 

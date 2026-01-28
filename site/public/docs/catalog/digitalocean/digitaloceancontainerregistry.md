@@ -18,7 +18,7 @@ DOCR is what you might call a "glue service"—it exists to make other DigitalOc
 
 But here's the catch: that simplicity comes with sharp edges. DOCR has no native image signing. Vulnerability scanning requires external Snyk integration. Garbage collection isn't automatic—it's a manual, on-demand operation that puts your registry into **read-only mode**, breaking CI/CD pipelines if you run it during peak hours. And the most powerful integrations—the DOKS "1-click" button and scheduled garbage collection—are completely missing from every major Infrastructure-as-Code (IaC) tool. Terraform and Pulumi can create the registry, but they can't replicate what the web console does with a single button click.
 
-This guide explains the landscape of deployment methods for DOCR, from the anti-patterns to avoid to the production-ready approaches that actually work at scale. We'll show how Project Planton bridges the IaC gap by providing declarative abstractions for the features Terraform and Pulumi can't handle: automated garbage collection scheduling and DOKS integration. The goal isn't just to provision a registry—it's to provision a registry that stays healthy, secure, and cost-effective over time.
+This guide explains the landscape of deployment methods for DOCR, from the anti-patterns to avoid to the production-ready approaches that actually work at scale. We'll show how OpenMCF bridges the IaC gap by providing declarative abstractions for the features Terraform and Pulumi can't handle: automated garbage collection scheduling and DOKS integration. The goal isn't just to provision a registry—it's to provision a registry that stays healthy, secure, and cost-effective over time.
 
 ---
 
@@ -91,7 +91,7 @@ curl -X POST "https://api.digitalocean.com/v2/registry" \
 
 **The SDK Alternative:** DigitalOcean provides official SDKs (`godo` for Go, `pydo` for Python) that wrap the API and handle authentication and retries. But they're still low-level—you're calling individual methods, not declaring desired state. And the API is split across services: `client.Registry` manages the registry, `client.Kubernetes` manages DOKS integration, and garbage collection has its own endpoints. Any robust controller must orchestrate all three.
 
-**Verdict:** Useful if you're building a custom provisioning platform or integrating DOCR into a broader orchestration framework (like Project Planton). For most teams, higher-level IaC tools (Terraform, Pulumi) handle the API complexity for you.
+**Verdict:** Useful if you're building a custom provisioning platform or integrating DOCR into a broader orchestration framework (like OpenMCF). For most teams, higher-level IaC tools (Terraform, Pulumi) handle the API complexity for you.
 
 ---
 
@@ -368,7 +368,7 @@ When GC runs, the registry enters **read-only mode**. Any `docker push` during t
 
 **The Problem:**
 
-Neither Terraform nor Pulumi can automate this. You need custom tooling (like a cron job calling `doctl registry garbage-collection start`) or a higher-level controller (like Project Planton) that manages scheduling.
+Neither Terraform nor Pulumi can automate this. You need custom tooling (like a cron job calling `doctl registry garbage-collection start`) or a higher-level controller (like OpenMCF) that manages scheduling.
 
 ---
 
@@ -407,13 +407,13 @@ DOCR is a regional service with no native cross-region replication. A full regio
 | **No garbage collection**             | Default behavior leads to unbounded storage growth and cost overruns         | Automate GC on a schedule (3 AM Sunday, include untagged manifests) |
 | **Using Starter/Basic for production**| Repository and registry limits are technically prohibitive                   | Use Professional tier                                               |
 | **Cross-region image pulls**          | High latency and future bandwidth costs                                      | Use Professional plan for co-located registries                     |
-| **Manual DOKS integration via UI**    | Breaks IaC state, creates invisible drift                                    | Automate via declarative tooling (Project Planton)                  |
+| **Manual DOKS integration via UI**    | Breaks IaC state, creates invisible drift                                    | Automate via declarative tooling (OpenMCF)                  |
 
 ---
 
-## Project Planton's Approach: Bridging the IaC Gap
+## OpenMCF's Approach: Bridging the IaC Gap
 
-Project Planton provides a declarative, protobuf-defined API for DOCR that **solves the IaC gap** identified in this guide. We don't just provision the registry—we automate the operational features that Terraform and Pulumi can't handle.
+OpenMCF provides a declarative, protobuf-defined API for DOCR that **solves the IaC gap** identified in this guide. We don't just provision the registry—we automate the operational features that Terraform and Pulumi can't handle.
 
 ### What We Abstract
 
@@ -428,7 +428,7 @@ This follows the **80/20 principle**: 80% of users need only these four fields. 
 
 ### The Operational Abstraction: Garbage Collection
 
-The `garbage_collection_enabled` field is not a simple flag—it's an **operational abstraction**. When set to `true`, Project Planton's controller:
+The `garbage_collection_enabled` field is not a simple flag—it's an **operational abstraction**. When set to `true`, OpenMCF's controller:
 1. Runs its **own scheduler** (a controller-managed cronjob)
 2. Periodically calls the imperative `POST /v2/registry/{name}/garbage-collection` endpoint
 3. Schedules GC for **low-traffic windows** (e.g., 3 AM Sunday) to avoid breaking CI/CD pipelines
@@ -450,7 +450,7 @@ When populated, the controller would call the `POST /v2/kubernetes/clusters/regi
 
 ### Under the Hood: Pulumi
 
-Project Planton currently uses **Pulumi (Go)** for DOCR provisioning. Why?
+OpenMCF currently uses **Pulumi (Go)** for DOCR provisioning. Why?
 
 - **Equivalent Coverage:** Pulumi's `digitalocean.ContainerRegistry` resource supports all provisioning fields we need
 - **Language Flexibility:** Pulumi's Go SDK fits naturally into our broader multi-cloud orchestration
@@ -467,7 +467,7 @@ Terraform would work equally well for basic provisioning, but Pulumi gives us th
 **Use Case:** Small test registry for a developer's sandbox.
 
 ```yaml
-apiVersion: digital-ocean.project-planton.org/v1
+apiVersion: digital-ocean.openmcf.org/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: dev-registry
@@ -481,7 +481,7 @@ spec:
 **Rationale:**
 - Starter tier (free) is sufficient for dev
 - GC enabled to prevent storage bloat (even on free tier, good practice)
-- Project Planton schedules GC automatically (e.g., Monday 5 AM)
+- OpenMCF schedules GC automatically (e.g., Monday 5 AM)
 
 ---
 
@@ -490,7 +490,7 @@ spec:
 **Use Case:** Staging registry for pre-production testing.
 
 ```yaml
-apiVersion: digital-ocean.project-planton.org/v1
+apiVersion: digital-ocean.openmcf.org/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: staging-registry
@@ -513,7 +513,7 @@ spec:
 **Use Case:** Production registry with multiple environments and multi-region support.
 
 ```yaml
-apiVersion: digital-ocean.project-planton.org/v1
+apiVersion: digital-ocean.openmcf.org/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: prod-registry-nyc3
@@ -534,7 +534,7 @@ spec:
 For DR or multi-region deployments, create a second registry in a different region:
 
 ```yaml
-apiVersion: digital-ocean.project-planton.org/v1
+apiVersion: digital-ocean.openmcf.org/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: prod-registry-sfo3
@@ -563,7 +563,7 @@ CI/CD pipelines push images to both `prod-nyc3` and `prod-sfo3`, and DOKS cluste
 
 6. **Subscription tier selection matters.** Professional tier ($20/month) is the only choice for production because it supports multiple registries (up to 10), enabling multi-region architectures and environment separation.
 
-7. **Project Planton bridges the IaC gap** by providing declarative abstractions for the features Terraform and Pulumi can't handle: automated garbage collection scheduling (and, in the future, DOKS integration). This makes DOCR management truly declarative, cost-effective, and safe for production.
+7. **OpenMCF bridges the IaC gap** by providing declarative abstractions for the features Terraform and Pulumi can't handle: automated garbage collection scheduling (and, in the future, DOKS integration). This makes DOCR management truly declarative, cost-effective, and safe for production.
 
 ---
 
@@ -579,5 +579,5 @@ CI/CD pipelines push images to both `prod-nyc3` and `prod-sfo3`, and DOKS cluste
 
 ---
 
-**Bottom Line:** DigitalOcean Container Registry is simple, co-located, and cost-effective for teams already on DigitalOcean. But simplicity doesn't mean hands-off. Without scheduled garbage collection, costs spiral. Without proper IaC, drift happens. Terraform and Pulumi can provision the registry, but they can't automate the operational features that matter. Project Planton fills that gap with declarative abstractions that make DOCR truly production-ready: automated GC scheduling, region-aware defaults, and (soon) DOKS integration. This is the registry management you wish the console had—declarative, cost-controlled, and safe for production.
+**Bottom Line:** DigitalOcean Container Registry is simple, co-located, and cost-effective for teams already on DigitalOcean. But simplicity doesn't mean hands-off. Without scheduled garbage collection, costs spiral. Without proper IaC, drift happens. Terraform and Pulumi can provision the registry, but they can't automate the operational features that matter. OpenMCF fills that gap with declarative abstractions that make DOCR truly production-ready: automated GC scheduling, region-aware defaults, and (soon) DOKS integration. This is the registry management you wish the console had—declarative, cost-controlled, and safe for production.
 

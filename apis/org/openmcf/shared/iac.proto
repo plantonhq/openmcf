@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package org.openmcf.shared;
+
+enum IacProvisioner {
+  iac_provisioner_unspecified = 0;
+  terraform = 1;
+  pulumi = 2;
+}

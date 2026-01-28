@@ -18,7 +18,7 @@ var (
 
 var LogsCmd = &cobra.Command{
 	Use:   "logs",
-	Short: "view logs from the Project Planton web app",
+	Short: "view logs from the OpenMCF web app",
 	Long:  `View logs from the web app container. Use --follow to stream logs in real-time.`,
 	Run:   logsHandler,
 }

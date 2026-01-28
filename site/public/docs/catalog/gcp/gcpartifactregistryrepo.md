@@ -16,7 +16,7 @@ GCR was never a standalone service. It was an abstraction layer over Google Clou
 
 But this expansion of capabilities introduces a new question for platform teams: **How should we manage Artifact Registry repositories—manually through the console, imperatively with scripts, or declaratively through Infrastructure as Code?**
 
-This document explores the full spectrum of deployment methods, from anti-patterns to production-ready solutions, and explains the architectural principles that guide Project Planton's design.
+This document explores the full spectrum of deployment methods, from anti-patterns to production-ready solutions, and explains the architectural principles that guide OpenMCF's design.
 
 ## The Deployment Maturity Spectrum
 
@@ -201,9 +201,9 @@ prod-python-virtual (Virtual Repository)
 
 Developers configure a single endpoint (`prod-python-virtual`), and the platform handles routing, security, and caching automatically.
 
-## Project Planton's Design Philosophy
+## OpenMCF's Design Philosophy
 
-Project Planton's `GcpArtifactRegistryRepo` resource is designed around three core principles:
+OpenMCF's `GcpArtifactRegistryRepo` resource is designed around three core principles:
 
 ### Principle 1: 80/20 Configuration Surface
 
@@ -235,7 +235,7 @@ The pricing model for Artifact Registry provides a clear architectural signal:
 
 **Additional benefit:** GKE Image Streaming (which dramatically reduces container startup time) **only works** when the repository is in the same region as the GKE nodes.
 
-**Project Planton guidance:** Always create regional repositories. Always co-locate them with their consumers. Multi-regional repositories should be reserved for artifacts consumed outside Google Cloud.
+**OpenMCF guidance:** Always create regional repositories. Always co-locate them with their consumers. Multi-regional repositories should be reserved for artifacts consumed outside Google Cloud.
 
 ### Principle 3: Security by Default
 
@@ -322,14 +322,14 @@ If migrating from Google Container Registry, there are two paths. Only one is co
 - Breaks declarative workflows
 
 **✅ Best practice:** Manual, declarative migration
-1. **Define** new `pkg.dev` repositories using Project Planton (or Terraform/Pulumi)
+1. **Define** new `pkg.dev` repositories using OpenMCF (or Terraform/Pulumi)
 2. **Copy** existing images using `gcrane` or `docker pull/tag/push` scripts
 3. **Update** all references (Kubernetes manifests, Cloud Build configs, CI/CD pipelines) to use `pkg.dev` URLs
 4. **Lock down** GCR permissions after migration completes
 
 This keeps infrastructure state clean and auditable.
 
-## Evolution of Project Planton's API
+## Evolution of OpenMCF's API
 
 The current `GcpArtifactRegistryRepoSpec` is intentionally minimal, focused on the most common use case: regional Docker registries for private workloads. This design reflects the "80/20 principle"—cover the 80% use case with 20% of the configuration surface.
 
@@ -344,7 +344,7 @@ The current `GcpArtifactRegistryRepoSpec` is intentionally minimal, focused on t
 - Remote and Virtual repository modes (platform features for advanced use cases)
 - CMEK support (compliance/security requirement for regulated industries)
 
-As Project Planton evolves, these capabilities can be added incrementally, following the proven API shape established by Terraform, Pulumi, and Config Connector. The research analysis in Section 5 of the [research report](../../../../../../../../../../../plantoncloud-inc/planton-cloud/apis/ai/planton/infrahub/cloudresource/v1/assets/provider/gcp/gcpartifactregistryrepo/v1/research/report.md) provides a comprehensive roadmap for this evolution.
+As OpenMCF evolves, these capabilities can be added incrementally, following the proven API shape established by Terraform, Pulumi, and Config Connector. The research analysis in Section 5 of the [research report](../../../../../../../../../../../plantoncloud-inc/planton-cloud/apis/ai/planton/infrahub/cloudresource/v1/assets/provider/gcp/gcpartifactregistryrepo/v1/research/report.md) provides a comprehensive roadmap for this evolution.
 
 ## Conclusion: Artifact Registry as Infrastructure
 
@@ -352,7 +352,7 @@ The transition from GCR to Artifact Registry represents a broader shift in cloud
 
 For platform teams, this means the tool you choose to manage Artifact Registry matters immensely. Console-based workflows and imperative scripts may suffice for small-scale experiments, but production infrastructure demands declarative IaC with proper state management, immutability handling, and modular IAM patterns.
 
-Project Planton embraces this declarative model, providing a clean abstraction that guides users toward secure, cost-effective, regional-first architecture while maintaining the flexibility to evolve toward advanced platform features as needs grow.
+OpenMCF embraces this declarative model, providing a clean abstraction that guides users toward secure, cost-effective, regional-first architecture while maintaining the flexibility to evolve toward advanced platform features as needs grow.
 
 **The bottom line:** Deploy regionally, automate cleanup, authenticate keylessly, and manage it all declaratively. That's the path to production-ready Artifact Registry infrastructure.
 

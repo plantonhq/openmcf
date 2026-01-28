@@ -1,8 +1,8 @@
 package iacrunner
 
 import (
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
-	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/terraform"
+	"github.com/plantonhq/openmcf/pkg/iac/provisioner"
 	"github.com/spf13/cobra"
 )
 

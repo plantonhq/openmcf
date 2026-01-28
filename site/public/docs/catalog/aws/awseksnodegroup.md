@@ -10,7 +10,7 @@ componentName: "awseksnodegroup"
 
 For years, conventional wisdom held that running Kubernetes meant accepting operational complexity. The reality today is different: AWS EKS managed node groups have evolved from a basic feature into a sophisticated platform that handles node lifecycle, upgrades, and scaling—but only if you deploy them correctly.
 
-The challenge isn't whether to use managed node groups (you should), but **how to configure and deploy them** in a way that balances simplicity with production requirements. This guide examines the landscape of deployment methods, from manual console clicks to infrastructure-as-code, and explains why Project Planton defaults to a specific approach.
+The challenge isn't whether to use managed node groups (you should), but **how to configure and deploy them** in a way that balances simplicity with production requirements. This guide examines the landscape of deployment methods, from manual console clicks to infrastructure-as-code, and explains why OpenMCF defaults to a specific approach.
 
 ## The Evolution of EKS Worker Node Management
 
@@ -293,21 +293,21 @@ Managed node groups support rolling updates:
 - Test upgrades in dev/staging first
 - Consider **Bottlerocket AMI** for minimal attack surface and atomic updates
 
-## What Project Planton Provides
+## What OpenMCF Provides
 
-Project Planton abstracts the complexity of node group deployment into a simplified, opinionated API that follows the 80/20 principle: expose the 20% of configuration that covers 80% of use cases.
+OpenMCF abstracts the complexity of node group deployment into a simplified, opinionated API that follows the 80/20 principle: expose the 20% of configuration that covers 80% of use cases.
 
 ### Core Design Philosophy
 
 1. **Sensible defaults**: Minimal configuration produces a working, production-ready node group
 2. **Required fundamentals**: Force explicit choices for critical settings (cluster, instance type, scaling)
 3. **Advanced escape hatches**: Support power-user scenarios (custom labels, SSH keys) without cluttering the common path
-4. **Multi-cloud consistency**: Same API pattern as other Project Planton cloud resources
+4. **Multi-cloud consistency**: Same API pattern as other OpenMCF cloud resources
 
 ### Minimal Required Configuration
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsEksNodeGroup
 metadata:
   name: production-workers
@@ -344,7 +344,7 @@ spec:
 
 ### Under the Hood
 
-Project Planton translates your specification into:
+OpenMCF translates your specification into:
 - Pulumi or Terraform code (depending on backend choice)
 - Proper IAM policy validation
 - CloudWatch metrics and logging integration
@@ -369,7 +369,7 @@ The journey from manual console clicks to production-ready node group automation
 
 **For production infrastructure**: Use IaC tools (Terraform, Pulumi, CloudFormation, or CDK) to ensure repeatability, version control, and team collaboration.
 
-**For platform abstraction**: Project Planton provides a simplified API that applies best practices automatically while allowing customization when needed.
+**For platform abstraction**: OpenMCF provides a simplified API that applies best practices automatically while allowing customization when needed.
 
 The key insight is that managed node groups handle the operational heavy lifting—bootstrapping, upgrades, draining—but you must still configure them thoughtfully. Instance types, scaling parameters, capacity types (spot vs. on-demand), and networking decisions directly impact cost, performance, and reliability.
 

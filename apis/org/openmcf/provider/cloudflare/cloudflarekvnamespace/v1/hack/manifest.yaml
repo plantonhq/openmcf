@@ -1,0 +1,8 @@
+apiVersion: cloudflare.openmcf.org/v1
+kind: CloudflareKvNamespace
+metadata:
+  name: example-kv-namespace
+spec:
+  namespace_name: myapp-config-prod
+  ttl_seconds: 0  # No automatic expiration (persistent config)
+  description: "Example KV namespace for feature flags and configuration"

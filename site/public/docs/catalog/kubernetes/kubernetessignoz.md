@@ -16,7 +16,7 @@ If you've deployed stateful observability platforms on Kubernetes, you've probab
 
 SigNoz is a modern, OpenTelemetry-native observability platform that unifies logs, metrics, and traces into a single application. But beneath its elegant UI lies a complex, stateful architecture: a high-performance columnar database (ClickHouse), a distributed coordination service (Zookeeper), a telemetry processing pipeline (OpenTelemetry Collector), and the SigNoz application itself. Getting this stack production-ready on Kubernetes is not a trivial exercise.
 
-This document explores the landscape of SigNoz deployment methods, from fundamentally flawed approaches to battle-tested production patterns. More importantly, it explains **why** Project Planton made the architectural choices it did when designing the `SignozKubernetes` API.
+This document explores the landscape of SigNoz deployment methods, from fundamentally flawed approaches to battle-tested production patterns. More importantly, it explains **why** OpenMCF made the architectural choices it did when designing the `SignozKubernetes` API.
 
 ## The Deployment Maturity Spectrum
 
@@ -76,7 +76,7 @@ While the Helm chart is production-ready, it's also complex:
 - **Dependency pitfalls**: Even simple deployments have hidden dependencies. For example, SigNoz hardcodes the ClickHouse cluster name as `"cluster"`, which forces ClickHouse into cluster mode. This **mandates Zookeeper** even for single-node deployments—an unintuitive requirement that confuses users and adds unnecessary resource overhead in dev/test environments.
 - **Manual lifecycle management**: Users must manually calculate appropriate replica counts, resource allocations, and disk sizes. Misconfiguration is common.
 
-**Verdict**: This is the **baseline** for any production deployment. Any higher-level abstraction—including Project Planton's `SignozKubernetes`—should be built as a wrapper **over this chart**, not as a replacement for it. The chart is the source of truth.
+**Verdict**: This is the **baseline** for any production deployment. Any higher-level abstraction—including OpenMCF's `SignozKubernetes`—should be built as a wrapper **over this chart**, not as a replacement for it. The chart is the source of truth.
 
 ---
 
@@ -112,7 +112,7 @@ These tools solve the **orchestration problem**, not the **configuration problem
 
 **What it is**: A high-level API that encapsulates deployment best practices, provides intelligent defaults, and automatically handles cross-component dependencies.
 
-**How Project Planton's SignozKubernetes API embodies this**:
+**How OpenMCF's SignozKubernetes API embodies this**:
 
 The `SignozKubernetes` API is not a simple pass-through to the Helm chart. It's a **structured abstraction** that implements the 80/20 principle: expose the 20% of configuration that 80% of users need, with intelligent logic to handle the remaining 80% of complexity.
 
@@ -307,7 +307,7 @@ These fields exist for niche use cases and power users:
 
 ---
 
-## Why Project Planton Chose This Approach
+## Why OpenMCF Chose This Approach
 
 The `SignozKubernetes` API design was informed by these key insights from the deployment landscape research:
 
@@ -360,7 +360,7 @@ The API's default values are designed for production readiness:
 
 ---
 
-## Common Pitfalls and How Project Planton Avoids Them
+## Common Pitfalls and How OpenMCF Avoids Them
 
 Based on community pain points and production outages, here are the most common SigNoz deployment failures:
 
@@ -411,7 +411,7 @@ Deploying SigNoz on Kubernetes is a spectrum from "catastrophically wrong" to "b
 - **Dependencies matter**—distributed ClickHouse requires Zookeeper, which requires quorum (3+ nodes).
 - **The 80/20 principle is real**—most users only need to configure 20% of available fields.
 
-Project Planton's `SignozKubernetes` API embodies these lessons. It's not a lowest-common-denominator abstraction—it's an opinionated, intelligent layer that handles the complex 80% so you can focus on the essential 20%. It enforces best practices, automates dependency management, and provides production-ready defaults while still allowing power users to customize advanced features.
+OpenMCF's `SignozKubernetes` API embodies these lessons. It's not a lowest-common-denominator abstraction—it's an opinionated, intelligent layer that handles the complex 80% so you can focus on the essential 20%. It enforces best practices, automates dependency management, and provides production-ready defaults while still allowing power users to customize advanced features.
 
 The result: You can deploy a production-grade, OpenTelemetry-native observability platform without becoming a ClickHouse operator expert. And when you inevitably need to scale or troubleshoot, the underlying Helm chart and Altinity ClickHouse Operator are still there, well-understood and well-documented.
 

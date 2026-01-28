@@ -1,20 +1,20 @@
 ---
-description: Action rule to create a well-structured changelog document capturing meaningful engineering work in Project Planton CLI, sized proportionally to the feature's impact and complexity.
+description: Action rule to create a well-structured changelog document capturing meaningful engineering work in OpenMCF CLI, sized proportionally to the feature's impact and complexity.
 globs: []
 alwaysApply: false
 ---
 
-# Rule: Create Project Planton Changelog (action)
+# Rule: Create OpenMCF Changelog (action)
 
-Purpose: When invoked, create a comprehensive changelog document in the `_changelog/` directory that captures the essence, context, and impact of recent engineering work on the Project Planton CLI. The changelog should be meaningful, well-structured, and appropriately sized based on the scope and impact of the change.
+Purpose: When invoked, create a comprehensive changelog document in the `_changelog/` directory that captures the essence, context, and impact of recent engineering work on the OpenMCF CLI. The changelog should be meaningful, well-structured, and appropriately sized based on the scope and impact of the change.
 
-Usage: Invoke explicitly as `@create-project-planton-changelog` after completing meaningful work in a conversation.
+Usage: Invoke explicitly as `@create-openmcf-changelog` after completing meaningful work in a conversation.
 
 References: `@understand-cursor-rules`, existing changelogs in `_changelog/`
 
 ## ⚠️ CRITICAL: Explicit Invocation Only
 
-**DO NOT** create a changelog automatically or proactively. Changelogs must ONLY be created when the user explicitly invokes this rule with `@create-project-planton-changelog`.
+**DO NOT** create a changelog automatically or proactively. Changelogs must ONLY be created when the user explicitly invokes this rule with `@create-openmcf-changelog`.
 
 Never:
 - ❌ Suggest creating a changelog without being asked
@@ -23,7 +23,7 @@ Never:
 - ❌ Create a changelog "to be helpful" without explicit request
 
 Always:
-- ✅ Wait for explicit `@create-project-planton-changelog` invocation
+- ✅ Wait for explicit `@create-openmcf-changelog` invocation
 - ✅ Confirm the request before creating the file
 - ✅ Let the user decide when/if a changelog is needed
 
@@ -216,7 +216,7 @@ Add these sections only when they provide meaningful value:
 ### Don't:
 - ❌ **Over-explain the obvious**: Assume the reader is technical
 - ❌ **Include every detail**: Focus on what matters
-- ❌ **Write generic summaries**: Be specific to Project Planton
+- ❌ **Write generic summaries**: Be specific to OpenMCF
 - ❌ **Skip the "why"**: Context is critical for future understanding
 - ❌ **Ignore trade-offs**: Document decisions and their rationale
 - ❌ **Use jargon without context**: Define terms that may be unclear
@@ -394,7 +394,7 @@ Before finalizing a changelog:
 - [ ] Related work connects this to other changes
 - [ ] Length is proportional to scope and impact
 - [ ] No sensitive information (credentials, private URLs, etc.)
-- [ ] File paths reference actual project-planton structure
+- [ ] File paths reference actual openmcf structure
 
 ## Proportionality Examples
 
@@ -428,14 +428,14 @@ Before finalizing a changelog:
 - **Kitchen sink**: Including every file touched, every line changed
 - **Too abstract**: Generic descriptions without concrete CLI examples
 
-## Project Planton Specific Guidelines
+## OpenMCF Specific Guidelines
 
 ### File Path Examples
 
-When referencing code, use actual project-planton paths:
+When referencing code, use actual openmcf paths:
 
 ```markdown
-**File**: `cmd/project-planton/root/pulumi/preview.go`
+**File**: `cmd/openmcf/root/pulumi/preview.go`
 **File**: `pkg/iac/pulumi/pulumistack/run.go`
 **File**: `internal/cli/flag/flag.go`
 **File**: `pkg/kubernetes/workload/postgres/provider.go`
@@ -448,13 +448,13 @@ Always show actual commands users can run:
 
 ```bash
 # Preview infrastructure
-project-planton pulumi preview --manifest postgres.yaml --module-dir ${MODULE}
+openmcf pulumi preview --manifest postgres.yaml --module-dir ${MODULE}
 
 # Apply with auto-approval
-project-planton pulumi up --manifest postgres.yaml --yes
+openmcf pulumi up --manifest postgres.yaml --yes
 
 # Generate stack outputs
-project-planton stack-outputs --manifest postgres.yaml
+openmcf stack-outputs --manifest postgres.yaml
 ```
 
 ### Component Categories
@@ -497,12 +497,12 @@ When creating the changelog:
 ## Example Invocations
 
 ```
-"We just completed the Pulumi interactive output enhancement. @create-project-planton-changelog"
+"We just completed the Pulumi interactive output enhancement. @create-openmcf-changelog"
 
 "I've finished implementing the generic find operation across multiple providers. 
-@create-project-planton-changelog - this was a major change"
+@create-openmcf-changelog - this was a major change"
 
-"The CLI flag system refactoring is done. @create-project-planton-changelog - 
+"The CLI flag system refactoring is done. @create-openmcf-changelog - 
 include the backward compatibility notes"
 ```
 

@@ -14,7 +14,7 @@ AWS CloudFront is often misunderstood as "just another CDN." While it certainly 
 
 The challenge isn't whether to use CloudFront. For AWS-native applications, the decision is often architectural: free data transfer from any AWS origin, deep integration with WAF and Shield, and native support for Lambda@Edge make it the default choice. The real challenge is **how to deploy and manage it without drowning in configuration complexity**.
 
-This document explores the deployment landscape for CloudFront distributions, from manual console operations to production-grade Infrastructure as Code, and explains why Project Planton provides an opinionated, simplified API that gets you to production faster without sacrificing control.
+This document explores the deployment landscape for CloudFront distributions, from manual console operations to production-grade Infrastructure as Code, and explains why OpenMCF provides an opinionated, simplified API that gets you to production faster without sacrificing control.
 
 ## The CloudFront Deployment Landscape
 
@@ -119,7 +119,7 @@ The AWS Cloud Development Kit (CDK) lets you define infrastructure in TypeScript
 - **Still Bound by CloudFormation Speed**: Because CDK synthesizes to CloudFormation, deployments are still slow.
 - **Abstraction Leakage**: High-level constructs are convenient until they're not. When you hit an edge case, you're debugging generated CloudFormation templates.
 
-**Verdict**: If you're AWS-only and prioritize developer experience (especially for edge functions), CDK is compelling. Its design philosophy—abstracting common patterns—is a model for what Project Planton aims to emulate.
+**Verdict**: If you're AWS-only and prioritize developer experience (especially for edge functions), CDK is compelling. Its design philosophy—abstracting common patterns—is a model for what OpenMCF aims to emulate.
 
 ### Terraform/OpenTofu: The Cloud-Agnostic Standard
 
@@ -200,9 +200,9 @@ The remaining 20% of use cases require advanced features:
 
 These are powerful, legitimate features. But they're not the baseline.
 
-## Project Planton's Approach: Opinionated Simplicity
+## OpenMCF's Approach: Opinionated Simplicity
 
-Project Planton's `AwsCloudFrontSpec` protobuf API is deliberately designed around the 80/20 principle. It exposes:
+OpenMCF's `AwsCloudFrontSpec` protobuf API is deliberately designed around the 80/20 principle. It exposes:
 
 - `enabled` (Boolean)
 - `aliases` (repeated string, validated as FQDNs)
@@ -223,30 +223,30 @@ Project Planton's `AwsCloudFrontSpec` protobuf API is deliberately designed arou
 
 ### What This Doesn't Attempt
 
-Project Planton does **not** try to expose every CloudFront parameter. It doesn't compete with CloudFormation's exhaustive coverage or Terraform's flexibility.
+OpenMCF does **not** try to expose every CloudFront parameter. It doesn't compete with CloudFormation's exhaustive coverage or Terraform's flexibility.
 
 **Instead, it optimizes for the 80% use case**: deploying a secure, performant, cost-effective static or dynamic site in ~20 lines of protobuf configuration, with escape hatches to Pulumi or Terraform for power users.
 
 ## Production Best Practices (Baked Into the Framework)
 
-Based on the research, several anti-patterns emerge repeatedly. Project Planton's design proactively prevents them:
+Based on the research, several anti-patterns emerge repeatedly. OpenMCF's design proactively prevents them:
 
 ### Anti-Pattern 1: Public S3 Buckets
 **The Problem**: Leaving S3 buckets publicly accessible when serving via CloudFront is a critical security flaw.
 
-**Project Planton's Solution**: The controller automatically creates an Origin Access Control (OAC) and applies the generated S3 bucket policy. The bucket stays private. This is inspired by CDK's `S3Origin` construct.
+**OpenMCF's Solution**: The controller automatically creates an Origin Access Control (OAC) and applies the generated S3 bucket policy. The bucket stays private. This is inspired by CDK's `S3Origin` construct.
 
 ### Anti-Pattern 2: Inefficient Caching
 **The Problem**: Forwarding all headers, cookies, and query strings destroys cache hit ratio, increases origin load, and inflates costs.
 
-**Project Planton's Solution**: Future versions will support explicit cache policy configuration using AWS Managed Policies (e.g., `Managed-CachingOptimized`) as the default, with whitelisting for custom requirements.
+**OpenMCF's Solution**: Future versions will support explicit cache policy configuration using AWS Managed Policies (e.g., `Managed-CachingOptimized`) as the default, with whitelisting for custom requirements.
 
 ### Anti-Pattern 3: Relying on Cache Invalidation for Deployments
 **The Problem**: Using `aws cloudfront create-invalidation` after every deployment is slow (minutes to propagate globally), costly (after 1,000 free paths/month), and causes "thundering herd" cache refills.
 
 **The Gold Standard**: **File Versioning**. Build pipelines (e.g., Webpack) produce assets with content hashes in filenames (`app.a1b2c3d4.js`). These versioned files are cached "forever" (`max-age=31536000`). Only `index.html` (with a short TTL) is updated to reference the new files. This provides instant, atomic updates with zero invalidation cost.
 
-**Project Planton's Future Support**: Documentation and example pipelines will demonstrate file versioning as the recommended deployment pattern.
+**OpenMCF's Future Support**: Documentation and example pipelines will demonstrate file versioning as the recommended deployment pattern.
 
 ### Anti-Pattern 4: Long TTL on index.html
 **The Problem**: Caching `index.html` with a long TTL means users with a cached copy won't see new deployments because their browser won't fetch the updated "manifest" pointing to new assets.
@@ -265,7 +265,7 @@ CloudFront's pricing model rewards good architecture and punishes bad decisions:
 - `PriceClass_200`: Excludes expensive regions (South America, Australia). Moderate cost.
 - `PriceClass_100`: North America, Europe, Israel only. **Lowest cost.**
 
-If your user base is concentrated in NA/EU, `PriceClass_100` is a direct, significant cost savings with minimal performance impact. **Project Planton defaults to this.**
+If your user base is concentrated in NA/EU, `PriceClass_100` is a direct, significant cost savings with minimal performance impact. **OpenMCF defaults to this.**
 
 ### Maximizing Cache Hit Ratio
 Every cache **hit** is an origin fetch you didn't pay for. Tight cache policies (whitelisting only required headers/cookies/query strings) are the single most impactful cost optimization.
@@ -284,15 +284,15 @@ CloudFront operates in a mature, competitive CDN market:
 
 **The strategic insight**: CloudFront isn't competing on raw performance (it's comparable) or price (it's competitive). It competes on **integration**. Free origin fetches, native WAF/Shield integration, VPC origins, and seamless IAM permissions make it the path of least resistance for AWS-native applications.
 
-**Project Planton's value proposition aligns with this**: If you're building on AWS, CloudFront is the default CDN choice. Project Planton makes deploying and managing it dramatically simpler without sacrificing production-readiness.
+**OpenMCF's value proposition aligns with this**: If you're building on AWS, CloudFront is the default CDN choice. OpenMCF makes deploying and managing it dramatically simpler without sacrificing production-readiness.
 
 ## Conclusion: Simplicity as a Strategic Choice
 
 The CloudFront configuration surface is vast. The low-level tools (CloudFormation, Terraform) expose every parameter because they're designed for completeness. The high-level tools (CDK, Pulumi) abstract common patterns because they're designed for developer experience.
 
-Project Planton chooses **opinionated simplicity**. It assumes you're deploying the 80% use case: a secure, performant, cost-effective static or dynamic site with custom domains, HTTPS, and WAF protection. It encodes AWS best practices—OAC for S3 origins, `PriceClass_100` by default, us-east-1 certificate validation—directly into the API and controller logic.
+OpenMCF chooses **opinionated simplicity**. It assumes you're deploying the 80% use case: a secure, performant, cost-effective static or dynamic site with custom domains, HTTPS, and WAF protection. It encodes AWS best practices—OAC for S3 origins, `PriceClass_100` by default, us-east-1 certificate validation—directly into the API and controller logic.
 
-For the 20% of advanced use cases (multi-origin routing, Lambda@Edge auth, origin failover), Project Planton provides escape hatches: direct Pulumi module access or Terraform module usage for those who need full control.
+For the 20% of advanced use cases (multi-origin routing, Lambda@Edge auth, origin failover), OpenMCF provides escape hatches: direct Pulumi module access or Terraform module usage for those who need full control.
 
 The goal isn't to replace Terraform. The goal is to make the default case—deploying a production CloudFront distribution—as simple as defining 20 lines of protobuf configuration and running `planton apply`.
 

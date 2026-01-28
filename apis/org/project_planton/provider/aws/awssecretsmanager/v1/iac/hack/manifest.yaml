@@ -1,9 +1,0 @@
-apiVersion: aws.project-planton.org/v1
-kind: AwsSecretsManager
-metadata:
-  name: awssecretsmanager-demo
-spec:
-  secretNames:
-    - example-secret-1
-    - example-secret-2
-

@@ -20,7 +20,7 @@ Purpose: implement the Pulumi module under `iac/pulumi/module` for a resource ki
 
 ## Handling Optional Fields with Defaults
 
-When proto fields have `(org.project_planton.shared.options.default)`, they are marked as `optional` and generate pointer types in Go (`*string`, `*int32`, etc.).
+When proto fields have `(org.openmcf.shared.options.default)`, they are marked as `optional` and generate pointer types in Go (`*string`, `*int32`, etc.).
 
 ### Use Getter Methods
 
@@ -36,7 +36,7 @@ l.RunnerGroup = in.Target.Spec.GetRunnerGroup()
 
 ### No Defensive Coding Needed
 
-Project Planton middleware **guarantees** that default values are applied before the input reaches IaC modules. Therefore:
+OpenMCF middleware **guarantees** that default values are applied before the input reaches IaC modules. Therefore:
 
 ```go
 // WRONG: Unnecessary defensive coding
@@ -67,7 +67,7 @@ if r.Image != nil {
 
 1. **Nil-safe**: `GetFieldName()` returns zero value if receiver is nil
 2. **Consistent**: Same access pattern regardless of field presence
-3. **Framework guarantee**: Project Planton middleware populates defaults
+3. **Framework guarantee**: OpenMCF middleware populates defaults
 
 ### Example locals.go Pattern
 

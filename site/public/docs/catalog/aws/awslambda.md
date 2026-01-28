@@ -14,7 +14,7 @@ For years, conventional wisdom held that serverless meant simple deployments—j
 
 The serverless ecosystem has matured significantly. What started as manual console uploads and bash scripts has evolved into sophisticated Infrastructure-as-Code workflows supporting both lightweight ZIP archives and multi-gigabyte container images. Understanding this landscape—and choosing the right deployment method for your use case—is critical to building reliable, cost-effective serverless systems.
 
-This document explores the spectrum of AWS Lambda deployment methods, from anti-patterns to avoid to production-ready solutions, and explains how Project Planton provides a unified, multi-cloud interface for Lambda deployment.
+This document explores the spectrum of AWS Lambda deployment methods, from anti-patterns to avoid to production-ready solutions, and explains how OpenMCF provides a unified, multi-cloud interface for Lambda deployment.
 
 ## The Deployment Maturity Spectrum
 
@@ -121,7 +121,7 @@ Terraform (and its open-source fork OpenTofu) uses HashiCorp Configuration Langu
 - **Manual packaging**: Terraform doesn't build your code; you must package ZIP files or build containers separately (though external tools like SAM CLI can help)
 - **Feature lag**: New AWS features may take days/weeks to appear in the provider
 
-**Best for**: Multi-cloud organizations or teams with existing Terraform expertise. Ideal for Project Planton's multi-cloud vision.
+**Best for**: Multi-cloud organizations or teams with existing Terraform expertise. Ideal for OpenMCF's multi-cloud vision.
 
 #### Pulumi (IaC with Programming Languages)
 
@@ -283,9 +283,9 @@ These appear only in specific scenarios:
 - **Provisioned Concurrency**: Keep N instances warm to eliminate cold starts for latency-critical functions
 - **Function URLs**: Built-in HTTPS endpoint without API Gateway (simple use cases only)
 
-### Project Planton's Approach
+### OpenMCF's Approach
 
-Project Planton's Lambda API focuses on the essential 80/20 fields that cover the vast majority of real-world use cases:
+OpenMCF's Lambda API focuses on the essential 80/20 fields that cover the vast majority of real-world use cases:
 
 - **Core function definition**: name, runtime, handler, code source (S3 or image), memory, timeout, execution role
 - **Operational essentials**: environment variables, VPC networking, concurrency controls
@@ -363,9 +363,9 @@ Lambda's pay-per-use model is cost-effective for most workloads, but costs can s
 - **Monitor unused functions**: Identify and delete functions that haven't been invoked in weeks
 - **Provisioned Concurrency discipline**: Don't keep PC instances warm 24/7 if traffic is only business hours; use auto-scaling schedules
 
-## Project Planton's Lambda Implementation
+## OpenMCF's Lambda Implementation
 
-Project Planton provides a unified, multi-cloud API for deploying Lambda functions that abstracts away cloud-specific complexity while allowing provider flexibility.
+OpenMCF provides a unified, multi-cloud API for deploying Lambda functions that abstracts away cloud-specific complexity while allowing provider flexibility.
 
 ### Design Philosophy
 
@@ -373,11 +373,11 @@ Project Planton provides a unified, multi-cloud API for deploying Lambda functio
 
 **Packaging Flexibility**: Supports both ZIP (via S3) and container image (via ECR) code sources. The `code_source_type` field switches between modes, with corresponding validation ensuring consistency (e.g., S3 requires `runtime` and `handler`; images require `image_uri`).
 
-**Multi-Cloud Abstractions**: While Lambda is AWS-specific, the API patterns align with Project Planton's broader multi-cloud resource definitions. Fields like `role_arn` and `subnets` use the `StringValueOrRef` pattern, allowing literal values or references to other Planton-managed resources.
+**Multi-Cloud Abstractions**: While Lambda is AWS-specific, the API patterns align with OpenMCF's broader multi-cloud resource definitions. Fields like `role_arn` and `subnets` use the `StringValueOrRef` pattern, allowing literal values or references to other Planton-managed resources.
 
 ### IaC Backend
 
-Project Planton likely renders Lambda deployments to **Terraform or Pulumi** modules, both of which support multi-cloud infrastructure and align with the platform's goals:
+OpenMCF likely renders Lambda deployments to **Terraform or Pulumi** modules, both of which support multi-cloud infrastructure and align with the platform's goals:
 
 - Terraform modules would use `aws_lambda_function` resources with inputs from the protobuf spec
 - Pulumi would instantiate `aws.lambda.Function` resources programmatically
@@ -447,7 +447,7 @@ The serverless deployment landscape has evolved dramatically from its early days
 
 The key insight: **serverless doesn't mean "no operations"—it means different operations.** You still need version control, automated deployments, monitoring, security, and cost management. The difference is you're operating functions, not servers.
 
-By providing a clean, minimal API surface focused on the essential 80/20 configuration fields while supporting both traditional ZIP and modern container packaging, Project Planton enables teams to deploy Lambda functions with the same confidence and automation they apply to any other infrastructure—across clouds, using industry-standard IaC backends, without drowning in provider-specific complexity.
+By providing a clean, minimal API surface focused on the essential 80/20 configuration fields while supporting both traditional ZIP and modern container packaging, OpenMCF enables teams to deploy Lambda functions with the same confidence and automation they apply to any other infrastructure—across clouds, using industry-standard IaC backends, without drowning in provider-specific complexity.
 
 Whether you're deploying a simple API endpoint or a complex data processing pipeline, the principles remain the same: version everything, automate deployment, monitor rigorously, secure by default, and optimize costs continuously. The maturity of the tooling ecosystem makes this achievable for teams of any size.
 

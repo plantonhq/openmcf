@@ -16,9 +16,9 @@ The Platform-as-a-Service (PaaS) model promised to free developers from infrastr
 
 What makes App Platform strategically interesting is its positioning: simpler than Kubernetes, more flexible than traditional PaaS, and tightly integrated with DigitalOcean's ecosystem (Managed Databases, Container Registry, Spaces object storage, private VPC networking). It supports multiple deployment patterns—Git-based builds with Cloud Native Buildpacks, custom Dockerfiles, or pre-built container images from registries. It offers both web services (HTTP traffic), background workers (queue processing), scheduled jobs (migrations, cron tasks), and static sites (CDN-backed frontends).
 
-But as with any abstraction, knowing what's under the hood matters. How you deploy to App Platform—manually through a web console, via CLI scripts, through Infrastructure-as-Code tools, or with higher-level frameworks like Project Planton—determines whether you build a maintainable, production-grade system or a fragile snowflake that crumbles under real-world demands.
+But as with any abstraction, knowing what's under the hood matters. How you deploy to App Platform—manually through a web console, via CLI scripts, through Infrastructure-as-Code tools, or with higher-level frameworks like OpenMCF—determines whether you build a maintainable, production-grade system or a fragile snowflake that crumbles under real-world demands.
 
-This guide explains the deployment landscape for DigitalOcean App Platform, the maturity progression from anti-patterns to production-ready approaches, and how Project Planton abstracts these complexities into a clean, protobuf-defined API that follows the 80/20 principle.
+This guide explains the deployment landscape for DigitalOcean App Platform, the maturity progression from anti-patterns to production-ready approaches, and how OpenMCF abstracts these complexities into a clean, protobuf-defined API that follows the 80/20 principle.
 
 ---
 
@@ -190,12 +190,12 @@ export const appUrl = app.defaultIngress;
 
 ---
 
-### Level 4: Multi-Cloud Abstraction with Project Planton (Cloud-Agnostic Production)
+### Level 4: Multi-Cloud Abstraction with OpenMCF (Cloud-Agnostic Production)
 
-**What it is:** Defining DigitalOcean App Platform deployments using Project Planton's protobuf-based API, which abstracts cloud-specific details into a unified, Kubernetes-style manifest:
+**What it is:** Defining DigitalOcean App Platform deployments using OpenMCF's protobuf-based API, which abstracts cloud-specific details into a unified, Kubernetes-style manifest:
 
 ```yaml
-apiVersion: digital-ocean.project-planton.org/v1
+apiVersion: digital-ocean.openmcf.org/v1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: production-api
@@ -227,7 +227,7 @@ spec:
 
 **What it solves:** Cloud portability and configuration simplification:
 
-- **80/20 API surface**: Project Planton's protobuf spec exposes only the essential fields most apps actually use (service name, region, source, instance size, scaling, env vars, domain). Advanced fields (custom health check intervals, fine-grained ingress rules, alert policies) are omitted in favor of sane defaults. This reduces cognitive load—developers configure 10 fields instead of 50.
+- **80/20 API surface**: OpenMCF's protobuf spec exposes only the essential fields most apps actually use (service name, region, source, instance size, scaling, env vars, domain). Advanced fields (custom health check intervals, fine-grained ingress rules, alert policies) are omitted in favor of sane defaults. This reduces cognitive load—developers configure 10 fields instead of 50.
 - **Multi-cloud consistency**: The same Planton manifest pattern works across AWS App Runner, Google Cloud Run, Azure App Service, and DigitalOcean App Platform. Teams can switch cloud providers without rewriting deployment configs.
 - **Foreign key references**: The `custom_domain` field uses Planton's foreign key pattern to reference other resources (DNS zones, databases) by kind and field path, avoiding hardcoded values. If the referenced database's connection URI changes, Planton automatically propagates the update.
 - **Validated by design**: Protobuf schema validation catches misconfigurations before deployment (invalid region names, missing required fields, malformed domain names).
@@ -293,7 +293,7 @@ DigitalOcean App Platform supports two fundamentally different deployment patter
 - Apps with custom build requirements (multi-stage Docker builds, non-standard dependencies)
 - Multi-environment promotion workflows (dev → staging → prod with the same image)
 
-**Project Planton supports both patterns** via the `oneof source` field in the protobuf spec: choose either `git_source` or `image_source`.
+**OpenMCF supports both patterns** via the `oneof source` field in the protobuf spec: choose either `git_source` or `image_source`.
 
 ---
 
@@ -383,9 +383,9 @@ Both use **private VPC networking** when the app and database are in the same re
 
 ---
 
-## The Project Planton Choice: Simplicity Without Compromise
+## The OpenMCF Choice: Simplicity Without Compromise
 
-Project Planton's `DigitalOceanAppPlatformService` API exposes **only the essential fields** that 80% of apps actually configure:
+OpenMCF's `DigitalOceanAppPlatformService` API exposes **only the essential fields** that 80% of apps actually configure:
 
 - **Service name and region**: Where and what to deploy
 - **Service type**: Web service, worker, or job
@@ -402,7 +402,7 @@ Advanced features (custom health check intervals, fine-grained CORS rules, alert
 
 This design philosophy aligns with DigitalOcean App Platform's own ethos: **make simple things simple, not everything possible**. If your needs exceed the 80/20 model, drop down to Pulumi or Terraform for full control.
 
-**Why this matters:** In a multi-cloud world, most apps share the same basic requirements: run code, scale on demand, expose via HTTPS, inject configuration. Project Planton abstracts these commonalities, letting you define deployments once and target any cloud provider without rewriting configs. DigitalOcean App Platform is the deployment target, but the Planton API is the interface—cloud-agnostic, validated, and optimized for clarity.
+**Why this matters:** In a multi-cloud world, most apps share the same basic requirements: run code, scale on demand, expose via HTTPS, inject configuration. OpenMCF abstracts these commonalities, letting you define deployments once and target any cloud provider without rewriting configs. DigitalOcean App Platform is the deployment target, but the Planton API is the interface—cloud-agnostic, validated, and optimized for clarity.
 
 ---
 
@@ -410,9 +410,9 @@ This design philosophy aligns with DigitalOcean App Platform's own ethos: **make
 
 DigitalOcean App Platform represents a maturation of the PaaS model: the ease of Heroku without the cost, the control of containers without the complexity of Kubernetes. Whether you deploy via Git-based builds for rapid iteration or container images for production rigor, the platform handles the undifferentiated heavy lifting—load balancing, SSL, health checks, autoscaling, and private networking.
 
-The deployment method you choose defines your operational maturity. Manual console clicks are for learning. CLI scripts are for automation. Terraform and Pulumi are for production. And Project Planton is for teams that want cloud portability without sacrificing production-readiness.
+The deployment method you choose defines your operational maturity. Manual console clicks are for learning. CLI scripts are for automation. Terraform and Pulumi are for production. And OpenMCF is for teams that want cloud portability without sacrificing production-readiness.
 
-If you're building web apps, APIs, background workers, or microservices on DigitalOcean, App Platform eliminates the infrastructure toil so you can focus on code. And if you're adopting Project Planton, the `DigitalOceanAppPlatformService` API gives you a clean, protobuf-validated interface to that power—no App Spec YAML wrangling required.
+If you're building web apps, APIs, background workers, or microservices on DigitalOcean, App Platform eliminates the infrastructure toil so you can focus on code. And if you're adopting OpenMCF, the `DigitalOceanAppPlatformService` API gives you a clean, protobuf-validated interface to that power—no App Spec YAML wrangling required.
 
 Deploy with confidence. Scale on demand. Sleep soundly knowing your infrastructure is code, your configs are validated, and your deployments are repeatable.
 

@@ -6,13 +6,13 @@
 
 ## Summary
 
-Implemented pre-built binary distribution for Pulumi modules, eliminating the need to clone the entire project-planton monorepo and compile Go code at runtime. The CLI now downloads lightweight gzipped binaries (~14MB) from GitHub releases instead of cloning ~3GB of source code, dramatically improving startup time and removing the Go toolchain requirement for end users.
+Implemented pre-built binary distribution for Pulumi modules, eliminating the need to clone the entire openmcf monorepo and compile Go code at runtime. The CLI now downloads lightweight gzipped binaries (~14MB) from GitHub releases instead of cloning ~3GB of source code, dramatically improving startup time and removing the Go toolchain requirement for end users.
 
 ## Problem Statement / Motivation
 
 The existing workflow for executing Pulumi modules required:
 
-1. Cloning the entire project-planton monorepo to a staging area
+1. Cloning the entire openmcf monorepo to a staging area
 2. Copying the repo to a workspace directory
 3. Compiling Go code on first execution (requires Go toolchain)
 4. Waiting for both clone and compilation to complete
@@ -31,12 +31,12 @@ The CLI now uses pre-built binaries distributed via GitHub releases:
 
 ```mermaid
 flowchart TB
-    A[project-planton apply] --> B{moduleDir provided?}
+    A[openmcf apply] --> B{moduleDir provided?}
     B -->|Yes| C[Use provided directory]
     B -->|No| D{Release version available?}
     D -->|Yes| E[Download pulumi-component.gz]
     D -->|No/dev| F[Fallback: clone repo]
-    E --> G[Cache in ~/.project-planton/pulumi/binaries/]
+    E --> G[Cache in ~/.openmcf/pulumi/binaries/]
     G --> H[Generate Pulumi.yaml with binary option]
     H --> I[Execute Pulumi]
     F --> I
@@ -46,7 +46,7 @@ flowchart TB
 ### Key Features
 
 1. **Automatic binary download**: Downloads component-specific binaries from GitHub releases
-2. **Smart caching**: Binaries cached at `~/.project-planton/pulumi/binaries/{version}/`
+2. **Smart caching**: Binaries cached at `~/.openmcf/pulumi/binaries/{version}/`
 3. **Graceful fallback**: Falls back to staging/clone if binary unavailable
 4. **Module version support**: Works with `--module-version` for specific releases
 5. **Zero compilation**: Binary mode skips Go compilation entirely
@@ -71,10 +71,10 @@ Created a new package to handle binary distribution:
 
 ### Directory Structure
 
-All Pulumi-related files consolidated under `~/.project-planton/pulumi/`:
+All Pulumi-related files consolidated under `~/.openmcf/pulumi/`:
 
 ```
-~/.project-planton/pulumi/
+~/.openmcf/pulumi/
 ├── binaries/                          # Cached pre-built binaries
 │   ├── v0.3.2/                        # Per-version cache
 │   │   ├── pulumi-awsecsservice
@@ -93,10 +93,10 @@ Binaries are downloaded directly from GitHub releases:
 
 ```bash
 # CLI version v0.3.2 -> downloads from main release
-https://github.com/plantonhq/project-planton/releases/download/v0.3.2/pulumi-kubernetesdeployment.gz
+https://github.com/plantonhq/openmcf/releases/download/v0.3.2/pulumi-kubernetesdeployment.gz
 
 # Module version override -> downloads from that specific tag
-https://github.com/plantonhq/project-planton/releases/download/v0.3.1-pulumi-awsecsservice-20260107.01/pulumi-awsecsservice.gz
+https://github.com/plantonhq/openmcf/releases/download/v0.3.1-pulumi-awsecsservice-20260107.01/pulumi-awsecsservice.gz
 ```
 
 ### Generated Pulumi.yaml
@@ -108,7 +108,7 @@ name: kubernetesdeployment
 runtime:
   name: go
   options:
-    binary: /Users/user/.project-planton/pulumi/binaries/v0.3.2/pulumi-kubernetesdeployment
+    binary: /Users/user/.openmcf/pulumi/binaries/v0.3.2/pulumi-kubernetesdeployment
 description: Auto-generated workspace for KubernetesDeployment binary execution
 ```
 
@@ -122,7 +122,7 @@ sequenceDiagram
     participant GitHub
     participant Pulumi
 
-    User->>CLI: project-planton apply -f manifest.yaml
+    User->>CLI: openmcf apply -f manifest.yaml
     CLI->>Cache: Check for cached binary
     alt Binary cached
         Cache-->>CLI: Return binary path
@@ -169,7 +169,7 @@ The implementation supports multiple version scenarios:
 
 ### CLI Users
 
-- Dramatically faster `project-planton apply` execution
+- Dramatically faster `openmcf apply` execution
 - No need to install Go toolchain
 - Reduced disk space requirements
 - Works on CI/CD environments without Go

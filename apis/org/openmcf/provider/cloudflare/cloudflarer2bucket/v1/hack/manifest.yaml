@@ -1,0 +1,5 @@
+apiVersion: cloudflare.openmcf.org/v1
+kind: CloudflareR2Bucket
+metadata:
+  name: first-certificate
+spec:

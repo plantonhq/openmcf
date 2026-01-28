@@ -10,7 +10,7 @@ This convenience rule combines **audit** and **update** into a single operation:
 
 ## Role
 
-You are the Project Planton Code Partner. This rule orchestrates a complete quality improvement workflow: audit → identify gaps → fill gaps → verify completion.
+You are the OpenMCF Code Partner. This rule orchestrates a complete quality improvement workflow: audit → identify gaps → fill gaps → verify completion.
 
 ## When to Use Complete
 
@@ -32,24 +32,24 @@ Use complete when you want to:
 ### Basic Syntax
 
 ```
-@complete-project-planton-component <ComponentName> [flags]
+@complete-openmcf-component <ComponentName> [flags]
 ```
 
 ### Examples
 
 **Simplest usage:**
 ```bash
-@complete-project-planton-component MongodbAtlas
+@complete-openmcf-component MongodbAtlas
 ```
 
 **With target score:**
 ```bash
-@complete-project-planton-component GcpCertManagerCert --target-score 90
+@complete-openmcf-component GcpCertManagerCert --target-score 90
 ```
 
 **Preview mode:**
 ```bash
-@complete-project-planton-component PostgresKubernetes --dry-run
+@complete-openmcf-component PostgresKubernetes --dry-run
 ```
 
 ## Workflow
@@ -125,7 +125,7 @@ The update --fill-gaps scenario will run appropriate forge flow rules to create:
 **Validation (Execute in Sequence):**
 - After proto file creation/changes: Run `make protos` to regenerate Go stubs
 - After each creation: Validate builds and tests pass
-- Run component-specific tests: `go test ./apis/org/project_planton/provider/<provider>/<component>/v1/`
+- Run component-specific tests: `go test ./apis/org/openmcf/provider/<provider>/<component>/v1/`
   - Validates buf.validate rules in spec.proto are correct
   - Validates spec_test.go tests pass with current validation logic
 - After Pulumi/Go code changes: Run `make build` to validate complete build
@@ -198,7 +198,7 @@ Next Steps:
 Preview what would be done without making changes:
 
 ```bash
-@complete-project-planton-component MongodbAtlas --dry-run
+@complete-openmcf-component MongodbAtlas --dry-run
 ```
 
 **Output:**
@@ -235,7 +235,7 @@ To proceed: remove --dry-run flag
 Stop when target score is reached:
 
 ```bash
-@complete-project-planton-component MongodbAtlas --target-score 90
+@complete-openmcf-component MongodbAtlas --target-score 90
 ```
 
 **Behavior:**
@@ -255,7 +255,7 @@ Stop when target score is reached:
 Skip final build and test validation (faster but riskier):
 
 ```bash
-@complete-project-planton-component MongodbAtlas --skip-validation
+@complete-openmcf-component MongodbAtlas --skip-validation
 ```
 
 **Warning:** Use only when confident updates won't break builds.
@@ -265,7 +265,7 @@ Skip final build and test validation (faster but riskier):
 ### Already Complete Scenario
 
 ```bash
-@complete-project-planton-component GcpCertManagerCert
+@complete-openmcf-component GcpCertManagerCert
 ```
 
 **Output:**
@@ -286,7 +286,7 @@ Audit report: v1/docs/audit/2025-11-13-094600.md
 ### Partial Completion Scenario
 
 ```bash
-@complete-project-planton-component MongodbAtlas
+@complete-openmcf-component MongodbAtlas
 ```
 
 **Output:**
@@ -347,7 +347,7 @@ Next: Review files and commit changes
 ### Nearly Complete Scenario
 
 ```bash
-@complete-project-planton-component PostgresKubernetes
+@complete-openmcf-component PostgresKubernetes
 ```
 
 **Output:**
@@ -392,7 +392,7 @@ Checked:
   ✓ File system - No component folder
 
 Did you mean to create it first?
-  @forge-project-planton-component MongodbAtlas --provider atlas
+  @forge-openmcf-component MongodbAtlas --provider atlas
 ```
 
 ### Already at Target
@@ -420,9 +420,9 @@ Error: terraform validate failed
 Recommendation:
   1. Check provider.tf configuration
   2. Run update manually to debug:
-     @update-project-planton-component MongodbAtlas --scenario fill-gaps
+     @update-openmcf-component MongodbAtlas --scenario fill-gaps
   3. Or resume from failed rule:
-     @update-project-planton-component MongodbAtlas --resume-from 013
+     @update-openmcf-component MongodbAtlas --resume-from 013
 
 Partial Progress:
   ✅ Research docs generated
@@ -452,7 +452,7 @@ Test Failures:
 
 Recommendation:
   Fix test failures manually, then re-run:
-  @complete-project-planton-component MongodbAtlas
+  @complete-openmcf-component MongodbAtlas
 
 Current Score: 95% (validation issues don't affect score)
 ```
@@ -464,7 +464,7 @@ Current Score: 95% (validation issues don't affect score)
 Preview entire workflow without changes:
 
 ```bash
-@complete-project-planton-component MongodbAtlas --dry-run
+@complete-openmcf-component MongodbAtlas --dry-run
 ```
 
 **Shows:**
@@ -505,15 +505,15 @@ Default target is **95% not 100%**:
 
 ```bash
 # Step 1: Check status
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 # Read report, identify gaps
 
 # Step 2: Fill gaps
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
 # Monitor progress, handle errors
 
 # Step 3: Verify
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 # Check score improved
 
 # Total: 3 commands, manual monitoring
@@ -523,7 +523,7 @@ Default target is **95% not 100%**:
 
 ```bash
 # Single command
-@complete-project-planton-component MongodbAtlas
+@complete-openmcf-component MongodbAtlas
 
 # Automatically:
 # - Audits current state
@@ -546,7 +546,7 @@ Default target is **95% not 100%**:
 # Systematically complete them all
 
 for component in OldComponent1 OldComponent2 ... OldComponent20; do
-  @complete-project-planton-component $component
+  @complete-openmcf-component $component
 done
 
 # Each component automatically brought to 95%+
@@ -557,7 +557,7 @@ done
 
 ```bash
 # Before release, ensure all components meet standards
-@complete-project-planton-component CriticalComponent
+@complete-openmcf-component CriticalComponent
 
 # If it was <95%, gaps are filled automatically
 # If it was ≥95%, confirms it's ready
@@ -568,10 +568,10 @@ done
 
 ```bash
 # Forge might create component at 85% (if some rules fail)
-@forge-project-planton-component NewComponent --provider aws
+@forge-openmcf-component NewComponent --provider aws
 
 # Automatically complete it
-@complete-project-planton-component NewComponent
+@complete-openmcf-component NewComponent
 
 # Result: 100% complete component
 ```
@@ -580,7 +580,7 @@ done
 
 ```bash
 # Need to quickly improve component for demo/release
-@complete-project-planton-component DemoComponent
+@complete-openmcf-component DemoComponent
 
 # One command, 15-20 minutes, done!
 # No need to manually identify and fill gaps
@@ -592,10 +592,10 @@ done
 
 ```bash
 # Create component (might be 90-95%)
-@forge-project-planton-component NewComponent --provider aws
+@forge-openmcf-component NewComponent --provider aws
 
 # Complete to 100%
-@complete-project-planton-component NewComponent
+@complete-openmcf-component NewComponent
 
 # Result: Guaranteed 95%+ completion
 ```
@@ -604,27 +604,27 @@ done
 
 ```bash
 # Manual workflow
-@audit-project-planton-component MongodbAtlas
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
+@audit-openmcf-component MongodbAtlas
 
 # Automated workflow (equivalent)
-@complete-project-planton-component MongodbAtlas
+@complete-openmcf-component MongodbAtlas
 ```
 
 ### Before Delete
 
 ```bash
 # Check if component is worth completing
-@complete-project-planton-component OldComponent --dry-run
+@complete-openmcf-component OldComponent --dry-run
 
 # If shows: "Need to create 15 files, 2 hours work"
 # Decision: Not worth it, delete instead
-@delete-project-planton-component OldComponent --backup
+@delete-openmcf-component OldComponent --backup
 
 # If shows: "Need to create 3 files, 10 minutes"
 # Decision: Worth completing
-@complete-project-planton-component OldComponent
+@complete-openmcf-component OldComponent
 ```
 
 ## Progress Tracking
@@ -745,7 +745,7 @@ Some gaps could not be filled automatically:
   
 Recommendation:
   Run manual update with specific scenario:
-  @update-project-planton-component MongodbAtlas --scenario refresh-docs
+  @update-openmcf-component MongodbAtlas --scenario refresh-docs
 ```
 
 **Action:** Use manual update to fix specific failures.
@@ -786,7 +786,7 @@ After complete finishes successfully:
 ### Example 1: Complete Incomplete Component
 
 ```bash
-@complete-project-planton-component MongodbAtlas
+@complete-openmcf-component MongodbAtlas
 
 # Before: 65% (missing Terraform, docs)
 # Process: 18 minutes
@@ -797,7 +797,7 @@ After complete finishes successfully:
 ### Example 2: Already Complete
 
 ```bash
-@complete-project-planton-component GcpCertManagerCert
+@complete-openmcf-component GcpCertManagerCert
 
 # Current: 98%
 # Action: None (already ≥95%)
@@ -807,7 +807,7 @@ After complete finishes successfully:
 ### Example 3: Preview Mode
 
 ```bash
-@complete-project-planton-component PostgresKubernetes --dry-run
+@complete-openmcf-component PostgresKubernetes --dry-run
 
 # Shows what would be created
 # Estimates time and file count
@@ -817,7 +817,7 @@ After complete finishes successfully:
 ### Example 4: Custom Target
 
 ```bash
-@complete-project-planton-component AwsRdsInstance --target-score 90
+@complete-openmcf-component AwsRdsInstance --target-score 90
 
 # Stops at 90% instead of 95%
 # Might skip some nice-to-have items
@@ -830,7 +830,7 @@ After complete finishes successfully:
 # Complete multiple components
 for component in Component1 Component2 Component3; do
   echo "Completing $component..."
-  @complete-project-planton-component $component
+  @complete-openmcf-component $component
   echo "---"
 done
 
@@ -841,8 +841,8 @@ done
 ## Reference
 
 - **Ideal State:** `architecture/deployment-component.md`
-- **Audit Rule:** `_rules/deployment-component/audit/audit-project-planton-component.mdc`
-- **Update Rule:** `_rules/deployment-component/update/update-project-planton-component.mdc`
+- **Audit Rule:** `_rules/deployment-component/audit/audit-openmcf-component.mdc`
+- **Update Rule:** `_rules/deployment-component/update/update-openmcf-component.mdc`
 - **Complete README:** `_rules/deployment-component/complete/README.md`
 
 ## Notes
@@ -856,4 +856,4 @@ done
 
 ---
 
-**Ready to complete?** Run `@complete-project-planton-component <ComponentName>` for one-command improvement!
+**Ready to complete?** Run `@complete-openmcf-component <ComponentName>` for one-command improvement!

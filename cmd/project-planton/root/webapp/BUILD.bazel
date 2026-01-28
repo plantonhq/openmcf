@@ -12,10 +12,10 @@ go_library(
         "uninstall.go",
         "webapp.go",
     ],
-    importpath = "github.com/plantonhq/project-planton/cmd/project-planton/root/webapp",
+    importpath = "github.com/plantonhq/openmcf/cmd/openmcf/root/webapp",
     visibility = ["//visibility:public"],
     deps = [
-        "//cmd/project-planton/root",
+        "//cmd/openmcf/root",
         "@com_github_spf13_cobra//:cobra",
     ],
 )

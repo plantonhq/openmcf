@@ -6,7 +6,7 @@
 
 ## Summary
 
-Migrated the GcpCloudRun component to use `StringValueOrRef` for `project_id`, `vpc_access.network`, and `vpc_access.subnet` fields, enabling cross-resource references between Project Planton resources. This allows users to reference GcpProject, GcpVpc, and GcpSubnetwork resources dynamically instead of hardcoding values.
+Migrated the GcpCloudRun component to use `StringValueOrRef` for `project_id`, `vpc_access.network`, and `vpc_access.subnet` fields, enabling cross-resource references between OpenMCF resources. This allows users to reference GcpProject, GcpVpc, and GcpSubnetwork resources dynamically instead of hardcoding values.
 
 ## Problem Statement / Motivation
 
@@ -33,30 +33,30 @@ string project_id = 1 [
 ];
 
 // AFTER
-org.project_planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+org.openmcf.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
   (buf.validate.field).required = true,
-  (org.project_planton.shared.foreignkey.v1.default_kind) = GcpProject,
-  (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  (org.openmcf.shared.foreignkey.v1.default_kind) = GcpProject,
+  (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
 ];
 ```
 
 ### 2. VpcAccess.network Field
 
 ```protobuf
-org.project_planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
+org.openmcf.shared.foreignkey.v1.StringValueOrRef network = 1 [
   (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-  (org.project_planton.shared.foreignkey.v1.default_kind) = GcpVpc,
-  (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_name"
+  (org.openmcf.shared.foreignkey.v1.default_kind) = GcpVpc,
+  (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_name"
 ];
 ```
 
 ### 3. VpcAccess.subnet Field
 
 ```protobuf
-org.project_planton.shared.foreignkey.v1.StringValueOrRef subnet = 2 [
+org.openmcf.shared.foreignkey.v1.StringValueOrRef subnet = 2 [
   (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-  (org.project_planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
-  (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_name"
+  (org.openmcf.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+  (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_name"
 ];
 ```
 
@@ -115,7 +115,7 @@ Added new test for `valueFrom` pattern validation.
 ### Direct Value (Backward Compatible)
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpCloudRun
 metadata:
   name: my-api
@@ -137,7 +137,7 @@ spec:
 ### Cross-Resource Reference (New Capability)
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpCloudRun
 metadata:
   name: my-api
@@ -170,7 +170,7 @@ spec:
 - **Improved composability**: Chain resources in dependency order
 - **Consistency**: Aligns with GcpGkeCluster, GcpVpc, GcpSubnetwork patterns
 - **Backward compatible**: Direct values still work with `value:` syntax
-- **Automatic dependency resolution**: Project Planton handles resource ordering
+- **Automatic dependency resolution**: OpenMCF handles resource ordering
 
 ## Impact
 

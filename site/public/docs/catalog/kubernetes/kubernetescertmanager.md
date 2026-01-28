@@ -14,7 +14,7 @@ For years, the conventional wisdom was simple: managing TLS certificates in Kube
 
 But here's what changed: **deploying kubernetes-cert-manager correctly** has become just as important as having it installed. A kubernetes-cert-manager deployment without proper DNS provider integration, high availability, or secure credential management isn't production-ready—it's a time bomb waiting for certificates to expire during an outage.
 
-This document explains how deployment methods for kubernetes-cert-manager evolved from simple `kubectl apply` commands to production-grade, multi-cloud automation patterns. More importantly, it explains **why** Project Planton chose to abstract away the complexity of ClusterIssuer creation and DNS provider integration while maintaining the flexibility production environments demand.
+This document explains how deployment methods for kubernetes-cert-manager evolved from simple `kubectl apply` commands to production-grade, multi-cloud automation patterns. More importantly, it explains **why** OpenMCF chose to abstract away the complexity of ClusterIssuer creation and DNS provider integration while maintaining the flexibility production environments demand.
 
 ## The Deployment Maturity Spectrum
 
@@ -224,9 +224,9 @@ spec:
 
 Plus the corresponding Secrets, ServiceAccount annotations, IAM policies, and workload identity bindings. **That's a lot of YAML to maintain across environments and clusters.**
 
-## What Project Planton Automates
+## What OpenMCF Automates
 
-Project Planton chose kubernetes-cert-manager as the certificate automation engine—there's no viable alternative with kubernetes-cert-manager's maturity, community, and CNCF backing. But deploying kubernetes-cert-manager is table stakes. **The differentiation is integration automation.**
+OpenMCF chose kubernetes-cert-manager as the certificate automation engine—there's no viable alternative with kubernetes-cert-manager's maturity, community, and CNCF backing. But deploying kubernetes-cert-manager is table stakes. **The differentiation is integration automation.**
 
 ### The 80/20 Principle in Action
 
@@ -245,11 +245,11 @@ What most teams **don't** customize:
 - Custom ACME solver configurations beyond DNS-01
 - Prometheus metrics (enabled by default)
 
-**The Project Planton API design**: Capture the 20% of configuration that 80% of users need. Default everything else to production best practices.
+**The OpenMCF API design**: Capture the 20% of configuration that 80% of users need. Default everything else to production best practices.
 
 ### Automatic ClusterIssuer Creation
 
-Instead of requiring users to write and maintain ClusterIssuer YAML, Project Planton generates it from DNS provider configuration. You specify:
+Instead of requiring users to write and maintain ClusterIssuer YAML, OpenMCF generates it from DNS provider configuration. You specify:
 
 ```yaml
 acme:
@@ -265,7 +265,7 @@ dnsProviders:
       apiToken: "your-token"
 ```
 
-Project Planton generates:
+OpenMCF generates:
 - Kubernetes Secret with the Cloudflare API token
 - ClusterIssuer with DNS-01 solver configured for those zones
 - ServiceAccount with appropriate cloud provider annotations (for GCP/AWS/Azure)
@@ -274,9 +274,9 @@ Project Planton generates:
 
 ### Credential Management Abstraction
 
-For **Cloudflare**: API tokens are stored as Kubernetes Secrets (no avoiding this). Project Planton creates the secret in the correct namespace with the correct key name that kubernetes-cert-manager expects.
+For **Cloudflare**: API tokens are stored as Kubernetes Secrets (no avoiding this). OpenMCF creates the secret in the correct namespace with the correct key name that kubernetes-cert-manager expects.
 
-For **cloud providers** (GCP/AWS/Azure): Project Planton configures the kubernetes-cert-manager ServiceAccount with the appropriate workload identity annotations. The cloud provider's metadata service handles authentication. No static credentials stored in Kubernetes.
+For **cloud providers** (GCP/AWS/Azure): OpenMCF configures the kubernetes-cert-manager ServiceAccount with the appropriate workload identity annotations. The cloud provider's metadata service handles authentication. No static credentials stored in Kubernetes.
 
 This pattern follows the **principle of least surprise**: credentials are handled the way each provider expects, abstracting away the provider-specific details.
 
@@ -288,7 +288,7 @@ Production kubernetes-cert-manager requires:
 - **CA Injector**: 2 replicas (leader election)
 - **PodDisruptionBudgets**: Ensure at least one replica survives node drains
 
-Project Planton's Helm configuration sets these defaults. You don't declare them; they're encoded as operational best practices.
+OpenMCF's Helm configuration sets these defaults. You don't declare them; they're encoded as operational best practices.
 
 ### DNS Propagation Reliability
 
@@ -301,13 +301,13 @@ The fix: Configure kubernetes-cert-manager to use **public recursive nameservers
 --dns01-recursive-nameservers-only=true
 ```
 
-Project Planton sets this automatically. Users don't need to know about DNS propagation nuances.
+OpenMCF sets this automatically. Users don't need to know about DNS propagation nuances.
 
 ### Version Enforcement
 
 Not all kubernetes-cert-manager versions are created equal. **Version v1.16.4** fixed critical Cloudflare API compatibility issues where DNS records weren't properly cleaned up after challenges, causing subsequent challenges to fail.
 
-Project Planton enforces a minimum version. You can specify newer versions, but you can't accidentally deploy a broken older one.
+OpenMCF enforces a minimum version. You can specify newer versions, but you can't accidentally deploy a broken older one.
 
 ## Production Patterns Worth Knowing
 
@@ -322,7 +322,7 @@ Use **ClusterIssuer** when: You operate a trusted, single-tenant cluster and wan
 
 Use **Issuer** when: You need namespace-level trust isolation (multi-tenant clusters, per-team credentials).
 
-Project Planton defaults to ClusterIssuer because most production clusters are single-tenant or have environment-level trust boundaries, not namespace-level.
+OpenMCF defaults to ClusterIssuer because most production clusters are single-tenant or have environment-level trust boundaries, not namespace-level.
 
 ### Wildcard vs. Individual Certificates
 
@@ -380,7 +380,7 @@ Each DNS provider has scoping mechanisms. Use them:
 
 **Cloudflare API tokens**: Must be rotated manually. Strategy:
 1. Create new token with same permissions
-2. Update Project Planton spec with new token
+2. Update OpenMCF spec with new token
 3. Redeploy addon (updates Secret, ClusterIssuer is unchanged)
 4. Revoke old token after verification
 
@@ -444,9 +444,9 @@ CyberArk provides **LTS kubernetes-cert-manager on AWS Marketplace** as an EKS a
 
 **Alternative solutions**: Before kubernetes-cert-manager, projects like **kube-lego** and **kube-kubernetes-cert-manager** existed but are now deprecated. Today, kubernetes-cert-manager has no serious competition for Kubernetes certificate automation. External tools like Certbot or cloud-native certificate managers (AWS ACM, GCP Certificate Manager) serve different use cases (external automation or cloud load balancer integration, respectively).
 
-## Why Project Planton Chose This Approach
+## Why OpenMCF Chose This Approach
 
-Project Planton is opinionated infrastructure automation, not a configuration management tool. The philosophy: **encode production best practices, expose essential configuration, hide operational complexity**.
+OpenMCF is opinionated infrastructure automation, not a configuration management tool. The philosophy: **encode production best practices, expose essential configuration, hide operational complexity**.
 
 For kubernetes-cert-manager:
 
@@ -464,15 +464,15 @@ For kubernetes-cert-manager:
 - DNS zone mapping (users control which domains use which providers)
 - Multi-provider flexibility (mix Cloudflare, GCP, AWS, Azure)
 
-**The result**: You declare intent ("I want kubernetes-cert-manager with these DNS providers"). Project Planton produces a complete, working system. When you need to add a domain or rotate credentials, you update the spec and redeploy. The integration layer handles the rest.
+**The result**: You declare intent ("I want kubernetes-cert-manager with these DNS providers"). OpenMCF produces a complete, working system. When you need to add a domain or rotate credentials, you update the spec and redeploy. The integration layer handles the rest.
 
-This is the pattern Project Planton applies across all cloud resources: **deploy once, integrate automatically, maintain declaratively**.
+This is the pattern OpenMCF applies across all cloud resources: **deploy once, integrate automatically, maintain declaratively**.
 
 ## Conclusion: Automation as a Strategic Choice
 
 Deploying kubernetes-cert-manager is straightforward. Integrating it correctly—with secure DNS provider authentication, high availability, multi-cloud support, and operational best practices—is not. That integration complexity is undifferentiated heavy lifting: every team solves the same problems, writes the same ClusterIssuer YAML, makes the same mistakes with DNS propagation and credential management.
 
-Project Planton's choice is to solve it once, correctly, and expose a clean abstraction. You focus on **which domains need certificates**. The platform focuses on **how to get them reliably**.
+OpenMCF's choice is to solve it once, correctly, and expose a clean abstraction. You focus on **which domains need certificates**. The platform focuses on **how to get them reliably**.
 
-That's the paradigm shift from deployment to automation: moving from "how do I install kubernetes-cert-manager?" to "how do I enable certificate automation for my domains across my infrastructure?". Project Planton answers the latter by handling the former as an implementation detail.
+That's the paradigm shift from deployment to automation: moving from "how do I install kubernetes-cert-manager?" to "how do I enable certificate automation for my domains across my infrastructure?". OpenMCF answers the latter by handling the former as an implementation detail.
 

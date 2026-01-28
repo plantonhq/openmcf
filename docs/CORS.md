@@ -1,6 +1,6 @@
 # CORS Configuration
 
-Project Planton handles CORS automatically. Most users don't need to configure anything.
+OpenMCF handles CORS automatically. Most users don't need to configure anything.
 
 ## Quick Start
 
@@ -67,7 +67,7 @@ CORS_ALLOWED_ORIGINS=https://yourdomain.com docker compose up
 
 This is fixed in the latest version. Make sure you're using:
 ```bash
-docker pull ghcr.io/plantonhq/project-planton:latest
+docker pull ghcr.io/plantonhq/openmcf:latest
 ```
 
 ### Duplicate CORS headers
@@ -83,7 +83,7 @@ For maintainers and advanced users, see [CORS Architecture](_cursor/cors-archite
 
 ## Need Help?
 
-- 📖 [Full Documentation](https://docs.project-planton.org)
-- 💬 [GitHub Discussions](https://github.com/plantonhq/project-planton/discussions)
-- 🐛 [Report an Issue](https://github.com/plantonhq/project-planton/issues)
+- 📖 [Full Documentation](https://docs.openmcf.org)
+- 💬 [GitHub Discussions](https://github.com/plantonhq/openmcf/discussions)
+- 🐛 [Report an Issue](https://github.com/plantonhq/openmcf/issues)
 

@@ -16,7 +16,7 @@ That wisdom is now outdated.
 
 Modern Kubernetes has evolved to provide the primitives needed for stateful workloads (StatefulSets, persistent volumes, stable network identities), and more importantly, the **Operator pattern** has emerged to encode database-specific operational knowledge into self-healing controllers. Today, running MongoDB on Kubernetes isn't just viable—when done correctly, it can provide better reliability, easier scaling, and more consistent operations than traditional deployment methods.
 
-But here's the critical insight: not all deployment methods are created equal. The path from "Hello World" to production-grade MongoDB on Kubernetes passes through several maturity levels, each solving different problems. This document explains what those levels are, which approaches are production-ready, and why Project Planton chose the Percona Operator as its default backend.
+But here's the critical insight: not all deployment methods are created equal. The path from "Hello World" to production-grade MongoDB on Kubernetes passes through several maturity levels, each solving different problems. This document explains what those levels are, which approaches are production-ready, and why OpenMCF chose the Percona Operator as its default backend.
 
 ## The Evolution: From Anti-Patterns to Production
 
@@ -82,7 +82,7 @@ This is an **impedance mismatch**: Kubernetes abstracts away state and identity,
 
 ## Operator Comparison: The Licensing Minefield
 
-For an open-source infrastructure framework like Project Planton, choosing the right operator isn't just about features—it's about legal soundness, long-term viability, and avoiding "open core" traps where essential production features are paywalled.
+For an open-source infrastructure framework like OpenMCF, choosing the right operator isn't just about features—it's about legal soundness, long-term viability, and avoiding "open core" traps where essential production features are paywalled.
 
 ### The Contenders
 
@@ -110,7 +110,7 @@ For an open-source infrastructure framework like Project Planton, choosing the r
 
 The MongoDB Community Operator is intentionally crippled—it lacks sharding and automated backups, which are classified as "Enterprise" features. This isn't an accident; it's product segmentation designed to upsell users to the expensive MongoDB Enterprise Advanced subscription.
 
-More concerning for Project Planton: MongoDB Community Server is licensed under the **Server Side Public License (SSPL)**, a viral license that's not OSI-approved. The SSPL requires any entity offering the software *as a service* to open-source all of its own management and service-delivery code. Project Planton's `MongodbKubernetes` API—which abstracts and manages MongoDB deployment—could legally be considered such a service, creating existential licensing risk for the entire framework.
+More concerning for OpenMCF: MongoDB Community Server is licensed under the **Server Side Public License (SSPL)**, a viral license that's not OSI-approved. The SSPL requires any entity offering the software *as a service* to open-source all of its own management and service-delivery code. OpenMCF's `MongodbKubernetes` API—which abstracts and manages MongoDB deployment—could legally be considered such a service, creating existential licensing risk for the entire framework.
 
 ### The KubeDB Dead End
 
@@ -140,18 +140,18 @@ The Percona Operator for MongoDB is the only solution that avoids all legal and 
 
 This is not a "community edition" with missing features. This is a complete, enterprise-grade operator with all production capabilities, provided entirely free and open.
 
-## Project Planton's Choice: Percona Operator
+## OpenMCF's Choice: Percona Operator
 
-The `MongodbKubernetes` API in Project Planton is built on top of the **Percona Operator for MongoDB**. This is the only choice that aligns with the philosophy of an open-source infrastructure framework:
+The `MongodbKubernetes` API in OpenMCF is built on top of the **Percona Operator for MongoDB**. This is the only choice that aligns with the philosophy of an open-source infrastructure framework:
 
 1. **No Legal Risk:** Completely Apache 2.0 licensed with an SSPL-free database fork.
 2. **No Paywalls:** All production features—PITR backups, sharding, scaling—are free.
 3. **Production-Proven:** Used by organizations that require enterprise-grade reliability without enterprise-grade costs.
-4. **Best-Practice Defaults:** Project Planton's API abstracts away complexity while enforcing best practices (like pod anti-affinity for HA) under the hood.
+4. **Best-Practice Defaults:** OpenMCF's API abstracts away complexity while enforcing best practices (like pod anti-affinity for HA) under the hood.
 
 ### How It Works
 
-When you create a `MongodbKubernetes` resource in Project Planton:
+When you create a `MongodbKubernetes` resource in OpenMCF:
 
 1. The controller ensures the Percona Operator is installed in your cluster (as a prerequisite).
 2. Your simple, high-level configuration is translated into a `PerconaServerMongoDB` custom resource.
@@ -164,7 +164,7 @@ You get the simplicity of a "Day 1" Helm experience with the power and reliabili
 
 Most infrastructure APIs suffer from the same problem: they expose *everything*, overwhelming users with hundreds of configuration options when 80% of users only need to configure 20% of the fields.
 
-Project Planton's `MongodbKubernetes` API follows the **80/20 principle**: expose the essential fields as top-level, required properties, and group advanced/edge-case options into an optional `advanced` configuration block.
+OpenMCF's `MongodbKubernetes` API follows the **80/20 principle**: expose the essential fields as top-level, required properties, and group advanced/edge-case options into an optional `advanced` configuration block.
 
 ### Essential Fields (What You'll Actually Configure)
 
@@ -182,7 +182,7 @@ Project Planton's `MongodbKubernetes` API follows the **80/20 principle**: expos
 - Pod affinity/anti-affinity rules (sane defaults applied automatically)
 - Custom initialization scripts
 
-One field that's technically "advanced"—**pod anti-affinity**—is so critical for high availability that Project Planton *enforces it by default* whenever `replicas > 1`. This protects you from the common mistake of placing all replica set members on the same node, which turns a simple node failure into a full cluster outage.
+One field that's technically "advanced"—**pod anti-affinity**—is so critical for high availability that OpenMCF *enforces it by default* whenever `replicas > 1`. This protects you from the common mistake of placing all replica set members on the same node, which turns a simple node failure into a full cluster outage.
 
 ### Example Configurations
 
@@ -261,7 +261,7 @@ Running MongoDB on Kubernetes in production requires more than just correct conf
 
 **Replica Sets:** Always use at least 3 members in production to maintain quorum if one member fails.
 
-**Pod Anti-Affinity (Critical):** Ensure MongoDB pods are scheduled on different nodes. Project Planton enforces this by default when `replicas > 1` using `podAntiAffinity` with `topologyKey: kubernetes.io/hostname`. This prevents a single node failure from taking down multiple replica set members.
+**Pod Anti-Affinity (Critical):** Ensure MongoDB pods are scheduled on different nodes. OpenMCF enforces this by default when `replicas > 1` using `podAntiAffinity` with `topologyKey: kubernetes.io/hostname`. This prevents a single node failure from taking down multiple replica set members.
 
 **Multi-AZ Deployment:** For true resilience, spread pods across availability zones using `topologySpreadConstraints` to ensure the cluster survives zone-level failures.
 
@@ -328,7 +328,7 @@ The Percona Operator integrates natively with Percona Monitoring and Management 
 
 - You need a 100% open-source solution with no legal risk
 - You need enterprise-grade features (PITR, sharding) without commercial licenses
-- You're building infrastructure tooling (like Project Planton) that manages MongoDB on behalf of users
+- You're building infrastructure tooling (like OpenMCF) that manages MongoDB on behalf of users
 
 **Trade-off:** None. This is the complete solution.
 
@@ -351,7 +351,7 @@ Migration requires:
 
 This is a high-downtime, high-risk operation. The difficulty and risk of this migration is the single strongest argument against *starting* with Helm. You trade short-term convenience for long-term technical debt.
 
-Project Planton avoids this trap by starting you on an Operator-based deployment from day one, giving you the simplicity of a Helm-like API with the power of a production-grade Operator underneath.
+OpenMCF avoids this trap by starting you on an Operator-based deployment from day one, giving you the simplicity of a Helm-like API with the power of a production-grade Operator underneath.
 
 ## Conclusion: The Paradigm Shift
 
@@ -361,7 +361,7 @@ Helm charts provide a quick start but leave you with a mountain of manual operat
 
 The Percona Operator for MongoDB represents a third path: a 100% open-source, legally sound, enterprise-grade solution that automates the full lifecycle of MongoDB on Kubernetes—without paywalls, without commercial licenses, and without compromise.
 
-Project Planton builds on this foundation, providing a simple, opinionated API that enforces best practices by default while giving you full access to advanced features when you need them. You get the best of both worlds: the ease of "Day 1" and the power of "Day 2."
+OpenMCF builds on this foundation, providing a simple, opinionated API that enforces best practices by default while giving you full access to advanced features when you need them. You get the best of both worlds: the ease of "Day 1" and the power of "Day 2."
 
 Start on the right path from the beginning. Your future self will thank you.
 

@@ -164,13 +164,13 @@ Three operators stand out as mature, production-tested solutions: **Strimzi**, *
 
 ---
 
-## Project Planton's Choice: Strimzi as the Default
+## OpenMCF's Choice: Strimzi as the Default
 
-Project Planton defaults to **Strimzi** for Kafka operator deployments, aligning with our philosophy of open-source, production-ready infrastructure components. Here's why:
+OpenMCF defaults to **Strimzi** for Kafka operator deployments, aligning with our philosophy of open-source, production-ready infrastructure components. Here's why:
 
 ### Licensing Clarity and Openness
 
-Strimzi is **Apache 2.0 end-to-end**—code, container images, and every feature. There are no hidden enterprise tiers, no 30-day trial periods, and no usage restrictions. For an open-source IaC framework like Project Planton, this matters. Users can deploy Kafka confidently knowing they won't hit licensing walls in production or need to negotiate commercial agreements.
+Strimzi is **Apache 2.0 end-to-end**—code, container images, and every feature. There are no hidden enterprise tiers, no 30-day trial periods, and no usage restrictions. For an open-source IaC framework like OpenMCF, this matters. Users can deploy Kafka confidently knowing they won't hit licensing walls in production or need to negotiate commercial agreements.
 
 While Koperator is also fully open source (and an excellent choice for advanced use cases), Strimzi's **CNCF affiliation** and backing by Red Hat and IBM provide additional assurance of long-term maintenance and community investment.
 
@@ -178,7 +178,7 @@ While Koperator is also fully open source (and an excellent choice for advanced 
 
 Strimzi powers **Red Hat AMQ Streams** and **IBM Event Streams**—commercially supported products built directly on Strimzi. This isn't a side project; it's infrastructure trusted by enterprises running Kafka at scale in production. The community is large, documentation is comprehensive, and edge cases are well-tested.
 
-When you deploy Kafka via Project Planton, you're standing on the shoulders of thousands of production deployments across industries.
+When you deploy Kafka via OpenMCF, you're standing on the shoulders of thousands of production deployments across industries.
 
 ### Comprehensive Feature Set with Sane Defaults
 
@@ -194,21 +194,21 @@ Strimzi's defaults are **production-oriented**. For example, it uses pod anti-af
 
 ### Operator as Infrastructure, Not Configuration
 
-Project Planton's `KubernetesStrimziKafkaOperator` resource deploys **the operator itself**—not a Kafka cluster. This separation is intentional. The operator is infrastructure: install it once per cluster, configure it for high availability (multiple replicas with leader election), allocate resources, and let it run.
+OpenMCF's `KubernetesStrimziKafkaOperator` resource deploys **the operator itself**—not a Kafka cluster. This separation is intentional. The operator is infrastructure: install it once per cluster, configure it for high availability (multiple replicas with leader election), allocate resources, and let it run.
 
 The Strimzi operator is stable, lightweight, and designed to watch multiple namespaces. One operator instance can manage many Kafka clusters across different namespaces or teams, enabling multi-tenancy without operator proliferation.
 
-Once the operator is running, you define `Kafka` CRs (via Project Planton's `KafkaKubernetes` resource or directly) to create actual clusters. This clean separation simplifies operations: upgrading the operator is distinct from upgrading Kafka brokers, and different teams can manage Kafka clusters without touching the operator's deployment.
+Once the operator is running, you define `Kafka` CRs (via OpenMCF's `KafkaKubernetes` resource or directly) to create actual clusters. This clean separation simplifies operations: upgrading the operator is distinct from upgrading Kafka brokers, and different teams can manage Kafka clusters without touching the operator's deployment.
 
 ### GitOps-Friendly by Design
 
-Every Strimzi resource—operators, Kafka clusters, topics, users—is defined declaratively via YAML. This fits naturally into GitOps workflows with ArgoCD, Flux, or Project Planton's own IaC approach.
+Every Strimzi resource—operators, Kafka clusters, topics, users—is defined declaratively via YAML. This fits naturally into GitOps workflows with ArgoCD, Flux, or OpenMCF's own IaC approach.
 
 Changes to Kafka clusters happen by committing CR updates to Git. The operator reconciles the changes safely, applying rolling restarts only when necessary and checking cluster health before proceeding. This is **infrastructure as code** at its best: auditable, version-controlled, and reproducible across environments.
 
 ### When You Might Choose Differently
 
-Strimzi is the default, but Project Planton is flexible:
+Strimzi is the default, but OpenMCF is flexible:
 
 - **Choose Koperator** if you need per-broker customization, automated alert-driven scaling, or advanced storage management (JBOD with dynamic disk additions). Koperator's design shines in dynamic, large-scale deployments where operational flexibility justifies complexity.
 - **Choose Confluent (CFK)** if you're using Confluent Platform commercially, need enterprise features like RBAC and Self-Balancing Clusters, and have budget for licensing. CFK is polished, GUI-driven, and backed by Kafka's creators.
@@ -223,7 +223,7 @@ A common point of confusion: **What does the operator manage, and what does a Ka
 
 ### Operator Configuration (Day-0 Setup)
 
-The **operator deployment** (`KubernetesStrimziKafkaOperator` in Project Planton) is about installing the controller itself. Configuration includes:
+The **operator deployment** (`KubernetesStrimziKafkaOperator` in OpenMCF) is about installing the controller itself. Configuration includes:
 
 - **Target namespace and watch scope**: Where the operator runs and which namespaces it monitors for Kafka CRs.
 - **Operator image version**: Pinning to a stable Strimzi release (e.g., `0.34.0`) for reproducibility.
@@ -235,7 +235,7 @@ These settings are largely **set-and-forget**. Once the operator is deployed, yo
 
 ### Kafka Cluster Configuration (Day-2 Operations)
 
-The **Kafka cluster** itself is defined via a `Kafka` CR (or Project Planton's `KafkaKubernetes` resource). This is where most operational activity happens:
+The **Kafka cluster** itself is defined via a `Kafka` CR (or OpenMCF's `KafkaKubernetes` resource). This is where most operational activity happens:
 
 - **Broker count and resources**: Number of Kafka broker pods, CPU/memory allocations, JVM heap settings.
 - **Storage**: Persistent volumes (size, storage class, JBOD if needed) or ephemeral storage for dev/test.
@@ -255,7 +255,7 @@ Separating operator config from cluster config enables:
 - **Role-based access**: Cluster admins manage the operator (install, upgrade, RBAC). Application teams manage `Kafka`, `KafkaTopic`, and `KafkaUser` CRs for their deployments.
 - **Independent upgrades**: Upgrade the operator to get bug fixes or new features without changing Kafka clusters. Upgrade Kafka clusters (change version in CR) without redeploying the operator.
 
-In Project Planton terms:
+In OpenMCF terms:
 
 - **`KubernetesStrimziKafkaOperator`** = "Ensure the Strimzi operator is running on this cluster with these settings."
 - **`KafkaKubernetes`** (or direct `Kafka` CRs) = "Deploy a Kafka cluster with X brokers, Y storage, Z security settings."
@@ -378,7 +378,7 @@ The journey from "Kafka doesn't belong on Kubernetes" to "Kafka operators make K
 
 Kafka operators—especially Strimzi—provide that automation. They transform Kafka from a complex, script-dependent system into a **declarative, self-healing workload** that benefits from Kubernetes' strengths: declarative APIs, reconciliation loops, RBAC, GitOps workflows, and cloud portability.
 
-Project Planton's `KubernetesStrimziKafkaOperator` resource makes deploying Strimzi straightforward: define the operator configuration, deploy it via Pulumi-backed IaC, and let the operator handle the rest. From there, Kafka clusters, topics, and users become Kubernetes-native resources—manageable via YAML, version-controlled in Git, and automatically reconciled to their desired state.
+OpenMCF's `KubernetesStrimziKafkaOperator` resource makes deploying Strimzi straightforward: define the operator configuration, deploy it via Pulumi-backed IaC, and let the operator handle the rest. From there, Kafka clusters, topics, and users become Kubernetes-native resources—manageable via YAML, version-controlled in Git, and automatically reconciled to their desired state.
 
 For teams building streaming platforms, event-driven architectures, or any workload that depends on Kafka, operators are no longer optional—they're the **production-ready path forward**.
 

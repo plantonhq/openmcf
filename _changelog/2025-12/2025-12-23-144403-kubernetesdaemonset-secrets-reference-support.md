@@ -69,18 +69,18 @@ spec:
 
 ### 1. Proto Schema Changes
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetesdaemonset/v1/spec.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetesdaemonset/v1/spec.proto`
 
 Added import for the shared Kubernetes secret types and changed the `secrets` field type:
 
 ```protobuf
-import "org/project_planton/provider/kubernetes/kubernetes_secret.proto";
+import "org/openmcf/provider/kubernetes/kubernetes_secret.proto";
 
 message KubernetesDaemonSetContainerAppEnv {
   map<string, string> variables = 1;
   
   // Changed from map<string, string> to use KubernetesSensitiveValue
-  map<string, org.project_planton.provider.kubernetes.KubernetesSensitiveValue> secrets = 2;
+  map<string, org.openmcf.provider.kubernetes.KubernetesSensitiveValue> secrets = 2;
 }
 ```
 

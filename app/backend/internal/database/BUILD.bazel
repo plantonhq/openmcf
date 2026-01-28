@@ -9,7 +9,7 @@ go_library(
         "stack_update_repo.go",
         "stack_update_streaming_response_repo.go",
     ],
-    importpath = "github.com/plantonhq/project-planton/app/backend/internal/database",
+    importpath = "github.com/plantonhq/openmcf/app/backend/internal/database",
     visibility = ["//app/backend:__subpackages__"],
     deps = [
         "//app/backend/pkg/models",

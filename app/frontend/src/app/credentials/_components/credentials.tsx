@@ -5,7 +5,7 @@ import { StyledTabs } from '@/app/credentials/_components/styled';
 import { SectionHeader } from '@/components/shared/section-header';
 import { TabPanel } from '@/components/shared/tabpanel';
 import { Providers } from '@/app/credentials/_components/credentials-tab';
-import { Credential_CredentialProvider } from '@/gen/org/project_planton/app/credential/v1/api_pb';
+import { Credential_CredentialProvider } from '@/gen/org/openmcf/app/credential/v1/api_pb';
 import { CredentialDrawer } from '@/app/credentials/_components/forms';
 import { CredentialsList } from '@/components/shared/credentials-list';
 

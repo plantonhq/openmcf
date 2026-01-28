@@ -1,4 +1,4 @@
-# Project Planton Web App - Installation Guide
+# OpenMCF Web App - Installation Guide
 
 **Last Updated:** December 11, 2025
 **Status:** Internal Preview (Not yet public release)
@@ -7,7 +7,7 @@
 
 ## Overview
 
-The Project Planton Web App provides a unified web interface for managing cloud resources and deployments. Everything runs in a single Docker container including MongoDB, backend API, and frontend web UI.
+The OpenMCF Web App provides a unified web interface for managing cloud resources and deployments. Everything runs in a single Docker container including MongoDB, backend API, and frontend web UI.
 
 ## Architecture
 
@@ -59,16 +59,16 @@ docker info
 
 ### Step 1: Install CLI
 
-Install the Project Planton CLI using Homebrew:
+Install the OpenMCF CLI using Homebrew:
 
 ```bash
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 ```
 
 Verify the installation:
 
 ```bash
-project-planton version
+openmcf version
 ```
 
 ### Step 2: Initialize Web App
@@ -76,7 +76,7 @@ project-planton version
 Initialize the web app (this pulls the Docker image and sets up the container):
 
 ```bash
-project-planton webapp init
+openmcf webapp init
 ```
 
 This command will:
@@ -93,7 +93,7 @@ This command will:
 Start the web app services:
 
 ```bash
-project-planton webapp start
+openmcf webapp start
 ```
 
 This command will:
@@ -117,13 +117,13 @@ Once started, access the web app:
 ### Starting the Web App
 
 ```bash
-project-planton webapp start
+openmcf webapp start
 ```
 
 ### Stopping the Web App
 
 ```bash
-project-planton webapp stop
+openmcf webapp stop
 ```
 
 Data is preserved when stopped. Start again anytime.
@@ -131,7 +131,7 @@ Data is preserved when stopped. Start again anytime.
 ### Checking Status
 
 ```bash
-project-planton webapp status
+openmcf webapp status
 ```
 
 Shows container and service status.
@@ -140,13 +140,13 @@ Shows container and service status.
 
 ```bash
 # View last 100 lines
-project-planton webapp logs
+openmcf webapp logs
 
 # Follow logs in real-time
-project-planton webapp logs -f
+openmcf webapp logs -f
 
 # Show more lines
-project-planton webapp logs -n 500
+openmcf webapp logs -n 500
 ```
 
 Press `Ctrl+C` to stop following logs.
@@ -154,7 +154,7 @@ Press `Ctrl+C` to stop following logs.
 ### Restarting
 
 ```bash
-project-planton webapp restart
+openmcf webapp restart
 ```
 
 Useful after configuration changes or if services become unresponsive.
@@ -167,19 +167,19 @@ All data is stored in Docker volumes and persists across container restarts:
 
 | Volume | Purpose | Location |
 |--------|---------|----------|
-| `project-planton-mongodb-data` | MongoDB database | `/data/db` |
-| `project-planton-pulumi-state` | Pulumi state files | `/home/appuser/.pulumi` |
-| `project-planton-go-cache` | Go build cache | `/home/appuser/go` |
+| `openmcf-mongodb-data` | MongoDB database | `/data/db` |
+| `openmcf-pulumi-state` | Pulumi state files | `/home/appuser/.pulumi` |
+| `openmcf-go-cache` | Go build cache | `/home/appuser/go` |
 
 ### Backing Up Data
 
 ```bash
 # Backup MongoDB
-docker run --rm -v project-planton-mongodb-data:/data \
+docker run --rm -v openmcf-mongodb-data:/data \
   -v $(pwd):/backup ubuntu tar czf /backup/mongodb-backup.tar.gz /data
 
 # Backup Pulumi state
-docker run --rm -v project-planton-pulumi-state:/data \
+docker run --rm -v openmcf-pulumi-state:/data \
   -v $(pwd):/backup ubuntu tar czf /backup/pulumi-backup.tar.gz /data
 ```
 
@@ -190,7 +190,7 @@ docker run --rm -v project-planton-pulumi-state:/data \
 ### Keep Data (Recommended)
 
 ```bash
-project-planton webapp uninstall
+openmcf webapp uninstall
 ```
 
 This removes the container but keeps data volumes. You can reinstall later with existing data.
@@ -198,7 +198,7 @@ This removes the container but keeps data volumes. You can reinstall later with 
 ### Complete Removal (Delete Everything)
 
 ```bash
-project-planton webapp uninstall --purge-data
+openmcf webapp uninstall --purge-data
 ```
 
 ⚠️ **Warning:** This deletes all data including MongoDB database and Pulumi state. Cannot be undone!
@@ -235,7 +235,7 @@ Bind for 0.0.0.0:3000 failed: port is already allocated
 
 **Check logs:**
 ```bash
-project-planton webapp logs -f
+openmcf webapp logs -f
 ```
 
 **Common issues:**
@@ -247,17 +247,17 @@ project-planton webapp logs -f
 
 **Error:**
 ```
-⚠️ Container 'project-planton-webapp' already exists.
+⚠️ Container 'openmcf-webapp' already exists.
 ```
 
 **Solution:**
 ```bash
 # If you want to start existing container
-project-planton webapp start
+openmcf webapp start
 
 # If you want to start fresh
-project-planton webapp uninstall
-project-planton webapp init
+openmcf webapp uninstall
+openmcf webapp init
 ```
 
 ---
@@ -266,11 +266,11 @@ project-planton webapp init
 
 ### CLI Configuration
 
-The CLI stores configuration in `~/.project-planton/config.yaml`:
+The CLI stores configuration in `~/.openmcf/config.yaml`:
 
 ```yaml
 backend-url: http://localhost:50051
-webapp-container-id: project-planton-webapp
+webapp-container-id: openmcf-webapp
 webapp-version: latest
 ```
 
@@ -280,7 +280,7 @@ The container uses these environment variables (configured automatically):
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `MONGODB_URI` | `mongodb://localhost:27017/project_planton` | MongoDB connection |
+| `MONGODB_URI` | `mongodb://localhost:27017/openmcf` | MongoDB connection |
 | `SERVER_PORT` | `50051` | Backend API port |
 | `PORT` | `3000` | Frontend port |
 | `PULUMI_HOME` | `/home/appuser/.pulumi` | Pulumi state location |
@@ -300,9 +300,9 @@ Once the web app is running:
 
 ## Getting Help
 
-- View all commands: `project-planton webapp --help`
-- Check service status: `project-planton webapp status`
-- View logs: `project-planton webapp logs -f`
+- View all commands: `openmcf webapp --help`
+- Check service status: `openmcf webapp status`
+- View logs: `openmcf webapp logs -f`
 
 ---
 

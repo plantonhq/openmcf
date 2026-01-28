@@ -5,8 +5,8 @@ import { Providers } from '@/components/providers';
 import { getAllCookiesParsed, getCookieThemeMode, getCookieNavbarOpen } from '@/lib/server/cookies';
 
 export const metadata: Metadata = {
-  title: 'Project Planton Web App',
-  description: 'Project Planton Web Application',
+  title: 'OpenMCF Web App',
+  description: 'OpenMCF Web Application',
 };
 
 const inter = Inter({

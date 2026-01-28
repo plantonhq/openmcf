@@ -23,12 +23,12 @@ import {
   Credential_CredentialProvider,
   Credential,
   CredentialProviderConfigSchema,
-} from '@/gen/org/project_planton/app/credential/v1/api_pb';
-import { CreateCredentialRequest } from '@/gen/org/project_planton/app/credential/v1/io_pb';
-import { Auth0ProviderConfig, Auth0ProviderConfigSchema } from '@/gen/org/project_planton/provider/auth0/provider_pb';
-import { GcpProviderConfig, GcpProviderConfigSchema } from '@/gen/org/project_planton/provider/gcp/provider_pb';
-import { AwsProviderConfig, AwsProviderConfigSchema } from '@/gen/org/project_planton/provider/aws/provider_pb';
-import { AzureProviderConfig, AzureProviderConfigSchema } from '@/gen/org/project_planton/provider/azure/provider_pb';
+} from '@/gen/org/openmcf/app/credential/v1/api_pb';
+import { CreateCredentialRequest } from '@/gen/org/openmcf/app/credential/v1/io_pb';
+import { Auth0ProviderConfig, Auth0ProviderConfigSchema } from '@/gen/org/openmcf/provider/auth0/provider_pb';
+import { GcpProviderConfig, GcpProviderConfigSchema } from '@/gen/org/openmcf/provider/gcp/provider_pb';
+import { AwsProviderConfig, AwsProviderConfigSchema } from '@/gen/org/openmcf/provider/aws/provider_pb';
+import { AzureProviderConfig, AzureProviderConfigSchema } from '@/gen/org/openmcf/provider/azure/provider_pb';
 import { create } from '@bufbuild/protobuf';
 import { providerConfig } from '@/app/credentials/_components/utils';
 

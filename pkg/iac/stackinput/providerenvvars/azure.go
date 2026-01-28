@@ -2,7 +2,7 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	azureprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure"
+	azureprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/azure"
 )
 
 // loadAzureEnvVars loads Azure provider config and returns environment variables.

@@ -1,20 +1,20 @@
-# Project Planton
+# OpenMCF
 
 > **Deploy anywhere with one workflow.** Write declarative YAML once, deploy to AWS, GCP, Azure, or Kubernetes with the same CLI and consistent experience.
 
 <p align="center">
-  <img src="site/public/logo-text.svg" alt="project-planton-logo">
+  <img src="site/public/logo-text.svg" alt="openmcf-logo">
 </p>
 
-## What is Project Planton?
+## What is OpenMCF?
 
 An open-source multi-cloud deployment framework that brings Kubernetes-style consistency to infrastructure deployments everywhere. No vendor lock-in, no artificial abstractions—just provider-specific configurations with a unified structure and workflow.
 
-**[Documentation](https://project-planton.org)** · **[Component Catalog](https://project-planton.org/docs/catalog)** · **[Website](https://project-planton.org)**
+**[Documentation](https://openmcf.org)** · **[Component Catalog](https://openmcf.org/docs/catalog)** · **[Website](https://openmcf.org)**
 
 ---
 
-## Why Project Planton?
+## Why OpenMCF?
 
 - **One structure, any cloud** - Kubernetes Resource Model (apiVersion/kind/metadata/spec) for all deployments
 - **Validate before deploy** - Protocol Buffer validations catch errors in seconds, not minutes
@@ -29,15 +29,15 @@ An open-source multi-cloud deployment framework that brings Kubernetes-style con
 ### 1. Install the CLI
 
 ```bash
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 ```
 
 ### 2. Create a YAML Manifest
 
-Example: Deploy Redis to Kubernetes using the [redis-kubernetes](https://buf.build/project-planton/apis/file/main:project/planton/provider/kubernetes/workload/rediskubernetes/v1/spec.proto) deployment component.
+Example: Deploy Redis to Kubernetes using the [redis-kubernetes](https://buf.build/openmcf/apis/file/main:project/planton/provider/kubernetes/workload/rediskubernetes/v1/spec.proto) deployment component.
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: RedisKubernetes
 metadata:
   name: payments
@@ -56,34 +56,34 @@ spec:
     diskSize: 1Gi
 ```
 
-You can create similar manifests for [AWS VPC](https://github.com/plantonhq/project-planton/tree/main/apis/project/planton/provider/aws/awsvpc/v1), [GKE Cluster](https://github.com/plantonhq/project-planton/tree/main/apis/project/planton/provider/gcp/gkecluster/v1), [Kafka on Kubernetes](https://github.com/plantonhq/project-planton/tree/main/apis/project/planton/provider/kubernetes/workload/kafkakubernetes/v1), and [many more](https://github.com/plantonhq/project-planton/tree/main/apis/project/planton/provider).
+You can create similar manifests for [AWS VPC](https://github.com/plantonhq/openmcf/tree/main/apis/project/planton/provider/aws/awsvpc/v1), [GKE Cluster](https://github.com/plantonhq/openmcf/tree/main/apis/project/planton/provider/gcp/gkecluster/v1), [Kafka on Kubernetes](https://github.com/plantonhq/openmcf/tree/main/apis/project/planton/provider/kubernetes/workload/kafkakubernetes/v1), and [many more](https://github.com/plantonhq/openmcf/tree/main/apis/project/planton/provider).
 
 ### 3. Deploy
 
 ```bash
-project-planton pulumi up --manifest redis.yaml
+openmcf pulumi up --manifest redis.yaml
 ```
 
 ---
 
 ## Learn More
 
-- **[Getting Started Guide](https://project-planton.org/docs/getting-started)** - Your first deployment in 5 minutes
-- **[Component Catalog](https://project-planton.org/docs/catalog)** - Browse 118+ deployment components across 10 providers
-- **[Architecture](https://project-planton.org/docs/concepts/architecture)** - How Protocol Buffers, IaC modules, and CLI work together
+- **[Getting Started Guide](https://openmcf.org/docs/getting-started)** - Your first deployment in 5 minutes
+- **[Component Catalog](https://openmcf.org/docs/catalog)** - Browse 118+ deployment components across 10 providers
+- **[Architecture](https://openmcf.org/docs/concepts/architecture)** - How Protocol Buffers, IaC modules, and CLI work together
 - **[Planton Cloud](https://planton.cloud)** - Commercial SaaS platform with UI, CI/CD, and team features
 
 ---
 
 ## Contributing
 
-Visit [CONTRIBUTING.md](CONTRIBUTING.md) for information on building ProjectPlanton from source or contributing improvements.
+Visit [CONTRIBUTING.md](CONTRIBUTING.md) for information on building OpenMCF from source or contributing improvements.
 
-Also, refer to this [Contributor Guide](https://project-planton.org/docs/guide/contributor-guide) for detailed information about becoming a contributor to Project-Planton.
+Also, refer to this [Contributor Guide](https://openmcf.org/docs/guide/contributor-guide) for detailed information about becoming a contributor to Project-Planton.
 
 ## License
 
-Project Planton is released under the [Apache 2.0 license](LICENSE). You are free to use, modify, and distribute this software in accordance with the license terms.
+OpenMCF is released under the [Apache 2.0 license](LICENSE). You are free to use, modify, and distribute this software in accordance with the license terms.
 
 ## Acknowledgments
 

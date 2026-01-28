@@ -72,7 +72,7 @@ spec:
 
 ### Gateway API Resources
 
-Created `ingress.go` implementing the standard Project Planton ingress pattern:
+Created `ingress.go` implementing the standard OpenMCF ingress pattern:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -102,7 +102,7 @@ Created `ingress.go` implementing the standard Project Planton ingress pattern:
 ## Usage Example
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesTektonOperator
 metadata:
   name: tekton-operator
@@ -123,7 +123,7 @@ spec:
 ### For Platform Teams
 - **External Dashboard Access**: Expose Tekton Dashboard with TLS without manual ingress configuration
 - **Pipeline Observability**: Enable event-driven monitoring and alerting via CloudEvents
-- **Consistent Experience**: Same ingress pattern as other Project Planton components
+- **Consistent Experience**: Same ingress pattern as other OpenMCF components
 
 ### For Developers
 - **Simple Configuration**: Two fields to enable powerful features
@@ -150,7 +150,7 @@ spec:
 
 - **yaml/v2 Fix** (earlier in session): Fixed CRD timing issues using Pulumi's yaml/v2
 - **KubernetesTekton Component**: Reference implementation with same features
-- **Gateway API Pattern**: Follows established Project Planton ingress conventions
+- **Gateway API Pattern**: Follows established OpenMCF ingress conventions
 
 ---
 

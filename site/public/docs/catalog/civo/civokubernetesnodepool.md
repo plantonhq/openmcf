@@ -16,7 +16,7 @@ Within this lightweight foundation, **node pools** serve as the fundamental buil
 
 The question isn't whether to use node pools (you must have at least one), but **how to manage them** as your infrastructure scales from development to production. The deployment method you choose determines whether node pool management becomes a source of toil or a foundation for reliable, automated infrastructure.
 
-This document explores the landscape of deployment methods for Civo Kubernetes node pools, from manual UI operations to production-grade Infrastructure-as-Code. We'll examine what works for different scales, identify the production-ready approaches, and explain Project Planton's abstraction layer.
+This document explores the landscape of deployment methods for Civo Kubernetes node pools, from manual UI operations to production-grade Infrastructure-as-Code. We'll examine what works for different scales, identify the production-ready approaches, and explain OpenMCF's abstraction layer.
 
 ## The Deployment Methods Landscape
 
@@ -223,7 +223,7 @@ For teams moving beyond manual management, the choice usually narrows to Terrafo
 - Network settings: Inherited from cluster
 - Node taints: Partial support, often post-creation
 
-**The autoscaling nuance:** Civo doesn't expose autoscaling as a per-pool API parameter. Instead, you install the `civo-cluster-autoscaler` application (via cluster apps configuration) and configure min/max ranges in its deployment spec. Neither Terraform nor Pulumi abstracts this completely—Project Planton does, which we'll discuss next.
+**The autoscaling nuance:** Civo doesn't expose autoscaling as a per-pool API parameter. Instead, you install the `civo-cluster-autoscaler` application (via cluster apps configuration) and configure min/max ranges in its deployment spec. Neither Terraform nor Pulumi abstracts this completely—OpenMCF does, which we'll discuss next.
 
 **Secret management:** Both require your Civo API key. Best practices:
 - Terraform: Use environment variable `CIVO_TOKEN`, never hardcode
@@ -235,12 +235,12 @@ For teams moving beyond manual management, the choice usually narrows to Terrafo
 - Staging: 3 nodes, `g4s.kube.medium`, autoscaling 2-5
 - Production: 3-5 nodes, `g4s.kube.large`, autoscaling 3-10
 
-## Project Planton's Abstraction Layer
+## OpenMCF's Abstraction Layer
 
-Project Planton provides a **cloud-agnostic API** for node pool management. Instead of learning Civo's specific API patterns, Terraform resource syntax, or Pulumi's programming model, you declare intent using a protobuf-defined schema:
+OpenMCF provides a **cloud-agnostic API** for node pool management. Instead of learning Civo's specific API patterns, Terraform resource syntax, or Pulumi's programming model, you declare intent using a protobuf-defined schema:
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoKubernetesNodePool
 metadata:
   name: production-workers
@@ -263,7 +263,7 @@ spec:
 
 Most users configure the same small set of parameters: node count, instance size, autoscaling bounds, and tags. Edge cases like custom taints, specific node labels, or advanced networking affect fewer than 20% of deployments.
 
-Project Planton's `CivoKubernetesNodePoolSpec` exposes only essential fields:
+OpenMCF's `CivoKubernetesNodePoolSpec` exposes only essential fields:
 - `node_pool_name`: Human-readable identifier
 - `cluster`: Reference to parent cluster
 - `size`: Instance type (e.g., `g4s.kube.medium`)
@@ -294,11 +294,11 @@ Civo's native approach requires:
 2. Configure min/max in autoscaler deployment flags
 3. Ensure node pool labels match autoscaler configuration
 
-Project Planton abstracts this: set `auto_scale: true`, specify bounds, and the controller handles the rest.
+OpenMCF abstracts this: set `auto_scale: true`, specify bounds, and the controller handles the rest.
 
-### What Project Planton Isn't
+### What OpenMCF Isn't
 
-It's not a replacement for Terraform or Pulumi—it's a **higher-level orchestrator**. Under the hood, Project Planton likely generates Terraform/Pulumi code or calls cloud APIs directly. The value is:
+It's not a replacement for Terraform or Pulumi—it's a **higher-level orchestrator**. Under the hood, OpenMCF likely generates Terraform/Pulumi code or calls cloud APIs directly. The value is:
 
 - **Opinionated defaults**: Production-ready configurations without deep cloud expertise
 - **Cross-cloud portability**: Swap Civo for GKE by changing the API version
@@ -473,13 +473,13 @@ Civo's pricing model is transparent: you pay for node instances, period. No cont
 
 The journey from manual UI clicks to production-grade node pool management mirrors the broader infrastructure evolution: from imperative commands to declarative desired state, from ad-hoc scripts to version-controlled automation.
 
-For Civo Kubernetes node pools, the production baseline is clear: **use Infrastructure-as-Code**. Whether Terraform, Pulumi, or a higher-level abstraction like Project Planton, the principles remain constant: declare your intent, track it in version control, and let tooling reconcile reality.
+For Civo Kubernetes node pools, the production baseline is clear: **use Infrastructure-as-Code**. Whether Terraform, Pulumi, or a higher-level abstraction like OpenMCF, the principles remain constant: declare your intent, track it in version control, and let tooling reconcile reality.
 
 Civo's decision to build on K3s and eliminate control plane fees creates a compelling option for teams seeking simplicity and cost efficiency. Node pools become the primary lever for scaling and workload isolation—making their reliable management essential.
 
-Project Planton's abstraction distills node pool configuration to its essence: the 20% of parameters that cover 80% of use cases. This approach reduces cognitive load, accelerates onboarding, and enables multi-cloud strategies where Civo is one provider among many, all managed through a consistent API.
+OpenMCF's abstraction distills node pool configuration to its essence: the 20% of parameters that cover 80% of use cases. This approach reduces cognitive load, accelerates onboarding, and enables multi-cloud strategies where Civo is one provider among many, all managed through a consistent API.
 
-The future of node pool management isn't more parameters and knobs—it's **smarter defaults, stronger abstractions, and automation that fades into the background**. Civo's simplicity and Project Planton's opinionated API both push in that direction.
+The future of node pool management isn't more parameters and knobs—it's **smarter defaults, stronger abstractions, and automation that fades into the background**. Civo's simplicity and OpenMCF's opinionated API both push in that direction.
 
 Choose the deployment method that matches your scale: start simple, automate early, and treat infrastructure as code from day one. Your future self, when managing dozens of clusters across environments, will thank you.
 

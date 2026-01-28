@@ -5,7 +5,7 @@ RULE NUMBER
 011
 
 TITLE
-Forge: Pulumi end-to-end via ProjectPlanton CLI (pulumi)
+Forge: Pulumi end-to-end via OpenMCF CLI (pulumi)
 
 ROLE
 You are the PlantonCloud Code Partner working inside the developer’s local workspace in Cursor. This rule runs an end-to-end update using the local CLI and the resource’s Pulumi module.

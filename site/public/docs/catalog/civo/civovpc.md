@@ -16,7 +16,7 @@ In the hyperscale cloud era, VPC architecture has become synonymous with complex
 
 What makes this architecture compelling is not what it lacks, but what it enables: **zero data egress fees**, **transparent pricing**, and **operational simplicity**. Unlike hyperscalers that charge for inter-AZ traffic or VPC endpoint hours, Civo's model encourages best practices like creating separate networks for each environment without financial penalty. The platform's OpenStack-based networking ensures true tenant isolation—not the pseudo-private networks some clouds offer where resources from different accounts might share infrastructure.
 
-This guide explains the landscape of deployment methods for Civo VPCs, from manual dashboard clicks to production-grade Infrastructure as Code, and shows how Project Planton abstracts these choices into a clean, protobuf-defined API that works consistently across clouds.
+This guide explains the landscape of deployment methods for Civo VPCs, from manual dashboard clicks to production-grade Infrastructure as Code, and shows how OpenMCF abstracts these choices into a clean, protobuf-defined API that works consistently across clouds.
 
 ---
 
@@ -74,7 +74,7 @@ civo network create prod-main-network --cidr 10.10.1.0/24 --region LON1
 
 **Critical Gap: No Ansible Support.** Unlike Terraform or Pulumi, there is **no official Ansible collection for Civo**. The `community.network` collection is deprecated and doesn't include Civo modules. Teams standardized on Ansible must use workarounds—calling the API via `ansible.builtin.uri` or shelling out to the `civo` CLI with `ansible.builtin.command`. This is a significant friction point for Ansible-first organizations.
 
-**Verdict:** Useful if you're building a custom control plane (like Project Planton) or integrating Civo into a broader orchestration framework. For most teams, higher-level IaC tools (Terraform, Pulumi) handle API calls and state management for you.
+**Verdict:** Useful if you're building a custom control plane (like OpenMCF) or integrating Civo into a broader orchestration framework. For most teams, higher-level IaC tools (Terraform, Pulumi) handle API calls and state management for you.
 
 ---
 
@@ -229,7 +229,7 @@ Both Terraform and Pulumi are production-ready for Civo VPCs. Here's how they co
 | **Testing** | `terraform validate` and manual | Unit tests with standard frameworks |
 | **Onboarding** | Most engineers know HCL basics | Engineers already know programming languages |
 
-**Both work equally well** for standard Civo VPC provisioning. The choice is team preference, not capability. Project Planton supports both by abstracting the underlying IaC tool behind a protobuf API.
+**Both work equally well** for standard Civo VPC provisioning. The choice is team preference, not capability. OpenMCF supports both by abstracting the underlying IaC tool behind a protobuf API.
 
 ---
 
@@ -357,9 +357,9 @@ Civo provides **two independent security layers**:
 
 ---
 
-## The Project Planton Choice: Abstraction with Pragmatism
+## The OpenMCF Choice: Abstraction with Pragmatism
 
-Project Planton abstracts Civo VPC provisioning behind a clean, protobuf-defined API (`CivoVpc`). This provides a consistent interface across clouds while respecting Civo's unique characteristics.
+OpenMCF abstracts Civo VPC provisioning behind a clean, protobuf-defined API (`CivoVpc`). This provides a consistent interface across clouds while respecting Civo's unique characteristics.
 
 ### What We Abstract
 
@@ -382,7 +382,7 @@ This follows the **80/20 principle**: 80% of users need only these fields. The r
 
 ### Under the Hood: Pulumi (Go)
 
-Project Planton uses **Pulumi (Go)** for Civo VPC provisioning. Why?
+OpenMCF uses **Pulumi (Go)** for Civo VPC provisioning. Why?
 
 - **Language Consistency:** Our broader multi-cloud orchestration is Go-based. Pulumi's Go SDK integrates naturally.
 - **Equivalent Coverage:** Pulumi's Civo provider (bridged from Terraform) supports all network operations we need.
@@ -392,7 +392,7 @@ That said, Terraform would work equally well. The choice is an implementation de
 
 ### Stack Outputs: What You Get Back
 
-After creating a Civo VPC, Project Planton captures the following outputs in `CivoVpcStackOutputs`:
+After creating a Civo VPC, OpenMCF captures the following outputs in `CivoVpcStackOutputs`:
 
 - **`network_id`**: The unique ID of the created network. This is the critical linker value—used as `network_id` in Kubernetes clusters, compute instances, and firewalls.
 - **`cidr_block`**: The actual IPv4 CIDR block (auto-allocated if you didn't specify one).
@@ -409,7 +409,7 @@ These outputs are stored in the resource's `status` field and can be referenced 
 **Use Case:** Quick dev network for testing. Let Civo handle CIDR allocation.
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoVpc
 metadata:
   name: dev-test-network
@@ -432,7 +432,7 @@ spec:
 **Use Case:** Staging environment with planned CIDR for future VPN integration.
 
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoVpc
 metadata:
   name: staging-main-network
@@ -461,7 +461,7 @@ spec:
 ```yaml
 # Production - London
 ---
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoVpc
 metadata:
   name: prod-lon1-network
@@ -474,7 +474,7 @@ spec:
 
 # Production - Frankfurt
 ---
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoVpc
 metadata:
   name: prod-fra1-network
@@ -510,7 +510,7 @@ spec:
 
 6. **Two-tier security is essential.** Use Civo firewalls for perimeter security (North-South traffic) and Kubernetes Network Policies for intra-cluster security (East-West traffic).
 
-7. **Project Planton abstracts the API** into a clean protobuf spec, making multi-cloud deployments consistent while respecting Civo's unique characteristics. The 80/20 config is credential, name, region, and optional CIDR.
+7. **OpenMCF abstracts the API** into a clean protobuf spec, making multi-cloud deployments consistent while respecting Civo's unique characteristics. The 80/20 config is credential, name, region, and optional CIDR.
 
 ---
 
@@ -522,7 +522,7 @@ The /24 CIDR limit forces a design pattern of many small, single-purpose network
 
 What you lose in flexibility, you gain in operational simplicity and cost predictability. For the 80% of businesses that don't need multi-region VPC peering or sub-millisecond inter-AZ latency guarantees, Civo's model is refreshingly straightforward.
 
-Project Planton makes this even simpler. Define your network once in a protobuf spec, let our control plane handle the Pulumi/Terraform orchestration, and move on to building your application. The complexity is abstracted, but the simplicity—and the cost savings—remain.
+OpenMCF makes this even simpler. Define your network once in a protobuf spec, let our control plane handle the Pulumi/Terraform orchestration, and move on to building your application. The complexity is abstracted, but the simplicity—and the cost savings—remain.
 
 ---
 
@@ -538,5 +538,5 @@ Project Planton makes this even simpler. Define your network once in a protobuf 
 
 ---
 
-**Bottom Line:** Civo VPCs are simple, regional, /24-limited networks that provide true isolation for cloud-native workloads. Manage them with Terraform or Pulumi (never manually), plan your CIDR scheme upfront, and embrace the "many small networks" pattern. Project Planton abstracts this into a protobuf API that works consistently across clouds while respecting Civo's deliberate simplicity.
+**Bottom Line:** Civo VPCs are simple, regional, /24-limited networks that provide true isolation for cloud-native workloads. Manage them with Terraform or Pulumi (never manually), plan your CIDR scheme upfront, and embrace the "many small networks" pattern. OpenMCF abstracts this into a protobuf API that works consistently across clouds while respecting Civo's deliberate simplicity.
 

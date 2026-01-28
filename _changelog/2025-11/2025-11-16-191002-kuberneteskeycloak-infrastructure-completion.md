@@ -183,7 +183,7 @@ output "internal_hostname" { value = local.internal_hostname }
 **File**: `iac/hack/manifest.yaml` (330 bytes)
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesKeycloak
 metadata:
   name: test-keycloak

@@ -1,0 +1,5 @@
+apiVersion: cloudflare.openmcf.org/v1
+kind: CloudflareD1Database
+metadata:
+  name: first-certificate
+spec:

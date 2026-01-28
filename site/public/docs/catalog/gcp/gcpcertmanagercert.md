@@ -20,9 +20,9 @@ Yet the classic approach retains one compelling advantage: **it's free**. Certif
 
 This creates a strategic question: How do you design an automation framework that gives users the best of both worlds—the simplicity and cost savings of the classic approach when appropriate, and the power and flexibility of Certificate Manager when needed?
 
-Project Planton's `GcpCertManagerCert` API answers this question by providing a **unified abstraction** over both services. Developers specify their requirements—domain names, DNS zone, desired certificate type—and the controller intelligently provisions the appropriate underlying resource. The API also automates the complex DNS validation workflow, transforming a multi-step orchestration into a single declarative specification.
+OpenMCF's `GcpCertManagerCert` API answers this question by providing a **unified abstraction** over both services. Developers specify their requirements—domain names, DNS zone, desired certificate type—and the controller intelligently provisions the appropriate underlying resource. The API also automates the complex DNS validation workflow, transforming a multi-step orchestration into a single declarative specification.
 
-This document explores the landscape of GCP certificate provisioning methods, compares the two services, and explains Project Planton's approach to making SSL/TLS certificate management simple, cost-effective, and production-ready.
+This document explores the landscape of GCP certificate provisioning methods, compares the two services, and explains OpenMCF's approach to making SSL/TLS certificate management simple, cost-effective, and production-ready.
 
 ## The Evolution: From Classic to Modern Certificate Management
 
@@ -110,9 +110,9 @@ The following table summarizes the key differences:
 | **Scale Limit** | 15 certs per proxy | 1 map with thousands of entries |
 | **Zero-Downtime Migration** | Difficult (chicken-and-egg) | Native (DNS auth enables "make-before-break") |
 
-## The Project Planton Choice: Intelligent, Unified Abstraction
+## The OpenMCF Choice: Intelligent, Unified Abstraction
 
-Project Planton's `GcpCertManagerCert` API provides a **unified interface** over both services. The controller intelligently decides which underlying resource to provision based on user requirements.
+OpenMCF's `GcpCertManagerCert` API provides a **unified interface** over both services. The controller intelligently decides which underlying resource to provision based on user requirements.
 
 ### The Strategy: Best of Both Worlds
 
@@ -133,7 +133,7 @@ For simple, non-wildcard, global certificates, users can explicitly choose `cert
 
 ### The Automation "Magic": DNS Validation Orchestration
 
-The most significant value-add of the Project Planton abstraction is **automated DNS validation**. Here's what the controller does behind the scenes:
+The most significant value-add of the OpenMCF abstraction is **automated DNS validation**. Here's what the controller does behind the scenes:
 
 **User provides (simplified API):**
 ```yaml
@@ -361,7 +361,7 @@ Analysis of Ansible documentation reveals a gap: while modules exist for classic
 2. Shell out to `gcloud` commands (breaking declarative idempotency)
 3. Use raw HTTP API calls
 
-**Verdict:** Ansible is **not recommended** for Certificate Manager automation. This represents a significant tooling gap that higher-level abstractions like Project Planton can fill.
+**Verdict:** Ansible is **not recommended** for Certificate Manager automation. This represents a significant tooling gap that higher-level abstractions like OpenMCF can fill.
 
 ### Cloud-Native: Crossplane
 
@@ -420,7 +420,7 @@ spec:
 2. Create a *dummy* `ManagedCertificate` CRD (to force GKE to create the target proxy)
 3. Use `gcloud compute target-https-proxies update` to manually swap the dummy certificate for the real Certificate Manager map
 
-This is a painful, multi-step process that breaks Kubernetes-native workflows. It's a major opportunity for Project Planton to provide a better abstraction.
+This is a painful, multi-step process that breaks Kubernetes-native workflows. It's a major opportunity for OpenMCF to provide a better abstraction.
 
 ## Production Best Practices
 
@@ -500,9 +500,9 @@ The `--clear-ssl-certificates` flag is critical when migrating from classic to C
 
 The landscape of GCP SSL/TLS certificate provisioning presents a choice: the free-but-limited classic service, or the powerful-but-paid Certificate Manager. For infrastructure automation, the answer is not either/or—it's both, intelligently.
 
-Project Planton's `GcpCertManagerCert` API embodies this philosophy. By providing a unified interface that abstracts the complexity of DNS validation and intelligently selects the appropriate underlying service, it gives developers the best of both worlds: cost optimization when appropriate, and production-ready features when needed.
+OpenMCF's `GcpCertManagerCert` API embodies this philosophy. By providing a unified interface that abstracts the complexity of DNS validation and intelligently selects the appropriate underlying service, it gives developers the best of both worlds: cost optimization when appropriate, and production-ready features when needed.
 
-The shift from manual load balancer validation to automated DNS validation represents a paradigm change. DNS-based authorization decouples certificate lifecycle from infrastructure deployment, eliminating the chicken-and-egg problem and enabling true zero-downtime migrations. By automating the multi-step orchestration (authorization → DNS record → certificate), Project Planton transforms a complex, error-prone workflow into a simple, declarative specification.
+The shift from manual load balancer validation to automated DNS validation represents a paradigm change. DNS-based authorization decouples certificate lifecycle from infrastructure deployment, eliminating the chicken-and-egg problem and enabling true zero-downtime migrations. By automating the multi-step orchestration (authorization → DNS record → certificate), OpenMCF transforms a complex, error-prone workflow into a simple, declarative specification.
 
 Whether you're securing a single domain or managing thousands of certificates for a multi-tenant SaaS platform, the `GcpCertManagerCert` API provides a foundation for production-ready, scalable SSL/TLS management on Google Cloud.
 

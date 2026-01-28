@@ -6,11 +6,11 @@
 
 ## Summary
 
-Implemented a comprehensive issue management system for Project Planton with four cursor rules that enable structured issue tracking, image handling, GitHub issue creation, and automated issue archival. The system adapts the proven planton-cloud issue management workflow to Project Planton's repository structure, with deployment-component-aware area detection and CLI-focused labeling.
+Implemented a comprehensive issue management system for OpenMCF with four cursor rules that enable structured issue tracking, image handling, GitHub issue creation, and automated issue archival. The system adapts the proven planton-cloud issue management workflow to OpenMCF's repository structure, with deployment-component-aware area detection and CLI-focused labeling.
 
 ## Problem Statement
 
-During development of Project Planton, we frequently discover bugs, feature requests, and refactoring opportunities that should be tracked for future implementation. Previously, there was no standardized process for:
+During development of OpenMCF, we frequently discover bugs, feature requests, and refactoring opportunities that should be tracked for future implementation. Previously, there was no standardized process for:
 
 ### Pain Points
 
@@ -23,12 +23,12 @@ During development of Project Planton, we frequently discover bugs, feature requ
 
 ## Solution
 
-Created a complete issue management system modeled after the successful planton-cloud implementation, with adaptations specific to Project Planton's structure and focus areas.
+Created a complete issue management system modeled after the successful planton-cloud implementation, with adaptations specific to OpenMCF's structure and focus areas.
 
 ### System Architecture
 
 ```
-project-planton/
+openmcf/
 ├── _issues/                          # Issue tracking
 │   ├── {timestamp}.{area}.{type}.{slug}.md
 │   ├── images/                       # Open issue images
@@ -38,36 +38,36 @@ project-planton/
 │       └── images/                   # Closed issue images
 ├── .cursor/rules/
 │   ├── issues/
-│   │   ├── create-project-planton-issue.mdc
-│   │   └── close-project-planton-issue.mdc
+│   │   ├── create-openmcf-issue.mdc
+│   │   └── close-openmcf-issue.mdc
 │   └── git/github/issues/
-│       ├── create-project-planton-github-issue.mdc
-│       └── generate-project-planton-issue-info.mdc
+│       ├── create-openmcf-github-issue.mdc
+│       └── generate-openmcf-issue-info.mdc
 └── tools/local-dev/
     └── create_github_issue.py       # Non-interactive gh CLI wrapper
 ```
 
 ### Four Core Rules
 
-**1. Issue Creation** (`@create-project-planton-issue`)
+**1. Issue Creation** (`@create-openmcf-issue`)
 - Creates structured issue files with intelligent area detection
 - Supports complete image workflow (analyze, rename, copy, reference)
 - Flexible content structure (freeform or structured)
 - Explicit invocation only (no auto-creation)
 
-**2. Issue Info Generation** (`@generate-project-planton-issue-info`)
+**2. Issue Info Generation** (`@generate-openmcf-issue-info`)
 - Generates GitHub issue title and description as copyable code blocks
 - Deployment-component-aware label inference
 - Comprehensive templates for bugs, features, and tasks
 - Visual enhancements (emojis, checkboxes, status indicators)
 
-**3. GitHub Issue Creation** (`@create-project-planton-github-issue`)
+**3. GitHub Issue Creation** (`@create-openmcf-github-issue`)
 - Non-interactive GitHub issue creation via gh CLI
 - Auto-infers labels from file paths and context
 - Deterministic Python script for reliable execution
 - Optional assignees, milestones, projects, browser opening
 
-**4. Issue Closure** (`@close-project-planton-issue`)
+**4. Issue Closure** (`@close-openmcf-issue`)
 - Moves resolved issues to `_issues/closed/` with closing timestamp
 - Two modes: with resolution context (recent fix) or simple close
 - Relocates associated images maintaining references
@@ -77,22 +77,22 @@ project-planton/
 
 ### Area Detection System
 
-Adapted from planton-cloud to match Project Planton's structure:
+Adapted from planton-cloud to match OpenMCF's structure:
 
-**Project Planton Areas**:
+**OpenMCF Areas**:
 - `deployment-component` - Deployment component changes
 - `cli` - CLI command and flag changes
 - `pkg` - Package and library changes
 - `forge` - Deployment component forge system
 - `apis` - API and protobuf changes
-- `site` - Project Planton website
+- `site` - OpenMCF website
 - `tooling` - Build tools and scripts
 - `repo` - Repository-wide changes
 
 **File Path Mapping**:
 ```
-apis/org/project_planton/provider/**  → deployment-component
-cmd/project-planton/**                → cli
+apis/org/openmcf/provider/**  → deployment-component
+cmd/openmcf/**                → cli
 pkg/**                                → pkg
 _rules/deployment-component/forge/** → forge
 site/**                               → site
@@ -158,8 +158,8 @@ Deployment-component and provider-aware labeling:
 
 **Area Labels**:
 ```
-apis/org/project_planton/provider/** → area/deployment-component,area/<provider>
-cmd/project-planton/**              → area/cli
+apis/org/openmcf/provider/** → area/deployment-component,area/<provider>
+cmd/openmcf/**              → area/cli
 pkg/**                              → area/pkg
 .cursor/rules/.../forge/**          → area/forge
 ```
@@ -283,7 +283,7 @@ python3 tools/local-dev/create_github_issue.py \
 - **Knowledge preservation**: Visual + written context captured systematically
 
 ### Developer Workflow
-- **Easy invocation**: Simply use `@create-project-planton-issue`
+- **Easy invocation**: Simply use `@create-openmcf-issue`
 - **Guided process**: Rules ask questions and provide defaults
 - **Automated naming**: Timestamp, area, type, slug all handled
 - **Image workflow**: Complete automation from workspace to embedding
@@ -294,7 +294,7 @@ python3 tools/local-dev/create_github_issue.py \
 ### Issue Discovery During Development
 
 ```
-User: "I noticed the Postgres component validation is broken. @create-project-planton-issue"
+User: "I noticed the Postgres component validation is broken. @create-openmcf-issue"
 
 Agent:
 - Gets timestamp: 2025-12-26-143022
@@ -309,7 +309,7 @@ Agent:
 ### Closing Issue After Fix
 
 ```
-User: "@close-project-planton-issue postgres-spec-validation"
+User: "@close-openmcf-issue postgres-spec-validation"
 
 Agent:
 - Gets timestamp: 2025-12-28-073049
@@ -325,10 +325,10 @@ Agent:
 ### Creating GitHub Issue
 
 ```
-User: "@create-project-planton-github-issue"
+User: "@create-openmcf-github-issue"
 
 Agent:
-- Generates via @generate-project-planton-issue-info
+- Generates via @generate-openmcf-issue-info
 - Title: "Postgres deployment component spec validation broken for port conflicts"
 - Infers labels: bug,area/deployment-component,area/kubernetes,priority/critical,P0
 - Writes body to .cursor/workspace/issue-description.md
@@ -339,10 +339,10 @@ Agent:
 ## Files Created
 
 ### Rules
-- `_rules/issues/create-project-planton-issue.mdc` (653 lines)
-- `_rules/issues/close-project-planton-issue.mdc` (662 lines)
-- `_rules/git/github/issues/generate-project-planton-issue-info.mdc` (341 lines)
-- `_rules/git/github/issues/create-project-planton-github-issue.mdc` (281 lines)
+- `_rules/issues/create-openmcf-issue.mdc` (653 lines)
+- `_rules/issues/close-openmcf-issue.mdc` (662 lines)
+- `_rules/git/github/issues/generate-openmcf-issue-info.mdc` (341 lines)
+- `_rules/git/github/issues/create-openmcf-github-issue.mdc` (281 lines)
 
 ### Tooling
 - `tools/local-dev/create_github_issue.py` (265 lines)
@@ -357,32 +357,32 @@ Agent:
 ### Documentation
 - Updated `.cursor/rules/README.md` with issue management section
 
-## Project Planton Adaptations
+## OpenMCF Adaptations
 
-Key adaptations from planton-cloud to project-planton:
+Key adaptations from planton-cloud to openmcf:
 
 **Area Changes**:
 ```
-planton-cloud              → project-planton
+planton-cloud              → openmcf
 -----------------          → -------------------
 console                    → cli (primary interface)
 backend                    → deployment-component (core artifacts)
 infra-hub                  → forge (code generation system)
-project-planton (area)     → pkg (libraries)
+openmcf (area)     → pkg (libraries)
 ```
 
 **File Path Mappings**:
 ```
-planton-cloud                          → project-planton
+planton-cloud                          → openmcf
 ---------------------------------      → ----------------------------------
-client-apps/web-console/**            → cmd/project-planton/**
-backend/services/**                    → apis/org/project_planton/provider/**
+client-apps/web-console/**            → cmd/openmcf/**
+backend/services/**                    → apis/org/openmcf/provider/**
 .cursor/rules/product/.../forge/**    → .cursor/rules/.../forge/**
 ```
 
 **Component Labels**:
 ```
-Added for project-planton:
+Added for openmcf:
 - kubernetes (for K8s providers)
 - aws, gcp, azure (for cloud providers)
 - pulumi, terraform (for IaC backends)
@@ -430,7 +430,7 @@ Added for project-planton:
 
 This implementation builds on:
 
-- **planton-cloud issue system**: Proven workflow adapted for project-planton
+- **planton-cloud issue system**: Proven workflow adapted for openmcf
 - **planton-cloud changelog rule**: Similar structure and philosophy
 - **Existing PR info rule**: Area detection patterns
 - **GitHub CLI (gh)**: Non-interactive issue creation

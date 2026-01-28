@@ -55,7 +55,7 @@ Each example includes:
 ### File: `iac/hack/manifest.yaml`
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: LocustKubernetes
 metadata:
   name: test-locust-cluster

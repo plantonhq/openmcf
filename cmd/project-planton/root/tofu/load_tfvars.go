@@ -1,17 +1,17 @@
 package tofu
 
 import (
-	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfvars"
+	"github.com/plantonhq/openmcf/internal/manifest"
+	"github.com/plantonhq/openmcf/pkg/iac/tofu/tfvars"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var LoadTfVars = &cobra.Command{
 	Use:   "load-tfvars",
-	Short: "load a project-planton manifest into tfvars format",
+	Short: "load a openmcf manifest into tfvars format",
 	Example: `
-	project-planton tofu load-tfvars --manifest manifest.yaml
+	openmcf tofu load-tfvars --manifest manifest.yaml
 	`,
 	Args: cobra.ExactArgs(1), //path of the manifest to load
 	Run:  loadTfVarsHandler,

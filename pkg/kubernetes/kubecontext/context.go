@@ -1,8 +1,8 @@
 package kubecontext
 
 import (
-	"github.com/plantonhq/project-planton/pkg/kubernetes/kuberneteslabels"
-	"github.com/plantonhq/project-planton/pkg/reflection/metadatareflect"
+	"github.com/plantonhq/openmcf/pkg/kubernetes/kuberneteslabels"
+	"github.com/plantonhq/openmcf/pkg/reflection/metadatareflect"
 	"google.golang.org/protobuf/proto"
 )
 

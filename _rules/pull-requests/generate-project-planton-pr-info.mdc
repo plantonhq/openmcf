@@ -35,7 +35,7 @@ Usage: In Ask mode, invoke explicitly as `@pr-info`.
 <prefix>(<scope-path>): <concise, imperative title>
 ```
 
-### Examples of valid scopes (Project Planton)
+### Examples of valid scopes (OpenMCF)
 - `apis/project/planton`
 - `charts/aws/eks-environment`
 - `charts/aws/terraform-backend`
@@ -44,7 +44,7 @@ Usage: In Ask mode, invoke explicitly as `@pr-info`.
 - `charts/azure/aks-environment`
 - `charts/digital-ocean/doks-environment`
 - `charts/digital-ocean/app-platform-environment`
-- `cmd/project-planton`
+- `cmd/openmcf`
 - `internal/manifest`
 - `internal/cli/flag`
 - `pkg/protobufyaml`
@@ -68,7 +68,7 @@ Usage: In Ask mode, invoke explicitly as `@pr-info`.
 - `chore`: Routine maintenance (formatting, small cleanups) not covered above
 - `revert`: Reverts a previous commit/PR
 
-## Repository-aware scope heuristics (Project Planton)
+## Repository-aware scope heuristics (OpenMCF)
 Determine the `<scope-path>` from the changed files. Use the most impacted area by lines changed; if multiple, see multi-area guidance.
 
 - APIs
@@ -82,7 +82,7 @@ Determine the `<scope-path>` from the changed files. Use the most impacted area 
   - Charts across multiple providers → `charts`
 
 - CLI
-  - `cmd/project-planton/**` → `cmd/project-planton`
+  - `cmd/openmcf/**` → `cmd/openmcf`
 
 - Internal packages
   - `internal/<pkg>/**` → `internal/<pkg>` (e.g., `internal/manifest`, `internal/cli/panic`)

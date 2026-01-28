@@ -7,11 +7,11 @@ description: Action rule to rename deployment components with comprehensive find
 
 ## Purpose
 
-This rule renames deployment components across the entire Project Planton codebase, applying comprehensive find-replace patterns and validating changes through the full build pipeline. Use this when component names need to change for clarity, consistency, or to remove unnecessary abstractions.
+This rule renames deployment components across the entire OpenMCF codebase, applying comprehensive find-replace patterns and validating changes through the full build pipeline. Use this when component names need to change for clarity, consistency, or to remove unnecessary abstractions.
 
 ## Role
 
-You are the Project Planton Code Partner. This rule orchestrates systematic component renames, handling all file operations, registry updates, documentation changes, and build verification.
+You are the OpenMCF Code Partner. This rule orchestrates systematic component renames, handling all file operations, registry updates, documentation changes, and build verification.
 
 ## When to Use Rename
 
@@ -32,7 +32,7 @@ Use rename when you need to:
 
 **Key Principle**: Component rename is about naming accuracy, not functionality changes.
 
-From the Project Planton architecture:
+From the OpenMCF architecture:
 > "Kubernetes Microservice is an absolute abstraction. We already have Kubernetes CronJob that accurately indicates what it transforms into in Kubernetes. Renaming KubernetesMicroservice to KubernetesDeployment sets the stage for KubernetesStatefulSet."
 
 **What rename does:**
@@ -53,7 +53,7 @@ From the Project Planton architecture:
 ### Basic Syntax
 
 ```
-@rename-project-planton-component
+@rename-openmcf-component
 ```
 
 The rule will interactively guide you through the rename process.
@@ -70,7 +70,7 @@ The rule will ask you three questions:
 
 2. **New component name** (PascalCase, e.g., "KubernetesDeployment")
    - Must not already exist in registry
-   - Should follow Project Planton naming conventions
+   - Should follow OpenMCF naming conventions
 
 3. **New ID prefix** (optional)
    - Current prefix will be shown
@@ -159,7 +159,7 @@ The script outputs JSON with results:
 
 If all tests pass (success: true), the rule will:
 
-1. **Automatically invoke** `@create-project-planton-changelog`
+1. **Automatically invoke** `@create-openmcf-changelog`
 2. **Provide commit guidance**:
    ```bash
    git add -A
@@ -317,7 +317,7 @@ Before starting rename:
 **Motivation**: "Microservice" is an abstraction. "Deployment" accurately describes the Kubernetes resource created.
 
 ```
-@rename-project-planton-component
+@rename-openmcf-component
 
 Old component name: KubernetesMicroservice
 New component name: KubernetesDeployment
@@ -333,7 +333,7 @@ Proceed? yes
 ✅ Build pipeline passed (protos, build, test).
 
 Automatically creating changelog...
-@create-project-planton-changelog
+@create-openmcf-changelog
 ```
 
 **Note**: If the icon folder doesn't exist, you'll see:
@@ -348,7 +348,7 @@ Automatically creating changelog...
 **Scenario**: Name clarity improvement without changing ID system.
 
 ```
-@rename-project-planton-component
+@rename-openmcf-component
 
 Old component name: OldComponentName
 New component name: BetterComponentName
@@ -360,7 +360,7 @@ New ID prefix (current: oldpfx): [press Enter]
 ### Example 3: Failed Build (Rollback)
 
 ```
-@rename-project-planton-component
+@rename-openmcf-component
 
 [Provides inputs, confirms]
 
@@ -409,7 +409,7 @@ Before renaming:
 ### Phase 2: File Operations
 
 1. **Copy directory**
-   - `apis/org/project_planton/provider/{provider}/{old}` → `{new}`
+   - `apis/org/openmcf/provider/{provider}/{old}` → `{new}`
    - Preserves all files and structure
 
 2. **Apply replacements in new directory**
@@ -452,7 +452,7 @@ Before renaming:
 ### Phase 6: Changelog Generation
 
 If tests pass:
-- Invoke `@create-project-planton-changelog`
+- Invoke `@create-openmcf-changelog`
 - Document the rename rationale
 - Capture before/after state
 
@@ -486,13 +486,13 @@ grep -r "OldComponentName" .
 **Solution**:
 ```bash
 # Check registry
-grep "KubernetesDeployment" apis/org/project_planton/shared/cloudresourcekind/cloud_resource_kind.proto
+grep "KubernetesDeployment" apis/org/openmcf/shared/cloudresourcekind/cloud_resource_kind.proto
 
 # If it's the target of a previous rename, delete it first
-@delete-project-planton-component KubernetesDeployment --force
+@delete-openmcf-component KubernetesDeployment --force
 
 # Then rename again
-@rename-project-planton-component
+@rename-openmcf-component
 ```
 
 ### Proto Generation Fails
@@ -535,11 +535,11 @@ git status kubernetesdeployment/
 If audit reveals naming issues:
 
 ```bash
-@audit-project-planton-component KubernetesMicroservice
+@audit-openmcf-component KubernetesMicroservice
 
 # Result: Name doesn't reflect actual behavior
 
-@rename-project-planton-component
+@rename-openmcf-component
 # Rename to KubernetesDeployment
 ```
 
@@ -549,10 +549,10 @@ If component needs both rename and completion:
 
 ```bash
 # 1. Rename first
-@rename-project-planton-component
+@rename-openmcf-component
 
 # 2. Then complete
-@complete-project-planton-component KubernetesDeployment
+@complete-openmcf-component KubernetesDeployment
 ```
 
 **Order matters**: Rename establishes correct name, then completion fills gaps.
@@ -562,7 +562,7 @@ If component needs both rename and completion:
 If fix includes renaming:
 
 ```bash
-@fix-project-planton-component KubernetesMicroservice \
+@fix-openmcf-component KubernetesMicroservice \
   --explain "Rename to KubernetesDeployment to accurately reflect Kubernetes resource"
 
 # Fix rule may invoke rename as part of the fix
@@ -687,4 +687,4 @@ The rename rule is designed to enable similar transformations systematically and
 
 ---
 
-**Ready to rename?** Invoke with `@rename-project-planton-component` and follow the interactive workflow!
+**Ready to rename?** Invoke with `@rename-openmcf-component` and follow the interactive workflow!

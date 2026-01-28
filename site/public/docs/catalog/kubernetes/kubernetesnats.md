@@ -16,7 +16,7 @@ Then came NATS: a single binary, a simple subject-based model, and performance t
 
 NATS is an open-source messaging system (Apache 2.0, CNCF project) designed as "connective technology" for distributed applications. It excels at microservices communication, request-reply patterns, and event streaming—all delivered through an intentionally straightforward API that respects both developer time and operational sanity.
 
-This document explores how to deploy production NATS clusters on Kubernetes, examining the evolution from anti-patterns to modern best practices, and explaining why Project Planton's approach honors NATS's philosophy of simplicity.
+This document explores how to deploy production NATS clusters on Kubernetes, examining the evolution from anti-patterns to modern best practices, and explaining why OpenMCF's approach honors NATS's philosophy of simplicity.
 
 ## The Evolution: From Core NATS to JetStream
 
@@ -171,9 +171,9 @@ All official NATS tooling and container images are 100% open source under the Ap
 
 This confirms a clean bill of health for integration into any open-source or commercial platform.
 
-## Project Planton's Approach: Simplicity by Design
+## OpenMCF's Approach: Simplicity by Design
 
-Project Planton's `NatsKubernetes` API generates the same artifacts as the official `nats-io/k8s` Helm chart, following the maintainer-recommended pattern. The API focuses on the **80/20 configuration principle**: exposing the 20% of fields that 80% of users need for production deployments.
+OpenMCF's `NatsKubernetes` API generates the same artifacts as the official `nats-io/k8s` Helm chart, following the maintainer-recommended pattern. The API focuses on the **80/20 configuration principle**: exposing the 20% of fields that 80% of users need for production deployments.
 
 ### Essential Configuration (The "80%")
 
@@ -307,7 +307,7 @@ The evolution of NATS deployment on Kubernetes mirrors the system's broader phil
 
 Where competitors demand elaborate operational overhead—Zookeeper clusters, partition management, complex routing topologies—NATS offers a single binary, a straightforward subject-based model, and production-proven performance. But simplicity doesn't mean naivety. Deploying NATS correctly on Kubernetes requires understanding stateful primitives (StatefulSets, not Deployments), consensus requirements (RAFT quorum), and the separation of infrastructure from configuration (Helm for clusters, Nack for streams).
 
-Project Planton's `NatsKubernetes` API honors this philosophy by focusing on the 80% configuration that matters, generating maintainer-recommended artifacts, and enabling modern GitOps patterns. The result is a deployment model that feels as simple as NATS itself—and delivers the same production-grade reliability.
+OpenMCF's `NatsKubernetes` API honors this philosophy by focusing on the 80% configuration that matters, generating maintainer-recommended artifacts, and enabling modern GitOps patterns. The result is a deployment model that feels as simple as NATS itself—and delivers the same production-grade reliability.
 
 For deeper guides on specific implementation details, operator configuration, and advanced patterns, see the [NATS Kubernetes Deep Dive](./nats-kubernetes-deep-dive.md) (coming soon).
 

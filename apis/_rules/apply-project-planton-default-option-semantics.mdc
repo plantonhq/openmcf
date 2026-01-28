@@ -4,7 +4,7 @@ globs:
 alwaysApply: false
 ---
 
-# Rule: Apply Project Planton Default Option Semantics
+# Rule: Apply OpenMCF Default Option Semantics
 
 Purpose: When a deployment component has fields with default values documented in comments but not enforced via proto field options, this rule ensures the proper semantics are applied.
 
@@ -13,15 +13,15 @@ Purpose: When a deployment component has fields with default values documented i
 Invoke this rule when you encounter a deployment component where:
 - Proto fields have default values mentioned in comments (e.g., `// Default: "default"`)
 - But the fields are NOT marked as `optional`
-- And do NOT have the `(org.project_planton.shared.options.default)` field option
+- And do NOT have the `(org.openmcf.shared.options.default)` field option
 
 ## System Guarantees
 
-Project Planton provides two guarantees that eliminate the need for defensive coding:
+OpenMCF provides two guarantees that eliminate the need for defensive coding:
 
-1. **Build-Time Enforcement**: The custom linter `DEFAULT_REQUIRES_OPTIONAL` in `buf/lint/optional-linter` fails the build if any scalar field has `(org.project_planton.shared.options.default)` but is not marked as `optional`.
+1. **Build-Time Enforcement**: The custom linter `DEFAULT_REQUIRES_OPTIONAL` in `buf/lint/optional-linter` fails the build if any scalar field has `(org.openmcf.shared.options.default)` but is not marked as `optional`.
 
-2. **Runtime Default Application**: Project Planton middleware automatically applies default values from proto options before the input reaches the IaC module. If a user doesn't set a value, the default is applied automatically.
+2. **Runtime Default Application**: OpenMCF middleware automatically applies default values from proto options before the input reaches the IaC module. If a user doesn't set a value, the default is applied automatically.
 
 **Result**: IaC modules do NOT need defensive code like `if value == "" { value = "default" }`.
 
@@ -55,7 +55,7 @@ string repository = 1;
 ```protobuf
 // Container image repository.
 // Default: ghcr.io/actions/actions-runner
-optional string repository = 1 [(org.project_planton.shared.options.default) = "ghcr.io/actions/actions-runner"];
+optional string repository = 1 [(org.openmcf.shared.options.default) = "ghcr.io/actions/actions-runner"];
 ```
 
 ### 3. Update IaC Module (if needed)
@@ -72,7 +72,7 @@ l.RunnerGroup = in.Target.Spec.RunnerGroup
 l.RunnerGroup = in.Target.Spec.GetRunnerGroup()
 ```
 
-**Important**: Do NOT add defensive default checks. Project Planton guarantees defaults are applied.
+**Important**: Do NOT add defensive default checks. OpenMCF guarantees defaults are applied.
 
 ### 4. Regenerate Proto Stubs
 
@@ -85,7 +85,7 @@ cd apis && make build
 
 Ensure the IaC module compiles:
 ```bash
-go build ./apis/org/project_planton/provider/kubernetes/<component>/v1/iac/pulumi/module/...
+go build ./apis/org/openmcf/provider/kubernetes/<component>/v1/iac/pulumi/module/...
 ```
 
 ## Fields to Skip
@@ -102,7 +102,7 @@ Do NOT apply this rule to:
 2. **Identify fields** with defaults in comments but missing field options
 3. **For each identified field**:
    - Add `optional` keyword
-   - Add `[(org.project_planton.shared.options.default) = "<value>"]`
+   - Add `[(org.openmcf.shared.options.default) = "<value>"]`
 4. **Regenerate stubs**: `cd apis && make build`
 5. **Update IaC module** to use getter methods (e.g., `GetFieldName()`)
 6. **Remove any defensive default checks** if present (not needed)
@@ -121,7 +121,7 @@ Fields that were updated:
 
 ## Reference Files
 
-- **Options proto**: `apis/org/project_planton/shared/options/options.proto`
+- **Options proto**: `apis/org/openmcf/shared/options/options.proto`
 - **Custom linter**: `buf/lint/optional-linter/`
 - **Linter rule**: `buf/lint/optional-linter/rules/default_requires_optional.go`
 
@@ -129,17 +129,17 @@ Fields that were updated:
 
 ### String field with default
 ```protobuf
-optional string namespace = 1 [(org.project_planton.shared.options.default) = "external-dns"];
+optional string namespace = 1 [(org.openmcf.shared.options.default) = "external-dns"];
 ```
 
 ### Integer field with default
 ```protobuf
-optional int32 min_runners = 1 [(org.project_planton.shared.options.default) = "0"];
+optional int32 min_runners = 1 [(org.openmcf.shared.options.default) = "0"];
 ```
 
 ### Boolean field with default
 ```protobuf
-optional bool enabled = 1 [(org.project_planton.shared.options.default) = "true"];
+optional bool enabled = 1 [(org.openmcf.shared.options.default) = "true"];
 ```
 
 Note: Default values are always strings in the field option, regardless of the field type.

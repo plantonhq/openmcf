@@ -18,7 +18,7 @@ This is the central paradox of Snowflake database management: **the infrastructu
 
 For platform engineers building on Snowflake, this means database provisioning is fundamentally a **cost governance** problem disguised as an infrastructure problem. Understanding how to deploy databases is table stakes. Understanding how to deploy them *economically*, with sensible defaults that prevent cost anti-patterns, is the real challenge.
 
-This guide explores the landscape of Snowflake database deployment—from manual UI clicks to fully declarative Infrastructure as Code—and explains why Project Planton defaults to configurations that guide users into a "pit of success" rather than a pit of unexpected storage charges.
+This guide explores the landscape of Snowflake database deployment—from manual UI clicks to fully declarative Infrastructure as Code—and explains why OpenMCF defaults to configurations that guide users into a "pit of success" rather than a pit of unexpected storage charges.
 
 ## The Snowflake Hierarchy: Understanding What You're Actually Creating
 
@@ -87,7 +87,7 @@ For SaaS platforms built on Snowflake, isolation models formalize into three pat
 - **Object Per Tenant (OPT)**: Each customer gets their own database or schema. Balance of isolation and scale (thousands of tenants).
 - **Account Per Tenant (APT)**: Each customer gets a dedicated Snowflake account. Maximum isolation, highest operational overhead.
 
-The **database-per-tenant** pattern (a variant of OPT) is a sweet spot for many SaaS applications. Historically, the operational burden of "managing 10,000 databases" has been a deterrent. This is precisely where an IaC framework like Project Planton provides strategic value: by defining databases as declarative resources, you can programmatically "stamp out" and manage thousands of tenant databases from a single template, making the OPT pattern operationally viable at scale.
+The **database-per-tenant** pattern (a variant of OPT) is a sweet spot for many SaaS applications. Historically, the operational burden of "managing 10,000 databases" has been a deterrent. This is precisely where an IaC framework like OpenMCF provides strategic value: by defining databases as declarative resources, you can programmatically "stamp out" and manage thousands of tenant databases from a single template, making the OPT pattern operationally viable at scale.
 
 ## The Deployment Landscape: From Clicks to Code
 
@@ -170,13 +170,13 @@ These are orchestration layers that aim to provide a *single* control plane for 
   
 - **AWS CloudFormation**: While AWS doesn't have a native Snowflake resource, users can create `AWS::CloudFormation::CustomResource` types backed by Lambda functions. A community project provides exactly this, offering a `Snowflake::Database::Database` resource.
 
-**Verdict**: These tools exist because there's genuine demand for a unified, multi-cloud API—which is exactly what Project Planton provides. If you're already managing S3 buckets, Kinesis streams, and Kubernetes namespaces declaratively, you want to define your Snowflake databases in the same way, in the same file. The existence of these complex, wrapped solutions validates the mission of an API-first, multi-cloud IaC framework.
+**Verdict**: These tools exist because there's genuine demand for a unified, multi-cloud API—which is exactly what OpenMCF provides. If you're already managing S3 buckets, Kinesis streams, and Kubernetes namespaces declaratively, you want to define your Snowflake databases in the same way, in the same file. The existence of these complex, wrapped solutions validates the mission of an API-first, multi-cloud IaC framework.
 
 ## The Missing Workflow: Schema Management with dbt
 
 There's a critical **separation of concerns** in the modern data stack:
 
-- **IaC tools** (Terraform, Pulumi, Project Planton): Manage **infrastructure-level** objects—databases, schemas, roles, users, warehouses, grants.
+- **IaC tools** (Terraform, Pulumi, OpenMCF): Manage **infrastructure-level** objects—databases, schemas, roles, users, warehouses, grants.
 - **dbt** (Data Build Tool): Manages **schema-level** objects—the transformation logic that creates tables ("models"), views, sources, and tests.
 
 dbt *cannot* manage databases, roles, or complex grant hierarchies. The established best practice is to use **IaC for infrastructure provisioning and dbt for data transformations**.
@@ -193,7 +193,7 @@ This workflow has a critical implication: **a Snowflake database resource is alm
 - **SnowflakeRole**: To define custom roles (not relying on system roles like `ACCOUNTADMIN`).
 - **SnowflakeGrant** (especially **SnowflakeFutureGrant**): To automate permissions that enable dbt and ETL workflows.
 
-Project Planton's roadmap must include these companion resources to be a complete solution for the data engineering community.
+OpenMCF's roadmap must include these companion resources to be a complete solution for the data engineering community.
 
 ## Comparing the Leaders: Terraform vs. Pulumi for Snowflake
 
@@ -208,7 +208,7 @@ For teams choosing an IaC tool today, the decision comes down to **Terraform/Ope
 | **Multi-Environment Patterns** | Clumsy in HCL. Requires `for_each`, workspaces, or complex module structures. | Trivial with native loops: `for (const env of ['dev', 'test', 'prod'])` | **Pulumi** (ergonomics) |
 | **Declarative Cloning** | ❌ No native support for `CREATE DATABASE ... CLONE` as a provision-time parameter. | ❌ No native support. | **Tie** (both lack this feature) |
 
-**Summary**: Terraform wins on maturity and stability. Pulumi wins on security and developer experience. Both lack a declarative way to provision databases from clones—a gap that represents a **major opportunity** for Project Planton.
+**Summary**: Terraform wins on maturity and stability. Pulumi wins on security and developer experience. Both lack a declarative way to provision databases from clones—a gap that represents a **major opportunity** for OpenMCF.
 
 ## Production Essentials: The Configuration That Actually Matters
 
@@ -261,7 +261,7 @@ A database can be created in one of four ways:
 
 **Critical observation**: Neither the Terraform nor Pulumi provider exposes `CREATE DATABASE ... CLONE` as a declarative, provision-time parameter. This is a **significant gap**. The dominant Snowflake pattern for CI/CD—spinning up ephemeral, production-like test databases—requires this capability.
 
-**Project Planton differentiator**: By adding a `source.from_clone` field to the API spec, Project Planton can directly enable the "dev-on-prod" workflow that is a core Snowflake value proposition.
+**OpenMCF differentiator**: By adding a `source.from_clone` field to the API spec, OpenMCF can directly enable the "dev-on-prod" workflow that is a core Snowflake value proposition.
 
 ### The Advanced 5%: Iceberg, Tasks, and Debug Flags
 
@@ -282,13 +282,13 @@ Monitoring a Snowflake database is not done by configuring the database itself, 
 
 This feedback loop is how platform engineers validate their configurations. If `FAILSAFE_BYTES` is high for a dev database, it's a red flag that the database should have been created as `TRANSIENT`. This confirms that `is_transient` and `data_retention_time_in_days` are the key knobs that need sensible defaults.
 
-## Project Planton's Approach: Opinionated Defaults for Cost Governance
+## OpenMCF's Approach: Opinionated Defaults for Cost Governance
 
-Based on the research findings, Project Planton's `SnowflakeDatabase` resource is designed with the following principles:
+Based on the research findings, OpenMCF's `SnowflakeDatabase` resource is designed with the following principles:
 
 ### 1. Sane Defaults to Prevent Cost Anti-Patterns
 
-Rather than mirroring Snowflake's defaults (which optimize for data protection at the expense of cost), Project Planton defaults to:
+Rather than mirroring Snowflake's defaults (which optimize for data protection at the expense of cost), OpenMCF defaults to:
 
 - **`is_transient: true`**: Forces users to consciously opt-in to the 7-day Fail-safe period (and its associated costs) by setting `is_transient: false`.
 - **`data_retention_time_in_days: 1`**: Provides a minimal Time Travel window by default. Users must explicitly increase this if they have compliance or operational requirements.
@@ -319,7 +319,7 @@ This structure ensures the "first-time user" experience is clean and focused, wh
 
 ### 3. Native Support for Zero-Copy Cloning
 
-By adding a `source.from_clone` field, Project Planton provides a declarative way to create databases from clones—a feature missing from both Terraform and Pulumi:
+By adding a `source.from_clone` field, OpenMCF provides a declarative way to create databases from clones—a feature missing from both Terraform and Pulumi:
 
 ```yaml
 name: "CI_BUILD_123_DB"
@@ -334,7 +334,7 @@ This directly enables CI/CD pipelines that create ephemeral, production-scale te
 
 ### 4. Security-First Secret Management
 
-Learning from Terraform's weakness (plain-text secrets in state), Project Planton's architecture integrates natively with secret management systems:
+Learning from Terraform's weakness (plain-text secrets in state), OpenMCF's architecture integrates natively with secret management systems:
 
 - Kubernetes Secrets (for K8s-based deployments)
 - AWS Secrets Manager, Google Secret Manager, Azure Key Vault (for cloud-native deployments)
@@ -393,7 +393,7 @@ comment: "Production source-of-truth for analytics. DO NOT MODIFY."
 
 A critical insight from the research: **a Snowflake database resource is the foundation, not the complete solution**.
 
-To support real-world data engineering workflows (especially the dbt + IaC stack), Project Planton must provide:
+To support real-world data engineering workflows (especially the dbt + IaC stack), OpenMCF must provide:
 
 - **SnowflakeSchema**: To create and manage schemas within databases.
 - **SnowflakeRole**: To define custom roles with appropriate privileges.
@@ -409,7 +409,7 @@ The landscape of Snowflake infrastructure management has matured significantly. 
 
 Yet both of these tools have gaps. Terraform's plain-text secret handling is a security liability for Snowflake's key-pair authentication model. Neither tool provides a declarative way to create databases from clones, despite this being a dominant pattern for CI/CD and development workflows.
 
-Project Planton fills these gaps with an API-first, protobuf-defined resource that:
+OpenMCF fills these gaps with an API-first, protobuf-defined resource that:
 
 - Defaults to cost-effective configurations (`is_transient: true`, `data_retention_time_in_days: 1`)
 - Natively supports Zero-Copy Cloning for dev/test workflows

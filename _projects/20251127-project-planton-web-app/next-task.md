@@ -1,4 +1,4 @@
-# Next Task: Project Planton Web App
+# Next Task: OpenMCF Web App
 
 **Last Updated:** December 9, 2025
 **Current Status:** ✅ Major Milestones Completed
@@ -8,7 +8,7 @@
 
 ## 🎯 Current State
 
-The Project Planton Web App has successfully completed 7 major task groups representing significant feature implementations from December 1-9, 2025. The system is now **fully operational** with a complete web interface, backend API, credential management, and deployment capabilities.
+The OpenMCF Web App has successfully completed 7 major task groups representing significant feature implementations from December 1-9, 2025. The system is now **fully operational** with a complete web interface, backend API, credential management, and deployment capabilities.
 
 ---
 
@@ -139,7 +139,7 @@ The project has **exceeded the initial milestone goals** for the CNCF Hyderabad 
 
 All completed task documentation:
 ```
-_projects/20251127-project-planton-web-app/tasks/
+_projects/20251127-openmcf-web-app/tasks/
 ├── T01_0_plan.md              # Initial project plan
 ├── T02_4_completion.md        # Cloud Resource Web UI
 ├── T03_4_completion.md        # Dashboard Simplification

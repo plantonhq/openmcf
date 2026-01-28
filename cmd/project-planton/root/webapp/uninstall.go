@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/plantonhq/project-planton/cmd/project-planton/root"
+	"github.com/plantonhq/openmcf/cmd/openmcf/root"
 	"github.com/spf13/cobra"
 )
 
@@ -18,8 +18,8 @@ var (
 
 var UninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "uninstall the Project Planton web app",
-	Long: `Uninstall the Project Planton web app by removing the container.
+	Short: "uninstall the OpenMCF web app",
+	Long: `Uninstall the OpenMCF web app by removing the container.
 Data volumes are preserved by default unless --purge-data is specified.`,
 	Run: uninstallHandler,
 }
@@ -31,7 +31,7 @@ func init() {
 
 func uninstallHandler(cmd *cobra.Command, args []string) {
 	fmt.Println("========================================")
-	fmt.Println("🗑️  Uninstalling Project Planton Web App")
+	fmt.Println("🗑️  Uninstalling OpenMCF Web App")
 	fmt.Println("========================================")
 	fmt.Println()
 

@@ -1,13 +1,13 @@
 ---
 title: "Kustomize Integration"
-description: "Using Kustomize with Project Planton for multi-environment deployments - directory structure, overlays, and workflows"
+description: "Using Kustomize with OpenMCF for multi-environment deployments - directory structure, overlays, and workflows"
 icon: "layers"
 order: 4
 ---
 
 # Kustomize Integration Guide
 
-Learn how to use Kustomize with Project Planton for managing multi-environment deployments.
+Learn how to use Kustomize with OpenMCF for managing multi-environment deployments.
 
 ---
 
@@ -44,7 +44,7 @@ Think of Kustomize like a clothing store:
 - **Overlays** = Size-specific modifications (small, medium, large)
 - **Result** = A shirt that fits each person, derived from the same base design
 
-Project Planton integrates Kustomize seamlessly, building your manifest at deployment time.
+OpenMCF integrates Kustomize seamlessly, building your manifest at deployment time.
 
 ---
 
@@ -59,7 +59,7 @@ mkdir -p services/api/kustomize/base
 **`services/api/kustomize/base/deployment.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesDeployment
 metadata:
   name: api
@@ -103,7 +103,7 @@ patches:
 **`services/api/kustomize/overlays/prod/patch.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesDeployment
 metadata:
   name: api
@@ -118,22 +118,22 @@ spec:
         memory: 4Gi
 ```
 
-### 3. Deploy with Project Planton
+### 3. Deploy with OpenMCF
 
 ```bash
 # Deploy to production
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 
 # Deploy to dev
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay dev
 ```
 
 **What happens**:
-1. Project Planton runs `kustomize build services/api/kustomize/overlays/prod`
+1. OpenMCF runs `kustomize build services/api/kustomize/overlays/prod`
 2. Merges base + prod overlay into final manifest
 3. Validates the result
 4. Deploys using Pulumi or OpenTofu
@@ -195,7 +195,7 @@ The most common approach - specify only the fields you want to change:
 **Base**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -212,7 +212,7 @@ spec:
 **Prod Patch** (`overlays/prod/patch.yaml`):
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -351,7 +351,7 @@ kind: Kustomization
 
 commonLabels:
   app: api
-  managed-by: project-planton
+  managed-by: openmcf
 
 resources:
   - deployment.yaml
@@ -369,7 +369,7 @@ Each resource in base defines shared configuration, overlays patch for environme
 
 ```bash
 # Deploy to dev
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay dev \
   --yes
@@ -377,7 +377,7 @@ project-planton pulumi up \
 # Test in dev...
 
 # Deploy to staging
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay staging \
   --yes
@@ -385,13 +385,13 @@ project-planton pulumi up \
 # Test in staging...
 
 # Deploy to production (with review)
-project-planton pulumi preview \
+openmcf pulumi preview \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 
 # Review changes...
 
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 ```
@@ -400,7 +400,7 @@ project-planton pulumi up \
 
 ```bash
 # Kustomize overlay + runtime override
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir services/api/kustomize \
   --overlay prod \
   --set spec.container.image.tag=v1.2.4
@@ -418,8 +418,8 @@ project-planton pulumi up \
 cd services/api/kustomize
 kustomize build overlays/prod
 
-# Or let Project Planton build and show it
-project-planton load-manifest \
+# Or let OpenMCF build and show it
+openmcf load-manifest \
   --kustomize-dir services/api/kustomize \
   --overlay prod
 ```
@@ -456,7 +456,7 @@ jobs:
       
       - name: Deploy
         run: |
-          project-planton pulumi up \
+          openmcf pulumi up \
             --kustomize-dir services/api/kustomize \
             --overlay ${{ steps.env.outputs.overlay }} \
             --yes
@@ -478,7 +478,7 @@ deploy:
       else
         OVERLAY="dev"
       fi
-    - project-planton pulumi up --kustomize-dir services/api/kustomize --overlay $OVERLAY --yes
+    - openmcf pulumi up --kustomize-dir services/api/kustomize --overlay $OVERLAY --yes
   only:
     - main
     - staging
@@ -614,17 +614,17 @@ kustomize build overlays/prod
 **Solution**:
 ```bash
 # Always verify overlay before deploying
-project-planton pulumi preview \
+openmcf pulumi preview \
   --kustomize-dir services/api/kustomize \
   --overlay prod  # Double-check this!
 
 # Use explicit confirmation in CI/CD
 if [ "$OVERLAY" != "prod" ]; then
   echo "Deploying to $OVERLAY"
-  project-planton pulumi up --kustomize-dir ... --overlay $OVERLAY --yes
+  openmcf pulumi up --kustomize-dir ... --overlay $OVERLAY --yes
 else
   echo "Production deployment - manual approval required"
-  project-planton pulumi up --kustomize-dir ... --overlay $OVERLAY
+  openmcf pulumi up --kustomize-dir ... --overlay $OVERLAY
 fi
 ```
 
@@ -701,10 +701,10 @@ git add services/api/kustomize/overlays/prod/output.yaml  # Generated
 ```bash
 # ✅ Good: Preview before applying
 kustomize build overlays/prod | less  # Review output
-project-planton pulumi preview --kustomize-dir ... --overlay prod
+openmcf pulumi preview --kustomize-dir ... --overlay prod
 
 # ⚠️ Risky: Deploy without review
-project-planton pulumi up --kustomize-dir ... --overlay prod --yes
+openmcf pulumi up --kustomize-dir ... --overlay prod --yes
 ```
 
 ---
@@ -745,7 +745,7 @@ kind: Kustomization
 
 commonLabels:
   app: api
-  managed-by: project-planton
+  managed-by: openmcf
 
 resources:
   - deployment.yaml
@@ -756,7 +756,7 @@ resources:
 **`base/deployment.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesDeployment
 metadata:
   name: api
@@ -797,7 +797,7 @@ patches:
 **`overlays/prod/deployment-patch.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesDeployment
 metadata:
   name: api
@@ -814,7 +814,7 @@ spec:
 
 ```bash
 # Deploy to production
-project-planton pulumi up \
+openmcf pulumi up \
   --kustomize-dir backend/services/api/kustomize \
   --overlay prod
 ```
@@ -837,5 +837,5 @@ project-planton pulumi up \
 3. **Deploy Gradually**: Test in dev before prod
 4. **Iterate**: Add more overlays as needed (staging, regional, etc.)
 
-Kustomize + Project Planton gives you powerful multi-environment management with minimal duplication. Start simple and grow as needed.
+Kustomize + OpenMCF gives you powerful multi-environment management with minimal duplication. Start simple and grow as needed.
 

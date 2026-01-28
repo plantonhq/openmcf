@@ -10,7 +10,7 @@ This orchestrator rule scaffolds a **complete deployment component** from scratc
 
 ## Role
 
-You are the Project Planton Code Partner. This rule orchestrates all forge flow rules to create a production-ready, fully-documented deployment component that matches the ideal state checklist.
+You are the OpenMCF Code Partner. This rule orchestrates all forge flow rules to create a production-ready, fully-documented deployment component that matches the ideal state checklist.
 
 ## What Forge Creates
 
@@ -28,14 +28,14 @@ A complete deployment component includes:
 ## Usage
 
 ```
-@forge-project-planton-component <ComponentName> --provider <provider>
+@forge-openmcf-component <ComponentName> --provider <provider>
 ```
 
 **Examples:**
 ```
-@forge-project-planton-component MongodbAtlas --provider atlas
-@forge-project-planton-component GcpCertManagerCert --provider gcp
-@forge-project-planton-component PostgresKubernetes --provider kubernetes --category workload
+@forge-openmcf-component MongodbAtlas --provider atlas
+@forge-openmcf-component GcpCertManagerCert --provider gcp
+@forge-openmcf-component PostgresKubernetes --provider kubernetes --category workload
 ```
 
 ## Execution Sequence
@@ -105,7 +105,7 @@ The orchestrator provides progress updates:
 [21/21] ✅ All tests passed
 
 🎉 Component creation complete!
-Run @audit-project-planton-component to verify 100% ideal state compliance.
+Run @audit-openmcf-component to verify 100% ideal state compliance.
 ```
 
 ## Post-Forge Validation
@@ -113,7 +113,7 @@ Run @audit-project-planton-component to verify 100% ideal state compliance.
 After forge completes, validate the component:
 
 ```
-@audit-project-planton-component <ComponentName>
+@audit-openmcf-component <ComponentName>
 ```
 
 Expected result: **95-100% completion score**
@@ -130,7 +130,7 @@ If score is lower, the audit report will identify gaps and suggest fixes.
 
 - All steps run non-interactively (no user input required)
 - Uses local backends by default (Pulumi local, Terraform local)
-- Generated code follows Project Planton conventions
+- Generated code follows OpenMCF conventions
 - Both IaC implementations have feature parity
 - All documentation is substantial and production-ready
 - Component is immediately usable after forge completes

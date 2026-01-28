@@ -3,14 +3,14 @@ package root
 import (
 	"os"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/pulumi"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/iacflags"
-	"github.com/plantonhq/project-planton/internal/cli/iacrunner"
-	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
-	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/pulumi"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/terraform"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/iacflags"
+	"github.com/plantonhq/openmcf/internal/cli/iacrunner"
+	climanifest "github.com/plantonhq/openmcf/internal/cli/manifest"
+	"github.com/plantonhq/openmcf/internal/manifest"
+	"github.com/plantonhq/openmcf/pkg/iac/provisioner"
 	"github.com/spf13/cobra"
 )
 
@@ -18,26 +18,26 @@ var Apply = &cobra.Command{
 	Use:   "apply",
 	Short: "apply infrastructure changes using the provisioner specified in manifest",
 	Long: `Apply infrastructure changes by automatically routing to the appropriate provisioner
-(Pulumi, Tofu, or Terraform) based on the manifest label 'project-planton.org/provisioner'.
+(Pulumi, Tofu, or Terraform) based on the manifest label 'openmcf.org/provisioner'.
 
 If the provisioner label is not present, you will be prompted to select one interactively.`,
 	Example: `
 	# Apply from clipboard (manifest content already copied)
-	project-planton apply --clipboard
-	project-planton apply -c
+	openmcf apply --clipboard
+	openmcf apply -c
 
 	# Apply with manifest file
-	project-planton apply -f manifest.yaml
-	project-planton apply --manifest manifest.yaml
+	openmcf apply -f manifest.yaml
+	openmcf apply --manifest manifest.yaml
 
 	# Apply with stack input file (extracts manifest from target field)
-	project-planton apply -i stack-input.yaml
+	openmcf apply -i stack-input.yaml
 
 	# Apply with kustomize
-	project-planton apply --kustomize-dir _kustomize --overlay prod
+	openmcf apply --kustomize-dir _kustomize --overlay prod
 
 	# Apply with field overrides
-	project-planton apply -f manifest.yaml --set spec.version=v1.2.3
+	openmcf apply -f manifest.yaml --set spec.version=v1.2.3
 	`,
 	Run: applyHandler,
 }

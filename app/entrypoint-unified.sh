@@ -3,7 +3,7 @@
 set -e
 
 echo "=========================================="
-echo "🚀 Project Planton Unified Container"
+echo "🚀 OpenMCF Unified Container"
 echo "=========================================="
 echo ""
 
@@ -15,7 +15,7 @@ mkdir -p /var/log/supervisor
 mkdir -p /home/appuser/.pulumi/state
 mkdir -p /home/appuser/go/cache
 mkdir -p /home/appuser/go/tmp
-mkdir -p /home/appuser/.project-planton
+mkdir -p /home/appuser/.openmcf
 
 # Set proper permissions
 echo "🔒 Setting permissions..."
@@ -31,7 +31,7 @@ echo ""
 # Configure Pulumi backend (required for backend service)
 echo "🔧 Configuring Pulumi backend..."
 export PULUMI_HOME=/home/appuser/.pulumi
-export PULUMI_CONFIG_PASSPHRASE=${PULUMI_CONFIG_PASSPHRASE:-project-planton-default-passphrase}
+export PULUMI_CONFIG_PASSPHRASE=${PULUMI_CONFIG_PASSPHRASE:-openmcf-default-passphrase}
 
 # Automatically choose backend based on environment variables
 if [ -n "$PULUMI_ACCESS_TOKEN" ]; then

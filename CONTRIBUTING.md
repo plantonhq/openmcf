@@ -1,7 +1,7 @@
-# Contributing to ProjectPlanton
+# Contributing to OpenMCF
 
-First, thanks for contributing to `ProjectPlanton` and helping make it better. We appreciate the help!
-This repository is one of many across the `ProjectPlanton` ecosystem, and we welcome contributions to them all.
+First, thanks for contributing to `OpenMCF` and helping make it better. We appreciate the help!
+This repository is one of many across the `OpenMCF` ecosystem, and we welcome contributions to them all.
 
 ## Code of Conduct
 
@@ -10,16 +10,16 @@ Please make sure to read and observe our [Contributor Code of Conduct](CODE-OF-C
 ## Communications
 
 You are welcome to join the [Discord Server](https://discord.gg/pwcSapdQAp) for questions and a community of like-minded folks.
-We discuss features and file bugs on GitHub via [Issues](https://github.com/plantonhq/project-planton/issues) as well as [Discussions](https://github.com/plantonhq/project-planton/discussions).
+We discuss features and file bugs on GitHub via [Issues](https://github.com/plantonhq/openmcf/issues) as well as [Discussions](https://github.com/plantonhq/openmcf/discussions).
 
-We welcome contributions from the community to enhance **Project Planton**. Whether you want to fix bugs, add new
+We welcome contributions from the community to enhance **OpenMCF**. Whether you want to fix bugs, add new
 features, or improve documentation, your efforts are appreciated and will help make this project better for everyone.
 
 ## How to Contribute
 
 1. **Fork the Repository**
 
-   Start by forking the [Project Planton GitHub repository](https://github.com/plantonhq/project-planton) to your own
+   Start by forking the [OpenMCF GitHub repository](https://github.com/plantonhq/openmcf) to your own
    GitHub account.
 
 2. **Clone the Repository**
@@ -27,7 +27,7 @@ features, or improve documentation, your efforts are appreciated and will help m
    Clone your forked repository to your local machine:
 
    ```bash
-   git clone https://github.com/yourusername/project-planton.git
+   git clone https://github.com/yourusername/openmcf.git
    ```
 
 3. **Create a Branch**
@@ -89,6 +89,6 @@ features, or improve documentation, your efforts are appreciated and will help m
 We encourage you to join our community and contribute to the project:
 
 - **GitHub Issues**: Report bugs or request new features by opening an issue
-  on [GitHub](https://github.com/plantonhq/project-planton/issues).
+  on [GitHub](https://github.com/plantonhq/openmcf/issues).
 - **Discussions**: Engage with other users and contributors in
-  our [GitHub Discussions](https://github.com/plantonhq/project-planton/discussions) forum.
+  our [GitHub Discussions](https://github.com/plantonhq/openmcf/discussions) forum.

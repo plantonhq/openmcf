@@ -33,7 +33,7 @@ export const DocsHeader: React.FC<DocsHeaderProps> = ({ onMenuToggle }) => {
             <Link href="/" className="flex items-center gap-3">
               <Image 
                 src="/icon.png" 
-                alt="ProjectPlanton logo" 
+                alt="OpenMCF logo" 
                 width={36} 
                 height={36} 
                 className="h-9 w-auto object-contain" 
@@ -41,7 +41,7 @@ export const DocsHeader: React.FC<DocsHeaderProps> = ({ onMenuToggle }) => {
               />
               <Image 
                 src="/logo-text.svg" 
-                alt="ProjectPlanton" 
+                alt="OpenMCF" 
                 width={160} 
                 height={40} 
                 className="h-10 w-auto object-contain hidden sm:block" 

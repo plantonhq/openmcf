@@ -52,7 +52,7 @@ repeated string args = 10;
 
 ### Proto Schema Changes
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetesdeployment/v1/spec.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetesdeployment/v1/spec.proto`
 
 Added import for shared volume mount definitions and three new fields:
 - `config_maps` on `KubernetesDeploymentSpec` for declarative ConfigMap creation
@@ -112,12 +112,12 @@ Before (required external ConfigMap):
 ```bash
 kubectl create configmap router-config --from-file=config.yaml
 # Then deploy separately
-project-planton pulumi up --manifest deployment.yaml
+openmcf pulumi up --manifest deployment.yaml
 ```
 
 After (all-in-one):
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesDeployment
 metadata:
   name: tekton-cloudevents-router
@@ -181,7 +181,7 @@ All validation steps passed:
 ```bash
 ✅ make protos        # Proto generation
 ✅ make build         # Full build 
-✅ go test ./apis/org/project_planton/provider/kubernetes/kubernetesdeployment/v1/...
+✅ go test ./apis/org/openmcf/provider/kubernetes/kubernetesdeployment/v1/...
 ✅ make test          # Full test suite
 ```
 

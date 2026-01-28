@@ -3,15 +3,15 @@ import { create } from '@bufbuild/protobuf';
 // Connect RPC clients accept messages directly, no wrapping needed
 import { AppContext } from '@/contexts';
 import { useConnectRpcClient } from '@/hooks';
-import { StackUpdateQueryController } from '@/gen/org/project_planton/app/stackupdate/v1/query_pb';
+import { StackUpdateQueryController } from '@/gen/org/openmcf/app/stackupdate/v1/query_pb';
 import {
   ListStackUpdatesRequest,
   ListStackUpdatesResponse,
   GetStackUpdateRequestSchema,
   StreamStackUpdateOutputRequestSchema,
   StreamStackUpdateOutputResponse,
-} from '@/gen/org/project_planton/app/stackupdate/v1/io_pb';
-import { StackUpdate } from '@/gen/org/project_planton/app/stackupdate/v1/api_pb';
+} from '@/gen/org/openmcf/app/stackupdate/v1/io_pb';
+import { StackUpdate } from '@/gen/org/openmcf/app/stackupdate/v1/api_pb';
 
 interface QueryType {
   listStackUpdates: (input: ListStackUpdatesRequest) => Promise<ListStackUpdatesResponse>;

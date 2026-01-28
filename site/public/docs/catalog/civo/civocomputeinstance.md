@@ -14,7 +14,7 @@ For years, the conventional wisdom in cloud computing was clear: if you wanted p
 
 Civo Cloud challenges that assumption. Born from a simple observation that most developers don't need 200+ services and don't want surprise egress bills, Civo offers compute instances that boot in under 60 seconds, cost up to 75% less than hyperscalers, and include unlimited bandwidth at no extra charge. It's optimized for the 80% use case: dev environments, staging clusters, production workloads that value simplicity over every possible managed service.
 
-This document explores how to deploy Civo compute instances—from quick manual provisioning to production-grade Infrastructure as Code. We'll examine the deployment method spectrum, compare IaC tooling, and explain why Project Planton supports declarative provisioning on Civo as a first-class citizen in our multi-cloud framework.
+This document explores how to deploy Civo compute instances—from quick manual provisioning to production-grade Infrastructure as Code. We'll examine the deployment method spectrum, compare IaC tooling, and explain why OpenMCF supports declarative provisioning on Civo as a first-class citizen in our multi-cloud framework.
 
 ## The Deployment Maturity Spectrum
 
@@ -197,7 +197,7 @@ Both tools are production-ready for Civo. Here's how to choose:
 | **Learning Curve** | Learn HCL syntax | Use language you already know |
 | **Best For** | Teams wanting declarative simplicity, largest community | Teams preferring real programming constructs (loops, functions) |
 
-**Multi-cloud note:** Both tools manage multiple clouds in one configuration. Terraform uses provider blocks; Pulumi imports multiple SDKs. For Project Planton's multi-cloud use case, either works—choose based on team preference.
+**Multi-cloud note:** Both tools manage multiple clouds in one configuration. Terraform uses provider blocks; Pulumi imports multiple SDKs. For OpenMCF's multi-cloud use case, either works—choose based on team preference.
 
 ## Production-Ready Instance Configuration
 
@@ -298,7 +298,7 @@ Most Civo instance deployments use a core set of parameters:
 - GPU-specific configuration
 - Advanced placement rules
 
-Project Planton's Civo API focuses on the 80/20 configuration, covering the vast majority of real-world use cases without cluttering the interface with rarely-used options.
+OpenMCF's Civo API focuses on the 80/20 configuration, covering the vast majority of real-world use cases without cluttering the interface with rarely-used options.
 
 ## Civo's Unique Value Propositions
 
@@ -322,11 +322,11 @@ Civo uses hourly billing with no hidden fees. A `g3.small` (1 vCPU, 2GB) costs ~
 - **Managed Databases:** PostgreSQL, MySQL, Redis with automated backups (cheaper than AWS RDS).
 - **Object Storage:** S3-compatible storage at $10/TB (vs $20/TB on DigitalOcean).
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton treats Civo as a first-class cloud provider in our multi-cloud IaC framework. We support declarative instance provisioning via Pulumi, abstracting Civo's resources behind a consistent API.
+OpenMCF treats Civo as a first-class cloud provider in our multi-cloud IaC framework. We support declarative instance provisioning via Pulumi, abstracting Civo's resources behind a consistent API.
 
-**Why Pulumi over Terraform for Project Planton:**
+**Why Pulumi over Terraform for OpenMCF:**
 
 - **Multi-language support:** Users can define infrastructure in TypeScript, Python, Go—languages they already know.
 - **Programmatic composition:** Create reusable components that combine instances + networking + security.
@@ -364,7 +364,7 @@ Deploying virtual machines on Civo represents a shift in cloud economics and dev
 
 For teams adopting Infrastructure as Code, Civo's mature Terraform and Pulumi support means you can treat it like any other cloud—declaring desired state, tracking changes in Git, automating deployments via CI/CD. The production patterns are familiar: private networks, security groups (firewalls), persistent volumes, load balancers, and automated backups.
 
-Project Planton integrates Civo as a strategic option in our multi-cloud framework because it excels at the 80% use case: teams that want to run workloads efficiently without overpaying for features they'll never use. Whether you're spinning up dev environments, running production APIs, or hosting Kubernetes clusters, Civo provides a compelling combination of speed, simplicity, and cost-effectiveness that traditional clouds struggle to match.
+OpenMCF integrates Civo as a strategic option in our multi-cloud framework because it excels at the 80% use case: teams that want to run workloads efficiently without overpaying for features they'll never use. Whether you're spinning up dev environments, running production APIs, or hosting Kubernetes clusters, Civo provides a compelling combination of speed, simplicity, and cost-effectiveness that traditional clouds struggle to match.
 
 The future of cloud isn't one provider dominating all use cases. It's choosing the right cloud for each workload—and for many workloads, Civo's developer-first approach is exactly right.
 

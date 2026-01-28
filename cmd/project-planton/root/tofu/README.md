@@ -1,19 +1,19 @@
 # OpenTofu Commands - Technical Reference
 
-> **📖 For the best reading experience**, view the comprehensive guide on the [Project Planton website](https://project-planton.org/docs/cli/tofu-commands).
+> **📖 For the best reading experience**, view the comprehensive guide on the [OpenMCF website](https://openmcf.org/docs/cli/tofu-commands).
 
-Technical reference for the `project-planton tofu` command group.
+Technical reference for the `openmcf tofu` command group.
 
 ---
 
 ## Overview
 
-The `tofu` command group provides a manifest-driven interface to OpenTofu/Terraform operations. It wraps standard OpenTofu commands (`init`, `plan`, `apply`, `refresh`, `destroy`) with Project Planton's consistent workflow: manifest loading, validation, and credential injection.
+The `tofu` command group provides a manifest-driven interface to OpenTofu/Terraform operations. It wraps standard OpenTofu commands (`init`, `plan`, `apply`, `refresh`, `destroy`) with OpenMCF's consistent workflow: manifest loading, validation, and credential injection.
 
 ## Command Structure
 
 ```
-project-planton tofu
+openmcf tofu
 ├── init         Initialize backend and providers
 ├── plan         Preview infrastructure changes
 ├── apply        Deploy infrastructure changes
@@ -48,7 +48,7 @@ project-planton tofu
 ### Key Implementation Details
 
 **Manifest to TFVars Conversion**:
-The CLI converts Project Planton manifests (YAML) into Terraform variables (`variables.tf.json`) that modules consume. This happens in `pkg/iac/tofu/tofumodule/`.
+The CLI converts OpenMCF manifests (YAML) into Terraform variables (`variables.tf.json`) that modules consume. This happens in `pkg/iac/tofu/tofumodule/`.
 
 **Credential Injection**:
 Provider credentials can be provided via:
@@ -58,7 +58,7 @@ Provider credentials can be provided via:
 Credentials are injected as environment variables before OpenTofu execution.
 
 **Module Discovery**:
-The `--module-dir` flag specifies where OpenTofu code lives. Defaults to current directory but typically points to IaC modules in the Project Planton repository.
+The `--module-dir` flag specifies where OpenTofu code lives. Defaults to current directory but typically points to IaC modules in the OpenMCF repository.
 
 ## Command Details
 
@@ -193,7 +193,7 @@ All handlers follow the pattern:
 
 To add a new `tofu` subcommand:
 
-1. Create `cmd/project-planton/root/tofu/<command>.go`
+1. Create `cmd/openmcf/root/tofu/<command>.go`
 2. Define cobra.Command with Use, Short, and Run handler
 3. Add command to `root/tofu.go` init function
 4. Implement handler following existing patterns
@@ -205,7 +205,7 @@ To add a new `tofu` subcommand:
 make build
 
 # Run command with local module
-./bin/project-planton tofu plan \
+./bin/openmcf tofu plan \
   --manifest test-manifest.yaml \
   --module-dir /path/to/local/module
 ```
@@ -216,7 +216,7 @@ Enable OpenTofu verbose logging:
 
 ```bash
 export TF_LOG=DEBUG
-project-planton tofu plan --manifest resource.yaml
+openmcf tofu plan --manifest resource.yaml
 ```
 
 ## Dependencies
@@ -227,7 +227,7 @@ project-planton tofu plan --manifest resource.yaml
 
 ## Related Documentation
 
-- [OpenTofu Commands Guide](https://project-planton.org/docs/cli/tofu-commands) - User-facing comprehensive guide
+- [OpenTofu Commands Guide](https://openmcf.org/docs/cli/tofu-commands) - User-facing comprehensive guide
 - [Manifest Structure](/docs/guides/manifests) - Understanding manifests
 - [IaC Module Structure](../../pkg/iac/tofu/tofumodule/README.md) - How modules are executed
 

@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/plantonhq/project-planton/app/backend/internal/database"
-	"github.com/plantonhq/project-planton/app/backend/pkg/models"
+	"github.com/plantonhq/openmcf/app/backend/internal/database"
+	"github.com/plantonhq/openmcf/app/backend/pkg/models"
 	"gopkg.in/yaml.v3"
 
 	"connectrpc.com/connect"
-	cloudresourcev1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/cloudresource/v1"
-	stackupdatev1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/stackupdate/v1"
+	cloudresourcev1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/cloudresource/v1"
+	stackupdatev1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/stackupdate/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

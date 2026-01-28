@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/staging"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/staging"
 	"github.com/spf13/cobra"
 )
 
@@ -14,8 +14,8 @@ var Checkout = &cobra.Command{
 	Short: "Checkout a specific version tag in the staging area",
 	Long: `Checkout a specific version tag or commit in the local staging area.
 
-The staging area (~/.project-planton/staging/project-planton) maintains a local copy
-of the ProjectPlanton repository. This command allows you to switch between different
+The staging area (~/.openmcf/staging/openmcf) maintains a local copy
+of the OpenMCF repository. This command allows you to switch between different
 versions of the IaC modules without affecting your CLI binary version.
 
 This is useful when:
@@ -32,16 +32,16 @@ The version argument can be:
 
 If the staging area does not exist, it will be automatically cloned first.`,
 	Example: `  # Checkout the latest release tag
-  project-planton checkout latest
+  openmcf checkout latest
 
   # Checkout a specific release version
-  project-planton checkout v0.2.273
+  openmcf checkout v0.2.273
 
   # Checkout the main branch for latest development
-  project-planton checkout main
+  openmcf checkout main
 
   # Checkout a specific commit
-  project-planton checkout abc1234`,
+  openmcf checkout abc1234`,
 	Args: cobra.ExactArgs(1),
 	Run:  checkoutHandler,
 }

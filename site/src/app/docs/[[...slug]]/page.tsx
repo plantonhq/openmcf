@@ -24,13 +24,13 @@ export async function generateMetadata({ params }: { params: DocsParams }): Prom
     const title = data?.title || slug[slug.length - 1] || 'Documentation';
 
     return {
-      title: `${title} - ProjectPlanton Documentation`,
-      description: data?.description || 'ProjectPlanton Documentation',
+      title: `${title} - OpenMCF Documentation`,
+      description: data?.description || 'OpenMCF Documentation',
     };
   } catch {
     return {
-      title: 'Documentation - ProjectPlanton',
-      description: 'ProjectPlanton Documentation',
+      title: 'Documentation - OpenMCF',
+      description: 'OpenMCF Documentation',
     };
   }
 }

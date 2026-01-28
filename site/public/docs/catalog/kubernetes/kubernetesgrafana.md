@@ -18,7 +18,7 @@ This pattern is so common it deserves a name: **The Ephemeral Dashboard Disaster
 
 The root cause? A fundamental mismatch between Grafana's default stateful behavior (it stores everything in an embedded SQLite database) and Kubernetes' default stateless pod management (containers are disposable cattle, not pets). Production-grade Grafana on Kubernetes requires bridging this gap through deliberate architectural choices about persistence, high availability, and lifecycle management.
 
-This document surveys the deployment landscape, presents the evolution from anti-patterns to production-ready solutions, and explains why Project Planton chose a Kubernetes-native, operator-driven approach for the `GrafanaKubernetes` API.
+This document surveys the deployment landscape, presents the evolution from anti-patterns to production-ready solutions, and explains why OpenMCF chose a Kubernetes-native, operator-driven approach for the `GrafanaKubernetes` API.
 
 ## The Deployment Maturity Spectrum
 
@@ -141,7 +141,7 @@ The Operator model is a superset of Helm's capabilities. It moves management log
 **When to use it:** This is the architecturally superior choice for:
 1. **Platform teams** building an observability platform or multi-tenant environment
 2. **Organizations that demand true, declarative, GitOps-driven management** of Grafana instances and all their resources (dashboards, datasources)
-3. **Projects building an abstraction layer** on top of Grafana—like Project Planton
+3. **Projects building an abstraction layer** on top of Grafana—like OpenMCF
 
 **Production readiness:** The Operator is actively developed, officially promoted by Grafana Labs, and considered production-ready. It integrates seamlessly with GitOps tools like ArgoCD and Flux.
 
@@ -173,15 +173,15 @@ One of Grafana's greatest strengths—its web-based dashboard editor—is also a
 
 **Recommendation:** Pattern 2 (Operator/CRD) is the modern, robust, and most maintainable pattern. Pattern 1 (Sidecar) is a viable and extremely common alternative, especially for users of kube-prometheus-stack.
 
-## Project Planton's Architectural Choice
+## OpenMCF's Architectural Choice
 
-Project Planton is an open-source, API-driven, multi-cloud IaC framework with protobuf-defined APIs. The `GrafanaKubernetes` API must align with this declarative, Kubernetes-native philosophy.
+OpenMCF is an open-source, API-driven, multi-cloud IaC framework with protobuf-defined APIs. The `GrafanaKubernetes` API must align with this declarative, Kubernetes-native philosophy.
 
 ### Why the Grafana Operator?
 
-**1. Philosophical alignment:** The Operator's model—managing infrastructure via first-class Kubernetes CRDs—is *identical* to Project Planton's approach. Both treat configuration as declarative, API-driven resources.
+**1. Philosophical alignment:** The Operator's model—managing infrastructure via first-class Kubernetes CRDs—is *identical* to OpenMCF's approach. Both treat configuration as declarative, API-driven resources.
 
-**2. Delegation of complexity:** By designing `GrafanaKubernetes` as a high-level facade that drives the underlying `Grafana` CRD, Project Planton delegates the complex, "Day 2" reconciliation logic to the official, community-vetted Grafana Operator. This is more robust and maintainable than embedding Helm chart templating logic.
+**2. Delegation of complexity:** By designing `GrafanaKubernetes` as a high-level facade that drives the underlying `Grafana` CRD, OpenMCF delegates the complex, "Day 2" reconciliation logic to the official, community-vetted Grafana Operator. This is more robust and maintainable than embedding Helm chart templating logic.
 
 **3. True GitOps support:** The Operator's CRDs (Grafana, GrafanaDashboard, GrafanaDataSource) integrate seamlessly with GitOps tools like ArgoCD and Flux. This enables a complete, declarative workflow where the Grafana *instance* and all its *resources* (dashboards, datasources) are managed in Git.
 
@@ -207,7 +207,7 @@ The API enforces mutual exclusivity between `persistence` and `externalDatabase`
 
 A mature "Grafana-as-Code" ecosystem separates the management of the **Grafana instance** (the application, its config, ingress) from its **resources** (dashboards, datasources). The `GrafanaKubernetes` API is responsible *only* for the instance. It does not manage lists of dashboards or data sources (beyond a single default datasource).
 
-This decoupling prevents a bloated, unmaintainable API and avoids conflict with established GitOps patterns. Project Planton subsequently provides separate `GrafanaDashboard` and `GrafanaDataSource` protobuf specs that map 1:1 to the Operator's CRDs, enabling a complete, decoupled, API-driven solution.
+This decoupling prevents a bloated, unmaintainable API and avoids conflict with established GitOps patterns. OpenMCF subsequently provides separate `GrafanaDashboard` and `GrafanaDataSource` protobuf specs that map 1:1 to the Operator's CRDs, enabling a complete, decoupled, API-driven solution.
 
 ## Production Best Practices
 
@@ -257,7 +257,7 @@ The monitoring system itself must be monitored. A broken Grafana instance create
 
 **Operator-based pattern (recommended):**
 1. **Bootstrap:** An ArgoCD/Flux Application installs the Grafana Operator (once)
-2. **Instance:** A second Application syncs the `GrafanaKubernetes` (Project Planton) resource from Git, which creates the underlying `Grafana` CRD
+2. **Instance:** A second Application syncs the `GrafanaKubernetes` (OpenMCF) resource from Git, which creates the underlying `Grafana` CRD
 3. **Resources:** The same or a third Application syncs all `GrafanaDashboard` and `GrafanaDataSource` CRDs from a `/dashboards` directory in Git
 
 This is the most robust, scalable, and philosophically-aligned solution for platform teams. It allows the Grafana instance and all its resources to be managed declaratively in one Git repository by the same GitOps tools.
@@ -269,7 +269,7 @@ The evolution from "quick start" to production-ready Grafana on Kubernetes is fu
 - **Single-replica:** The pods are stateful. Use a Deployment with a PVC.
 - **Multi-replica (HA):** Externalize the state to a shared database. The pods become stateless. Use a Deployment with no PVC.
 
-The provisioning method—Helm vs. Operator—reflects a choice between client-side, imperative tools and server-side, declarative, Kubernetes-native controllers. For an API-driven platform like Project Planton, the Operator is the clear architectural choice. It provides continuous reconciliation, native GitOps integration, and true "Day 2" lifecycle management.
+The provisioning method—Helm vs. Operator—reflects a choice between client-side, imperative tools and server-side, declarative, Kubernetes-native controllers. For an API-driven platform like OpenMCF, the Operator is the clear architectural choice. It provides continuous reconciliation, native GitOps integration, and true "Day 2" lifecycle management.
 
-By designing the `GrafanaKubernetes` API as a high-level facade over the Grafana Operator's CRDs, Project Planton provides a simplified, opinionated, production-ready-by-default experience while delegating complexity to a battle-tested, community-maintained controller. This is how you deploy Grafana on Kubernetes the right way—once.
+By designing the `GrafanaKubernetes` API as a high-level facade over the Grafana Operator's CRDs, OpenMCF provides a simplified, opinionated, production-ready-by-default experience while delegating complexity to a battle-tested, community-maintained controller. This is how you deploy Grafana on Kubernetes the right way—once.
 

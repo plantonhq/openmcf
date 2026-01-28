@@ -14,7 +14,7 @@ For years, load balancers were the infrastructure everyone needed but few wanted
 
 DigitalOcean Load Balancers represent a pragmatic middle ground. Built on battle-tested HAProxy under the hood, they offer the reliability of self-managed infrastructure with the operational simplicity of a managed service—at $12/month for regional load balancers. This isn't just about cost savings; it's about focusing engineering time on application logic rather than HAProxy configuration files.
 
-The challenge isn't whether to use DigitalOcean Load Balancers, but **how** to deploy them in a way that's repeatable, auditable, and production-ready. From UI clicks to declarative IaC, this document maps the landscape of deployment methods and explains why Project Planton chose to model them as protobuf-defined, Pulumi-deployed infrastructure resources.
+The challenge isn't whether to use DigitalOcean Load Balancers, but **how** to deploy them in a way that's repeatable, auditable, and production-ready. From UI clicks to declarative IaC, this document maps the landscape of deployment methods and explains why OpenMCF chose to model them as protobuf-defined, Pulumi-deployed infrastructure resources.
 
 ## Understanding DigitalOcean's Load Balancer Architecture
 
@@ -26,7 +26,7 @@ DigitalOcean offers two fundamentally different load balancing products that mus
 
 **Global Load Balancers** operate at a higher level, routing traffic across multiple regions using geo-proximity and failover logic. Their "backends" aren't Droplets—they're Regional Load Balancers themselves. With a usage-based pricing model (base $15/month + per-request charges), they serve a specific need: multi-region applications requiring intelligent geographic distribution.
 
-Project Planton models these as separate resource types because their APIs, protocols, backend targets, and pricing models are fundamentally incompatible. This documentation focuses on **Regional Load Balancers**, as they represent the 80% use case for infrastructure teams.
+OpenMCF models these as separate resource types because their APIs, protocols, backend targets, and pricing models are fundamentally incompatible. This documentation focuses on **Regional Load Balancers**, as they represent the 80% use case for infrastructure teams.
 
 ### Protocol Support: Layer 4 vs. Layer 7
 
@@ -485,11 +485,11 @@ resource "digitalocean_loadbalancer" "db_lb" {
 }
 ```
 
-## The Project Planton Choice: Protobuf + Pulumi
+## The OpenMCF Choice: Protobuf + Pulumi
 
 ### Why Protobuf-Defined APIs
 
-Project Planton models DigitalOcean Load Balancers as protobuf messages (`DigitalOceanLoadBalancerSpec`) for several strategic reasons:
+OpenMCF models DigitalOcean Load Balancers as protobuf messages (`DigitalOceanLoadBalancerSpec`) for several strategic reasons:
 
 1. **Language-agnostic schema**: Protobuf generates client libraries for every language (Go, TypeScript, Python, Java), enabling multi-language tooling ecosystems.
 
@@ -497,13 +497,13 @@ Project Planton models DigitalOcean Load Balancers as protobuf messages (`Digita
 
 3. **Versioned evolution**: Protobuf's backward compatibility guarantees mean API v1 clients continue working as the schema evolves.
 
-4. **80/20 forcing function**: Protobuf's explicit field definitions force API designers to make conscious decisions about what to include. Project Planton's schema includes essential and common fields while omitting rarely-used parameters (algorithm, PROXY protocol, advanced timeouts).
+4. **80/20 forcing function**: Protobuf's explicit field definitions force API designers to make conscious decisions about what to include. OpenMCF's schema includes essential and common fields while omitting rarely-used parameters (algorithm, PROXY protocol, advanced timeouts).
 
 ### Why Pulumi for Deployment
 
-While Terraform is the "800-pound gorilla" of IaC, Project Planton uses Pulumi as the deployment engine:
+While Terraform is the "800-pound gorilla" of IaC, OpenMCF uses Pulumi as the deployment engine:
 
-**Programmatic generation**: Project Planton generates Pulumi programs from protobuf specs. Pulumi's code-native approach (TypeScript, Go, Python) makes programmatic generation significantly simpler than HCL generation. The Pulumi program is the intermediate representation, not the user-facing configuration.
+**Programmatic generation**: OpenMCF generates Pulumi programs from protobuf specs. Pulumi's code-native approach (TypeScript, Go, Python) makes programmatic generation significantly simpler than HCL generation. The Pulumi program is the intermediate representation, not the user-facing configuration.
 
 **State management parity**: Pulumi's state management is architecturally identical to Terraform (remote backends, locking, plan/preview workflows). There's no loss of production-readiness.
 
@@ -513,13 +513,13 @@ While Terraform is the "800-pound gorilla" of IaC, Project Planton uses Pulumi a
 
 ### The Foreign Key Pattern
 
-Project Planton's protobuf schema uses `StringValueOrRef` for the `vpc` field:
+OpenMCF's protobuf schema uses `StringValueOrRef` for the `vpc` field:
 
 ```protobuf
-org.project_planton.shared.foreignkey.v1.StringValueOrRef vpc = 3 [
+org.openmcf.shared.foreignkey.v1.StringValueOrRef vpc = 3 [
   (buf.validate.field).required = true,
-  (org.project_planton.shared.foreignkey.v1.default_kind) = DigitalOceanVpc,
-  (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  (org.openmcf.shared.foreignkey.v1.default_kind) = DigitalOceanVpc,
+  (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
 ];
 ```
 
@@ -533,7 +533,7 @@ The same pattern applies to `droplet_ids`, enabling references to `DigitalOceanD
 
 ### What We Exclude and Why
 
-Project Planton's API intentionally excludes several DigitalOcean Load Balancer features:
+OpenMCF's API intentionally excludes several DigitalOcean Load Balancer features:
 
 **`redirect_http_to_https`**: While useful, this is syntactic sugar. Users can achieve the same result with two forwarding rules (one HTTP:80→HTTP:80, one HTTPS:443→HTTP:80). The 80/20 principle favors explicit over convenient.
 
@@ -583,7 +583,7 @@ The evolution of load balancer deployment mirrors the maturation of infrastructu
 
 For teams practicing infrastructure-as-code, the choice isn't whether to use IaC—it's which tool aligns with your philosophy. Terraform's HCL dominance, Pulumi's code-native approach, and OpenTofu's open-source fork all offer production-ready DigitalOcean providers with feature parity. The decision is about language preference and ecosystem, not capability.
 
-Project Planton's approach—protobuf-defined APIs generating Pulumi deployments—optimizes for a different dimension: **API clarity over configuration completeness**. By exposing the essential 20% of load balancer configuration through a typed, validated schema, we make the correct path the easy path. Teams needing the advanced 5% can drop to Pulumi/Terraform directly, but most teams ship faster by starting with the 80/20 defaults.
+OpenMCF's approach—protobuf-defined APIs generating Pulumi deployments—optimizes for a different dimension: **API clarity over configuration completeness**. By exposing the essential 20% of load balancer configuration through a typed, validated schema, we make the correct path the easy path. Teams needing the advanced 5% can drop to Pulumi/Terraform directly, but most teams ship faster by starting with the 80/20 defaults.
 
 The paradigm shift isn't about load balancer features—it's about treating infrastructure configuration as a versioned, typed, validated API rather than an ad-hoc collection of key-value pairs. That's the foundation for building production infrastructure at scale.
 

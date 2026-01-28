@@ -5,7 +5,7 @@ Purpose: author `stack_input.proto` for a resource kind, defining how the CLI pa
 ## Location and Package
 - Path: `apis/project/planton/provider/<provider>/<kindfolder>/v1/stack_input.proto`
 - `syntax = "proto3";`
-- `package org.project_planton.provider.<provider>.<kindfolder>.v1;`
+- `package org.openmcf.provider.<provider>.<kindfolder>.v1;`
 - Do NOT include `go_package`.
 
 ## Imports
@@ -16,9 +16,9 @@ Purpose: author `stack_input.proto` for a resource kind, defining how the CLI pa
 
 ## Message
 - Define `<Kind>StackInput` with fields (in this exact order/numbering):
-  1. `org.project_planton.shared.IacProvisioner provisioner = 1;`
-  2. `org.project_planton.shared.iac.pulumi.PulumiStackInfo pulumi = 2;`
-  3. `org.project_planton.shared.iac.terraform.TerraformStackInfo terraform = 3;`
+  1. `org.openmcf.shared.IacProvisioner provisioner = 1;`
+  2. `org.openmcf.shared.iac.pulumi.PulumiStackInfo pulumi = 2;`
+  3. `org.openmcf.shared.iac.terraform.TerraformStackInfo terraform = 3;`
   4. `<Kind> target = 1;` (from `api.proto`)
   5. `provider_credential = 2;` (provider-specific credential spec type per import above)
 

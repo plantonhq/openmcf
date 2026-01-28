@@ -1,5 +1,0 @@
-apiVersion: civo.project-planton.org/v1
-kind: CivoIpAddress
-metadata:
-  name: first-certificate
-spec:

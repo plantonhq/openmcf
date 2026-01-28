@@ -223,13 +223,13 @@ OpenFGA includes a built-in in-memory cache for Check requests to minimize laten
 
 Most applications use the default. Mission-critical checks (e.g., "Does this user have permission to transfer funds?") might explicitly request `HIGHER_CONSISTENCY`.
 
-## The Project Planton Choice: A Secure-by-Default Wrapper
+## The OpenMCF Choice: A Secure-by-Default Wrapper
 
-Project Planton's `OpenFgaKubernetes` API is designed as a **declarative, type-safe wrapper** around the official OpenFGA Helm chart. This isn't reinventing the wheel—it's making the wheel accessible while enforcing security best practices.
+OpenMCF's `OpenFgaKubernetes` API is designed as a **declarative, type-safe wrapper** around the official OpenFGA Helm chart. This isn't reinventing the wheel—it's making the wheel accessible while enforcing security best practices.
 
 ### Design Principles
 
-1. **Leverage the official Helm chart**: The chart solves complex orchestration (schema migrations, lifecycle hooks) in a battle-tested way. Project Planton renders and applies this chart behind the scenes.
+1. **Leverage the official Helm chart**: The chart solves complex orchestration (schema migrations, lifecycle hooks) in a battle-tested way. OpenMCF renders and applies this chart behind the scenes.
 
 2. **Enforce secure-by-default configuration**: The API **omits** insecure patterns (like a single `datastore_uri` with embedded passwords) and **mandates** secure patterns (structured credentials with secret references).
 
@@ -369,7 +369,7 @@ OpenFGA's value is realized when applications integrate it seamlessly. The proje
 
 The maturity of OpenFGA's Kubernetes deployment ecosystem—particularly the official Helm chart—signals a broader shift: fine-grained authorization is no longer a proprietary feature of hyperscalers. It's accessible, production-ready, and deployable by any team.
 
-The deployment landscape has clear winners and clear pitfalls. The in-memory store is a trap. Manual manifests are heroic but brittle. The official Helm chart is the production standard. Project Planton's approach—wrapping this chart with a secure-by-default, 80/20 API—respects what's been solved while adding the guardrails that prevent common security and operational mistakes.
+The deployment landscape has clear winners and clear pitfalls. The in-memory store is a trap. Manual manifests are heroic but brittle. The official Helm chart is the production standard. OpenMCF's approach—wrapping this chart with a secure-by-default, 80/20 API—respects what's been solved while adding the guardrails that prevent common security and operational mistakes.
 
 Deploying OpenFGA correctly means treating the datastore as business-critical infrastructure, enforcing authentication, testing authorization models as code, and building observability from day one. When approached with this rigor, OpenFGA delivers on its promise: authorization that scales like Google's, without Google's infrastructure burden.
 

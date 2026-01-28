@@ -1,7 +1,7 @@
 package containerresources
 
 import (
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

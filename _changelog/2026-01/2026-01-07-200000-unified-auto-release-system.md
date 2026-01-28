@@ -202,7 +202,7 @@ Push changes to main - the orchestrator automatically detects and releases:
 
 ```bash
 # CLI change
-vim cmd/project-planton/root.go
+vim cmd/openmcf/root.go
 git add . && git commit -m "fix(cli): improve error message"
 git push origin main
 # → Creates v0.3.1.20260107.0, updates Homebrew

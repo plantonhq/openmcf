@@ -1,4 +1,4 @@
-# Staging-Based Module Cache for ProjectPlanton
+# Staging-Based Module Cache for OpenMCF
 
 **Date**: January 1, 2026
 **Type**: Feature
@@ -6,11 +6,11 @@
 
 ## Summary
 
-Implemented a Homebrew-style staging mechanism where the ProjectPlanton repository is cloned once to a local staging area (`~/.project-planton/staging`) and copied to stack workspaces on demand, replacing the previous per-execution git clone approach. Added new `pull` and `checkout` commands for managing the staging area, along with a `--no-cleanup` flag to preserve workspace copies when needed.
+Implemented a Homebrew-style staging mechanism where the OpenMCF repository is cloned once to a local staging area (`~/.openmcf/staging`) and copied to stack workspaces on demand, replacing the previous per-execution git clone approach. Added new `pull` and `checkout` commands for managing the staging area, along with a `--no-cleanup` flag to preserve workspace copies when needed.
 
 ## Problem Statement
 
-Every time users executed `project-planton apply/preview/refresh/destroy` without providing `--module-dir`, the CLI would clone the entire ProjectPlanton monorepo. As the repository grew larger, this became increasingly problematic.
+Every time users executed `openmcf apply/preview/refresh/destroy` without providing `--module-dir`, the CLI would clone the entire OpenMCF monorepo. As the repository grew larger, this became increasingly problematic.
 
 ### Pain Points
 
@@ -51,7 +51,7 @@ flowchart TD
 
 ### Key Features
 
-1. **One-time Clone**: Repository is cloned to `~/.project-planton/staging/project-planton` on first use
+1. **One-time Clone**: Repository is cloned to `~/.openmcf/staging/openmcf` on first use
 2. **Fast Local Copy**: Subsequent executions copy from staging (fast disk I/O vs network)
 3. **Version Management**: New `pull`, `checkout`, and `modules-version` commands for staging control
 4. **Automatic Cleanup**: Workspace copies are cleaned up after execution by default
@@ -65,7 +65,7 @@ Created `internal/cli/staging/staging.go` with staging directory management:
 
 ```go
 // Key functions in the staging package
-func GetStagingDir() (string, error)           // Returns ~/.project-planton/staging
+func GetStagingDir() (string, error)           // Returns ~/.openmcf/staging
 func GetStagingRepoPath() (string, error)      // Returns path to cloned repo
 func EnsureStaging(version string) error       // Clones if needed, checks out version
 func Pull() error                              // Fetches and pulls from upstream
@@ -76,10 +76,10 @@ func CleanupWorkspaceCopy(path string) error   // Removes workspace copy
 
 ### New CLI Commands
 
-**`project-planton pull`** - Updates staging from upstream:
+**`openmcf pull`** - Updates staging from upstream:
 
 ```bash
-$ project-planton pull
+$ openmcf pull
 → Pulling latest changes from upstream...
 Fetching latest changes from upstream...
 
@@ -88,14 +88,14 @@ remote: Enumerating objects: 42, done.
 
 ✓ Successfully pulled latest changes
 
-Staging area: /Users/user/.project-planton/staging/project-planton
+Staging area: /Users/user/.openmcf/staging/openmcf
 Current version: v0.2.274
 ```
 
-**`project-planton checkout <version>`** - Switches staging to specific version:
+**`openmcf checkout <version>`** - Switches staging to specific version:
 
 ```bash
-$ project-planton checkout v0.2.273
+$ openmcf checkout v0.2.273
 → Checking out version: v0.2.273
 
 Checking out version: v0.2.273
@@ -104,21 +104,21 @@ Switched to tag 'v0.2.273'
 
 Successfully checked out: v0.2.273
 
-Staging area: /Users/user/.project-planton/staging/project-planton
+Staging area: /Users/user/.openmcf/staging/openmcf
 ```
 
-**`project-planton modules-version`** - Shows current staging version:
+**`openmcf modules-version`** - Shows current staging version:
 
 ```bash
-$ project-planton modules-version
+$ openmcf modules-version
 IaC Modules Staging Area
 ========================
-Location: /Users/user/.project-planton/staging/project-planton
+Location: /Users/user/.openmcf/staging/openmcf
 Version:  v0.2.273
 
 Commands:
-  project-planton pull                  Update to latest from upstream
-  project-planton checkout <version>    Switch to a specific version
+  openmcf pull                  Update to latest from upstream
+  openmcf checkout <version>    Switch to a specific version
 ```
 
 ### Modified Module Path Resolution
@@ -169,22 +169,22 @@ Added `--no-cleanup` flag to all IaC commands:
 
 ```bash
 # Keep workspace copy after execution for debugging
-project-planton apply -f manifest.yaml --no-cleanup
+openmcf apply -f manifest.yaml --no-cleanup
 ```
 
 ### Files Changed
 
 | Category | Files |
 |----------|-------|
-| **New Files** | `internal/cli/staging/staging.go`, `cmd/project-planton/root/pull.go`, `cmd/project-planton/root/checkout.go`, `cmd/project-planton/root/modules_version.go` |
+| **New Files** | `internal/cli/staging/staging.go`, `cmd/openmcf/root/pull.go`, `cmd/openmcf/root/checkout.go`, `cmd/openmcf/root/modules_version.go` |
 | **Flag Definition** | `internal/cli/flag/flag.go` |
 | **Module Resolution** | `pkg/iac/pulumi/pulumimodule/module_directory.go`, `pkg/iac/tofu/tofumodule/module_directory.go` |
 | **Pulumi Stack Operations** | `pkg/iac/pulumi/pulumistack/run.go`, `init.go`, `cancel.go`, `remove.go` |
 | **Tofu Operations** | `pkg/iac/tofu/tofumodule/run_command.go` |
-| **Unified Commands** | `cmd/project-planton/root/apply.go`, `destroy.go`, `plan.go`, `refresh.go`, `init.go` |
-| **Pulumi Subcommands** | `cmd/project-planton/root/pulumi/update.go`, `preview.go`, `destroy.go`, `refresh.go`, `init.go`, `cancel.go`, `delete.go` |
-| **Tofu Subcommands** | `cmd/project-planton/root/tofu/init.go` |
-| **Command Registration** | `cmd/project-planton/root.go` |
+| **Unified Commands** | `cmd/openmcf/root/apply.go`, `destroy.go`, `plan.go`, `refresh.go`, `init.go` |
+| **Pulumi Subcommands** | `cmd/openmcf/root/pulumi/update.go`, `preview.go`, `destroy.go`, `refresh.go`, `init.go`, `cancel.go`, `delete.go` |
+| **Tofu Subcommands** | `cmd/openmcf/root/tofu/init.go` |
+| **Command Registration** | `cmd/openmcf/root.go` |
 | **Backend Service** | `app/backend/internal/service/stack_update_service.go` |
 
 ## Benefits
@@ -214,35 +214,35 @@ project-planton apply -f manifest.yaml --no-cleanup
 
 ```bash
 # One-time setup or periodic update
-project-planton pull
+openmcf pull
 
 # Fast apply operations
-project-planton apply -f postgres.yaml      # Uses staging, cleans up after
-project-planton apply -f redis.yaml         # Same fast path
-project-planton apply -f kafka.yaml         # And again
+openmcf apply -f postgres.yaml      # Uses staging, cleans up after
+openmcf apply -f redis.yaml         # Same fast path
+openmcf apply -f kafka.yaml         # And again
 ```
 
 ### Version Management
 
 ```bash
 # Check out specific version for compatibility
-project-planton checkout v0.2.270
+openmcf checkout v0.2.270
 
 # Run commands with that version's modules
-project-planton apply -f manifest.yaml
+openmcf apply -f manifest.yaml
 
 # Switch back to latest
-project-planton checkout main
-project-planton pull
+openmcf checkout main
+openmcf pull
 ```
 
 ### Debugging
 
 ```bash
 # Keep workspace for investigation
-project-planton apply -f manifest.yaml --no-cleanup
+openmcf apply -f manifest.yaml --no-cleanup
 
-# Workspace copy preserved at ~/.project-planton/pulumi/<stack>/project-planton
+# Workspace copy preserved at ~/.openmcf/pulumi/<stack>/openmcf
 ```
 
 ## Impact
@@ -259,7 +259,7 @@ project-planton apply -f manifest.yaml --no-cleanup
 
 ### CI/CD
 - First run in fresh environment still requires network
-- Caching `~/.project-planton/staging` can speed up pipelines
+- Caching `~/.openmcf/staging` can speed up pipelines
 
 ## Related Work
 

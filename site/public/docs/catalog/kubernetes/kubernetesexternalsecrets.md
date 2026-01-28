@@ -125,9 +125,9 @@ Let's examine how teams manage secrets in Kubernetes, from anti-patterns to prod
 - **Vault**: MPL 2.0 (Enterprise features require commercial license)
 - **CSI Drivers**: Provider-specific (typically Apache/MIT)
 
-## The Project Planton Choice: External Secrets Operator
+## The OpenMCF Choice: External Secrets Operator
 
-Project Planton defaults to **External Secrets Operator** for Kubernetes secret management. This decision is grounded in three principles:
+OpenMCF defaults to **External Secrets Operator** for Kubernetes secret management. This decision is grounded in three principles:
 
 ### 1. Cloud-Native by Default
 Modern cloud platforms provide excellent secret stores (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault) with built-in encryption, audit trails, and IAM integration. ESO leverages these native capabilities rather than reinventing secret storage.
@@ -138,7 +138,7 @@ ESO is Apache 2.0 licensed with no proprietary tiers. It's mature enough for pro
 ### 3. Developer Experience Matters
 Developers get standard Kubernetes Secret objects that work with any Helm chart or application. No file-path injection, no custom sidecars, no reading from specialized volume mounts. Just `secretKeyRef` in pod specs—the Kubernetes-native pattern everyone already knows.
 
-**Project Planton Abstractions**:
+**OpenMCF Abstractions**:
 
 The `KubernetesExternalSecrets` API focuses on the essential 20%:
 
@@ -208,7 +208,7 @@ Production deployments run ESO with:
 - **Pod anti-affinity** to spread replicas across nodes
 - **Resource limits** to prevent memory leaks from affecting cluster
 
-Project Planton configures this automatically.
+OpenMCF configures this automatically.
 
 ### Monitoring & Operational Health
 
@@ -258,7 +258,7 @@ ESO's polling model handles rotation elegantly:
 
 Existing clusters with static Kubernetes Secrets can migrate incrementally:
 
-1. **Install ESO** (via Project Planton or directly)
+1. **Install ESO** (via OpenMCF or directly)
 2. **Populate external store** with current secret values
 3. **Create ExternalSecret resources** with `creationPolicy: Merge` (doesn't overwrite existing secrets)
 4. **Validate sync** — ensure ESO-synced values match existing secrets
@@ -288,7 +288,7 @@ Secrets are critical infrastructure. Always alert on ExternalSecret sync errors�
 
 External Secrets Operator represents a pragmatic middle ground in Kubernetes secret management. It's not as heavyweight as running Vault clusters, nor as limited as sealed secrets in Git. It leverages what cloud providers already do well (secret storage, encryption, audit) while giving you standard Kubernetes primitives (Secret objects) that work with existing tooling.
 
-For teams running workloads on EKS, GKE, or AKS, ESO is the natural choice: cloud-native identity, minimal overhead, production-proven, and open-source. Project Planton's integration makes it even simpler—define your provider configuration, and we handle the installation, authentication setup, and best-practice defaults.
+For teams running workloads on EKS, GKE, or AKS, ESO is the natural choice: cloud-native identity, minimal overhead, production-proven, and open-source. OpenMCF's integration makes it even simpler—define your provider configuration, and we handle the installation, authentication setup, and best-practice defaults.
 
 The result? Developers reference secrets naturally via `secretKeyRef`, operations teams manage them in cloud provider UIs (or Terraform), and security teams get audit trails and rotation without custom infrastructure. Secret management that just works.
 

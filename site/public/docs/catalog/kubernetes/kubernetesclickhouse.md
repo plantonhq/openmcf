@@ -18,7 +18,7 @@ Yet today, ClickHouse on Kubernetes is not just viable—it's the **industry sta
 
 The answer lies in the **Kubernetes Operator pattern**. An operator is an application-specific controller that encodes operational expertise into software. Instead of manually managing dozens of interconnected resources (StatefulSets, ConfigMaps, Services, PersistentVolumeClaims), you define a single, high-level custom resource like `ClickHouseInstallation`. The operator—acting as a "robotic SRE"—continuously reconciles your desired state with reality, automating everything from initial cluster provisioning to zero-downtime rolling upgrades and topology-aware scaling.
 
-This guide explores the evolution of ClickHouse deployment methods on Kubernetes, from brittle anti-patterns to production-ready solutions. We'll examine why the **Altinity ClickHouse Operator** emerged as the industry standard, validate its production readiness, and explain why Project Planton chose it as the foundation for our `ClickHouseKubernetes` API.
+This guide explores the evolution of ClickHouse deployment methods on Kubernetes, from brittle anti-patterns to production-ready solutions. We'll examine why the **Altinity ClickHouse Operator** emerged as the industry standard, validate its production readiness, and explain why OpenMCF chose it as the foundation for our `ClickHouseKubernetes` API.
 
 ---
 
@@ -121,7 +121,7 @@ The Altinity ClickHouse Operator ([github.com/Altinity/clickhouse-operator](http
 
 ### The Licensing Advantage: The "Clean Stack"
 
-For an open-source framework like Project Planton, licensing is a critical, non-negotiable requirement. The analysis must cover both the **operator code** and the **container images** it deploys.
+For an open-source framework like OpenMCF, licensing is a critical, non-negotiable requirement. The analysis must cover both the **operator code** and the **container images** it deploys.
 
 **The Altinity "Clean Stack":**
 
@@ -559,9 +559,9 @@ metrics:
 
 ---
 
-## Why Project Planton Chose Altinity
+## Why OpenMCF Chose Altinity
 
-After evaluating the entire landscape, we integrated the **Altinity ClickHouse Operator** into Project Planton's IaC framework for clear, decisive reasons:
+After evaluating the entire landscape, we integrated the **Altinity ClickHouse Operator** into OpenMCF's IaC framework for clear, decisive reasons:
 
 ### 1. Industry Standard and Production-Proven
 
@@ -569,7 +569,7 @@ With over 5 years of production use, adoption by companies like eBay and Cisco, 
 
 ### 2. The "Clean Stack" Licensing Advantage
 
-The combination of Apache 2.0 operator code and Apache 2.0 container images (`altinity/clickhouse-server`) provides a **fully permissive, open-source foundation** with no production restrictions or vendor lock-in. This aligns perfectly with Project Planton's open-source philosophy.
+The combination of Apache 2.0 operator code and Apache 2.0 container images (`altinity/clickhouse-server`) provides a **fully permissive, open-source foundation** with no production restrictions or vendor lock-in. This aligns perfectly with OpenMCF's open-source philosophy.
 
 ### 3. Modern ClickHouse Keeper Support
 
@@ -585,7 +585,7 @@ The operator receives continuous development, with recent major releases (v0.24.
 
 ---
 
-## The Project Planton API
+## The OpenMCF API
 
 Our `ClickHouseKubernetes` API (see `spec.proto`) abstracts the operator's complexity into a minimal, production-ready Protobuf specification. The API exposes only the essential 20% of configuration that 80% of users need:
 
@@ -612,7 +612,7 @@ The journey from "databases don't belong on Kubernetes" to "ClickHouse on Kubern
 
 The **Altinity ClickHouse Operator** succeeded where raw manifests and Helm charts failed because it encoded operational expertise into software. It transformed a complex, multi-dimensional orchestration problem into a simple, declarative API. You define your desired cluster topology, and the operator handles the rest—provisioning, upgrades, scaling, and coordination.
 
-What makes Altinity the clear choice isn't just technical excellence—it's **licensing clarity**. The "Clean Stack" of Apache 2.0 code and images provides the legal foundation essential for open-source frameworks like Project Planton. There are no hidden costs, no vendor lock-in, no production restrictions. Just a mature, production-proven operator that you can deploy with confidence.
+What makes Altinity the clear choice isn't just technical excellence—it's **licensing clarity**. The "Clean Stack" of Apache 2.0 code and images provides the legal foundation essential for open-source frameworks like OpenMCF. There are no hidden costs, no vendor lock-in, no production restrictions. Just a mature, production-proven operator that you can deploy with confidence.
 
 Our IaC modules abstract the operator's complexity further, providing a minimal yet powerful API that enforces best practices by default. Safety features like mandatory `reclaimPolicy: Retain` prevent common pitfalls. Auto-managed ClickHouse Keeper simplifies coordination. And structured escape hatches preserve power-user flexibility without overwhelming the 80% use case.
 

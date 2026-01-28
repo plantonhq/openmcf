@@ -4,20 +4,20 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind"
-	"github.com/plantonhq/project-planton/pkg/protobufyaml"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/cloudresourcekind"
+	"github.com/plantonhq/openmcf/pkg/protobufyaml"
 	"google.golang.org/protobuf/proto"
 
-	atlasprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/atlas"
-	auth0provider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/auth0"
-	awsprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws"
-	azureprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure"
-	cloudflareprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare"
-	confluentprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/confluent"
-	gcpprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp"
-	kubernetesprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes"
-	openfgaprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/openfga"
-	snowflakeprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/snowflake"
+	atlasprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/atlas"
+	auth0provider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/auth0"
+	awsprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/aws"
+	azureprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/azure"
+	cloudflareprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/cloudflare"
+	confluentprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/confluent"
+	gcpprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/gcp"
+	kubernetesprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes"
+	openfgaprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/openfga"
+	snowflakeprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/snowflake"
 )
 
 // ValidateProviderConfig validates that the provider config file can be loaded

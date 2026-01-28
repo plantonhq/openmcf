@@ -1,0 +1,26 @@
+apiVersion: aws.openmcf.org/v1
+kind: AwsIamRole
+metadata:
+  name: lambda-execution-role-demo
+spec:
+  description: "Demo IAM role for Lambda function execution"
+  path: "/service-roles/"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: "Allow"
+        Principal:
+          Service: "lambda.amazonaws.com"
+        Action: "sts:AssumeRole"
+  managedPolicyArns:
+    - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  inlinePolicies:
+    customS3Access:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: "Allow"
+          Action:
+            - "s3:GetObject"
+            - "s3:PutObject"
+          Resource: "arn:aws:s3:::demo-bucket/*"
+

@@ -6,11 +6,11 @@ alwaysApply: false
 
 ## Purpose
 
-This rule safely removes deployment components from the Project Planton codebase, ensuring complete cleanup of all artifacts while providing safety features like dry-run and backup.
+This rule safely removes deployment components from the OpenMCF codebase, ensuring complete cleanup of all artifacts while providing safety features like dry-run and backup.
 
 ## Role
 
-You are the Project Planton Code Partner. This rule orchestrates the safe deletion of deployment components, removing all traces from proto files, IaC modules, documentation, and registry entries.
+You are the OpenMCF Code Partner. This rule orchestrates the safe deletion of deployment components, removing all traces from proto files, IaC modules, documentation, and registry entries.
 
 ## When to Use Delete
 
@@ -41,17 +41,17 @@ Delete is **irreversible** without backups. Safety features:
 ### Basic Syntax
 
 ```
-@delete-project-planton-component <ComponentName> [flags]
+@delete-openmcf-component <ComponentName> [flags]
 ```
 
 ### Safety Workflow (Recommended)
 
 ```bash
 # Step 1: Dry-run to see what would be deleted
-@delete-project-planton-component MongodbAtlas --dry-run
+@delete-openmcf-component MongodbAtlas --dry-run
 
 # Step 2: Review the plan, then delete with backup
-@delete-project-planton-component MongodbAtlas --backup
+@delete-openmcf-component MongodbAtlas --backup
 
 # Step 3: Verify deletion
 # Check that component folder is gone
@@ -61,7 +61,7 @@ Delete is **irreversible** without backups. Safety features:
 
 ```bash
 # Delete with force (skips confirmation)
-@delete-project-planton-component ObsoleteComponent --force --backup
+@delete-openmcf-component ObsoleteComponent --force --backup
 ```
 
 ## Deletion Workflow
@@ -86,7 +86,7 @@ Delete is **irreversible** without backups. Safety features:
 Identify everything related to the component:
 
 **Core Files:**
-- Component folder: `apis/org/project_planton/provider/<provider>/<component>/v1/`
+- Component folder: `apis/org/openmcf/provider/<provider>/<component>/v1/`
 - All contents: proto files, Go files, IaC modules, docs, tests
 
 **Registry Entry:**
@@ -115,8 +115,8 @@ Search codebase for references to the component:
 ⚠️  Warning: MongodbAtlas is referenced in other files
 
 Found 3 references:
-  1. apis/org/project_planton/provider/atlas/backup/v1/spec.proto
-     Line 15: import "org/project_planton/provider/atlas/mongodbatlas/v1/api.proto"
+  1. apis/org/openmcf/provider/atlas/backup/v1/spec.proto
+     Line 15: import "org/openmcf/provider/atlas/mongodbatlas/v1/api.proto"
      
   2. docs/deployment-landscape.md
      Line 234: See MongodbAtlas for SaaS database example
@@ -138,10 +138,10 @@ If `--backup` flag is used:
 ```bash
 # Create timestamped backup
 TIMESTAMP=$(date +"%Y-%m-%d-%H%M%S")
-BACKUP_DIR="apis/org/project_planton/provider/<provider>/<component>-backup-$TIMESTAMP"
+BACKUP_DIR="apis/org/openmcf/provider/<provider>/<component>-backup-$TIMESTAMP"
 
 # Copy entire component folder
-cp -r apis/org/project_planton/provider/<provider>/<component> $BACKUP_DIR
+cp -r apis/org/openmcf/provider/<provider>/<component> $BACKUP_DIR
 
 # Save enum entry
 grep -A 5 "^  <ComponentName> = " cloud_resource_kind.proto > $BACKUP_DIR/enum_entry.txt
@@ -150,7 +150,7 @@ grep -A 5 "^  <ComponentName> = " cloud_resource_kind.proto > $BACKUP_DIR/enum_e
 **Backup location shown:**
 ```
 💾 Backup created at:
-  apis/org/project_planton/provider/atlas/mongodbatlas-backup-2025-11-13-143022/
+  apis/org/openmcf/provider/atlas/mongodbatlas-backup-2025-11-13-143022/
 
 To restore:
   cp -r mongodbatlas-backup-2025-11-13-143022 mongodbatlas
@@ -172,7 +172,7 @@ Enum Entry:
   }]
 
 Component Path:
-  apis/org/project_planton/provider/atlas/mongodbatlas/v1/
+  apis/org/openmcf/provider/atlas/mongodbatlas/v1/
 
 Files to Delete (23 files):
   📄 api.proto
@@ -203,7 +203,7 @@ If confirmed:
 
 1. **Remove component folder**
    ```bash
-   rm -rf apis/org/project_planton/provider/<provider>/<component>/
+   rm -rf apis/org/openmcf/provider/<provider>/<component>/
    ```
 
 2. **Remove enum entry from cloud_resource_kind.proto**
@@ -231,7 +231,7 @@ Show what was deleted:
 
 Removed:
   ✅ Component folder (23 files deleted)
-     apis/org/project_planton/provider/atlas/mongodbatlas/v1/
+     apis/org/openmcf/provider/atlas/mongodbatlas/v1/
      
   ✅ Enum entry removed
      cloud_resource_kind.proto: MongodbAtlas = 51
@@ -263,7 +263,7 @@ Duration: 15 seconds
 Preview deletion without making changes:
 
 ```bash
-@delete-project-planton-component MongodbAtlas --dry-run
+@delete-openmcf-component MongodbAtlas --dry-run
 ```
 
 **Output:**
@@ -271,7 +271,7 @@ Preview deletion without making changes:
 🔍 Dry-Run: MongodbAtlas Deletion
 
 Would Delete:
-  📁 apis/org/project_planton/provider/atlas/mongodbatlas/v1/
+  📁 apis/org/openmcf/provider/atlas/mongodbatlas/v1/
      (23 files, 450 KB)
      
   📝 Enum entry: MongodbAtlas = 51
@@ -293,7 +293,7 @@ To create backup: add --backup flag
 Create backup before deleting:
 
 ```bash
-@delete-project-planton-component MongodbAtlas --backup
+@delete-openmcf-component MongodbAtlas --backup
 ```
 
 Creates timestamped backup folder with all component files and enum entry.
@@ -303,7 +303,7 @@ Creates timestamped backup folder with all component files and enum entry.
 Skip confirmation prompt:
 
 ```bash
-@delete-project-planton-component ObsoleteComponent --force --backup
+@delete-openmcf-component ObsoleteComponent --force --backup
 ```
 
 **Use when:**
@@ -321,7 +321,7 @@ Skip confirmation prompt:
 Skip reference checking (faster but riskier):
 
 ```bash
-@delete-project-planton-component TestComponent --skip-references --force
+@delete-openmcf-component TestComponent --skip-references --force
 ```
 
 **Warning:** May break builds if component is referenced elsewhere.
@@ -332,16 +332,16 @@ Skip reference checking (faster but riskier):
 
 ```bash
 # Step 1: Preview
-@delete-project-planton-component ObsoleteComponent --dry-run
+@delete-openmcf-component ObsoleteComponent --dry-run
 
 # Step 2: Review output, then delete with backup
-@delete-project-planton-component ObsoleteComponent --backup
+@delete-openmcf-component ObsoleteComponent --backup
 
 # Step 3: Confirm when prompted
 # Type: DELETE ObsoleteComponent
 
 # Step 4: Verify
-ls apis/org/project_planton/provider/aws/obsoletecomponent/
+ls apis/org/openmcf/provider/aws/obsoletecomponent/
 # ls: cannot access ... : No such file or directory ✅
 
 # Step 5: Check for broken references
@@ -353,7 +353,7 @@ make test
 
 ```bash
 # Delete test component (known to have no references)
-@delete-project-planton-component TestCloudResourceOne --force --backup
+@delete-openmcf-component TestCloudResourceOne --force --backup
 
 # Verify and commit
 make build && make test && git add -A && git commit -m "Remove test component"
@@ -368,7 +368,7 @@ make build && make test && git add -A && git commit -m "Remove test component"
 # Step 1: Verify migration complete (all users moved to new component)
 
 # Step 2: Delete old component
-@delete-project-planton-component PostgresKubernetes --backup
+@delete-openmcf-component PostgresKubernetes --backup
 
 # Step 3: Update references
 # Find any docs/examples mentioning old component
@@ -385,7 +385,7 @@ git commit -m "Remove deprecated PostgresKubernetes (consolidated into PostgresO
 ```bash
 # Delete multiple test components
 for component in TestCloudResourceOne TestCloudResourceTwo TestCloudResourceThree; do
-  @delete-project-planton-component $component --force --backup
+  @delete-openmcf-component $component --force --backup
 done
 
 # Verify
@@ -449,7 +449,7 @@ Available components:
 ❌ Cannot delete: MongodbAtlas is referenced in 3 files
 
 Critical References:
-  1. apis/org/project_planton/provider/atlas/backup/v1/spec.proto
+  1. apis/org/openmcf/provider/atlas/backup/v1/spec.proto
      - Uses MongodbAtlas as field type
      - Must update before deletion
      
@@ -466,11 +466,11 @@ Recommendation: Fix references first for safety
 ```
 ❌ Deletion failed: Permission denied
 
-Error: cannot remove 'apis/org/project_planton/provider/atlas/mongodbatlas/'
+Error: cannot remove 'apis/org/openmcf/provider/atlas/mongodbatlas/'
 Reason: Directory not writable
 
 Fix:
-  chmod -R u+w apis/org/project_planton/provider/atlas/mongodbatlas/
+  chmod -R u+w apis/org/openmcf/provider/atlas/mongodbatlas/
   
 Then retry deletion.
 ```
@@ -494,7 +494,7 @@ If you need to restore:
 
 ```bash
 # Find backup
-ls apis/org/project_planton/provider/<provider>/*-backup-*/
+ls apis/org/openmcf/provider/<provider>/*-backup-*/
 
 # Restore component folder
 cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
@@ -514,13 +514,13 @@ make build && make test
 
 ```bash
 # Find deletion commit
-git log --all --full-history -- "apis/org/project_planton/provider/<provider>/<component>/"
+git log --all --full-history -- "apis/org/openmcf/provider/<provider>/<component>/"
 
 # Restore from before deletion
-git checkout <commit-before-deletion> -- apis/org/project_planton/provider/<provider>/<component>/
+git checkout <commit-before-deletion> -- apis/org/openmcf/provider/<provider>/<component>/
 
 # Restore enum entry from cloud_resource_kind.proto
-git show <commit-before-deletion>:apis/org/project_planton/shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "<ComponentName>"
+git show <commit-before-deletion>:apis/org/openmcf/shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "<ComponentName>"
 # Manually add back to current cloud_resource_kind.proto
 
 # Regenerate and verify
@@ -533,21 +533,21 @@ make protos && make build && make test
 
 ```bash
 # Audit reveals component is incomplete and obsolete
-@audit-project-planton-component OldComponent
+@audit-openmcf-component OldComponent
 # Result: 40% complete, not worth updating
 
 # Decision: Delete instead of update
-@delete-project-planton-component OldComponent --backup
+@delete-openmcf-component OldComponent --backup
 ```
 
 ### Before Forge
 
 ```bash
 # Want to recreate component from scratch
-@delete-project-planton-component OldImplementation --backup
+@delete-openmcf-component OldImplementation --backup
 
 # Create new implementation
-@forge-project-planton-component NewImplementation --provider aws
+@forge-openmcf-component NewImplementation --provider aws
 ```
 
 ## Best Practices
@@ -581,10 +581,10 @@ make protos && make build && make test
 
 ```bash
 # Fix permissions
-chmod -R u+w apis/org/project_planton/provider/<provider>/<component>/
+chmod -R u+w apis/org/openmcf/provider/<provider>/<component>/
 
 # Retry deletion
-@delete-project-planton-component <ComponentName> --backup
+@delete-openmcf-component <ComponentName> --backup
 ```
 
 ### References Blocking Deletion
@@ -601,7 +601,7 @@ grep -r "MongodbAtlas" docs/
 
 **Option 2: Force delete (risky)**
 ```bash
-@delete-project-planton-component MongodbAtlas --force --backup
+@delete-openmcf-component MongodbAtlas --force --backup
 
 # Fix build errors after
 make build  # Shows what broke
@@ -615,10 +615,10 @@ make build  # Shows what broke
 cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
 
 # Or restore from git
-git checkout HEAD~1 -- apis/org/project_planton/provider/atlas/mongodbatlas/
+git checkout HEAD~1 -- apis/org/openmcf/provider/atlas/mongodbatlas/
 
 # Restore enum entry
-git show HEAD~1:apis/org/project_planton/shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "MongodbAtlas"
+git show HEAD~1:apis/org/openmcf/shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "MongodbAtlas"
 # Add back to cloud_resource_kind.proto
 
 # Regenerate

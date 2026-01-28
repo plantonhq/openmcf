@@ -16,7 +16,7 @@ Google Cloud DNS is a high-performance, globally distributed authoritative DNS s
 
 The challenge isn't whether Cloud DNS is capable—it absolutely is—but rather **how to manage it** in a way that supports modern cloud-native workflows. Teams deploying workloads to Google Kubernetes Engine need DNS records to appear automatically when they create Ingresses. Teams using cert-manager to provision TLS certificates need DNS automation to solve ACME challenges. Teams operating in hybrid-cloud environments need DNS to resolve seamlessly between GCP and on-premises data centers. None of these scenarios work well when DNS is managed through manual console operations.
 
-This document presents a structured view of Cloud DNS deployment methods, from anti-patterns that create operational debt to production-ready solutions that integrate seamlessly with Infrastructure-as-Code and Kubernetes-native automation. It explains what deployment approaches exist, how they've evolved, and why Project Planton's API is designed the way it is.
+This document presents a structured view of Cloud DNS deployment methods, from anti-patterns that create operational debt to production-ready solutions that integrate seamlessly with Infrastructure-as-Code and Kubernetes-native automation. It explains what deployment approaches exist, how they've evolved, and why OpenMCF's API is designed the way it is.
 
 ---
 
@@ -130,7 +130,7 @@ Pulumi uses a managed state backend by default, which simplifies team collaborat
 
 Following HashiCorp's license change for Terraform, **OpenTofu** emerged as a community-driven, open-source fork. It is fully compatible with Terraform's HCL syntax and uses the same `google_dns_managed_zone` resources. For organizations committed to open-source infrastructure tools, OpenTofu provides a path forward without vendor lock-in.
 
-**Verdict:** This is the production-ready tier. Terraform, Pulumi, and OpenTofu provide the declarative semantics, state management, and ecosystem integration required to manage DNS at scale. **This is the foundation Project Planton is built on.**
+**Verdict:** This is the production-ready tier. Terraform, Pulumi, and OpenTofu provide the declarative semantics, state management, and ecosystem integration required to manage DNS at scale. **This is the foundation OpenMCF is built on.**
 
 ---
 
@@ -187,7 +187,7 @@ In Kubernetes environments, teams use **external-dns**—a controller that watch
 
 This separation allows infrastructure teams to manage zones and static records with Terraform while allowing external-dns or cert-manager to manage dynamic application records within the same zone. The systems coexist peacefully because each manages its own distinct set of resources.
 
-**Project Planton's API design reflects this principle.** The `GcpDnsZone` resource provisions the zone and static records (defined in the spec). Dynamic records managed by external-dns are handled outside of the IaC lifecycle, as they should be.
+**OpenMCF's API design reflects this principle.** The `GcpDnsZone` resource provisions the zone and static records (defined in the spec). Dynamic records managed by external-dns are handled outside of the IaC lifecycle, as they should be.
 
 ---
 
@@ -347,9 +347,9 @@ Cloud DNS provides two types of logs:
 
 ---
 
-## What Project Planton Provides: An 80/20 API for Production DNS
+## What OpenMCF Provides: An 80/20 API for Production DNS
 
-The `GcpDnsZone` API resource in Project Planton is designed around the principle that **most users need 20% of the configuration options 80% of the time**. 
+The `GcpDnsZone` API resource in OpenMCF is designed around the principle that **most users need 20% of the configuration options 80% of the time**. 
 
 ### Core Design Decisions
 
@@ -372,7 +372,7 @@ The `GcpDnsZone` API resource in Project Planton is designed around the principl
 Here's a typical `GcpDnsZone` resource that provisions a public zone with DNSSEC (assumed enabled by default in the underlying Pulumi/Terraform module), grants permissions to cert-manager, and defines foundational DNS records:
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpDnsZone
 metadata:
   name: example-com
@@ -417,7 +417,7 @@ Managing DNS in Google Cloud has evolved from manual console operations to fully
 
 3. **Ecosystem Integration:** DNS is not a standalone service. It's deeply integrated with Kubernetes for service discovery, with cert-manager for certificate automation, and with hybrid-cloud architectures for cross-network resolution.
 
-Project Planton's `GcpDnsZone` API embodies these principles by providing a **minimal, production-grade interface** for the 80% use case—provisioning public DNS zones, enabling DNSSEC by default, defining foundational records, and granting IAM permissions to automation tools—while leaving advanced features (routing policies, private zones, forwarding zones) to be managed through direct Terraform or Config Connector when needed.
+OpenMCF's `GcpDnsZone` API embodies these principles by providing a **minimal, production-grade interface** for the 80% use case—provisioning public DNS zones, enabling DNSSEC by default, defining foundational records, and granting IAM permissions to automation tools—while leaving advanced features (routing policies, private zones, forwarding zones) to be managed through direct Terraform or Config Connector when needed.
 
 This is DNS management designed for modern cloud-native platforms: declarative, automated, and secure by default.
 

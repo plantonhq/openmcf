@@ -18,7 +18,7 @@ Google Cloud's **Workload Identity Federation** represents a paradigm shift in h
 
 But here's the challenge: while Workload Identity solves the authentication problem, *provisioning* a Workload Identity binding remains remarkably fragile. It requires a precise, multi-step "dual-write" operation across two independent systems (GCP IAM and the Kubernetes API), and a single typo or missed step results in cryptic `Permission denied` errors that can take hours to debug.
 
-This document explains the spectrum of deployment methods for Workload Identity bindings—from brittle manual procedures to production-grade automation—and why Project Planton's approach is designed to solve the core fragility that all other Infrastructure as Code tools have failed to address.
+This document explains the spectrum of deployment methods for Workload Identity bindings—from brittle manual procedures to production-grade automation—and why OpenMCF's approach is designed to solve the core fragility that all other Infrastructure as Code tools have failed to address.
 
 ## The Authentication Landscape: A Maturity Spectrum
 
@@ -119,7 +119,7 @@ resource "kubernetes_service_account" "app" {
 
 **The problem:** The operator is *still* responsible for synchronizing two separate resources and ensuring the principal string is correctly constructed. This is a 1:1 mapping of the manual anti-pattern, just expressed as code.
 
-**Verdict:** IaC tools are **better than manual provisioning** (they provide versioning, auditability, and repeatability), but they do not solve the **fundamental fragility** of the dual-write operation. This is the market gap that Project Planton addresses.
+**Verdict:** IaC tools are **better than manual provisioning** (they provide versioning, auditability, and repeatability), but they do not solve the **fundamental fragility** of the dual-write operation. This is the market gap that OpenMCF addresses.
 
 ## Level 4: The Production Solution (Abstracted, Atomic Binding Management)
 
@@ -131,13 +131,13 @@ The implementation, however, is complex: a dual-write operation across two APIs,
 
 Every existing IaC tool has failed to bridge this gap. They provide **primitives** (IAM bindings, service account resources) but force the operator to orchestrate the **pattern** (synchronization, string construction, validation).
 
-### Project Planton's Approach: An Atomic, High-Level Resource
+### OpenMCF's Approach: An Atomic, High-Level Resource
 
-Project Planton's `GcpGkeWorkloadIdentityBinding` resource is designed as a **pattern-level abstraction** that matches the user's intent, not a primitive-level wrapper around existing tools.
+OpenMCF's `GcpGkeWorkloadIdentityBinding` resource is designed as a **pattern-level abstraction** that matches the user's intent, not a primitive-level wrapper around existing tools.
 
 **Core design principles:**
 
-1. **Atomic Dual-Write:** When a `GcpGkeWorkloadIdentityBinding` resource is created, updated, or deleted, the Project Planton controller performs *two* synchronized actions:
+1. **Atomic Dual-Write:** When a `GcpGkeWorkloadIdentityBinding` resource is created, updated, or deleted, the OpenMCF controller performs *two* synchronized actions:
    - **Action 1 (GCP IAM):** Idempotently create or update an IAM policy binding with `roles/iam.workloadIdentityUser`.
    - **Action 2 (Kubernetes API):** Idempotently find the Kubernetes Service Account and add/update the `iam.gke.io/gcp-service-account` annotation.
 
@@ -153,12 +153,12 @@ Project Planton's `GcpGkeWorkloadIdentityBinding` resource is designed as a **pa
    - `ksa_namespace`: The Kubernetes namespace
    - `ksa_name`: The Kubernetes Service Account name
 
-4. **Failure Prevention:** By managing the dual-write atomically and constructing the principal string internally, Project Planton eliminates Failure Modes 1 and 2 at the design level.
+4. **Failure Prevention:** By managing the dual-write atomically and constructing the principal string internally, OpenMCF eliminates Failure Modes 1 and 2 at the design level.
 
-**Example (Project Planton):**
+**Example (OpenMCF):**
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-dns-binding
@@ -314,7 +314,7 @@ kubectl exec -it workload-identity-test -n my-app-ns -- gcloud auth list
 **Binding:**
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-dns-binding
@@ -354,7 +354,7 @@ spec:
 **Binding:**
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: app-gcs-binding
@@ -393,7 +393,7 @@ spec:
 **Binding:**
 
 ```yaml
-apiVersion: gcp.project-planton.org/v1
+apiVersion: gcp.openmcf.org/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: external-dns-binding
@@ -410,7 +410,7 @@ The journey from static service account keys to Workload Identity represents a f
 
 But the provisioning tools haven't kept up. Terraform, Pulumi, Config Connector, and Crossplane all provide low-level primitives that mirror the fragile manual process, forcing operators to manage dual-writes, construct brittle strings, and debug cryptic errors.
 
-Project Planton's `GcpGkeWorkloadIdentityBinding` resource closes this abstraction gap by providing a **pattern-level resource** that matches user intent: "Bind this KSA to this GSA." The controller handles the complexity—string construction, dual-write synchronization, and idempotent reconciliation—so operators can focus on *what* they want to achieve, not *how* to avoid breaking it.
+OpenMCF's `GcpGkeWorkloadIdentityBinding` resource closes this abstraction gap by providing a **pattern-level resource** that matches user intent: "Bind this KSA to this GSA." The controller handles the complexity—string construction, dual-write synchronization, and idempotent reconciliation—so operators can focus on *what* they want to achieve, not *how* to avoid breaking it.
 
 This is the first tool to atomically solve the dual-write problem. And in doing so, it transforms Workload Identity from a powerful but fragile architecture into a production-ready, developer-friendly standard.
 

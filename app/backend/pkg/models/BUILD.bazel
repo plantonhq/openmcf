@@ -8,7 +8,7 @@ go_library(
         "stack_update.go",
         "stack_update_streaming_response.go",
     ],
-    importpath = "github.com/plantonhq/project-planton/app/backend/pkg/models",
+    importpath = "github.com/plantonhq/openmcf/app/backend/pkg/models",
     visibility = ["//visibility:public"],
     deps = ["@org_mongodb_go_mongo_driver//bson/primitive:go_default_library"],
 )

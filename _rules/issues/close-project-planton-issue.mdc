@@ -4,17 +4,17 @@ globs: []
 alwaysApply: false
 ---
 
-# Rule: Close Project Planton Issue (action)
+# Rule: Close OpenMCF Issue (action)
 
 Purpose: When invoked, close an issue file by moving it to `_issues/closed/` directory with a closing timestamp, relocating associated images, and optionally adding resolution context when the issue was fixed in the current conversation.
 
-Usage: Invoke explicitly as `@close-project-planton-issue` when an issue has been resolved or should be archived.
+Usage: Invoke explicitly as `@close-openmcf-issue` when an issue has been resolved or should be archived.
 
-References: `@create-project-planton-issue`, `@create-project-planton-changelog`, `@understand-cursor-rules`
+References: `@create-openmcf-issue`, `@create-openmcf-changelog`, `@understand-cursor-rules`
 
 ## ⚠️ CRITICAL: Explicit Invocation Only
 
-**DO NOT** close issues automatically or proactively. Issues must ONLY be closed when the user explicitly invokes this rule with `@close-project-planton-issue`.
+**DO NOT** close issues automatically or proactively. Issues must ONLY be closed when the user explicitly invokes this rule with `@close-openmcf-issue`.
 
 Never:
 - ❌ Suggest closing an issue without being asked
@@ -137,7 +137,7 @@ Conversation includes:
 **Example detection**:
 ```
 Conversation:
-- User: "@close-project-planton-issue postgres-spec-validation"
+- User: "@close-openmcf-issue postgres-spec-validation"
 - No recent context or changes
 
 → Scenario B: Simple close
@@ -547,7 +547,7 @@ Before confirming completion, verify:
 ```
 [Context: User just fixed Postgres validation bug, created changelog]
 
-User: "@close-project-planton-issue postgres-spec-validation"
+User: "@close-openmcf-issue postgres-spec-validation"
 
 Agent:
 1. Gets timestamp: 2025-12-28-073049
@@ -590,7 +590,7 @@ Agent:
 ```
 [Context: Brand new conversation, no recent changes]
 
-User: "@close-project-planton-issue manifest-validation-command"
+User: "@close-openmcf-issue manifest-validation-command"
 
 Agent:
 1. Gets timestamp: 2025-12-28-120000
@@ -614,7 +614,7 @@ Agent:
 ### Example 3: Close Issue with Multiple Images
 
 ```
-User: "@close-project-planton-issue pulumi-code-generation"
+User: "@close-openmcf-issue pulumi-code-generation"
 
 Agent:
 1. Gets timestamp: 2025-12-28-140530

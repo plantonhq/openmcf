@@ -59,8 +59,8 @@ Enhanced DeployCloudResource API to accept provider credentials:
 
 Fixed module directory path resolution:
 
-- **Pulumi**: Corrected from `apis/org/project_planton/provider` to `apis/project/planton/provider`
-- **OpenTofu**: Corrected from `apis/org/project_planton/provider` to `apis/project/planton/provider`
+- **Pulumi**: Corrected from `apis/org/openmcf/provider` to `apis/project/planton/provider`
+- **OpenTofu**: Corrected from `apis/org/openmcf/provider` to `apis/project/planton/provider`
 - Fixed version check logic in Pulumi module directory
 - Improved version handling in module directory logic
 

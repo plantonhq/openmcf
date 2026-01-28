@@ -21,7 +21,7 @@ Users needed the ability to manage individual DNS records separately from Route5
 
 ## Solution / What's New
 
-Created a complete deployment component following the Project Planton forge process with full Pulumi and Terraform implementations.
+Created a complete deployment component following the OpenMCF forge process with full Pulumi and Terraform implementations.
 
 ### Component Architecture
 
@@ -99,7 +99,7 @@ flowchart LR
 ### Files Created
 
 ```
-apis/org/project_planton/provider/aws/awsroute53dnsrecord/v1/
+apis/org/openmcf/provider/aws/awsroute53dnsrecord/v1/
 ├── api.proto, api.pb.go          # KRM wrapper
 ├── spec.proto, spec.pb.go        # Configuration schema
 ├── stack_input.proto, .pb.go     # IaC inputs
@@ -173,7 +173,7 @@ AwsRoute53DnsRecord = 223 [(kind_meta) = {
 ### Basic A Record
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: www-example
@@ -189,7 +189,7 @@ spec:
 ### Alias to CloudFront
 
 ```yaml
-apiVersion: aws.project-planton.org/v1
+apiVersion: aws.openmcf.org/v1
 kind: AwsRoute53DnsRecord
 metadata:
   name: apex-cloudfront
@@ -206,10 +206,10 @@ spec:
 
 ```bash
 # Pulumi
-project-planton pulumi up --manifest dns-record.yaml
+openmcf pulumi up --manifest dns-record.yaml
 
 # Terraform/OpenTofu
-project-planton tofu apply --manifest dns-record.yaml
+openmcf tofu apply --manifest dns-record.yaml
 ```
 
 ---

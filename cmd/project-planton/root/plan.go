@@ -3,14 +3,14 @@ package root
 import (
 	"os"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/pulumi"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/iacflags"
-	"github.com/plantonhq/project-planton/internal/cli/iacrunner"
-	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
-	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/pulumi"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/terraform"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/iacflags"
+	"github.com/plantonhq/openmcf/internal/cli/iacrunner"
+	climanifest "github.com/plantonhq/openmcf/internal/cli/manifest"
+	"github.com/plantonhq/openmcf/internal/manifest"
+	"github.com/plantonhq/openmcf/pkg/iac/provisioner"
 	"github.com/spf13/cobra"
 )
 
@@ -19,28 +19,28 @@ var Plan = &cobra.Command{
 	Aliases: []string{"preview"},
 	Short:   "preview infrastructure changes using the provisioner specified in manifest",
 	Long: `Preview infrastructure changes by automatically routing to the appropriate provisioner
-(Pulumi, Tofu, or Terraform) based on the manifest label 'project-planton.org/provisioner'.
+(Pulumi, Tofu, or Terraform) based on the manifest label 'openmcf.org/provisioner'.
 
 If the provisioner label is not present, you will be prompted to select one interactively.
 
 This command has 'preview' as an alias for Pulumi-style experience.`,
 	Example: `
 	# Preview changes with manifest file
-	project-planton plan -f manifest.yaml
-	project-planton preview -f manifest.yaml
-	project-planton plan --manifest manifest.yaml
+	openmcf plan -f manifest.yaml
+	openmcf preview -f manifest.yaml
+	openmcf plan --manifest manifest.yaml
 
 	# Preview with stack input file (extracts manifest from target field)
-	project-planton plan -i stack-input.yaml
+	openmcf plan -i stack-input.yaml
 
 	# Preview with kustomize
-	project-planton plan --kustomize-dir _kustomize --overlay prod
+	openmcf plan --kustomize-dir _kustomize --overlay prod
 
 	# Preview with field overrides
-	project-planton plan -f manifest.yaml --set spec.version=v1.2.3
+	openmcf plan -f manifest.yaml --set spec.version=v1.2.3
 
 	# Preview destroy plan (Tofu)
-	project-planton plan -f manifest.yaml --destroy
+	openmcf plan -f manifest.yaml --destroy
 	`,
 	Run: planHandler,
 }

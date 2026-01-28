@@ -1,13 +1,13 @@
 load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "project-planton",
+    name = "openmcf",
     srcs = ["root.go"],
-    importpath = "github.com/plantonhq/project-planton/cmd/project-planton",
+    importpath = "github.com/plantonhq/openmcf/cmd/openmcf",
     visibility = ["//visibility:public"],
     deps = [
-        "//cmd/project-planton/root",
-        "//cmd/project-planton/root/webapp",
+        "//cmd/openmcf/root",
+        "//cmd/openmcf/root/webapp",
         "//internal/cli/flag",
         "@com_github_spf13_cobra//:cobra",
     ],

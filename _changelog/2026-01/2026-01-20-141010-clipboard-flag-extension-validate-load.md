@@ -131,8 +131,8 @@ func validateHandler(cmd *cobra.Command, args []string) {
 |------|--------|
 | `internal/cli/iacflags/manifest_source_flags.go` | Added alias flags, `IsClipboardFlagSet()` helper |
 | `internal/cli/manifest/resolve_from_clipboard.go` | Use `IsClipboardFlagSet()` instead of direct flag lookup |
-| `cmd/project-planton/root/validate_manifest.go` | Refactored to use shared flags and resolver |
-| `cmd/project-planton/root/load_manifest.go` | Refactored to use shared flags and resolver |
+| `cmd/openmcf/root/validate_manifest.go` | Refactored to use shared flags and resolver |
+| `cmd/openmcf/root/load_manifest.go` | Refactored to use shared flags and resolver |
 
 ## Benefits
 
@@ -140,7 +140,7 @@ func validateHandler(cmd *cobra.Command, args []string) {
 
 - **Consistent experience**: Same flags work across all manifest commands
 - **Shorter options**: `--clip` and `--cb` are quicker to type than `--clipboard`
-- **Zero-friction validation**: Copy manifest → `project-planton validate --cb` → Instant feedback
+- **Zero-friction validation**: Copy manifest → `openmcf validate --cb` → Instant feedback
 
 ### For Developers
 
@@ -152,17 +152,17 @@ func validateHandler(cmd *cobra.Command, args []string) {
 
 ```bash
 # All these variants now work for validate and load commands:
-project-planton validate --clipboard
-project-planton validate --clip
-project-planton validate --cb
-project-planton validate -c
+openmcf validate --clipboard
+openmcf validate --clip
+openmcf validate --cb
+openmcf validate -c
 
 # Combined with other flags
-project-planton load --clip --set spec.version=v2.0.0
+openmcf load --clip --set spec.version=v2.0.0
 
 # Backward compatibility preserved
-project-planton validate manifest.yaml
-project-planton load manifest.yaml
+openmcf validate manifest.yaml
+openmcf load manifest.yaml
 ```
 
 ## Impact
@@ -177,7 +177,7 @@ project-planton load manifest.yaml
 
 ### Backward Compatibility
 
-- Positional arguments still work: `project-planton validate manifest.yaml`
+- Positional arguments still work: `openmcf validate manifest.yaml`
 - Existing `--kustomize-dir` + `--overlay` pattern unchanged
 - All existing commands continue to work identically
 

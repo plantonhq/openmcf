@@ -122,7 +122,7 @@ def find_component_in_registry(repo_root: str, component_name: str) -> Optional[
     """
     registry_path = os.path.join(
         repo_root,
-        "apis/org/project_planton/shared/cloudresourcekind/cloud_resource_kind.proto"
+        "apis/org/openmcf/shared/cloudresourcekind/cloud_resource_kind.proto"
     )
     
     if not os.path.isfile(registry_path):
@@ -164,7 +164,7 @@ def get_component_directory(repo_root: str, provider: str, component_folder: str
     """Get path to component directory"""
     return os.path.join(
         repo_root,
-        "apis/org/project_planton/provider",
+        "apis/org/openmcf/provider",
         provider,
         component_folder
     )
@@ -486,20 +486,20 @@ def main() -> int:
         old_dir = None
         
         # Try kubernetes root first
-        test_path = os.path.join(repo_root, "apis/org/project_planton/provider/kubernetes", old_folder)
+        test_path = os.path.join(repo_root, "apis/org/openmcf/provider/kubernetes", old_folder)
         if os.path.exists(test_path):
             old_dir = test_path
         
         # Try workload
         if not old_dir:
-            test_path = os.path.join(repo_root, "apis/org/project_planton/provider/kubernetes/workload", old_folder)
+            test_path = os.path.join(repo_root, "apis/org/openmcf/provider/kubernetes/workload", old_folder)
             if os.path.exists(test_path):
                 provider = "kubernetes/workload"
                 old_dir = test_path
         
         # Try addon
         if not old_dir:
-            test_path = os.path.join(repo_root, "apis/org/project_planton/provider/kubernetes/addon", old_folder)
+            test_path = os.path.join(repo_root, "apis/org/openmcf/provider/kubernetes/addon", old_folder)
             if os.path.exists(test_path):
                 provider = "kubernetes/addon"
                 old_dir = test_path

@@ -62,16 +62,16 @@ flowchart TB
 
 ```protobuf
 // api_grants[].audience - now supports Auth0ResourceServer references
-org.project_planton.shared.foreignkey.v1.StringValueOrRef audience = 1 [
+org.openmcf.shared.foreignkey.v1.StringValueOrRef audience = 1 [
   (buf.validate.field).required = true,
-  (org.project_planton.shared.foreignkey.v1.default_kind) = Auth0ResourceServer,
-  (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identifier"
+  (org.openmcf.shared.foreignkey.v1.default_kind) = Auth0ResourceServer,
+  (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identifier"
 ];
 
 // enabled_connections - now supports Auth0Connection references
-repeated org.project_planton.shared.foreignkey.v1.StringValueOrRef enabled_connections = 28 [
-  (org.project_planton.shared.foreignkey.v1.default_kind) = Auth0Connection,
-  (org.project_planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+repeated org.openmcf.shared.foreignkey.v1.StringValueOrRef enabled_connections = 28 [
+  (org.openmcf.shared.foreignkey.v1.default_kind) = Auth0Connection,
+  (org.openmcf.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
 ];
 ```
 
@@ -120,7 +120,7 @@ api_grants = optional(list(object({
 ### M2M Client with Auth0ResourceServer Reference
 
 ```yaml
-apiVersion: auth0.project-planton.org/v1
+apiVersion: auth0.openmcf.org/v1
 kind: Auth0Client
 metadata:
   name: backend-service
@@ -139,7 +139,7 @@ spec:
 ### SPA with Auth0Connection References
 
 ```yaml
-apiVersion: auth0.project-planton.org/v1
+apiVersion: auth0.openmcf.org/v1
 kind: Auth0Client
 metadata:
   name: spa-app

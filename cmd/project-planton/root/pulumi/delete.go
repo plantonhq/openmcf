@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/flag"
-	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
-	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/iac/localmodule"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumistack"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
+	climanifest "github.com/plantonhq/openmcf/internal/cli/manifest"
+	"github.com/plantonhq/openmcf/internal/manifest"
+	"github.com/plantonhq/openmcf/pkg/iac/localmodule"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumistack"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +23,7 @@ var Delete = &cobra.Command{
 ⚠️  WARNING: This is a destructive operation that permanently removes the stack metadata.
 
 IMPORTANT: This command does NOT destroy cloud resources. If your stack still has 
-resources deployed, you should run 'project-planton pulumi destroy' first to tear 
+resources deployed, you should run 'openmcf pulumi destroy' first to tear 
 down the infrastructure, then use this command to remove the stack metadata.
 
 Use --force to remove the stack even if it still contains resources (not recommended 
@@ -91,7 +91,7 @@ func deleteHandler(cmd *cobra.Command, args []string) {
 	}
 	cliprint.PrintSuccess("Manifest validated")
 
-	// Handle --local-module flag: derive module directory from local project-planton repo
+	// Handle --local-module flag: derive module directory from local openmcf repo
 	localModule, _ := cmd.Flags().GetBool(string(flag.LocalModule))
 	if localModule {
 		var err error

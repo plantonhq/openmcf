@@ -165,8 +165,8 @@ Frontend: Display decoded JSON (can download)
 
 ### CLI
 
-- `cmd/project-planton/root/credential_get.go` - Display label fix (+3, -1 lines)
-- `cmd/project-planton/root.go` - Removed deployment component command (-1 line)
+- `cmd/openmcf/root/credential_get.go` - Display label fix (+3, -1 lines)
+- `cmd/openmcf/root.go` - Removed deployment component command (-1 line)
 
 ### Frontend
 
@@ -181,8 +181,8 @@ Frontend: Display decoded JSON (can download)
 
 ### Documentation
 
-- `_projects/20251127-project-planton-web-app/docs/cli-commands.md` - Documentation updates
-- `_projects/20251127-project-planton-web-app/tasks/T07_4_completion.md` - Task documentation updates
+- `_projects/20251127-openmcf-web-app/docs/cli-commands.md` - Documentation updates
+- `_projects/20251127-openmcf-web-app/tasks/T07_4_completion.md` - Task documentation updates
 
 ## Files Deleted
 
@@ -194,7 +194,7 @@ Frontend: Display decoded JSON (can download)
 
 ### CLI
 
-- `cmd/project-planton/root/list_deployment_component.go` (19 lines)
+- `cmd/openmcf/root/list_deployment_component.go` (19 lines)
 
 ## Key Features Delivered
 

@@ -1,12 +1,12 @@
-# Project Planton CLI - Architecture Reference
+# OpenMCF CLI - Architecture Reference
 
-Technical reference for the Project Planton CLI architecture and implementation.
+Technical reference for the OpenMCF CLI architecture and implementation.
 
 ---
 
 ## Overview
 
-The Project Planton CLI is a Go-based command-line tool built with [Cobra](https://github.com/spf13/cobra) that provides a unified interface for deploying infrastructure across multiple cloud providers using either Pulumi or OpenTofu.
+The OpenMCF CLI is a Go-based command-line tool built with [Cobra](https://github.com/spf13/cobra) that provides a unified interface for deploying infrastructure across multiple cloud providers using either Pulumi or OpenTofu.
 
 **Core Responsibility**: Orchestrate the deployment workflow (load → validate → transform → delegate to IaC engine).
 
@@ -23,7 +23,7 @@ The Project Planton CLI is a Go-based command-line tool built with [Cobra](https
        │
        ▼
 ┌─────────────────────────────────────────────────────────┐
-│  CLI Layer (cmd/project-planton/)                       │
+│  CLI Layer (cmd/openmcf/)                       │
 │  ├── Parse flags (cobra)                                │
 │  ├── Resolve manifest path (file, URL, kustomize)       │
 │  ├── Apply --set overrides                              │
@@ -55,7 +55,7 @@ The Project Planton CLI is a Go-based command-line tool built with [Cobra](https
 ## Directory Structure
 
 ```
-cmd/project-planton/
+cmd/openmcf/
 ├── root.go                      # Root command definition
 ├── root/
 │   ├── pulumi.go                # Pulumi command group
@@ -230,7 +230,7 @@ error (no manifest source)
 
 ```bash
 # Build CLI
-go build -o bin/project-planton ./cmd/project-planton
+go build -o bin/openmcf ./cmd/openmcf
 
 # Or using Makefile
 make build
@@ -255,7 +255,7 @@ Project uses Bazel for builds:
 
 ```bash
 # Build with Bazel
-bazel build //cmd/project-planton
+bazel build //cmd/openmcf
 
 # Run tests
 bazel test //...
@@ -292,7 +292,7 @@ Test full workflows:
 ```bash
 # Create test manifest
 cat > test-resource.yaml <<EOF
-apiVersion: test.project-planton.org/v1
+apiVersion: test.openmcf.org/v1
 kind: TestResource
 metadata:
   name: test
@@ -301,10 +301,10 @@ spec:
 EOF
 
 # Test validation
-project-planton validate --manifest test-resource.yaml
+openmcf validate --manifest test-resource.yaml
 
 # Test load
-project-planton load-manifest --manifest test-resource.yaml
+openmcf load-manifest --manifest test-resource.yaml
 ```
 
 ---
@@ -314,7 +314,7 @@ project-planton load-manifest --manifest test-resource.yaml
 ### Step 1: Create Command File
 
 ```go
-// cmd/project-planton/root/pulumi/newcommand.go
+// cmd/openmcf/root/pulumi/newcommand.go
 package pulumi
 
 import (
@@ -335,7 +335,7 @@ func newCommandHandler(cmd *cobra.Command, args []string) {
 ### Step 2: Register Command
 
 ```go
-// cmd/project-planton/root/pulumi.go
+// cmd/openmcf/root/pulumi.go
 func init() {
     // ...
     Pulumi.AddCommand(
@@ -349,7 +349,7 @@ func init() {
 ### Step 3: Add Tests
 
 ```go
-// cmd/project-planton/root/pulumi/newcommand_test.go
+// cmd/openmcf/root/pulumi/newcommand_test.go
 func TestNewCommand(t *testing.T) {
     // Test implementation
 }
@@ -357,7 +357,7 @@ func TestNewCommand(t *testing.T) {
 
 ### Step 4: Update Documentation
 
-- Add to `cmd/project-planton/root/pulumi/README.md`
+- Add to `cmd/openmcf/root/pulumi/README.md`
 - Add to website docs if user-facing
 
 ---
@@ -368,19 +368,19 @@ func TestNewCommand(t *testing.T) {
 
 ```bash
 # 1. Make changes
-vim cmd/project-planton/root/pulumi/update.go
+vim cmd/openmcf/root/pulumi/update.go
 
 # 2. Build
-go build -o bin/project-planton ./cmd/project-planton
+go build -o bin/openmcf ./cmd/openmcf
 
 # 3. Test
-./bin/project-planton pulumi up --manifest test.yaml
+./bin/openmcf pulumi up --manifest test.yaml
 
 # 4. Run tests
-go test ./cmd/project-planton/...
+go test ./cmd/openmcf/...
 
 # 5. Commit
-git add cmd/project-planton/
+git add cmd/openmcf/
 git commit -m "feat: improve pulumi up command"
 ```
 

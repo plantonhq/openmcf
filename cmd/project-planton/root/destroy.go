@@ -3,14 +3,14 @@ package root
 import (
 	"os"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/pulumi"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/iacflags"
-	"github.com/plantonhq/project-planton/internal/cli/iacrunner"
-	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
-	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/pulumi"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/terraform"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/iacflags"
+	"github.com/plantonhq/openmcf/internal/cli/iacrunner"
+	climanifest "github.com/plantonhq/openmcf/internal/cli/manifest"
+	"github.com/plantonhq/openmcf/internal/manifest"
+	"github.com/plantonhq/openmcf/pkg/iac/provisioner"
 	"github.com/spf13/cobra"
 )
 
@@ -19,25 +19,25 @@ var Destroy = &cobra.Command{
 	Aliases: []string{"delete"},
 	Short:   "destroy infrastructure using the provisioner specified in manifest",
 	Long: `Destroy infrastructure by automatically routing to the appropriate provisioner
-(Pulumi, Tofu, or Terraform) based on the manifest label 'project-planton.org/provisioner'.
+(Pulumi, Tofu, or Terraform) based on the manifest label 'openmcf.org/provisioner'.
 
 If the provisioner label is not present, you will be prompted to select one interactively.
 
 This command has 'delete' as an alias for kubectl-like experience.`,
 	Example: `
 	# Destroy with manifest file
-	project-planton destroy -f manifest.yaml
-	project-planton delete -f manifest.yaml
-	project-planton destroy --manifest manifest.yaml
+	openmcf destroy -f manifest.yaml
+	openmcf delete -f manifest.yaml
+	openmcf destroy --manifest manifest.yaml
 
 	# Destroy with stack input file (extracts manifest from target field)
-	project-planton destroy -i stack-input.yaml
+	openmcf destroy -i stack-input.yaml
 
 	# Destroy with kustomize
-	project-planton destroy --kustomize-dir _kustomize --overlay prod
+	openmcf destroy --kustomize-dir _kustomize --overlay prod
 
 	# Destroy with field overrides
-	project-planton destroy -f manifest.yaml --set spec.version=v1.2.3
+	openmcf destroy -f manifest.yaml --set spec.version=v1.2.3
 	`,
 	Run: destroyHandler,
 }

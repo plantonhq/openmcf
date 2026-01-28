@@ -1,5 +1,5 @@
 ---
-description: Generate a GitHub issue title and detailed Markdown issue body as exactly two copyable code blocks (ask-only). Follows Project Planton issue conventions with deployment-component-aware labeling.
+description: Generate a GitHub issue title and detailed Markdown issue body as exactly two copyable code blocks (ask-only). Follows OpenMCF issue conventions with deployment-component-aware labeling.
 globs:
 alwaysApply: false
 ---
@@ -10,7 +10,7 @@ Purpose: When asked to write a GitHub issue title and description, respond with 
 
 This rule is designed for ask mode only. Do not modify files, run commands, or propose edits. Output only the two fenced code blocks described below.
 
-Usage: In Ask mode, invoke explicitly as `@generate-project-planton-issue-info`.
+Usage: In Ask mode, invoke explicitly as `@generate-openmcf-issue-info`.
 
 ## How to respond (strict)
 1) First block: Issue Title
@@ -91,7 +91,7 @@ Use this template:
 
 ## 📂 Affected Files
 <List files with clickable GitHub links using format:>
-- **File**: [`path/to/file.go`](https://github.com/plantonhq/project-planton/blob/main/path/to/file.go#L10-L20)
+- **File**: [`path/to/file.go`](https://github.com/plantonhq/openmcf/blob/main/path/to/file.go#L10-L20)
   - **Lines**: 10-20
   - **Status**: ✅ Working / ❌ Broken / ⚠️ Issue Here
 
@@ -240,12 +240,12 @@ Use this template:
 - **For Root Cause Issues**: Include detailed Root Cause Analysis with data flow diagrams, affected files with GitHub links, multiple solution approaches
 - **For Simple Tasks**: Keep it concise with just summary, task list, and completion criteria
 
-## Project Planton-aware label inference
+## OpenMCF-aware label inference
 Infer appropriate labels based on affected files:
 
 ### Area Labels
-- `apis/org/project_planton/provider/**` → `area/deployment-component`, `area/<provider>`
-- `cmd/project-planton/**` → `area/cli`
+- `apis/org/openmcf/provider/**` → `area/deployment-component`, `area/<provider>`
+- `cmd/openmcf/**` → `area/cli`
 - `pkg/**` → `area/pkg`, `area/<package-name>`
 - `internal/**` → `area/cli`, `area/internal`
 - `apis/**` (general) → `area/apis`
@@ -319,7 +319,7 @@ If context is insufficient to infer details, choose the best effort labels and s
 ### GitHub Link Format
 Always use this format for file references:
 ```markdown
-[`path/to/file.go#L10-L20`](https://github.com/plantonhq/project-planton/blob/main/path/to/file.go#L10-L20)
+[`path/to/file.go#L10-L20`](https://github.com/plantonhq/openmcf/blob/main/path/to/file.go#L10-L20)
 ```
 
 ### Visual Enhancements

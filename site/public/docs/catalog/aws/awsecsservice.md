@@ -16,11 +16,11 @@ AWS understood this. They built `ecs-cli` for high-level service abstractions, d
 
 This deprecation created a vacuum. Developers who relied on Copilot's service-oriented simplicity are left with a choice: drop down to low-level CloudFormation/Terraform resource-by-resource definitions, or find an alternative that provides the same high-level abstraction without vendor abandonment risk.
 
-Project Planton fills this vacuum. It provides a stable, production-grade, service-oriented API for ECS deployment—one that learns from both the successes and failures of its predecessors.
+OpenMCF fills this vacuum. It provides a stable, production-grade, service-oriented API for ECS deployment—one that learns from both the successes and failures of its predecessors.
 
 ## The ECS Abstraction Lifecycle: Understanding the Layers
 
-ECS deployment methods have evolved through four distinct abstraction layers. Understanding this progression clarifies what Project Planton is designed to be.
+ECS deployment methods have evolved through four distinct abstraction layers. Understanding this progression clarifies what OpenMCF is designed to be.
 
 ### Layer 1: The Raw API
 
@@ -77,11 +77,11 @@ This single declaration generates the entire stack: Task Definition, both IAM ro
 - **Pros**: Massive reduction in boilerplate, codifies best practices, low cognitive load
 - **Cons**: Opinionated (may not match 100% of edge cases), requires learning construct-specific patterns, CloudFormation synthesis can be slow (CDK)
 
-**Verdict**: The right abstraction for developer productivity. This is where AWS Copilot operated, and where Project Planton aims.
+**Verdict**: The right abstraction for developer productivity. This is where AWS Copilot operated, and where OpenMCF aims.
 
 ### Layer 4: Platform-Level Abstractions
 
-Tools like Crossplane Compositions and Project Planton present a simplified, abstract "platform API" to developers, hiding even the L3 constructs.
+Tools like Crossplane Compositions and OpenMCF present a simplified, abstract "platform API" to developers, hiding even the L3 constructs.
 
 **The Vision**: A developer declares `AwsEcsService` with minimal, service-oriented fields. The platform handles everything: provisioning, networking, secrets management, observability, security policies—often enforcing organizational standards automatically.
 
@@ -96,7 +96,7 @@ Copilot users are now faced with an unpleasant choice:
 2. **Adopt Layer 3 CDK/Pulumi**: Learn a new imperative programming model, accept synthesis overhead, and manage state complexity
 3. **Build Custom Abstractions**: Invest significant engineering time to recreate what Copilot provided
 
-Project Planton offers a fourth path: stable, declarative, service-oriented abstractions built on proven open-source foundations (Terraform/Pulumi), designed for production use, and free from vendor deprecation risk.
+OpenMCF offers a fourth path: stable, declarative, service-oriented abstractions built on proven open-source foundations (Terraform/Pulumi), designed for production use, and free from vendor deprecation risk.
 
 ## Production-Grade ECS: The Non-Negotiables
 
@@ -118,7 +118,7 @@ A robust L3 abstraction must correctly handle the patterns and pitfalls that def
 
 **Savings Plans Revolution**: The old argument for EC2 was Reserved Instances (RIs). This is now obsolete. AWS Compute Savings Plans offer up to 66% discounts and apply *equally* to EC2, **Fargate**, and Lambda. This allows teams to choose Fargate for its operational benefits without cost penalty.
 
-**Project Planton Approach**: Default to `FARGATE` launch type. Advanced users can override for specialized cases (GPU workloads, extreme cost optimization with proven high utilization).
+**OpenMCF Approach**: Default to `FARGATE` launch type. Advanced users can override for specialized cases (GPU workloads, extreme cost optimization with proven high utilization).
 
 ### Networking: The awsvpc Standard
 
@@ -133,7 +133,7 @@ The `awsvpc` network mode is *required* for all Fargate tasks and is the product
 - **Private Subnets** (Recommended): Tasks are secure and not directly exposed to the internet. They access the internet (to pull images, hit APIs) via a NAT Gateway. This is the 80% production use case.
 - **Public Subnets**: Used for tasks that need a public IP. **Critical**: `assignPublicIp: true` must be set, otherwise tasks cannot pull container images and deployments will fail.
 
-**Project Planton Approach**: Treat `awsvpc` as the default. Require `subnets` and `security_groups` as essential configuration fields.
+**OpenMCF Approach**: Treat `awsvpc` as the default. Require `subnets` and `security_groups` as essential configuration fields.
 
 ### IAM: The Two-Role Model
 
@@ -152,7 +152,7 @@ This is the single most confused concept for new ECS users. A production-ready a
 
 **Common Anti-Pattern**: Granting application permissions (S3, DynamoDB) to the Task Execution Role. This is a security violation—the ECS agent should not have access to business data.
 
-**Project Planton Approach**: Provide sensible defaults for Task Execution Role (ECR, logs, secrets). Expose Task Role ARN as an explicit field for users to attach application-specific policies.
+**OpenMCF Approach**: Provide sensible defaults for Task Execution Role (ECR, logs, secrets). Expose Task Role ARN as an explicit field for users to attach application-specific policies.
 
 ### Secret Management: The Right Way
 
@@ -170,7 +170,7 @@ This is the single most confused concept for new ECS users. A production-ready a
 - **Secrets Manager**: Use when automatic rotation, random generation, or cross-account sharing is required
 - **SSM Parameter Store (SecureString)**: Use for simpler key-value storage without rotation requirements
 
-**Project Planton Approach**: Provide a dedicated `secrets` map accepting `{name: valueFrom ARN}` pairs. Automatically add required permissions to the auto-generated Task Execution Role.
+**OpenMCF Approach**: Provide a dedicated `secrets` map accepting `{name: valueFrom ARN}` pairs. Automatically add required permissions to the auto-generated Task Execution Role.
 
 ### Load Balancer Integration: The Single ALB Pattern
 
@@ -194,7 +194,7 @@ The standard architecture for microservices on ECS is the **"Single ALB, Multipl
 
 **Solution**: Set `healthCheckGracePeriodSeconds` (e.g., 60-120 seconds) to instruct ECS to ignore ALB health status during initial boot.
 
-**Project Planton Approach**: The `AwsEcsService` resource should *not* create the shared ALB or Listener. It takes the listener ARN as input and creates *only* the Target Group and Listener Rule. Default `healthCheckGracePeriodSeconds` to 60.
+**OpenMCF Approach**: The `AwsEcsService` resource should *not* create the shared ALB or Listener. It takes the listener ARN as input and creates *only* the Target Group and Listener Rule. Default `healthCheckGracePeriodSeconds` to 60.
 
 ### CI/CD: The GitOps Pattern for Image Updates
 
@@ -216,7 +216,7 @@ A critical integration point: how does an ECS service, defined in IaC, get updat
 3. App CI's job is to push the new image and re-tag `stable` to its digest
 4. Next IaC pipeline run fetches the new digest, forcing a diff and deployment
 
-**Project Planton Approach**: Support both patterns. Provide `container.image.repo` and `container.image.tag` fields for explicit tagging (GitOps pattern). Document the data source pattern for advanced users.
+**OpenMCF Approach**: Support both patterns. Provide `container.image.repo` and `container.image.tag` fields for explicit tagging (GitOps pattern). Document the data source pattern for advanced users.
 
 ### Observability: Logs, Metrics, and Traces
 
@@ -230,7 +230,7 @@ A production service is blind without observability.
 1. Adding the ADOT container definition to the task
 2. Adding `AWSXrayWriteOnlyAccess` managed policy to the **Task Role**
 
-**Project Planton Approach**: Auto-create CloudWatch Log Groups by default. Document Container Insights and ADOT as opt-in production enhancements.
+**OpenMCF Approach**: Auto-create CloudWatch Log Groups by default. Document Container Insights and ADOT as opt-in production enhancements.
 
 ### Auto Scaling: Target Tracking
 
@@ -240,7 +240,7 @@ The modern, recommended pattern for service scaling is **Target Tracking Scaling
 
 **Behavior**: Designed for availability—scales out aggressively and quickly, scales in conservatively and gradually.
 
-**Project Planton Approach**: Expose a simple `autoscaling` block accepting `min_tasks`, `max_tasks`, `target_cpu_percent`, and optionally `target_memory_percent`.
+**OpenMCF Approach**: Expose a simple `autoscaling` block accepting `min_tasks`, `max_tasks`, `target_cpu_percent`, and optionally `target_memory_percent`.
 
 ### Cost Optimization: The Hidden Drivers
 
@@ -257,13 +257,13 @@ The compute cost (Fargate/EC2) is often not the dominant expense. Production arc
 **ELB**: ALBs/NLBs are billed per-hour and per-LCU (a unit of traffic/connections).
 - **Mitigation**: Share ALBs across services (Single ALB, Multiple Services pattern)
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton provides a service-oriented API for deploying Fargate-based ECS services into existing clusters. The design follows the 80/20 principle: make the common case simple while making the advanced case possible.
+OpenMCF provides a service-oriented API for deploying Fargate-based ECS services into existing clusters. The design follows the 80/20 principle: make the common case simple while making the advanced case possible.
 
 ### Design Philosophy: Service-First, Not Infrastructure-First
 
-The core insight from the research is clear: developers want to define *services*, not assemble infrastructure components. Project Planton's `AwsEcsServiceSpec` reflects this philosophy.
+The core insight from the research is clear: developers want to define *services*, not assemble infrastructure components. OpenMCF's `AwsEcsServiceSpec` reflects this philosophy.
 
 **Essential Fields (The 80% Case)**:
 - `cluster_arn`: The ECS cluster to deploy into
@@ -295,7 +295,7 @@ The core insight from the research is clear: developers want to define *services
 
 **Fargate-First**: The implementation defaults to Fargate. No EC2 cluster management overhead.
 
-**Shared ALB Integration**: The API assumes a shared ALB pattern. Users provide the ALB ARN and routing configuration (path-based or hostname-based). Project Planton creates the Target Group and Listener Rule.
+**Shared ALB Integration**: The API assumes a shared ALB pattern. Users provide the ALB ARN and routing configuration (path-based or hostname-based). OpenMCF creates the Target Group and Listener Rule.
 
 **Secure Secrets Management**: Secrets are configured separately from plain-text environment variables, ensuring proper IAM permissions and runtime injection.
 
@@ -303,7 +303,7 @@ The core insight from the research is clear: developers want to define *services
 
 ### Multi-Environment Best Practice
 
-Following AWS best practices, Project Planton encourages separate ECS clusters for each environment:
+Following AWS best practices, OpenMCF encourages separate ECS clusters for each environment:
 - `dev-cluster` → Development services
 - `staging-cluster` → Staging services
 - `prod-cluster` → Production services
@@ -314,7 +314,7 @@ Each environment references a different `cluster_arn`, providing complete isolat
 
 AWS ECS deployment has evolved through four abstraction layers: from raw API calls to 1:1 declarative resources to high-level constructs to platform-level abstractions. AWS's own opinionated tooling (ecs-cli, Copilot) attempted to provide Layer 3 abstractions but were ultimately deprecated, leaving a vacuum for teams seeking service-oriented simplicity.
 
-Project Planton fills this vacuum with a production-grade, declarative API that makes deploying ECS services feel like deploying to a platform—not like assembling infrastructure components. By codifying best practices (Fargate defaults, awsvpc networking, secure secret management, shared ALB patterns, automatic logging), Project Planton helps teams avoid common pitfalls and deploy production-ready services with confidence.
+OpenMCF fills this vacuum with a production-grade, declarative API that makes deploying ECS services feel like deploying to a platform—not like assembling infrastructure components. By codifying best practices (Fargate defaults, awsvpc networking, secure secret management, shared ALB patterns, automatic logging), OpenMCF helps teams avoid common pitfalls and deploy production-ready services with confidence.
 
-The paradigm shift is clear: developers should define *what* they want to run (a service), not *how* to wire together the dozen resources required to run it. Project Planton provides that abstraction—stable, open-source, and built on the proven foundations of Terraform and Pulumi.
+The paradigm shift is clear: developers should define *what* they want to run (a service), not *how* to wire together the dozen resources required to run it. OpenMCF provides that abstraction—stable, open-source, and built on the proven foundations of Terraform and Pulumi.
 

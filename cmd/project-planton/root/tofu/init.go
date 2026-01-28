@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/flag"
-	"github.com/plantonhq/project-planton/internal/cli/ui"
-	"github.com/plantonhq/project-planton/internal/cli/workspace"
-	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/crkreflect"
-	"github.com/plantonhq/project-planton/pkg/iac/localmodule"
-	"github.com/plantonhq/project-planton/pkg/iac/stackinput"
-	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfbackend"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tofumodule"
-	"github.com/plantonhq/project-planton/pkg/kubernetes/kubecontext"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/terraform"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
+	"github.com/plantonhq/openmcf/internal/cli/ui"
+	"github.com/plantonhq/openmcf/internal/cli/workspace"
+	"github.com/plantonhq/openmcf/internal/manifest"
+	"github.com/plantonhq/openmcf/pkg/crkreflect"
+	"github.com/plantonhq/openmcf/pkg/iac/localmodule"
+	"github.com/plantonhq/openmcf/pkg/iac/stackinput"
+	"github.com/plantonhq/openmcf/pkg/iac/stackinput/stackinputproviderconfig"
+	"github.com/plantonhq/openmcf/pkg/iac/tofu/tfbackend"
+	"github.com/plantonhq/openmcf/pkg/iac/tofu/tofumodule"
+	"github.com/plantonhq/openmcf/pkg/kubernetes/kubecontext"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -103,7 +103,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
 	moduleVersion, _ := cmd.Flags().GetString(string(flag.ModuleVersion))
 
-	// Handle --local-module flag: derive module directory from local project-planton repo
+	// Handle --local-module flag: derive module directory from local openmcf repo
 	localModule, _ := cmd.Flags().GetBool(string(flag.LocalModule))
 	if localModule {
 		moduleDir, err = localmodule.GetModuleDir(targetManifestPath, cmd, shared.IacProvisioner_terraform)

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Rename system provides automated, comprehensive renaming of deployment components across the entire Project Planton codebase. It handles all aspects of a rename: file operations, find-replace patterns, registry updates, documentation changes, and build verification.
+The Rename system provides automated, comprehensive renaming of deployment components across the entire OpenMCF codebase. It handles all aspects of a rename: file operations, find-replace patterns, registry updates, documentation changes, and build verification.
 
 **Core Philosophy**: Rename is about naming accuracy and clarity, not functionality changes. When a component's name doesn't accurately reflect what it does, renaming restores semantic truth to the codebase.
 
@@ -45,11 +45,11 @@ Before adding `KubernetesStatefulSet`, rename `KubernetesMicroservice` to `Kuber
 
 **❌ Fixing Functionality**
 
-If the component behavior is wrong, use `@fix-project-planton-component` instead. Rename doesn't change behavior.
+If the component behavior is wrong, use `@fix-openmcf-component` instead. Rename doesn't change behavior.
 
 **❌ Completing Implementation**
 
-If the component is incomplete, use `@complete-project-planton-component` or `@update-project-planton-component`. Rename assumes the component works correctly, just has wrong name.
+If the component is incomplete, use `@complete-openmcf-component` or `@update-openmcf-component`. Rename assumes the component works correctly, just has wrong name.
 
 **❌ Typos in Documentation**
 
@@ -65,7 +65,7 @@ Every rename has a cost (user manifest updates, potential confusion). Only renam
 
 ```
 rename/
-├── rename-project-planton-component.mdc    # Cursor rule (interactive workflow)
+├── rename-openmcf-component.mdc    # Cursor rule (interactive workflow)
 ├── README.md                                 # This file
 └── _scripts/
     └── rename_deployment_component.py       # Python script (execution)
@@ -76,7 +76,7 @@ rename/
 ```
 User Invocation
       ↓
-@rename-project-planton-component (Cursor Rule)
+@rename-openmcf-component (Cursor Rule)
       ↓
 Interactive Questions (old name, new name, ID prefix)
       ↓
@@ -104,7 +104,7 @@ rename_deployment_component.py (Python Script)
       ↓
 JSON Output (success + metrics)
       ↓
-@create-project-planton-changelog (if success)
+@create-openmcf-changelog (if success)
       ↓
 Commit Guidance
 ```
@@ -245,9 +245,9 @@ This ordering prevents incorrect replacements (e.g., lowercase pattern wouldn't 
 ### What Gets Copied
 
 ```
-apis/org/project_planton/provider/{provider}/{old_folder}/
+apis/org/openmcf/provider/{provider}/{old_folder}/
                                                     ↓
-apis/org/project_planton/provider/{provider}/{new_folder}/
+apis/org/openmcf/provider/{provider}/{new_folder}/
 ```
 
 **Everything in the component directory**:
@@ -478,14 +478,14 @@ The script automatically deletes it. **No confirmation required**.
 git status
 
 # Ensure tests pass
-cd /path/to/project-planton
+cd /path/to/openmcf
 make test
 ```
 
 #### Step 2: Invoke Rule
 
 ```
-@rename-project-planton-component
+@rename-openmcf-component
 ```
 
 #### Step 3: Answer Questions
@@ -579,7 +579,7 @@ Running build pipeline...
 ```
 All tests passed! Creating changelog...
 
-@create-project-planton-changelog
+@create-openmcf-changelog
 ```
 
 The rule automatically invokes changelog creation.
@@ -659,12 +659,12 @@ Examples:
 
 ```bash
 # Audit reveals naming issues
-@audit-project-planton-component KubernetesMicroservice
+@audit-openmcf-component KubernetesMicroservice
 
 # Result: Name is misleading abstraction (80% score, naming flagged)
 
 # Rename to fix
-@rename-project-planton-component
+@rename-openmcf-component
 ```
 
 ### Rename + Complete
@@ -673,10 +673,10 @@ Examples:
 
 ```bash
 # 1. Fix the name
-@rename-project-planton-component
+@rename-openmcf-component
 
 # 2. Fill gaps
-@complete-project-planton-component KubernetesDeployment
+@complete-openmcf-component KubernetesDeployment
 ```
 
 **Why this order?**
@@ -689,7 +689,7 @@ Examples:
 Rename can be part of a fix:
 
 ```bash
-@fix-project-planton-component KubernetesMicroservice \
+@fix-openmcf-component KubernetesMicroservice \
   --explain "Rename to KubernetesDeployment and fix validation"
 
 # Fix rule may invoke rename internally
@@ -701,13 +701,13 @@ Don't rename and forge simultaneously:
 
 ```bash
 # ❌ Wrong: Rename then immediately forge
-@rename-project-planton-component
-@forge-project-planton-component KubernetesStatefulSet
+@rename-openmcf-component
+@forge-openmcf-component KubernetesStatefulSet
 
 # ✅ Right: Verify rename first
-@rename-project-planton-component
+@rename-openmcf-component
 [verify rename succeeded]
-@forge-project-planton-component KubernetesStatefulSet
+@forge-openmcf-component KubernetesStatefulSet
 ```
 
 ## Troubleshooting
@@ -723,7 +723,7 @@ Error: Component KubernetesMicroservice not found in cloud_resource_kind.proto
 **Solution**:
 ```bash
 # List all Kubernetes components
-grep "kubernetes" apis/org/project_planton/shared/cloudresourcekind/cloud_resource_kind.proto | grep "= [0-9]"
+grep "kubernetes" apis/org/openmcf/shared/cloudresourcekind/cloud_resource_kind.proto | grep "= [0-9]"
 
 # Check exact spelling
 ```
@@ -739,10 +739,10 @@ Error: Component KubernetesDeployment already exists in cloud_resource_kind.prot
 **Solution**:
 ```bash
 # Check if it's from a previous failed rename
-ls apis/org/project_planton/provider/kubernetes/workload/
+ls apis/org/openmcf/provider/kubernetes/workload/
 
 # If it's a leftover, delete it
-@delete-project-planton-component KubernetesDeployment --force
+@delete-openmcf-component KubernetesDeployment --force
 
 # Try rename again
 ```
@@ -899,7 +899,7 @@ A rename is successful when:
 
 ## Reference
 
-- **Cursor Rule**: `rename-project-planton-component.mdc`
+- **Cursor Rule**: `rename-openmcf-component.mdc`
 - **Python Script**: `_scripts/rename_deployment_component.py`
 - **Architecture**: `../../../architecture/deployment-component.md`
 - **Related Rules**: `audit`, `complete`, `fix`, `forge`, `delete`

@@ -1,9 +1,9 @@
 ---
-description: Action rule to commit Project Planton changes with appropriate conventional commit messages
+description: Action rule to commit OpenMCF changes with appropriate conventional commit messages
 alwaysApply: false
 ---
 
-# Rule: Commit Project Planton Changes
+# Rule: Commit OpenMCF Changes
 
 ## Purpose
 
@@ -168,7 +168,7 @@ git commit -m "<type>(<scope>): <subject>" \
 
 ## Important Notes
 
-- **Always run in project-planton workspace**: `~/scm/github.com/plantonhq/project-planton`
+- **Always run in openmcf workspace**: `~/scm/github.com/plantonhq/openmcf`
 - **Don't commit without reviewing**: Show the proposed commit message to the user before executing if the changes are significant
 - **Stage selectively if needed**: If only some changes should be committed, stage specific files instead of `git add -A`
 - **Don't skip hooks**: Never use `--no-verify` unless explicitly requested
@@ -186,7 +186,7 @@ If commit fails:
 ## Workflow Integration
 
 This rule works well with:
-- `@create-project-planton-changelog.mdc` - Create changelog before committing major features
+- `@create-openmcf-changelog.mdc` - Create changelog before committing major features
 - After completing a development task
 - Before creating a pull request
 
@@ -194,7 +194,7 @@ This rule works well with:
 
 When this rule is triggered:
 
-1. Navigate to project-planton workspace
+1. Navigate to openmcf workspace
 2. Run `git status` to check current changes
 3. Analyze changes and conversation context
 4. Propose commit message following the format above

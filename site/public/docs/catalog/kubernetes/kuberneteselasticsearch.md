@@ -16,7 +16,7 @@ That wisdom is now obsolete.
 
 The maturity of the **Operator pattern** has fundamentally changed what's possible. Today, deploying production-grade Elasticsearch clusters on Kubernetes is not just viable—it's often the superior choice. But this transformation didn't happen overnight, and understanding the evolution from basic primitives to autonomous operators is essential for making informed architectural decisions.
 
-This document explains the deployment landscape, why operators are the only production-ready solution, and how Project Planton abstracts the complexity while giving you the power to choose between Elasticsearch and its open-source fork, OpenSearch.
+This document explains the deployment landscape, why operators are the only production-ready solution, and how OpenMCF abstracts the complexity while giving you the power to choose between Elasticsearch and its open-source fork, OpenSearch.
 
 ## The Maturity Spectrum: From Anti-Patterns to Autonomy
 
@@ -123,7 +123,7 @@ The core issue lies in the ELv2 license itself, which contains a "managed servic
 
 > *"You may not: Provide the products to others as a managed service"*
 
-This "source-available" license presents a significant legal "poison pill" for open-source projects. If a user of Project Planton builds a commercial SaaS product that includes an Elasticsearch cluster deployed via ECK, does that user (or Project Planton) constitute "providing a managed service"? The license language is notoriously ambiguous, creating unacceptable legal risk and FUD (Fear, Uncertainty, and Doubt) for both the project and its user community.
+This "source-available" license presents a significant legal "poison pill" for open-source projects. If a user of OpenMCF builds a commercial SaaS product that includes an Elasticsearch cluster deployed via ECK, does that user (or OpenMCF) constitute "providing a managed service"? The license language is notoriously ambiguous, creating unacceptable legal risk and FUD (Fear, Uncertainty, and Doubt) for both the project and its user community.
 
 #### Features
 
@@ -152,7 +152,7 @@ The OpenSearch engine and the OpenSearch Kubernetes Operator are both licensed u
 
 Apache 2.0 is a permissive, OSI-approved open-source license. It places *no restrictions* on commercial use, modification, distribution, or the provision of managed services.
 
-This makes the OpenSearch Operator the "safe harbor" for open-source projects. For a FOSS project like Project Planton, adopting the OpenSearch Operator is the path of *zero legal friction*. It fully protects the project and its users from the legal ambiguity of the Elastic License.
+This makes the OpenSearch Operator the "safe harbor" for open-source projects. For a FOSS project like OpenMCF, adopting the OpenSearch Operator is the path of *zero legal friction*. It fully protects the project and its users from the legal ambiguity of the Elastic License.
 
 #### Features
 
@@ -183,9 +183,9 @@ The OpenSearch Operator is newer than ECK but is production-ready, under active 
 
 For the vast majority of log analytics and search use cases, the performance of both engines is "good enough," and this should not be the primary decision driver.
 
-## The Project Planton Approach: FOSS-First with Choice
+## The OpenMCF Approach: FOSS-First with Choice
 
-Based on this analysis, Project Planton implements a clear, principled strategy:
+Based on this analysis, OpenMCF implements a clear, principled strategy:
 
 ### 1. Default to OpenSearch
 
@@ -193,16 +193,16 @@ Based on this analysis, Project Planton implements a clear, principled strategy:
 
 ### 2. Support Elasticsearch as an Opt-In
 
-Project Planton also supports `engine: ELASTICSEARCH` as a secondary, non-default option. This is a pragmatic concession to Elastic's significant market share and allows users who have their own commercial licenses or have completed their own legal review to use it.
+OpenMCF also supports `engine: ELASTICSEARCH` as a secondary, non-default option. This is a pragmatic concession to Elastic's significant market share and allows users who have their own commercial licenses or have completed their own legal review to use it.
 
 ### 3. Forcible Licensing Warning
 
-When a user explicitly sets `engine: ELASTICSEARCH`, the Project Planton controller (or CLI) prints a clear, non-dismissible warning:
+When a user explicitly sets `engine: ELASTICSEARCH`, the OpenMCF controller (or CLI) prints a clear, non-dismissible warning:
 
 ```
 WARNING: You are deploying Elasticsearch, which is licensed under the Elastic 
 License v2. This license is NOT open source and contains restrictions on providing 
-it as a managed service. Project Planton is not a legal advisor. You MUST conduct 
+it as a managed service. OpenMCF is not a legal advisor. You MUST conduct 
 your own legal review if you are using this component in a commercial or hosted 
 product. To use a 100% FOSS alternative, set engine: OPENSEARCH.
 ```
@@ -217,7 +217,7 @@ The `ElasticsearchKubernetes` API is designed as a "façade" that abstracts both
 
 ## Production Best Practices
 
-The Project Planton API is designed to enforce production best practices and prevent common pitfalls.
+The OpenMCF API is designed to enforce production best practices and prevent common pitfalls.
 
 ### Cluster Topology and Split-Brain Prevention
 
@@ -233,7 +233,7 @@ Modern Elasticsearch and OpenSearch use quorum-based decision making. To form a 
 - If *either* node fails, the remaining single node *cannot* form a quorum. The cluster is down.
 - Therefore, a 2-node cluster has *zero* fault tolerance, just like a 1-node cluster, but with twice the cost and complexity.
 
-The Project Planton controller validates this: if a `nodePool` contains the "master" role, the `replicas` field must be an odd number, and configurations with exactly 2 master-eligible nodes are rejected.
+The OpenMCF controller validates this: if a `nodePool` contains the "master" role, the `replicas` field must be an odd number, and configurations with exactly 2 master-eligible nodes are rejected.
 
 ### Resource Allocation: Guaranteed QoS & JVM Heap
 
@@ -243,7 +243,7 @@ This is the most common area of configuration failure.
 
 **JVM Heap Sizing**: The JVM heap (`-Xms` and `-Xmx`) must be set to **50% of the pod's memory limit**. The other 50% is required by Lucene (which powers Elasticsearch) for the operating system's file system cache. This off-heap cache is critical for performance. If the JVM heap is set too high (e.g., 80% of pod RAM), the pod will be unstable and likely OOMKilled by Kubernetes.
 
-**Project Planton's Opinionated Design**: The API intentionally *omits* a `jvmHeap` field. This creates a "pit of success" for users. Modern versions of ECK (>= 7.11) automatically derive the heap size directly from the pod's `resources.limits.memory` setting. By not exposing a `jvmHeap` field, the API forces users to follow this best practice. To increase the heap, they must increase the pod's memory limit. This prevents the most common failure mode.
+**OpenMCF's Opinionated Design**: The API intentionally *omits* a `jvmHeap` field. This creates a "pit of success" for users. Modern versions of ECK (>= 7.11) automatically derive the heap size directly from the pod's `resources.limits.memory` setting. By not exposing a `jvmHeap` field, the API forces users to follow this best practice. To increase the heap, they must increase the pod's memory limit. This prevents the most common failure mode.
 
 ### Storage and Persistence
 
@@ -280,7 +280,7 @@ By default, operators create a `ClusterIP` service for Kibana, which is only acc
 
 The manual solution requires understanding and creating a Kubernetes Ingress resource that targets the Kibana `ClusterIP` service.
 
-**Project Planton's Abstraction**: The `kibana.externalAccess` field is a high-level abstraction that solves this. When `enabled: true` and a `host` is provided, the Planton controller automatically generates the required Ingress resource. This is a significant usability improvement that abstracts away complex Kubernetes networking.
+**OpenMCF's Abstraction**: The `kibana.externalAccess` field is a high-level abstraction that solves this. When `enabled: true` and a `host` is provided, the Planton controller automatically generates the required Ingress resource. This is a significant usability improvement that abstracts away complex Kubernetes networking.
 
 ## Example Configurations
 
@@ -363,7 +363,7 @@ The evolution from manual StatefulSets to autonomous Operators represents a fund
 
 The choice between Elasticsearch and OpenSearch is not primarily technical—both are mature, performant search engines. The decisive factor is licensing and the legal clarity that comes with Apache 2.0 versus the ambiguity of ELv2.
 
-Project Planton's FOSS-first approach—defaulting to OpenSearch while supporting Elasticsearch as an opt-in—reflects a principled stance: open-source infrastructure should build on open-source foundations, with clear warnings when stepping outside that safe harbor.
+OpenMCF's FOSS-first approach—defaulting to OpenSearch while supporting Elasticsearch as an opt-in—reflects a principled stance: open-source infrastructure should build on open-source foundations, with clear warnings when stepping outside that safe harbor.
 
-By abstracting the complexity of both operators behind a unified, 80/20 API, Project Planton makes it easy to deploy production-grade search clusters on any Kubernetes platform—while letting you choose the engine and license model that aligns with your needs.
+By abstracting the complexity of both operators behind a unified, 80/20 API, OpenMCF makes it easy to deploy production-grade search clusters on any Kubernetes platform—while letting you choose the engine and license model that aligns with your needs.
 

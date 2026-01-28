@@ -6,10 +6,10 @@ go_library(
         "extract_metadata.go",
         "inject_metadata.go",
     ],
-    importpath = "github.com/plantonhq/project-planton/pkg/reflection/metadatareflect",
+    importpath = "github.com/plantonhq/openmcf/pkg/reflection/metadatareflect",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/org/project_planton/shared",
+        "//apis/org/openmcf/shared",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protoreflect",
     ],
@@ -23,8 +23,8 @@ go_test(
     ],
     embed = [":metadatareflect"],
     deps = [
-        "//apis/org/project_planton/provider/aws/awss3bucket/v1:awss3bucket",
-        "//apis/org/project_planton/shared",
+        "//apis/org/openmcf/provider/aws/awss3bucket/v1:awss3bucket",
+        "//apis/org/openmcf/shared",
         "@org_golang_google_protobuf//proto",
     ],
 )

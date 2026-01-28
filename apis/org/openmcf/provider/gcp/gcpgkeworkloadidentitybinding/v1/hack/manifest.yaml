@@ -1,0 +1,6 @@
+apiVersion: gcp.openmcf.org/v1
+kind: GcpGkeWorkloadIdentityBinding
+metadata:
+  name: test-gcp-gke-workload-identity-binding
+spec:
+# coming soon

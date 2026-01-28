@@ -1,18 +1,18 @@
 ---
-description: Action rule to create a GitHub issue using gh CLI. Uses @generate-project-planton-issue-info to generate issue title and Markdown body. Non-interactive, safe defaults.
+description: Action rule to create a GitHub issue using gh CLI. Uses @generate-openmcf-issue-info to generate issue title and Markdown body. Non-interactive, safe defaults.
 globs:
 alwaysApply: false
 ---
 
 # Rule: Create GitHub Issue (action)
 
-Purpose: When invoked, generate an issue title and Markdown description via `@generate-project-planton-issue-info`, then use a deterministic Python script (`tools/local-dev/create_github_issue.py`) to non-interactively create a GitHub Issue via the GitHub CLI (`gh`).
+Purpose: When invoked, generate an issue title and Markdown description via `@generate-openmcf-issue-info`, then use a deterministic Python script (`tools/local-dev/create_github_issue.py`) to non-interactively create a GitHub Issue via the GitHub CLI (`gh`).
 
 This is an action rule. Execute commands non-interactively and avoid prompts. If a prerequisite is missing (e.g., `gh` auth), stop with a clear message and instructions.
 
-Usage: Invoke explicitly as `@create-project-planton-github-issue`.
+Usage: Invoke explicitly as `@create-openmcf-github-issue`.
 
-References: `@generate-project-planton-issue-info`, `@README.md`.
+References: `@generate-openmcf-issue-info`, `@README.md`.
 
 ## Preconditions
 - `gh` installed and authenticated (`gh auth status` succeeds).
@@ -20,7 +20,7 @@ References: `@generate-project-planton-issue-info`, `@README.md`.
 - You have context about the issue from investigation/troubleshooting.
 
 ## High-level flow
-1. Generate issue info via `@generate-project-planton-issue-info` and capture:
+1. Generate issue info via `@generate-openmcf-issue-info` and capture:
    - TITLE: the first fenced `text` block (single line)
    - BODY: the second fenced `markdown` block (multiline)
 2. Infer appropriate labels from the issue content and affected files.
@@ -36,8 +36,8 @@ References: `@generate-project-planton-issue-info`, `@README.md`.
 Based on the conversation context and affected files, automatically infer labels:
 
 ### Area Labels (from file paths)
-- `apis/org/project_planton/provider/**` → `area/deployment-component,area/<provider>`
-- `cmd/project-planton/**` → `area/cli`
+- `apis/org/openmcf/provider/**` → `area/deployment-component,area/<provider>`
+- `cmd/openmcf/**` → `area/cli`
 - `pkg/**` → `area/pkg`
 - `internal/**` → `area/cli,area/internal`
 - `apis/**` → `area/apis`
@@ -95,10 +95,10 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-# 1) Generate issue info via @generate-project-planton-issue-info (must run this rule first and capture its two code blocks)
-# EXPECT: variables TITLE and BODY populated from @generate-project-planton-issue-info output
-: "${TITLE?Missing TITLE from @generate-project-planton-issue-info}"
-: "${BODY?Missing BODY from @generate-project-planton-issue-info}"
+# 1) Generate issue info via @generate-openmcf-issue-info (must run this rule first and capture its two code blocks)
+# EXPECT: variables TITLE and BODY populated from @generate-openmcf-issue-info output
+: "${TITLE?Missing TITLE from @generate-openmcf-issue-info}"
+: "${BODY?Missing BODY from @generate-openmcf-issue-info}"
 
 # 2) Infer labels from context (can be overridden via ISSUE_LABELS env var)
 # Default labels if not specified
@@ -145,7 +145,7 @@ echo ""
 ### Bug Report After Investigation
 After troubleshooting an issue and gathering all the details:
 ```
-@create-project-planton-github-issue
+@create-openmcf-github-issue
 ```
 AI will:
 1. Generate comprehensive bug report with root cause analysis
@@ -156,7 +156,7 @@ AI will:
 ### Feature Request
 After discussing a new feature:
 ```
-@create-project-planton-github-issue
+@create-openmcf-github-issue
 ```
 AI will:
 1. Generate feature request with requirements and design
@@ -167,7 +167,7 @@ AI will:
 ### Task/Chore
 For routine maintenance tasks:
 ```
-@create-project-planton-github-issue
+@create-openmcf-github-issue
 ```
 AI will:
 1. Generate concise task description
@@ -206,7 +206,7 @@ The issue description should automatically include:
 
 When creating an issue:
 1. If a detailed issue was written to `.cursor/workspace/new-issue.md` or similar, use that as the body
-2. Otherwise, generate from conversation context via `@generate-project-planton-issue-info`
+2. Otherwise, generate from conversation context via `@generate-openmcf-issue-info`
 3. Always save the generated body to `.cursor/workspace/issue-description.md` for review
 4. Keep a history of created issues in `.cursor/workspace/issues-log.txt` (optional)
 
@@ -228,7 +228,7 @@ After creating an issue:
 4. ✅ AI confirms creation with issue number and URL
 
 ## Notes
-- This rule depends on `@generate-project-planton-issue-info` to produce high-quality TITLE and BODY.
+- This rule depends on `@generate-openmcf-issue-info` to produce high-quality TITLE and BODY.
 - The Python script is simple and focused: just create issue via gh CLI.
 - For enterprise or forks, pass additional `gh` flags via environment or adjust the script if needed (e.g., `--repo owner/repo`).
 - Labels that don't exist in the repository will be created automatically by GitHub.
@@ -239,7 +239,7 @@ After creating an issue:
 ### Example 1: Create Bug Report with Auto-Labels
 ```bash
 # After investigating Postgres component validation issue
-@create-project-planton-github-issue
+@create-openmcf-github-issue
 
 # AI generates:
 # Title: "Postgres deployment component spec validation broken for port conflicts"
@@ -252,22 +252,22 @@ After creating an issue:
 # After discussing new CLI command
 export ISSUE_ASSIGNEES="john-doe,jane-smith"
 export ISSUE_LABELS="enhancement,area/cli,needs-design"
-@create-project-planton-github-issue
+@create-openmcf-github-issue
 ```
 
 ### Example 3: Create and Open in Browser
 ```bash
 export ISSUE_WEB=1
-@create-project-planton-github-issue
+@create-openmcf-github-issue
 # Issue created and automatically opened in default browser
 ```
 
 ## Remember
-- Always invoke `@generate-project-planton-issue-info` first (implicitly or explicitly)
+- Always invoke `@generate-openmcf-issue-info` first (implicitly or explicitly)
 - Let the AI infer appropriate labels from context
 - Review the generated issue body in `.cursor/workspace/issue-description.md` before/after creation
 - Issue URL is printed for immediate access
 - Use environment variables for optional metadata (assignees, milestone, project)
 
-@generate-project-planton-issue-info
+@generate-openmcf-issue-info
 @README.md

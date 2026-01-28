@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	cloudflareprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
+	cloudflareprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/cloudflare"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-cloudflare/sdk/v6/go/cloudflare"

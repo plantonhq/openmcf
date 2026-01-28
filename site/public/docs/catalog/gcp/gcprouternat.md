@@ -16,7 +16,7 @@ In the early days of cloud networking, the default assumption was simple: if a V
 
 What makes Cloud NAT particularly elegant is its **proxy-less architecture**. Unlike traditional NAT implementations that funnel traffic through dedicated appliances (creating bottlenecks and single points of failure), Cloud NAT distributes translation across Google's infrastructure. Each VM's traffic is translated at the host level, maintaining full bandwidth and minimal latency. There's no NAT VM to maintain, no throughput ceiling to hit, and no availability concerns—the service is inherently highly available within a region.
 
-This document explores the landscape of Cloud Router NAT deployment methods, examines how approaches have evolved from manual provisioning to infrastructure-as-code, and explains why Project Planton has chosen specific defaults for its protobuf-based API design.
+This document explores the landscape of Cloud Router NAT deployment methods, examines how approaches have evolved from manual provisioning to infrastructure-as-code, and explains why OpenMCF has chosen specific defaults for its protobuf-based API design.
 
 ## The Deployment Maturity Spectrum
 
@@ -223,9 +223,9 @@ For a typical deployment with 20 VMs and 100 GB monthly egress, total NAT costs 
 
 **Cost optimization**: Use auto-allocation to avoid paying for unused static IPs, enable Private Google Access to keep Google API traffic internal, and monitor usage patterns to right-size port allocation.
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton's `GcpRouterNat` API follows the 80/20 principle, exposing the configuration that matters while using sensible defaults for the rest:
+OpenMCF's `GcpRouterNat` API follows the 80/20 principle, exposing the configuration that matters while using sensible defaults for the rest:
 
 ```protobuf
 message GcpRouterNatSpec {
@@ -249,7 +249,7 @@ This minimal schema captures the decisions that users actually need to make:
 - **What**: Which subnets to cover (defaults to all)
 - **How**: Auto or manual IP allocation (defaults to auto)
 
-Behind the scenes, Project Planton's implementation applies production-ready defaults:
+Behind the scenes, OpenMCF's implementation applies production-ready defaults:
 - Logging enabled at `ERRORS_ONLY` level
 - Coverage of all IP ranges (primary and secondary) for listed subnets
 - Default port allocation (64 per VM, sufficient for most workloads)
@@ -279,5 +279,5 @@ Cloud Router NAT represents a maturity milestone in cloud networking: the shift 
 
 The deployment method you choose matters less than having **any** infrastructure-as-code approach. Whether you use Terraform, Pulumi, or Kubernetes CRDs, the key is making your NAT configuration declarative, version-controlled, and reproducible. The days of clicking through consoles to provision network infrastructure should be behind us.
 
-Project Planton's approach distills Cloud Router NAT configuration to its essence: specify where (VPC and region), what (which subnets), and how (IP allocation), then get out of your way with sensible defaults. The result is infrastructure that's both simple to provision and production-ready—exactly what multi-cloud deployment demands.
+OpenMCF's approach distills Cloud Router NAT configuration to its essence: specify where (VPC and region), what (which subnets), and how (IP allocation), then get out of your way with sensible defaults. The result is infrastructure that's both simple to provision and production-ready—exactly what multi-cloud deployment demands.
 

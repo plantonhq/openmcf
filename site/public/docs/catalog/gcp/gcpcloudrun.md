@@ -14,7 +14,7 @@ For years, the conventional wisdom around running containers in production was c
 
 Built directly on the open-source Knative project, Google Cloud Run represents a different philosophy: **you configure workloads, not infrastructure**. Instead of managing VMs, clusters, and node pools, you define your container image, its resource requirements, and how it should scale. Cloud Run handles everything else—autoscaling from zero to thousands of instances based on demand, routing traffic, and billing you only when requests are actively being processed.
 
-This document explores the landscape of Cloud Run deployment approaches, from simple CLI commands to production-grade Infrastructure-as-Code (IaC) patterns. We'll examine why certain methods that seem convenient during development become anti-patterns in production, compare the dominant IaC tools, and explain the design philosophy behind Project Planton's Cloud Run API.
+This document explores the landscape of Cloud Run deployment approaches, from simple CLI commands to production-grade Infrastructure-as-Code (IaC) patterns. We'll examine why certain methods that seem convenient during development become anti-patterns in production, compare the dominant IaC tools, and explain the design philosophy behind OpenMCF's Cloud Run API.
 
 ## Understanding Cloud Run's Place in the GCP Compute Spectrum
 
@@ -134,7 +134,7 @@ This correctly separates application-level secrets from infrastructure-level con
 
 - **Cloud Deployment Manager:** Not recommended (deprecated).
 
-Project Planton's protobuf-based API is **philosophically closer to Terraform's HCL**. Both are schema-driven, declarative languages that define *state*. The design patterns established by the Terraform community—clean resource separation, explicit dependency management, and externalized secret handling—are the most relevant model for our API design.
+OpenMCF's protobuf-based API is **philosophically closer to Terraform's HCL**. Both are schema-driven, declarative languages that define *state*. The design patterns established by the Terraform community—clean resource separation, explicit dependency management, and externalized secret handling—are the most relevant model for our API design.
 
 ## Production Essentials: What "Level 3" Really Means
 
@@ -243,7 +243,7 @@ The `gcloud run deploy --source` workflow is a powerful development-time conveni
 **The Production Pattern:**
 
 1. **Build Step (CI responsibility):** A CI pipeline (GitHub Actions, Cloud Build, GitLab CI) builds the container image from source, tags it with a specific version (e.g., `v1.2.3` or a commit SHA), and pushes it to Artifact Registry.
-2. **Deploy Step (IaC/CD responsibility):** The IaC tool (Terraform, Pulumi, Project Planton) deploys the service using the specific image URI and digest created by the build step.
+2. **Deploy Step (IaC/CD responsibility):** The IaC tool (Terraform, Pulumi, OpenMCF) deploys the service using the specific image URI and digest created by the build step.
 
 This separation ensures that the image is a deterministic, versioned, and auditable artifact.
 
@@ -319,13 +319,13 @@ The choice is entirely dependent on the workload pattern:
 
 Therefore, Cloud Run offers true, request-based scale-to-zero out of the box, making it the simpler and more cost-effective choice for event-driven or spiky workloads.
 
-## What Project Planton Supports (and Why)
+## What OpenMCF Supports (and Why)
 
-Project Planton's `GcpCloudRun` API is designed to be a production-grade, declarative interface for deploying Cloud Run services. It follows the design principles and best practices identified in this analysis:
+OpenMCF's `GcpCloudRun` API is designed to be a production-grade, declarative interface for deploying Cloud Run services. It follows the design principles and best practices identified in this analysis:
 
 ### Declarative, State-Based Design
 
-Like Cloud Run's native Knative API and like Terraform's HCL, Project Planton's protobuf-based API is **declarative**. You define the *desired state* of the service, not a series of imperative commands to achieve it.
+Like Cloud Run's native Knative API and like Terraform's HCL, OpenMCF's protobuf-based API is **declarative**. You define the *desired state* of the service, not a series of imperative commands to achieve it.
 
 ### Image-Based Deployment (Not Source-Based)
 
@@ -352,7 +352,7 @@ The API's structure mirrors the logical separation established by Terraform and 
 
 The evolution of Cloud Run—from Knative's open-source foundation to Google's fully managed platform—reflects a broader industry shift: developers increasingly expect to configure *workloads* (containers, resources, scaling policies) and *not* infrastructure (VMs, clusters, node pools).
 
-Project Planton's Cloud Run API embraces this workload-centric model. By combining the declarative rigor of IaC with the production-proven patterns from the Terraform and Pulumi communities, we provide a platform that's both developer-friendly and production-ready.
+OpenMCF's Cloud Run API embraces this workload-centric model. By combining the declarative rigor of IaC with the production-proven patterns from the Terraform and Pulumi communities, we provide a platform that's both developer-friendly and production-ready.
 
 The choice to use Cloud Run over GKE or Compute Engine isn't about which is "better"—it's about which is the right tool for the workload. For stateless, request-driven HTTP services and APIs, Cloud Run's scale-to-zero, pay-per-use model, and Knative-based architecture make it the simplest, most cost-effective, and most operationally efficient choice.
 

@@ -1,13 +1,13 @@
 ---
 title: "CLOUDFLARE"
-description: "Deploy CLOUDFLARE resources using Project Planton"
+description: "Deploy CLOUDFLARE resources using OpenMCF"
 icon: "cloud"
 order: 10
 ---
 
 # CLOUDFLARE
 
-The following CLOUDFLARE resources can be deployed using Project Planton:
+The following CLOUDFLARE resources can be deployed using OpenMCF:
 
 - [D1 Database](/docs/catalog/cloudflare/cloudflared1database)
 - [DNS Zone](/docs/catalog/cloudflare/cloudflarednszone)

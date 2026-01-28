@@ -1,13 +1,13 @@
 ---
 title: "GCP"
-description: "Deploy GCP resources using Project Planton"
+description: "Deploy GCP resources using OpenMCF"
 icon: "cloud"
 order: 10
 ---
 
 # GCP
 
-The following GCP resources can be deployed using Project Planton:
+The following GCP resources can be deployed using OpenMCF:
 
 - [Artifact Registry Repo](/docs/catalog/gcp/gcpartifactregistryrepo)
 - [Cert Manager Certificate](/docs/catalog/gcp/gcpcertmanagercert)

@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://project-planton.org";
+  const baseUrl = "https://openmcf.org";
   return [
     {
       url: `${baseUrl}/`,

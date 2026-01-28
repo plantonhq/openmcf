@@ -1,6 +1,6 @@
-# Project Planton Changelog
+# OpenMCF Changelog
 
-This directory contains detailed changelog entries for Project Planton. Each significant change is documented in its own file with the following naming convention:
+This directory contains detailed changelog entries for OpenMCF. Each significant change is documented in its own file with the following naming convention:
 
 ```
 YYYY-MM-DD-brief-description.md

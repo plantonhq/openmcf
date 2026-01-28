@@ -276,9 +276,9 @@ For **production services**, the small risk of an unattached IP fee (if Civo's p
 
 ---
 
-## The Project Planton Choice
+## The OpenMCF Choice
 
-Project Planton's `CivoIpAddress` resource follows the **80/20 principle**: focus on the 20% of configuration that 80% of users need.
+OpenMCF's `CivoIpAddress` resource follows the **80/20 principle**: focus on the 20% of configuration that 80% of users need.
 
 ### Minimal Spec
 
@@ -299,13 +299,13 @@ Civo's reserved IP model is inherently simple: an IP is just a regional, persist
 
 ### Default Implementation: Pulumi
 
-Project Planton uses **Pulumi (Go)** as the default IaC engine for Civo resources. The `CivoIpAddress` module:
+OpenMCF uses **Pulumi (Go)** as the default IaC engine for Civo resources. The `CivoIpAddress` module:
 
 1. Calls `civo.NewReservedIp()` with the region and description from the spec  
 2. Outputs the allocated IP address in `stack_outputs.proto` as `ipAddress` (for use in DNS or other resources)  
 3. Tracks the resource ID for lifecycle management (updates, deletions)
 
-This choice aligns with Project Planton's strategy: use production-proven, open-source IaC tools (Pulumi bridges to Civo's official Terraform provider) while providing a consistent, multi-cloud API layer via protobuf specs.
+This choice aligns with OpenMCF's strategy: use production-proven, open-source IaC tools (Pulumi bridges to Civo's official Terraform provider) while providing a consistent, multi-cloud API layer via protobuf specs.
 
 ### When to Use This Resource
 
@@ -338,7 +338,7 @@ The shift from "dynamic by default, static costs extra" to "static for free" cha
 
 The maturity spectrum from manual console to production IaC is short on Civo: you can move from experimentation to fully-automated GitOps in days, not months. The tooling is mature (official Terraform/Pulumi providers), the API is simple (just region and description), and the cost model aligns with best practices (no penalty for using static IPs).
 
-By managing Civo Reserved IPs as code—whether via Terraform, Pulumi, or Project Planton's protobuf APIs—you gain **auditability** (every IP change is a Git commit), **repeatability** (rebuilding environments is trivial), and **reliability** (no manual steps to forget during 3 AM incidents).
+By managing Civo Reserved IPs as code—whether via Terraform, Pulumi, or OpenMCF's protobuf APIs—you gain **auditability** (every IP change is a Git commit), **repeatability** (rebuilding environments is trivial), and **reliability** (no manual steps to forget during 3 AM incidents).
 
 Start with IaC from day one. Your future self, debugging a production outage at midnight, will thank you for having a clear, version-controlled record of which IPs are where and why.
 

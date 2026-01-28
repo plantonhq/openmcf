@@ -9,9 +9,9 @@ import (
 	"runtime/debug"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/iac/terraform"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfbackend"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfvars"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/iac/terraform"
+	"github.com/plantonhq/openmcf/pkg/iac/tofu/tfbackend"
+	"github.com/plantonhq/openmcf/pkg/iac/tofu/tfvars"
 	"google.golang.org/protobuf/proto"
 )
 

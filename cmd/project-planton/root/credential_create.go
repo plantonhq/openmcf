@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	credentialv1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1"
-	credentialv1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1/credentialv1connect"
-	awsv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws"
-	azurev1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure"
-	gcpv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp"
+	credentialv1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1"
+	credentialv1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1/credentialv1connect"
+	awsv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/aws"
+	azurev1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/azure"
+	gcpv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/gcp"
 	"github.com/spf13/cobra"
 )
 
@@ -56,13 +56,13 @@ func credentialCreateHandler(cmd *cobra.Command, args []string) {
 
 	if name == "" {
 		fmt.Println("Error: --name flag is required")
-		fmt.Println("Usage: project-planton credential:create --name=<name> --provider=<gcp|aws|azure> [provider-specific-flags]")
+		fmt.Println("Usage: openmcf credential:create --name=<name> --provider=<gcp|aws|azure> [provider-specific-flags]")
 		os.Exit(1)
 	}
 
 	if provider == "" {
 		fmt.Println("Error: --provider flag is required")
-		fmt.Println("Usage: project-planton credential:create --name=<name> --provider=<gcp|aws|azure> [provider-specific-flags]")
+		fmt.Println("Usage: openmcf credential:create --name=<name> --provider=<gcp|aws|azure> [provider-specific-flags]")
 		os.Exit(1)
 	}
 

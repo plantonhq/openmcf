@@ -6,7 +6,7 @@ Steps performed:
   1) make local (installs CLI against current repo APIs)
   2) pulumi login (defaults to local filesystem backend)
   3) pulumi stack select --create <stack>
-  4) project-planton pulumi update --manifest <file> --stack <stack> --module-dir <dir>
+  4) openmcf pulumi update --manifest <file> --stack <stack> --module-dir <dir>
 
 Usage examples:
   python3 _rules/deployment-component/_scripts/pulumi_e2e_run.py \
@@ -118,9 +118,9 @@ def main() -> int:
         **run(["pulumi", "stack", "select", args.stack, "--create"], cwd=repo_root, env=env),
     }
 
-    # 4) Run project-planton CLI pulumi update
+    # 4) Run openmcf CLI pulumi update
     cli_cmd = [
-        "project-planton",
+        "openmcf",
         "pulumi",
         "update",
         "--manifest",

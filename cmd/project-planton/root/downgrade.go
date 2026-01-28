@@ -1,14 +1,14 @@
 package root
 
 import (
-	"github.com/plantonhq/project-planton/internal/cli/upgrade"
+	"github.com/plantonhq/openmcf/internal/cli/upgrade"
 	"github.com/spf13/cobra"
 )
 
 var Downgrade = &cobra.Command{
 	Use:   "downgrade VERSION",
-	Short: "install a previous version of the project-planton CLI",
-	Long: `Install a specific previous version of the project-planton CLI.
+	Short: "install a previous version of the openmcf CLI",
+	Long: `Install a specific previous version of the openmcf CLI.
 
 This command downloads the specified version directly from GitHub releases.
 If Homebrew manages the current installation, you will be prompted to uninstall
@@ -19,10 +19,10 @@ Arguments:
 
 Examples:
   # Downgrade to a specific version
-  project-planton downgrade v0.3.5-cli.20260108.0
+  openmcf downgrade v0.3.5-cli.20260108.0
 
   # Force downgrade even if already on the specified version
-  project-planton downgrade v0.3.5-cli.20260108.0 --force`,
+  openmcf downgrade v0.3.5-cli.20260108.0 --force`,
 	Args: cobra.ExactArgs(1),
 	Run:  downgradeHandler,
 }

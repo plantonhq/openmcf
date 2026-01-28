@@ -16,7 +16,7 @@ Civo Object Storage exemplifies the "S3-compatible with fewer knobs to twist" ph
 
 For developers building on Civo, the value proposition is clear: **collocated storage with predictable costs**. A Kubernetes cluster in Frankfurt accessing a Frankfurt object store sees low latency, high throughput, and no surprise egress charges. You pay a flat capacity rate (roughly $0.01/GB-month, billed in 500 GB increments) with no per-API-call fees and no bandwidth charges for in-platform access. This predictability stands in stark contrast to AWS S3, where storage, transfer, and request costs stack up and vary by usage patterns.
 
-This document explores how to provision and manage Civo Object Storage buckets—from manual dashboard workflows to production-grade Infrastructure as Code (IaC) approaches—and explains why Project Planton defaults to a Pulumi-based implementation with a simplified Protobuf API.
+This document explores how to provision and manage Civo Object Storage buckets—from manual dashboard workflows to production-grade Infrastructure as Code (IaC) approaches—and explains why OpenMCF defaults to a Pulumi-based implementation with a simplified Protobuf API.
 
 ## The Deployment Methods Spectrum
 
@@ -95,11 +95,11 @@ Or wrap these calls in a Terraform `local-exec` provisioner or Pulumi dynamic pr
 
 **Verdict**: Terraform and Pulumi are production-ready for **bucket provisioning**. Additional S3 configurations require supplementary automation, but the core resource lifecycle is solid.
 
-### Level 3: Abstraction Layers (Project Planton's Approach)
+### Level 3: Abstraction Layers (OpenMCF's Approach)
 
-Project Planton takes IaC a step further by abstracting the underlying tool complexity. Instead of writing Terraform HCL or Pulumi code directly, you declare your infrastructure using Protobuf-defined APIs. A YAML file specifies what you want (a `CivoBucket` with certain properties), and Project Planton's Pulumi modules translate that intent into reality.
+OpenMCF takes IaC a step further by abstracting the underlying tool complexity. Instead of writing Terraform HCL or Pulumi code directly, you declare your infrastructure using Protobuf-defined APIs. A YAML file specifies what you want (a `CivoBucket` with certain properties), and OpenMCF's Pulumi modules translate that intent into reality.
 
-**Why This Matters**: Most teams don't need to know how to call Civo's API or AWS S3 API endpoints—they just want a bucket that's secure, versioned, and sized correctly. By defining a higher-level API (`CivoBucketSpec`), Project Planton captures the **80% of configuration that 80% of users need**:
+**Why This Matters**: Most teams don't need to know how to call Civo's API or AWS S3 API endpoints—they just want a bucket that's secure, versioned, and sized correctly. By defining a higher-level API (`CivoBucketSpec`), OpenMCF captures the **80% of configuration that 80% of users need**:
 
 - `bucket_name`: What to call it
 - `region`: Where to create it
@@ -129,9 +129,9 @@ If you're implementing Civo Object Storage in IaC, here's how the two leading to
 | **Language** | HCL (domain-specific) | TypeScript, Python, Go, C#, Java (general-purpose) |
 | **Secret Handling** | Sensitive values in state, external secret managers | Encrypted secrets in Pulumi config/state |
 | **Community/Docs** | Larger Terraform community, more examples | Smaller but growing; official Civo docs use Terraform examples |
-| **Integration with Project Planton** | Possible but requires separate toolchain | Native (Planton uses Pulumi under the hood) |
+| **Integration with OpenMCF** | Possible but requires separate toolchain | Native (Planton uses Pulumi under the hood) |
 
-**Recommendation**: Both are production-ready. Choose **Terraform** if you have an existing Terraform workflow and prefer HCL. Choose **Pulumi** if you want type-safe code, better secret management, or are integrating with Project Planton (which uses Pulumi natively).
+**Recommendation**: Both are production-ready. Choose **Terraform** if you have an existing Terraform workflow and prefer HCL. Choose **Pulumi** if you want type-safe code, better secret management, or are integrating with OpenMCF (which uses Pulumi natively).
 
 ## The 80/20 Configuration Principle
 
@@ -149,7 +149,7 @@ They **don't** need:
 - Multi-region active-active configurations (handled via replication, if needed)
 - Storage tiering (Civo has one tier, not Standard/IA/Glacier)
 
-Project Planton's `CivoBucketSpec` reflects this reality. The API is minimal but expressive:
+OpenMCF's `CivoBucketSpec` reflects this reality. The API is minimal but expressive:
 
 ```protobuf
 message CivoBucketSpec {
@@ -166,7 +166,7 @@ Notably absent: `max_size_gb` (capacity). Why? Because in many scenarios, the pl
 
 **Dev Bucket (Minimal)**:
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoBucket
 metadata:
   name: myapp-dev-storage
@@ -182,7 +182,7 @@ Private, no versioning, minimal overhead.
 
 **Production Backups (Hardened)**:
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoBucket
 metadata:
   name: acme-prod-backups
@@ -199,7 +199,7 @@ Versioned, region-specific for compliance, tagged for governance. Behind the sce
 
 **Public Assets Bucket**:
 ```yaml
-apiVersion: civo.project-planton.org/v1
+apiVersion: civo.openmcf.org/v1
 kind: CivoBucket
 metadata:
   name: marketing-static-assets
@@ -252,9 +252,9 @@ One of Civo Object Storage's greatest strengths is **100% S3 API compatibility f
 - Set alerts when usage exceeds 80% to avoid hitting limits
 - Monitor application errors for failed writes (could indicate full bucket)
 
-## What Project Planton Supports (and Why)
+## What OpenMCF Supports (and Why)
 
-Project Planton defaults to **Pulumi** for Civo bucket provisioning because:
+OpenMCF defaults to **Pulumi** for Civo bucket provisioning because:
 
 1. **Native Integration**: Planton's infrastructure-as-data pattern uses Pulumi modules under the hood
 2. **Code-First Flexibility**: Pulumi allows wrapping both the Civo provider (for bucket creation) and AWS SDK calls (for S3 configuration) in a single stack
@@ -272,9 +272,9 @@ You still get the full power of Pulumi (and by extension, S3 API) for edge cases
 
 The evolution from dashboard clicks to Infrastructure as Code mirrors the broader maturation of cloud infrastructure management. For Civo Object Storage, the journey ends at a sweet spot: **S3-compatible storage with straightforward pricing, managed via declarative IaC, abstracted to a developer-friendly API**.
 
-Civo's flat-rate pricing eliminates the surprise bills that plague S3 users. The S3 API compatibility means zero learning curve for existing tools. And Project Planton's Protobuf-defined specs reduce cognitive load, letting you focus on what you're building rather than how to provision it.
+Civo's flat-rate pricing eliminates the surprise bills that plague S3 users. The S3 API compatibility means zero learning curve for existing tools. And OpenMCF's Protobuf-defined specs reduce cognitive load, letting you focus on what you're building rather than how to provision it.
 
-Whether you're storing Kubernetes persistent volume backups, serving static website assets, or archiving application logs, Civo Object Storage—deployed through Project Planton—gives you production-grade reliability with minimal complexity.
+Whether you're storing Kubernetes persistent volume backups, serving static website assets, or archiving application logs, Civo Object Storage—deployed through OpenMCF—gives you production-grade reliability with minimal complexity.
 
 **Next Steps**: 
 - For implementation details, see the IaC modules in `../iac/pulumi/`

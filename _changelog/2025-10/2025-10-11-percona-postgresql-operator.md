@@ -28,7 +28,7 @@ The Percona Distribution for PostgreSQL Operator (based on Crunchy Data's PGO) p
 New Kubernetes cloud resource kind for deploying the Percona PostgreSQL operator:
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: PerconaPostgresqlOperator
 metadata:
   name: percona-postgresql-operator
@@ -184,20 +184,20 @@ perconapgrestores.pgv2.percona.com
 
 ```bash
 # Set local module path
-export PERCONA_POSTGRESQL_OPERATOR_MODULE=~/scm/github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/addon/perconapostgresqloperator/v1/iac/pulumi
+export PERCONA_POSTGRESQL_OPERATOR_MODULE=~/scm/github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/addon/perconapostgresqloperator/v1/iac/pulumi
 
 # Initialize Pulumi stack
-project-planton pulumi init \
+openmcf pulumi init \
   --manifest percona-postgresql-operator.yaml \
   --module-dir ${PERCONA_POSTGRESQL_OPERATOR_MODULE}
 
 # Preview changes
-project-planton pulumi preview \
+openmcf pulumi preview \
   --manifest percona-postgresql-operator.yaml \
   --module-dir ${PERCONA_POSTGRESQL_OPERATOR_MODULE}
 
 # Deploy operator
-project-planton pulumi up \
+openmcf pulumi up \
   --manifest percona-postgresql-operator.yaml \
   --module-dir ${PERCONA_POSTGRESQL_OPERATOR_MODULE}
 ```
@@ -250,7 +250,7 @@ spec:
 
 ```
 ┌─────────────────────────────────────────┐
-│  project-planton CLI                    │
+│  openmcf CLI                    │
 │  + PerconaPostgresqlOperator manifest   │
 └────────────┬────────────────────────────┘
              │ Deploys via Pulumi
@@ -421,8 +421,8 @@ Not recommended for existing deployments. Both operators manage PostgreSQL but w
 
 Two test manifests have been created for easy deployment:
 
-1. **Project Planton Environment** (development/testing):
-   - Path: `planton-cloud/ops/organizations/project-planton/infra-hub/cloud-resources/kubernetes/addon/percona-postgresql-operator.yaml`
+1. **OpenMCF Environment** (development/testing):
+   - Path: `planton-cloud/ops/organizations/openmcf/infra-hub/cloud-resources/kubernetes/addon/percona-postgresql-operator.yaml`
    - Cluster: `k8scred_01k789v5ewezr0f45j5zht9ysj`
 
 2. **App-Prod Environment** (production):

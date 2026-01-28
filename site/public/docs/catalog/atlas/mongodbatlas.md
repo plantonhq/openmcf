@@ -12,7 +12,7 @@ componentName: "mongodbatlas"
 
 MongoDB Atlas represents a strategic choice: trade direct control for operational simplicity. By choosing a Database-as-a-Service (DBaaS) over self-managed MongoDB, teams accept managed-service costs in exchange for eliminating the operational burden of high availability, backups, monitoring, scaling, and security patching. The decision to automate Atlas deployment is a natural evolution of this philosophy—moving from manual UI clicks to declarative, reproducible infrastructure as code.
 
-This document explores the landscape of Atlas deployment methods, from the basic UI console to production-grade infrastructure automation. It examines what makes Atlas architecturally unique—its multi-cloud, multi-region foundation—and explains how Project Planton abstracts these capabilities into a developer-friendly API that balances simplicity with power.
+This document explores the landscape of Atlas deployment methods, from the basic UI console to production-grade infrastructure automation. It examines what makes Atlas architecturally unique—its multi-cloud, multi-region foundation—and explains how OpenMCF abstracts these capabilities into a developer-friendly API that balances simplicity with power.
 
 ## The MongoDB Atlas Architecture: Multi-Cloud by Design
 
@@ -131,7 +131,7 @@ The `mongodb/mongodbatlas` Terraform provider is the **official, partner-support
 
 **Multi-Environment Pattern**: The universally recommended pattern is separate Atlas Projects for each environment (e.g., `project-dev`, `project-staging`, `project-prod`). This provides the strongest isolation boundary for billing, alerts, and security. In Terraform, this is typically implemented using separate directories or workspaces, each with its own state file and `project_id` variable.
 
-**Verdict**: The gold standard for multi-cloud, state-managed infrastructure as code. The foundation for higher-level abstractions including Project Planton.
+**Verdict**: The gold standard for multi-cloud, state-managed infrastructure as code. The foundation for higher-level abstractions including OpenMCF.
 
 ## Network Security: The Three Tiers
 
@@ -181,7 +181,7 @@ Uses cloud provider native services (AWS PrivateLink, Azure Private Link, GCP Pr
 
 **Use Case**: Production environments with high security requirements, compliance mandates, or zero-trust architectures.
 
-**Project Planton Recommendation**: Support all three tiers, with Private Endpoints as the documented best practice for production.
+**OpenMCF Recommendation**: Support all three tiers, with Private Endpoints as the documented best practice for production.
 
 ## Backup and Recovery: Snapshots vs. Point-in-Time
 
@@ -205,7 +205,7 @@ Enhances snapshots by capturing a continuous stream of the cluster's oplog (oper
 
 **Trade-off**: Additional monthly cost for storing continuous oplog data.
 
-**Project Planton Recommendation**: Expose both `cloud_backup` (boolean) and `continuous_backup_enabled` (boolean) as separate configuration options. Default `cloud_backup` to `true`, leave `continuous_backup_enabled` as explicit opt-in for production.
+**OpenMCF Recommendation**: Expose both `cloud_backup` (boolean) and `continuous_backup_enabled` (boolean) as separate configuration options. Default `cloud_backup` to `true`, leave `continuous_backup_enabled` as explicit opt-in for production.
 
 ## Atlas Production Essentials
 
@@ -273,19 +273,19 @@ Atlas pricing follows a usage-based model with compute, storage, backup, and net
 - **Network Compression**: Enable `?compressors=snappy` in connection strings (reduces egress by up to 50%)
 - **Read Preferences**: In multi-region clusters, configure drivers to prefer reads from local secondary nodes
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton provides a unified, Kubernetes-native API for deploying MongoDB Atlas clusters across all major cloud providers. The approach balances the 80% use case (simple, single-region deployments) with the 20% use case (advanced multi-region, multi-cloud topologies).
+OpenMCF provides a unified, Kubernetes-native API for deploying MongoDB Atlas clusters across all major cloud providers. The approach balances the 80% use case (simple, single-region deployments) with the 20% use case (advanced multi-region, multi-cloud topologies).
 
 ### Design Philosophy: One API, Not Two
 
 A common pitfall is creating separate "simple" and "advanced" resources. The official Terraform provider fell into this trap, splitting `mongodbatlas_cluster` from `mongodbatlas_advanced_cluster`, creating painful migration paths for growing teams.
 
-**Project Planton's Approach**: A single, extensible API based on the flexible model from `mongodbatlas_advanced_cluster`. The "80%" case is simply the advanced model with one region specification. The "20%" case uses the same schema with multiple regions. This creates a "pit of success" where simple configurations are already on the path to advanced ones.
+**OpenMCF's Approach**: A single, extensible API based on the flexible model from `mongodbatlas_advanced_cluster`. The "80%" case is simply the advanced model with one region specification. The "20%" case uses the same schema with multiple regions. This creates a "pit of success" where simple configurations are already on the path to advanced ones.
 
 ### Current Implementation
 
-The Project Planton MongoDB Atlas API (see `spec.proto`) provides:
+The OpenMCF MongoDB Atlas API (see `spec.proto`) provides:
 
 **Essential Fields (80% Case)**:
 - `project_id`: Atlas Project to deploy into
@@ -312,7 +312,7 @@ Database user management is handled as a separate, associated resource.
 
 ### Multi-Environment Best Practice
 
-Following Atlas's recommended pattern, Project Planton encourages separate Atlas Projects for each environment:
+Following Atlas's recommended pattern, OpenMCF encourages separate Atlas Projects for each environment:
 - `company-dev` → Development clusters
 - `company-staging` → Staging clusters  
 - `company-prod` → Production clusters
@@ -321,7 +321,7 @@ Each environment points to a different `project_id`, providing complete isolatio
 
 ### Secret Management
 
-For production deployments, Project Planton integrates with HashiCorp Vault using MongoDB's official Vault secrets engines:
+For production deployments, OpenMCF integrates with HashiCorp Vault using MongoDB's official Vault secrets engines:
 
 - **mongodbatlas Secrets Engine**: Generates ephemeral, TTL-based programmatic API keys for infrastructure operations
 - **mongodbatlas/database Secrets Engine**: Generates ephemeral, TTL-based database user credentials for applications
@@ -330,9 +330,9 @@ This enables a powerful separation of concerns: infrastructure tooling uses shor
 
 ## Conclusion: The Path to Production
 
-MongoDB Atlas deployment represents a maturity progression: from manual UI experimentation to scripted CLI operations to declarative infrastructure as code. The Terraform provider serves as the canonical automation layer, with higher-level abstractions like Pulumi, Crossplane, and Project Planton building upon its foundation.
+MongoDB Atlas deployment represents a maturity progression: from manual UI experimentation to scripted CLI operations to declarative infrastructure as code. The Terraform provider serves as the canonical automation layer, with higher-level abstractions like Pulumi, Crossplane, and OpenMCF building upon its foundation.
 
-Project Planton abstracts the complexity of the official Terraform resources into a Kubernetes-native API that makes the simple case simple (single-region replica sets) while making the advanced case possible (multi-region, multi-cloud topologies). By codifying best practices—separate projects per environment, Private Endpoints for production, continuous backups for critical data—Project Planton helps teams avoid common pitfalls and deploy production-ready MongoDB clusters with confidence.
+OpenMCF abstracts the complexity of the official Terraform resources into a Kubernetes-native API that makes the simple case simple (single-region replica sets) while making the advanced case possible (multi-region, multi-cloud topologies). By codifying best practices—separate projects per environment, Private Endpoints for production, continuous backups for critical data—OpenMCF helps teams avoid common pitfalls and deploy production-ready MongoDB clusters with confidence.
 
 The paradigm shift is clear: Atlas eliminates database operational overhead; infrastructure as code eliminates deployment inconsistency. Together, they represent the modern path to scalable, reliable data infrastructure.
 

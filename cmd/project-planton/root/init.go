@@ -4,24 +4,24 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/flag"
-	"github.com/plantonhq/project-planton/internal/cli/iacflags"
-	"github.com/plantonhq/project-planton/internal/cli/iacrunner"
-	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
-	"github.com/plantonhq/project-planton/internal/cli/prompt"
-	"github.com/plantonhq/project-planton/internal/cli/workspace"
-	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/crkreflect"
-	"github.com/plantonhq/project-planton/pkg/iac/localmodule"
-	"github.com/plantonhq/project-planton/pkg/iac/provisioner"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumistack"
-	"github.com/plantonhq/project-planton/pkg/iac/stackinput"
-	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tfbackend"
-	"github.com/plantonhq/project-planton/pkg/iac/tofu/tofumodule"
-	"github.com/plantonhq/project-planton/pkg/kubernetes/kubecontext"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
+	"github.com/plantonhq/openmcf/internal/cli/iacflags"
+	"github.com/plantonhq/openmcf/internal/cli/iacrunner"
+	climanifest "github.com/plantonhq/openmcf/internal/cli/manifest"
+	"github.com/plantonhq/openmcf/internal/cli/prompt"
+	"github.com/plantonhq/openmcf/internal/cli/workspace"
+	"github.com/plantonhq/openmcf/internal/manifest"
+	"github.com/plantonhq/openmcf/pkg/crkreflect"
+	"github.com/plantonhq/openmcf/pkg/iac/localmodule"
+	"github.com/plantonhq/openmcf/pkg/iac/provisioner"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumistack"
+	"github.com/plantonhq/openmcf/pkg/iac/stackinput"
+	"github.com/plantonhq/openmcf/pkg/iac/stackinput/stackinputproviderconfig"
+	"github.com/plantonhq/openmcf/pkg/iac/tofu/tfbackend"
+	"github.com/plantonhq/openmcf/pkg/iac/tofu/tofumodule"
+	"github.com/plantonhq/openmcf/pkg/kubernetes/kubecontext"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
@@ -30,26 +30,26 @@ var Init = &cobra.Command{
 	Use:   "init",
 	Short: "initialize backend/stack using the provisioner specified in manifest",
 	Long: `Initialize infrastructure backend or stack by automatically routing to the appropriate provisioner
-(Pulumi, Tofu, or Terraform) based on the manifest label 'project-planton.org/provisioner'.
+(Pulumi, Tofu, or Terraform) based on the manifest label 'openmcf.org/provisioner'.
 
 If the provisioner label is not present, you will be prompted to select one interactively.`,
 	Example: `
 	# Initialize from clipboard (manifest content already copied)
-	project-planton init --clipboard
-	project-planton init -c
+	openmcf init --clipboard
+	openmcf init -c
 
 	# Initialize with manifest file
-	project-planton init -f manifest.yaml
-	project-planton init --manifest manifest.yaml
+	openmcf init -f manifest.yaml
+	openmcf init --manifest manifest.yaml
 
 	# Initialize with stack input file (extracts manifest from target field)
-	project-planton init -i stack-input.yaml
+	openmcf init -i stack-input.yaml
 
 	# Initialize with kustomize
-	project-planton init --kustomize-dir _kustomize --overlay prod
+	openmcf init --kustomize-dir _kustomize --overlay prod
 
 	# Initialize with tofu-specific backend config
-	project-planton init -f manifest.yaml --backend-type s3 --backend-config bucket=my-bucket
+	openmcf init -f manifest.yaml --backend-type s3 --backend-config bucket=my-bucket
 	`,
 	Run: initHandler,
 }
@@ -151,7 +151,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 		cliprint.PrintInfo(fmt.Sprintf("Using kubectl context: %s", kubeCtx))
 	}
 
-	// Handle --local-module flag: derive module directory from local project-planton repo
+	// Handle --local-module flag: derive module directory from local openmcf repo
 	localModule, _ := cmd.Flags().GetBool(string(flag.LocalModule))
 	if localModule {
 		var iacProv shared.IacProvisioner

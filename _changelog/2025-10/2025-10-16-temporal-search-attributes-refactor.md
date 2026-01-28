@@ -27,7 +27,7 @@ This approach created several issues:
 
 2. **Naming Inconsistency**: The enum values didn't match Temporal's official naming convention, forcing users to learn two different naming systems.
 
-3. **Poor User Experience**: Users had to reference project-planton documentation instead of using values directly from Temporal's official documentation.
+3. **Poor User Experience**: Users had to reference openmcf documentation instead of using values directly from Temporal's official documentation.
 
 4. **Code Generation Issues**: Generated stubs in different languages had to handle keyword conflicts differently, leading to inconsistent APIs.
 
@@ -252,13 +252,13 @@ searchAttributes:
 
 ```bash
 # Update CLI
-brew update && brew upgrade project-planton
+brew update && brew upgrade openmcf
 
 # Or fresh install
-brew install plantonhq/tap/project-planton
+brew install plantonhq/tap/openmcf
 
 # Verify version
-project-planton version
+openmcf version
 
 # For developers: regenerate protobuf stubs
 cd apis
@@ -269,7 +269,7 @@ make protos
 
 ```bash
 # Test manifest validation (no deployment)
-project-planton pulumi preview --manifest temporal.yaml --stack dev/temporal
+openmcf pulumi preview --manifest temporal.yaml --stack dev/temporal
 ```
 
 If you see validation errors, check that all type values use the new PascalCase format.
@@ -278,7 +278,7 @@ If you see validation errors, check that all type values use the new PascalCase 
 
 ```bash
 # Update your deployment
-project-planton pulumi up --manifest temporal.yaml --stack dev/temporal
+openmcf pulumi up --manifest temporal.yaml --stack dev/temporal
 ```
 
 **Note**: The search attributes configuration doesn't require destroying and recreating the Temporal cluster. The Pulumi module will update the Helm chart values in place.
@@ -309,7 +309,7 @@ echo "✅ Migration complete!"
 ### Complete TemporalKubernetes Manifest
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: TemporalKubernetes
 metadata:
   name: temporal-production
@@ -442,7 +442,7 @@ New `version` field enables:
 
 ```yaml
 # Development: test latest version
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: TemporalKubernetes
 metadata:
   name: temporal-dev
@@ -452,7 +452,7 @@ spec:
 
 ---
 # Production: stable version
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: TemporalKubernetes
 metadata:
   name: temporal-prod
@@ -561,12 +561,12 @@ Test manifest with new syntax:
 
 ```bash
 # Preview changes
-project-planton pulumi preview \
+openmcf pulumi preview \
   --manifest temporal.yaml \
   --stack dev/temporal
 
 # Deploy
-project-planton pulumi up \
+openmcf pulumi up \
   --manifest temporal.yaml \
   --stack dev/temporal
 
@@ -624,5 +624,5 @@ For questions or issues with migration:
 1. Review the [migration guide](#migration-guide) above
 2. Check [examples](#examples) for reference
 3. Run the [automated migration script](#automated-migration-script)
-4. Contact Project Planton support if issues persist
+4. Contact OpenMCF support if issues persist
 

@@ -1,13 +1,13 @@
 ---
-description: Go coding guidelines for the project-planton monorepo
+description: Go coding guidelines for the openmcf monorepo
 globs:
   - "**/*.go"
 alwaysApply: true
 ---
 
-# Rule: Project Planton Go Coding Guidelines
+# Rule: OpenMCF Go Coding Guidelines
 
-Purpose: Enforces Go-specific coding patterns and practices for the project-planton monorepo.
+Purpose: Enforces Go-specific coding patterns and practices for the openmcf monorepo.
 
 Usage: Always applies to all Go files.
 
@@ -91,8 +91,8 @@ import (
     "github.com/spf13/cobra"
     
     // 3. Internal packages
-    "github.com/plantonhq/project-planton/internal/..."
-    "github.com/plantonhq/project-planton/pkg/..."
+    "github.com/plantonhq/openmcf/internal/..."
+    "github.com/plantonhq/openmcf/pkg/..."
 )
 ```
 

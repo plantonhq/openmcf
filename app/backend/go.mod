@@ -1,10 +1,10 @@
-module github.com/plantonhq/project-planton/app/backend
+module github.com/plantonhq/openmcf/app/backend
 
 go 1.25.0
 
 require (
 	connectrpc.com/connect v1.16.2
-	github.com/plantonhq/project-planton v0.2.245
+	github.com/plantonhq/openmcf v0.2.245
 	github.com/sirupsen/logrus v1.9.3
 	go.mongodb.org/mongo-driver v1.16.1
 	golang.org/x/net v0.41.0
@@ -50,4 +50,4 @@ require (
 	sigs.k8s.io/yaml v1.5.0 // indirect
 )
 
-replace github.com/plantonhq/project-planton => ../..
+replace github.com/plantonhq/openmcf => ../..

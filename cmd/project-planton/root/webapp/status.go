@@ -11,14 +11,14 @@ import (
 
 var StatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "check the status of Project Planton web app",
+	Short: "check the status of OpenMCF web app",
 	Long:  `Display the current status of the web app container and services`,
 	Run:   statusHandler,
 }
 
 func statusHandler(cmd *cobra.Command, args []string) {
 	fmt.Println("========================================")
-	fmt.Println("📊 Project Planton Web App Status")
+	fmt.Println("📊 OpenMCF Web App Status")
 	fmt.Println("========================================")
 	fmt.Println()
 

@@ -1,0 +1,6 @@
+apiVersion: aws.openmcf.org/v1
+kind: AwsEcsCluster
+metadata:
+  name: awsecscluster-demo
+spec:
+  enableContainerInsights: true

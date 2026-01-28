@@ -7,7 +7,7 @@ alwaysApply: false
 
 ## Purpose
 
-Start the Project Planton development environment with backend, frontend, and optionally CLI. This rule ensures all services are properly started in the correct order with their dependencies.
+Start the OpenMCF development environment with backend, frontend, and optionally CLI. This rule ensures all services are properly started in the correct order with their dependencies.
 
 ## Rule Type
 
@@ -28,7 +28,7 @@ Start the Project Planton development environment with backend, frontend, and op
 │                                ▼                                              │
 │                       ┌─────────────────┐                                     │
 │                       │   CLI (opt)     │                                     │
-│                       │ project-planton │                                     │
+│                       │ openmcf │                                     │
 │                       └─────────────────┘                                     │
 │                                                                               │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -90,7 +90,7 @@ go run ./cmd/server
 |----------|---------|-------------|
 | `SERVER_PORT` | `50051` | Backend API port |
 | `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection |
-| `MONGODB_DATABASE` | `project_planton` | Database name |
+| `MONGODB_DATABASE` | `openmcf` | Database name |
 
 ### Step 3: Start Frontend Server (Always)
 
@@ -120,18 +120,18 @@ yarn dev
 
 ```bash
 # Build CLI from project root
-cd /Users/satishlakhani/scm/github.com/plantonhq/project-planton
+cd /Users/satishlakhani/scm/github.com/plantonhq/openmcf
 make build_darwin
 
 # Install to ~/bin
-cp ./build/project-planton-darwin ~/bin/project-planton
-chmod +x ~/bin/project-planton
+cp ./build/openmcf-darwin ~/bin/openmcf
+chmod +x ~/bin/openmcf
 
 # Configure CLI to use local backend
-project-planton config set backend-url http://localhost:50051
+openmcf config set backend-url http://localhost:50051
 
 # Verify configuration
-project-planton config list
+openmcf config list
 ```
 
 ## Terminal Layout
@@ -158,11 +158,11 @@ cd app/backend && go run ./cmd/server
 cd app/frontend && yarn install && yarn dev
 
 # Terminal 4 (if CLI requested): Build and Configure CLI
-cd /Users/satishlakhani/scm/github.com/plantonhq/project-planton
+cd /Users/satishlakhani/scm/github.com/plantonhq/openmcf
 make build_darwin
-cp ./build/project-planton-darwin ~/bin/project-planton
-chmod +x ~/bin/project-planton
-project-planton config set backend-url http://localhost:50051
+cp ./build/openmcf-darwin ~/bin/openmcf
+chmod +x ~/bin/openmcf
+openmcf config set backend-url http://localhost:50051
 ```
 
 ## Verification
@@ -172,7 +172,7 @@ After starting, verify services are running:
 1. **MongoDB**: `mongosh` should connect successfully
 2. **Backend**: `curl http://localhost:50051` should respond (or use gRPC tools)
 3. **Frontend**: Open `http://localhost:3000` in browser
-4. **CLI**: `project-planton config list` shows `backend-url=http://localhost:50051`
+4. **CLI**: `openmcf config list` shows `backend-url=http://localhost:50051`
 
 ## Stopping Services
 
@@ -204,8 +204,8 @@ docker stop mongodb
 ### CLI Can't Connect to Backend
 
 - Verify backend is running: `curl http://localhost:50051`
-- Check CLI config: `project-planton config list`
-- Reconfigure: `project-planton config set backend-url http://localhost:50051`
+- Check CLI config: `openmcf config list`
+- Reconfigure: `openmcf config set backend-url http://localhost:50051`
 
 ## Notes
 

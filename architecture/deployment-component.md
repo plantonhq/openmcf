@@ -2,7 +2,7 @@
 
 ## What is a Deployment Component?
 
-A **deployment component** in Project Planton is a self-contained, production-ready package that enables declarative deployment of a specific infrastructure resource or application workload to a cloud provider or Kubernetes cluster.
+A **deployment component** in OpenMCF is a self-contained, production-ready package that enables declarative deployment of a specific infrastructure resource or application workload to a cloud provider or Kubernetes cluster.
 
 ### Technical Definition
 
@@ -20,12 +20,12 @@ A deployment component consists of:
 
 3. **Documentation** - Multi-layered documentation serving different audiences:
    - Research documentation (comprehensive landscape analysis)
-   - User-facing documentation (Project Planton perspective)
+   - User-facing documentation (OpenMCF perspective)
    - Examples (copy-paste ready, validated against current API)
 
-### Role in Project Planton
+### Role in OpenMCF
 
-Deployment components are the **atomic units of deployment** in Project Planton. They serve as:
+Deployment components are the **atomic units of deployment** in OpenMCF. They serve as:
 
 - **The Menu Items** - In the restaurant analogy from the main README, deployment components are the individual dishes available for order
 - **Reusable Building Blocks** - Platform engineers compose multiple deployment components to build complete application stacks
@@ -34,11 +34,11 @@ Deployment components are the **atomic units of deployment** in Project Planton.
 
 ### Relationship to Kubernetes Resource Model (KRM)
 
-Project Planton adopts the Kubernetes Resource Model philosophy but extends it beyond Kubernetes:
+OpenMCF adopts the Kubernetes Resource Model philosophy but extends it beyond Kubernetes:
 
 **Structural Consistency:**
 ```yaml
-apiVersion: <provider>.project-planton.org/<version>
+apiVersion: <provider>.openmcf.org/<version>
 kind: <ComponentType>
 metadata:
   name: <resource-name>
@@ -51,7 +51,7 @@ status:
 ```
 
 **Key Differences from Kubernetes:**
-- **Protocol Buffers vs Go Structs** - Project Planton uses protobuf for language neutrality and multi-language SDK generation
+- **Protocol Buffers vs Go Structs** - OpenMCF uses protobuf for language neutrality and multi-language SDK generation
 - **Provider-Specific vs Abstracted** - Each cloud provider has its own components (no artificial abstraction layer)
 - **Dual IaC Support** - Both Pulumi and Terraform implementations (Kubernetes only uses Go-based controllers)
 - **Documentation-First** - Research-driven design with comprehensive landscape analysis
@@ -184,15 +184,15 @@ GcpCertManagerCert = 616 [(kind_meta) = {
 
 ### 2. Folder Structure
 
-**Base Path:** `apis/org/project_planton/provider/<provider>/<component>/v1/`
+**Base Path:** `apis/org/openmcf/provider/<provider>/<component>/v1/`
 
 **Requirements:**
 
 - [ ] **Correct Provider Hierarchy** - Component folder is under the correct provider:
-  - `apis/org/project_planton/provider/aws/<component>/v1/`
-  - `apis/org/project_planton/provider/gcp/<component>/v1/`
-  - `apis/org/project_planton/provider/azure/<component>/v1/`
-  - `apis/org/project_planton/provider/kubernetes/<component>/v1/`
+  - `apis/org/openmcf/provider/aws/<component>/v1/`
+  - `apis/org/openmcf/provider/gcp/<component>/v1/`
+  - `apis/org/openmcf/provider/azure/<component>/v1/`
+  - `apis/org/openmcf/provider/kubernetes/<component>/v1/`
   - etc.
 
 - [ ] **Lowercase Folder Naming** - Component folder name matches the `CloudResourceKind` enum value but in all lowercase
@@ -203,7 +203,7 @@ GcpCertManagerCert = 616 [(kind_meta) = {
 
 **Example Structure:**
 ```
-apis/org/project_planton/provider/gcp/gcpcertmanagercert/v1/
+apis/org/openmcf/provider/gcp/gcpcertmanagercert/v1/
 ├── api.proto
 ├── spec.proto
 ├── stack_input.proto
@@ -255,19 +255,19 @@ apis/org/project_planton/provider/gcp/gcpcertmanagercert/v1/
 
 - [ ] **File Exists** - `v1/api.proto` is present
 - [ ] **Correct Package** - Package declaration matches path:
-  - `package org.project_planton.provider.<provider>.<component>.v1;`
+  - `package org.openmcf.provider.<provider>.<component>.v1;`
 - [ ] **Standard Imports** - Imports common proto dependencies:
   ```protobuf
-  import "org/project_planton/shared/pulumi/pulumi.proto";
-  import "org/project_planton/provider/<provider>/<component>/v1/spec.proto";
-  import "org/project_planton/provider/<provider>/<component>/v1/stack_outputs.proto";
+  import "org/openmcf/shared/pulumi/pulumi.proto";
+  import "org/openmcf/provider/<provider>/<component>/v1/spec.proto";
+  import "org/openmcf/provider/<provider>/<component>/v1/stack_outputs.proto";
   ```
 - [ ] **Resource Message** - Defines `<Kind>` message with KRM structure:
   ```protobuf
   message <Kind> {
     string api_version = 1;
     string kind = 2;
-    org.project_planton.shared.pulumi.ApiResourceMetadata metadata = 3;
+    org.openmcf.shared.pulumi.ApiResourceMetadata metadata = 3;
     <Kind>Spec spec = 4;
     <Kind>Status status = 5;
   }
@@ -275,8 +275,8 @@ apis/org/project_planton/provider/gcp/gcpcertmanagercert/v1/
 - [ ] **Status Message** - Defines `<Kind>Status` message with lifecycle and outputs:
   ```protobuf
   message <Kind>Status {
-    org.project_planton.shared.pulumi.ApiResourceLifecycle lifecycle = 1;
-    org.project_planton.shared.pulumi.PulumiStackOutputs pulumi_stack = 2;
+    org.openmcf.shared.pulumi.ApiResourceLifecycle lifecycle = 1;
+    org.openmcf.shared.pulumi.PulumiStackOutputs pulumi_stack = 2;
     <Kind>StackOutputs outputs = 3;
   }
   ```
@@ -329,21 +329,21 @@ message GcpCertManagerCertSpec {
 - [ ] **Correct Package** - Package declaration matches path
 - [ ] **Standard Imports** - Imports common dependencies:
   ```protobuf
-  import "org/project_planton/shared/pulumi/pulumi.proto";
-  import "org/project_planton/provider/<provider>/<component>/v1/spec.proto";
+  import "org/openmcf/shared/pulumi/pulumi.proto";
+  import "org/openmcf/provider/<provider>/<component>/v1/spec.proto";
   ```
 - [ ] **StackInput Message** - Defines `<Kind>StackInput` message:
   ```protobuf
   message <Kind>StackInput {
-    org.project_planton.shared.pulumi.StackUpdateSettings stack_job_settings = 1;
+    org.openmcf.shared.pulumi.StackUpdateSettings stack_job_settings = 1;
     <Kind>Spec spec = 2;
     <ProviderCredential> <provider>_credential = 3;
   }
   ```
 - [ ] **Credential Field** - References the correct provider credential type:
-  - AWS: `org.project_planton.provider.aws.credential.v1.AwsCredential`
-  - GCP: `org.project_planton.provider.gcp.credential.v1.GcpCredential`
-  - Kubernetes: `org.project_planton.provider.kubernetes.provider.v1.KubernetesProvider`
+  - AWS: `org.openmcf.provider.aws.credential.v1.AwsCredential`
+  - GCP: `org.openmcf.provider.gcp.credential.v1.GcpCredential`
+  - Kubernetes: `org.openmcf.provider.kubernetes.provider.v1.KubernetesProvider`
 
 #### 3.4 stack_outputs.proto
 
@@ -405,7 +405,7 @@ message GcpCertManagerCertStackOutputs {
 - [ ] **Tests Execute** - All tests run successfully (no compilation errors)
 - [ ] **Tests Pass** - All tests pass when running component-specific test:
   ```bash
-  go test ./apis/org/project_planton/provider/<provider>/<component>/v1/
+  go test ./apis/org/openmcf/provider/<provider>/<component>/v1/
   ```
 - [ ] **Meaningful Coverage** - Tests cover critical validation paths:
   - Happy path (valid configurations)
@@ -544,7 +544,7 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
   - Variable descriptions match proto field comments
   - **MUST** be generated and match spec.proto exactly
 
-**Critical:** The Project Planton CLI transforms the YAML manifest into Terraform variable format. If `variables.tf` doesn't match `spec.proto`, deployments will fail.
+**Critical:** The OpenMCF CLI transforms the YAML manifest into Terraform variable format. If `variables.tf` doesn't match `spec.proto`, deployments will fail.
 
 - [ ] **provider.tf** - Provider configuration:
   - Configures the appropriate provider (AWS, GCP, Azure, etc.)
@@ -651,7 +651,7 @@ variable "alternate_domain_names" {
 - The Evolution (history of the technology)
 - Deployment Methods (manual → automated)
 - Comparative Analysis
-- Project Planton's Approach
+- OpenMCF's Approach
 - Implementation Landscape
 - Production Best Practices
 - Conclusion
@@ -664,15 +664,15 @@ variable "alternate_domain_names" {
 
 **Location:** `v1/README.md`
 
-**Purpose:** Concise, Project Planton perspective overview
+**Purpose:** Concise, OpenMCF perspective overview
 
 **Requirements:**
 
 - [ ] **File Exists** - `v1/README.md` is present
 - [ ] **Moderate Length** - Typically 50-200 lines (not a deep research document)
-- [ ] **Overview Section** - High-level explanation from Project Planton perspective:
+- [ ] **Overview Section** - High-level explanation from OpenMCF perspective:
   - What the component does
-  - Why Project Planton created it
+  - Why OpenMCF created it
   - How it fits into the framework
 - [ ] **Purpose Section** - Clear statement of goals:
   - What problems it solves
@@ -720,7 +720,7 @@ variable "alternate_domain_names" {
   - When to use this pattern
 - [ ] **Deployment Instructions** - Shows how to deploy:
   ```bash
-  project-planton pulumi up --manifest example.yaml --stack org/project/env
+  openmcf pulumi up --manifest example.yaml --stack org/project/env
   ```
 - [ ] **Schema Validation** - All examples validate against current proto schema
   - No references to deprecated fields
@@ -923,7 +923,7 @@ This document serves as the specification for an automated audit tool. The tool 
 
 ## Conclusion
 
-A "complete" deployment component in Project Planton is not simply a collection of files. It's a well-researched, thoughtfully-scoped, fully-implemented package that serves real-world deployment needs with both Pulumi and Terraform, backed by comprehensive documentation that explains both "how" and "why."
+A "complete" deployment component in OpenMCF is not simply a collection of files. It's a well-researched, thoughtfully-scoped, fully-implemented package that serves real-world deployment needs with both Pulumi and Terraform, backed by comprehensive documentation that explains both "how" and "why."
 
 This document provides the definitive reference for what completeness means, enabling both human developers and automated tools to assess and improve deployment components systematically.
 

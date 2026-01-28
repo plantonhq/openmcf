@@ -18,7 +18,7 @@ The default VPC uses the same IP range (172.31.0.0/16) in every AWS account. Thi
 
 This is where custom VPCs enter the picture—not as a theoretical "best practice," but as a practical necessity for any application that will carry production traffic. The question isn't whether to create a custom VPC, but *how* to deploy one reliably and consistently across environments.
 
-This document explores the evolution of VPC deployment methods, from manual console work to production-grade Infrastructure as Code, and explains why Project Planton embraces specific approaches for its AWS VPC provisioning.
+This document explores the evolution of VPC deployment methods, from manual console work to production-grade Infrastructure as Code, and explains why OpenMCF embraces specific approaches for its AWS VPC provisioning.
 
 ## The Maturity Spectrum: How Teams Deploy VPCs
 
@@ -234,13 +234,13 @@ The module embodies the **80/20 principle**: 20% of configuration options cover 
 
 **Verdict:** Using proven community modules isn't "taking shortcuts"—it's standing on the shoulders of giants. Thousands of production deployments have battle-tested these patterns.
 
-## What Project Planton Supports (And Why)
+## What OpenMCF Supports (And Why)
 
-Project Planton's AWS VPC provisioning embraces the principles validated by the community module and production deployments worldwide.
+OpenMCF's AWS VPC provisioning embraces the principles validated by the community module and production deployments worldwide.
 
 ### The API Design Philosophy
 
-Project Planton's VPC API exposes a minimal, focused set of inputs:
+OpenMCF's VPC API exposes a minimal, focused set of inputs:
 
 - **`vpc_cidr`**: The IP address range (required)
 - **`availability_zones`**: Which AZs to span
@@ -252,21 +252,21 @@ Project Planton's VPC API exposes a minimal, focused set of inputs:
 
 This isn't arbitrary minimalism—it reflects what matters for 80% of VPC deployments.
 
-### What Project Planton Handles For You
+### What OpenMCF Handles For You
 
-**Multi-AZ by Default:** Project Planton creates subnets across all specified availability zones. This isn't optional because single-AZ deployments are an anti-pattern for any environment beyond quick experiments.
+**Multi-AZ by Default:** OpenMCF creates subnets across all specified availability zones. This isn't optional because single-AZ deployments are an anti-pattern for any environment beyond quick experiments.
 
-**NAT Gateway Best Practices:** When `is_nat_gateway_enabled = true`, Project Planton deploys one NAT Gateway per availability zone. This follows AWS's explicit recommendation: "NAT Gateways within an AZ are redundant within that AZ, but if the entire AZ fails, instances in other AZs can't reach it. We recommend using at least one NAT Gateway per AZ."
+**NAT Gateway Best Practices:** When `is_nat_gateway_enabled = true`, OpenMCF deploys one NAT Gateway per availability zone. This follows AWS's explicit recommendation: "NAT Gateways within an AZ are redundant within that AZ, but if the entire AZ fails, instances in other AZs can't reach it. We recommend using at least one NAT Gateway per AZ."
 
 This costs more than a single NAT (approximately $32/month per AZ), but it eliminates cross-AZ data transfer fees (which would partially offset the savings) and prevents a single AZ failure from cutting off internet access for the entire VPC.
 
 **Route Table Organization:** Public subnets get a route table with a default route to the Internet Gateway. Private subnets get per-AZ route tables with routes to the local NAT Gateway. This ensures traffic from private subnets in AZ-A routes to NAT-in-AZ-A, not across availability zones.
 
-**DNS Configuration:** Most VPCs need DNS hostnames enabled (so instances get friendly DNS names), but Project Planton makes it a toggle rather than assuming. DNS support is virtually always enabled (it's required for basic AWS service resolution), but the API exposes it for completeness.
+**DNS Configuration:** Most VPCs need DNS hostnames enabled (so instances get friendly DNS names), but OpenMCF makes it a toggle rather than assuming. DNS support is virtually always enabled (it's required for basic AWS service resolution), but the API exposes it for completeness.
 
 ### What's Intentionally Left Out
 
-**Secondary CIDR Blocks:** While AWS allows adding additional IP ranges to a VPC, this is relatively rare (typically only when the original range is exhausted). Project Planton focuses on getting the initial CIDR sizing right.
+**Secondary CIDR Blocks:** While AWS allows adding additional IP ranges to a VPC, this is relatively rare (typically only when the original range is exhausted). OpenMCF focuses on getting the initial CIDR sizing right.
 
 **Custom DHCP Option Sets:** Most deployments use AWS's default DNS. Custom DHCP options (for on-premises DNS integration or custom domain names) are advanced scenarios that can be handled separately.
 
@@ -276,7 +276,7 @@ This costs more than a single NAT (approximately $32/month per AZ), but it elimi
 
 ### The Underlying Implementation
 
-Project Planton provides both **Terraform** and **Pulumi** implementations, ensuring teams can use their preferred IaC tool.
+OpenMCF provides both **Terraform** and **Pulumi** implementations, ensuring teams can use their preferred IaC tool.
 
 The Terraform implementation aligns with the patterns from `terraform-aws-modules/vpc/aws`, providing consistency with community standards. The Pulumi implementation offers equivalent functionality using Pulumi's AWS library.
 
@@ -319,9 +319,9 @@ For a three-AZ VPC with NAT per AZ:
 
 The strategic play: Enable S3 and DynamoDB Gateway Endpoints in every VPC. They cost nothing and bypass NAT entirely for those services. Evaluate Interface Endpoints for heavily-used services (CloudWatch, Secrets Manager, etc.) where the ~$7/month/AZ pays for itself by avoiding NAT data processing fees.
 
-### Project Planton's Approach
+### OpenMCF's Approach
 
-Project Planton makes NAT a toggle (`is_nat_gateway_enabled`) with clear defaults:
+OpenMCF makes NAT a toggle (`is_nat_gateway_enabled`) with clear defaults:
 - **Production:** Enable NAT, deploy one per AZ (resilience over cost)
 - **Development:** Enable NAT, consider single-NAT mode if cost is critical and you accept the availability trade-off
 
@@ -331,7 +331,7 @@ The API doesn't expose "how many NAT Gateways" because the answer is almost alwa
 
 AWS VPC deployment has evolved from manual console work through scripted automation to declarative Infrastructure as Code, culminating in proven community modules and patterns.
 
-Project Planton doesn't reinvent this evolution—it distills the lessons into an opinionated API that makes best practices the default path:
+OpenMCF doesn't reinvent this evolution—it distills the lessons into an opinionated API that makes best practices the default path:
 
 - **Multi-AZ** is assumed, not optional
 - **NAT per AZ** is the default for production resilience
@@ -340,7 +340,7 @@ Project Planton doesn't reinvent this evolution—it distills the lessons into a
 
 This isn't about removing flexibility—the underlying Terraform and Pulumi implementations remain accessible and extensible. It's about recognizing that most VPCs should follow similar patterns, and automating those patterns shouldn't require deep AWS networking expertise.
 
-For teams deploying their first VPC or their hundredth, Project Planton provides a path from zero to production-grade networking that embodies years of community knowledge and AWS best practices—without requiring you to relive every mistake that led to those practices.
+For teams deploying their first VPC or their hundredth, OpenMCF provides a path from zero to production-grade networking that embodies years of community knowledge and AWS best practices—without requiring you to relive every mistake that led to those practices.
 
-The console wizard taught us how VPCs work. Infrastructure as Code taught us how to deploy them consistently. Community modules taught us what "production-ready" actually means. Project Planton brings all of that together into an API that just works.
+The console wizard taught us how VPCs work. Infrastructure as Code taught us how to deploy them consistently. Community modules taught us what "production-ready" actually means. OpenMCF brings all of that together into an API that just works.
 

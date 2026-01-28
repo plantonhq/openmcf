@@ -17,15 +17,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://project-planton.org"),
+  metadataBase: new URL("https://openmcf.org"),
   title: {
-    default: "ProjectPlanton — Open‑Source Multi‑Cloud Infrastructure Framework",
-    template: "%s | ProjectPlanton",
+    default: "OpenMCF — Open‑Source Multi‑Cloud Infrastructure Framework",
+    template: "%s | OpenMCF",
   },
   description:
     "Kubernetes‑style manifests for multi‑cloud infrastructure. Define once. Deploy anywhere.",
   keywords: [
-    "ProjectPlanton",
+    "OpenMCF",
     "multi‑cloud",
     "infrastructure",
     "Pulumi",
@@ -37,17 +37,17 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: "/",
-    title: "ProjectPlanton — Open‑Source Multi‑Cloud Infrastructure Framework",
+    title: "OpenMCF — Open‑Source Multi‑Cloud Infrastructure Framework",
     description:
       "Kubernetes‑style manifests for multi‑cloud infrastructure. Define once. Deploy anywhere.",
-    siteName: "ProjectPlanton",
+    siteName: "OpenMCF",
     images: [
-      { url: "/icon.png", width: 512, height: 512, alt: "ProjectPlanton" },
+      { url: "/icon.png", width: 512, height: 512, alt: "OpenMCF" },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ProjectPlanton — Open‑Source Multi‑Cloud Infrastructure Framework",
+    title: "OpenMCF — Open‑Source Multi‑Cloud Infrastructure Framework",
     description:
       "Kubernetes‑style manifests for multi‑cloud infrastructure. Define once. Deploy anywhere.",
     images: ["/icon.png"],

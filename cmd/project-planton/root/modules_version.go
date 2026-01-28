@@ -4,32 +4,32 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/staging"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/staging"
 	"github.com/spf13/cobra"
 )
 
 var ModulesVersion = &cobra.Command{
 	Use:   "modules-version",
 	Short: "Show the current version of IaC modules in the staging area",
-	Long: `Display the currently checked out version of the ProjectPlanton IaC modules
+	Long: `Display the currently checked out version of the OpenMCF IaC modules
 in the local staging area.
 
-The staging area (~/.project-planton/staging/project-planton) maintains a cached copy
-of the ProjectPlanton repository containing all IaC modules (Pulumi and Terraform/OpenTofu).
+The staging area (~/.openmcf/staging/openmcf) maintains a cached copy
+of the OpenMCF repository containing all IaC modules (Pulumi and Terraform/OpenTofu).
 
 This command reads the version from the staging area's .version file and displays it.
 If the staging area doesn't exist, it will indicate that no modules are cached yet.
 
-Use 'project-planton checkout <version>' to switch to a different version.
-Use 'project-planton pull' to update to the latest version from upstream.`,
+Use 'openmcf checkout <version>' to switch to a different version.
+Use 'openmcf pull' to update to the latest version from upstream.`,
 	Example: `  # Check current modules version
-  project-planton modules-version
+  openmcf modules-version
 
   # Typical workflow
-  project-planton modules-version     # Check current version
-  project-planton checkout v0.2.273   # Switch to specific version
-  project-planton modules-version     # Verify the switch`,
+  openmcf modules-version     # Check current version
+  openmcf checkout v0.2.273   # Switch to specific version
+  openmcf modules-version     # Verify the switch`,
 	Run: modulesVersionHandler,
 }
 
@@ -43,7 +43,7 @@ func modulesVersionHandler(cmd *cobra.Command, args []string) {
 	if !exists {
 		fmt.Println("No IaC modules cached yet.")
 		fmt.Println("")
-		fmt.Println("Run 'project-planton pull' to clone the modules to the staging area,")
+		fmt.Println("Run 'openmcf pull' to clone the modules to the staging area,")
 		fmt.Println("or run any apply/preview/destroy command to automatically set up staging.")
 		return
 	}
@@ -58,6 +58,6 @@ func modulesVersionHandler(cmd *cobra.Command, args []string) {
 	}
 	fmt.Println("")
 	fmt.Println("Commands:")
-	fmt.Println("  project-planton pull                  Update to latest from upstream")
-	fmt.Println("  project-planton checkout <version>    Switch to a specific version")
+	fmt.Println("  openmcf pull                  Update to latest from upstream")
+	fmt.Println("  openmcf checkout <version>    Switch to a specific version")
 }

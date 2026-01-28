@@ -8,7 +8,7 @@ import { Copy, Check, ArrowRight } from "lucide-react";
 
 export default function Hero() {
 	const [copied, setCopied] = useState(false);
-	const installCommand = "brew install plantonhq/tap/project-planton";
+	const installCommand = "brew install plantonhq/tap/openmcf";
 
 	const copyToClipboard = () => {
 		navigator.clipboard.writeText(installCommand);

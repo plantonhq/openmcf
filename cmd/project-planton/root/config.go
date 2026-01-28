@@ -18,8 +18,8 @@ type Config struct {
 
 var ConfigCmd = &cobra.Command{
 	Use:   "config",
-	Short: "manage project-planton configuration",
-	Long:  "Configure project-planton settings like backend URL for API operations",
+	Short: "manage openmcf configuration",
+	Long:  "Configure openmcf settings like backend URL for API operations",
 }
 
 var configSetCmd = &cobra.Command{
@@ -56,7 +56,7 @@ func getConfigDir() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(homeDir, ".project-planton")
+	return filepath.Join(homeDir, ".openmcf")
 }
 
 func getConfigFile() string {
@@ -189,7 +189,7 @@ func GetBackendURL() (string, error) {
 	}
 
 	if config.BackendURL == "" {
-		return "", fmt.Errorf("backend URL not configured. Run: project-planton config set backend-url <url>")
+		return "", fmt.Errorf("backend URL not configured. Run: openmcf config set backend-url <url>")
 	}
 
 	return config.BackendURL, nil

@@ -24,7 +24,7 @@ This isn't a minor implementation detail. It's a fundamental architectural shift
 
 3. **IaC Design**: When designing infrastructure-as-code APIs, recognizing this architecture means modeling the underlying reality—build configuration, service configuration, and trigger configuration—rather than inventing a new abstraction that hides complexity poorly.
 
-This guide maps the deployment landscape for Google Cloud Functions, explains the Gen 1 vs. Gen 2 decision (spoiler: always choose Gen 2), and details why Project Planton's API is designed around the 80/20 principle: expose the essential 20% of configuration that 80% of production deployments need.
+This guide maps the deployment landscape for Google Cloud Functions, explains the Gen 1 vs. Gen 2 decision (spoiler: always choose Gen 2), and details why OpenMCF's API is designed around the 80/20 principle: expose the essential 20% of configuration that 80% of production deployments need.
 
 ---
 
@@ -585,9 +585,9 @@ However, for high-traffic functions, Gen 2 is **vastly cheaper**. Its ability to
 
 ---
 
-## The Project Planton Choice: Protobuf + Pulumi
+## The OpenMCF Choice: Protobuf + Pulumi
 
-Project Planton models GCP Cloud Functions as protobuf-defined resources (`GcpCloudFunctionSpec`) deployed via Pulumi. This design reflects strategic choices:
+OpenMCF models GCP Cloud Functions as protobuf-defined resources (`GcpCloudFunctionSpec`) deployed via Pulumi. This design reflects strategic choices:
 
 ### Why Protobuf-Defined APIs
 
@@ -598,9 +598,9 @@ Project Planton models GCP Cloud Functions as protobuf-defined resources (`GcpCl
 
 ### Why Pulumi for Deployment
 
-While Terraform is the industry standard, Project Planton uses Pulumi:
+While Terraform is the industry standard, OpenMCF uses Pulumi:
 
-**Programmatic generation**: Project Planton generates Pulumi programs from protobuf specs. Pulumi's code-native approach (TypeScript, Go, Python) makes programmatic generation significantly simpler than HCL generation.
+**Programmatic generation**: OpenMCF generates Pulumi programs from protobuf specs. Pulumi's code-native approach (TypeScript, Go, Python) makes programmatic generation significantly simpler than HCL generation.
 
 **Provider bridging**: Pulumi reuses Terraform providers, inheriting their maturity and feature coverage. This means 100% feature parity with Terraform while maintaining code-native flexibility.
 
@@ -610,7 +610,7 @@ While Terraform is the industry standard, Project Planton uses Pulumi:
 
 ### What We Expose (and Exclude)
 
-Project Planton's API will include:
+OpenMCF's API will include:
 
 **Essential (The 80%)**:
 - `name`, `location`, `runtime`, `entry_point`
@@ -639,7 +639,7 @@ The serverless landscape has matured. Google Cloud Functions (Gen 2) isn't a pro
 
 For teams practicing infrastructure-as-code, the deployment choice is clear: **Terraform and Pulumi are the production standard**. Both offer mature, feature-complete providers with 100% API coverage. The decision between them is about philosophy (HCL DSL vs. general-purpose languages), not capability.
 
-Project Planton's approach—protobuf-defined APIs generating Pulumi deployments—optimizes for a different dimension: **API clarity over configuration completeness**. By exposing the essential 20% of configuration through a typed, validated schema, we make the correct path the easy path. Teams needing advanced features can drop to Pulumi or Terraform directly, but most teams ship faster by starting with 80/20 defaults.
+OpenMCF's approach—protobuf-defined APIs generating Pulumi deployments—optimizes for a different dimension: **API clarity over configuration completeness**. By exposing the essential 20% of configuration through a typed, validated schema, we make the correct path the easy path. Teams needing advanced features can drop to Pulumi or Terraform directly, but most teams ship faster by starting with 80/20 defaults.
 
 The paradigm shift isn't about serverless functions—it's about treating infrastructure configuration as a versioned, typed, validated API rather than an ad-hoc collection of key-value pairs. That's the foundation for building production infrastructure at scale.
 

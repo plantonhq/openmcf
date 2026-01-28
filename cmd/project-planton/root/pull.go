@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/staging"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/staging"
 	"github.com/spf13/cobra"
 )
 
 var Pull = &cobra.Command{
 	Use:   "pull",
 	Short: "Pull latest changes from upstream into staging area",
-	Long: `Pull the latest changes from the upstream ProjectPlanton repository into the local staging area.
+	Long: `Pull the latest changes from the upstream OpenMCF repository into the local staging area.
 
-The staging area (~/.project-planton/staging/project-planton) is a local cache of the 
-ProjectPlanton repository that enables fast infrastructure operations without requiring 
+The staging area (~/.openmcf/staging/openmcf) is a local cache of the 
+OpenMCF repository that enables fast infrastructure operations without requiring 
 a network clone on every command execution.
 
 This command performs a 'git fetch --all' followed by 'git pull' in the staging directory,
@@ -27,11 +27,11 @@ If the staging area does not exist, it will be automatically cloned first.
 Use this command periodically to ensure you have access to the latest deployment components
 and bug fixes, especially before running apply/preview/destroy operations.`,
 	Example: `  # Pull latest changes from upstream
-  project-planton pull
+  openmcf pull
 
   # Typical workflow: pull latest, then apply
-  project-planton pull
-  project-planton apply -f manifest.yaml`,
+  openmcf pull
+  openmcf apply -f manifest.yaml`,
 	Run: pullHandler,
 }
 

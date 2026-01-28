@@ -56,17 +56,17 @@ spec.proto (default: v0.9.1)
 
 ### Proto Schema
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetessolroperator/v1/spec.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetessolroperator/v1/spec.proto`
 
 ```protobuf
-import "org/project_planton/shared/options/options.proto";
+import "org/openmcf/shared/options/options.proto";
 
 message KubernetesSolrOperatorSpec {
   // ... existing fields ...
 
   // The version of the Apache Solr Operator to deploy.
   // https://github.com/apache/solr-operator/releases
-  string operator_version = 4 [(org.project_planton.shared.options.default) = "v0.9.1"];
+  string operator_version = 4 [(org.openmcf.shared.options.default) = "v0.9.1"];
 
   // Container field moved to field number 5
   KubernetesSolrOperatorSpecContainer container = 5 [(buf.validate.field).required = true];
@@ -144,7 +144,7 @@ locals.CrdManifestURL = fmt.Sprintf(vars.CrdManifestURLFormat, locals.ChartVersi
 ### Default Version (v0.9.1)
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesSolrOperator
 metadata:
   name: solr-operator
@@ -160,7 +160,7 @@ spec:
 ### Specific Version
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesSolrOperator
 metadata:
   name: solr-operator
@@ -195,7 +195,7 @@ spec:
 ## Related Work
 
 - Apache Solr Operator releases: https://github.com/apache/solr-operator/releases
-- `org/project_planton/shared/options/options.proto` - Provides the `default` field option
+- `org/openmcf/shared/options/options.proto` - Provides the `default` field option
 
 ---
 

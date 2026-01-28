@@ -1,5 +1,5 @@
 # Unified Dockerfile - Single container with MongoDB, Backend, and Frontend
-# This creates a production-ready single-container deployment for Project Planton web app
+# This creates a production-ready single-container deployment for OpenMCF web app
 
 # ==========================================
 # Stage 1: Build Backend
@@ -130,13 +130,13 @@ COPY --from=frontend-builder /app/public /app/frontend/public
 COPY --from=frontend-builder /app/.next/standalone /app/frontend/
 COPY --from=frontend-builder /app/.next/static /app/frontend/.next/static
 
-# Create Pulumi, Go, and Project Planton workspace directories
+# Create Pulumi, Go, and OpenMCF workspace directories
 RUN mkdir -p /home/appuser/.pulumi && \
     mkdir -p /home/appuser/.pulumi/state && \
     mkdir -p /home/appuser/go && \
     mkdir -p /home/appuser/go/cache && \
     mkdir -p /home/appuser/go/tmp && \
-    mkdir -p /home/appuser/.project-planton
+    mkdir -p /home/appuser/.openmcf
 
 # Set up MongoDB directory permissions
 RUN mkdir -p /var/log/mongodb && \
@@ -156,8 +156,8 @@ ENV HOME=/home/appuser \
     PULUMI_HOME=/home/appuser/.pulumi \
     PULUMI_SKIP_UPDATE_CHECK=true \
     PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK=true \
-    MONGODB_URI=mongodb://localhost:27017/project_planton \
-    MONGODB_DATABASE=project_planton \
+    MONGODB_URI=mongodb://localhost:27017/openmcf \
+    MONGODB_DATABASE=openmcf \
     SERVER_PORT=50051 \
     NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

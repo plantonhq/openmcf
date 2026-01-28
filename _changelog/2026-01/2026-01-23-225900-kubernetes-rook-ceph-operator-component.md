@@ -6,7 +6,7 @@
 
 ## Summary
 
-Added a new deployment component `KubernetesRookCephOperator` for deploying the Rook Ceph Operator on Kubernetes clusters. This component enables declarative management of Ceph distributed storage through Project Planton, providing block, file, and object storage capabilities via Kubernetes custom resources.
+Added a new deployment component `KubernetesRookCephOperator` for deploying the Rook Ceph Operator on Kubernetes clusters. This component enables declarative management of Ceph distributed storage through OpenMCF, providing block, file, and object storage capabilities via Kubernetes custom resources.
 
 ## Problem Statement / Motivation
 
@@ -14,21 +14,21 @@ Organizations running Kubernetes need reliable, scalable storage solutions. Ceph
 
 ### Pain Points
 
-- No existing Project Planton component for Rook Ceph storage infrastructure
+- No existing OpenMCF component for Rook Ceph storage infrastructure
 - Manual Rook deployment requires understanding of complex Helm values
 - CSI driver configuration is error-prone without proper abstractions
 - Lack of standardized, validated API for storage operator deployment
 
 ## Solution / What's New
 
-Created a complete deployment component following the Project Planton forge process, implementing all 21 steps of the ideal state checklist.
+Created a complete deployment component following the OpenMCF forge process, implementing all 21 steps of the ideal state checklist.
 
 ### Component Architecture
 
 ```mermaid
 flowchart TB
     subgraph "User Layer"
-        A[YAML Manifest] --> B[Project Planton CLI]
+        A[YAML Manifest] --> B[OpenMCF CLI]
     end
     
     subgraph "API Layer"
@@ -180,7 +180,7 @@ Modified `cloud_resource_kind.proto` to include the new component at enum value 
 ### Basic Deployment
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesRookCephOperator
 metadata:
   name: rook-ceph-operator
@@ -194,7 +194,7 @@ spec:
 ### Production with CSI Configuration
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesRookCephOperator
 metadata:
   name: rook-ceph-prod

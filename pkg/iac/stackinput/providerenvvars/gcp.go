@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 
 	"github.com/pkg/errors"
-	gcpprovider "github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp"
+	gcpprovider "github.com/plantonhq/openmcf/apis/org/openmcf/provider/gcp"
 )
 
 // loadGcpEnvVars loads GCP provider config and returns environment variables.

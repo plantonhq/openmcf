@@ -6,7 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/internal/manifest/manifestprotobuf"
+	"github.com/plantonhq/openmcf/internal/manifest/manifestprotobuf"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"sigs.k8s.io/yaml"
@@ -116,11 +116,11 @@ func formatOverrideError(err error) error {
 
 	msg.WriteString("\n")
 	msg.WriteString(bold("📋 Helpful Commands:\n\n"))
-	msg.WriteString("   • View manifest structure:  " + cyan("project-planton load-manifest --kustomize-dir _kustomize --overlay prod") + "\n")
-	msg.WriteString("   • See available fields:     " + cyan("project-planton load-manifest --help") + "\n")
+	msg.WriteString("   • View manifest structure:  " + cyan("openmcf load-manifest --kustomize-dir _kustomize --overlay prod") + "\n")
+	msg.WriteString("   • See available fields:     " + cyan("openmcf load-manifest --help") + "\n")
 	msg.WriteString("\n")
 
-	msg.WriteString(bold("📚 Documentation: ") + cyan("https://github.com/plantonhq/project-planton/tree/main/apis\n"))
+	msg.WriteString(bold("📚 Documentation: ") + cyan("https://github.com/plantonhq/openmcf/tree/main/apis\n"))
 	msg.WriteString("\n")
 
 	return errors.New(msg.String())

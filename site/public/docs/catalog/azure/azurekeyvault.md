@@ -14,7 +14,7 @@ componentName: "azurekeyvault"
 
 The promise is simple: centralize your secrets, keys, and certificates in a managed service with military-grade security and seamless Azure integration. The reality is more nuanced. How do you deploy the vault itself? What access model should you use? How locked-down should the network be? What about multi-tenant scenarios or compliance requirements?
 
-This document maps out the full spectrum of Azure Key Vault deployment approaches — from the quick-and-dirty portal clicks that work for demos to the production-hardened Infrastructure-as-Code patterns that pass SOC 2 audits. We'll explore what works, what doesn't, and why Project Planton defaults to certain choices for its Azure Key Vault implementation.
+This document maps out the full spectrum of Azure Key Vault deployment approaches — from the quick-and-dirty portal clicks that work for demos to the production-hardened Infrastructure-as-Code patterns that pass SOC 2 audits. We'll explore what works, what doesn't, and why OpenMCF defaults to certain choices for its Azure Key Vault implementation.
 
 ## The Maturity Spectrum: From Manual Clicks to Production IaC
 
@@ -250,25 +250,25 @@ The choice depends less on technical superiority and more on **organizational fi
 
 - **Do developers own infrastructure in your org?** Pulumi might feel more natural than learning HCL.
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton's Azure Key Vault implementation uses **Pulumi** as the deployment engine. This decision reflects several priorities:
+OpenMCF's Azure Key Vault implementation uses **Pulumi** as the deployment engine. This decision reflects several priorities:
 
-**Multi-Cloud Consistency**: Project Planton provides a unified interface across AWS, Azure, GCP, and Kubernetes. Pulumi's multi-language, multi-cloud approach aligns with this philosophy better than Azure-specific tooling.
+**Multi-Cloud Consistency**: OpenMCF provides a unified interface across AWS, Azure, GCP, and Kubernetes. Pulumi's multi-language, multi-cloud approach aligns with this philosophy better than Azure-specific tooling.
 
 **Developer Accessibility**: Pulumi's use of familiar programming languages (TypeScript, Python, Go) lowers the barrier for developers who need to understand or extend infrastructure code. The same team writing application code can read and modify infrastructure definitions.
 
-**Abstraction Layer**: Project Planton's protobuf-based API abstracts the underlying IaC tool. Users define Key Vault configurations in a provider-neutral spec, and Planton's engine translates to Pulumi code. This allows swapping implementations without changing user-facing APIs.
+**Abstraction Layer**: OpenMCF's protobuf-based API abstracts the underlying IaC tool. Users define Key Vault configurations in a provider-neutral spec, and Planton's engine translates to Pulumi code. This allows swapping implementations without changing user-facing APIs.
 
 **Production Proven**: Pulumi is production-ready, well-funded, and actively developed. Its Azure Native provider closely tracks Azure's API surface.
 
-While Terraform might have a larger market share and ARM/Bicep might be "more Azure-native," Pulumi offers the best balance of **expressiveness, multi-cloud portability, and developer ergonomics** for Project Planton's architecture.
+While Terraform might have a larger market share and ARM/Bicep might be "more Azure-native," Pulumi offers the best balance of **expressiveness, multi-cloud portability, and developer ergonomics** for OpenMCF's architecture.
 
-Users of Project Planton don't write Pulumi directly — they define a `AzureKeyVault` resource in protobuf with high-level configuration (secrets to create, RBAC settings, network rules), and Planton generates and executes the Pulumi code behind the scenes.
+Users of OpenMCF don't write Pulumi directly — they define a `AzureKeyVault` resource in protobuf with high-level configuration (secrets to create, RBAC settings, network rules), and Planton generates and executes the Pulumi code behind the scenes.
 
 ## The 80/20 Configuration Philosophy
 
-Research into real-world Azure Key Vault deployments reveals that **80% of users need only 20% of available configuration options**. Project Planton's API design reflects this insight.
+Research into real-world Azure Key Vault deployments reveals that **80% of users need only 20% of available configuration options**. OpenMCF's API design reflects this insight.
 
 **Essential Configuration** (always needed):
 - **Vault Name**: Globally unique identifier
@@ -292,7 +292,7 @@ Research into real-world Azure Key Vault deployments reveals that **80% of users
 - HSM-specific settings: Only needed for Premium SKU compliance use cases
 - Custom rotation policies: Advanced automation
 
-Project Planton's protobuf spec focuses on the essential and network security fields, providing sensible defaults for everything else. This keeps the API surface small and learnable while still enabling production-hardened deployments.
+OpenMCF's protobuf spec focuses on the essential and network security fields, providing sensible defaults for everything else. This keeps the API surface small and learnable while still enabling production-hardened deployments.
 
 ## Deployment Patterns: Development vs Production
 
@@ -452,7 +452,7 @@ The journey from "just store it in a config file" to a production-hardened secre
 
 The proliferation of deployment tools — Portal, CLI, ARM/Bicep, Terraform, Pulumi, Ansible, Crossplane — reflects the diverse needs of organizations. There's no single "best" choice, only the best choice **for your team's skills and constraints**.
 
-Project Planton's use of Pulumi strikes a balance: production-proven, developer-friendly, and multi-cloud consistent. By abstracting Key Vault configuration into a simple protobuf API, it allows teams to deploy compliant vaults without becoming Azure or IaC experts.
+OpenMCF's use of Pulumi strikes a balance: production-proven, developer-friendly, and multi-cloud consistent. By abstracting Key Vault configuration into a simple protobuf API, it allows teams to deploy compliant vaults without becoming Azure or IaC experts.
 
 The paradigm shift in modern cloud security is treating secrets as first-class infrastructure, managed with the same rigor as compute and networking. Azure Key Vault, deployed thoughtfully with Infrastructure-as-Code, makes that paradigm real. Your secrets deserve better than a `.env` file in Git — give them the vault they deserve.
 

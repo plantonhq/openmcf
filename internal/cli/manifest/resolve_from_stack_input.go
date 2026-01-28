@@ -6,9 +6,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/plantonhq/project-planton/internal/cli/flag"
-	"github.com/plantonhq/project-planton/pkg/clipboard"
-	"github.com/plantonhq/project-planton/pkg/iac/stackinput"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
+	"github.com/plantonhq/openmcf/pkg/clipboard"
+	"github.com/plantonhq/openmcf/pkg/iac/stackinput"
 )
 
 // clipboardFlagValues contains all flag names that indicate clipboard input.

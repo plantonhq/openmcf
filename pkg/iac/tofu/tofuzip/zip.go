@@ -10,30 +10,30 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/version"
-	"github.com/plantonhq/project-planton/internal/cli/workspace"
-	"github.com/plantonhq/project-planton/pkg/fileutil"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/version"
+	"github.com/plantonhq/openmcf/internal/cli/workspace"
+	"github.com/plantonhq/openmcf/pkg/fileutil"
 )
 
 const (
 	// TerraformDirName is the base directory name for all Terraform-related files
-	// All Terraform files are stored under ~/.project-planton/terraform/
+	// All Terraform files are stored under ~/.openmcf/terraform/
 	TerraformDirName = "terraform"
 
 	// ModulesSubDir is the subdirectory for cached modules
-	// Full path: ~/.project-planton/terraform/modules/{version}/
+	// Full path: ~/.openmcf/terraform/modules/{version}/
 	ModulesSubDir = "modules"
 
 	// GitHubReleaseBaseURL is the base URL for GitHub releases
-	GitHubReleaseBaseURL = "https://github.com/plantonhq/project-planton/releases/download"
+	GitHubReleaseBaseURL = "https://github.com/plantonhq/openmcf/releases/download"
 
 	// ZipPrefix is the prefix for Terraform module zips
 	ZipPrefix = "terraform-"
 )
 
 // GetTerraformBaseDir returns the base directory for all Terraform-related files
-// (~/.project-planton/terraform/)
+// (~/.openmcf/terraform/)
 func GetTerraformBaseDir() (string, error) {
 	workspaceDir, err := workspace.GetWorkspaceDir()
 	if err != nil {
@@ -43,7 +43,7 @@ func GetTerraformBaseDir() (string, error) {
 }
 
 // GetModuleCacheDir returns the path to the module cache directory
-// (~/.project-planton/terraform/modules/{version}/)
+// (~/.openmcf/terraform/modules/{version}/)
 func GetModuleCacheDir(releaseVersion string) (string, error) {
 	terraformBaseDir, err := GetTerraformBaseDir()
 	if err != nil {
@@ -60,7 +60,7 @@ func GetModuleCacheDir(releaseVersion string) (string, error) {
 }
 
 // GetModulePath returns the expected path for a cached module folder
-// (~/.project-planton/terraform/modules/{version}/{component}/)
+// (~/.openmcf/terraform/modules/{version}/{component}/)
 func GetModulePath(componentName, releaseVersion string) (string, error) {
 	cacheDir, err := GetModuleCacheDir(releaseVersion)
 	if err != nil {
@@ -83,14 +83,14 @@ func BuildZipName(componentName string) string {
 
 // BuildDownloadURL constructs the download URL for a component's Terraform module zip.
 // The release version can be:
-// - A semantic version like "v0.3.2" (downloads from main project-planton release)
+// - A semantic version like "v0.3.2" (downloads from main openmcf release)
 // - An auto-release version like "v0.3.2+terraform.awsecsservice.20260108.0" (downloads from component-specific release)
 //
 // Examples:
 //   - BuildDownloadURL("AwsEcsService", "v0.3.2")
-//     -> https://github.com/plantonhq/project-planton/releases/download/v0.3.2/terraform-awsecsservice.zip
+//     -> https://github.com/plantonhq/openmcf/releases/download/v0.3.2/terraform-awsecsservice.zip
 //   - BuildDownloadURL("AwsEcsService", "v0.3.2+terraform.awsecsservice.20260108.0")
-//     -> https://github.com/plantonhq/project-planton/releases/download/v0.3.2+terraform.awsecsservice.20260108.0/terraform-awsecsservice.zip
+//     -> https://github.com/plantonhq/openmcf/releases/download/v0.3.2+terraform.awsecsservice.20260108.0/terraform-awsecsservice.zip
 func BuildDownloadURL(componentName, releaseVersion string) string {
 	zipName := BuildZipName(componentName)
 	return fmt.Sprintf("%s/%s/%s", GitHubReleaseBaseURL, releaseVersion, zipName)
@@ -125,7 +125,7 @@ func IsModuleCached(componentName, releaseVersion string) (bool, error) {
 
 // EnsureModule ensures the module for a component is downloaded and cached.
 // The releaseVersion can be:
-// - CLI version like "v0.3.2" (uses main project-planton release)
+// - CLI version like "v0.3.2" (uses main openmcf release)
 // - Module version like "v0.3.2+terraform.awsecsservice.20260108.0" (uses component-specific release)
 // Returns the path to the module folder.
 func EnsureModule(componentName, releaseVersion string) (string, error) {

@@ -18,7 +18,7 @@ For PostgreSQL specifically, operators have reached production maturity. They ha
 
 This document explores the landscape of deploying PostgreSQL operators on Kubernetes, with a focus on the **Zalando Postgres Operator**—one of the most battle-tested solutions in the ecosystem. We'll examine deployment methods from anti-patterns to production-ready approaches, understand the operator's architecture and capabilities, and explain why it remains a strong choice for teams building database services on Kubernetes.
 
-The Project Planton `KubernetesZalandoPostgresOperator` resource provides a declarative API for deploying and managing the Zalando Postgres Operator across Kubernetes clusters.
+The OpenMCF `KubernetesZalandoPostgresOperator` resource provides a declarative API for deploying and managing the Zalando Postgres Operator across Kubernetes clusters.
 
 ## The Deployment Landscape
 
@@ -70,7 +70,7 @@ Deploying a PostgreSQL operator isn't fundamentally different from deploying any
 
 **Approach:** Manage operator deployment through Terraform, Pulumi, Crossplane, or similar IaC tools.
 
-**What it solves:** Integration with broader infrastructure management. Enforce dependencies (e.g., operator must be present before database clusters). Fits teams already standardized on Terraform or Pulumi for all infrastructure. Project Planton's approach of wrapping the operator in a `KubernetesZalandoPostgresOperator` CRD exemplifies this pattern—operators become composable infrastructure components.
+**What it solves:** Integration with broader infrastructure management. Enforce dependencies (e.g., operator must be present before database clusters). Fits teams already standardized on Terraform or Pulumi for all infrastructure. OpenMCF's approach of wrapping the operator in a `KubernetesZalandoPostgresOperator` CRD exemplifies this pattern—operators become composable infrastructure components.
 
 **What it doesn't solve:** Added abstraction layer means debugging complexity (chase issues through IaC state, Kubernetes resources, and operator logs). Module/provider version compatibility lag (IaC modules might not expose the latest operator features immediately).
 
@@ -187,9 +187,9 @@ Percona's offering, also uses Patroni + pgBackRest. Apache 2.0 licensed. Part of
 
 All major operators (Zalando, CNPG, Crunchy, Percona) now support the essential features (HA, backups, self-healing, upgrades). The choice often comes down to specific preferences: Patroni vs built-in failover, WAL-G vs pgBackRest, vendor support vs pure open source.
 
-## Project Planton's Choice: Zalando as the Foundation
+## OpenMCF's Choice: Zalando as the Foundation
 
-For a platform like Project Planton—building multi-cloud IaC abstractions over Kubernetes—the Zalando Postgres Operator provides a rock-solid foundation for offering PostgreSQL as a service.
+For a platform like OpenMCF—building multi-cloud IaC abstractions over Kubernetes—the Zalando Postgres Operator provides a rock-solid foundation for offering PostgreSQL as a service.
 
 **Why it fits:**
 
@@ -201,9 +201,9 @@ For a platform like Project Planton—building multi-cloud IaC abstractions over
 
 4. **Extension versatility:** Different teams need different extensions. Spilo's pre-packaged approach (PostGIS for geo teams, TimescaleDB for time-series workloads) reduces friction.
 
-5. **Open source alignment:** No licensing concerns means Project Planton can package and distribute this freely, whether for public cloud, private cloud, or on-premises deployments.
+5. **Open source alignment:** No licensing concerns means OpenMCF can package and distribute this freely, whether for public cloud, private cloud, or on-premises deployments.
 
-The abstraction layer—Project Planton's `KubernetesZalandoPostgresOperator` API—wraps deployment complexity (Helm charts, RBAC, namespace setup) into a declarative interface. Teams using Project Planton don't need to understand operator internals; they declare intent via protobuf APIs, and the platform handles the rest.
+The abstraction layer—OpenMCF's `KubernetesZalandoPostgresOperator` API—wraps deployment complexity (Helm charts, RBAC, namespace setup) into a declarative interface. Teams using OpenMCF don't need to understand operator internals; they declare intent via protobuf APIs, and the platform handles the rest.
 
 This is the promise of modern infrastructure platforms: take battle-tested open source components (like Zalando's operator), wrap them in ergonomic APIs, and deliver them consistently across clouds.
 
@@ -215,7 +215,7 @@ The shift from manual database administration to operator-managed automation rep
 
 The Zalando Postgres Operator embodies this evolution. Built from production experience at a large-scale e-commerce company, refined by an active open source community, and hardened across thousands of deployments, it's not experimental technology. It's the infrastructure many organizations quietly run in production today.
 
-For teams building platforms like Project Planton, or organizations standardizing their database infrastructure on Kubernetes, the Zalando operator offers the right balance: comprehensive features without unnecessary complexity, open source values without vendor lock-in, and a track record that speaks louder than marketing claims.
+For teams building platforms like OpenMCF, or organizations standardizing their database infrastructure on Kubernetes, the Zalando operator offers the right balance: comprehensive features without unnecessary complexity, open source values without vendor lock-in, and a track record that speaks louder than marketing claims.
 
 The real test of infrastructure isn't how it performs during normal operation—it's how it handles failure. When a node dies, when a network partition occurs, when someone accidentally deletes a critical table and needs a point-in-time restore—that's when architectural choices matter. The Zalando Postgres Operator, with Patroni's failover logic and WAL-G's recovery capabilities, has passed this test repeatedly.
 

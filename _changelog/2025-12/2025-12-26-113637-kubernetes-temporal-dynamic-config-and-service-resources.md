@@ -66,7 +66,7 @@ message KubernetesTemporalServiceConfig {
 
 ### Proto Schema Updates
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetestemporal/v1/spec.proto`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetestemporal/v1/spec.proto`
 
 - Added `KubernetesTemporalDynamicConfig` message with buf.validate rules (minimum values > 0)
 - Added `KubernetesTemporalServiceConfig` message reusing `ContainerResources` from `kubernetes.proto`
@@ -116,7 +116,7 @@ dynamic "set" {
 
 ### Validation Tests
 
-**File**: `apis/org/project_planton/provider/kubernetes/kubernetestemporal/v1/spec_test.go`
+**File**: `apis/org/openmcf/provider/kubernetes/kubernetestemporal/v1/spec_test.go`
 
 Added comprehensive test coverage:
 - Dynamic config validation (positive values required)

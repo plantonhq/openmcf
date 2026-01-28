@@ -12,7 +12,7 @@
 
 **Test:** Build the CLI with all new changes
 ```bash
-go build -o /tmp/project-planton-test main.go
+go build -o /tmp/openmcf-test main.go
 ```
 
 **Result:** ✅ PASSED - No compilation errors
@@ -23,7 +23,7 @@ go build -o /tmp/project-planton-test main.go
 
 **Test:** Verify webapp command group is registered
 ```bash
-./project-planton webapp --help
+./openmcf webapp --help
 ```
 
 **Result:** ✅ PASSED - All 7 subcommands registered:
@@ -69,9 +69,9 @@ go build -o /tmp/project-planton-test main.go
 **Test:** Run linter on all modified and new files
 
 **Files Checked:**
-- `cmd/project-planton/root/webapp/*.go` (7 files)
-- `cmd/project-planton/root/config.go`
-- `cmd/project-planton/root.go`
+- `cmd/openmcf/root/webapp/*.go` (7 files)
+- `cmd/openmcf/root/config.go`
+- `cmd/openmcf/root.go`
 - `app/backend/internal/database/mongodb.go`
 
 **Result:** ✅ PASSED - No linter errors
@@ -94,10 +94,10 @@ go build -o /tmp/project-planton-test main.go
 ### 7. Documentation ✅
 
 **Created:**
-- ✅ `_projects/20251127-project-planton-web-app/docs/installation-guide.md` (complete)
-- ✅ `_projects/20251127-project-planton-web-app/docs/cli-commands.md` (complete)
+- ✅ `_projects/20251127-openmcf-web-app/docs/installation-guide.md` (complete)
+- ✅ `_projects/20251127-openmcf-web-app/docs/cli-commands.md` (complete)
 - ✅ `app/README.md` (complete contributor guide)
-- ✅ `cmd/project-planton/CLI-HELP.md` (webapp section added)
+- ✅ `cmd/openmcf/CLI-HELP.md` (webapp section added)
 
 ---
 
@@ -109,29 +109,29 @@ go build -o /tmp/project-planton-test main.go
 3. `app/entrypoint-unified.sh` - Container startup script
 
 ### CLI Command Files
-1. `cmd/project-planton/root/webapp/webapp.go` - Main webapp command
-2. `cmd/project-planton/root/webapp/init.go` - Initialize command
-3. `cmd/project-planton/root/webapp/start.go` - Start command
-4. `cmd/project-planton/root/webapp/stop.go` - Stop command
-5. `cmd/project-planton/root/webapp/status.go` - Status command
-6. `cmd/project-planton/root/webapp/logs.go` - Logs command
-7. `cmd/project-planton/root/webapp/restart.go` - Restart command
-8. `cmd/project-planton/root/webapp/uninstall.go` - Uninstall command
+1. `cmd/openmcf/root/webapp/webapp.go` - Main webapp command
+2. `cmd/openmcf/root/webapp/init.go` - Initialize command
+3. `cmd/openmcf/root/webapp/start.go` - Start command
+4. `cmd/openmcf/root/webapp/stop.go` - Stop command
+5. `cmd/openmcf/root/webapp/status.go` - Status command
+6. `cmd/openmcf/root/webapp/logs.go` - Logs command
+7. `cmd/openmcf/root/webapp/restart.go` - Restart command
+8. `cmd/openmcf/root/webapp/uninstall.go` - Uninstall command
 
 ### Documentation Files
-1. `_projects/20251127-project-planton-web-app/docs/installation-guide.md`
-2. `_projects/20251127-project-planton-web-app/docs/cli-commands.md`
-3. `_projects/20251127-project-planton-web-app/docs/testing-summary.md` (this file)
+1. `_projects/20251127-openmcf-web-app/docs/installation-guide.md`
+2. `_projects/20251127-openmcf-web-app/docs/cli-commands.md`
+3. `_projects/20251127-openmcf-web-app/docs/testing-summary.md` (this file)
 4. `app/README.md`
 
 ---
 
 ## Files Modified
 
-1. `cmd/project-planton/root.go` - Added webapp command registration
-2. `cmd/project-planton/root/config.go` - Extended config struct, exported functions
+1. `cmd/openmcf/root.go` - Added webapp command registration
+2. `cmd/openmcf/root/config.go` - Extended config struct, exported functions
 3. `app/backend/internal/database/mongodb.go` - Added retry logic
-4. `cmd/project-planton/CLI-HELP.md` - Added webapp section
+4. `cmd/openmcf/CLI-HELP.md` - Added webapp section
 
 ---
 
@@ -147,8 +147,8 @@ The following tests require the Docker image to be built and cannot be automated
 
 **Test:**
 ```bash
-cd /Volumes/Others/Work/crafts/leftbin/planton/project-planton
-docker build -f app/Dockerfile.unified -t project-planton:test .
+cd /Volumes/Others/Work/crafts/leftbin/planton/openmcf
+docker build -f app/Dockerfile.unified -t openmcf:test .
 ```
 
 **Expected:** Image builds successfully (~500MB)
@@ -173,7 +173,7 @@ docker run -d \
   -v test-mongodb:/data/db \
   -v test-pulumi:/home/appuser/.pulumi \
   -v test-gocache:/home/appuser/go \
-  project-planton:test
+  openmcf:test
 ```
 
 **Expected:**
@@ -224,7 +224,7 @@ curl http://localhost:3000
 ### 4. CLI Webapp Init Command ⏳
 
 **Prerequisites:**
-- Docker image pushed to registry: `satishlleftbin/project-planton:latest`
+- Docker image pushed to registry: `satishlleftbin/openmcf:latest`
 - CLI installed/built locally
 
 **Test:**
@@ -240,16 +240,16 @@ planton webapp init
 1. Docker check passes
 2. Image pulls successfully
 3. Volumes are created:
-   - `project-planton-mongodb-data`
-   - `project-planton-pulumi-state`
-   - `project-planton-go-cache`
-4. Container is created: `project-planton-webapp`
+   - `openmcf-mongodb-data`
+   - `openmcf-pulumi-state`
+   - `openmcf-go-cache`
+4. Container is created: `openmcf-webapp`
 5. CLI config is updated with backend URL
 
 **Verify:**
 ```bash
-docker volume ls | grep project-planton
-docker ps -a | grep project-planton-webapp
+docker volume ls | grep openmcf
+docker ps -a | grep openmcf-webapp
 planton config list
 ```
 
@@ -269,7 +269,7 @@ planton webapp start
 
 **Verify:**
 ```bash
-docker ps | grep project-planton-webapp
+docker ps | grep openmcf-webapp
 curl http://localhost:3000
 curl http://localhost:50051
 ```
@@ -324,10 +324,10 @@ planton webapp stop
 
 **Verify:**
 ```bash
-docker ps -a | grep project-planton-webapp
+docker ps -a | grep openmcf-webapp
 # Should show "Exited"
 
-docker volume ls | grep project-planton
+docker volume ls | grep openmcf
 # Volumes should still exist
 ```
 
@@ -366,10 +366,10 @@ planton webapp uninstall
 
 **Verify:**
 ```bash
-docker ps -a | grep project-planton-webapp
+docker ps -a | grep openmcf-webapp
 # Should be gone
 
-docker volume ls | grep project-planton
+docker volume ls | grep openmcf
 # Volumes should still exist
 ```
 
@@ -387,10 +387,10 @@ planton webapp uninstall --purge-data -f
 
 **Verify:**
 ```bash
-docker ps -a | grep project-planton-webapp
+docker ps -a | grep openmcf-webapp
 # Should be gone
 
-docker volume ls | grep project-planton
+docker volume ls | grep openmcf
 # No volumes should exist
 ```
 
@@ -425,7 +425,7 @@ planton webapp start
 **Test:**
 ```bash
 # Start container and immediately check backend logs
-docker logs -f project-planton-webapp | grep MongoDB
+docker logs -f openmcf-webapp | grep MongoDB
 ```
 
 **Expected:**
@@ -534,7 +534,7 @@ planton webapp init  # Run twice
 
 1. **Build Docker Image:**
    ```bash
-   docker build -f app/Dockerfile.unified -t satishlleftbin/project-planton:latest .
+   docker build -f app/Dockerfile.unified -t satishlleftbin/openmcf:latest .
    ```
 
 2. **Test Locally:**
@@ -544,7 +544,7 @@ planton webapp init  # Run twice
 
 3. **Push to Registry:**
    ```bash
-   docker push satishlleftbin/project-planton:latest
+   docker push satishlleftbin/openmcf:latest
    ```
 
 4. **Test Installation:**

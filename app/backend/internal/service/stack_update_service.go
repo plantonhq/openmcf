@@ -14,17 +14,17 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	credentialv1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1"
-	stackupdatev1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/stackupdate/v1"
-	"github.com/plantonhq/project-planton/app/backend/internal/database"
-	"github.com/plantonhq/project-planton/app/backend/pkg/models"
-	"github.com/plantonhq/project-planton/internal/manifest"
-	"github.com/plantonhq/project-planton/pkg/crkreflect"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/backendconfig"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumimodule"
-	"github.com/plantonhq/project-planton/pkg/iac/pulumi/pulumistack"
-	"github.com/plantonhq/project-planton/pkg/iac/stackinput"
-	"github.com/plantonhq/project-planton/pkg/iac/stackinput/stackinputproviderconfig"
+	credentialv1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1"
+	stackupdatev1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/stackupdate/v1"
+	"github.com/plantonhq/openmcf/app/backend/internal/database"
+	"github.com/plantonhq/openmcf/app/backend/pkg/models"
+	"github.com/plantonhq/openmcf/internal/manifest"
+	"github.com/plantonhq/openmcf/pkg/crkreflect"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/backendconfig"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumimodule"
+	"github.com/plantonhq/openmcf/pkg/iac/pulumi/pulumistack"
+	"github.com/plantonhq/openmcf/pkg/iac/stackinput"
+	"github.com/plantonhq/openmcf/pkg/iac/stackinput/stackinputproviderconfig"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -415,7 +415,7 @@ func (s *StackUpdateService) deployWithPulumi(ctx context.Context, stackUpdateID
 		return s.updateStackUpdateWithError(ctx, stackUpdateID, fmt.Errorf("failed to extract backend config from manifest: %w", err))
 	}
 	if backendConfig == nil || backendConfig.StackFqdn == "" {
-		return s.updateStackUpdateWithError(ctx, stackUpdateID, fmt.Errorf("stack FQDN not found in manifest labels. Add 'pulumi.project-planton.org/stack.fqdn' label"))
+		return s.updateStackUpdateWithError(ctx, stackUpdateID, fmt.Errorf("stack FQDN not found in manifest labels. Add 'pulumi.openmcf.org/stack.fqdn' label"))
 	}
 	stackFqdn := backendConfig.StackFqdn
 

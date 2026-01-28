@@ -102,14 +102,14 @@ pulumiCmd.Env = append(os.Environ(),
 
 The `--stack-input` / `-i` flag was added to:
 
-- `project-planton apply`
-- `project-planton plan`
-- `project-planton destroy`
-- `project-planton refresh`
-- `project-planton pulumi update`
-- `project-planton pulumi preview`
-- `project-planton pulumi destroy`
-- `project-planton pulumi refresh`
+- `openmcf apply`
+- `openmcf plan`
+- `openmcf destroy`
+- `openmcf refresh`
+- `openmcf pulumi update`
+- `openmcf pulumi preview`
+- `openmcf pulumi destroy`
+- `openmcf pulumi refresh`
 
 ## Files Changed
 
@@ -118,12 +118,12 @@ The `--stack-input` / `-i` flag was added to:
 | `internal/cli/flag/flag.go` | Added `StackInput` flag constant |
 | `pkg/iac/pulumi/pulumimodule/stackinput/load_stack_input.go` | Renamed `FilePathEnvVar` to `STACK_INPUT_YAML_FILE` |
 | `pkg/iac/pulumi/pulumistack/run.go` | Added `stackInputFilePath` param, file-based passing |
-| `cmd/project-planton/root/apply.go` | Added flag, updated handler |
-| `cmd/project-planton/root/plan.go` | Added flag, updated handler |
-| `cmd/project-planton/root/destroy.go` | Added flag, updated handler |
-| `cmd/project-planton/root/refresh.go` | Added flag, updated handler |
-| `cmd/project-planton/root/pulumi.go` | Added flag to parent command |
-| `cmd/project-planton/root/pulumi/*.go` | Updated `pulumistack.Run()` calls |
+| `cmd/openmcf/root/apply.go` | Added flag, updated handler |
+| `cmd/openmcf/root/plan.go` | Added flag, updated handler |
+| `cmd/openmcf/root/destroy.go` | Added flag, updated handler |
+| `cmd/openmcf/root/refresh.go` | Added flag, updated handler |
+| `cmd/openmcf/root/pulumi.go` | Added flag to parent command |
+| `cmd/openmcf/root/pulumi/*.go` | Updated `pulumistack.Run()` calls |
 
 ## Usage Examples
 
@@ -131,17 +131,17 @@ The `--stack-input` / `-i` flag was added to:
 
 ```bash
 # Apply using a pre-built stack input file
-project-planton apply -f manifest.yaml -i stack-input.yaml --stack org/project/stack
+openmcf apply -f manifest.yaml -i stack-input.yaml --stack org/project/stack
 
 # Preview with stack input file (short form)
-project-planton plan -f manifest.yaml -i /path/to/stack-input.yaml --stack org/project/stack
+openmcf plan -f manifest.yaml -i /path/to/stack-input.yaml --stack org/project/stack
 ```
 
 ### Traditional Approach (Still Works)
 
 ```bash
 # CLI automatically builds stack input from manifest
-project-planton apply -f manifest.yaml --stack org/project/stack
+openmcf apply -f manifest.yaml --stack org/project/stack
 ```
 
 ## Benefits

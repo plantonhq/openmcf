@@ -16,7 +16,7 @@ Azure's default outbound connectivity model relies on pre-allocating a fixed num
 
 Azure NAT Gateway represents a paradigm shift away from this broken model. It's a fully managed, software-defined networking service that provides **dynamic SNAT**, creating a shared, on-demand pool of ports for all resources in a subnet. A single Standard SKU public IP provides 64,512 SNAT ports. A NAT Gateway can use up to 16 public IP addresses, yielding over 1 million ports—a scale that transforms SNAT exhaustion from an inevitable production failure into a solved problem.
 
-This document explores the landscape of outbound connectivity methods for Azure, explains why NAT Gateway has become the production-standard solution, and details how Project Planton provides a declarative API to deploy and manage NAT Gateways across your infrastructure.
+This document explores the landscape of outbound connectivity methods for Azure, explains why NAT Gateway has become the production-standard solution, and details how OpenMCF provides a declarative API to deploy and manage NAT Gateways across your infrastructure.
 
 ## The Outbound Connectivity Spectrum
 
@@ -136,7 +136,7 @@ This creates mysterious, intermittent failures for:
 
 Set `idle_timeout_in_minutes` to a higher value (10, 30, or 60 minutes). This is a simple, effective fix for applications known to have long-lived idle connections.
 
-**Project Planton Default:** The Planton API defaults to **10 minutes** (not the Azure default of 4), providing a safer, more production-ready baseline.
+**OpenMCF Default:** The Planton API defaults to **10 minutes** (not the Azure default of 4), providing a safer, more production-ready baseline.
 
 **Option 2: Use TCP Keepalives (Best Practice)**
 
@@ -228,9 +228,9 @@ Routing all traffic (including traffic to Azure Storage, SQL Database, Key Vault
 
 **✅ Solution:** Use **Private Link** or **Service Endpoints** to route Azure PaaS traffic over the Azure backbone, bypassing the NAT Gateway and eliminating data processing fees for internal-Azure traffic.
 
-## The Project Planton Approach
+## The OpenMCF Approach
 
-Project Planton provides a declarative, protobuf-based API for deploying Azure NAT Gateways. The design philosophy prioritizes production-ready defaults and simplicity for the 80% use case while exposing advanced configuration for the 20% edge cases.
+OpenMCF provides a declarative, protobuf-based API for deploying Azure NAT Gateways. The design philosophy prioritizes production-ready defaults and simplicity for the 80% use case while exposing advanced configuration for the 20% edge cases.
 
 ### Production-Ready Defaults
 
@@ -263,7 +263,7 @@ For production deployments, use the `public_ip_prefix_length` field to provision
 A simple NAT Gateway for a dev AKS cluster:
 
 ```yaml
-apiVersion: azure.project-planton.org/v1
+apiVersion: azure.openmcf.org/v1
 kind: AzureNatGateway
 metadata:
   name: dev-aks-nat-gateway
@@ -285,7 +285,7 @@ This configuration:
 A production-grade NAT Gateway with IP prefix for scale and whitelisting:
 
 ```yaml
-apiVersion: azure.project-planton.org/v1
+apiVersion: azure.openmcf.org/v1
 kind: AzureNatGateway
 metadata:
   name: prod-aks-nat-gateway-z1
@@ -310,7 +310,7 @@ Azure NAT Gateway represents a shift from viewing outbound connectivity as a def
 
 The days of diagnosing SNAT port exhaustion at 3 AM in production are over—if you architect correctly. NAT Gateway's dynamic SNAT model, massive port capacity, and predictable egress behavior make it the production standard for any private workload needing internet access.
 
-Project Planton's declarative API abstracts the complexity of resource associations and provides production-ready defaults (like a sensible idle timeout) while still exposing the full power of Azure NAT Gateway for advanced scenarios.
+OpenMCF's declarative API abstracts the complexity of resource associations and provides production-ready defaults (like a sensible idle timeout) while still exposing the full power of Azure NAT Gateway for advanced scenarios.
 
 When you deploy your next AKS cluster, VM scale set, or private application, don't rely on default SNAT. Make your egress path explicit. Make it scalable. Make it predictable.
 

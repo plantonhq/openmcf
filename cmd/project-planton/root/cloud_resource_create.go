@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	cloudresourcev1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/cloudresource/v1"
-	cloudresourcev1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/cloudresource/v1/cloudresourcev1connect"
+	cloudresourcev1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/cloudresource/v1"
+	cloudresourcev1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/cloudresource/v1/cloudresourcev1connect"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ func cloudResourceCreateHandler(cmd *cobra.Command, args []string) {
 	yamlFile, _ := cmd.Flags().GetString("arg")
 	if yamlFile == "" {
 		fmt.Println("Error: --arg flag is required. Provide path to YAML manifest file")
-		fmt.Println("Usage: project-planton cloud-resource:create --arg=<yaml-file>")
+		fmt.Println("Usage: openmcf cloud-resource:create --arg=<yaml-file>")
 		os.Exit(1)
 	}
 

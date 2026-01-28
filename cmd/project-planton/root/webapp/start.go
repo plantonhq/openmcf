@@ -11,14 +11,14 @@ import (
 
 var StartCmd = &cobra.Command{
 	Use:   "start",
-	Short: "start the Project Planton web app",
-	Long:  `Start the Project Planton web app container and wait for services to be ready`,
+	Short: "start the OpenMCF web app",
+	Long:  `Start the OpenMCF web app container and wait for services to be ready`,
 	Run:   startHandler,
 }
 
 func startHandler(cmd *cobra.Command, args []string) {
 	fmt.Println("========================================")
-	fmt.Println("🚀 Starting Project Planton Web App")
+	fmt.Println("🚀 Starting OpenMCF Web App")
 	fmt.Println("========================================")
 	fmt.Println()
 

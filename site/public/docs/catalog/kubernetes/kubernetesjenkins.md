@@ -16,7 +16,7 @@ That conventional wisdom is outdated.
 
 The maturity of Kubernetes primitives (StatefulSets, CSI drivers, VolumeSnapshots), the evolution of the official Helm chart, and the game-changing Jenkins Configuration as Code (JCasC) plugin have transformed Jenkins-on-Kubernetes from a risky experiment into a production-ready pattern. The key isn't whether to run Jenkins on Kubernetes—it's understanding which deployment methods are production-viable and which are catastrophic mistakes waiting to happen.
 
-This document explains the deployment landscape for Jenkins on Kubernetes, from the anti-patterns that cause data loss to the modern GitOps workflows that power resilient CI/CD systems. It details why Project Planton standardizes on the official `jenkinsci/jenkins` Helm chart as the foundation for its `JenkinsKubernetes` API and how JCasC enables fully declarative, version-controlled Jenkins configuration.
+This document explains the deployment landscape for Jenkins on Kubernetes, from the anti-patterns that cause data loss to the modern GitOps workflows that power resilient CI/CD systems. It details why OpenMCF standardizes on the official `jenkinsci/jenkins` Helm chart as the foundation for its `JenkinsKubernetes` API and how JCasC enables fully declarative, version-controlled Jenkins configuration.
 
 ## The Deployment Maturity Spectrum
 
@@ -69,7 +69,7 @@ Instead of managing dozens of individual YAML files, you configure a single `val
 
 **Critical Caveat:** The chart is "production-capable," not "production-ready by default." Its default configuration is designed for a minimal test deployment. Default resource requests (CPU: 200m, Memory: 256Mi in some versions) are dangerously insufficient for a real controller and will lead to immediate Out-Of-Memory (OOM) failures. Production deployments require significant tuning of `values.yaml` to configure proper resources, persistence, ingress, and JCasC settings.
 
-**Verdict:** The correct deployment method for production. Requires expertise to tune properly, which is where Project Planton's API abstraction provides value.
+**Verdict:** The correct deployment method for production. Requires expertise to tune properly, which is where OpenMCF's API abstraction provides value.
 
 ### Level 3: GitOps Delivery—The Production Pattern
 
@@ -88,7 +88,7 @@ This combines the best of all layers:
 
 This is the gold standard for production systems. It eliminates manual `helm install` commands, provides full change history via Git commits, and enables safe, reviewable updates via Pull Requests.
 
-**Verdict:** The production best practice. Project Planton's API is designed to work seamlessly in GitOps workflows.
+**Verdict:** The production best practice. OpenMCF's API is designed to work seamlessly in GitOps workflows.
 
 ### Level 4: The Operator—A Specialized Alternative
 
@@ -116,7 +116,7 @@ The default `values.yaml` is configured for a minimal test deployment:
 
 A 2025 analysis of over 100 open-source Helm charts found that most lack critical reliability features like PodDisruptionBudgets (PDBs), HorizontalPodAutoscalers (HPAs), and sensible resource limits. The Jenkins chart is no exception. It provides the mechanism for a production deployment, but the configuration is your responsibility.
 
-This is precisely where Project Planton's abstraction adds value: it provides opinionated, production-viable defaults while still exposing the flexibility needed for customization.
+This is precisely where OpenMCF's abstraction adds value: it provides opinionated, production-viable defaults while still exposing the flexibility needed for customization.
 
 ### Core Features
 
@@ -388,9 +388,9 @@ These are fully integrated SCM platforms, not standalone CI tools. Their CI is b
 2. Workflows are 100% container-native
 3. You value a "serverless" (no-idle) resource model and event-driven architecture over a central orchestrator
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton's `JenkinsKubernetes` API standardizes on the official `jenkinsci/jenkins` Helm chart as the deployment foundation. This choice is based on the research findings:
+OpenMCF's `JenkinsKubernetes` API standardizes on the official `jenkinsci/jenkins` Helm chart as the deployment foundation. This choice is based on the research findings:
 
 1. **The Helm Chart is the De Facto Standard:** It is mature, flexible, widely adopted, and strikes the right balance between abstraction and control compared to the Jenkins Operator.
 
@@ -412,7 +412,7 @@ The journey from anti-pattern to production-ready Jenkins on Kubernetes is not a
 
 The combination of StatefulSets (for stable persistence), the official Helm chart (for packaging), JCasC (for declarative configuration), and GitOps (for delivery) has transformed Jenkins-on-Kubernetes from a risky experiment into a proven pattern. The key insight is that while Jenkins was not designed for Kubernetes, the ecosystem has matured to provide the abstractions necessary for production-grade deployments.
 
-Project Planton's `JenkinsKubernetes` API codifies this understanding into a simple, opinionated interface that hides the complexity while preserving the flexibility that makes Jenkins powerful. It recognizes that Jenkins remains the bridge between legacy systems and cloud-native platforms—a role that is critical for enterprises modernizing their CI/CD infrastructure.
+OpenMCF's `JenkinsKubernetes` API codifies this understanding into a simple, opinionated interface that hides the complexity while preserving the flexibility that makes Jenkins powerful. It recognizes that Jenkins remains the bridge between legacy systems and cloud-native platforms—a role that is critical for enterprises modernizing their CI/CD infrastructure.
 
 For teams starting greenfield projects with purely cloud-native workloads, alternatives like Tekton may be architecturally superior. But for the vast majority of enterprises with existing Jenkins investments, legacy system integrations, and complex pipeline requirements, Jenkins-on-Kubernetes—deployed the right way—remains the pragmatic choice.
 

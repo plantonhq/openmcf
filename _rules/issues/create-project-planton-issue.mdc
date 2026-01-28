@@ -4,17 +4,17 @@ globs: []
 alwaysApply: false
 ---
 
-# Rule: Create Project Planton Issue (action)
+# Rule: Create OpenMCF Issue (action)
 
 Purpose: When invoked, create a structured issue file in the `_issues/` directory that captures discovered issues (features, bugs, refactors, etc.) from the conversation, with support for image analysis and intelligent area detection.
 
-Usage: Invoke explicitly as `@create-project-planton-issue` after discovering an issue during a conversation.
+Usage: Invoke explicitly as `@create-openmcf-issue` after discovering an issue during a conversation.
 
-References: `@understand-cursor-rules`, existing issues in `_issues/`, `@generate-project-planton-pr-info`
+References: `@understand-cursor-rules`, existing issues in `_issues/`, `@generate-openmcf-pr-info`
 
 ## ⚠️ CRITICAL: Explicit Invocation Only
 
-**DO NOT** create an issue file automatically or proactively. Issues must ONLY be created when the user explicitly invokes this rule with `@create-project-planton-issue`.
+**DO NOT** create an issue file automatically or proactively. Issues must ONLY be created when the user explicitly invokes this rule with `@create-openmcf-issue`.
 
 Never:
 - ❌ Suggest creating an issue without being asked
@@ -68,7 +68,7 @@ YYYY-MM-DD-HHMMSS.{area}.{type}.{slug}.md
 - `repo` - Repository-wide changes
 - `ops` - Operations/infrastructure
 - `tooling` - Build tools, scripts
-- `site` - Project Planton website
+- `site` - OpenMCF website
 - `forge` - Deployment component forge system
 
 **Type** (issue category):
@@ -104,8 +104,8 @@ Determine the area from conversation context using these guidelines:
 
 When file paths are mentioned in the conversation, map them to simple areas:
 
-- **`apis/org/project_planton/**`** → `deployment-component`
-- **`cmd/project-planton/**`** → `cli`
+- **`apis/org/openmcf/**`** → `deployment-component`
+- **`cmd/openmcf/**`** → `cli`
 - **`pkg/**`** → `pkg`
 - **`internal/**`** → `cli`
 - **`apis/**` (general)** → `apis`
@@ -121,7 +121,7 @@ When file paths are mentioned in the conversation, map them to simple areas:
 Look for these keywords in the conversation:
 
 - "deployment component", "IaC", "Pulumi", "Terraform", "cloud resource" → `deployment-component`
-- "CLI", "command line", "terminal", "project-planton" (the binary) → `cli`
+- "CLI", "command line", "terminal", "openmcf" (the binary) → `cli`
 - "package", "library", "pkg/", "helper", "utility" → `pkg`
 - "protobuf", "proto", "API definition", "stubs", "buf" → `apis`
 - "forge", "code generation", "component generation" → `forge`
@@ -493,7 +493,7 @@ Images: X images processed and referenced
 ### Simple Bug Discovery
 
 ```
-User: "I noticed the Postgres component validation is broken. @create-project-planton-issue"
+User: "I noticed the Postgres component validation is broken. @create-openmcf-issue"
 
 Agent: 
 - Gets timestamp: 2025-12-26-143022
@@ -509,7 +509,7 @@ Agent:
 ### Feature Request
 
 ```
-User: "We need a new manifest validation command in the CLI. @create-project-planton-issue"
+User: "We need a new manifest validation command in the CLI. @create-openmcf-issue"
 
 Agent:
 - Gets timestamp: 2025-12-26-150930
@@ -523,7 +523,7 @@ Agent:
 ### Forge System Issue
 
 ```
-User: "The forge system's Pulumi generation has a bug. @create-project-planton-issue"
+User: "The forge system's Pulumi generation has a bug. @create-openmcf-issue"
 
 Agent:
 - Gets timestamp: 2025-12-26-164512
@@ -536,7 +536,7 @@ Agent:
 ### Refactoring Opportunity
 
 ```
-User: "We should refactor the Kubernetes client helpers. @create-project-planton-issue"
+User: "We should refactor the Kubernetes client helpers. @create-openmcf-issue"
 
 Agent:
 - Gets timestamp: 2025-12-26-091445
@@ -559,7 +559,7 @@ We should add validation rules to the spec.proto file to catch this at validatio
 time, before any deployment attempts. This aligns with our validation-first 
 deployment philosophy and saves debugging time.
 
-Affected file: `apis/org/project_planton/provider/kubernetes/postgres/v1/spec.proto`
+Affected file: `apis/org/openmcf/provider/kubernetes/postgres/v1/spec.proto`
 ```
 
 ### Example 2: Feature Request (Structured)
@@ -573,7 +573,7 @@ wasting time and potentially incurring cloud costs.
 
 ## Expected Behavior
 
-A new `project-planton manifest validate` command should:
+A new `openmcf manifest validate` command should:
 - Read the manifest file
 - Validate against proto schema
 - Check for common errors
@@ -582,7 +582,7 @@ A new `project-planton manifest validate` command should:
 
 ## Proposed Solution
 
-Add a new command under `cmd/project-planton/manifest/validate.go`:
+Add a new command under `cmd/openmcf/manifest/validate.go`:
 - Use the existing protobuf validation logic
 - Leverage buf-validate for proto-level checks
 - Provide structured error output
@@ -595,7 +595,7 @@ Add a new command under `cmd/project-planton/manifest/validate.go`:
 
 ## Acceptance Criteria
 
-- [ ] Command `project-planton manifest validate <file>` implemented
+- [ ] Command `openmcf manifest validate <file>` implemented
 - [ ] Validates proto schema compliance
 - [ ] Provides clear error messages
 - [ ] Exits with status 0 on success, 1 on validation failure
@@ -630,7 +630,7 @@ The generated Pulumi entrypoint shows:
 Import paths should correctly resolve to the nested proto package structure:
 ```go
 import (
-    "github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes/postgres/v1"
+    "github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes/postgres/v1"
 )
 ```
 

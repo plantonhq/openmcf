@@ -1,8 +1,8 @@
-# Project Planton Web App
+# OpenMCF Web App
 
 <!-- Auto-release test: App change triggers v{semver}-app-{YYYYMMDD}.{N} tag format -->
 
-Web interface for managing cloud resources and deployments with Project Planton.
+Web interface for managing cloud resources and deployments with OpenMCF.
 
 ---
 
@@ -27,7 +27,7 @@ app/
 - **Use case:** End users and integration testing
 - **Setup:** Single Docker container with MongoDB, backend, and frontend
 - **Managed by:** CLI (`planton webapp init/start/stop`) or `docker-compose up`
-- **Image:** `ghcr.io/plantonhq/project-planton:latest`
+- **Image:** `ghcr.io/plantonhq/openmcf:latest`
 - **Benefits:** Simple deployment, consistent environment, all services pre-configured
 
 #### Development (Local Services)
@@ -92,9 +92,9 @@ go test ./...
 |----------|---------|-------------|
 | `SERVER_PORT` | `50051` | Backend API port |
 | `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection string |
-| `MONGODB_DATABASE` | `project_planton` | Database name |
+| `MONGODB_DATABASE` | `openmcf` | Database name |
 | `PULUMI_HOME` | `/home/appuser/.pulumi` | Pulumi state directory |
-| `PULUMI_CONFIG_PASSPHRASE` | `project-planton-default-passphrase` | Pulumi encryption key |
+| `PULUMI_CONFIG_PASSPHRASE` | `openmcf-default-passphrase` | Pulumi encryption key |
 
 ---
 
@@ -189,12 +189,12 @@ supervisord (PID 1)
 
 ```bash
 # From project root
-docker build -f app/Dockerfile.unified -t project-planton:dev .
+docker build -f app/Dockerfile.unified -t openmcf:dev .
 
 # Test locally
 docker run -p 3000:3000 -p 50051:50051 \
   -v mongodb-data:/data/db \
-  project-planton:dev
+  openmcf:dev
 ```
 
 ### Multi-stage Build
@@ -434,10 +434,10 @@ Images are automatically built and published to GitHub Container Registry (GHCR)
 **Manual build (if needed):**
 ```bash
 # Build locally
-docker build -f app/Dockerfile.unified -t ghcr.io/plantonhq/project-planton:v1.0.0 .
+docker build -f app/Dockerfile.unified -t ghcr.io/plantonhq/openmcf:v1.0.0 .
 
 # Tag as latest
-docker tag ghcr.io/plantonhq/project-planton:v1.0.0 ghcr.io/plantonhq/project-planton:latest
+docker tag ghcr.io/plantonhq/openmcf:v1.0.0 ghcr.io/plantonhq/openmcf:latest
 ```
 
 ### Release Process
@@ -508,12 +508,12 @@ docker tag ghcr.io/plantonhq/project-planton:v1.0.0 ghcr.io/plantonhq/project-pl
 
 ## License
 
-This project is part of Project Planton. See main repository for license information.
+This project is part of OpenMCF. See main repository for license information.
 
 ---
 
 ## Getting Help
 
-- Check documentation: `_projects/20251127-project-planton-web-app/docs/`
+- Check documentation: `_projects/20251127-openmcf-web-app/docs/`
 - View logs: `docker-compose logs -f`
 - Open issue on GitHub

@@ -16,7 +16,7 @@ For years, the conventional wisdom around cloud object storage was simple: "It's
 
 The impact? Up to **99% cost savings** for egress-heavy workloads. R2 positions itself as a multi-cloud escape hatch: store once, serve anywhere, without vendor lock-in or exit penalties. It's S3-compatible (most tools "just work"), strongly consistent (no eventual-consistency pitfalls), and designed to pair seamlessly with Cloudflare's CDN, Workers, and Pages.
 
-But R2 isn't S3. It omits features like object versioning, bucket policies, and static website hosting. It's simpler, cheaper, and opinionated—optimized for the 80% use case of storing and serving content, not the 20% of complex AWS integrations. For teams deploying multi-cloud architectures or escaping egress fees, R2 is a strategic weapon. This guide explains how to deploy R2 buckets in production, what methods work at scale, and how Project Planton abstracts the complexity into a clean API.
+But R2 isn't S3. It omits features like object versioning, bucket policies, and static website hosting. It's simpler, cheaper, and opinionated—optimized for the 80% use case of storing and serving content, not the 20% of complex AWS integrations. For teams deploying multi-cloud architectures or escaping egress fees, R2 is a strategic weapon. This guide explains how to deploy R2 buckets in production, what methods work at scale, and how OpenMCF abstracts the complexity into a clean API.
 
 ---
 
@@ -67,7 +67,7 @@ curl -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/r2/bucke
 
 **What it doesn't solve:** Abstraction. You're managing HTTP calls, handling authentication, sequencing operations (create bucket before attaching custom domain), and implementing idempotency yourself. There's no state file to track what exists. You're building your own IaC layer from scratch.
 
-**Verdict:** Useful if you're building a custom provisioning system (like Project Planton) or integrating R2 into broader orchestration. But for most teams, higher-level tools (Terraform, Pulumi) handle the API calls and state management for you.
+**Verdict:** Useful if you're building a custom provisioning system (like OpenMCF) or integrating R2 into broader orchestration. But for most teams, higher-level tools (Terraform, Pulumi) handle the API calls and state management for you.
 
 ---
 
@@ -110,7 +110,7 @@ resource "aws_s3_bucket_cors_configuration" "media_cors" {
 }
 ```
 
-**Pulumi example (Go, as used by Project Planton):**
+**Pulumi example (Go, as used by OpenMCF):**
 
 ```go
 import (
@@ -220,7 +220,7 @@ Both Terraform and Pulumi can provision R2 buckets in production. Here's how the
 - **Choose Pulumi** if you prefer writing infrastructure in TypeScript/Python/Go and need advanced logic (dynamic resource generation, complex conditionals, tight integration with application code).
 - **Both work equally well** for standard bucket provisioning. The choice is more about team preference and existing tooling than capability.
 
-**Project Planton uses Pulumi (Go)** because:
+**OpenMCF uses Pulumi (Go)** because:
 1. **Language consistency**: Our broader multi-cloud orchestration is Go-based
 2. **Abstraction flexibility**: Pulumi's programming model makes it easier to wrap R2 behind a clean protobuf API
 3. **Future-proofing**: As R2 features evolve, programmatic IaC adapts more easily than declarative HCL
@@ -316,13 +316,13 @@ These omissions simplify R2 (less surface area, lower cost) but mean you can't b
 
 ## 80/20 Configuration Analysis: What Most Users Need
 
-When integrating R2 into Project Planton's multi-cloud IaC framework, we design the schema to cover **80% of use cases with minimal, intuitive config**, while allowing advanced features as opt-in.
+When integrating R2 into OpenMCF's multi-cloud IaC framework, we design the schema to cover **80% of use cases with minimal, intuitive config**, while allowing advanced features as opt-in.
 
 ### Essential Fields (The 80%)
 
 1. **Bucket Name**: Unique identifier (3-63 chars, lowercase alphanumeric + hyphens). **Required.**
 
-2. **Account ID**: Cloudflare account to create the bucket in. **Required.** (Project Planton may infer this from provider config, but it must be specified somewhere.)
+2. **Account ID**: Cloudflare account to create the bucket in. **Required.** (OpenMCF may infer this from provider config, but it must be specified somewhere.)
 
 3. **Region/Location**: Location hint (`WNAM`, `ENAM`, `WEUR`, etc.) for latency optimization. **Recommended.** Default to `auto` (Cloudflare chooses) if unspecified.
 
@@ -356,9 +356,9 @@ When integrating R2 into Project Planton's multi-cloud IaC framework, we design 
 
 ---
 
-## Project Planton's Approach: Abstraction with Pragmatism
+## OpenMCF's Approach: Abstraction with Pragmatism
 
-Project Planton abstracts R2 provisioning behind a clean, protobuf-defined API (`CloudflareR2Bucket`). This provides a consistent interface across clouds while respecting R2's unique characteristics.
+OpenMCF abstracts R2 provisioning behind a clean, protobuf-defined API (`CloudflareR2Bucket`). This provides a consistent interface across clouds while respecting R2's unique characteristics.
 
 ### The `CloudflareR2BucketSpec` (Simplified)
 
@@ -403,7 +403,7 @@ message CloudflareR2BucketSpec {
 
 ### Under the Hood: Pulumi (Go)
 
-Project Planton uses **Pulumi (Go)** to provision R2 buckets. Why?
+OpenMCF uses **Pulumi (Go)** to provision R2 buckets. Why?
 
 1. **Language consistency**: Our broader multi-cloud stack is Go-based.
 2. **Equivalent coverage**: Pulumi's Cloudflare provider supports all R2 operations we need (bucket creation, CORS via AWS provider, etc.).
@@ -420,7 +420,7 @@ The protobuf API remains the same regardless of backend—users never see the Pu
 **Use Case:** Backend dev storing test uploads.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareR2Bucket
 metadata:
   name: dev-test-uploads
@@ -443,7 +443,7 @@ spec:
 **Use Case:** Staging web app serving images and fonts from R2.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareR2Bucket
 metadata:
   name: staging-assets
@@ -474,7 +474,7 @@ spec:
 **Use Case:** Production media hosting for a video streaming platform.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareR2Bucket
 metadata:
   name: prod-media
@@ -510,7 +510,7 @@ spec:
 **Use Case:** European SaaS storing user data with GDPR requirements.
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareR2Bucket
 metadata:
   name: prod-user-data-eu
@@ -605,7 +605,7 @@ rclone sync s3:my-s3-bucket r2:my-r2-bucket --progress
 
 7. **Migration from S3 is straightforward** thanks to S3 API compatibility. Use Sippy for lazy migration, `rclone` for bulk copy, or hybrid approaches for production cutover.
 
-8. **Project Planton abstracts R2** into a clean protobuf API, making multi-cloud deployments consistent while respecting R2's unique characteristics (zero egress, simplified security model, no versioning).
+8. **OpenMCF abstracts R2** into a clean protobuf API, making multi-cloud deployments consistent while respecting R2's unique characteristics (zero egress, simplified security model, no versioning).
 
 ---
 
@@ -615,7 +615,7 @@ Cloudflare R2 represents a paradigm shift in cloud object storage: **pay for wha
 
 R2 isn't a universal S3 replacement. It's simpler, cheaper, and more opinionated—optimized for the common case of storing and serving data, not for deep AWS integrations. But for multi-cloud architectures, that simplicity is a strength. You can store once in R2 and serve to AWS, GCP, Azure, or on-prem without exit fees or vendor lock-in.
 
-Deploy R2 with Terraform or Pulumi. Design lifecycle policies to manage costs. Use custom domains for production public buckets. Leverage Sippy for migrations. And let Project Planton abstract the complexity behind a clean, protobuf-defined API that works the same way whether you're deploying to Cloudflare, AWS, or GCP.
+Deploy R2 with Terraform or Pulumi. Design lifecycle policies to manage costs. Use custom domains for production public buckets. Leverage Sippy for migrations. And let OpenMCF abstract the complexity behind a clean, protobuf-defined API that works the same way whether you're deploying to Cloudflare, AWS, or GCP.
 
 The cloud storage wars are over. Cloudflare won on egress. The question is: are you ready to take advantage?
 
@@ -633,5 +633,5 @@ The cloud storage wars are over. Cloudflare won on egress. The question is: are 
 
 ---
 
-**Bottom Line:** Cloudflare R2 gives you S3-compatible object storage with zero egress fees, strong consistency, and production-grade durability at a fraction of the cost of AWS/GCP/Azure for content delivery and multi-cloud workflows. Manage it with Terraform or Pulumi, design for the 80% use case, and let Project Planton abstract the complexity into a clean, protobuf API. The result: predictable costs, portable architecture, and freedom from vendor lock-in.
+**Bottom Line:** Cloudflare R2 gives you S3-compatible object storage with zero egress fees, strong consistency, and production-grade durability at a fraction of the cost of AWS/GCP/Azure for content delivery and multi-cloud workflows. Manage it with Terraform or Pulumi, design for the 80% use case, and let OpenMCF abstract the complexity into a clean, protobuf API. The result: predictable costs, portable architecture, and freedom from vendor lock-in.
 

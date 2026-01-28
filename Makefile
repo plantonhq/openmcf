@@ -1,6 +1,6 @@
-name=project-planton
-name_local=project-planton
-pkg=github.com/plantonhq/project-planton
+name=openmcf
+name_local=openmcf
+pkg=github.com/plantonhq/openmcf
 build_dir=build
 version?=$(shell python3 tools/ci/release/next_version.py patch 2>/dev/null || echo "dev")
 LDFLAGS=-ldflags "-X ${pkg}/internal/cli/version.Version=${version}"
@@ -29,7 +29,7 @@ build_cmd=go build -v ${LDFLAGS}
 PARALLEL?=$(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 
 clean-bazel:
-	rm -rf .bazelbsp bazel-bin bazel-out bazel-testlogs bazel-project-planton
+	rm -rf .bazelbsp bazel-bin bazel-out bazel-testlogs bazel-openmcf
 
 reset-ide: clean-bazel
 	rm -rf .idea
@@ -78,7 +78,7 @@ reset-gazelle: clean-gazelle gazelle
 
 .PHONY: bazel-build-cli
 bazel-build-cli:
-	${BAZEL} build ${BAZEL_REMOTE_FLAGS} //:project-planton
+	${BAZEL} build ${BAZEL_REMOTE_FLAGS} //:openmcf
 
 .PHONY: bazel-test
 bazel-test:
@@ -121,7 +121,7 @@ build: protos generate-cloud-resource-kind-map bazel-mod-tidy bazel-gazelle baze
 ${build_dir}/${name}: build-go
 
 # ── Docker (Unified Image) ─────────────────────────────────────────────────────
-DOCKER_IMAGE?=ghcr.io/plantonhq/project-planton
+DOCKER_IMAGE?=ghcr.io/plantonhq/openmcf
 DOCKER_TAG?=latest
 DOCKERFILE_UNIFIED=app/Dockerfile.unified
 
@@ -144,26 +144,26 @@ docker-build-multiarch:
 docker-run:
 	@echo "Running Docker container from $(DOCKER_IMAGE):$(DOCKER_TAG)"
 	docker run -d \
-		--name project-planton-webapp \
+		--name openmcf-webapp \
 		-p 3000:3000 \
 		-p 50051:50051 \
-		-v project-planton-mongodb:/data/db \
-		-v project-planton-pulumi:/home/appuser/.pulumi \
+		-v openmcf-mongodb:/data/db \
+		-v openmcf-pulumi:/home/appuser/.pulumi \
 		$(DOCKER_IMAGE):$(DOCKER_TAG)
 
 .PHONY: docker-stop
 docker-stop:
 	@echo "Stopping and removing container..."
-	docker stop project-planton-webapp || true
-	docker rm project-planton-webapp || true
+	docker stop openmcf-webapp || true
+	docker rm openmcf-webapp || true
 
 .PHONY: docker-logs
 docker-logs:
-	docker logs -f project-planton-webapp
+	docker logs -f openmcf-webapp
 
 .PHONY: docker-shell
 docker-shell:
-	docker exec -it project-planton-webapp /bin/bash
+	docker exec -it openmcf-webapp /bin/bash
 
 # ──────────────────────────────────────────────────────────────────────────────
 

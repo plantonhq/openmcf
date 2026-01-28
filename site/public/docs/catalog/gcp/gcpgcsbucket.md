@@ -14,7 +14,7 @@ For years, the conventional wisdom around cloud storage was simple: "Just click 
 
 The reality is that a production-grade GCS bucket involves far more than clicking "Create." It requires careful decisions about access control models, encryption strategies, lifecycle policies, regional placement, and IAM configurations. A single misconfigured setting—like inadvertently granting `allUsers` the `roles/storage.objectViewer` role at the bucket level when you only intended to make one file public—can expose your entire dataset to the internet.
 
-The evolution from manual console management to declarative Infrastructure as Code (IaC) represents not just a tooling shift, but a fundamental change in how we think about cloud storage security, cost optimization, and operational reliability. This document explores the full spectrum of GCS deployment methods, from anti-patterns to production-ready solutions, and explains why Project Planton defaults to certain choices.
+The evolution from manual console management to declarative Infrastructure as Code (IaC) represents not just a tooling shift, but a fundamental change in how we think about cloud storage security, cost optimization, and operational reliability. This document explores the full spectrum of GCS deployment methods, from anti-patterns to production-ready solutions, and explains why OpenMCF defaults to certain choices.
 
 ## The GCS Management Maturity Spectrum
 
@@ -324,13 +324,13 @@ GCS pricing is a trade-off between at-rest storage costs and access costs (retri
 
 **Why it matters**: Cost-effective data lakes that separate storage (cheap GCS) from compute (BigQuery query engine).
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
-Project Planton adopts a "Configuration as Data" philosophy, similar to Kubernetes. The GcpGcsBucket API is defined via protobuf, providing a strict, serializable data model as the source of truth.
+OpenMCF adopts a "Configuration as Data" philosophy, similar to Kubernetes. The GcpGcsBucket API is defined via protobuf, providing a strict, serializable data model as the source of truth.
 
 ### Current API Design
 
-The Project Planton `GcpGcsBucketSpec` currently includes:
+The OpenMCF `GcpGcsBucketSpec` currently includes:
 - `gcp_project_id`: The GCP project
 - `gcp_region`: The bucket location
 - `is_public`: A boolean for public access
@@ -405,5 +405,5 @@ The GCS deployment landscape has matured from manual console operations to sophi
 
 The evolution of GCS management reflects a broader shift in cloud operations: from ad-hoc manual changes to declarative, auditable, reproducible infrastructure as code. By adopting these modern patterns—particularly UBLA for security, lifecycle policies for cost control, and explicit IAM for access management—teams can build secure, cost-effective, and operationally reliable storage infrastructure.
 
-Project Planton's GcpGcsBucket API aims to make the secure path the easy path, defaulting to production-grade configurations and forcing explicit, auditable decisions for critical security settings like access control.
+OpenMCF's GcpGcsBucket API aims to make the secure path the easy path, defaulting to production-grade configurations and forcing explicit, auditable decisions for critical security settings like access control.
 

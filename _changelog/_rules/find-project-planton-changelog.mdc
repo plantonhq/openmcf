@@ -1,16 +1,16 @@
 ---
-description: SEARCH-ONLY (read-only) rule to find existing changelogs. Does NOT create changelogs. Lookup Project Planton changelogs by time references and keywords.
+description: SEARCH-ONLY (read-only) rule to find existing changelogs. Does NOT create changelogs. Lookup OpenMCF changelogs by time references and keywords.
 globs: []
 alwaysApply: false
 ---
 
-# Rule: Lookup Project Planton Changelog (ask-only)
+# Rule: Lookup OpenMCF Changelog (ask-only)
 
 **THIS IS A SEARCH-ONLY RULE. DO NOT CREATE OR MODIFY ANYTHING.**
 
-Purpose: When invoked, help users quickly **FIND** existing changelogs from the Project Planton CLI repository without needing to specify directory paths. Parse temporal context (this month, last month, etc.), search appropriate directories, and present results in an easy-to-consume format with both clickable links and copyable paths.
+Purpose: When invoked, help users quickly **FIND** existing changelogs from the OpenMCF CLI repository without needing to specify directory paths. Parse temporal context (this month, last month, etc.), search appropriate directories, and present results in an easy-to-consume format with both clickable links and copyable paths.
 
-Usage: Invoke explicitly as `@find-project-planton-changelog` with contextual information about when the change was made and/or keywords describing the change.
+Usage: Invoke explicitly as `@find-openmcf-changelog` with contextual information about when the change was made and/or keywords describing the change.
 
 **User Intent**: When a user invokes this rule, they are asking you to **SEARCH FOR** and **PRESENT** existing changelogs. They are **NOT** asking you to create a new changelog.
 
@@ -31,7 +31,7 @@ date +"%Y-%m-%d"
 
 **Step 3**: List changelog files in appropriate directories:
 ```bash
-ls -1 /Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/YYYY-MM/
+ls -1 /Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/YYYY-MM/
 ```
 
 **Step 4**: Filter by keywords using grep if needed
@@ -48,7 +48,7 @@ ls -1 /Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/YYYY-MM/
 - ❌ Create new changelog files
 - ❌ Modify existing changelogs
 - ❌ Make any changes to the filesystem
-- ❌ Invoke `@create-project-planton-changelog` or any other creation rules
+- ❌ Invoke `@create-openmcf-changelog` or any other creation rules
 
 ### ALWAYS DO THIS:
 - ✅ ONLY run `date` command first
@@ -63,7 +63,7 @@ ls -1 /Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/YYYY-MM/
 
 **All changelogs are stored in**:
 ```
-/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/YYYY-MM/
+/Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/YYYY-MM/
 ```
 
 Where `YYYY-MM` is the year-month directory (e.g., `2026-01` for January 2026, `2025-12` for December 2025).
@@ -107,7 +107,7 @@ Listen for time references in the user's query:
 
 ### Step 3: Extract Keywords
 
-Extract meaningful keywords from the user's query related to Project Planton:
+Extract meaningful keywords from the user's query related to OpenMCF:
 
 **CLI & Commands**:
 - CLI, command, flags, subcommand, handler
@@ -140,8 +140,8 @@ Extract meaningful keywords from the user's query related to Project Planton:
 
 Based on temporal parsing, list the changelog files in the appropriate directories:
 ```bash
-ls -1 /Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2026-01/
-ls -1 /Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-12/
+ls -1 /Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2026-01/
+ls -1 /Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2025-12/
 # ... etc
 ```
 
@@ -183,9 +183,9 @@ Prioritize changelogs that:
 Here are the changelogs matching your search criteria:
 
 **Clickable links:**
-- [2025-10-18-153045-pulumi-interactive-output-with-diff-support.md](/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-10/2025-10-18-153045-pulumi-interactive-output-with-diff-support.md)
-- [2025-10-18-091230-proto-field-defaults-support.md](/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-10/2025-10-18-091230-proto-field-defaults-support.md)
-- [2025-10-17-164500-temporal-namespace-initialization-bug-fix.md](/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-10/2025-10-17-164500-temporal-namespace-initialization-bug-fix.md)
+- [2025-10-18-153045-pulumi-interactive-output-with-diff-support.md](/Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2025-10/2025-10-18-153045-pulumi-interactive-output-with-diff-support.md)
+- [2025-10-18-091230-proto-field-defaults-support.md](/Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2025-10/2025-10-18-091230-proto-field-defaults-support.md)
+- [2025-10-17-164500-temporal-namespace-initialization-bug-fix.md](/Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2025-10/2025-10-17-164500-temporal-namespace-initialization-bug-fix.md)
 
 **Individual copyable filenames:**
 ```
@@ -213,7 +213,7 @@ Here are the changelogs matching your search criteria:
 **Date**: October 18, 2025  
 **Type**: Enhancement  
 **Components**: Pulumi CLI Integration, CLI Flags, User Experience  
-**Path**: `/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-10/2025-10-18-153045-pulumi-interactive-output-with-diff-support.md`
+**Path**: `/Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2025-10/2025-10-18-153045-pulumi-interactive-output-with-diff-support.md`
 
 **Summary**: Added TTY detection and interactive mode support for Pulumi operations, enabling real-time diff output during `preview` and `up` commands. Includes new `--yes` flag for automated workflows.
 
@@ -228,7 +228,7 @@ Here are the changelogs matching your search criteria:
 **Date**: October 18, 2025  
 **Type**: Feature  
 **Components**: API Definitions, Manifest Processing  
-**Path**: `/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-10/2025-10-18-091230-proto-field-defaults-support.md`
+**Path**: `/Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2025-10/2025-10-18-091230-proto-field-defaults-support.md`
 
 **Summary**: Implemented protobuf field default value support, reducing manifest verbosity by automatically setting common defaults.
 
@@ -276,11 +276,11 @@ Here are the changelogs matching your search criteria:
 - ❌ **Don't include non-matches** to pad results
 - ❌ **Don't make up summaries** - read from actual changelog
 
-## Project Planton Specific Context
+## OpenMCF Specific Context
 
 ### Common Change Categories
 
-When searching, understand these common Project Planton change types:
+When searching, understand these common OpenMCF change types:
 
 **CLI Enhancements**:
 - New commands or subcommands
@@ -328,7 +328,7 @@ Map user keywords to component categories:
 
 ### Example 1: Search for CLI Feature
 ```
-User: "@find-project-planton-changelog We added interactive Pulumi output 
+User: "@find-openmcf-changelog We added interactive Pulumi output 
        support last month"
 ```
 
@@ -337,7 +337,7 @@ User: "@find-project-planton-changelog We added interactive Pulumi output
 **Agent actions**:
 1. Run: `date +"%Y-%m-%d"` → January 10, 2026
 2. Parse temporal: "last month" → Search `2025-12/`
-3. Run: `ls -1 /Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-12/`
+3. Run: `ls -1 /Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2025-12/`
 4. Extract keywords: "interactive", "pulumi", "output"
 5. Filter with grep or by examining filenames
 6. Read matching changelogs to extract summaries
@@ -347,7 +347,7 @@ User: "@find-project-planton-changelog We added interactive Pulumi output
 
 ### Example 2: Bug Fix
 ```
-User: "@find-project-planton-changelog Find the fix for temporal namespace 
+User: "@find-openmcf-changelog Find the fix for temporal namespace 
        initialization from October"
 ```
 
@@ -359,7 +359,7 @@ User: "@find-project-planton-changelog Find the fix for temporal namespace
 
 ### Example 3: Provider Work
 ```
-User: "@find-project-planton-changelog What provider work did we do 
+User: "@find-openmcf-changelog What provider work did we do 
        in the last 3 months?"
 ```
 
@@ -372,7 +372,7 @@ User: "@find-project-planton-changelog What provider work did we do
 
 ### Example 4: Proto/API Changes
 ```
-User: "@find-project-planton-changelog Show recent proto field defaults work"
+User: "@find-openmcf-changelog Show recent proto field defaults work"
 ```
 
 **Agent actions**:
@@ -386,7 +386,7 @@ User: "@find-project-planton-changelog Show recent proto field defaults work"
 
 ### Filename Search is Primary
 
-Project Planton changelog filenames are descriptive slugs, so searching filenames first often gives best results:
+OpenMCF changelog filenames are descriptive slugs, so searching filenames first often gives best results:
 ```bash
 # Good matches come from descriptive filenames
 2025-10-18-153045-pulumi-interactive-output-with-diff-support.md
@@ -446,8 +446,8 @@ If no changelogs match:
 ## No Changelogs Found
 
 I searched the following directories for changelogs matching your criteria:
-- `/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2026-01/`
-- `/Users/swarup/scm/github.com/plantonhq/project-planton/_changelog/2025-12/`
+- `/Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2026-01/`
+- `/Users/swarup/scm/github.com/plantonhq/openmcf/_changelog/2025-12/`
 
 **Search keywords**: pulumi, interactive, output
 
@@ -542,9 +542,9 @@ You are **ONLY** searching for and presenting existing changelogs. You are **NOT
 - Running git commands
 - Making any filesystem changes
 
-If the user wants to create a changelog, politely inform them to use `@create-project-planton-changelog` instead.
+If the user wants to create a changelog, politely inform them to use `@create-openmcf-changelog` instead.
 
-**Goal**: Make it trivially easy for users to find and reference Project Planton CLI changelogs without memorizing directory paths or filename patterns.
+**Goal**: Make it trivially easy for users to find and reference OpenMCF CLI changelogs without memorizing directory paths or filename patterns.
 
 **Success criteria**: User can:
 1. Quickly scan the bulleted list to find the right changelog
@@ -552,7 +552,7 @@ If the user wants to create a changelog, politely inform them to use `@create-pr
 3. Copy individual filenames to use in another conversation with `@` mentions, OR
 4. Copy all filenames at once for bulk operations
 
-**Context awareness**: Understand Project Planton terminology (CLI, Pulumi, providers, manifests, etc.) to improve search relevance.
+**Context awareness**: Understand OpenMCF terminology (CLI, Pulumi, providers, manifests, etc.) to improve search relevance.
 
 ---
 

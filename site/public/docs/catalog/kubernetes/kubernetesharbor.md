@@ -18,7 +18,7 @@ The Harbor registry is architected as a deliberately **stateless** application. 
 
 This architectural decision has profound implications: deploying Harbor on Kubernetes isn't about managing a complex stateful system. It's about orchestrating a set of stateless services that *delegate* state management to the right tools for the job. Do this correctly, and you get a production-grade, highly available container registry. Get it wrong, and you end up with the single most common anti-pattern in the Harbor ecosystem: the "all-in-one" deployment that bundles PostgreSQL and Redis as in-cluster StatefulSets and uses filesystem PVCs for artifact storage.
 
-This guide explains the maturity spectrum of Harbor deployment methods, from anti-patterns to production-ready solutions, and clarifies what Project Planton supports and why.
+This guide explains the maturity spectrum of Harbor deployment methods, from anti-patterns to production-ready solutions, and clarifies what OpenMCF supports and why.
 
 ## The Deployment Maturity Spectrum
 
@@ -238,9 +238,9 @@ For a new IaC framework, designing an API that can output **HTTPRoute** resource
 
 ---
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton's `HarborKubernetes` API is designed around the **Level 1: Externalized Dependencies** production pattern as the default, with support for in-cluster HA operators (Level 2) as an advanced option.
+OpenMCF's `HarborKubernetes` API is designed around the **Level 1: Externalized Dependencies** production pattern as the default, with support for in-cluster HA operators (Level 2) as an advanced option.
 
 ### Design Philosophy
 
@@ -385,7 +385,7 @@ This architectural decision is what makes production-grade Harbor deployments vi
 
 The "all-in-one" bundled deployment is not a simplified version of production Harbor. It's a fundamentally different architecture that violates the core design principle: externalized state. Treating it as a "starting point" that can be "upgraded" to production is a mistake. Production Harbor is externalized from day one.
 
-Project Planton's `HarborKubernetes` API codifies this principle. It makes the production pattern the natural path and requires explicit opt-in for dev-mode bundled components. This is how IaC should work: guiding users toward resilient architectures by default, not documenting anti-patterns alongside best practices and expecting users to choose correctly.
+OpenMCF's `HarborKubernetes` API codifies this principle. It makes the production pattern the natural path and requires explicit opt-in for dev-mode bundled components. This is how IaC should work: guiding users toward resilient architectures by default, not documenting anti-patterns alongside best practices and expecting users to choose correctly.
 
 Deploy Harbor correctly, and you get a production-grade, highly available, secure container registry. Deploy it incorrectly, and you get a ticking time bomb waiting for the next `helm upgrade` to wipe your artifacts. Choose wisely.
 

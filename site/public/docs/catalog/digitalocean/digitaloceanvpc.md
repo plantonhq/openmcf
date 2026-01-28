@@ -18,7 +18,7 @@ The result is a networking primitive that feels more like a traditional Layer 2 
 
 This simplicity is not a limitation—it's a feature aligned with DigitalOcean's philosophy. For the vast majority of use cases (development environments, small-to-medium production workloads, startups optimizing for velocity), the added complexity of subnet-level segmentation provides diminishing returns. You don't need five public subnets and three private subnets across availability zones when you're running a web app with a database. You need **isolation from the public internet** and **private communication between your resources**. The DigitalOcean VPC delivers exactly that.
 
-This document explains the deployment methods available for DigitalOcean VPCs, the critical constraints that shape network planning, and how Project Planton exposes this platform through a minimal, production-ready API.
+This document explains the deployment methods available for DigitalOcean VPCs, the critical constraints that shape network planning, and how OpenMCF exposes this platform through a minimal, production-ready API.
 
 ## Why DigitalOcean VPCs Are Different
 
@@ -113,7 +113,7 @@ doctl vpcs create \
 ```
 
 **Key Behavior:**  
-The `--ip-range` flag is **optional**. When omitted, DigitalOcean automatically generates a non-conflicting `/20` CIDR block. This matches the web console's "easy button" behavior and is a critical API capability that Project Planton must support.
+The `--ip-range` flag is **optional**. When omitted, DigitalOcean automatically generates a non-conflicting `/20` CIDR block. This matches the web console's "easy button" behavior and is a critical API capability that OpenMCF must support.
 
 **What it solves**: Automation and CI/CD integration. Scripts can be version-controlled and reused across environments.
 
@@ -149,7 +149,7 @@ Closer inspection reveals the truth: when you set `default: true`, the Ansible m
 1. Sends a POST request to create the VPC
 2. Sends a separate PUT/POST request to a "Set Default VPC" endpoint
 
-If the second step fails, you're left in an inconsistent state. This is a high-level abstraction that masks the platform's true behavior—exactly the kind of abstraction Project Planton avoids.
+If the second step fails, you're left in an inconsistent state. This is a high-level abstraction that masks the platform's true behavior—exactly the kind of abstraction OpenMCF avoids.
 
 **Best Practice Pattern**: **Terraform (provision) → Ansible (configure)**. Use Terraform for stateful infrastructure provisioning (VPCs, Droplets, firewalls), then use Ansible for what it's best at: installing software and configuring services on those resources.
 
@@ -431,13 +431,13 @@ DigitalOcean migrates the database in the background with zero downtime, eventua
 **Migrating DOKS Clusters and Load Balancers:**  
 These **cannot be migrated**. They must be destroyed and recreated inside the new VPC. For DOKS, this means a full cluster rebuild and workload redeployment—essentially a complete environment cutover.
 
-## The Project Planton Choice
+## The OpenMCF Choice
 
-Project Planton's `DigitalOceanVpc` API is designed following the **80/20 principle**: expose the 20% of configuration that 80% of users need, enforce security and best practices by default, and avoid abstractions that don't exist in the native platform.
+OpenMCF's `DigitalOceanVpc` API is designed following the **80/20 principle**: expose the 20% of configuration that 80% of users need, enforce security and best practices by default, and avoid abstractions that don't exist in the native platform.
 
 ### The Minimal, Production-Ready API
 
-Based on the research findings, the Project Planton API specification should include:
+Based on the research findings, the OpenMCF API specification should include:
 
 **Input (Spec) Fields:**
 
@@ -461,14 +461,14 @@ Based on the research findings, the Project Planton API specification should inc
 ### Critical Design Decisions
 
 **Why `ip_range` Must Be Optional:**  
-This is the 80% use case. Most users want the platform to handle IP allocation automatically. Making this field required forces users to manage CIDR planning even when they don't need to. When `ip_range` is omitted, the Project Planton provider must send a Create request **without** the `ip_range` key, triggering DigitalOcean's auto-generation behavior.
+This is the 80% use case. Most users want the platform to handle IP allocation automatically. Making this field required forces users to manage CIDR planning even when they don't need to. When `ip_range` is omitted, the OpenMCF provider must send a Create request **without** the `ip_range` key, triggering DigitalOcean's auto-generation behavior.
 
 **Why `is_default` Must Be Output-Only:**  
 The native DigitalOcean API does not support setting `is_default` during VPC creation. The first VPC created in a region automatically becomes the default—this is a side effect of creation order, not a settable parameter.
 
 The Ansible module's `default` input parameter is a high-level abstraction that performs a non-atomic, two-step operation (create VPC, then call a separate "Set Default" endpoint). This masks the platform's true behavior and creates inconsistency risks.
 
-Project Planton avoids this abstraction. If users need to change the default VPC, that must be implemented as a separate Update operation or dedicated action, accurately reflecting the non-atomic nature of the operation.
+OpenMCF avoids this abstraction. If users need to change the default VPC, that must be implemented as a separate Update operation or dedicated action, accurately reflecting the non-atomic nature of the operation.
 
 **Why Description is Optional:**  
 While useful for production documentation, it's not required for a functioning VPC. The 80% use case (dev/test environments, quick provisioning) often skips this field.
@@ -522,7 +522,7 @@ But this simplicity comes with rigid constraints:
 
 The production standard for managing VPCs is **Infrastructure as Code** (Terraform or Pulumi), with **directory-based environment isolation** for dev/staging/prod. The 80% use case is auto-generated CIDR blocks (the platform's `/20` default). The 20% use case is explicit CIDR planning using organizational IPAM strategies.
 
-**Project Planton's API design enforces these patterns**: `ip_range` is optional (supporting the 80% use case), `is_default` is output-only (accurately modeling the platform), and the configuration surface is minimal—name, region, optional IP range, optional description. This gives users the flexibility to "just create a VPC" for dev environments while supporting explicit, production-grade IP planning for critical workloads.
+**OpenMCF's API design enforces these patterns**: `ip_range` is optional (supporting the 80% use case), `is_default` is output-only (accurately modeling the platform), and the configuration surface is minimal—name, region, optional IP range, optional description. This gives users the flexibility to "just create a VPC" for dev environments while supporting explicit, production-grade IP planning for critical workloads.
 
 For organizations that value **velocity, simplicity, and cost efficiency** over enterprise networking complexity, the DigitalOcean VPC delivers exactly what's needed—and nothing more.
 

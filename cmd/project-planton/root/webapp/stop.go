@@ -10,14 +10,14 @@ import (
 
 var StopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "stop the Project Planton web app",
-	Long:  `Stop the Project Planton web app container (data is preserved)`,
+	Short: "stop the OpenMCF web app",
+	Long:  `Stop the OpenMCF web app container (data is preserved)`,
 	Run:   stopHandler,
 }
 
 func stopHandler(cmd *cobra.Command, args []string) {
 	fmt.Println("========================================")
-	fmt.Println("🛑 Stopping Project Planton Web App")
+	fmt.Println("🛑 Stopping OpenMCF Web App")
 	fmt.Println("========================================")
 	fmt.Println()
 

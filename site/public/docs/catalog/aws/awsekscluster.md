@@ -16,7 +16,7 @@ Every tool works. But **not every tool scales** from prototype to production.
 
 The real question isn't "Can I create an EKS cluster?" but rather "Can I **manage**, **upgrade**, **secure**, and **replicate** EKS clusters across environments in a way that's auditable, repeatable, and integrated with my existing workflows?"
 
-This guide explains the deployment landscape, what production-grade EKS requires, and why Project Planton implements EKS provisioning with Pulumi as the default while maintaining an abstraction layer that keeps you flexible.
+This guide explains the deployment landscape, what production-grade EKS requires, and why OpenMCF implements EKS provisioning with Pulumi as the default while maintaining an abstraction layer that keeps you flexible.
 
 ---
 
@@ -246,9 +246,9 @@ Resources:
 
 ---
 
-## Why Project Planton Uses Pulumi (But Abstracts It)
+## Why OpenMCF Uses Pulumi (But Abstracts It)
 
-Project Planton's EKS implementation defaults to **Pulumi** for several reasons:
+OpenMCF's EKS implementation defaults to **Pulumi** for several reasons:
 
 ### 1. Abstraction Through Code
 
@@ -434,7 +434,7 @@ By separating concerns, we make the common case simple (create a cluster) while 
 ### Development Cluster
 
 ```yaml
-apiVersion: org.project_planton.provider.aws.awsekscluster.v1
+apiVersion: org.openmcf.provider.aws.awsekscluster.v1
 kind: AwsEksCluster
 metadata:
   name: dev-eks
@@ -454,7 +454,7 @@ Accepts defaults:
 ### Staging Cluster
 
 ```yaml
-apiVersion: org.project_planton.provider.aws.awsekscluster.v1
+apiVersion: org.openmcf.provider.aws.awsekscluster.v1
 kind: AwsEksCluster
 metadata:
   name: stage-eks
@@ -477,7 +477,7 @@ Mirrors production:
 ### Production Cluster
 
 ```yaml
-apiVersion: org.project_planton.provider.aws.awsekscluster.v1
+apiVersion: org.openmcf.provider.aws.awsekscluster.v1
 kind: AwsEksCluster
 metadata:
   name: prod-eks
@@ -581,7 +581,7 @@ Among IaC options, no tool is universally "best"—but all production-grade depl
 - **Observable**: Metrics, logs, and alerts integrated from day one
 - **Resilient**: Multi-AZ, tested disaster recovery, automated failover
 
-Project Planton's `AwsEksCluster` API abstracts these patterns into a simple, declarative interface. The 80% case—a secure, observable, multi-AZ cluster—requires six fields. The 20% edge cases remain accessible via the underlying IaC layer.
+OpenMCF's `AwsEksCluster` API abstracts these patterns into a simple, declarative interface. The 80% case—a secure, observable, multi-AZ cluster—requires six fields. The 20% edge cases remain accessible via the underlying IaC layer.
 
 By defaulting to Pulumi while keeping the API manager-agnostic, we give you **flexibility without fragmentation**. You get production-grade defaults backed by AWS best practices, but you're never locked in.
 

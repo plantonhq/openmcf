@@ -3,7 +3,7 @@ package crkreflect
 import (
 	"testing"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/cloudresourcekind"
 )
 
 func TestKindByIdPrefix(t *testing.T) {

@@ -73,15 +73,15 @@ Implemented complete CRUD (Create, Read, Update, Delete) operations for credenti
 
 ### CLI Files Added
 
-- `cmd/project-planton/root/credential_get.go` - Get command implementation
-- `cmd/project-planton/root/credential_update.go` - Update command implementation
-- `cmd/project-planton/root/credential_delete.go` - Delete command implementation
+- `cmd/openmcf/root/credential_get.go` - Get command implementation
+- `cmd/openmcf/root/credential_update.go` - Update command implementation
+- `cmd/openmcf/root/credential_delete.go` - Delete command implementation
 
 ### CLI Files Modified
 
-- `cmd/project-planton/root.go` - Command registration (added three new commands)
-- `cmd/project-planton/root/credential_list.go` - Minor updates for consistency
-- `cmd/project-planton/CLI-HELP.md` - Comprehensive documentation updates (+397 lines, -5 lines)
+- `cmd/openmcf/root.go` - Command registration (added three new commands)
+- `cmd/openmcf/root/credential_list.go` - Minor updates for consistency
+- `cmd/openmcf/CLI-HELP.md` - Comprehensive documentation updates (+397 lines, -5 lines)
 
 ### Backend Files Modified
 

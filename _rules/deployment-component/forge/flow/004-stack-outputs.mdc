@@ -45,7 +45,7 @@ EXAMPLE SKELETON (adapt to actual schema; do not copy verbatim)
 ```proto
 syntax = "proto3";
 
-package org.project_planton.provider.aws.awscloudfront.v1;
+package org.openmcf.provider.aws.awscloudfront.v1;
 
 // AwsCloudFrontStackOutputs captures observable identifiers from CloudFront.
 message AwsCloudFrontStackOutputs {

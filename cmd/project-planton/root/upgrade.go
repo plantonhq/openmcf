@@ -1,16 +1,16 @@
 package root
 
 import (
-	"github.com/plantonhq/project-planton/internal/cli/upgrade"
+	"github.com/plantonhq/openmcf/internal/cli/upgrade"
 	"github.com/spf13/cobra"
 )
 
 var Upgrade = &cobra.Command{
 	Use:   "upgrade [VERSION]",
-	Short: "upgrade the project-planton CLI to the latest or specified version",
-	Long: `Upgrade the project-planton CLI to the latest available version, or to a specific version if provided.
+	Short: "upgrade the openmcf CLI to the latest or specified version",
+	Long: `Upgrade the openmcf CLI to the latest available version, or to a specific version if provided.
 
-On macOS, if project-planton was installed via Homebrew, this command uses 'brew upgrade --cask'.
+On macOS, if openmcf was installed via Homebrew, this command uses 'brew upgrade --cask'.
 On all other platforms (or if Homebrew is not available), it downloads the latest
 binary directly from GitHub releases.
 
@@ -24,19 +24,19 @@ Arguments:
 
 Examples:
   # Upgrade to the latest version
-  project-planton upgrade
+  openmcf upgrade
 
   # Upgrade to a specific version
-  project-planton upgrade v0.3.10-cli.20260110.0
+  openmcf upgrade v0.3.10-cli.20260110.0
 
   # Check for updates without installing
-  project-planton upgrade --check
+  openmcf upgrade --check
 
   # Force upgrade even if already on latest version
-  project-planton upgrade --force
+  openmcf upgrade --force
 
   # Force install a specific version
-  project-planton upgrade v0.3.10-cli.20260110.0 --force`,
+  openmcf upgrade v0.3.10-cli.20260110.0 --force`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  upgradeHandler,
 }

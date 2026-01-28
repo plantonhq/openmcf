@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package org.openmcf.provider.cloudflare.cloudflareworker.v1;
+
+// CloudflareWorkerStackOutputs captures the outputs after deploying a Cloudflare Worker.
+message CloudflareWorkerStackOutputs {
+  // The Cloudflare-assigned identifier or name of the deployed Worker script.
+  string script_id = 1;
+  // The route URL(s) or patterns where this Worker is active (e.g., workers.dev subdomain or custom domain routes).
+  repeated string route_urls = 2;
+}

@@ -22,7 +22,7 @@ But here's where it gets interesting: DigitalOcean Functions exists in two disti
 
 2. **App Platform Functions**: Deployed as a component within a DigitalOcean App Platform application, managed via an `app-spec.yml`. This is the **only production-viable path**, providing VPC integration for secure database access, full monitoring via DigitalOcean Insights, and native IaC support through Terraform and Pulumi.
 
-This guide explains the deployment landscape for DigitalOcean Functions, why the Standalone model is an anti-pattern for production, and how Project Planton abstracts the correct approach (App Platform) into a clean, protobuf-defined API.
+This guide explains the deployment landscape for DigitalOcean Functions, why the Standalone model is an anti-pattern for production, and how OpenMCF abstracts the correct approach (App Platform) into a clean, protobuf-defined API.
 
 ---
 
@@ -379,13 +379,13 @@ packages:
 
 ---
 
-## Project Planton's Approach: Abstraction Over App Platform
+## OpenMCF's Approach: Abstraction Over App Platform
 
-Project Planton's `DigitalOceanFunction` resource is designed as a **high-level abstraction over the `digitalocean_app` resource**. This provides users with a declarative, production-ready API without forcing them to understand the nuances of App Platform specs or the pitfalls of Standalone Functions.
+OpenMCF's `DigitalOceanFunction` resource is designed as a **high-level abstraction over the `digitalocean_app` resource**. This provides users with a declarative, production-ready API without forcing them to understand the nuances of App Platform specs or the pitfalls of Standalone Functions.
 
 ### What We Abstract
 
-When a user defines a `DigitalOceanFunction` resource, Project Planton's provider:
+When a user defines a `DigitalOceanFunction` resource, OpenMCF's provider:
 
 1. **Synthesizes an `app-spec.yml`**: Programmatically generates the app specification with a single `functions` component, populated from the user's input (source code path, runtime, region, environment variables, secrets).
 
@@ -448,7 +448,7 @@ message DigitalOceanFunctionSpec {
 
 5. **The 80/20 config is name, runtime, source repo, and memory/timeout**: Advanced features (custom runtimes, complex triggers) are either not supported or handled at the application level.
 
-6. **Project Planton abstracts the correct approach**: Our `DigitalOceanFunction` resource provisions functions via App Platform, giving users a production-ready serverless platform with a clean, protobuf-defined API.
+6. **OpenMCF abstracts the correct approach**: Our `DigitalOceanFunction` resource provisions functions via App Platform, giving users a production-ready serverless platform with a clean, protobuf-defined API.
 
 ---
 
@@ -462,5 +462,5 @@ message DigitalOceanFunctionSpec {
 
 ---
 
-**Bottom Line**: DigitalOcean Functions is a compelling serverless platform when deployed correctly. The Standalone model is a dead end for production. App Platform Functions give you VPC security, production monitoring, and declarative IaC. Project Planton wraps this into a simple, protobuf-defined API that abstracts away the complexity and gives you a production-ready serverless function by default.
+**Bottom Line**: DigitalOcean Functions is a compelling serverless platform when deployed correctly. The Standalone model is a dead end for production. App Platform Functions give you VPC security, production monitoring, and declarative IaC. OpenMCF wraps this into a simple, protobuf-defined API that abstracts away the complexity and gives you a production-ready serverless function by default.
 

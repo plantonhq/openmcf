@@ -1,17 +1,17 @@
 ---
 title: "Concepts"
-description: "Core concepts and architecture of ProjectPlanton"
+description: "Core concepts and architecture of OpenMCF"
 icon: "lightbulb"
 order: 3
 ---
 
 # Core Concepts
 
-Understanding the core concepts of ProjectPlanton will help you make the most of the framework.
+Understanding the core concepts of OpenMCF will help you make the most of the framework.
 
 ## Overview
 
-ProjectPlanton is built on three foundational pillars:
+OpenMCF is built on three foundational pillars:
 
 1. **APIs** - Standardized configuration schema using Protocol Buffers
 2. **IaC Modules** - Pre-built Pulumi and Terraform modules
@@ -24,7 +24,7 @@ ProjectPlanton is built on three foundational pillars:
 Every deployment component follows the same structure:
 
 ```yaml
-apiVersion: <provider>.project-planton.org/<version>
+apiVersion: <provider>.openmcf.org/<version>
 kind: <ComponentType>
 metadata:
   name: <resource-name>
@@ -40,7 +40,7 @@ This consistent structure makes it easy to understand and work with any resource
 
 ### Protocol Buffers
 
-Unlike Kubernetes (which uses Go structs), ProjectPlanton uses Protocol Buffers to enable:
+Unlike Kubernetes (which uses Go structs), OpenMCF uses Protocol Buffers to enable:
 
 - **Language Neutrality**: Auto-generate SDKs in Go, Java, Python, TypeScript
 - **Beautiful Documentation**: Publish to Buf Schema Registry
@@ -63,14 +63,14 @@ Examples:
 
 ### Provider-Specific vs. Abstract
 
-ProjectPlanton **does NOT** abstract away cloud provider differences. This is intentional.
+OpenMCF **does NOT** abstract away cloud provider differences. This is intentional.
 
 Each cloud provider has different capabilities, pricing models, and operational characteristics. Attempting to abstract these would either:
 
 1. Force a "lowest common denominator" approach (losing provider-specific capabilities)
 2. Create a leaky abstraction that's harder to understand
 
-Instead, ProjectPlanton provides:
+Instead, OpenMCF provides:
 - ✅ **Consistent structure**: Every resource uses KRM
 - ✅ **Consistent workflow**: Same CLI commands, same validation
 - ✅ **Consistent developer experience**: Same documentation approach

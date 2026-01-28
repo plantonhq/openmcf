@@ -28,7 +28,7 @@ const (
 	NoCleanup             Flag = "no-cleanup"
 	OutputFile            Flag = "output-file"
 	Overlay               Flag = "overlay"
-	ProjectPlantonGitRepo Flag = "project-planton-git-repo"
+	OpenMCFGitRepo Flag = "openmcf-git-repo"
 	ProviderConfig        Flag = "provider-config"
 	Reconfigure           Flag = "reconfigure"
 	Set                   Flag = "set"

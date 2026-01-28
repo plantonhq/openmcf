@@ -1,12 +1,12 @@
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesPostgres
 metadata:
   name: kubernetes-postgres-example
   labels:
-    project-planton.org/provisioner: pulumi
-    pulumi.project-planton.org/organization: organization
-    pulumi.project-planton.org/project: project-planton-examples
-    pulumi.project-planton.org/stack.name: example-env.KubernetesPostgres.kubernetes-postgres-example
+    openmcf.org/provisioner: pulumi
+    pulumi.openmcf.org/organization: organization
+    pulumi.openmcf.org/project: openmcf-examples
+    pulumi.openmcf.org/stack.name: example-env.KubernetesPostgres.kubernetes-postgres-example
 spec:
   namespace:
     value: kubernetes-postgres-example

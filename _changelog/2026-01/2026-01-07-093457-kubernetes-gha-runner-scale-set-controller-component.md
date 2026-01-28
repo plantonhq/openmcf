@@ -16,12 +16,12 @@ Self-hosted GitHub Actions runners on Kubernetes require the Actions Runner Cont
 
 - **Manual Helm Installation**: Users had to manually install the controller via Helm
 - **No Validation**: No schema validation for controller configuration
-- **Inconsistent Interface**: Deploying the controller didn't follow the same declarative pattern as other Project Planton components
+- **Inconsistent Interface**: Deploying the controller didn't follow the same declarative pattern as other OpenMCF components
 - **Scattered Documentation**: Configuration options were spread across Helm chart documentation
 
 ## Solution / What's New
 
-Created a complete deployment component following the Project Planton standard structure:
+Created a complete deployment component following the OpenMCF standard structure:
 
 ### Component Structure
 
@@ -134,7 +134,7 @@ KubernetesGhaRunnerScaleSetController = 843 [(kind_meta) = {
 ## Usage Example
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: KubernetesGhaRunnerScaleSetController
 metadata:
   name: arc-controller
@@ -158,7 +158,7 @@ spec:
 
 Deploy:
 ```bash
-project-planton pulumi up --manifest arc-controller.yaml --stack org/project/env
+openmcf pulumi up --manifest arc-controller.yaml --stack org/project/env
 ```
 
 ## Testing

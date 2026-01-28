@@ -67,7 +67,7 @@ Built a complete CloudflareWorker implementation that automates the entire deplo
    │  • dns.enabled, zone_id, hostname        │
    │  • env.variables                         │
    └──────────┬───────────────────────────────┘
-              │ project-planton pulumi up
+              │ openmcf pulumi up
               ▼
    ┌──────────────────────────────────────────┐
    │  Pulumi CloudflareWorker Module          │
@@ -339,7 +339,7 @@ make publish
 ### Phase 2: Update Manifest
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: git-webhooks-receiver
@@ -378,9 +378,9 @@ export AWS_ACCESS_KEY_ID=<r2-access-key-id>
 export AWS_SECRET_ACCESS_KEY=<r2-secret-access-key>
 
 # Deploy
-export CLOUDFLARE_WORKER_MODULE=~/scm/github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare/cloudflareworker/v1/iac/pulumi
+export CLOUDFLARE_WORKER_MODULE=~/scm/github.com/plantonhq/openmcf/apis/org/openmcf/provider/cloudflare/cloudflareworker/v1/iac/pulumi
 
-project-planton pulumi up \
+openmcf pulumi up \
   --manifest worker.git-webhooks-receiver.yaml \
   --module-dir ${CLOUDFLARE_WORKER_MODULE}
 ```
@@ -699,7 +699,7 @@ Contents:
 ### Example 1: Simple Worker
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: hello-world
@@ -718,7 +718,7 @@ spec:
 ### Example 2: Worker with Custom Domain
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: api-gateway
@@ -749,7 +749,7 @@ spec:
 ### Example 3: Worker with KV Namespace
 
 ```yaml
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: cache-worker
@@ -855,7 +855,7 @@ Cloudflare Workers:
 - ✅ **Bundle Upload**: rclone integration with R2
 - ✅ **Versioning**: Timestamp-based bundle versioning
 - ✅ **Manifest Schema**: YAML with validation
-- ✅ **CLI Integration**: Standard `project-planton pulumi` commands
+- ✅ **CLI Integration**: Standard `openmcf pulumi` commands
 
 ### Documentation
 
@@ -930,7 +930,7 @@ wrangler deploy
 make publish
 
 # 2. Deploy everything
-project-planton pulumi up --manifest worker.yaml
+openmcf pulumi up --manifest worker.yaml
 ```
 
 **Improvement**: 5 manual steps → 2 automated commands
@@ -1046,7 +1046,7 @@ make publish
 
 # 2. Create manifest
 cat > worker.my-worker.yaml <<EOF
-apiVersion: cloudflare.project-planton.org/v1
+apiVersion: cloudflare.openmcf.org/v1
 kind: CloudflareWorker
 metadata:
   name: my-worker
@@ -1068,7 +1068,7 @@ EOF
 export AWS_ACCESS_KEY_ID=<r2-key>
 export AWS_SECRET_ACCESS_KEY=<r2-secret>
 
-project-planton pulumi up --manifest worker.my-worker.yaml --module-dir ${CLOUDFLARE_WORKER_MODULE}
+openmcf pulumi up --manifest worker.my-worker.yaml --module-dir ${CLOUDFLARE_WORKER_MODULE}
 ```
 
 **Benefits**:
@@ -1098,7 +1098,7 @@ project-planton pulumi up --manifest worker.my-worker.yaml --module-dir ${CLOUDF
 
 5. **Deploy**:
    ```bash
-   project-planton pulumi up --manifest worker.my-worker.yaml
+   openmcf pulumi up --manifest worker.my-worker.yaml
    ```
 
 ## Future Enhancements
@@ -1353,7 +1353,7 @@ curl https://git-webhooks.planton.live/health
 
 ```bash
 # Check stack outputs
-project-planton pulumi stack output --manifest worker.git-webhooks-receiver.yaml
+openmcf pulumi stack output --manifest worker.git-webhooks-receiver.yaml
 
 # Expected outputs:
 # script_id: "git-webhooks-receiver"

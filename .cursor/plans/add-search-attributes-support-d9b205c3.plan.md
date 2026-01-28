@@ -84,7 +84,7 @@ message TemporalKubernetesSearchAttribute {
 **Command**:
 
 ```bash
-cd /Users/suresh/scm/github.com/plantonhq/project-planton/apis
+cd /Users/suresh/scm/github.com/plantonhq/openmcf/apis
 make protos
 ```
 
@@ -170,7 +170,7 @@ func mapSearchAttributeType(attrType temporalkubernetesv1.TemporalKubernetesSear
 ### Example: Deploying with Custom Search Attributes
 
 ```yaml
-apiVersion: kubernetes.project-planton.org/v1
+apiVersion: kubernetes.openmcf.org/v1
 kind: TemporalKubernetes
 metadata:
   name: temporal-with-search-attrs

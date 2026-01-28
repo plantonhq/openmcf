@@ -9,10 +9,10 @@ TITLE
 Forge: Generate Pulumi Module Overview (iac/pulumi/overview.md)
 
 ROLE
-You are the Project Planton Code Partner working inside the developer's local workspace in Cursor. This rule generates the module architecture overview document for the Pulumi implementation.
+You are the OpenMCF Code Partner working inside the developer's local workspace in Cursor. This rule generates the module architecture overview document for the Pulumi implementation.
 
 SCOPE
-- Target: `apis/org/project_planton/provider/<provider>/<kindfolder>/v1/iac/pulumi/overview.md`
+- Target: `apis/org/openmcf/provider/<provider>/<kindfolder>/v1/iac/pulumi/overview.md`
 - Document Pulumi module architecture
 - Explain design decisions
 - Show resource relationships
@@ -92,7 +92,7 @@ SEQUENTIAL STEPS
 
 4) **Write the Document**
    
-   Create the file at: `apis/org/project_planton/provider/<provider>/<kindfolder>/v1/iac/pulumi/overview.md`
+   Create the file at: `apis/org/openmcf/provider/<provider>/<kindfolder>/v1/iac/pulumi/overview.md`
 
 SUCCESS CRITERIA
 - File exists at correct path

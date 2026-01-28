@@ -6,7 +6,7 @@ Purpose: author `README.md` and `examples.md` for the Terraform module under `ia
 - `apis/project/planton/provider/<provider>/<kindfolder>/v1/iac/tf/`
 
 ## Files
-- `README.md` — CLI flows using ProjectPlanton tofu with default local backend
+- `README.md` — CLI flows using OpenMCF tofu with default local backend
 - `examples.md` — runnable examples (manifests and CLI flows)
 
 ## Notes

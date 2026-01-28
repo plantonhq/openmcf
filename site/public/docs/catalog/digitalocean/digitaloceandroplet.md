@@ -18,7 +18,7 @@ That's what **DigitalOcean Droplets** provide: Linux-based virtual machines with
 
 Droplets aren't for everyone. If you're building a stateless web API and don't want to think about servers, App Platform is simpler. If you've embraced containers and Kubernetes, DOKS is more aligned. But if you need granular control, want to self-host databases, require custom server configurations, or are migrating from traditional hosting, Droplets are the answer.
 
-The challenge is managing them correctly. A Droplet is not fundamentally different from any other cloud VM—an EC2 instance, a Compute Engine VM, a Linode—but the way you provision, configure, and maintain it determines whether you get a resilient production system or a brittle house of cards. This guide walks through the spectrum of deployment methods, explains what works at scale, and shows how Project Planton abstracts the complexity into a clean, protobuf-defined API.
+The challenge is managing them correctly. A Droplet is not fundamentally different from any other cloud VM—an EC2 instance, a Compute Engine VM, a Linode—but the way you provision, configure, and maintain it determines whether you get a resilient production system or a brittle house of cards. This guide walks through the spectrum of deployment methods, explains what works at scale, and shows how OpenMCF abstracts the complexity into a clean, protobuf-defined API.
 
 ---
 
@@ -571,9 +571,9 @@ tags: [production, api-worker, prod-api-lb, prod-db-fw]
 
 ---
 
-## Project Planton's Approach: Abstraction with Pragmatism
+## OpenMCF's Approach: Abstraction with Pragmatism
 
-Project Planton abstracts DigitalOcean Droplet provisioning behind a clean, protobuf-defined API (`DigitalOceanDroplet`). This provides a consistent interface while respecting DigitalOcean's native idioms.
+OpenMCF abstracts DigitalOcean Droplet provisioning behind a clean, protobuf-defined API (`DigitalOceanDroplet`). This provides a consistent interface while respecting DigitalOcean's native idioms.
 
 ### What We Abstract
 
@@ -606,9 +606,9 @@ The `DigitalOceanDropletSpec` includes the essential 80%:
 
 ### Under the Hood: Pulumi
 
-Project Planton currently uses **Pulumi (Go)** for DigitalOcean Droplet provisioning. Why?
+OpenMCF currently uses **Pulumi (Go)** for DigitalOcean Droplet provisioning. Why?
 
-- **Language consistency:** Pulumi's Go SDK fits naturally with Project Planton's broader multi-cloud orchestration (also Go-based)
+- **Language consistency:** Pulumi's Go SDK fits naturally with OpenMCF's broader multi-cloud orchestration (also Go-based)
 - **Programming flexibility:** Pulumi's programming model makes conditional logic, multi-resource strategies, and custom integrations straightforward
 - **Equivalent coverage:** Pulumi's DigitalOcean provider (bridged from Terraform) supports all Droplet operations we need
 
@@ -634,7 +634,7 @@ That said, Terraform would work equally well for standard provisioning. The choi
 
 8. **Cloud-init is your first-boot automation layer.** Use cloud-config YAML for declarative provisioning. Test in dev before production. Remember the SSH config override gotcha on Ubuntu.
 
-9. **Project Planton abstracts the API** into a clean protobuf spec, making multi-cloud deployments consistent while respecting DigitalOcean's unique characteristics. The API prioritizes the 80% of config that 80% of users need.
+9. **OpenMCF abstracts the API** into a clean protobuf spec, making multi-cloud deployments consistent while respecting DigitalOcean's unique characteristics. The API prioritizes the 80% of config that 80% of users need.
 
 ---
 
@@ -650,5 +650,5 @@ That said, Terraform would work equally well for standard provisioning. The choi
 
 ---
 
-**Bottom Line:** DigitalOcean Droplets give you full control over Linux VMs with predictable pricing and straightforward management. Manage them with Infrastructure-as-Code (Terraform or Pulumi), build golden images with Packer, secure them with VPCs and Cloud Firewalls, and automate initialization with cloud-init. Project Planton makes this simple with a protobuf API that hides complexity while exposing the essential configuration you actually need—nothing more, nothing less.
+**Bottom Line:** DigitalOcean Droplets give you full control over Linux VMs with predictable pricing and straightforward management. Manage them with Infrastructure-as-Code (Terraform or Pulumi), build golden images with Packer, secure them with VPCs and Cloud Firewalls, and automate initialization with cloud-init. OpenMCF makes this simple with a protobuf API that hides complexity while exposing the essential configuration you actually need—nothing more, nothing less.
 

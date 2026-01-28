@@ -53,14 +53,14 @@ export const DocsLayout: React.FC<DocsLayoutProps> = ({ children, author = [], c
             <Link href="/" className="flex items-center gap-2">
               <Image 
                 src="/icon.png" 
-                alt="ProjectPlanton logo" 
+                alt="OpenMCF logo" 
                 width={32} 
                 height={32} 
                 className="h-8 w-auto object-contain" 
               />
               <Image 
                 src="/logo-text.svg" 
-                alt="ProjectPlanton" 
+                alt="OpenMCF" 
                 width={140} 
                 height={36} 
                 className="h-9 w-auto object-contain" 

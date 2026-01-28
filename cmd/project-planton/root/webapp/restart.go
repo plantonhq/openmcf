@@ -10,14 +10,14 @@ import (
 
 var RestartCmd = &cobra.Command{
 	Use:   "restart",
-	Short: "restart the Project Planton web app",
-	Long:  `Restart the Project Planton web app container and all services`,
+	Short: "restart the OpenMCF web app",
+	Long:  `Restart the OpenMCF web app container and all services`,
 	Run:   restartHandler,
 }
 
 func restartHandler(cmd *cobra.Command, args []string) {
 	fmt.Println("========================================")
-	fmt.Println("🔄 Restarting Project Planton Web App")
+	fmt.Println("🔄 Restarting OpenMCF Web App")
 	fmt.Println("========================================")
 	fmt.Println()
 

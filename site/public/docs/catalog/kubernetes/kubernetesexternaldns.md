@@ -14,7 +14,7 @@ For years, managing DNS records for Kubernetes services was a manual chore. Deve
 
 ExternalDNS changed this paradigm. By watching Kubernetes resources (Ingresses, Services, and more) and automatically synchronizing DNS records to external providers like AWS Route53, Google Cloud DNS, Azure DNS, and Cloudflare, it eliminates the manual DNS management loop entirely. You declare your desired DNS name in an annotation or hostname field, and ExternalDNS ensures it exists and points to the right target.
 
-But here's the challenge: ExternalDNS itself needs to be deployed, configured with provider credentials, scoped to appropriate zones, and managed across potentially dozens of clusters spanning multiple cloud providers. This document explores the landscape of ExternalDNS deployment methods, from anti-patterns to production-ready approaches, and explains the design philosophy behind Project Planton's ExternalDNS module.
+But here's the challenge: ExternalDNS itself needs to be deployed, configured with provider credentials, scoped to appropriate zones, and managed across potentially dozens of clusters spanning multiple cloud providers. This document explores the landscape of ExternalDNS deployment methods, from anti-patterns to production-ready approaches, and explains the design philosophy behind OpenMCF's ExternalDNS module.
 
 ## The Maturity Spectrum: From Manual YAML to Production Automation
 
@@ -120,11 +120,11 @@ Across all providers, the production pattern is:
 3. Store any required secrets in Kubernetes Secrets (or external secret managers)
 4. Rotate and audit credentials regularly
 
-Project Planton's API reflects this philosophy: it asks for the zone ID (scoping) and, where applicable, the identity binding (IRSA role ARN, managed identity client ID). Static credentials are not the default path.
+OpenMCF's API reflects this philosophy: it asks for the zone ID (scoping) and, where applicable, the identity binding (IRSA role ARN, managed identity client ID). Static credentials are not the default path.
 
 ## The 80/20 Configuration Principle
 
-ExternalDNS exposes dozens of flags and configuration options, but **most production deployments use a small core subset**. Project Planton's API is designed around these essentials:
+ExternalDNS exposes dozens of flags and configuration options, but **most production deployments use a small core subset**. OpenMCF's API is designed around these essentials:
 
 ### Essential Fields (The 20% That Covers 80%)
 
@@ -157,7 +157,7 @@ These allow version pinning and namespace isolation but have sane defaults.
 
 ### What's Not Exposed (The 80% You Don't Need)
 
-**Policy and Registry:** Project Planton always uses `upsert-only` policy (no accidental deletions) and TXT registry (ownership tracking). These are best practices, not configurable knobs.
+**Policy and Registry:** OpenMCF always uses `upsert-only` policy (no accidental deletions) and TXT registry (ownership tracking). These are best practices, not configurable knobs.
 
 **Domain Filters:** Automatically derived from the zone ID—no need to manually specify domain patterns.
 
@@ -167,7 +167,7 @@ These allow version pinning and namespace isolation but have sane defaults.
 
 **RBAC:** Automatically configured with minimal necessary permissions.
 
-By exposing only the essential fields, Project Planton's API achieves the 80/20 goal: simple for the common case, extensible for edge cases via Helm values.
+By exposing only the essential fields, OpenMCF's API achieves the 80/20 goal: simple for the common case, extensible for edge cases via Helm values.
 
 ## Production Best Practices Baked In
 
@@ -200,9 +200,9 @@ In multi-cluster setups, each cluster runs its own ExternalDNS, scoped to a dist
 
 This prevents cross-cluster interference and limits the blast radius of misconfigurations.
 
-## The Project Planton Approach
+## The OpenMCF Approach
 
-Project Planton's `KubernetesExternalDns` module encapsulates the production patterns described above:
+OpenMCF's `KubernetesExternalDns` module encapsulates the production patterns described above:
 
 **Deployment Method:** Helm (official kubernetes-sigs chart) deployed via Pulumi/Terraform, with GitOps-friendly output.
 
@@ -227,7 +227,7 @@ spec:
     dns_zone_id: my-zone-id
 ```
 
-Project Planton will:
+OpenMCF will:
 - Create a GCP service account with DNS Administrator role
 - Bind it to the ExternalDNS Kubernetes service account via Workload Identity
 - Deploy ExternalDNS with `--provider=google`, `--google-project=my-gcp-project`, `--zone-id-filter=my-zone-id`
@@ -242,7 +242,7 @@ spec:
     # irsa_role_arn_override: <optional-custom-role>
 ```
 
-If `irsa_role_arn_override` is omitted, Project Planton creates an IAM role with a policy scoped to that zone, annotates the service account, and deploys ExternalDNS.
+If `irsa_role_arn_override` is omitted, OpenMCF creates an IAM role with a policy scoped to that zone, annotates the service account, and deploys ExternalDNS.
 
 **Cloudflare:**
 ```yaml
@@ -262,7 +262,7 @@ ExternalDNS transformed Kubernetes DNS from a manual bottleneck to an automated,
 
 The maturity spectrum runs from raw YAML (a learning tool, not a production strategy) to Helm-based deployments orchestrated via GitOps or IaC (the production standard). Cloud-native authentication (IRSA, Workload Identity, Managed Identity) eliminates credential sprawl, and tight zone scoping prevents cross-cluster conflicts.
 
-Project Planton's approach is to **expose the essential 20% of configuration** that covers 80% of real-world deployments, while embedding production best practices (upsert-only policy, TXT ownership, least-privilege RBAC, observability) as non-negotiable defaults. The result is a minimal API surface that's powerful enough for multi-cloud production environments, yet simple enough that a developer can deploy ExternalDNS to a new cluster with just a zone ID and a provider type.
+OpenMCF's approach is to **expose the essential 20% of configuration** that covers 80% of real-world deployments, while embedding production best practices (upsert-only policy, TXT ownership, least-privilege RBAC, observability) as non-negotiable defaults. The result is a minimal API surface that's powerful enough for multi-cloud production environments, yet simple enough that a developer can deploy ExternalDNS to a new cluster with just a zone ID and a provider type.
 
 DNS automation should be invisible infrastructure—reliable, secure, and boring in the best way. This module aims to make it exactly that.
 

@@ -11,7 +11,7 @@ Purpose: run an end-to-end Pulumi update using the local CLI and fix issues as n
 2. pulumi login (local backend): `pulumi login file://$HOME/.pulumi`
 3. pulumi stack select (create if needed): `pulumi stack select <org/project/stack> --create`
 4. Run update via CLI:
-   - `project-planton pulumi update --manifest <path> --stack <org/project/stack> --module-dir <module_dir>`
+   - `openmcf pulumi update --manifest <path> --stack <org/project/stack> --module-dir <module_dir>`
 
 ## Notes
 - Organization for local backend is the `organization` part of the stack name.

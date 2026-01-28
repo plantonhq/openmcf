@@ -65,10 +65,10 @@ This file is responsible for locating and setting up Pulumi module directories. 
 "apis/project/planton/provider"
 
 // AFTER:
-"apis/org/project_planton/provider"
+"apis/org/openmcf/provider"
 ```
 
-**Reason**: The actual repository structure uses `apis/org/project_planton/provider`, not `apis/project/planton/provider`. Without this fix, the system cannot locate Pulumi modules, causing all deployments to fail with "no such file or directory" errors.
+**Reason**: The actual repository structure uses `apis/org/openmcf/provider`, not `apis/project/planton/provider`. Without this fix, the system cannot locate Pulumi modules, causing all deployments to fail with "no such file or directory" errors.
 
 **Impact**: **CRITICAL** - Without this, no Pulumi deployments can succeed.
 
@@ -93,10 +93,10 @@ if version.Version != "" && version.Version != version.DefaultVersion {
 //base directory will always be ${HOME}/.planton-cloud/pulumi
 
 // AFTER:
-//base directory will always be ${HOME}/.project-planton/pulumi
+//base directory will always be ${HOME}/.openmcf/pulumi
 ```
 
-**Reason**: Corrects the comment to reflect the actual workspace directory path used by project-planton (not planton-cloud).
+**Reason**: Corrects the comment to reflect the actual workspace directory path used by openmcf (not planton-cloud).
 
 **Impact**: **LOW** - Documentation only, but important for clarity.
 
@@ -115,10 +115,10 @@ Similar to Pulumi modules, OpenTofu modules also need correct path resolution.
 "apis/project/planton/provider"
 
 // AFTER:
-"apis/org/project_planton/provider"
+"apis/org/openmcf/provider"
 ```
 
-**Reason**: Same as Pulumi - the repository structure uses `apis/org/project_planton/provider`. Without this fix, OpenTofu deployments fail to locate modules.
+**Reason**: Same as Pulumi - the repository structure uses `apis/org/openmcf/provider`. Without this fix, OpenTofu deployments fail to locate modules.
 
 **Impact**: **CRITICAL** - Without this, no OpenTofu deployments can succeed.
 
@@ -514,7 +514,7 @@ Bazel build file that includes the new `user_provider.go` file.
 
 ### Part 3: `apis/org/*` Directory Changes
 
-#### 21. `apis/org/project_planton/provider/aws/awsrdsinstance/v1/iac/pulumi/module/locals.go`
+#### 21. `apis/org/openmcf/provider/aws/awsrdsinstance/v1/iac/pulumi/module/locals.go`
 
 **Why This Change Is Required**:
 
@@ -544,7 +544,7 @@ locals.Labels = map[string]string{
 
 ---
 
-#### 22. `apis/org/project_planton/provider/aws/awsrdsinstance/v1/iac/pulumi/module/instance.go`
+#### 22. `apis/org/openmcf/provider/aws/awsrdsinstance/v1/iac/pulumi/module/instance.go`
 
 **Why This Change Is Required**:
 
@@ -570,7 +570,7 @@ Identifier: pulumi.String(instanceIdentifier),
 
 ---
 
-#### 23. `apis/org/project_planton/provider/aws/awsrdsinstance/v1/iac/pulumi/module/subnet_group.go`
+#### 23. `apis/org/openmcf/provider/aws/awsrdsinstance/v1/iac/pulumi/module/subnet_group.go`
 
 **Why This Change Is Required**:
 
@@ -638,7 +638,7 @@ func sanitizeSubnetGroupName(name string) string {
 
 ---
 
-#### 24. `apis/org/project_planton/provider/aws/awsrdscluster/v1/iac/pulumi/module/subnet_group.go`
+#### 24. `apis/org/openmcf/provider/aws/awsrdscluster/v1/iac/pulumi/module/subnet_group.go`
 
 **Why This Change Is Required**:
 

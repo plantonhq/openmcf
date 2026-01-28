@@ -1,17 +1,17 @@
 version: 2
 
-project_name: project-planton
+project_name: openmcf
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: project-planton
+  - id: openmcf
     main: .
-    binary: project-planton
+    binary: openmcf
     ldflags:
-      - -s -w -X github.com/plantonhq/project-planton/internal/cli/version.Version={{.Tag}}
+      - -s -w -X github.com/plantonhq/openmcf/internal/cli/version.Version={{.Tag}}
     env:
       - CGO_ENABLED=0
     goos:
@@ -38,9 +38,9 @@ checksum:
 release:
   github:
     owner: plantonhq
-    name: project-planton
+    name: openmcf
   header: |
-    ## Project Planton {{ .Tag }}
+    ## OpenMCF {{ .Tag }}
 
     This release includes the CLI, Docker images, website deployment, and pre-built Pulumi module binaries.
 
@@ -53,58 +53,58 @@ release:
 
     ```bash
     brew tap plantonhq/tap
-    brew install project-planton
+    brew install openmcf
     ```
 
     To upgrade:
 
     ```bash
-    brew upgrade project-planton
+    brew upgrade openmcf
     ```
 
     ### macOS (Manual)
 
     ```bash
     # Apple Silicon (M1/M2/M3)
-    curl -LO https://github.com/plantonhq/project-planton/releases/download/{{ .Tag }}/cli_{{ .Version }}_darwin_arm64.tar.gz
+    curl -LO https://github.com/plantonhq/openmcf/releases/download/{{ .Tag }}/cli_{{ .Version }}_darwin_arm64.tar.gz
     tar -xzf cli_{{ .Version }}_darwin_arm64.tar.gz
-    chmod +x project-planton
-    sudo mv project-planton /usr/local/bin/
+    chmod +x openmcf
+    sudo mv openmcf /usr/local/bin/
 
     # Intel
-    curl -LO https://github.com/plantonhq/project-planton/releases/download/{{ .Tag }}/cli_{{ .Version }}_darwin_amd64.tar.gz
+    curl -LO https://github.com/plantonhq/openmcf/releases/download/{{ .Tag }}/cli_{{ .Version }}_darwin_amd64.tar.gz
     tar -xzf cli_{{ .Version }}_darwin_amd64.tar.gz
-    chmod +x project-planton
-    sudo mv project-planton /usr/local/bin/
+    chmod +x openmcf
+    sudo mv openmcf /usr/local/bin/
     ```
 
     ### Linux
 
     ```bash
     # x86_64
-    curl -LO https://github.com/plantonhq/project-planton/releases/download/{{ .Tag }}/cli_{{ .Version }}_linux_amd64.tar.gz
+    curl -LO https://github.com/plantonhq/openmcf/releases/download/{{ .Tag }}/cli_{{ .Version }}_linux_amd64.tar.gz
     tar -xzf cli_{{ .Version }}_linux_amd64.tar.gz
-    chmod +x project-planton
-    sudo mv project-planton /usr/local/bin/
+    chmod +x openmcf
+    sudo mv openmcf /usr/local/bin/
 
     # ARM64
-    curl -LO https://github.com/plantonhq/project-planton/releases/download/{{ .Tag }}/cli_{{ .Version }}_linux_arm64.tar.gz
+    curl -LO https://github.com/plantonhq/openmcf/releases/download/{{ .Tag }}/cli_{{ .Version }}_linux_arm64.tar.gz
     tar -xzf cli_{{ .Version }}_linux_arm64.tar.gz
-    chmod +x project-planton
-    sudo mv project-planton /usr/local/bin/
+    chmod +x openmcf
+    sudo mv openmcf /usr/local/bin/
     ```
 
     ### Windows
 
     ```powershell
     # Download the ZIP file
-    Invoke-WebRequest -Uri "https://github.com/plantonhq/project-planton/releases/download/{{ .Tag }}/cli_{{ .Version }}_windows_amd64.zip" -OutFile "cli.zip"
+    Invoke-WebRequest -Uri "https://github.com/plantonhq/openmcf/releases/download/{{ .Tag }}/cli_{{ .Version }}_windows_amd64.zip" -OutFile "cli.zip"
 
     # Extract
     Expand-Archive -Path "cli.zip" -DestinationPath "."
 
     # Add to PATH or move to a directory in PATH
-    Move-Item -Path "project-planton.exe" -Destination "C:\Windows\System32\"
+    Move-Item -Path "openmcf.exe" -Destination "C:\Windows\System32\"
     ```
 
     ---
@@ -115,10 +115,10 @@ release:
 
     ```bash
     # Pull the image
-    docker pull ghcr.io/plantonhq/project-planton:{{ .Tag }}
+    docker pull ghcr.io/plantonhq/openmcf:{{ .Tag }}
 
     # Or use the latest tag
-    docker pull ghcr.io/plantonhq/project-planton:latest
+    docker pull ghcr.io/plantonhq/openmcf:latest
     ```
 
     ---
@@ -127,7 +127,7 @@ release:
 
     The updated documentation website is available at:
 
-    **https://project-planton.org**
+    **https://openmcf.org**
 
     ---
 
@@ -150,13 +150,13 @@ release:
     # Example: Download the AWS ECS Service module for your platform
 
     # Linux x86-64
-    curl -LO https://github.com/plantonhq/project-planton/releases/download/{{ .Tag }}/pulumi-awsecsservice_linux_amd64.gz
+    curl -LO https://github.com/plantonhq/openmcf/releases/download/{{ .Tag }}/pulumi-awsecsservice_linux_amd64.gz
     gunzip pulumi-awsecsservice_linux_amd64.gz
     chmod +x pulumi-awsecsservice_linux_amd64
     ./pulumi-awsecsservice_linux_amd64
 
     # macOS Apple Silicon (M1/M2/M3)
-    curl -LO https://github.com/plantonhq/project-planton/releases/download/{{ .Tag }}/pulumi-awsecsservice_darwin_arm64.gz
+    curl -LO https://github.com/plantonhq/openmcf/releases/download/{{ .Tag }}/pulumi-awsecsservice_darwin_arm64.gz
     gunzip pulumi-awsecsservice_darwin_arm64.gz
     chmod +x pulumi-awsecsservice_darwin_arm64
     ./pulumi-awsecsservice_darwin_arm64
@@ -181,7 +181,7 @@ release:
     All Terraform modules follow this path pattern:
 
     ```
-    apis/org/project_planton/provider/{provider}/{component}/v1/iac/tf/
+    apis/org/openmcf/provider/{provider}/{component}/v1/iac/tf/
     ```
 
     ### Option 1: Clone and Checkout
@@ -190,21 +190,21 @@ release:
 
     ```bash
     # Clone the repository
-    git clone https://github.com/plantonhq/project-planton.git
-    cd project-planton
+    git clone https://github.com/plantonhq/openmcf.git
+    cd openmcf
 
     # Checkout this release
     git checkout {{ .Tag }}
 
     # Navigate to a Terraform module
     # Example: AWS ECS Service
-    cd apis/org/project_planton/provider/aws/awsecsservice/v1/iac/tf
+    cd apis/org/openmcf/provider/aws/awsecsservice/v1/iac/tf
 
     # Example: GCP GKE Cluster
-    cd apis/org/project_planton/provider/gcp/gcpgkecluster/v1/iac/tf
+    cd apis/org/openmcf/provider/gcp/gcpgkecluster/v1/iac/tf
 
     # Example: Kubernetes Deployment
-    cd apis/org/project_planton/provider/kubernetes/kubernetesdeployment/v1/iac/tf
+    cd apis/org/openmcf/provider/kubernetes/kubernetesdeployment/v1/iac/tf
 
     # Initialize and apply
     terraform init
@@ -219,23 +219,23 @@ release:
     ```hcl
     # AWS ECS Service
     module "awsecsservice" {
-      source = "git::https://github.com/plantonhq/project-planton.git//apis/org/project_planton/provider/aws/awsecsservice/v1/iac/tf?ref={{ .Tag }}"
+      source = "git::https://github.com/plantonhq/openmcf.git//apis/org/openmcf/provider/aws/awsecsservice/v1/iac/tf?ref={{ .Tag }}"
     }
 
     # GCP GKE Cluster
     module "gcpgkecluster" {
-      source = "git::https://github.com/plantonhq/project-planton.git//apis/org/project_planton/provider/gcp/gcpgkecluster/v1/iac/tf?ref={{ .Tag }}"
+      source = "git::https://github.com/plantonhq/openmcf.git//apis/org/openmcf/provider/gcp/gcpgkecluster/v1/iac/tf?ref={{ .Tag }}"
     }
 
     # Azure AKS Cluster
     module "azureakscluster" {
-      source = "git::https://github.com/plantonhq/project-planton.git//apis/org/project_planton/provider/azure/azureakscluster/v1/iac/tf?ref={{ .Tag }}"
+      source = "git::https://github.com/plantonhq/openmcf.git//apis/org/openmcf/provider/azure/azureakscluster/v1/iac/tf?ref={{ .Tag }}"
     }
     ```
 
     ---
 
-    **Full Changelog**: https://github.com/plantonhq/project-planton/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/plantonhq/openmcf/compare/{{ .PreviousTag }}...{{ .Tag }}
 
 changelog:
   use: github
@@ -249,32 +249,32 @@ changelog:
       - Merge branch
 
 homebrew_casks:
-  - name: project-planton
+  - name: openmcf
     repository:
       owner: plantonhq
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    homepage: https://github.com/plantonhq/project-planton
-    description: "Project Planton CLI - Infrastructure as Code made simple"
+    homepage: https://github.com/plantonhq/openmcf
+    description: "OpenMCF CLI - Infrastructure as Code made simple"
     binaries:
-      - project-planton
+      - openmcf
     hooks:
       post:
         install: |
           if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/project-planton"]
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/openmcf"]
           end
     caveats: |
       Installation Complete!
 
-      Project Planton CLI helps you manage infrastructure deployments.
+      OpenMCF CLI helps you manage infrastructure deployments.
 
       Quick Start
 
       1. Check the version:
-         project-planton version
+         openmcf version
 
       2. Get help:
-         project-planton --help
+         openmcf --help
 
-      Documentation: https://github.com/plantonhq/project-planton
+      Documentation: https://github.com/plantonhq/openmcf

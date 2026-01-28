@@ -1,4 +1,4 @@
-# Project Planton Web App
+# OpenMCF Web App
 
 **Status:** 🚧 In Development
 **Started:** November 27, 2025
@@ -9,15 +9,15 @@
 
 ## TL;DR
 
-Building a comprehensive full-stack web application for Project Planton to transform the CLI-only tool into a production-ready product with web interface, backend API layer, and persistent database storage. First working version targeted for CNCF Hyderabad meetup in 2 days, but this is a long-term project that will evolve with the product.
+Building a comprehensive full-stack web application for OpenMCF to transform the CLI-only tool into a production-ready product with web interface, backend API layer, and persistent database storage. First working version targeted for CNCF Hyderabad meetup in 2 days, but this is a long-term project that will evolve with the product.
 
 ---
 
 ## Project Description
 
-Building a comprehensive full-stack web application for Project Planton with frontend UI, backend API layer, and database integration to transform the CLI-only tool into a production-ready product with persistence.
+Building a comprehensive full-stack web application for OpenMCF with frontend UI, backend API layer, and database integration to transform the CLI-only tool into a production-ready product with persistence.
 
-Currently, Project Planton exists as a CLI tool without backend integration or persistence capabilities. All operations are ephemeral and CLI-driven. This project will add:
+Currently, OpenMCF exists as a CLI tool without backend integration or persistence capabilities. All operations are ephemeral and CLI-driven. This project will add:
 
 1. **Web frontend** - Intuitive UI exposing all CLI capabilities
 2. **Backend services** - API layer with persistence
@@ -42,7 +42,7 @@ Transform Planton from a CLI-only tool into a self-contained, production-ready p
 ### Long-Term Vision
 - This is NOT a one-off demo project
 - Architecture designed for production use
-- Will evolve with Project Planton for its lifetime
+- Will evolve with OpenMCF for its lifetime
 - Meetup is first milestone, not final delivery
 
 ---
@@ -82,7 +82,7 @@ Transform Planton from a CLI-only tool into a self-contained, production-ready p
 
 ## Affected Components
 
-1. **Project Planton CLI** (existing Go codebase)
+1. **OpenMCF CLI** (existing Go codebase)
    - Integration with backend
    - Add persistence layer
    - Maintain CLI usability
@@ -113,7 +113,7 @@ Transform Planton from a CLI-only tool into a self-contained, production-ready p
 
 ### For Meetup Milestone (November 29, 2025)
 - ✅ Working web interface accessible in browser
-- ✅ Clear demonstration of Project Planton's value
+- ✅ Clear demonstration of OpenMCF's value
 - ✅ Something attendees can interact with and try
 - ✅ Visual representation of deployment components
 - ✅ Mock data acceptable if backend not fully ready
@@ -224,7 +224,7 @@ Transform Planton from a CLI-only tool into a self-contained, production-ready p
 - Next.js and Go toolchains
 
 ### Internal Dependencies
-- Existing Project Planton CLI codebase
+- Existing OpenMCF CLI codebase
 - CloudResourceKind enum and definitions
 - Deployment component schemas
 - Validation rules from proto definitions
@@ -275,14 +275,14 @@ Transform Planton from a CLI-only tool into a self-contained, production-ready p
 
 ## Related Work and Context
 
-### Project Planton Architecture
+### OpenMCF Architecture
 - Open-source multi-cloud deployment framework
 - 100+ deployment components
 - Protocol Buffers-based APIs
 - Dual IaC support (Pulumi + Terraform)
 
 ### Planton Cloud Reference
-- Commercial platform built on Project Planton
+- Commercial platform built on OpenMCF
 - InfraHub architecture patterns available
 - MongoDB + Neo4j proven in production
 - gRPC-based backend (switching to Connect-RPC)
@@ -290,7 +290,7 @@ Transform Planton from a CLI-only tool into a self-contained, production-ready p
 ### CNCF Hyderabad Meetup Context
 - Speaking opportunity November 29, 2025
 - Platform engineering audience
-- Demo of Project Planton OSS
+- Demo of OpenMCF OSS
 - First public showcase of web interface
 
 ---
@@ -298,7 +298,7 @@ Transform Planton from a CLI-only tool into a self-contained, production-ready p
 ## Special Requirements
 
 ### Code Quality
-- Follow Project Planton Go coding guidelines
+- Follow OpenMCF Go coding guidelines
 - Use Protocol Buffers for all API definitions
 - Maintain feature parity with CLI
 - Comprehensive error handling
@@ -334,7 +334,7 @@ To resume work on this project in any session, simply drag `next-task.md` into t
 ## Project Structure
 
 ```
-_projects/20251127-project-planton-web-app/
+_projects/20251127-openmcf-web-app/
 ├── README.md                      # This file - project overview
 ├── next-task.md                   # Quick resume file (drag into chat)
 ├── tasks/                         # Task management

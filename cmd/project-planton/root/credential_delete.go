@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	credentialv1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1"
-	credentialv1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/credential/v1/credentialv1connect"
+	credentialv1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1"
+	credentialv1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/credential/v1/credentialv1connect"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ func credentialDeleteHandler(cmd *cobra.Command, args []string) {
 	id, _ := cmd.Flags().GetString("id")
 	if id == "" {
 		fmt.Println("Error: --id flag is required. Provide the credential ID")
-		fmt.Println("Usage: project-planton credential:delete --id=<credential-id>")
+		fmt.Println("Usage: openmcf credential:delete --id=<credential-id>")
 		os.Exit(1)
 	}
 

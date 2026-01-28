@@ -16,7 +16,7 @@ That wisdom is now obsolete.
 
 The maturation of the Kubernetes Operator pattern has transformed how we deploy and manage stateful systems. For Solr specifically, the **Apache Solr Operator** represents a production-ready, application-aware control plane that not only makes Solr deployments _possible_ on Kubernetes but actually _superior_ to traditional approaches. The Operator understands Solr's coordination semantics, manages safe rolling updates based on shard replica health, and provides declarative APIs for backups and monitoring—capabilities that manual StatefulSet management could never achieve safely.
 
-This document explains the evolution of Solr deployment methods on Kubernetes, from critical anti-patterns to production-ready operator-based solutions. It maps the landscape of deployment approaches, compares the major tools (Apache Solr Operator vs. Bitnami Helm charts), and explains why Project Planton builds upon the Operator pattern to provide both Day 1 simplicity and Day 2 operational safety.
+This document explains the evolution of Solr deployment methods on Kubernetes, from critical anti-patterns to production-ready operator-based solutions. It maps the landscape of deployment approaches, compares the major tools (Apache Solr Operator vs. Bitnami Helm charts), and explains why OpenMCF builds upon the Operator pattern to provide both Day 1 simplicity and Day 2 operational safety.
 
 ## The Deployment Maturity Spectrum
 
@@ -122,7 +122,7 @@ The choice between deployment tools boils down to a "Managed" (Operator) versus 
 
 Real-world experience highlights a critical distinction: the Bitnami chart is _easier_ to get started with (Day 1), while the Operator is _safer_ and _more powerful_ to operate long-term (Day 2+).
 
-Users optimizing solely for Day 1 simplicity might choose Bitnami. A platform engineering team building production infrastructure must optimize for Day 2 operations—stability, safety, and automated lifecycle management. This is why Project Planton builds upon the Operator model.
+Users optimizing solely for Day 1 simplicity might choose Bitnami. A platform engineering team building production infrastructure must optimize for Day 2 operations—stability, safety, and automated lifecycle management. This is why OpenMCF builds upon the Operator model.
 
 ## Production Zookeeper Integration
 
@@ -170,9 +170,9 @@ There are two primary methods to deploy the external ZK ensemble:
    - Configure the SolrCloud CR to point to the existing ensemble using `spec.zookeeperRef.connectionInfo.externalConnectionString`.
    - **Benefit**: Correct pattern when ZK's lifecycle must be independent of any single Solr cluster—common for large, multi-tenant ZK ensembles shared by many applications (Solr, Kafka, etc.).
 
-## The Project Planton Approach
+## The OpenMCF Approach
 
-Project Planton's `SolrKubernetes` API is designed to provide the Day 1 simplicity of a Helm chart with the Day 2 power and safety of the Apache Solr Operator.
+OpenMCF's `SolrKubernetes` API is designed to provide the Day 1 simplicity of a Helm chart with the Day 2 power and safety of the Apache Solr Operator.
 
 ### The Operator-as-a-Service Model
 
@@ -184,7 +184,7 @@ The `SolrKubernetes` resource is a high-level abstraction that generates and man
 
 ### The 80/20 Configuration Philosophy
 
-Just as Project Planton's APIs focus on the 20% of configuration that 80% of users need, the `SolrKubernetes` API exposes only the essential fields:
+Just as OpenMCF's APIs focus on the 20% of configuration that 80% of users need, the `SolrKubernetes` API exposes only the essential fields:
 
 **Essential Solr Configuration**:
 - `replicas`: The number of Solr nodes (maps to `spec.replicas` in SolrCloud CR)
@@ -353,7 +353,7 @@ The journey from anti-patterns to production-ready Solr deployments on Kubernete
 
 The Apache Solr Operator, as an official Apache project backed by production deployments at some of the largest Solr users, embodies this maturation. It provides the application-aware intelligence necessary to safely manage stateful systems at scale. By combining stable network identities, persistent storage, and sophisticated rolling update logic that understands Solr's coordination semantics, the Operator transforms Kubernetes from a challenging platform for Solr into an ideal one.
 
-Project Planton's `SolrKubernetes` API builds upon this foundation, providing a simplified abstraction that makes the Operator's power accessible without exposing its complexity. This "Operator-as-a-Service" model delivers both the Day 1 simplicity that developers want and the Day 2 operational safety that production environments demand.
+OpenMCF's `SolrKubernetes` API builds upon this foundation, providing a simplified abstraction that makes the Operator's power accessible without exposing its complexity. This "Operator-as-a-Service" model delivers both the Day 1 simplicity that developers want and the Day 2 operational safety that production environments demand.
 
 The result is a deployment approach that is simultaneously simple, powerful, and—most importantly—production-safe.
 

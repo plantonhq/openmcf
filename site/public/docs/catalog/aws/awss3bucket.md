@@ -14,7 +14,7 @@ Amazon S3 is deceptively simple. A bucket is just a container for objects, right
 
 The journey from "let me quickly create a bucket" to "we have a production-grade, compliant storage infrastructure" involves navigating deployment methods that range from dangerous anti-patterns to battle-tested automation. Understanding this spectrum isn't academic—every year, misconfigured S3 buckets expose billions of records because teams treated deployment as a one-time console click rather than managed infrastructure.
 
-This document explains the landscape of S3 deployment approaches, why modern infrastructure-as-code (IaC) has become essential, and how Project Planton abstracts the complexity while preserving production-grade security and flexibility.
+This document explains the landscape of S3 deployment approaches, why modern infrastructure-as-code (IaC) has become essential, and how OpenMCF abstracts the complexity while preserving production-grade security and flexibility.
 
 ## The Deployment Maturity Spectrum
 
@@ -185,7 +185,7 @@ For organizations running Kubernetes-centric infrastructure, managing S3 buckets
 - You want consistent reconciliation across all infrastructure
 - You're willing to invest in operator tooling
 
-**Project Planton perspective:** Most teams are better served by dedicated IaC tools (Terraform, Pulumi, CloudFormation, CDK). Kubernetes operators for cloud resources are niche and best reserved for environments already heavily Kubernetes-centric.
+**OpenMCF perspective:** Most teams are better served by dedicated IaC tools (Terraform, Pulumi, CloudFormation, CDK). Kubernetes operators for cloud resources are niche and best reserved for environments already heavily Kubernetes-centric.
 
 ## Production Essentials: What Every S3 Bucket Needs
 
@@ -309,13 +309,13 @@ Use Storage Lens to continuously optimize your S3 infrastructure.
 
 **Ignoring incomplete multipart uploads:** Failed multipart uploads leave orphaned chunks that consume storage. Always enable the lifecycle rule to abort incomplete uploads after 7 days.
 
-## The Project Planton Approach
+## The OpenMCF Approach
 
-Project Planton's S3 bucket API abstracts deployment complexity while providing production-grade defaults and flexibility.
+OpenMCF's S3 bucket API abstracts deployment complexity while providing production-grade defaults and flexibility.
 
 ### Design Philosophy
 
-**Secure by default:** Every bucket created via Project Planton has Block Public Access enabled, encryption configured (SSE-S3 minimum, SSE-KMS available), and follows least-privilege IAM patterns unless explicitly overridden.
+**Secure by default:** Every bucket created via OpenMCF has Block Public Access enabled, encryption configured (SSE-S3 minimum, SSE-KMS available), and follows least-privilege IAM patterns unless explicitly overridden.
 
 **80/20 configuration:** The API exposes the 20% of S3 settings that 80% of use cases need:
 - Bucket name, region, and basic metadata
@@ -335,14 +335,14 @@ This layered approach means simple use cases (a private bucket for application d
 
 ### Multi-Cloud Consistency
 
-Project Planton uses Terraform (OpenTofu) as the underlying IaC engine for AWS resources. This choice provides:
+OpenMCF uses Terraform (OpenTofu) as the underlying IaC engine for AWS resources. This choice provides:
 - **Multi-cloud portability:** The same workflow and tooling that manage AWS S3 also manage GCP Cloud Storage and Azure Blob Storage, ensuring operational consistency
 - **Battle-tested reliability:** Terraform's AWS provider is mature, widely used, and rapidly updated
 - **Rich ecosystem:** Access to community modules and best practices
 
 ### From API to Infrastructure
 
-When you define an S3 bucket via Project Planton's protobuf API:
+When you define an S3 bucket via OpenMCF's protobuf API:
 
 1. **Validation:** The API validates configuration (bucket name format, region validity, compatible settings like encryption + replication)
 2. **Defaults:** Secure defaults are applied (Block Public Access, encryption, etc.)
@@ -359,9 +359,9 @@ The evolution of S3 deployment mirrors the broader shift from manual infrastruct
 
 Modern infrastructure-as-code—whether Terraform, Pulumi, CloudFormation, or CDK—treats buckets as managed, versioned, auditable infrastructure. This isn't over-engineering; it's recognizing that storage underpins critical systems and deserves the same rigor as application code.
 
-Project Planton builds on this foundation, providing a high-level API that encapsulates years of S3 deployment experience: secure defaults, production-grade features, and the flexibility to handle complex scenarios without sacrificing simplicity for common cases.
+OpenMCF builds on this foundation, providing a high-level API that encapsulates years of S3 deployment experience: secure defaults, production-grade features, and the flexibility to handle complex scenarios without sacrificing simplicity for common cases.
 
-The result: developers declare storage requirements in a consistent, portable API, while Project Planton handles the translation to battle-tested IaC that deploys secure, cost-optimized, resilient S3 infrastructure.
+The result: developers declare storage requirements in a consistent, portable API, while OpenMCF handles the translation to battle-tested IaC that deploys secure, cost-optimized, resilient S3 infrastructure.
 
 ## Further Reading
 
@@ -374,5 +374,5 @@ For deeper dives into specific topics:
 
 ---
 
-**Questions or feedback?** Contribute to [Project Planton on GitHub](https://github.com/plantonhq/project-planton) or reach out via the community channels.
+**Questions or feedback?** Contribute to [OpenMCF on GitHub](https://github.com/plantonhq/openmcf) or reach out via the community channels.
 

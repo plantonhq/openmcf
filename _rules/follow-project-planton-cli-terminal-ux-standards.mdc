@@ -1,12 +1,12 @@
 ---
-description: Terminal UX standards for Project Planton CLI - guiding users towards success
+description: Terminal UX standards for OpenMCF CLI - guiding users towards success
 globs:
   - "cmd/**/*.go"
   - "internal/cli/**/*.go"
 alwaysApply: true
 ---
 
-# Rule: Project Planton CLI Terminal UX Standards
+# Rule: OpenMCF CLI Terminal UX Standards
 
 ## Core Ethos
 

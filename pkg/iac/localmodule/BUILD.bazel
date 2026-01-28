@@ -3,10 +3,10 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "localmodule",
     srcs = ["local_module.go"],
-    importpath = "github.com/plantonhq/project-planton/pkg/iac/localmodule",
+    importpath = "github.com/plantonhq/openmcf/pkg/iac/localmodule",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/org/project_planton/shared",
+        "//apis/org/openmcf/shared",
         "//internal/cli/cliprint",
         "//pkg/crkreflect",
         "//pkg/iac/gitrepo",

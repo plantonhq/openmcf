@@ -1,0 +1,46 @@
+syntax = "proto3";
+package org.openmcf.provider.cloudflare.cloudflarednszone.v1;
+
+import "buf/validate/validate.proto";
+
+// **CloudflareDnsZoneSpec** defines the configuration for creating a Cloudflare DNS Zone.
+// This message includes parameters needed to create and manage a DNS zone on Cloudflare,
+// such as the zone's domain name, account context, and plan level.
+message CloudflareDnsZoneSpec {
+  // The fully qualified domain name of the DNS zone (e.g., "example.com").
+  string zone_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "zone_name"
+      message: "zone_name must be a valid fully qualified domain name"
+      expression: "this.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)$')"
+    }
+  ];
+
+  // The Cloudflare account identifier under which to create the zone.
+  string account_id = 2 [(buf.validate.field).required = true];
+
+  // The subscription plan for the zone (e.g., free, pro, business, enterprise).
+  // Defaults to the Free plan if unspecified.
+  CloudflareDnsZonePlan plan = 3;
+
+  // Indicates if the zone is created in a paused state (DNS-only mode with no security or performance features).
+  // If true, the zone will not receive Cloudflare's proxy/CDN services. Defaults to false.
+  bool paused = 4;
+
+  // If true, new DNS records in this zone will default to being proxied (orange-cloud) through Cloudflare.
+  // Defaults to false.
+  bool default_proxied = 5;
+}
+
+// Available Cloudflare zone plan options.
+enum CloudflareDnsZonePlan {
+  // Free plan (default).
+  FREE = 0;
+  // Pro plan.
+  PRO = 1;
+  // Business plan.
+  BUSINESS = 2;
+  // Enterprise plan.
+  ENTERPRISE = 3;
+}

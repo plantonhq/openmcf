@@ -11,7 +11,7 @@ Purpose: create a minimal top-level `iac/hack/manifest.yaml` for a resource to t
 
 ## Manifest skeleton
 ```yaml
-apiVersion: <provider>.project-planton.org/v1
+apiVersion: <provider>.openmcf.org/v1
 kind: <Kind>
 metadata:
   name: <kindfolder>-demo

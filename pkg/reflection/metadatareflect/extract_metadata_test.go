@@ -3,9 +3,9 @@ package metadatareflect
 import (
 	"testing"
 
-	awss3bucketv1 "github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws/awss3bucket/v1"
+	awss3bucketv1 "github.com/plantonhq/openmcf/apis/org/openmcf/provider/aws/awss3bucket/v1"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared"
 	"google.golang.org/protobuf/proto"
 )
 

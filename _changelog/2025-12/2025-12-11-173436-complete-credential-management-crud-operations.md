@@ -109,14 +109,14 @@ Frontend features:
 
 **Files Added:**
 
-- `cmd/project-planton/root/credential_get.go` - Get command implementation
-- `cmd/project-planton/root/credential_update.go` - Update command implementation
-- `cmd/project-planton/root/credential_delete.go` - Delete command implementation
+- `cmd/openmcf/root/credential_get.go` - Get command implementation
+- `cmd/openmcf/root/credential_update.go` - Update command implementation
+- `cmd/openmcf/root/credential_delete.go` - Delete command implementation
 
 **Files Modified:**
 
-- `cmd/project-planton/root.go` - Command registration (added three new commands)
-- `cmd/project-planton/root/credential_list.go` - Minor updates for consistency
+- `cmd/openmcf/root.go` - Command registration (added three new commands)
+- `cmd/openmcf/root/credential_list.go` - Minor updates for consistency
 
 **Key Implementation Details:**
 
@@ -156,7 +156,7 @@ Frontend features:
 
 **File Modified:**
 
-- `cmd/project-planton/CLI-HELP.md` - Added comprehensive documentation for all three new commands (+397 lines, -5 lines)
+- `cmd/openmcf/CLI-HELP.md` - Added comprehensive documentation for all three new commands (+397 lines, -5 lines)
 
 **Documentation Includes:**
 
@@ -239,13 +239,13 @@ Comprehensive testing was performed covering:
 ### Get Credential Details
 
 ```bash
-project-planton credential:get --id=507f1f77bcf86cd799439011
+openmcf credential:get --id=507f1f77bcf86cd799439011
 ```
 
 ### Update GCP Credential
 
 ```bash
-project-planton credential:update \
+openmcf credential:update \
   --id=507f1f77bcf86cd799439011 \
   --name=updated-gcp-credential \
   --provider=gcp \
@@ -255,7 +255,7 @@ project-planton credential:update \
 ### Update AWS Credential
 
 ```bash
-project-planton credential:update \
+openmcf credential:update \
   --id=507f1f77bcf86cd799439012 \
   --name=updated-aws-credential \
   --provider=aws \
@@ -268,7 +268,7 @@ project-planton credential:update \
 ### Delete Credential
 
 ```bash
-project-planton credential:delete --id=507f1f77bcf86cd799439011
+openmcf credential:delete --id=507f1f77bcf86cd799439011
 ```
 
 ---

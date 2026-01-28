@@ -12,7 +12,7 @@ componentName: "auth0connection"
 
 Auth0 is a leading identity-as-a-service (IDaaS) platform that provides authentication, authorization, and user management capabilities. At the core of Auth0's architecture are **connections** - the bridges between applications and identity sources.
 
-This document provides comprehensive research into Auth0 connections, their configuration landscape, and the rationale behind Project Planton's Auth0Connection deployment component design.
+This document provides comprehensive research into Auth0 connections, their configuration landscape, and the rationale behind OpenMCF's Auth0Connection deployment component design.
 
 ## The Evolution of Identity Management
 
@@ -188,7 +188,7 @@ Programming language-based IaC:
 - `auth0.Connection` - Connection resource
 - Full TypeScript/Go type definitions
 
-## Project Planton's Approach
+## OpenMCF's Approach
 
 ### 80/20 Scoping Decision
 
@@ -321,7 +321,7 @@ For Azure AD, misunderstanding `use_common_endpoint` vs tenant-specific configur
 
 ## Conclusion
 
-Auth0 connections are the fundamental building blocks of identity integration. Project Planton's Auth0Connection component provides a declarative, secure-by-default approach to managing these connections across multiple strategies.
+Auth0 connections are the fundamental building blocks of identity integration. OpenMCF's Auth0Connection component provides a declarative, secure-by-default approach to managing these connections across multiple strategies.
 
 By focusing on the 80% use case while providing comprehensive options for common scenarios, this component enables teams to:
 - Standardize authentication configuration

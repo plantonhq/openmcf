@@ -10,8 +10,8 @@ import (
 	"syscall"
 
 	"connectrpc.com/connect"
-	stackupdatev1 "github.com/plantonhq/project-planton/apis/org/project_planton/app/stackupdate/v1"
-	stackupdatev1connect "github.com/plantonhq/project-planton/apis/org/project_planton/app/stackupdate/v1/stackupdatev1connect"
+	stackupdatev1 "github.com/plantonhq/openmcf/apis/org/openmcf/app/stackupdate/v1"
+	stackupdatev1connect "github.com/plantonhq/openmcf/apis/org/openmcf/app/stackupdate/v1/stackupdatev1connect"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +33,7 @@ func stackUpdateStreamOutputHandler(cmd *cobra.Command, args []string) {
 	stackUpdateID, _ := cmd.Flags().GetString("id")
 	if stackUpdateID == "" {
 		fmt.Println("Error: --id flag is required. Provide the stack-update ID")
-		fmt.Println("Usage: project-planton stack-update:stream-output --id=<stack-update-id>")
+		fmt.Println("Usage: openmcf stack-update:stream-output --id=<stack-update-id>")
 		os.Exit(1)
 	}
 

@@ -83,13 +83,13 @@ Users never need to specify which credential to use - the system figures it out 
 
 ```bash
 # GCP credential
-project-planton credential:create \
+openmcf credential:create \
   --name=my-gcp-prod \
   --provider=gcp \
   --service-account-key=~/gcp-key.json
 
 # AWS credential
-project-planton credential:create \
+openmcf credential:create \
   --name=my-aws-prod \
   --provider=aws \
   --account-id=123456789012 \
@@ -97,7 +97,7 @@ project-planton credential:create \
   --secret-access-key=...
 
 # Azure credential
-project-planton credential:create \
+openmcf credential:create \
   --name=my-azure-prod \
   --provider=azure \
   --client-id=... \
@@ -173,7 +173,7 @@ Resolved seven critical blockers preventing deployments:
 ```yaml
 PULUMI_HOME: /home/appuser/.pulumi
 PULUMI_STATE_DIR: /home/appuser/.pulumi/state
-PULUMI_CONFIG_PASSPHRASE: project-planton-default-passphrase
+PULUMI_CONFIG_PASSPHRASE: openmcf-default-passphrase
 GOPATH: /home/appuser/go
 GOCACHE: /home/appuser/go/cache
 GOTMPDIR: /home/appuser/go/tmp
@@ -209,13 +209,13 @@ None (only modifications)
 - `docker-compose.yml` - Added passphrase, volumes, local build
 
 ### CLI
-- `cmd/project-planton/root/credential_create.go` - New unified command
-- `cmd/project-planton/root.go` - Updated command registration
+- `cmd/openmcf/root/credential_create.go` - New unified command
+- `cmd/openmcf/root.go` - Updated command registration
 
 ## Files Deleted
 
 ### CLI
-- `cmd/project-planton/root/credential_create_gcp.go` - Replaced by unified command
+- `cmd/openmcf/root/credential_create_gcp.go` - Replaced by unified command
 
 ## Key Features Delivered
 
@@ -325,7 +325,7 @@ Adding a new provider (e.g., Cloudflare) requires only:
 **Credential Not Found:**
 ```
 Error: failed to resolve provider credentials: no credential found for provider 'gcp'
-Solution: project-planton credential:create --name=my-gcp --provider=gcp --service-account-key=key.json
+Solution: openmcf credential:create --name=my-gcp --provider=gcp --service-account-key=key.json
 ```
 
 **MongoDB DateTime Panic:**
@@ -390,5 +390,5 @@ Solution:
 **Completion Date:** December 8-9, 2025
 **Status:** ✅ Production Ready
 **Timeline:** 2-day implementation and debugging
-**Location:** `app/backend/internal/service/`, `app/backend/internal/database/`, `cmd/project-planton/root/`
+**Location:** `app/backend/internal/service/`, `app/backend/internal/database/`, `cmd/openmcf/root/`
 

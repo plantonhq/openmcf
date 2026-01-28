@@ -2,7 +2,7 @@
 """
 Deterministic tool: Write multiple Terraform module files under iac/tf for a provider/kind.
 
-Also supports generating variables.tf via the ProjectPlanton CLI and validating with Terraform.
+Also supports generating variables.tf via the OpenMCF CLI and validating with Terraform.
 
 Manifest JSON shape (stdin or file):
 {
@@ -121,7 +121,7 @@ def main() -> int:
     group.add_argument("--stdin", action="store_true", help="Read manifest JSON from STDIN")
     group.add_argument("--manifest-file", help="Path to manifest JSON file")
     parser.add_argument("--make-local", action="store_true", help="Run 'make local' before generating variables.tf")
-    parser.add_argument("--generate-variables", action="store_true", help="Generate variables.tf via ProjectPlanton CLI")
+    parser.add_argument("--generate-variables", action="store_true", help="Generate variables.tf via OpenMCF CLI")
     parser.add_argument("--validate", action="store_true", help="Run terraform init/validate after writing")
     args = parser.parse_args()
 
@@ -181,7 +181,7 @@ def main() -> int:
     if args.generate_variables:
         out_file = os.path.join(base_abs, "variables.tf")
         gen_cmd = [
-            "project-planton",
+            "openmcf",
             "tofu",
             "generate-variables",
             kind_name,

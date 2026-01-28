@@ -11,7 +11,7 @@ This document explains why 24 code changes across `pkg/*`, `pkg/iac/*`, and `api
 
 Without these changes, **all deployments fail** due to 8 fundamental issues:
 
-1. **Incorrect module paths** - Can't find Pulumi modules (`apis/project/planton/provider` → `apis/org/project_planton/provider`)
+1. **Incorrect module paths** - Can't find Pulumi modules (`apis/project/planton/provider` → `apis/org/openmcf/provider`)
 2. **Git checkout failures** - Empty version strings cause fatal errors
 3. **Invalid credential keys** - Stack input uses wrong field names (`awsProviderConfig` → `provider_config`)
 4. **Missing credential handling** - No way to process user credentials from API
@@ -38,7 +38,7 @@ Without these changes, **all deployments fail** due to 8 fundamental issues:
 - `pkg/iac/pulumi/pulumimodule/module_directory.go`
 - `pkg/iac/tofu/tofumodule/module_directory.go`
 
-**Change**: Fix paths from `apis/project/planton/provider` to `apis/org/project_planton/provider`
+**Change**: Fix paths from `apis/project/planton/provider` to `apis/org/openmcf/provider`
 
 **Impact**: CRITICAL - Can't find Pulumi/OpenTofu modules without this
 
@@ -117,8 +117,8 @@ Without these changes, **all deployments fail** due to 8 fundamental issues:
 ### Part 3: `apis/org/*` (3 files)
 
 #### Resource ID Fallback (2 files)
-- `apis/org/project_planton/provider/aws/awsrdsinstance/v1/iac/pulumi/module/locals.go`
-- `apis/org/project_planton/provider/aws/awsrdsinstance/v1/iac/pulumi/module/instance.go`
+- `apis/org/openmcf/provider/aws/awsrdsinstance/v1/iac/pulumi/module/locals.go`
+- `apis/org/openmcf/provider/aws/awsrdsinstance/v1/iac/pulumi/module/instance.go`
 
 **Change**: Use `Metadata.Name` when `Metadata.Id` is empty
 
@@ -127,8 +127,8 @@ Without these changes, **all deployments fail** due to 8 fundamental issues:
 ---
 
 #### Subnet Group Name Sanitization (2 files)
-- `apis/org/project_planton/provider/aws/awsrdsinstance/v1/iac/pulumi/module/subnet_group.go`
-- `apis/org/project_planton/provider/aws/awsrdscluster/v1/iac/pulumi/module/subnet_group.go`
+- `apis/org/openmcf/provider/aws/awsrdsinstance/v1/iac/pulumi/module/subnet_group.go`
+- `apis/org/openmcf/provider/aws/awsrdscluster/v1/iac/pulumi/module/subnet_group.go`
 
 **Change**: Add `sanitizeSubnetGroupName()` function that:
 - Converts to lowercase

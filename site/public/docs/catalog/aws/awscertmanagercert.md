@@ -14,7 +14,7 @@ For years, managing SSL/TLS certificates was a necessary evil—a routine that i
 
 ACM is not just a certificate authority; it's a deeply integrated service that handles provisioning, renewal, and deployment of SSL/TLS certificates for AWS resources like Application Load Balancers, CloudFront distributions, and API Gateway custom domains. Its promise of "set-it-and-forget-it" renewal has made it the default choice for AWS-native applications. However, realizing this promise requires understanding a critical truth: **the method you choose to validate domain ownership determines whether you achieve true automation or inherit a ticking time bomb**.
 
-This document explores the landscape of ACM deployment approaches, from manual console workflows to sophisticated Infrastructure as Code (IaC) patterns. It examines why **DNS validation is non-negotiable** for production systems, how different IaC tools abstract the validation workflow, and the production patterns that separate robust implementations from brittle ones. Most importantly, it explains how Project Planton's `AwsCertManagerCert` resource delivers the simplest possible API while handling the complex orchestration beneath the surface.
+This document explores the landscape of ACM deployment approaches, from manual console workflows to sophisticated Infrastructure as Code (IaC) patterns. It examines why **DNS validation is non-negotiable** for production systems, how different IaC tools abstract the validation workflow, and the production patterns that separate robust implementations from brittle ones. Most importantly, it explains how OpenMCF's `AwsCertManagerCert` resource delivers the simplest possible API while handling the complex orchestration beneath the surface.
 
 ## The Evolution of ACM Deployment: From Console to Code
 
@@ -333,9 +333,9 @@ While ACM's auto-renewal for DNS-validated certificates is highly reliable, it's
 
 3. **Certificate Inventory:** Maintain a centralized inventory of all ACM certificates, their expiration dates, associated resources, and validation methods. This can be automated using AWS Config aggregators or third-party tools.
 
-## Project Planton's Choice: Simplicity Through Intelligent Orchestration
+## OpenMCF's Choice: Simplicity Through Intelligent Orchestration
 
-The `AwsCertManagerCert` resource in Project Planton is designed to deliver the **best user experience** by learning from both the AWS-native and multi-cloud IaC approaches. It aims for CloudFormation/CDK-level simplicity while maintaining the flexibility and transparency that advanced users expect.
+The `AwsCertManagerCert` resource in OpenMCF is designed to deliver the **best user experience** by learning from both the AWS-native and multi-cloud IaC approaches. It aims for CloudFormation/CDK-level simplicity while maintaining the flexibility and transparency that advanced users expect.
 
 ### Design Philosophy
 
@@ -402,7 +402,7 @@ The history of ACM deployment methods reveals a fundamental truth: **automation 
 
 The divide between implicit (AWS-native) and explicit (multi-cloud) IaC approaches is not about which is "better" in an absolute sense. CloudFormation and CDK offer the simplest experience for teams fully committed to AWS. Terraform and Pulumi offer the transparency and flexibility needed for multi-cloud architectures or hybrid DNS scenarios. Both are production-ready when used with the right patterns.
 
-Project Planton's `AwsCertManagerCert` resource synthesizes the best of both worlds: it delivers CloudFormation-level simplicity for the common case (AWS domain in Route 53) while maintaining the transparency and control that advanced users expect. It defaults to the secure path, strongly recommends against anti-patterns, and handles the complex orchestration—CNAME record creation, validation waiting, dependency management—so you don't have to.
+OpenMCF's `AwsCertManagerCert` resource synthesizes the best of both worlds: it delivers CloudFormation-level simplicity for the common case (AWS domain in Route 53) while maintaining the transparency and control that advanced users expect. It defaults to the secure path, strongly recommends against anti-patterns, and handles the complex orchestration—CNAME record creation, validation waiting, dependency management—so you don't have to.
 
 In a world where SSL/TLS certificates are no longer an operational burden but a transparent infrastructure capability, ACM stands out as one of AWS's most successful managed services. When combined with intelligent IaC abstractions, it transforms certificate management from a recurring task into a solved problem.
 

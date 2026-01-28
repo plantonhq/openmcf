@@ -4,37 +4,37 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/project-planton/internal/cli/cliprint"
-	"github.com/plantonhq/project-planton/internal/cli/flag"
-	"github.com/plantonhq/project-planton/internal/cli/iacflags"
-	climanifest "github.com/plantonhq/project-planton/internal/cli/manifest"
-	"github.com/plantonhq/project-planton/internal/manifest"
+	"github.com/plantonhq/openmcf/internal/cli/cliprint"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
+	"github.com/plantonhq/openmcf/internal/cli/iacflags"
+	climanifest "github.com/plantonhq/openmcf/internal/cli/manifest"
+	"github.com/plantonhq/openmcf/internal/manifest"
 	"github.com/spf13/cobra"
 )
 
 var LoadManifest = &cobra.Command{
 	Use:     "load-manifest [manifest-path]",
 	Aliases: []string{"load"},
-	Short:   "load a project-planton manifest from provided path or kustomize",
+	Short:   "load a openmcf manifest from provided path or kustomize",
 	Example: `
 	# Load from clipboard
-	project-planton load --clipboard
-	project-planton load -c
-	project-planton load --clip
-	project-planton load --cb
+	openmcf load --clipboard
+	openmcf load -c
+	openmcf load --clip
+	openmcf load --cb
 
 	# Load from file (positional argument)
-	project-planton load manifest.yaml
+	openmcf load manifest.yaml
 
 	# Load from file (flag)
-	project-planton load -f manifest.yaml
+	openmcf load -f manifest.yaml
 
 	# Load from kustomize
-	project-planton load --kustomize-dir _kustomize --overlay prod
+	openmcf load --kustomize-dir _kustomize --overlay prod
 
 	# Load with overrides
-	project-planton load -f manifest.yaml --set spec.version=v1.2.3
-	project-planton load --clipboard --set spec.replicas=3
+	openmcf load -f manifest.yaml --set spec.version=v1.2.3
+	openmcf load --clipboard --set spec.replicas=3
 	`,
 	Args: cobra.MaximumNArgs(1), // Optional manifest path
 	Run:  loadManifestHandler,

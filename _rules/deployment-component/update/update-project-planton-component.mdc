@@ -10,7 +10,7 @@ This rule updates **existing deployment components** to fix gaps, enhance featur
 
 ## Role
 
-You are the Project Planton Code Partner. This rule orchestrates updates to existing deployment components, ensuring changes maintain consistency with the ideal state defined in `architecture/deployment-component.md`.
+You are the OpenMCF Code Partner. This rule orchestrates updates to existing deployment components, ensuring changes maintain consistency with the ideal state defined in `architecture/deployment-component.md`.
 
 ## When to Use Update
 
@@ -32,7 +32,7 @@ Use update when you need to:
 ### Basic Syntax
 
 ```
-@update-project-planton-component <ComponentName> [--scenario <type>] [--explain "<description>"]
+@update-openmcf-component <ComponentName> [--scenario <type>] [--explain "<description>"]
 ```
 
 ### Update Scenarios
@@ -42,7 +42,7 @@ Use update when you need to:
 **When:** Component is incomplete, audit shows missing items
 
 ```
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
 ```
 
 **What it does:**
@@ -62,12 +62,12 @@ Use update when you need to:
 **When:** You've modified spec.proto and need to propagate changes
 
 ```
-@update-project-planton-component GcpCertManagerCert --scenario proto-changed
+@update-openmcf-component GcpCertManagerCert --scenario proto-changed
 ```
 
 **What it does:**
 1. Regenerates proto stubs: `make protos` (rule 017)
-2. Validates component tests: `go test ./apis/org/project_planton/provider/<provider>/<component>/v1/`
+2. Validates component tests: `go test ./apis/org/openmcf/provider/<provider>/<component>/v1/`
 3. Updates Terraform variables.tf to match spec.proto
 4. Updates examples.md with new fields
 5. Runs build validation: `make build` (rule 018)
@@ -84,7 +84,7 @@ Use update when you need to:
 **When:** You have new research or want to update docs
 
 ```
-@update-project-planton-component PostgresKubernetes --scenario refresh-docs
+@update-openmcf-component PostgresKubernetes --scenario refresh-docs
 ```
 
 **What it does:**
@@ -104,7 +104,7 @@ Use update when you need to:
 **When:** You need to modify Pulumi or Terraform deployment logic
 
 ```
-@update-project-planton-component AwsRdsInstance --scenario update-iac --explain "add multi-AZ support"
+@update-openmcf-component AwsRdsInstance --scenario update-iac --explain "add multi-AZ support"
 ```
 
 **What it does:**
@@ -126,7 +126,7 @@ Use update when you need to:
 **When:** You have a specific problem to fix
 
 ```
-@update-project-planton-component GcpCertManagerCert --explain "examples.md uses deprecated fields, update to match current spec"
+@update-openmcf-component GcpCertManagerCert --explain "examples.md uses deprecated fields, update to match current spec"
 ```
 
 **What it does:**
@@ -146,7 +146,7 @@ Use update when you need to:
 **When:** You're not sure what scenario applies
 
 ```
-@update-project-planton-component MongodbAtlas
+@update-openmcf-component MongodbAtlas
 ```
 
 **What it does:**
@@ -163,7 +163,7 @@ Use update when you need to:
 
 1. Lookup component in `cloud_resource_kind.proto`
 2. Verify component path exists
-3. If not found, suggest using `@forge-project-planton-component` instead
+3. If not found, suggest using `@forge-openmcf-component` instead
 
 ### Step 2: Determine Update Scope
 
@@ -189,7 +189,7 @@ Based on scenario:
 - Identify dependent files that need updating
 - Plan regeneration sequence
 - **Must execute**: `make protos` to regenerate Go stubs
-- **Must execute**: `go test ./apis/org/project_planton/provider/<provider>/<component>/v1/` to validate spec tests
+- **Must execute**: `go test ./apis/org/openmcf/provider/<provider>/<component>/v1/` to validate spec tests
 - **Must execute**: `make build` for complete build validation
 
 **Refresh Docs:**
@@ -232,7 +232,7 @@ For each identified update:
 After all updates, **execute validation commands in sequence**:
 
 1. **If proto files changed**: Run `make protos` to regenerate Go stubs
-2. **Always run component tests**: `go test ./apis/org/project_planton/provider/<provider>/<component>/v1/`
+2. **Always run component tests**: `go test ./apis/org/openmcf/provider/<provider>/<component>/v1/`
    - This validates buf.validate rules in spec.proto
    - Ensures spec_test.go passes with current validation logic
 3. **If Pulumi/Go code changed**: Run `make build` to validate complete build (rule 018)
@@ -254,7 +254,7 @@ Show:
 
 ```
 # First run audit
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 
 # Audit shows 65% complete, missing:
 # - Terraform module
@@ -262,7 +262,7 @@ Show:
 # - Pulumi overview
 
 # Run update to fill gaps
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
 
 # Update executes:
 # - Rule 013-015 (Terraform module)
@@ -280,11 +280,11 @@ Show:
 # bool enable_ssl = 10;
 
 # Propagate changes
-@update-project-planton-component GcpCloudSql --scenario proto-changed
+@update-openmcf-component GcpCloudSql --scenario proto-changed
 
 # Update executes:
 # - make protos (regenerate proto stubs)
-# - go test ./apis/org/project_planton/provider/gcp/gcpcloudsql/v1/ (validate spec tests)
+# - go test ./apis/org/openmcf/provider/gcp/gcpcloudsql/v1/ (validate spec tests)
 # - Update Terraform variables.tf (add enable_ssl variable)
 # - Update examples.md (show enable_ssl usage)
 # - make build (validate complete build)
@@ -297,7 +297,7 @@ Show:
 
 ```
 # Provider released new features, docs are outdated
-@update-project-planton-component AwsRdsInstance --scenario refresh-docs
+@update-openmcf-component AwsRdsInstance --scenario refresh-docs
 
 # Update executes:
 # - Regenerate v1/docs/README.md with latest research
@@ -311,7 +311,7 @@ Show:
 ### Example 4: Add Multi-Region Support
 
 ```
-@update-project-planton-component GcpGkeCluster --scenario update-iac --explain "add support for multi-region clusters with read replicas in different regions"
+@update-openmcf-component GcpGkeCluster --scenario update-iac --explain "add support for multi-region clusters with read replicas in different regions"
 
 # Update executes:
 # - Analyze current Pulumi module
@@ -344,19 +344,19 @@ Provide context for the update:
 ### --dry-run
 Show what would be updated without making changes:
 ```
-@update-project-planton-component MongodbAtlas --scenario fill-gaps --dry-run
+@update-openmcf-component MongodbAtlas --scenario fill-gaps --dry-run
 ```
 
 ### --backup
 Create backup before making changes:
 ```
-@update-project-planton-component GcpCertManagerCert --scenario proto-changed --backup
+@update-openmcf-component GcpCertManagerCert --scenario proto-changed --backup
 ```
 
 ### --resume-from <rule-number>
 Resume from a specific rule (if previous update failed):
 ```
-@update-project-planton-component MongodbAtlas --resume-from 013
+@update-openmcf-component MongodbAtlas --resume-from 013
 ```
 
 ## Error Handling
@@ -385,7 +385,7 @@ If update would overwrite custom changes:
 ### Backup Before Update
 Use `--backup` flag to create backup:
 ```
-apis/org/project_planton/provider/atlas/mongodbatlas/v1/.backup-2025-11-13-143022/
+apis/org/openmcf/provider/atlas/mongodbatlas/v1/.backup-2025-11-13-143022/
 ```
 
 ### Dry-Run Mode
@@ -415,14 +415,14 @@ Update validates after each major change:
 
 **After Proto Changes:**
 1. Run `make protos` from project root to regenerate Go stubs
-2. Run component tests: `go test ./apis/org/project_planton/provider/<provider>/<component>/v1/`
+2. Run component tests: `go test ./apis/org/openmcf/provider/<provider>/<component>/v1/`
    - Validates buf.validate rules in spec.proto are correct
    - Ensures spec_test.go passes with current validation logic
 3. Run `make build` to validate complete build
 
 **After Pulumi/Go Code Changes:**
 1. Run `make build` from project root to validate complete build
-2. Run component tests: `go test ./apis/org/project_planton/provider/<provider>/<component>/v1/`
+2. Run component tests: `go test ./apis/org/openmcf/provider/<provider>/<component>/v1/`
 
 **Always (Final Validation):**
 1. Run full test suite: `make test` to validate all tests pass
@@ -464,7 +464,7 @@ Phase 3: Final Validation
 Before: 65% complete
 After: 98% complete (+33%)
 
-Next step: Run @audit-project-planton-component MongodbAtlas to verify
+Next step: Run @audit-openmcf-component MongodbAtlas to verify
 ```
 
 ## Integration with Other Rules
@@ -472,28 +472,28 @@ Next step: Run @audit-project-planton-component MongodbAtlas to verify
 ### After Audit
 ```
 # Audit identifies gaps
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 
 # Update fills gaps
-@update-project-planton-component MongodbAtlas --scenario fill-gaps
+@update-openmcf-component MongodbAtlas --scenario fill-gaps
 ```
 
 ### Before Audit
 ```
 # Update component
-@update-project-planton-component MongodbAtlas --explain "added multi-region support"
+@update-openmcf-component MongodbAtlas --explain "added multi-region support"
 
 # Verify no regressions
-@audit-project-planton-component MongodbAtlas
+@audit-openmcf-component MongodbAtlas
 ```
 
 ### With Forge
 ```
 # Forge creates baseline (maybe 60-80% complete)
-@forge-project-planton-component NewComponent --provider aws
+@forge-openmcf-component NewComponent --provider aws
 
 # Update fills remaining gaps
-@update-project-planton-component NewComponent --scenario fill-gaps
+@update-openmcf-component NewComponent --scenario fill-gaps
 ```
 
 ## Reference
@@ -501,7 +501,7 @@ Next step: Run @audit-project-planton-component MongodbAtlas to verify
 - **Ideal State:** `architecture/deployment-component.md`
 - **Forge Flow Rules:** `_rules/deployment-component/forge/flow/`
 - **Update README:** `_rules/deployment-component/update/README.md`
-- **Audit Rule:** `_rules/deployment-component/audit/audit-project-planton-component.mdc`
+- **Audit Rule:** `_rules/deployment-component/audit/audit-openmcf-component.mdc`
 
 ## Tips
 
@@ -531,7 +531,7 @@ Next step: Run @audit-project-planton-component MongodbAtlas to verify
 ### "Component not found"
 **Error:** `Component MongodbAtlas not found in cloud_resource_kind.proto`
 
-**Solution:** Check component name spelling, or use `@forge-project-planton-component` to create it.
+**Solution:** Check component name spelling, or use `@forge-openmcf-component` to create it.
 
 ### "No gaps to fill"
 **Error:** `Component is already 100% complete, no updates needed`
@@ -566,21 +566,21 @@ After update completes:
 
 ---
 
-**Ready to update?** Run `@update-project-planton-component <ComponentName>` and follow the prompts!
+**Ready to update?** Run `@update-openmcf-component <ComponentName>` and follow the prompts!
 
 #### Scenario 7: Apply Default Field Option Semantics
 
 **When:** Component has default values in comments but not enforced via proto field options
 
 ```
-@update-project-planton-component KubernetesGhaRunnerScaleSet --scenario apply-default-semantics
+@update-openmcf-component KubernetesGhaRunnerScaleSet --scenario apply-default-semantics
 ```
 
 **What it does:**
 1. Reads spec.proto to identify fields with defaults in comments but missing field options
 2. For each identified field:
    - Adds `optional` keyword
-   - Adds `[(org.project_planton.shared.options.default) = "<value>"]`
+   - Adds `[(org.openmcf.shared.options.default) = "<value>"]`
 3. Regenerates proto stubs: `make protos`
 4. Updates spec_test.go to use pointers for optional fields
 5. Updates IaC module to use getter methods (e.g., `GetFieldName()`)
@@ -593,4 +593,4 @@ After update completes:
 - Fields need proper presence tracking for zero-value handling
 - Custom linter `DEFAULT_REQUIRES_OPTIONAL` would fail on new defaults
 
-**Reference:** See `apis/_rules/apply-project-planton-default-option-semantics.mdc` for detailed process
+**Reference:** See `apis/_rules/apply-openmcf-default-option-semantics.mdc` for detailed process

@@ -40,7 +40,7 @@ def find_repo_root(start_dir: str) -> str:
 
 
 def docs_paths(repo_root: str, provider: str, kind_folder: str) -> Tuple[str, str, str, str]:
-    base_rel = os.path.join("apis", "org", "project_planton", "provider", provider, kind_folder, "v1")
+    base_rel = os.path.join("apis", "org", "openmcf", "provider", provider, kind_folder, "v1")
     readme_rel = os.path.join(base_rel, "README.md")
     examples_rel = os.path.join(base_rel, "examples.md")
     return (

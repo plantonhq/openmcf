@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/atlas"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/auth0"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/aws"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/azure"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/civo"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/cloudflare"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/confluent"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/digitalocean"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/gcp"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/kubernetes"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/openfga"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/provider/snowflake"
-	"github.com/plantonhq/project-planton/apis/org/project_planton/shared/cloudresourcekind"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/atlas"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/auth0"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/aws"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/azure"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/civo"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/cloudflare"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/confluent"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/digitalocean"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/gcp"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/kubernetes"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/openfga"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/provider/snowflake"
+	"github.com/plantonhq/openmcf/apis/org/openmcf/shared/cloudresourcekind"
 )
 
 // ProviderConfigExample returns an example YAML configuration for the given provider.
@@ -173,7 +173,7 @@ func MissingProviderConfigGuidance(result *DetectionResult) string {
 	}
 
 	sb.WriteString("\n  Then run:\n\n")
-	sb.WriteString(fmt.Sprintf("    project-planton plan -f manifest.yaml -p %s\n",
+	sb.WriteString(fmt.Sprintf("    openmcf plan -f manifest.yaml -p %s\n",
 		ProviderConfigFilename(result.Provider)))
 
 	// Add documentation link if available
@@ -189,7 +189,7 @@ func MissingProviderConfigGuidance(result *DetectionResult) string {
 func KindDetectionErrorGuidance() string {
 	return `The manifest must contain valid 'apiVersion' and 'kind' fields:
 
-  apiVersion: gcp.project-planton.org/v1
+  apiVersion: gcp.openmcf.org/v1
   kind: GkeCluster
   metadata:
     name: my-cluster
@@ -201,7 +201,7 @@ Check your manifest file for:
   - Missing or misspelled 'kind'
   - Invalid YAML syntax
 
-For supported resource kinds, see: https://project-planton.org/docs/resources`
+For supported resource kinds, see: https://openmcf.org/docs/resources`
 }
 
 // InvalidProviderConfigGuidance returns a helpful message when provider config is invalid.

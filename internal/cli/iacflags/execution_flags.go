@@ -3,7 +3,7 @@ package iacflags
 import (
 	"os"
 
-	"github.com/plantonhq/project-planton/internal/cli/flag"
+	"github.com/plantonhq/openmcf/internal/cli/flag"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -32,5 +32,5 @@ func AddExecutionFlags(cmd *cobra.Command) {
 		"override resource manifest values using key=value pairs")
 
 	cmd.PersistentFlags().Bool(string(flag.LocalModule), false,
-		"Use the local project-planton repository to derive the module directory")
+		"Use the local openmcf repository to derive the module directory")
 }

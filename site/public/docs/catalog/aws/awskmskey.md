@@ -14,7 +14,7 @@ Encryption keys are invisible until they're not. A misconfigured key policy lock
 
 AWS Key Management Service (KMS) has matured from a simple "encrypt my S3 bucket" checkbox into a sophisticated cryptographic service that integrates with dozens of AWS services. The question isn't whether to use KMS—it's **how to manage KMS keys at scale without creating security gaps or operational landmines**.
 
-This document maps the landscape of AWS KMS deployment methods, from the pitfalls of manual console work to production-ready Infrastructure-as-Code approaches. It explains what Project Planton supports and why, grounded in patterns that teams actually use in production.
+This document maps the landscape of AWS KMS deployment methods, from the pitfalls of manual console work to production-ready Infrastructure-as-Code approaches. It explains what OpenMCF supports and why, grounded in patterns that teams actually use in production.
 
 ## Understanding Customer-Managed vs AWS-Managed Keys
 
@@ -227,7 +227,7 @@ const createEncryptionKey = (name: string, appRole: string) => {
 - Smaller ecosystem compared to Terraform (though growing rapidly)
 - Same replacement behavior for immutable properties as Terraform
 
-**Verdict:** Powerful for complex scenarios requiring loops, conditionals, or tight integration with application code. Project Planton leverages Pulumi's automation libraries under the hood for programmatic deployment.
+**Verdict:** Powerful for complex scenarios requiring loops, conditionals, or tight integration with application code. OpenMCF leverages Pulumi's automation libraries under the hood for programmatic deployment.
 
 ### AWS CloudFormation/CDK: Native AWS Integration
 
@@ -447,9 +447,9 @@ At 500 million operations (high-scale):
 
 At this scale, envelope encryption and data key caching become critical optimizations.
 
-## What Project Planton Supports
+## What OpenMCF Supports
 
-Project Planton's `AwsKmsKey` API focuses on the 80%: the configuration that production teams actually need.
+OpenMCF's `AwsKmsKey` API focuses on the 80%: the configuration that production teams actually need.
 
 **Supported:**
 - Symmetric encryption keys (the default and most common use case)
@@ -464,7 +464,7 @@ Project Planton's `AwsKmsKey` API focuses on the 80%: the configuration that pro
 **Design philosophy:**
 - **Sane defaults**: Rotation enabled, 30-day deletion window, least-privilege policies
 - **Protobuf-defined schemas**: Type-safe configuration that generates Terraform or Pulumi code
-- **Integration with other resources**: Reference KMS keys in RDS, S3, DynamoDB specs; Project Planton handles dependency ordering
+- **Integration with other resources**: Reference KMS keys in RDS, S3, DynamoDB specs; OpenMCF handles dependency ordering
 
 **What's intentionally out of scope (for now):**
 - BYOK (bring your own key material)—complex import workflows better handled manually
@@ -481,7 +481,7 @@ KMS key management has evolved from "click a checkbox in the console" to a criti
 
 The teams that treat KMS keys as infrastructure—defined in code, reviewed in pull requests, deployed through CI/CD—build systems that are both more secure and more maintainable than those that manage keys manually.
 
-Project Planton codifies these patterns, making it straightforward to create production-ready KMS keys with the right defaults, while still allowing customization when needed. The goal is simple: make doing it the right way easier than doing it the wrong way.
+OpenMCF codifies these patterns, making it straightforward to create production-ready KMS keys with the right defaults, while still allowing customization when needed. The goal is simple: make doing it the right way easier than doing it the wrong way.
 
 ---
 
