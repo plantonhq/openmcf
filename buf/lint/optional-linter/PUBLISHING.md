@@ -50,7 +50,7 @@ This updates the `buf.lock` file with the specific commit digest.
 To publish a new version of the plugin:
 
 ```bash
-cd buf/lint/planton
+cd buf/lint/optional-linter
 make publish version=v0.2.0
 ```
 
