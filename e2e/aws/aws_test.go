@@ -182,6 +182,20 @@ func TestAwsLbListenerRule_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awslblistenerrule", "terraform")
 }
 
+func TestAwsLaunchTemplate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awslaunchtemplate", "pulumi")
+}
+func TestAwsLaunchTemplate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awslaunchtemplate", "terraform")
+}
+
+func TestAwsAutoScalingGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsautoscalinggroup", "pulumi")
+}
+func TestAwsAutoScalingGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsautoscalinggroup", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

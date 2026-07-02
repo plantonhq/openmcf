@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "verify",
     srcs = [
+        "autoscaling_group.go",
         "egress_only_internet_gateway.go",
         "elastic_ip.go",
         "elbv2.go",
@@ -12,6 +13,7 @@ go_library(
         "iam_role.go",
         "iam_user.go",
         "internet_gateway.go",
+        "launch_template.go",
         "nat_gateway.go",
         "s3.go",
         "subnet.go",
@@ -22,6 +24,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_aws_aws_sdk_go_v2//aws",
+        "@com_github_aws_aws_sdk_go_v2_service_autoscaling//:autoscaling",
         "@com_github_aws_aws_sdk_go_v2_service_ec2//:ec2",
         "@com_github_aws_aws_sdk_go_v2_service_ec2//types",
         "@com_github_aws_aws_sdk_go_v2_service_elasticloadbalancingv2//:elasticloadbalancingv2",
