@@ -244,10 +244,18 @@ documented exceptions) in the progress output.
     builds as the release builds it. Runs BOTH `go build ./apis/.../v1/...` (recursive, catches
     module/proto errors) and `go build -o /dev/null ./apis/.../v1/iac/pulumi` (non-recursive,
     the release contract -- requires a `package main` at the entrypoint root). Also asserts the
-    entrypoint lives at `iac/pulumi/` root with no `main/` or `entrypoint/` subdir.
+    entrypoint lives at `iac/pulumi/` root with no `main/` or `entrypoint/` subdir, AND that
+    `iac/pulumi/Pulumi.yaml` exists: without the project file `pulumi stack init` fails at
+    deploy time with a misleading "pass the fully qualified name" error, and NO offline check
+    (go build, tofu validate, spec tests) can catch its absence -- only a live run does.
 19. **019-test-validation** - Run `go test -v ./apis/.../v1/` (verify component tests pass)
     - Validates spec_test.go tests all buf.validate rules
     - Ensures validation rules are syntactically and semantically correct
+20. **Site catalog regen** - Run `yarn copy-docs && yarn generate-structure` in `site/`
+    so the new component's catalog page materializes in the built site. The copy script
+    self-cleans provider directories, so stale pages disappear and new ones appear in the
+    same pass. Skipping this leaves the built catalog silently lagging the source --
+    the site build does NOT pick up `catalog-page.md` files on its own.
 
 ## Error Handling
 
@@ -316,8 +324,22 @@ a scenario's `valueFrom` reference to resolve, the referenced kind must be a
 registry prerequisite of the kind under test. Declare a prerequisite only when
 the dependency is genuinely required for the kind to function (a required ref);
 optional refs are exercised through a composed kind that does require them, or
-with literals. Singular AND repeated `StringValueOrRef` fields both resolve, and
-a repeated list can mix literals with references.
+with literals. Singular AND repeated `StringValueOrRef` fields both resolve,
+refs nested inside (repeated) spec messages resolve too, and a repeated list
+can mix literals with references.
+
+**Multi-instance prerequisites.** A prerequisite install profile
+(`e2e/prerequisite.yaml`) may carry multiple `---`-separated documents of the
+kind when real topologies need more than one instance — e.g. a load balancer
+or EKS cluster requires two subnets in different availability zones, so the
+subnet profile publishes a two-AZ pair. Each document deploys as its own
+stack, and its outputs are captured under its own `metadata.name`. Resolution
+is name-aware: a `valueFrom` reference picks the instance whose name it
+addresses; when the name matches no deployed instance but exactly one
+instance of the kind exists, that sole instance is used (so scenario names
+are not coupled to profile names); a name matching none of SEVERAL instances
+fails loudly. A reference's explicit `kind`/`fieldPath` win over the field's
+`default_kind`/`default_kind_field_path` annotations.
 
 ### Tier 1 — Local run (preferred: fast on-machine loop)
 

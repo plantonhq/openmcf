@@ -258,8 +258,11 @@ After all updates, **execute validation commands in sequence**:
 3. **If Pulumi/Go code changed**: Run `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` to validate build (rule 018)
 4. **Always run component tests**: Run `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` to validate tests (rule 019)
 5. **If proto files changed and presets exist**: Verify all preset YAML field names exist in current spec.proto, all StringValueOrRef fields use `value:` wrapper, and apiVersion/kind still match api.proto
-6. Generate update report
-7. Recommend running audit to verify improvements
+6. **If any docs/catalog-page.md changed**: Run `yarn copy-docs && yarn generate-structure`
+   in `site/` so the built catalog reflects the update (the copy script self-cleans
+   provider directories; the site build does NOT pick up doc changes on its own)
+7. Generate update report
+8. Recommend running audit to verify improvements
 
 ### Step 5: Report Results
 
