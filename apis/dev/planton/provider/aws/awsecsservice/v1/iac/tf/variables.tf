@@ -49,7 +49,7 @@ variable "spec" {
       path = optional(string, "")
       hostname = optional(string, "")
       listener_port = number
-      listener_priority = optional(number, 0)
+      listener_priority = optional(number)
       health_check = optional(object({
         protocol = optional(string, "")
         path = optional(string, "")
@@ -60,13 +60,13 @@ variable "spec" {
         unhealthy_threshold = optional(number, 0)
       }))
     }))
-    health_check_grace_period_seconds = optional(number, 0)
+    health_check_grace_period_seconds = optional(number)
     autoscaling = optional(object({
       enabled = optional(bool, false)
       min_tasks = optional(number, 0)
       max_tasks = optional(number, 0)
-      target_cpu_percent = optional(number, 0)
-      target_memory_percent = optional(number, 0)
+      target_cpu_percent = optional(number)
+      target_memory_percent = optional(number)
     }))
   })
 }

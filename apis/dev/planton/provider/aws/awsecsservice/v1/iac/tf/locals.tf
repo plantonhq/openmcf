@@ -63,6 +63,8 @@ locals {
   autoscaling_enabled               = try(var.spec.autoscaling.enabled, false)
   autoscaling_min_tasks             = try(var.spec.autoscaling.min_tasks, 0) > 0 ? var.spec.autoscaling.min_tasks : 1
   autoscaling_max_tasks             = try(var.spec.autoscaling.max_tasks, 0) > 0 ? var.spec.autoscaling.max_tasks : 10
-  autoscaling_target_cpu_percent    = try(var.spec.autoscaling.target_cpu_percent, 0) > 0 ? var.spec.autoscaling.target_cpu_percent : null
-  autoscaling_target_memory_percent = try(var.spec.autoscaling.target_memory_percent, 0) > 0 ? var.spec.autoscaling.target_memory_percent : null
+  # These are proto-optional (no platform default), so the contract delivers
+  # null -- not 0 -- when unset; coalesce guards the comparison.
+  autoscaling_target_cpu_percent    = try(coalesce(var.spec.autoscaling.target_cpu_percent, 0), 0) > 0 ? var.spec.autoscaling.target_cpu_percent : null
+  autoscaling_target_memory_percent = try(coalesce(var.spec.autoscaling.target_memory_percent, 0), 0) > 0 ? var.spec.autoscaling.target_memory_percent : null
 }

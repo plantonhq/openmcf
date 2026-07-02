@@ -22,8 +22,6 @@ variable "spec" {
     delete_protection_enabled = optional(bool, false)
     idle_timeout_seconds = optional(number, 0)
     client_keep_alive_seconds = optional(number, 0)
-    # http2_enabled defaults to null (not false): AWS defaults it to true,
-    # and null keeps the AWS default while an explicit false overrides it.
     http2_enabled = optional(bool)
     waf_fail_open_enabled = optional(bool, false)
     zonal_shift_enabled = optional(bool, false)

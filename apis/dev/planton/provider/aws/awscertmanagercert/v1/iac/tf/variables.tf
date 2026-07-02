@@ -18,6 +18,6 @@ variable "spec" {
     primary_domain_name = string
     alternate_domain_names = optional(list(string), [])
     route53_hosted_zone_id = string
-    validation_method = optional(string, "")
+    validation_method = optional(string)
   })
 }

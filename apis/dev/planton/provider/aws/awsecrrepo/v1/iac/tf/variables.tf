@@ -17,13 +17,13 @@ variable "spec" {
     region = string
     repository_name = string
     image_immutable = optional(bool, false)
-    encryption_type = optional(string, "")
+    encryption_type = optional(string)
     kms_key_id = optional(string, "")
     force_delete = optional(bool, false)
-    scan_on_push = optional(bool, false)
+    scan_on_push = optional(bool)
     lifecycle_policy = optional(object({
-      expire_untagged_after_days = optional(number, 0)
-      max_image_count = optional(number, 0)
+      expire_untagged_after_days = optional(number)
+      max_image_count = optional(number)
     }))
   })
 }

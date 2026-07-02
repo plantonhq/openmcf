@@ -257,6 +257,7 @@ func msgDescToTFObject(md protoreflect.MessageDescriptor, rules map[string]TypeR
 			Name:     caseconverter.ToSnakeCase(fieldName),
 			Type:     valType,
 			Optional: !isRequiredField(f),
+			Presence: f.HasOptionalKeyword(),
 		})
 	}
 
