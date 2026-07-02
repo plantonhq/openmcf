@@ -133,6 +133,21 @@ HANDLING OPTIONAL FIELDS WITH DEFAULTS
   - NO `coalesce()`, `try()`, or conditional default wrappers are needed in `locals.tf`
 - In `locals.tf`, reference defaulted fields directly: `var.spec.field_name` is guaranteed non-null
 - In resource definitions, use the value directly without defensive handling
+
+HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
+- A proto3 `optional` scalar WITHOUT `(options.default)` is a genuine tri-state:
+  unset means "let the cloud default decide" and an explicit zero value (false/0)
+  is a real user choice that must NOT collapse into "unset".
+- The generated contract renders these as `optional(<type>)` with a NULL default
+  (never `optional(bool, false)` / `optional(number, 0)` -- a zero default would
+  silently override the cloud's own default on every resource that omitted the
+  field, and diverge from the Pulumi module's nil-pointer handling).
+- In the module, pass such attributes through null-aware: `var.spec.field` when
+  the provider accepts null directly, or `var.spec.field == null ? null :
+  tostring(var.spec.field)` for the provider's string-typed nullable-bools.
+  NEVER write `field > 0 ? field : null` against a tri-state -- null > 0 is an
+  evaluation error, and it erases an explicit zero. Guard comparisons with
+  `coalesce(field, 0)` when a numeric test is genuinely needed.
 - Example:
   ```hcl
   # CORRECT: Planton guarantees content_type is populated (default: application/octet-stream)
