@@ -341,6 +341,27 @@ are not coupled to profile names); a name matching none of SEVERAL instances
 fails loudly. A reference's explicit `kind`/`fieldPath` win over the field's
 `default_kind`/`default_kind_field_path` annotations.
 
+**Consumer-specific fixture shapes live in the shared profile.** There is
+exactly ONE prerequisite profile per kind, shared by every consumer that
+declares the kind in `prerequisites` — so when consumers need differently
+SHAPED instances (e.g. IAM roles with different trust policies and managed
+policies: an instance-profile role, an EKS control-plane role, an EKS worker
+role), the profile publishes one named document per shape and each consumer's
+scenario references its instance by name. Fixtures must carry everything the
+consumer requires of them (a role fixture attaches its own managed policies),
+because modules never mutate a resource they merely reference — see the
+composition principle in the doctrine. Extra fixture instances deployed for
+other consumers are harmless when the resource is free and fast (IAM roles);
+weigh the cost for expensive kinds.
+
+**Reference field paths must be output-backed.** The E2E resolver (like the
+production flattening it mirrors) resolves `valueFrom` references against the
+referenced instance's captured STACK OUTPUTS — a `field_path` under
+`status.outputs.*` resolves; one under `metadata.*` cannot and fails the
+composed scenario. Design rule, not just a test rule: point every
+`default_kind_field_path` at a stack output. If a kind's natural join key is
+its name, export a `name` output and reference that — never `metadata.name`.
+
 ### Tier 1 — Local run (preferred: fast on-machine loop)
 
 Local credentials live in a gitignored `.env.e2e` at the repo root (ignored via

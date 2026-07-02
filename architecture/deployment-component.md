@@ -125,6 +125,8 @@ A deployment component reaches 90/10 by covering the provider's real surface **w
 
 Each provider's surface is designed **from that provider's own authoritative API and stands on its own merit.** Because every provider is brought to this bar concurrently, another provider's component is never a design reference: mirror the structural *shape* across providers, but derive what a component models -- its resources, fields, decomposition, and depth -- only from the target provider's own API. Users adopt Planton for a world-class experience of the specific cloud they care about, not for multi-cloud breadth, so a design averaged toward a cross-provider lowest common denominator fails the bar.
 
+**A module never mutates a resource it merely references.** When a spec field references another component (an IAM role a cluster assumes, a subnet a fleet launches into), the reference is the entire relationship: the module must not reach into the referenced resource to attach policies, add rules, or otherwise change its configuration. The referenced resource owns its own configuration -- requirements it must satisfy (e.g. a managed policy the consumer's cloud API demands on a role) are expressed on that resource's own spec, stated in the consumer's field comment and docs, and left to fail loudly at the provider when unmet. Side-effect mutation hides the real dependency from the resource graph, silently rewrites nodes the user owns (including ones created outside Planton), and inevitably diverges between engines.
+
 **Completeness Indicators:**
 - ✅ Research document explains landscape and rationale
 - ✅ Proto schema is validated with real-world constraints

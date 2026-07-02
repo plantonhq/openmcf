@@ -114,6 +114,15 @@ SUCCESS CRITERIA
 
 NOTES
 - Generate variables once up-front; derive convenience in `locals.tf`.
+- **Pin the provider as a FLOOR, never a ceiling, and check what the lock
+  resolves.** `required_providers` uses a floor constraint (`>= 5.0.0`), not a
+  tilde pin (`~> 5.0` caps the module at that major forever). A stale
+  `.terraform.lock.hcl` silently freezes the resolved provider even with a
+  floor constraint -- so when adding fields that need a newer provider, run
+  `terraform init -upgrade` and confirm the lock file's resolved version, or
+  `terraform validate` fails with "Unsupported argument" on fields the current
+  provider genuinely has. Keep sibling modules of one provider on the same
+  resolved major so behavior never varies per kind.
 - **The variable contract is only proven by a live run, never by `terraform
   validate`.** `validate` checks the module against itself; it cannot detect a
   `variables.tf` whose types the tfvars pipeline can never satisfy (e.g. labels/
@@ -148,6 +157,12 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   NEVER write `field > 0 ? field : null` against a tri-state -- null > 0 is an
   evaluation error, and it erases an explicit zero. Guard comparisons with
   `coalesce(field, 0)` when a numeric test is genuinely needed.
+- **HCL's `&&` does NOT short-circuit.** `obj != null && obj.attr` evaluates
+  BOTH operands and errors with "Attempt to get attribute from null value"
+  whenever the object is null -- and `terraform validate` cannot catch it
+  (only a run with the attribute pruned does). Null-guard nested-object
+  access with a ternary instead: `obj != null ? obj.attr : false`, or the
+  `for_each = obj != null ? [obj] : []` dynamic-block idiom.
 - Example:
   ```hcl
   # CORRECT: Planton guarantees content_type is populated (default: application/octet-stream)
