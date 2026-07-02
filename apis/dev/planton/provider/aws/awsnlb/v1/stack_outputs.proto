@@ -3,17 +3,17 @@ syntax = "proto3";
 package dev.planton.provider.aws.awsnlb.v1;
 
 // AwsNlbStackOutputs captures observable identifiers from a
-// provisioned Network Load Balancer. These outputs are used by downstream
-// resources (e.g., ECS services registering targets, Route53 alias records,
-// IAM policies) to wire dependencies via StringValueOrRef.
+// provisioned Network Load Balancer, for listeners (which attach by ARN),
+// Route53 alias records, and Global Accelerator endpoints to reference.
 message AwsNlbStackOutputs {
-  // ARN of the Network Load Balancer. Used in IAM policies, CloudWatch
-  // alarms, and as a reference in WAF web ACL associations.
+  // ARN of the Network Load Balancer. The primary handle other resources
+  // reference via status.outputs.load_balancer_arn -- listeners attach
+  // through it, and IAM policies, CloudWatch alarms, and Global Accelerator
+  // endpoints all take this value.
   string load_balancer_arn = 1;
 
-  // Name assigned to the NLB (may include a suffix if the metadata name
-  // exceeds AWS limits). Used for human-readable references and AWS CLI
-  // queries.
+  // Name assigned to the NLB (metadata.name, truncated to the 32-character
+  // AWS limit when necessary), for console URLs and CLI queries.
   string load_balancer_name = 2;
 
   // DNS name automatically assigned by AWS (e.g.,
@@ -24,18 +24,4 @@ message AwsNlbStackOutputs {
   // Route53 hosted zone ID for the NLB's DNS name. Required when creating
   // Route53 alias records that point to this NLB.
   string load_balancer_hosted_zone_id = 4;
-
-  // Map of listener name to listener ARN. The keys correspond to the
-  // name field of each entry in spec.listeners. Downstream resources
-  // can reference specific listener ARNs via valueFrom using
-  // status.outputs.listener_arns.{name}.
-  map<string, string> listener_arns = 5;
-
-  // Map of listener name to target group ARN. The keys correspond to the
-  // name field of each entry in spec.listeners. This is the primary output
-  // used by downstream services (ECS, EKS, auto-scaling groups) to register
-  // targets with the correct target group.
-  //
-  // Example valueFrom: status.outputs.target_group_arns.tcp-443
-  map<string, string> target_group_arns = 6;
 }

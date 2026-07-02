@@ -22,17 +22,17 @@ const (
 )
 
 // AwsNlbStackOutputs captures observable identifiers from a
-// provisioned Network Load Balancer. These outputs are used by downstream
-// resources (e.g., ECS services registering targets, Route53 alias records,
-// IAM policies) to wire dependencies via StringValueOrRef.
+// provisioned Network Load Balancer, for listeners (which attach by ARN),
+// Route53 alias records, and Global Accelerator endpoints to reference.
 type AwsNlbStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// ARN of the Network Load Balancer. Used in IAM policies, CloudWatch
-	// alarms, and as a reference in WAF web ACL associations.
+	// ARN of the Network Load Balancer. The primary handle other resources
+	// reference via status.outputs.load_balancer_arn -- listeners attach
+	// through it, and IAM policies, CloudWatch alarms, and Global Accelerator
+	// endpoints all take this value.
 	LoadBalancerArn string `protobuf:"bytes,1,opt,name=load_balancer_arn,json=loadBalancerArn,proto3" json:"load_balancer_arn,omitempty"`
-	// Name assigned to the NLB (may include a suffix if the metadata name
-	// exceeds AWS limits). Used for human-readable references and AWS CLI
-	// queries.
+	// Name assigned to the NLB (metadata.name, truncated to the 32-character
+	// AWS limit when necessary), for console URLs and CLI queries.
 	LoadBalancerName string `protobuf:"bytes,2,opt,name=load_balancer_name,json=loadBalancerName,proto3" json:"load_balancer_name,omitempty"`
 	// DNS name automatically assigned by AWS (e.g.,
 	// "my-nlb-abc123.elb.us-east-1.amazonaws.com"). Use this to create
@@ -41,20 +41,8 @@ type AwsNlbStackOutputs struct {
 	// Route53 hosted zone ID for the NLB's DNS name. Required when creating
 	// Route53 alias records that point to this NLB.
 	LoadBalancerHostedZoneId string `protobuf:"bytes,4,opt,name=load_balancer_hosted_zone_id,json=loadBalancerHostedZoneId,proto3" json:"load_balancer_hosted_zone_id,omitempty"`
-	// Map of listener name to listener ARN. The keys correspond to the
-	// name field of each entry in spec.listeners. Downstream resources
-	// can reference specific listener ARNs via valueFrom using
-	// status.outputs.listener_arns.{name}.
-	ListenerArns map[string]string `protobuf:"bytes,5,rep,name=listener_arns,json=listenerArns,proto3" json:"listener_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Map of listener name to target group ARN. The keys correspond to the
-	// name field of each entry in spec.listeners. This is the primary output
-	// used by downstream services (ECS, EKS, auto-scaling groups) to register
-	// targets with the correct target group.
-	//
-	// Example valueFrom: status.outputs.target_group_arns.tcp-443
-	TargetGroupArns map[string]string `protobuf:"bytes,6,rep,name=target_group_arns,json=targetGroupArns,proto3" json:"target_group_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *AwsNlbStackOutputs) Reset() {
@@ -115,38 +103,16 @@ func (x *AwsNlbStackOutputs) GetLoadBalancerHostedZoneId() string {
 	return ""
 }
 
-func (x *AwsNlbStackOutputs) GetListenerArns() map[string]string {
-	if x != nil {
-		return x.ListenerArns
-	}
-	return nil
-}
-
-func (x *AwsNlbStackOutputs) GetTargetGroupArns() map[string]string {
-	if x != nil {
-		return x.TargetGroupArns
-	}
-	return nil
-}
-
 var File_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"6dev/planton/provider/aws/awsnlb/v1/stack_outputs.proto\x12\"dev.planton.provider.aws.awsnlb.v1\"\xd0\x04\n" +
+	"6dev/planton/provider/aws/awsnlb/v1/stack_outputs.proto\x12\"dev.planton.provider.aws.awsnlb.v1\"\xe3\x01\n" +
 	"\x12AwsNlbStackOutputs\x12*\n" +
 	"\x11load_balancer_arn\x18\x01 \x01(\tR\x0floadBalancerArn\x12,\n" +
 	"\x12load_balancer_name\x18\x02 \x01(\tR\x10loadBalancerName\x123\n" +
 	"\x16load_balancer_dns_name\x18\x03 \x01(\tR\x13loadBalancerDnsName\x12>\n" +
-	"\x1cload_balancer_hosted_zone_id\x18\x04 \x01(\tR\x18loadBalancerHostedZoneId\x12m\n" +
-	"\rlistener_arns\x18\x05 \x03(\v2H.dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs.ListenerArnsEntryR\flistenerArns\x12w\n" +
-	"\x11target_group_arns\x18\x06 \x03(\v2K.dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs.TargetGroupArnsEntryR\x0ftargetGroupArns\x1a?\n" +
-	"\x11ListenerArnsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
-	"\x14TargetGroupArnsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xb9\x02\n" +
+	"\x1cload_balancer_hosted_zone_id\x18\x04 \x01(\tR\x18loadBalancerHostedZoneIdB\xb9\x02\n" +
 	"&com.dev.planton.provider.aws.awsnlb.v1B\x11StackOutputsProtoP\x01ZMgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnlb/v1;awsnlbv1\xa2\x02\x05DPPAA\xaa\x02\"Dev.Planton.Provider.Aws.Awsnlb.V1\xca\x02\"Dev\\Planton\\Provider\\Aws\\Awsnlb\\V1\xe2\x02.Dev\\Planton\\Provider\\Aws\\Awsnlb\\V1\\GPBMetadata\xea\x02'Dev::Planton::Provider::Aws::Awsnlb::V1b\x06proto3"
 
 var (
@@ -161,20 +127,16 @@ func file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_rawDescGZIP() [
 	return file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_goTypes = []any{
 	(*AwsNlbStackOutputs)(nil), // 0: dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs
-	nil,                        // 1: dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs.ListenerArnsEntry
-	nil,                        // 2: dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs.TargetGroupArnsEntry
 }
 var file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs.listener_arns:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs.ListenerArnsEntry
-	2, // 1: dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs.target_group_arns:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbStackOutputs.TargetGroupArnsEntry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_init() }
@@ -188,7 +150,7 @@ func file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_aws_awsnlb_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

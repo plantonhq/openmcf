@@ -223,6 +223,79 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsAlb: flat scalar outputs from both engines (arn/name/dns
+			// name/hosted zone id) must each land on the StackOutputs proto --
+			// load_balancer_arn is what listeners attach through, and the DNS pair
+			// is what Route53 alias records consume.
+			name: "AwsAlb",
+			kind: cloudresourcekind.CloudResourceKind_AwsAlb,
+			rawOutputs: map[string]interface{}{
+				"load_balancer_arn":            "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/demo/50dc6c495c0c9188",
+				"load_balancer_name":           "demo",
+				"load_balancer_dns_name":       "demo-1234567890.us-west-2.elb.amazonaws.com",
+				"load_balancer_hosted_zone_id": "Z1H1FL5HABSF5",
+			},
+			mustPopulate: []string{
+				"load_balancer_arn", "load_balancer_name",
+				"load_balancer_dns_name", "load_balancer_hosted_zone_id",
+			},
+		},
+		{
+			// AwsNlb: the same four load-balancer scalars as AwsAlb. Guards the
+			// load-balancer-only output shape: the NLB emits no listener or target
+			// group outputs because those are first-class kinds with their own
+			// outputs.
+			name: "AwsNlb",
+			kind: cloudresourcekind.CloudResourceKind_AwsNlb,
+			rawOutputs: map[string]interface{}{
+				"load_balancer_arn":            "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/net/demo/50dc6c495c0c9188",
+				"load_balancer_name":           "demo",
+				"load_balancer_dns_name":       "demo-1234567890.elb.us-west-2.amazonaws.com",
+				"load_balancer_hosted_zone_id": "Z18D5FSROUN65G",
+			},
+			mustPopulate: []string{
+				"load_balancer_arn", "load_balancer_name",
+				"load_balancer_dns_name", "load_balancer_hosted_zone_id",
+			},
+		},
+		{
+			// AwsLbTargetGroup: flat scalar outputs from both engines (arn, the
+			// possibly-truncated name, and the CloudWatch arn_suffix) must each land
+			// on the StackOutputs proto -- target_group_arn is what listener forward
+			// actions, ECS services, and ASG attachments reference.
+			name: "AwsLbTargetGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsLbTargetGroup,
+			rawOutputs: map[string]interface{}{
+				"target_group_arn":  "arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/api/943f017f100becff",
+				"target_group_name": "api",
+				"arn_suffix":        "targetgroup/api/943f017f100becff",
+			},
+			mustPopulate: []string{"target_group_arn", "target_group_name", "arn_suffix"},
+		},
+		{
+			// AwsLbListener: a single flat output -- listener_arn is what listener
+			// rules attach through.
+			name: "AwsLbListener",
+			kind: cloudresourcekind.CloudResourceKind_AwsLbListener,
+			rawOutputs: map[string]interface{}{
+				"listener_arn": "arn:aws:elasticloadbalancing:us-west-2:123456789012:listener/app/demo/50dc6c495c0c9188/f2f7dc8efc522ab2",
+			},
+			mustPopulate: []string{"listener_arn"},
+		},
+		{
+			// AwsLbListenerRule: the rule ARN plus the AWS-assigned priority.
+			// Priority is emitted as a STRING by both engines (Terraform's tostring
+			// and the Pulumi module's strconv conversion) so the shapes stay
+			// byte-identical -- this case guards that contract.
+			name: "AwsLbListenerRule",
+			kind: cloudresourcekind.CloudResourceKind_AwsLbListenerRule,
+			rawOutputs: map[string]interface{}{
+				"rule_arn": "arn:aws:elasticloadbalancing:us-west-2:123456789012:listener-rule/app/demo/50dc6c495c0c9188/f2f7dc8efc522ab2/9683b2d02a6cabee",
+				"priority": "10",
+			},
+			mustPopulate: []string{"rule_arn", "priority"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

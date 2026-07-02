@@ -59,7 +59,8 @@ Layer 4 (dep Zone):  AwsCertManagerCert
 | Security Group | `AwsSecurityGroup` | network | Always | HTTP/HTTPS ingress, all egress |
 | Route 53 Zone | `AwsRoute53Zone` | network | `dnsEnabled` | DNS hosted zone |
 | ACM Certificate | `AwsCertManagerCert` | security | `httpsEnabled` | DNS-validated TLS certificate |
-| ALB | `AwsAlb` | network | Always | Application load balancer with optional DNS and TLS |
+| ALB | `AwsAlb` | network | Always | Application load balancer with optional DNS |
+| ALB Listener(s) | `AwsLbListener` | network | Always | HTTPS + redirect pair when TLS is on; plain HTTP otherwise. Services attach routing rules to these |
 | ECS Cluster | `AwsEcsCluster` | compute | Always | Fargate + Fargate Spot capacity |
 | ECR Repository | `AwsEcrRepo` | compute | Always | Container image registry |
 | IAM Role | `AwsIamRole` | identity | Always | ECS task execution role |

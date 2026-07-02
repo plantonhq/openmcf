@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsalb
+spec:
+  # An Application Load Balancer under live E2E: the harness deploys the
+  # AwsVpc prerequisite and the two-AZ AwsSubnet prerequisite pair (an ALB
+  # requires subnets in at least two availability zones), then runs deploy ->
+  # DescribeLoadBalancers verify -> destroy -> verify-destroyed on both
+  # provisioners. ALB creation takes 2-3 minutes and deletion similar; the
+  # timeout budgets for both plus the prerequisite chain.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

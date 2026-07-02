@@ -98,32 +98,24 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.AwsNlb.api-nlb
 spec:
+  region: us-east-1
   subnetMappings:
     - subnetId:
         valueFrom:
           kind: AwsVpc
           name: prod-vpc
-          field: status.outputs.public_subnets.[0].id
+          fieldPath: status.outputs.public_subnets.[0].id
       allocationId:
         valueFrom:
           kind: AwsElasticIp
           name: nlb-eip-az1
-          field: status.outputs.allocation_id
-  listeners:
-    - name: https
-      port: 443
-      protocol: TLS
-      tlsConfig:
-        certificateArn:
-          valueFrom:
-            kind: AwsCertManagerCert
-            name: api-cert
-            fieldPath: status.outputs.cert_arn
-      targetGroup:
-        port: 8443
-        protocol: TCP
-        targetType: ip
+          fieldPath: status.outputs.allocation_id
 ```
+
+The NLB's ports and TLS material live on separate `AwsLbListener` resources
+that attach to the NLB by ARN, with `AwsLbTargetGroup` resources as the
+destinations — the Elastic IP binding above is purely a placement concern of
+the load balancer itself.
 
 ### BYOIP Pool Allocation
 

@@ -3,6 +3,18 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEcsService
 metadata:
   name: "{{ values.service_name }}"
+  # depends_on the listener (not just the ALB): the service attaches its
+  # routing rule by looking up the ALB's listener on its port, so the
+  # listener must exist before the service deploys. The spec only references
+  # the ALB, which is why this ordering needs an explicit relationship.
+  relationships:
+    - kind: AwsLbListener
+{% if values.httpsEnabled | bool and values.dnsEnabled | bool %}
+      name: "{{ values.env }}-alb-https"
+{% else %}
+      name: "{{ values.env }}-alb-http"
+{% endif %}
+      type: depends_on
 spec:
   region: "{{ values.aws_region }}"
   alb:

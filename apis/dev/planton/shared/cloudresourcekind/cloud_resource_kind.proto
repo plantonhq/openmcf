@@ -107,10 +107,14 @@ enum CloudResourceKind {
   }];
 
   // 200–399: AWS resources
+  // AwsSubnet is a prerequisite because an ALB requires at least two subnets
+  // in different availability zones -- the spec's subnet references must
+  // resolve before the load balancer can be created.
   AwsAlb = 200 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsalb"
+    prerequisites: [AwsSubnet]
   }];
   AwsCertManagerCert = 201 [(kind_meta) = {
     provider: aws
@@ -178,6 +182,15 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "s3bkt"
+  }];
+  // AwsVpc is a prerequisite because a target group's health checks and
+  // target registrations live inside one VPC -- the spec's vpc_id reference
+  // must resolve before the group can be created.
+  AwsLbTargetGroup = 214 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lbtg"
+    prerequisites: [AwsVpc]
   }];
   AwsSecurityGroup = 215 [(kind_meta) = {
     provider: aws
@@ -269,6 +282,28 @@ enum CloudResourceKind {
     id_prefix: "iamip"
     prerequisites: [AwsIamRole]
   }];
+  // AwsAlb and AwsLbTargetGroup are prerequisites because a listener is an
+  // attachment point on a load balancer and its default action almost always
+  // forwards to a target group -- both references must resolve before the
+  // listener can be created.
+  AwsLbListener = 232 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lbl"
+    prerequisites: [
+      AwsAlb,
+      AwsLbTargetGroup
+    ]
+  }];
+  // AwsLbListener is a prerequisite because a rule only exists as an
+  // attachment on a listener -- the listener_arn reference must resolve
+  // before the rule can be created.
+  AwsLbListenerRule = 233 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lblr"
+    prerequisites: [AwsLbListener]
+  }];
   AwsHttpApiGateway = 240 [(kind_meta) = {
     provider: aws
     version: v1
@@ -299,10 +334,14 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsslselc"
   }];
+  // AwsSubnet is a prerequisite because an NLB requires at least one subnet
+  // mapping -- the spec's subnet references must resolve before the load
+  // balancer can be created.
   AwsNlb = 280 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsnlb"
+    prerequisites: [AwsSubnet]
   }];
   AwsElasticIp = 281 [(kind_meta) = {
     provider: aws

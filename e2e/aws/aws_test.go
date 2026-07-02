@@ -145,6 +145,43 @@ func TestAwsIamOidcProvider_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsiamoidcprovider", "terraform")
 }
 
+// --- AWS LB Target Group (routing destination; deploys an AwsVpc prerequisite) ---
+
+func TestAwsLbTargetGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awslbtargetgroup", "pulumi")
+}
+func TestAwsLbTargetGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awslbtargetgroup", "terraform")
+}
+
+// --- AWS ALB (two-AZ placement: deploys the VPC + two-subnet prerequisite pair) ---
+
+func TestAwsAlb_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awsalb", "pulumi") }
+func TestAwsAlb_Terraform(t *testing.T) { runAllScenariosForComponent(t, "awsalb", "terraform") }
+
+// --- AWS NLB (internal single-mapping smoke; deploys the VPC + subnet prerequisites) ---
+
+func TestAwsNlb_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awsnlb", "pulumi") }
+func TestAwsNlb_Terraform(t *testing.T) { runAllScenariosForComponent(t, "awsnlb", "terraform") }
+
+// --- AWS LB Listener (deepest chain: VPC -> subnets -> ALB -> target group -> listener) ---
+
+func TestAwsLbListener_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awslblistener", "pulumi")
+}
+func TestAwsLbListener_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awslblistener", "terraform")
+}
+
+// --- AWS LB Listener Rule (per-service routing; rides the full family chain) ---
+
+func TestAwsLbListenerRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awslblistenerrule", "pulumi")
+}
+func TestAwsLbListenerRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awslblistenerrule", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

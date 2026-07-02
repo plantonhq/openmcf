@@ -1,280 +1,225 @@
-# AWS Network Load Balancer: Architecture and Design Deep-Dive
+# AWS Network Load Balancer: Design and Research Notes
 
-This document provides an architecture-focused research and design reference for the AwsNlb Planton component. It covers Layer 4 load balancing fundamentals, NLB-specific behavior, operational constraints, and production patterns.
+This document is the architecture-focused reference for the AwsNlb component:
+Layer-4 load balancing fundamentals, NLB-specific behavior and constraints,
+and how Planton models the NLB as one of a set of composable ELBv2 kinds.
 
 ---
 
-## Layer 4 vs Layer 7 Load Balancing
-
-### OSI Model Context
-
-Load balancers operate at different layers of the OSI model:
+## Layer 4 vs Layer 7
 
 | Layer | Name | What It Inspects | Examples |
 |-------|------|------------------|----------|
 | **Layer 4** | Transport | IP, port, protocol (TCP/UDP) | NLB, HAProxy (TCP mode) |
 | **Layer 7** | Application | HTTP headers, path, host, body | ALB, Nginx, HAProxy (HTTP mode) |
 
-**NLB is Layer 4**: It forwards connections based solely on destination port and protocol. It does not inspect HTTP headers, paths, or request content. A client connecting to NLB on port 443 gets forwarded to a target's port—the NLB does not care whether the traffic is HTTPS, TLS-wrapped gRPC, or raw TCP.
+**NLB is Layer 4**: it forwards connections based solely on destination port
+and protocol. It does not inspect HTTP headers, paths, or request content. A
+client connecting on port 443 gets forwarded to a target — the NLB does not
+care whether the bytes are HTTPS, TLS-wrapped gRPC, or a proprietary
+protocol.
 
-**ALB is Layer 7**: It parses HTTP/HTTPS and can route based on path (`/api/*`), host (`api.example.com`), headers, or query strings. It supports redirects, fixed responses, and authentication actions.
+The implications shape the whole component model:
 
-### Implications for NLB
-
-- **No path-based routing**: Cannot route `/api` to one target group and `/web` to another. Use a single target group per listener or put an ALB behind the NLB.
-- **No HTTP-level features**: No redirects, no WAF integration at the NLB level, no Lambda targets.
-- **Ultra-low latency**: No HTTP parsing means minimal processing overhead. NLB can handle millions of connections per second with sub-millisecond latency.
-- **Protocol flexibility**: TCP, UDP, TLS, and TCP_UDP. Ideal for databases, game servers, IoT, custom protocols.
+- **No content-based routing**: there is nothing to write a rule against, so
+  `AwsLbListenerRule` does not apply to NLBs. Routing is purely by
+  port/protocol — one listener, one forward.
+- **No HTTP-level features**: no redirects, no fixed responses, no
+  authentication actions, no WAF at the NLB level, no Lambda targets. NLB
+  listeners forward, and AWS rejects every other action type.
+- **Ultra-low latency and flow-based scaling**: no HTTP parsing means minimal
+  overhead; the NLB scales on connection flows (new/active connections), not
+  requests, and handles millions of them.
 
 ---
 
-## Static IP Architecture (EIP Allocation per AZ)
+## How Planton Models It: Composable Kinds
+
+The load balancer carries no routing configuration — that is deliberate, and
+it mirrors how AWS models ELBv2:
+
+- **`AwsNlb`** (this component) owns what is truly load-balancer-wide: node
+  placement with optional static IPs, optional security groups, and traffic
+  distribution behavior.
+- **`AwsLbListener`** attaches by ARN
+  (`status.outputs.load_balancer_arn`) and owns a port, a protocol
+  (`TCP`/`UDP`/`TCP_UDP`/`TLS`), TLS material (certificate, security policy,
+  ALPN) for TLS listeners, and a TCP idle timeout. The action set is
+  forward-only — exactly the split AWS enforces at Layer 4.
+- **`AwsLbTargetGroup`** owns the destination: target type (`instance`,
+  `ip`, `alb`), health checks, deregistration/draining, client-IP
+  preservation, Proxy Protocol v2, and connection termination.
+
+The split matters because the pieces change at different speeds and are
+owned by different teams. The NLB — and the Elastic IPs partners have
+allowlisted against it — is the most static artifact in the request path;
+listeners change with certificates; target groups change with the services
+behind them. TLS termination versus passthrough, health-check tuning, and
+client-IP preservation are all decisions that live on the listener and
+target group, not here.
+
+An NLB with no listeners is a valid intermediate state: provision the load
+balancer, hand its ARN to whoever adds ports.
+
+---
+
+## Static IP Architecture (Subnet Mappings)
 
 ### Why Static IPs Matter
 
-ALBs receive a dynamic DNS name from AWS. The underlying IPs can change during scaling or maintenance. For many use cases—partner allowlisting, firewall rules, legacy integrations, DNS pinning—**static IPs are mandatory**.
-
-### NLB Static IP Model
-
-For **internet-facing** NLBs, you can assign one Elastic IP (EIP) per subnet mapping. Each subnet typically corresponds to one Availability Zone. The result:
-
-- **AZ-1**: NLB node with static public IP `203.0.113.1`
-- **AZ-2**: NLB node with static public IP `203.0.113.2`
-- **AZ-3**: NLB node with static public IP `203.0.113.3` (if you add a third subnet)
-
-These IPs **do not change** across NLB scaling events, instance replacements, or AWS maintenance. Clients can allowlist them permanently.
-
-### Allocation Flow
-
-1. Allocate EIPs (one per AZ) via `ec2 allocate-address` or an AwsElasticIp resource.
-2. In the NLB subnet mapping, set `allocationId` to each EIP's allocation ID.
-3. AWS attaches the EIP to the NLB node in that subnet.
-
-### Internal NLBs: Private IP Pinning
-
-For **internal** NLBs, you can optionally set `privateIpv4Address` per subnet mapping to pin the NLB node to a specific private IP within the subnet's CIDR. When omitted, AWS assigns a private IP automatically. Pinning is useful when downstream systems reference the NLB by IP.
-
----
-
-## Cross-Zone Load Balancing Behavior
-
-### Default: Disabled
-
-Unlike ALB (where cross-zone is always on), NLB **defaults to cross-zone load balancing disabled**. This means:
-
-- Traffic from clients in AZ-1 is routed **only** to targets in AZ-1.
-- If AZ-1 has 2 targets and AZ-2 has 10 targets, AZ-1 targets receive roughly half the traffic from AZ-1 clients, regardless of target count.
-
-### When to Enable
-
-Set `crossZoneLoadBalancingEnabled: true` when:
-
-- Target distribution across AZs is uneven and you want traffic proportional to target capacity.
-- You need consistent per-target traffic distribution regardless of client AZ.
-
-### Cost Consideration
-
-With cross-zone disabled, traffic stays within the same AZ—no cross-AZ data transfer for NLB-to-target traffic. With cross-zone enabled, traffic may flow from an NLB node in AZ-1 to a target in AZ-2, incurring cross-AZ data transfer charges.
-
----
-
-## Client IP Preservation: preserve_client_ip vs proxy_protocol_v2
-
-### The Problem
-
-By default, targets behind an NLB see the NLB's private IP as the source. Applications that need the original client IP (for logging, geo-routing, rate limiting, security) must use one of two mechanisms.
-
-### preserve_client_ip
-
-When enabled, the NLB preserves the client's source IP in the IP header. Targets see the real client IP. This works for:
-
-- **Instance targets**: Enabled by default.
-- **IP targets**: Disabled by default (must be explicitly enabled).
-
-**Limitation**: Only the IP is preserved. Port, protocol, and other connection metadata are not passed.
-
-### proxy_protocol_v2
-
-Proxy Protocol v2 is a header prepended to the connection that carries:
-
-- Source IP and port
-- Destination IP and port
-- VPC endpoint ID (for PrivateLink)
-- Connection metadata
-
-**Requirements**:
-
-- Targets must be configured to **parse** the Proxy Protocol header (e.g., Nginx `proxy_protocol` directive, HAProxy native support).
-- If the target does not expect Proxy Protocol, it will misinterpret the first bytes of the connection as application data and fail.
-
-**Use proxy_protocol_v2 when**: You need full connection metadata (e.g., client port, VPC endpoint ID) or when `preserve_client_ip` alone is insufficient.
-
-**Use preserve_client_ip when**: You only need the client IP and your targets do not support Proxy Protocol.
-
----
-
-## TLS Termination at NLB vs Pass-Through
-
-### TLS Termination (protocol: TLS)
-
-When the listener uses `protocol: TLS` with a `tls` configuration:
-
-1. Client connects to NLB with TLS (e.g., TLS 1.2/1.3).
-2. NLB terminates TLS using the ACM certificate.
-3. NLB forwards **plaintext TCP** to targets.
-
-**Benefits**: Offload certificate management and TLS decryption from application servers. Targets receive simple TCP.
-
-**Target protocol**: Typically `TCP` (plaintext). The target group protocol is the NLB-to-target protocol, not the client-to-NLB protocol.
-
-### Pass-Through (protocol: TCP)
-
-When the listener uses `protocol: TCP`:
-
-1. Client connects with raw TCP (or TLS inside TCP—NLB does not inspect).
-2. NLB forwards bytes unchanged to targets.
-3. Targets must handle TLS termination themselves if the client uses TLS.
-
-**Use pass-through when**: You need end-to-end encryption (client to target) or the target requires the original TLS connection (e.g., for client certificates, mutual TLS).
-
----
-
-## Health Check Model (TCP vs HTTP/HTTPS)
-
-### TCP Health Checks (Default)
-
-- NLB attempts a TCP connection to the target port.
-- If the connection succeeds, the target is healthy.
-- **Does not verify** application logic—a frozen app can still accept TCP connections.
-
-### HTTP/HTTPS Health Checks
-
-- NLB sends an HTTP GET to the specified `path`.
-- Checks the response status code against `matcher` (e.g., `200-399`).
-- **Verifies** that the application responds correctly.
-
-**When to use HTTP/HTTPS**: For application-level health. A dedicated `/healthz` or `/api/health` endpoint that checks DB connectivity, cache, and dependencies is more reliable than TCP-only.
-
-**NLB constraint**: For NLB target groups, `unhealthy_threshold` must equal `healthy_threshold` (unlike ALB). The Planton IaC modules enforce this.
-
----
-
-## NLB Scaling Behavior (Flow-Based, Not Request-Based)
-
-### Flow-Based Scaling
-
-NLB scales based on **connection flows** (new connections per second, active connections), not HTTP requests. A single long-lived connection (e.g., WebSocket, gRPC stream, database connection) counts as one flow regardless of how many messages are exchanged.
-
-### Implications
-
-- **Long-lived connections**: NLB handles them efficiently. No per-request overhead.
-- **Short-lived, high-request workloads**: If each HTTP request is a new connection, NLB scales with connection rate. For HTTP/1.1 with connection reuse, fewer flows.
-- **UDP**: Each UDP "flow" is identified by 5-tuple (source IP, source port, dest IP, dest port, protocol). Stateless; no connection tracking in the traditional sense.
-
----
-
-## Security Group Behavior (Optional, Can't Remove Once Added)
-
-### Optional for NLB
-
-Unlike ALB (where security groups are effectively required to control traffic), NLB can run **without** security groups. When omitted, the NLB accepts all traffic on configured listener ports. This is useful for:
-
-- Internal NLBs where the VPC network ACLs and routing provide sufficient isolation.
-- Simplifying configuration when the NLB is in a trusted network segment.
-
-### Immutable Once Added
-
-**Critical constraint**: Once you attach security groups to an NLB, you **cannot remove all of them**. At least one security group must remain. You can replace one SG with another, but you cannot go back to "no security groups."
-
-**Planning**: If you might want to run without SGs initially, do not add them. Add SGs only when you are committed to using them long-term.
-
----
-
-## Subnet Mapping Constraints (Can Only Add, Not Remove)
+ALBs expose only a dynamic DNS name; the underlying addresses change with
+scaling and maintenance. For partner allowlisting, firewall rules, legacy
+integrations, and DNS pinning, **static IPs are a hard requirement** — and
+they are the primary reason architectures choose NLB.
+
+### The Model
+
+`subnetMappings` is the placement primitive: each mapping pins one NLB node
+to a subnet (one per Availability Zone), and optionally assigns it a static
+address:
+
+- **Internet-facing**: set `allocationId` per mapping — an Elastic IP,
+  typically referenced from an `AwsElasticIp` resource via `valueFrom`
+  (`status.outputs.allocation_id`). The node's public IP then survives every
+  scaling event, instance replacement, and AWS maintenance window. At most
+  one Elastic IP per mapping.
+- **Internal**: optionally set `privateIpv4Address` per mapping to pin the
+  node to a specific address inside the subnet's CIDR — useful when
+  downstream systems reference the NLB by IP. When omitted, AWS assigns one.
+
+At least one mapping is required; AWS recommends two or more for zonal
+redundancy.
 
 ### Add-Only Semantics
 
-AWS allows **adding** subnet mappings to an NLB but **does not support removing** them. If you initially deploy with subnets in AZ-1 and AZ-2, you can add AZ-3 later. You cannot remove AZ-1 or AZ-2.
-
-**Planning**: Start with the minimum set of subnets you need. Prefer two for HA; add more only when you are sure you need them.
-
----
-
-## Connection Draining and Deregistration
-
-### deregistration_delay_seconds
-
-When a target is deregistered (e.g., during a deployment or scale-in), the NLB waits this many seconds before fully removing it. During this period:
-
-- **In-flight connections** are allowed to complete.
-- **New connections** are not sent to the draining target.
-
-**Default**: 300 seconds. For long-lived connections (WebSocket, gRPC, DB), ensure your application's graceful shutdown period is **less than** this delay so connections can drain before the target is terminated.
-
-### connection_termination
-
-When enabled, the NLB **actively closes** connections to deregistered targets when the deregistration delay expires, instead of waiting for the client to close. Use this for:
-
-- Long-lived connections that may not close naturally.
-- Faster, predictable cleanup during deployments.
+AWS allows **adding** subnet mappings to an existing NLB but not removing
+them. Start with the minimum set you need and add AZs deliberately —
+retreating from one means replacing the load balancer.
 
 ---
 
-## DNS and Alias Record Patterns
+## Traffic Distribution
 
-### NLB DNS Name
+### Cross-Zone Load Balancing
 
-AWS assigns a DNS name like `my-nlb-abc123.elb.us-east-1.amazonaws.com`. This name resolves to the NLB's IPs (one per AZ). The exact IPs can change for internet-facing NLBs **without** Elastic IPs; with Elastic IPs, the resolved IPs are stable.
+Unlike ALB (always on), NLB **defaults cross-zone distribution off**, and the
+spec keeps it an explicit opt-in (`crossZoneLoadBalancingEnabled`) because it
+is a real cost decision: with cross-zone off, NLB-to-target traffic stays
+inside each AZ and costs nothing extra; with it on, an NLB node in AZ-1 may
+forward to a target in AZ-2 and the inter-AZ transfer is billed. Enable it
+when target distribution across AZs is uneven and per-target balance matters
+more than the transfer cost.
 
-### Route53 Alias Records
+### DNS Client Routing Policy
 
-When `dns.enabled` is true, Planton creates Route53 **alias** A records pointing your hostnames to the NLB's DNS name. Alias records:
+`dnsRecordClientRoutingPolicy` controls how the NLB's DNS name resolves for
+clients across AZs:
 
-- Work at the zone apex (e.g., `example.com`), unlike CNAME.
-- Have no charge for alias queries.
-- Can evaluate target health when configured.
+- **`any_availability_zone`** (default): clients may be routed to any AZ —
+  maximum spillover capacity.
+- **`availability_zone_affinity`**: clients resolve to the node in their
+  resolver's AZ — lowest latency and cross-zone traffic, best when targets
+  are evenly distributed.
+- **`partial_availability_zone_affinity`**: 85% of queries stay in the
+  resolver's AZ, 15% spill elsewhere — a hedge between the two.
 
-### dns_record_client_routing_policy
+### Zonal Shift
 
-Controls how DNS resolvers route clients to NLB nodes:
-
-- **any_availability_zone** (default): Client may reach any AZ. Best for general use.
-- **availability_zone_affinity**: Client is routed to the AZ of the resolver. Reduces cross-zone traffic; best when targets are evenly distributed.
-- **partial_availability_zone_affinity**: 85% stay in resolver's AZ, 15% spill over. Balances affinity with availability.
+`zonalShiftEnabled` allows Amazon Application Recovery Controller to shift
+this NLB's traffic away from an impaired Availability Zone without a deploy —
+cheap insurance for multi-AZ deployments.
 
 ---
 
-## NLB-in-Front-of-ALB Pattern
+## Security Groups: Optional, and a One-Way Door
 
-### Architecture
+Unlike ALB (where security groups are effectively required), an NLB can run
+**without** security groups, accepting all traffic on its listener ports.
+That is a reasonable posture for internal NLBs in trusted network segments
+where NACLs and routing provide isolation.
+
+The critical constraint: **once security groups are attached, they can never
+be fully removed** — at least one must remain for the life of the load
+balancer. You can swap groups, never retreat to "none". Attach groups only
+when committed to operating them long-term; the decision is effectively
+create-time.
+
+### PrivateLink Enforcement
+
+`enforceSecurityGroupInboundRulesOnPrivateLinkTraffic` (`on`/`off`) decides
+whether inbound security-group rules are evaluated for traffic arriving
+through PrivateLink VPC endpoints. AWS defaults it to `on` for NLBs created
+with security groups. Set `off` when the endpoint service should admit any
+consumer the endpoint policy allows, regardless of the NLB's own group
+rules; keep `on` for defense in depth when exposing services via
+PrivateLink. It is only meaningful when security groups are attached.
+
+---
+
+## Observability: TLS-Only Access Logs
+
+NLB access logs (`accessLogs`, delivered to S3) capture **TLS-listener
+traffic only** — an AWS limitation, not a component choice. Plain TCP and
+UDP flows are never logged; if you need flow-level visibility for those,
+VPC Flow Logs are the tool. As with the ALB, presence of the block implies
+enabled, and the bucket must carry the regional ELB log-delivery bucket
+policy — delivery fails silently otherwise.
+
+---
+
+## DNS and Alias Records
+
+AWS assigns a DNS name like `edge-nlb-abc123.elb.us-west-2.amazonaws.com`,
+resolving to one address per AZ; with Elastic IPs those addresses are stable.
+When `dns.enabled` is true, the component creates Route53 **alias** A records
+pointing each hostname at the NLB. Alias records rather than CNAMEs because
+they work at the zone apex, cost nothing per query, and inherit the NLB's
+health. Both engines create the records with
+`evaluate_target_health = false`: target-health evaluation only changes
+behavior under failover/weighted routing policies, and a simple alias should
+not pay for health evaluation.
+
+---
+
+## Naming and Lifecycle
+
+The NLB name comes from `metadata.name`; AWS caps load balancer names at 32
+characters and both IaC modules truncate deterministically, reporting the
+final name in the `load_balancer_name` output. The scheme (`internal`) is
+immutable — changing it replaces the load balancer. Most other attributes
+update in place. `deleteProtectionEnabled` is recommended for production for
+two reasons: deleting an NLB silently orphans every listener attached to it,
+and any Elastic IPs pinned to it start billing as unattached addresses.
+
+---
+
+## The NLB-in-Front-of-ALB Pattern
 
 ```
-Internet → NLB (static IPs, Layer 4) → ALB (Layer 7 routing) → Targets
+Internet → NLB (static IPs, Layer 4) → ALB (Layer 7 routing) → services
 ```
 
-### How It Works
+When an architecture needs both static IPs and content-based routing,
+compose the two: an `AwsNlb` with Elastic IPs, an `AwsLbListener` on the NLB
+forwarding to an `AwsLbTargetGroup` with `targetType: alb` whose registered
+target is the ALB, and the usual listener/rule/target-group graph on the
+`AwsAlb` behind it. Every hop in that chain is an explicit reference between
+components.
 
-1. Create an NLB with static Elastic IPs per AZ.
-2. Create an ALB with listeners and target groups as usual.
-3. Create an NLB target group with `targetType: alb`.
-4. Register the ALB as a target of the NLB target group.
-5. Clients connect to NLB's static IPs; NLB forwards to ALB; ALB performs path/host-based routing.
+---
 
-### Use Cases
+## Deliberate Scoping Omissions
 
-- **Static IP + Layer 7 routing**: Partners need allowlisted IPs, but you also need path-based routing, WAF, or Lambda targets.
-- **Hybrid entry point**: Single NLB with static IPs fronting multiple ALBs (e.g., different path prefixes routed to different ALBs via NLB listeners on different ports).
+The spec deliberately does not model two subnet-mapping surfaces. They are
+niche enough that carrying them would cost every reader comprehension for
+capabilities almost no architecture pulls; they are deferred until real
+architectures pull them:
 
-### Target Group Configuration
-
-```yaml
-targetGroup:
-  port: 443
-  protocol: TCP
-  targetType: alb
-```
-
-The ALB's DNS name or IP is registered as the target. Ensure the ALB is in the same VPC and that security groups allow NLB → ALB traffic.
+- **IPv6 source-NAT prefixes**: per-mapping `/80` prefixes used when
+  dual-stack NLBs front IPv4-only targets through UDP — a corner of the
+  dual-stack story with its own addressing constraints.
+- **Secondary private IPs per subnet**: additional per-node private
+  addresses beyond the primary (used by some appliance-style deployments).
 
 ---
 
@@ -282,11 +227,25 @@ The ALB's DNS name or IP is registered as the target. Ensure the ALB is in the s
 
 | Topic | NLB Behavior | Recommendation |
 |-------|--------------|----------------|
-| **Static IPs** | Elastic IP per subnet mapping | Use for allowlisting, firewall rules, DNS pinning |
-| **Cross-zone** | Default off | Enable only when target distribution is uneven |
-| **Client IP** | preserve_client_ip or proxy_protocol_v2 | Use preserve_client_ip for IP only; proxy_protocol_v2 for full metadata |
-| **TLS** | Terminate at NLB or pass-through | Terminate for simplicity; pass-through for end-to-end encryption |
-| **Health checks** | TCP, HTTP, or HTTPS | Use HTTP/HTTPS for application-level health |
-| **Security groups** | Optional; immutable once added | Add only when committed; cannot remove all |
-| **Subnet mappings** | Add-only | Start minimal; add AZs only when needed |
-| **Deregistration** | connection_termination for long-lived | Enable for WebSocket, gRPC, DB workloads |
+| **Static IPs** | Elastic IP per subnet mapping | Reference `AwsElasticIp` resources for allowlisting, firewall rules, DNS pinning |
+| **Routing** | Port/protocol only; no rules | Attach `AwsLbListener` (forward-only) and `AwsLbTargetGroup`; per-request routing belongs on an ALB |
+| **Cross-zone** | Off by AWS default; billed inter-AZ when on | Enable only when target distribution is uneven |
+| **Security groups** | Optional; last one can never be removed | Attach only when committed; treat as create-time |
+| **PrivateLink** | SG rules enforced on endpoint traffic by default | Keep `on` for defense in depth |
+| **Access logs** | TLS listeners only | Use VPC Flow Logs for TCP/UDP visibility |
+| **Subnet mappings** | Add-only | Start minimal; add AZs deliberately |
+| **Scheme** | Immutable | Changing `internal` replaces the load balancer |
+
+---
+
+## Dual-Engine Implementation
+
+`AwsNlb` ships both a Terraform/OpenTofu module and a Pulumi (Go) module at
+behavioral parity. Both create the load balancer with identity tags, apply
+the same 32-character name truncation, send only explicitly set attributes
+(so AWS defaults survive), treat access-log presence as enabled, create the
+same alias records with the same `evaluate_target_health = false` decision,
+and export the same four outputs (`load_balancer_arn`,
+`load_balancer_name`, `load_balancer_dns_name`,
+`load_balancer_hosted_zone_id`). Whichever engine a team standardizes on,
+the NLB behaves identically.

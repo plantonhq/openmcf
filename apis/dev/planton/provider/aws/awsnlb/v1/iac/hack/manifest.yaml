@@ -1,23 +1,22 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsNlb
 metadata:
-  name: test-nlb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsNlb.test-nlb
+  name: awsnlb-demo
 spec:
   region: us-west-2
+  # Two mappings with Elastic IPs exercise the static-IP shape that
+  # differentiates NLB from ALB; the behavior attributes exercise the
+  # enum-validated strings so the fixture proves the full variable contract.
   subnetMappings:
     - subnetId:
-        value: subnet-0a1b2c3d4e5f00001
+        value: subnet-12345678
+      allocationId:
+        value: eipalloc-0123456789abcdef0
     - subnetId:
-        value: subnet-0a1b2c3d4e5f00002
-  listeners:
-    - name: tcp-80
-      port: 80
-      protocol: TCP
-      targetGroup:
-        port: 80
-        protocol: TCP
+        value: subnet-12345679
+      allocationId:
+        value: eipalloc-0fedcba9876543210
+  internal: false
+  crossZoneLoadBalancingEnabled: true
+  ipAddressType: ipv4
+  dnsRecordClientRoutingPolicy: availability_zone_affinity

@@ -1,0 +1,10 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsNlb
+metadata:
+  name: <nlb-name>
+spec:
+  region: <aws-region>
+  internal: true
+  subnetMappings:
+    - subnetId:
+        value: <private-subnet-id>

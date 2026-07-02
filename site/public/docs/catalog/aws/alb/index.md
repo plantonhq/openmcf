@@ -8,216 +8,182 @@ componentName: "awsalb"
 
 # AWS ALB
 
-Deploys an AWS Application Load Balancer with automatic listener configuration, optional SSL termination via ACM, and optional Route53 DNS record management. The component enforces multi-AZ deployment by requiring at least two subnets.
+Deploys an AWS Application Load Balancer: the Layer-7 entry point that owns
+placement (two or more subnets across Availability Zones), security groups,
+HTTP behavior attributes, S3 log delivery, and optional Route53 alias DNS.
+Routing lives in separate components -- listeners, rules, and target groups
+attach to this ALB by ARN.
 
 ## What Gets Created
 
 When you deploy an AwsAlb resource, Planton provisions:
 
-- **Application Load Balancer** — an `aws_lb` resource of type `application`, placed in the specified subnets with attached security groups
-- **HTTP Listener (port 80)** — if SSL is disabled, serves a fixed `200 OK` response; if SSL is enabled, redirects to HTTPS with a `301`
-- **HTTPS Listener (port 443)** — created only when SSL is enabled, terminates TLS using the specified ACM certificate with policy `ELBSecurityPolicy-2016-08`, serves a fixed `200 OK` response as the default action
-- **Route53 A Records** — created only when DNS is enabled, one alias record per hostname pointing to the ALB's DNS name with target health evaluation enabled
+- **Application Load Balancer** — an `aws_lb` / `lb.LoadBalancer` of type
+  `application`, placed in the specified subnets with the attached security
+  groups and the configured load balancer attributes (timeouts, HTTP/2,
+  desync mitigation, XFF handling, WAF fail-open, zonal shift)
+- **S3 log delivery** — access, connection, and health-check log streams,
+  each enabled by the presence of its block in the spec
+- **Route53 A records** — created only when DNS is enabled, one alias record
+  per hostname pointing to the ALB's DNS name
+
+Listeners, listener rules, and target groups are **not** created here —
+attach `AwsLbListener` resources to this ALB's `load_balancer_arn` output,
+`AwsLbListenerRule` resources to those listeners, and `AwsLbTargetGroup`
+resources as destinations.
 
 ## Prerequisites
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least two subnets** in different Availability Zones (public subnets for internet-facing, private for internal)
-- **A security group** allowing inbound traffic on port 80 and/or 443
-- **An ACM certificate ARN** if enabling SSL
-- **A Route53 hosted zone** if enabling DNS management
+- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
+- **At least two subnets** in different Availability Zones (public subnets
+  for internet-facing, private for internal).
+- **A security group** allowing inbound traffic on the ports your listeners
+  will use.
+- **An S3 bucket with the ELB log-delivery bucket policy** if enabling any
+  log stream — delivery fails silently otherwise.
+- **A Route53 hosted zone** if enabling DNS management.
 
 ## Quick Start
-
-Create a file `alb.yaml`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsAlb
 metadata:
-  name: my-alb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsAlb.my-alb
+  name: main-alb
 spec:
   region: us-west-2
   subnets:
-    - subnet-0a1b2c3d4e5f00001
-    - subnet-0a1b2c3d4e5f00002
+    - value: subnet-0a1b2c3d4e5f00001
+    - value: subnet-0a1b2c3d4e5f00002
   securityGroups:
-    - sg-0a1b2c3d4e5f00001
+    - value: sg-0a1b2c3d4e5f00001
 ```
-
-Deploy:
 
 ```shell
 planton apply -f alb.yaml
 ```
 
-This creates an internet-facing ALB with an HTTP listener on port 80 across two subnets.
+This creates an internet-facing ALB across two subnets. Add an
+`AwsLbListener` against its `load_balancer_arn` output to start accepting
+traffic.
 
 ## Configuration Reference
 
 ### Required Fields
 
 | Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the ALB will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `subnets` | `string[]` | Subnet IDs where the ALB is placed. Use public subnets for internet-facing, private for internal. | Minimum 2 items required |
-| `subnets[].value` | `string` | Direct subnet ID value | — |
-| `subnets[].valueFrom` | `object` | Foreign key reference to an AwsVpc resource | Default kind: `AwsVpc` |
+| --- | --- | --- | --- |
+| `region` | `string` | AWS region where the ALB is created (e.g., `us-west-2`). | Required; non-empty |
+| `subnets` | `(string \| valueFrom)[]` | Subnets for the ALB's nodes — public for internet-facing, private for internal. References `AwsSubnet.subnet_id` by default. | Required; minimum 2 items, in different Availability Zones |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `securityGroups` | `string[]` | `[]` | Security group IDs to attach to the ALB. Can reference AwsSecurityGroup resources via `valueFrom`. |
-| `internal` | `bool` | `false` | When `true`, creates an internal ALB accessible only within the VPC. When `false`, creates an internet-facing ALB. |
-| `deleteProtectionEnabled` | `bool` | `false` | Prevents accidental deletion of the ALB when enabled. |
-| `idleTimeoutSeconds` | `int` | `60` | Connection idle timeout in seconds before the ALB closes the connection. |
-| `ssl.enabled` | `bool` | `false` | Enables HTTPS listener on port 443 and configures HTTP-to-HTTPS redirect on port 80. |
-| `ssl.certificateArn` | `string` | — | ACM certificate ARN for TLS termination. Required when `ssl.enabled` is `true`. Can reference an AwsCertManagerCert resource via `valueFrom`. |
-| `dns.enabled` | `bool` | `false` | Enables automatic Route53 DNS record creation for the ALB. |
-| `dns.route53ZoneId` | `string` | — | Route53 hosted zone ID where records are created. Required when `dns.enabled` is `true`. Can reference an AwsRoute53Zone resource via `valueFrom`. |
-| `dns.hostnames` | `string[]` | `[]` | Domain names that will point to the ALB via Route53 alias records. Must be unique. |
+| --- | --- | --- | --- |
+| `securityGroups` | `(string \| valueFrom)[]` | VPC default SG | Security groups controlling traffic to and from the ALB. The VPC default is fine for a first boot, wrong for production. References `AwsSecurityGroup.security_group_id` by default. |
+| `internal` | `bool` | `false` | When `true`, the ALB is reachable only inside the VPC. Immutable — changing it replaces the load balancer. |
+| `ipAddressType` | `string` | `ipv4` | `ipv4`, `dualstack`, or `dualstack-without-public-ipv4` (public IPv6 with private IPv4 — avoids public-IPv4 charges). |
+| `deleteProtectionEnabled` | `bool` | `false` | Prevents deletion while enabled. Recommended for production: deleting an ALB silently orphans every listener and rule attached to it. |
+| `idleTimeoutSeconds` | `int` | `60` (AWS) | Seconds an idle connection stays open, 1–4000. Raise above the application's slowest response to avoid 504s. |
+| `clientKeepAliveSeconds` | `int` | `3600` (AWS) | Seconds an HTTP client connection may stay alive across requests, 60–604800. |
+| `http2Enabled` | `bool` | `true` (AWS) | Whether HTTP/2 is offered to clients. Optional so that an explicit `false` is distinguishable from "keep the AWS default". |
+| `wafFailOpenEnabled` | `bool` | `false` | When an attached WAF is unreachable: `true` passes requests through, `false` rejects them. An availability-versus-security call. |
+| `zonalShiftEnabled` | `bool` | `false` | Allows Amazon Application Recovery Controller to shift traffic away from an impaired Availability Zone. |
+| `dropInvalidHeaderFields` | `bool` | `false` | Drop request headers with invalid names instead of forwarding them — hardens against header smuggling. |
+| `preserveHostHeader` | `bool` | `false` | Forward the client's original Host header unchanged instead of rewriting it to the target address. |
+| `xffClientPortEnabled` | `bool` | `false` | Append the client's source port to `X-Forwarded-For`. |
+| `xffHeaderProcessingMode` | `string` | `append` | `append`, `preserve`, or `remove` — `preserve`/`remove` matter when the ALB sits behind another proxy whose XFF chain must win. |
+| `desyncMitigationMode` | `string` | `defensive` | Protection against HTTP desync attacks: `monitor` (classify only), `defensive`, or `strictest` (block everything not RFC 7230 compliant). |
+| `tlsVersionAndCipherSuiteHeadersEnabled` | `bool` | `false` | Inject `x-amzn-tls-version` / `x-amzn-tls-cipher-suite` headers toward targets. |
+| `accessLogs` | `object` | off | Per-request logs to S3: `bucket` (references `AwsS3Bucket.bucket_id` by default) and optional `prefix`. |
+| `connectionLogs` | `object` | off | Per-connection logs to S3 (TLS handshake details) — where negotiation failures that never become requests show up. Same shape as `accessLogs`. |
+| `healthCheckLogs` | `object` | off | Per-probe health-check logs to S3, for debugging flapping targets without packet captures. Same shape as `accessLogs`. |
+| `dns` | `object` | off | Route53 alias DNS: `enabled`, `route53ZoneId` (references `AwsRoute53Zone.zone_id` by default), `hostnames` (unique). |
 
 ## Examples
 
 ### Internal ALB
 
-An ALB accessible only within the VPC, useful for internal microservice routing:
+An ALB reachable only inside the VPC, for internal microservice routing:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsAlb
 metadata:
   name: internal-api-alb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsAlb.internal-api-alb
 spec:
   region: us-west-2
   subnets:
-    - subnet-private-az1
-    - subnet-private-az2
+    - value: subnet-private-az1
+    - value: subnet-private-az2
   securityGroups:
-    - sg-internal-alb
+    - value: sg-internal-alb
   internal: true
 ```
 
-### ALB with SSL Termination
+### Production ALB with hardening and access logs
 
-HTTPS-enabled ALB that redirects HTTP to HTTPS automatically:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsAlb
-metadata:
-  name: web-alb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsAlb.web-alb
-spec:
-  region: us-west-2
-  subnets:
-    - subnet-public-az1
-    - subnet-public-az2
-  securityGroups:
-    - sg-web-alb
-  deleteProtectionEnabled: true
-  idleTimeoutSeconds: 90
-  ssl:
-    enabled: true
-    certificateArn: arn:aws:acm:us-east-1:123456789012:certificate/abc-12345
-```
-
-### Full-Featured ALB with DNS
-
-Production configuration with SSL, DNS management, and deletion protection:
+Deletion protection, strict desync mitigation, invalid-header dropping, and
+per-request logging:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsAlb
 metadata:
   name: prod-alb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsAlb.prod-alb
 spec:
   region: us-west-2
   subnets:
-    - subnet-public-az1
-    - subnet-public-az2
-    - subnet-public-az3
+    - value: subnet-public-az1
+    - value: subnet-public-az2
   securityGroups:
-    - sg-prod-alb
+    - value: sg-prod-alb
   deleteProtectionEnabled: true
   idleTimeoutSeconds: 120
-  ssl:
-    enabled: true
-    certificateArn: arn:aws:acm:us-east-1:123456789012:certificate/prod-cert
-  dns:
-    enabled: true
-    route53ZoneId: Z0123456789ABCDEFGHIJ
-    hostnames:
-      - app.example.com
-      - api.example.com
+  desyncMitigationMode: strictest
+  dropInvalidHeaderFields: true
+  accessLogs:
+    bucket:
+      value: prod-alb-logs-bucket
+    prefix: alb/prod
 ```
 
-### Using Foreign Key References
+### ALB with Route53 alias DNS and references
 
-Reference other Planton-managed resources instead of hardcoding IDs:
+Everything by reference — subnets, security group, and hosted zone resolve
+from other components' outputs at deploy time:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsAlb
 metadata:
-  name: ref-alb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsAlb.ref-alb
+  name: web-alb
 spec:
   region: us-west-2
   subnets:
     - valueFrom:
-        kind: AwsVpc
-        name: my-vpc
-        field: status.outputs.public_subnets[0].id
+        kind: AwsSubnet
+        name: public-az1
+        fieldPath: status.outputs.subnet_id
     - valueFrom:
-        kind: AwsVpc
-        name: my-vpc
-        field: status.outputs.public_subnets[1].id
+        kind: AwsSubnet
+        name: public-az2
+        fieldPath: status.outputs.subnet_id
   securityGroups:
     - valueFrom:
         kind: AwsSecurityGroup
         name: alb-sg
-        field: status.outputs.security_group_id
-  ssl:
-    enabled: true
-    certificateArn:
-      valueFrom:
-        kind: AwsCertManagerCert
-        name: my-cert
-        field: status.outputs.cert_arn
+        fieldPath: status.outputs.security_group_id
   dns:
     enabled: true
     route53ZoneId:
       valueFrom:
         kind: AwsRoute53Zone
-        name: my-zone
-        field: status.outputs.zone_id
+        name: example-com
+        fieldPath: status.outputs.zone_id
     hostnames:
       - app.example.com
+      - api.example.com
 ```
 
 ## Stack Outputs
@@ -225,15 +191,18 @@ spec:
 After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
-|--------|------|-------------|
-| `load_balancer_arn` | `string` | ARN of the created Application Load Balancer |
-| `load_balancer_name` | `string` | Name assigned to the ALB (may differ from `metadata.name`) |
-| `load_balancer_dns_name` | `string` | DNS name automatically assigned by AWS (e.g., `my-alb-123456.us-east-1.elb.amazonaws.com`) |
-| `load_balancer_hosted_zone_id` | `string` | Route53 hosted zone ID for the ALB's DNS entry, used for creating alias records |
+| --- | --- | --- |
+| `load_balancer_arn` | `string` | ARN of the ALB — what `AwsLbListener` resources attach through |
+| `load_balancer_name` | `string` | Name assigned to the ALB (`metadata.name`, truncated to AWS's 32-character limit when necessary) |
+| `load_balancer_dns_name` | `string` | DNS name automatically assigned by AWS (e.g., `main-alb-123456.us-west-2.elb.amazonaws.com`) |
+| `load_balancer_hosted_zone_id` | `string` | Route53 hosted zone ID for the ALB's DNS entry, used for alias records |
 
 ## Related Components
 
-- [AwsVpc](/docs/catalog/aws/vpc) — provides the subnets for ALB placement
+- [AwsLbListener](/docs/catalog/aws/lb-listener) — attaches to this ALB by ARN; owns ports, TLS material, and default actions
+- [AwsLbListenerRule](/docs/catalog/aws/lb-listener-rule) — per-service routing attached to a listener
+- [AwsLbTargetGroup](/docs/catalog/aws/lb-target-group) — the destination of forward actions
+- [AwsSubnet](/docs/catalog/aws/subnet) — provides the subnets for ALB placement
 - [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls inbound and outbound traffic to the ALB
+- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — receives access, connection, and health-check logs
 - [AwsRoute53Zone](/docs/catalog/aws/route53-zone) — hosts the DNS zone for alias records
-- [AwsCertManagerCert](/docs/catalog/aws/certificate) — provides the ACM certificate for SSL termination

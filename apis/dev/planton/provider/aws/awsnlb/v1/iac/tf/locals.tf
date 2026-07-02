@@ -1,21 +1,19 @@
 locals {
-  # IP address type defaults to ipv4 when not specified.
-  ip_address_type = coalesce(var.spec.ip_address_type, "ipv4")
+  # AWS limits load balancer names to 32 characters; truncate deterministically
+  # so the same manifest always yields the same name.
+  nlb_name = substr(var.metadata.name, 0, 32)
 
-  # Build a map of listeners keyed by name for use with for_each.
-  listener_map = { for l in var.spec.listeners : l.name => l }
+  # DNS records are created only when DNS is enabled AND hostnames exist --
+  # an enabled block with no hostnames is a no-op, not an error.
+  create_dns_records = var.spec.dns != null && try(var.spec.dns.enabled, false) && length(try(var.spec.dns.hostnames, [])) > 0
 
-  # Build DNS records map when DNS is enabled.
-  dns_records = try(var.spec.dns.enabled, false) ? {
-    for idx, hostname in try(var.spec.dns.hostnames, []) : "dns-${idx}" => hostname
-  } : {}
-
-  # Standard tags applied to all resources.
-  tags = {
-    "planton.dev/resource"      = "true"
-    "planton.dev/organization"  = var.metadata.org
-    "planton.dev/environment"   = var.metadata.env
-    "planton.dev/resource-kind" = "AwsNlb"
-    "planton.dev/resource-id"   = var.metadata.id
+  # Resource-identity tags, matching the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = local.nlb_name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsNlb"
+    "planton.ai/resource-id"   = var.metadata.id
   }
 }

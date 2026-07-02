@@ -23,20 +23,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsAlb represents a containerized application deployed on AWS ECS.
-// This resource manages ECS services that can run on either Fargate or EC2.
+// aws-alb
 type AwsAlb struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// api-version must be set to "aws.planton.dev/v1".
+	// api-version
 	ApiVersion string `protobuf:"bytes,1,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
-	// resource-kind for this ECS service resource, typically "AwsAlb".
+	// resource-kind
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	// metadata captures identifying information (name, org, version, etc.)
-	// and must pass standard validations for resource naming.
+	// metadata
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec holds the core configuration data defining how the ECS service is deployed.
+	// spec
 	Spec *AwsAlbSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
-	// status holds runtime or post-deployment information.
+	// status
 	Status        *AwsAlbStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -107,10 +105,10 @@ func (x *AwsAlb) GetStatus() *AwsAlbStatus {
 	return nil
 }
 
-// AwsAlbStatus describes the status fields for an ECS service resource.
+// aws-alb status
 type AwsAlbStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+	// stack-outputs
 	Outputs       *AwsAlbStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

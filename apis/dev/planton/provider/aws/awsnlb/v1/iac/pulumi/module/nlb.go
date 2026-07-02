@@ -9,68 +9,106 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// nlb creates an AWS Network Load Balancer from the spec's subnet mappings
-// and top-level configuration. Returns the created load balancer resource
-// for use by listeners and DNS.
+// nlb provisions the Network Load Balancer. The NLB carries no routing
+// configuration by design: listeners and target groups are separate
+// resources that attach to it by ARN, so this module owns only what is truly
+// load-balancer-wide -- node placement with optional static IPs, security
+// groups, and traffic distribution behavior. Changing "internal" replaces
+// the load balancer.
 func nlb(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lb.LoadBalancer, error) {
 	spec := locals.Nlb.Spec
 
-	// Build subnet mapping arguments from the spec.
+	// AWS limits load balancer names to 32 characters; truncate
+	// deterministically so the same manifest always yields the same name.
+	nlbName := truncateName(locals.Nlb.Metadata.Name, 32)
+
+	// Each mapping pins one NLB node to a subnet, optionally with a static
+	// Elastic IP (internet-facing) or a fixed private address (internal) --
+	// the static-IP story that differentiates NLB from ALB.
 	subnetMappings := lb.LoadBalancerSubnetMappingArray{}
-	for _, sm := range spec.SubnetMappings {
+	for _, subnetMapping := range spec.SubnetMappings {
 		mapping := lb.LoadBalancerSubnetMappingArgs{
-			SubnetId: pulumi.String(sm.SubnetId.GetValue()),
+			SubnetId: pulumi.String(subnetMapping.SubnetId.GetValue()),
 		}
-		if sm.AllocationId != nil && sm.AllocationId.GetValue() != "" {
-			mapping.AllocationId = pulumi.StringPtr(sm.AllocationId.GetValue())
+		if subnetMapping.AllocationId.GetValue() != "" {
+			mapping.AllocationId = pulumi.StringPtr(subnetMapping.AllocationId.GetValue())
 		}
-		if sm.PrivateIpv4Address != "" {
-			mapping.PrivateIpv4Address = pulumi.StringPtr(sm.PrivateIpv4Address)
+		if subnetMapping.PrivateIpv4Address != "" {
+			mapping.PrivateIpv4Address = pulumi.StringPtr(subnetMapping.PrivateIpv4Address)
 		}
 		subnetMappings = append(subnetMappings, mapping)
 	}
 
-	// Determine IP address type. Default to ipv4 when not specified.
-	ipAddressType := "ipv4"
-	if spec.IpAddressType != "" {
-		ipAddressType = spec.IpAddressType
-	}
-
 	args := &lb.LoadBalancerArgs{
-		Name:                     pulumi.String(locals.Nlb.Metadata.Name),
+		Name:                     pulumi.String(nlbName),
 		LoadBalancerType:         pulumi.String("network"),
 		Internal:                 pulumi.Bool(spec.Internal),
-		IpAddressType:            pulumi.String(ipAddressType),
 		EnableDeletionProtection: pulumi.Bool(spec.DeleteProtectionEnabled),
 		SubnetMappings:           subnetMappings,
 		Tags:                     pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	// Security groups are optional for NLB.
-	if len(spec.SecurityGroups) > 0 {
-		args.SecurityGroups = pulumi.ToStringArray(valuefrom.ToStringArray(spec.SecurityGroups))
-	}
-
-	// Cross-zone load balancing (default false for NLB).
+	// Cross-zone distribution is a real cost decision on NLB (inter-AZ data
+	// transfer is billed), which is why AWS defaults it off and the spec
+	// makes it an explicit opt-in.
 	if spec.CrossZoneLoadBalancingEnabled {
 		args.EnableCrossZoneLoadBalancing = pulumi.Bool(true)
 	}
 
-	// DNS record client routing policy (NLB-specific).
+	// Only explicitly set attributes are sent, so AWS keeps its own defaults
+	// for the rest -- the module never bakes in opinions the spec does not
+	// express.
+	if spec.IpAddressType != "" {
+		args.IpAddressType = pulumi.StringPtr(spec.IpAddressType)
+	}
 	if spec.DnsRecordClientRoutingPolicy != "" {
 		args.DnsRecordClientRoutingPolicy = pulumi.StringPtr(spec.DnsRecordClientRoutingPolicy)
 	}
+	if spec.ZonalShiftEnabled {
+		args.EnableZonalShift = pulumi.BoolPtr(true)
+	}
+	if spec.EnforceSecurityGroupInboundRulesOnPrivateLinkTraffic != "" {
+		args.EnforceSecurityGroupInboundRulesOnPrivateLinkTraffic = pulumi.StringPtr(spec.EnforceSecurityGroupInboundRulesOnPrivateLinkTraffic)
+	}
 
-	createdNlb, err := lb.NewLoadBalancer(ctx, locals.Nlb.Metadata.Name, args, pulumi.Provider(provider))
+	// Optional for NLB (unlike ALB) -- and once attached, AWS never allows
+	// removing the last one, so attaching any group is a one-way door.
+	if len(spec.SecurityGroups) > 0 {
+		args.SecurityGroups = pulumi.ToStringArray(valuefrom.ToStringArray(spec.SecurityGroups))
+	}
+
+	// NLB access logs only capture TLS-listener traffic (an AWS limitation);
+	// "enabled" is implied by the block's presence in the spec. The bucket
+	// must carry the ELB log-delivery bucket policy or delivery fails
+	// silently.
+	if spec.AccessLogs != nil {
+		accessLogs := &lb.LoadBalancerAccessLogsArgs{
+			Bucket:  pulumi.String(spec.AccessLogs.Bucket.GetValue()),
+			Enabled: pulumi.BoolPtr(true),
+		}
+		if spec.AccessLogs.Prefix != "" {
+			accessLogs.Prefix = pulumi.StringPtr(spec.AccessLogs.Prefix)
+		}
+		args.AccessLogs = accessLogs
+	}
+
+	createdNlb, err := lb.NewLoadBalancer(ctx, nlbName, args, pulumi.Provider(provider))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create Network Load Balancer")
 	}
 
-	// Export NLB-level outputs.
 	ctx.Export(OpLoadBalancerArn, createdNlb.Arn)
 	ctx.Export(OpLoadBalancerName, createdNlb.Name)
 	ctx.Export(OpLoadBalancerDnsName, createdNlb.DnsName)
 	ctx.Export(OpLoadBalancerHostedZoneId, createdNlb.ZoneId)
 
 	return createdNlb, nil
+}
+
+// truncateName enforces AWS's 32-character load balancer name limit.
+func truncateName(name string, maxLen int) string {
+	if len(name) <= maxLen {
+		return name
+	}
+	return name[:maxLen]
 }

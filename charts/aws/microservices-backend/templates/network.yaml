@@ -305,11 +305,95 @@ spec:
         fieldPath: status.outputs.zone_id
 {% endif %}
 {% if values.httpsEnabled | bool and values.dnsEnabled | bool %}
-  ssl:
-    enabled: true
-    certificateArn:
-      valueFrom:
-        kind: AwsCertManagerCert
-        name: "{{ values.service_name }}-alb-cert"
-        fieldPath: status.outputs.cert_arn
+# HTTPS entry point: terminates TLS with the service certificate. The default
+# action is an explicit 404 -- real routes are listener rules that services
+# attach for their own hostnames, so an unmatched request means "no such
+# service", not "OK".
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListener
+metadata:
+  name: "{{ values.service_name }}-alb-https"
+  group: network
+  relationships:
+    - kind: AwsAlb
+      name: "{{ values.service_name }}-alb"
+      type: uses
+spec:
+  region: "{{ values.aws_region }}"
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: "{{ values.service_name }}-alb"
+      fieldPath: status.outputs.load_balancer_arn
+  port: 443
+  protocol: HTTPS
+  certificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: "{{ values.service_name }}-alb-cert"
+      fieldPath: status.outputs.cert_arn
+  sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+  defaultActions:
+    - type: fixed-response
+      fixedResponse:
+        contentType: text/plain
+        statusCode: "404"
+        messageBody: not found
+# Port 80 exists only to bounce clients to HTTPS -- a permanent redirect,
+# never plaintext service traffic.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListener
+metadata:
+  name: "{{ values.service_name }}-alb-http"
+  group: network
+  relationships:
+    - kind: AwsAlb
+      name: "{{ values.service_name }}-alb"
+      type: uses
+spec:
+  region: "{{ values.aws_region }}"
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: "{{ values.service_name }}-alb"
+      fieldPath: status.outputs.load_balancer_arn
+  port: 80
+  protocol: HTTP
+  defaultActions:
+    - type: redirect
+      redirect:
+        statusCode: HTTP_301
+        protocol: HTTPS
+        port: "443"
+{% else %}
+# HTTP-only entry point (no certificate without DNS). The default action is
+# an explicit 404 -- real routes are listener rules that services attach for
+# their own hostnames.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListener
+metadata:
+  name: "{{ values.service_name }}-alb-http"
+  group: network
+  relationships:
+    - kind: AwsAlb
+      name: "{{ values.service_name }}-alb"
+      type: uses
+spec:
+  region: "{{ values.aws_region }}"
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: "{{ values.service_name }}-alb"
+      fieldPath: status.outputs.load_balancer_arn
+  port: 80
+  protocol: HTTP
+  defaultActions:
+    - type: fixed-response
+      fixedResponse:
+        contentType: text/plain
+        statusCode: "404"
+        messageBody: not found
 {% endif %}

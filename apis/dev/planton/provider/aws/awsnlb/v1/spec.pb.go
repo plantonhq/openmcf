@@ -24,61 +24,65 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsNlbSpec defines the desired configuration for an AWS Network Load Balancer.
+// AwsNlbSpec defines a Network Load Balancer: the Layer-4 entry point for
+// TCP/UDP/TLS traffic, with static IP addresses and millions of requests per
+// second of headroom.
 //
-// Network Load Balancers operate at Layer 4 (TCP/UDP/TLS), providing ultra-low latency,
-// static IP addresses, and the ability to handle millions of requests per second. Unlike
-// Application Load Balancers which route based on HTTP content, NLBs forward connections
-// directly to targets based on port and protocol.
+// The load balancer itself carries no routing configuration -- that is
+// deliberate. Listeners (AwsLbListener) attach to it and own ports,
+// protocols, and TLS material; target groups (AwsLbTargetGroup) receive the
+// connections. NLB listeners only forward (AWS rejects every other action
+// type at Layer 4), and rules do not apply -- routing is purely by
+// port/protocol. This spec owns only what is truly load-balancer-wide:
+// node placement with optional static IPs, security groups, and traffic
+// distribution behavior.
 //
-// Key NLB characteristics:
-// - Static IP addresses via Elastic IP allocation per subnet (internet-facing)
-// - TCP, UDP, TLS, and TCP_UDP protocol support
-// - TLS termination at the listener level (not HTTP-level SSL like ALB)
-// - Cross-zone load balancing is configurable (default: disabled, unlike ALB)
-// - Security groups are optional (unlike ALB where they are effectively required)
-// - Only forward actions on listeners (no redirect or fixed-response)
+// Key NLB characteristics versus ALB:
+//   - Static IP addresses via Elastic IP allocation per subnet (internet-facing)
+//   - TCP, UDP, TLS, and TCP_UDP listener protocols
+//   - Cross-zone load balancing is configurable (default: disabled, unlike ALB)
+//   - Security groups are optional (unlike ALB where they are effectively
+//     required) -- but once attached, they can never be fully removed
 //
-// Each listener is bundled with an inline target group definition. An NLB listener
-// without a target group is functionally useless because NLB only supports forward
-// actions. Actual targets (instances, IPs) are registered separately by downstream
-// services such as ECS, EKS, or auto-scaling groups.
-//
-// Credentials, region, and deployment workflow live outside this spec in stack inputs.
+// The NLB name comes from metadata.name. AWS limits the name to 32
+// characters; both IaC modules truncate longer names deterministically.
+// Changing "internal" replaces the load balancer.
 type AwsNlbSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the resource will be created.
-	// Example: "us-west-2", "eu-west-1"
+	// The AWS region where the NLB is created.
+	// Example: "us-west-2", "eu-west-1".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// Subnet mappings define where NLB nodes are placed and optionally assign
 	// static IP addresses. Each mapping corresponds to one Availability Zone.
 	//
-	// For internet-facing NLBs, provide an allocation_id (Elastic IP) per subnet
-	// to get static public IPs -- a primary reason to choose NLB over ALB.
-	//
-	// For internal NLBs, optionally specify a private_ipv4_address per subnet
-	// to pin the NLB to specific private IPs.
+	// For internet-facing NLBs, provide an allocation_id (Elastic IP) per
+	// subnet to get static public IPs -- a primary reason to choose NLB over
+	// ALB. For internal NLBs, optionally pin a private_ipv4_address per subnet.
 	//
 	// At least one subnet mapping is required. AWS recommends at least two for
 	// high availability across Availability Zones.
 	SubnetMappings []*AwsNlbSubnetMapping `protobuf:"bytes,2,rep,name=subnet_mappings,json=subnetMappings,proto3" json:"subnet_mappings,omitempty"`
 	// Security group IDs to attach to the NLB. Unlike ALB, security groups are
 	// optional for NLB. When omitted, the NLB accepts all traffic on configured
-	// listener ports. When provided, security group rules filter inbound traffic.
+	// listener ports. When provided, security group rules filter inbound
+	// traffic.
 	//
 	// Important: once security groups are attached to an NLB, they cannot be
 	// fully removed -- at least one must remain. Plan accordingly.
 	SecurityGroups []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=security_groups,json=securityGroups,proto3" json:"security_groups,omitempty"`
 	// When true, creates an internal NLB accessible only within the VPC.
 	// When false (default), creates an internet-facing NLB with public DNS.
+	// Immutable: changing the scheme replaces the load balancer.
 	Internal bool `protobuf:"varint,4,opt,name=internal,proto3" json:"internal,omitempty"`
-	// Prevents accidental deletion of the NLB when enabled. Recommended for
-	// production workloads.
+	// Prevents deletion of the NLB while enabled. Recommended for production:
+	// deleting an NLB silently orphans every listener attached to it, and any
+	// Elastic IPs pinned to it start billing as unattached.
 	DeleteProtectionEnabled bool `protobuf:"varint,5,opt,name=delete_protection_enabled,json=deleteProtectionEnabled,proto3" json:"delete_protection_enabled,omitempty"`
 	// Distribute traffic evenly across all registered targets in all enabled
-	// Availability Zones. Default is false for NLB (unlike ALB where cross-zone
-	// is always enabled). Enable this when target distribution across AZs is
-	// uneven or when you need consistent per-target traffic distribution.
+	// Availability Zones. Default is false for NLB (unlike ALB where
+	// cross-zone is always enabled). Enable this when target distribution
+	// across AZs is uneven -- and budget for the inter-AZ data transfer it
+	// introduces.
 	CrossZoneLoadBalancingEnabled bool `protobuf:"varint,6,opt,name=cross_zone_load_balancing_enabled,json=crossZoneLoadBalancingEnabled,proto3" json:"cross_zone_load_balancing_enabled,omitempty"`
 	// IP address type for the NLB. Controls whether the NLB uses IPv4 only or
 	// dual-stack (IPv4 + IPv6).
@@ -96,16 +100,22 @@ type AwsNlbSpec struct {
 	//     resolver's AZ, 15% spill to other AZs. Balances affinity with
 	//     availability.
 	DnsRecordClientRoutingPolicy string `protobuf:"bytes,8,opt,name=dns_record_client_routing_policy,json=dnsRecordClientRoutingPolicy,proto3" json:"dns_record_client_routing_policy,omitempty"`
-	// Listeners define the ports and protocols the NLB accepts traffic on.
-	// Each listener includes an inline target group that receives forwarded
-	// connections.
-	//
-	// At least one listener is required. A common pattern is a single TLS
-	// listener on port 443 forwarding to TCP targets on an application port.
-	Listeners []*AwsNlbListener `protobuf:"bytes,9,rep,name=listeners,proto3" json:"listeners,omitempty"`
+	// Allows Amazon Application Recovery Controller to shift this NLB's
+	// traffic away from an impaired Availability Zone.
+	ZonalShiftEnabled bool `protobuf:"varint,9,opt,name=zonal_shift_enabled,json=zonalShiftEnabled,proto3" json:"zonal_shift_enabled,omitempty"`
+	// Whether inbound security-group rules are enforced on traffic arriving
+	// through PrivateLink VPC endpoints. Valid values: "on", "off". AWS
+	// default: "on" for NLBs created with security groups. Only meaningful
+	// when security groups are attached.
+	EnforceSecurityGroupInboundRulesOnPrivateLinkTraffic string `protobuf:"bytes,10,opt,name=enforce_security_group_inbound_rules_on_private_link_traffic,json=enforceSecurityGroupInboundRulesOnPrivateLinkTraffic,proto3" json:"enforce_security_group_inbound_rules_on_private_link_traffic,omitempty"`
+	// Access logs delivered to S3. NLB access logs only capture TLS-listener
+	// traffic (an AWS limitation -- plain TCP/UDP flows are not logged). The
+	// bucket must carry the ELB log-delivery bucket policy. When omitted,
+	// access logging is off.
+	AccessLogs *AwsNlbAccessLogs `protobuf:"bytes,11,opt,name=access_logs,json=accessLogs,proto3" json:"access_logs,omitempty"`
 	// Optional Route53 DNS configuration. When enabled, creates alias A records
 	// pointing the specified hostnames to the NLB's DNS name.
-	Dns           *AwsNlbDns `protobuf:"bytes,10,opt,name=dns,proto3" json:"dns,omitempty"`
+	Dns           *AwsNlbDns `protobuf:"bytes,12,opt,name=dns,proto3" json:"dns,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -196,9 +206,23 @@ func (x *AwsNlbSpec) GetDnsRecordClientRoutingPolicy() string {
 	return ""
 }
 
-func (x *AwsNlbSpec) GetListeners() []*AwsNlbListener {
+func (x *AwsNlbSpec) GetZonalShiftEnabled() bool {
 	if x != nil {
-		return x.Listeners
+		return x.ZonalShiftEnabled
+	}
+	return false
+}
+
+func (x *AwsNlbSpec) GetEnforceSecurityGroupInboundRulesOnPrivateLinkTraffic() string {
+	if x != nil {
+		return x.EnforceSecurityGroupInboundRulesOnPrivateLinkTraffic
+	}
+	return ""
+}
+
+func (x *AwsNlbSpec) GetAccessLogs() *AwsNlbAccessLogs {
+	if x != nil {
+		return x.AccessLogs
 	}
 	return nil
 }
@@ -287,70 +311,34 @@ func (x *AwsNlbSubnetMapping) GetPrivateIpv4Address() string {
 	return ""
 }
 
-// AwsNlbListener defines a port/protocol combination that the
-// NLB accepts connections on, along with the target group that receives the
-// forwarded traffic.
-//
-// NLB listeners only support forward actions (no redirect, fixed-response, or
-// authentication actions like ALB). Therefore, every listener must have an
-// associated target group.
-type AwsNlbListener struct {
+// AwsNlbAccessLogs points the NLB's access logs at an S3 bucket. The bucket
+// must grant the regional ELB log-delivery service write access via its
+// bucket policy -- delivery fails silently otherwise.
+type AwsNlbAccessLogs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// User-assigned name for this listener. Used as a key in the output maps
-	// (listener_arns, target_group_arns) so downstream resources can reference
-	// specific listener or target group ARNs via valueFrom.
-	//
-	// Must be unique within the NLB's listeners. Lowercase alphanumeric and
-	// hyphens only, starting with a letter.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Port number the listener accepts traffic on. Range: 1-65535.
-	Port int32 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
-	// Protocol for this listener.
-	// Valid values: "TCP", "UDP", "TLS", "TCP_UDP".
-	//
-	// Choose TLS for TLS termination at the NLB (requires tls configuration).
-	// Choose TCP for pass-through to targets that handle their own TLS.
-	// Choose UDP for UDP workloads (DNS, gaming, IoT).
-	// Choose TCP_UDP for dual-protocol listeners on the same port.
-	Protocol string `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// TLS configuration for TLS protocol listeners. Required when protocol is
-	// "TLS". Specifies the ACM certificate for TLS termination and optionally
-	// the security policy.
-	Tls *AwsNlbTlsConfig `protobuf:"bytes,4,opt,name=tls,proto3" json:"tls,omitempty"`
-	// TCP idle timeout in seconds. Controls how long the NLB keeps an idle TCP
-	// connection open before closing it. Only valid for TCP protocol listeners.
-	// Range: 60-6000 seconds. Default: 350 seconds (AWS default).
-	TcpIdleTimeoutSeconds int32 `protobuf:"varint,5,opt,name=tcp_idle_timeout_seconds,json=tcpIdleTimeoutSeconds,proto3" json:"tcp_idle_timeout_seconds,omitempty"`
-	// ALPN policy for TLS listeners. Controls which Application-Layer Protocol
-	// Negotiation protocols are advertised during the TLS handshake.
-	//
-	// Only valid when protocol is "TLS".
-	// Valid values: "HTTP1Only", "HTTP2Only", "HTTP2Optional", "HTTP2Preferred", "None".
-	AlpnPolicy string `protobuf:"bytes,6,opt,name=alpn_policy,json=alpnPolicy,proto3" json:"alpn_policy,omitempty"`
-	// Target group configuration for this listener. Defines how the listener
-	// forwards connections to backend targets.
-	//
-	// Every listener must have a target group because NLB only supports forward
-	// actions.
-	TargetGroup   *AwsNlbTargetGroup `protobuf:"bytes,7,opt,name=target_group,json=targetGroup,proto3" json:"target_group,omitempty"`
+	// The S3 bucket receiving the logs.
+	Bucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// Key prefix inside the bucket (e.g. "nlb/production"), for sharing one
+	// bucket across several load balancers.
+	Prefix        string `protobuf:"bytes,2,opt,name=prefix,proto3" json:"prefix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AwsNlbListener) Reset() {
-	*x = AwsNlbListener{}
+func (x *AwsNlbAccessLogs) Reset() {
+	*x = AwsNlbAccessLogs{}
 	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AwsNlbListener) String() string {
+func (x *AwsNlbAccessLogs) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AwsNlbListener) ProtoMessage() {}
+func (*AwsNlbAccessLogs) ProtoMessage() {}
 
-func (x *AwsNlbListener) ProtoReflect() protoreflect.Message {
+func (x *AwsNlbAccessLogs) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -362,411 +350,21 @@ func (x *AwsNlbListener) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AwsNlbListener.ProtoReflect.Descriptor instead.
-func (*AwsNlbListener) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsNlbAccessLogs.ProtoReflect.Descriptor instead.
+func (*AwsNlbAccessLogs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AwsNlbListener) GetName() string {
+func (x *AwsNlbAccessLogs) GetBucket() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *AwsNlbListener) GetPort() int32 {
-	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-func (x *AwsNlbListener) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
-	}
-	return ""
-}
-
-func (x *AwsNlbListener) GetTls() *AwsNlbTlsConfig {
-	if x != nil {
-		return x.Tls
+		return x.Bucket
 	}
 	return nil
 }
 
-func (x *AwsNlbListener) GetTcpIdleTimeoutSeconds() int32 {
+func (x *AwsNlbAccessLogs) GetPrefix() string {
 	if x != nil {
-		return x.TcpIdleTimeoutSeconds
-	}
-	return 0
-}
-
-func (x *AwsNlbListener) GetAlpnPolicy() string {
-	if x != nil {
-		return x.AlpnPolicy
-	}
-	return ""
-}
-
-func (x *AwsNlbListener) GetTargetGroup() *AwsNlbTargetGroup {
-	if x != nil {
-		return x.TargetGroup
-	}
-	return nil
-}
-
-// AwsNlbTlsConfig defines TLS termination settings for a
-// TLS protocol listener.
-//
-// When TLS termination is configured on the NLB, the NLB decrypts incoming
-// TLS connections and forwards plaintext TCP to targets. This offloads
-// certificate management and TLS processing from application servers.
-type AwsNlbTlsConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// ACM certificate ARN for TLS termination. The certificate must cover the
-	// domain names that clients use to connect to the NLB.
-	CertificateArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=certificate_arn,json=certificateArn,proto3" json:"certificate_arn,omitempty"`
-	// TLS security policy that defines the supported ciphers and protocols.
-	// When omitted, AWS uses the default policy.
-	// Recommended: "ELBSecurityPolicy-TLS13-1-2-2021-06" for modern TLS 1.3+1.2.
-	SslPolicy     string `protobuf:"bytes,2,opt,name=ssl_policy,json=sslPolicy,proto3" json:"ssl_policy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AwsNlbTlsConfig) Reset() {
-	*x = AwsNlbTlsConfig{}
-	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsNlbTlsConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsNlbTlsConfig) ProtoMessage() {}
-
-func (x *AwsNlbTlsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsNlbTlsConfig.ProtoReflect.Descriptor instead.
-func (*AwsNlbTlsConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *AwsNlbTlsConfig) GetCertificateArn() *v1.StringValueOrRef {
-	if x != nil {
-		return x.CertificateArn
-	}
-	return nil
-}
-
-func (x *AwsNlbTlsConfig) GetSslPolicy() string {
-	if x != nil {
-		return x.SslPolicy
-	}
-	return ""
-}
-
-// AwsNlbTargetGroup defines how a listener forwards connections
-// to backend targets.
-//
-// The target group itself is created by Planton. Actual targets (EC2 instances,
-// IP addresses, or ALBs) are registered separately -- typically by ECS services,
-// EKS ingress controllers, or auto-scaling group attachments. This separation
-// allows the NLB infrastructure to be provisioned independently from the
-// application workloads it fronts.
-type AwsNlbTargetGroup struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Port to route traffic to on registered targets. Range: 1-65535.
-	Port int32 `protobuf:"varint,1,opt,name=port,proto3" json:"port,omitempty"`
-	// Protocol for communication with targets.
-	// Valid values: "TCP", "UDP", "TLS", "TCP_UDP".
-	//
-	// This is the protocol used between the NLB and targets, which may differ
-	// from the listener protocol. For example, a TLS listener can forward to
-	// TCP targets (NLB terminates TLS).
-	Protocol string `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// Target type determines how targets are specified when registered.
-	//   - "instance": Targets are EC2 instance IDs. Health checks use the
-	//     instance's primary private IP.
-	//   - "ip": Targets are IP addresses. Supports IPs within the VPC CIDR
-	//     or peered VPC CIDRs.
-	//   - "alb": Target is an Application Load Balancer. Enables NLB-in-front-
-	//     of-ALB pattern for combining Layer 4 static IPs with Layer 7 routing.
-	//
-	// Default: "instance" when omitted.
-	TargetType string `protobuf:"bytes,3,opt,name=target_type,json=targetType,proto3" json:"target_type,omitempty"`
-	// Health check configuration for targets in this group. When omitted,
-	// AWS applies default health check settings (TCP on the traffic port,
-	// 30-second interval, 3 healthy/unhealthy thresholds).
-	HealthCheck *AwsNlbHealthCheck `protobuf:"bytes,4,opt,name=health_check,json=healthCheck,proto3" json:"health_check,omitempty"`
-	// Time in seconds the NLB waits before deregistering a draining target.
-	// During this period, in-flight connections are allowed to complete.
-	// Range: 0-3600. Default: 300 seconds.
-	DeregistrationDelaySeconds int32 `protobuf:"varint,5,opt,name=deregistration_delay_seconds,json=deregistrationDelaySeconds,proto3" json:"deregistration_delay_seconds,omitempty"`
-	// When enabled, targets see the original client IP address in the IP
-	// header. When disabled, targets see the NLB's private IP.
-	//
-	// Enabled by default for instance targets, disabled for IP targets.
-	// Use with proxy_protocol_v2 for full client metadata (port, VPC endpoint).
-	PreserveClientIp bool `protobuf:"varint,6,opt,name=preserve_client_ip,json=preserveClientIp,proto3" json:"preserve_client_ip,omitempty"`
-	// Enable Proxy Protocol v2 header on connections forwarded to targets.
-	// The header carries client connection metadata (source IP/port, destination
-	// IP/port, VPC endpoint ID). Targets must be configured to parse the
-	// Proxy Protocol v2 header.
-	ProxyProtocolV2 bool `protobuf:"varint,7,opt,name=proxy_protocol_v2,json=proxyProtocolV2,proto3" json:"proxy_protocol_v2,omitempty"`
-	// When enabled, the NLB terminates connections to deregistered targets
-	// immediately when the deregistration delay expires, instead of waiting
-	// for the client to close them. Recommended for long-lived connections
-	// (WebSocket, gRPC streams, database connections).
-	ConnectionTermination bool `protobuf:"varint,8,opt,name=connection_termination,json=connectionTermination,proto3" json:"connection_termination,omitempty"`
-	// Enable source-IP-based sticky sessions. When enabled, the NLB routes
-	// requests from the same client IP to the same target for the duration
-	// of the connection. This is the only stickiness type supported by NLB
-	// (cookie-based stickiness is ALB-only).
-	StickinessEnabled bool `protobuf:"varint,9,opt,name=stickiness_enabled,json=stickinessEnabled,proto3" json:"stickiness_enabled,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *AwsNlbTargetGroup) Reset() {
-	*x = AwsNlbTargetGroup{}
-	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsNlbTargetGroup) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsNlbTargetGroup) ProtoMessage() {}
-
-func (x *AwsNlbTargetGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsNlbTargetGroup.ProtoReflect.Descriptor instead.
-func (*AwsNlbTargetGroup) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *AwsNlbTargetGroup) GetPort() int32 {
-	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-func (x *AwsNlbTargetGroup) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
-	}
-	return ""
-}
-
-func (x *AwsNlbTargetGroup) GetTargetType() string {
-	if x != nil {
-		return x.TargetType
-	}
-	return ""
-}
-
-func (x *AwsNlbTargetGroup) GetHealthCheck() *AwsNlbHealthCheck {
-	if x != nil {
-		return x.HealthCheck
-	}
-	return nil
-}
-
-func (x *AwsNlbTargetGroup) GetDeregistrationDelaySeconds() int32 {
-	if x != nil {
-		return x.DeregistrationDelaySeconds
-	}
-	return 0
-}
-
-func (x *AwsNlbTargetGroup) GetPreserveClientIp() bool {
-	if x != nil {
-		return x.PreserveClientIp
-	}
-	return false
-}
-
-func (x *AwsNlbTargetGroup) GetProxyProtocolV2() bool {
-	if x != nil {
-		return x.ProxyProtocolV2
-	}
-	return false
-}
-
-func (x *AwsNlbTargetGroup) GetConnectionTermination() bool {
-	if x != nil {
-		return x.ConnectionTermination
-	}
-	return false
-}
-
-func (x *AwsNlbTargetGroup) GetStickinessEnabled() bool {
-	if x != nil {
-		return x.StickinessEnabled
-	}
-	return false
-}
-
-// AwsNlbHealthCheck defines how the NLB determines whether
-// targets in a target group are healthy enough to receive traffic.
-//
-// NLB health checks differ from ALB in important ways:
-//   - TCP health checks (default) only verify port reachability, not content
-//   - HTTP/HTTPS health checks can verify application readiness via a path
-//   - Health check intervals, thresholds, and timeouts have different defaults
-//     and ranges than ALB
-type AwsNlbHealthCheck struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Protocol used for health checks.
-	// Valid values: "TCP" (default), "HTTP", "HTTPS".
-	//
-	// TCP health checks verify that the target port is reachable. HTTP/HTTPS
-	// health checks send a GET request to the specified path and verify the
-	// response status code.
-	Protocol string `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// Port used for health checks. Specify "traffic-port" to use the target
-	// group's traffic port, or a specific port number (1-65535).
-	// Default: "traffic-port".
-	Port string `protobuf:"bytes,2,opt,name=port,proto3" json:"port,omitempty"`
-	// Path for HTTP/HTTPS health checks. The NLB sends a GET request to this
-	// path and checks the response status code against the matcher.
-	// Required when health check protocol is HTTP or HTTPS.
-	// Default: "/" when protocol is HTTP or HTTPS.
-	Path string `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
-	// Number of consecutive successful health checks required to consider an
-	// unhealthy target healthy. Range: 2-10. Default: 3.
-	HealthyThreshold int32 `protobuf:"varint,4,opt,name=healthy_threshold,json=healthyThreshold,proto3" json:"healthy_threshold,omitempty"`
-	// Number of consecutive failed health checks required to consider a healthy
-	// target unhealthy. Range: 2-10. Default: 3.
-	//
-	// For NLB, this must equal healthy_threshold (unlike ALB where they can
-	// differ). The IaC modules enforce this by setting both to healthy_threshold.
-	UnhealthyThreshold int32 `protobuf:"varint,5,opt,name=unhealthy_threshold,json=unhealthyThreshold,proto3" json:"unhealthy_threshold,omitempty"`
-	// Time in seconds between health checks for an individual target.
-	// Range: 5-300. Default: 30 seconds.
-	IntervalSeconds int32 `protobuf:"varint,6,opt,name=interval_seconds,json=intervalSeconds,proto3" json:"interval_seconds,omitempty"`
-	// Time in seconds to wait for a health check response before considering
-	// it failed. Must be less than interval_seconds.
-	// Range: 2-120. Default: 10 seconds for TCP, 6 seconds for HTTP/HTTPS.
-	TimeoutSeconds int32 `protobuf:"varint,7,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
-	// HTTP response codes that indicate a healthy target. Only valid when
-	// health check protocol is HTTP or HTTPS.
-	// Format: single code ("200"), range ("200-399"), or comma-separated
-	// ("200,202"). Default: "200-399".
-	Matcher       string `protobuf:"bytes,8,opt,name=matcher,proto3" json:"matcher,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AwsNlbHealthCheck) Reset() {
-	*x = AwsNlbHealthCheck{}
-	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsNlbHealthCheck) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsNlbHealthCheck) ProtoMessage() {}
-
-func (x *AwsNlbHealthCheck) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsNlbHealthCheck.ProtoReflect.Descriptor instead.
-func (*AwsNlbHealthCheck) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *AwsNlbHealthCheck) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
-	}
-	return ""
-}
-
-func (x *AwsNlbHealthCheck) GetPort() string {
-	if x != nil {
-		return x.Port
-	}
-	return ""
-}
-
-func (x *AwsNlbHealthCheck) GetPath() string {
-	if x != nil {
-		return x.Path
-	}
-	return ""
-}
-
-func (x *AwsNlbHealthCheck) GetHealthyThreshold() int32 {
-	if x != nil {
-		return x.HealthyThreshold
-	}
-	return 0
-}
-
-func (x *AwsNlbHealthCheck) GetUnhealthyThreshold() int32 {
-	if x != nil {
-		return x.UnhealthyThreshold
-	}
-	return 0
-}
-
-func (x *AwsNlbHealthCheck) GetIntervalSeconds() int32 {
-	if x != nil {
-		return x.IntervalSeconds
-	}
-	return 0
-}
-
-func (x *AwsNlbHealthCheck) GetTimeoutSeconds() int32 {
-	if x != nil {
-		return x.TimeoutSeconds
-	}
-	return 0
-}
-
-func (x *AwsNlbHealthCheck) GetMatcher() string {
-	if x != nil {
-		return x.Matcher
+		return x.Prefix
 	}
 	return ""
 }
@@ -794,7 +392,7 @@ type AwsNlbDns struct {
 
 func (x *AwsNlbDns) Reset() {
 	*x = AwsNlbDns{}
-	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -806,7 +404,7 @@ func (x *AwsNlbDns) String() string {
 func (*AwsNlbDns) ProtoMessage() {}
 
 func (x *AwsNlbDns) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -819,7 +417,7 @@ func (x *AwsNlbDns) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsNlbDns.ProtoReflect.Descriptor instead.
 func (*AwsNlbDns) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsNlbDns) GetEnabled() bool {
@@ -847,7 +445,7 @@ var File_dev_planton_provider_aws_awsnlb_v1_spec_proto protoreflect.FileDescript
 
 const file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-dev/planton/provider/aws/awsnlb/v1/spec.proto\x12\"dev.planton.provider.aws.awsnlb.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfd\t\n" +
+	"-dev/planton/provider/aws/awsnlb/v1/spec.proto\x12\"dev.planton.provider.aws.awsnlb.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc1\r\n" +
 	"\n" +
 	"AwsNlbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12m\n" +
@@ -857,66 +455,23 @@ const file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDesc = "" +
 	"\x19delete_protection_enabled\x18\x05 \x01(\bR\x17deleteProtectionEnabled\x12H\n" +
 	"!cross_zone_load_balancing_enabled\x18\x06 \x01(\bR\x1dcrossZoneLoadBalancingEnabled\x120\n" +
 	"\x0fip_address_type\x18\a \x01(\tB\b\x92\xa6\x1d\x04ipv4R\ripAddressType\x12F\n" +
-	" dns_record_client_routing_policy\x18\b \x01(\tR\x1cdnsRecordClientRoutingPolicy\x12]\n" +
-	"\tlisteners\x18\t \x03(\v22.dev.planton.provider.aws.awsnlb.v1.AwsNlbListenerB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\tlisteners\x12?\n" +
-	"\x03dns\x18\n" +
-	" \x01(\v2-.dev.planton.provider.aws.awsnlb.v1.AwsNlbDnsR\x03dns:\x99\x04\xbaH\x95\x04\x1a\x9c\x01\n" +
+	" dns_record_client_routing_policy\x18\b \x01(\tR\x1cdnsRecordClientRoutingPolicy\x12.\n" +
+	"\x13zonal_shift_enabled\x18\t \x01(\bR\x11zonalShiftEnabled\x12z\n" +
+	"<enforce_security_group_inbound_rules_on_private_link_traffic\x18\n" +
+	" \x01(\tR4enforceSecurityGroupInboundRulesOnPrivateLinkTraffic\x12U\n" +
+	"\vaccess_logs\x18\v \x01(\v24.dev.planton.provider.aws.awsnlb.v1.AwsNlbAccessLogsR\n" +
+	"accessLogs\x12?\n" +
+	"\x03dns\x18\f \x01(\v2-.dev.planton.provider.aws.awsnlb.v1.AwsNlbDnsR\x03dns:\xb9\x06\xbaH\xb5\x06\x1a\x9c\x01\n" +
 	"\x15ip_address_type_valid\x126ip_address_type must be 'ipv4' or 'dualstack' when set\x1aKthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']\x1a\xf3\x02\n" +
-	"&dns_record_client_routing_policy_valid\x12\x90\x01dns_record_client_routing_policy must be 'any_availability_zone', 'availability_zone_affinity', or 'partial_availability_zone_affinity' when set\x1a\xb5\x01this.dns_record_client_routing_policy == '' || this.dns_record_client_routing_policy in ['any_availability_zone', 'availability_zone_affinity', 'partial_availability_zone_affinity']\"\xc1\x02\n" +
+	"&dns_record_client_routing_policy_valid\x12\x90\x01dns_record_client_routing_policy must be 'any_availability_zone', 'availability_zone_affinity', or 'partial_availability_zone_affinity' when set\x1a\xb5\x01this.dns_record_client_routing_policy == '' || this.dns_record_client_routing_policy in ['any_availability_zone', 'availability_zone_affinity', 'partial_availability_zone_affinity']\x1a\x9d\x02\n" +
+	"\x1eprivate_link_enforcement_valid\x12[enforce_security_group_inbound_rules_on_private_link_traffic must be 'on' or 'off' when set\x1a\x9d\x01this.enforce_security_group_inbound_rules_on_private_link_traffic == '' || this.enforce_security_group_inbound_rules_on_private_link_traffic in ['on', 'off']\"\xc1\x02\n" +
 	"\x13AwsNlbSubnetMapping\x12x\n" +
 	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12~\n" +
 	"\rallocation_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x99\x02\x92\xd4a\x1cstatus.outputs.allocation_idR\fallocationId\x120\n" +
-	"\x14private_ipv4_address\x18\x03 \x01(\tR\x12privateIpv4Address\"\x8c\f\n" +
-	"\x0eAwsNlbListener\x12\xcf\x01\n" +
-	"\x04name\x18\x01 \x01(\tB\xba\x01\xbaH\xb6\x01\xba\x01\xaf\x01\n" +
-	"\x14listener_name_format\x12oname must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens (max 63 chars)\x1a&this.matches('^[a-z][a-z0-9-]{0,62}$')\xc8\x01\x01R\x04name\x12\"\n" +
-	"\x04port\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\x04port\x12\"\n" +
-	"\bprotocol\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x12E\n" +
-	"\x03tls\x18\x04 \x01(\v23.dev.planton.provider.aws.awsnlb.v1.AwsNlbTlsConfigR\x03tls\x127\n" +
-	"\x18tcp_idle_timeout_seconds\x18\x05 \x01(\x05R\x15tcpIdleTimeoutSeconds\x12\x1f\n" +
-	"\valpn_policy\x18\x06 \x01(\tR\n" +
-	"alpnPolicy\x12`\n" +
-	"\ftarget_group\x18\a \x01(\v25.dev.planton.provider.aws.awsnlb.v1.AwsNlbTargetGroupB\x06\xbaH\x03\xc8\x01\x01R\vtargetGroup:\xdc\a\xbaH\xd8\a\x1a}\n" +
-	"\x17listener_protocol_valid\x12/protocol must be one of: TCP, UDP, TLS, TCP_UDP\x1a1this.protocol in ['TCP', 'UDP', 'TLS', 'TCP_UDP']\x1a\x85\x01\n" +
-	"$tls_config_required_for_tls_protocol\x124tls configuration is required when protocol is 'TLS'\x1a'this.protocol != 'TLS' || has(this.tls)\x1a\x9c\x01\n" +
-	"\x1dtcp_idle_timeout_only_for_tcp\x12=tcp_idle_timeout_seconds is only valid when protocol is 'TCP'\x1a<this.tcp_idle_timeout_seconds == 0 || this.protocol == 'TCP'\x1a\xcd\x01\n" +
-	"\x16tcp_idle_timeout_range\x12=tcp_idle_timeout_seconds must be between 60 and 6000 when set\x1atthis.tcp_idle_timeout_seconds == 0 || (this.tcp_idle_timeout_seconds >= 60 && this.tcp_idle_timeout_seconds <= 6000)\x1a~\n" +
-	"\x18alpn_policy_only_for_tls\x120alpn_policy is only valid when protocol is 'TLS'\x1a0this.alpn_policy == '' || this.protocol == 'TLS'\x1a\xdf\x01\n" +
-	"\x11alpn_policy_valid\x12Ualpn_policy must be one of: HTTP1Only, HTTP2Only, HTTP2Optional, HTTP2Preferred, None\x1asthis.alpn_policy == '' || this.alpn_policy in ['HTTP1Only', 'HTTP2Only', 'HTTP2Optional', 'HTTP2Preferred', 'None']\"\xb6\x01\n" +
-	"\x0fAwsNlbTlsConfig\x12\x83\x01\n" +
-	"\x0fcertificate_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArn\x12\x1d\n" +
-	"\n" +
-	"ssl_policy\x18\x02 \x01(\tR\tsslPolicy\"\xe6\a\n" +
-	"\x11AwsNlbTargetGroup\x12\"\n" +
-	"\x04port\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\x04port\x12\"\n" +
-	"\bprotocol\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x12\x1f\n" +
-	"\vtarget_type\x18\x03 \x01(\tR\n" +
-	"targetType\x12X\n" +
-	"\fhealth_check\x18\x04 \x01(\v25.dev.planton.provider.aws.awsnlb.v1.AwsNlbHealthCheckR\vhealthCheck\x12I\n" +
-	"\x1cderegistration_delay_seconds\x18\x05 \x01(\x05B\a\x92\xa6\x1d\x03300R\x1aderegistrationDelaySeconds\x12,\n" +
-	"\x12preserve_client_ip\x18\x06 \x01(\bR\x10preserveClientIp\x12*\n" +
-	"\x11proxy_protocol_v2\x18\a \x01(\bR\x0fproxyProtocolV2\x125\n" +
-	"\x16connection_termination\x18\b \x01(\bR\x15connectionTermination\x12-\n" +
-	"\x12stickiness_enabled\x18\t \x01(\bR\x11stickinessEnabled:\x82\x04\xbaH\xfe\x03\x1a\x81\x01\n" +
-	"\x1btarget_group_protocol_valid\x12/protocol must be one of: TCP, UDP, TLS, TCP_UDP\x1a1this.protocol in ['TCP', 'UDP', 'TLS', 'TCP_UDP']\x1a\x95\x01\n" +
-	"\x11target_type_valid\x127target_type must be 'instance', 'ip', or 'alb' when set\x1aGthis.target_type == '' || this.target_type in ['instance', 'ip', 'alb']\x1a\xdf\x01\n" +
-	"\x1aderegistration_delay_range\x12@deregistration_delay_seconds must be between 0 and 3600 when set\x1a\x7fthis.deregistration_delay_seconds == 0 || (this.deregistration_delay_seconds >= 0 && this.deregistration_delay_seconds <= 3600)\"\xc8\v\n" +
-	"\x11AwsNlbHealthCheck\x12\x1a\n" +
-	"\bprotocol\x18\x01 \x01(\tR\bprotocol\x12\x12\n" +
-	"\x04port\x18\x02 \x01(\tR\x04port\x12\x12\n" +
-	"\x04path\x18\x03 \x01(\tR\x04path\x12+\n" +
-	"\x11healthy_threshold\x18\x04 \x01(\x05R\x10healthyThreshold\x12/\n" +
-	"\x13unhealthy_threshold\x18\x05 \x01(\x05R\x12unhealthyThreshold\x12)\n" +
-	"\x10interval_seconds\x18\x06 \x01(\x05R\x0fintervalSeconds\x12'\n" +
-	"\x0ftimeout_seconds\x18\a \x01(\x05R\x0etimeoutSeconds\x12\x18\n" +
-	"\amatcher\x18\b \x01(\tR\amatcher:\xa2\t\xbaH\x9e\t\x1a\x94\x01\n" +
-	"\x1bhealth_check_protocol_valid\x123protocol must be 'TCP', 'HTTP', or 'HTTPS' when set\x1a@this.protocol == '' || this.protocol in ['TCP', 'HTTP', 'HTTPS']\x1a\xa1\x01\n" +
-	"#health_check_path_required_for_http\x12@path is required when health check protocol is 'HTTP' or 'HTTPS'\x1a8!(this.protocol in ['HTTP', 'HTTPS']) || this.path != ''\x1a\xa5\x01\n" +
-	"\"health_check_matcher_only_for_http\x12Ematcher is only valid when health check protocol is 'HTTP' or 'HTTPS'\x1a8this.matcher == '' || this.protocol in ['HTTP', 'HTTPS']\x1a\xac\x01\n" +
-	"\x17healthy_threshold_range\x123healthy_threshold must be between 2 and 10 when set\x1a\\this.healthy_threshold == 0 || (this.healthy_threshold >= 2 && this.healthy_threshold <= 10)\x1a\xb6\x01\n" +
-	"\x19unhealthy_threshold_range\x125unhealthy_threshold must be between 2 and 10 when set\x1abthis.unhealthy_threshold == 0 || (this.unhealthy_threshold >= 2 && this.unhealthy_threshold <= 10)\x1a\xa9\x01\n" +
-	"\x16interval_seconds_range\x123interval_seconds must be between 5 and 300 when set\x1aZthis.interval_seconds == 0 || (this.interval_seconds >= 5 && this.interval_seconds <= 300)\x1a\xa4\x01\n" +
-	"\x15timeout_seconds_range\x122timeout_seconds must be between 2 and 120 when set\x1aWthis.timeout_seconds == 0 || (this.timeout_seconds >= 2 && this.timeout_seconds <= 120)\"\xca\x01\n" +
+	"\x14private_ipv4_address\x18\x03 \x01(\tR\x12privateIpv4Address\"\x9f\x01\n" +
+	"\x10AwsNlbAccessLogs\x12s\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
+	"\x06prefix\x18\x02 \x01(\tR\x06prefix\"\xca\x01\n" +
 	"\tAwsNlbDns\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12{\n" +
 	"\x0froute53_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\rroute53ZoneId\x12&\n" +
@@ -935,34 +490,28 @@ func file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDescGZIP() []byte {
 	return file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dev_planton_provider_aws_awsnlb_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_aws_awsnlb_v1_spec_proto_goTypes = []any{
 	(*AwsNlbSpec)(nil),          // 0: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec
 	(*AwsNlbSubnetMapping)(nil), // 1: dev.planton.provider.aws.awsnlb.v1.AwsNlbSubnetMapping
-	(*AwsNlbListener)(nil),      // 2: dev.planton.provider.aws.awsnlb.v1.AwsNlbListener
-	(*AwsNlbTlsConfig)(nil),     // 3: dev.planton.provider.aws.awsnlb.v1.AwsNlbTlsConfig
-	(*AwsNlbTargetGroup)(nil),   // 4: dev.planton.provider.aws.awsnlb.v1.AwsNlbTargetGroup
-	(*AwsNlbHealthCheck)(nil),   // 5: dev.planton.provider.aws.awsnlb.v1.AwsNlbHealthCheck
-	(*AwsNlbDns)(nil),           // 6: dev.planton.provider.aws.awsnlb.v1.AwsNlbDns
-	(*v1.StringValueOrRef)(nil), // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsNlbAccessLogs)(nil),    // 2: dev.planton.provider.aws.awsnlb.v1.AwsNlbAccessLogs
+	(*AwsNlbDns)(nil),           // 3: dev.planton.provider.aws.awsnlb.v1.AwsNlbDns
+	(*v1.StringValueOrRef)(nil), // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsnlb_v1_spec_proto_depIdxs = []int32{
-	1,  // 0: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec.subnet_mappings:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbSubnetMapping
-	7,  // 1: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 2: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec.listeners:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbListener
-	6,  // 3: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec.dns:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbDns
-	7,  // 4: dev.planton.provider.aws.awsnlb.v1.AwsNlbSubnetMapping.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 5: dev.planton.provider.aws.awsnlb.v1.AwsNlbSubnetMapping.allocation_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 6: dev.planton.provider.aws.awsnlb.v1.AwsNlbListener.tls:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbTlsConfig
-	4,  // 7: dev.planton.provider.aws.awsnlb.v1.AwsNlbListener.target_group:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbTargetGroup
-	7,  // 8: dev.planton.provider.aws.awsnlb.v1.AwsNlbTlsConfig.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 9: dev.planton.provider.aws.awsnlb.v1.AwsNlbTargetGroup.health_check:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbHealthCheck
-	7,  // 10: dev.planton.provider.aws.awsnlb.v1.AwsNlbDns.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec.subnet_mappings:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbSubnetMapping
+	4, // 1: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 2: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec.access_logs:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbAccessLogs
+	3, // 3: dev.planton.provider.aws.awsnlb.v1.AwsNlbSpec.dns:type_name -> dev.planton.provider.aws.awsnlb.v1.AwsNlbDns
+	4, // 4: dev.planton.provider.aws.awsnlb.v1.AwsNlbSubnetMapping.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 5: dev.planton.provider.aws.awsnlb.v1.AwsNlbSubnetMapping.allocation_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 6: dev.planton.provider.aws.awsnlb.v1.AwsNlbAccessLogs.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 7: dev.planton.provider.aws.awsnlb.v1.AwsNlbDns.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsnlb_v1_spec_proto_init() }
@@ -976,7 +525,7 @@ func file_dev_planton_provider_aws_awsnlb_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

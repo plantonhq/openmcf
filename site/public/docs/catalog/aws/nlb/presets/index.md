@@ -8,18 +8,18 @@ provider: "aws"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-tcp-internal"
+  - slug: "01-internal"
     rank: "01"
-    title: "TCP Internal NLB"
-    excerpt: "This preset creates an internal Network Load Balancer for microservice-to-microservice communication within a VPC. It uses plain TCP (no TLS termination), spans two subnets for high availability, and..."
-  - slug: "02-tls-internet-facing"
+    title: "Internal NLB"
+    excerpt: "This preset creates the simplest useful Network Load Balancer: an internal NLB with one node in one private subnet. It carries no listeners by design — attach `AwsLbListener` resources..."
+  - slug: "02-static-ip-internet-facing"
     rank: "02"
-    title: "TLS Internet-Facing NLB"
-    excerpt: "This preset creates an internet-facing Network Load Balancer with TLS termination on port 443. The NLB decrypts incoming TLS and forwards plaintext TCP to targets on your application port. Includes..."
-  - slug: "03-static-ip-production"
+    title: "Static-IP Internet-Facing NLB"
+    excerpt: "This preset creates the headline NLB use case: an internet-facing load balancer whose public IPs never change. Each subnet mapping pins one NLB node to an Elastic IP, referenced from an..."
+  - slug: "03-private-link-hardened"
     rank: "03"
-    title: "Static IP Production NLB"
-    excerpt: "This preset creates a production-grade internet-facing Network Load Balancer with Elastic IPs for static public IPs, TLS termination, Route53 DNS, HTTP health checks, cross-zone load balancing,..."
+    title: "PrivateLink-Hardened NLB"
+    excerpt: "This preset creates the NLB posture for exposing a service over AWS PrivateLink: an internal load balancer with security groups attached, security-group rules enforced on traffic arriving through..."
 ---
 
 # NLB Presets

@@ -94,6 +94,9 @@ import (
 	awskinesisstreamconsumerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awskinesisstreamconsumer/v1"
 	awskmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awskmskey/v1"
 	awslambdav1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslambda/v1"
+	awslblistenerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslblistener/v1"
+	awslblistenerrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslblistenerrule/v1"
+	awslbtargetgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslbtargetgroup/v1"
 	awsmemcachedelasticachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemcachedelasticache/v1"
 	awsmemorydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbcluster/v1"
 	awsmskclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskcluster/v1"
@@ -531,6 +534,9 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsKinesisStreamConsumer:         &awskinesisstreamconsumerv1.AwsKinesisStreamConsumer{},
 	cloudresourcekind.CloudResourceKind_AwsKmsKey:                        &awskmskeyv1.AwsKmsKey{},
 	cloudresourcekind.CloudResourceKind_AwsLambda:                        &awslambdav1.AwsLambda{},
+	cloudresourcekind.CloudResourceKind_AwsLbListener:                    &awslblistenerv1.AwsLbListener{},
+	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                &awslblistenerrulev1.AwsLbListenerRule{},
+	cloudresourcekind.CloudResourceKind_AwsLbTargetGroup:                 &awslbtargetgroupv1.AwsLbTargetGroup{},
 	cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache:          &awsmemcachedelasticachev1.AwsMemcachedElasticache{},
 	cloudresourcekind.CloudResourceKind_AwsMemorydbCluster:               &awsmemorydbclusterv1.AwsMemorydbCluster{},
 	cloudresourcekind.CloudResourceKind_AwsMskCluster:                    &awsmskclusterv1.AwsMskCluster{},

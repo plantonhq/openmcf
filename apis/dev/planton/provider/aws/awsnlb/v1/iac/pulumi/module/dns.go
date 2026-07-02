@@ -40,9 +40,14 @@ func dns(
 			ZoneId:         pulumi.String(dnsSpec.Route53ZoneId.GetValue()),
 			Aliases: route53.RecordAliasArray{
 				route53.RecordAliasArgs{
-					Name:                 nlbResource.DnsName,
-					ZoneId:               nlbResource.ZoneId,
-					EvaluateTargetHealth: pulumi.Bool(true),
+					Name:   nlbResource.DnsName,
+					ZoneId: nlbResource.ZoneId,
+					// false on purpose: target-health evaluation only changes
+					// behavior under failover/weighted routing policies, and a
+					// simple alias should not pay for health evaluation. Must
+					// stay identical in the Terraform module (cross-engine
+					// parity).
+					EvaluateTargetHealth: pulumi.Bool(false),
 				},
 			},
 		}, pulumi.Provider(provider))

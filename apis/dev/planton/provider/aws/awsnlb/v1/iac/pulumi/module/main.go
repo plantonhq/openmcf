@@ -8,7 +8,8 @@ import (
 )
 
 // Resources is the primary entry point for the AwsNlb Pulumi
-// module. It creates the NLB, listeners with target groups, and optional DNS.
+// module. It creates the NLB and optional DNS records; listeners and target
+// groups are separate resources that attach to the NLB by ARN.
 func Resources(ctx *pulumi.Context, stackInput *awsnlbv1.AwsNlbStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
@@ -22,10 +23,6 @@ func Resources(ctx *pulumi.Context, stackInput *awsnlbv1.AwsNlbStackInput) error
 	nlbResource, err := nlb(ctx, locals, provider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create Network Load Balancer")
-	}
-
-	if err := listeners(ctx, locals, provider, nlbResource); err != nil {
-		return errors.Wrap(err, "failed to create listeners and target groups")
 	}
 
 	if locals.Nlb.Spec.Dns != nil && locals.Nlb.Spec.Dns.Enabled {

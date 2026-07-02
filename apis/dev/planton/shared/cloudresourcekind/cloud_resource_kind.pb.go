@@ -82,20 +82,27 @@ const (
 	CloudResourceKind_AtlasMongodb      CloudResourceKind = 51
 	CloudResourceKind_SnowflakeDatabase CloudResourceKind = 52
 	// 200–399: AWS resources
-	CloudResourceKind_AwsAlb              CloudResourceKind = 200
-	CloudResourceKind_AwsCertManagerCert  CloudResourceKind = 201
-	CloudResourceKind_AwsCloudFront       CloudResourceKind = 202
-	CloudResourceKind_AwsDynamodb         CloudResourceKind = 203
-	CloudResourceKind_AwsEcrRepo          CloudResourceKind = 204
-	CloudResourceKind_AwsEcsCluster       CloudResourceKind = 205
-	CloudResourceKind_AwsEcsService       CloudResourceKind = 206
-	CloudResourceKind_AwsEksCluster       CloudResourceKind = 207
-	CloudResourceKind_AwsIamRole          CloudResourceKind = 208
-	CloudResourceKind_AwsLambda           CloudResourceKind = 209
-	CloudResourceKind_AwsRdsCluster       CloudResourceKind = 210
-	CloudResourceKind_AwsRdsInstance      CloudResourceKind = 211
-	CloudResourceKind_AwsRoute53Zone      CloudResourceKind = 212
-	CloudResourceKind_AwsS3Bucket         CloudResourceKind = 213
+	// AwsSubnet is a prerequisite because an ALB requires at least two subnets
+	// in different availability zones -- the spec's subnet references must
+	// resolve before the load balancer can be created.
+	CloudResourceKind_AwsAlb             CloudResourceKind = 200
+	CloudResourceKind_AwsCertManagerCert CloudResourceKind = 201
+	CloudResourceKind_AwsCloudFront      CloudResourceKind = 202
+	CloudResourceKind_AwsDynamodb        CloudResourceKind = 203
+	CloudResourceKind_AwsEcrRepo         CloudResourceKind = 204
+	CloudResourceKind_AwsEcsCluster      CloudResourceKind = 205
+	CloudResourceKind_AwsEcsService      CloudResourceKind = 206
+	CloudResourceKind_AwsEksCluster      CloudResourceKind = 207
+	CloudResourceKind_AwsIamRole         CloudResourceKind = 208
+	CloudResourceKind_AwsLambda          CloudResourceKind = 209
+	CloudResourceKind_AwsRdsCluster      CloudResourceKind = 210
+	CloudResourceKind_AwsRdsInstance     CloudResourceKind = 211
+	CloudResourceKind_AwsRoute53Zone     CloudResourceKind = 212
+	CloudResourceKind_AwsS3Bucket        CloudResourceKind = 213
+	// AwsVpc is a prerequisite because a target group's health checks and
+	// target registrations live inside one VPC -- the spec's vpc_id reference
+	// must resolve before the group can be created.
+	CloudResourceKind_AwsLbTargetGroup    CloudResourceKind = 214
 	CloudResourceKind_AwsSecurityGroup    CloudResourceKind = 215
 	CloudResourceKind_AwsVpc              CloudResourceKind = 216
 	CloudResourceKind_AwsEksNodeGroup     CloudResourceKind = 217
@@ -115,19 +122,31 @@ const (
 	// AwsIamRole is a prerequisite because an instance profile is a wrapper that
 	// must contain a role to be useful -- the profile's spec requires a role
 	// reference, so the role must be deployed first.
-	CloudResourceKind_AwsIamInstanceProfile    CloudResourceKind = 231
+	CloudResourceKind_AwsIamInstanceProfile CloudResourceKind = 231
+	// AwsAlb and AwsLbTargetGroup are prerequisites because a listener is an
+	// attachment point on a load balancer and its default action almost always
+	// forwards to a target group -- both references must resolve before the
+	// listener can be created.
+	CloudResourceKind_AwsLbListener CloudResourceKind = 232
+	// AwsLbListener is a prerequisite because a rule only exists as an
+	// attachment on a listener -- the listener_arn reference must resolve
+	// before the rule can be created.
+	CloudResourceKind_AwsLbListenerRule        CloudResourceKind = 233
 	CloudResourceKind_AwsHttpApiGateway        CloudResourceKind = 240
 	CloudResourceKind_AwsStepFunction          CloudResourceKind = 241
 	CloudResourceKind_AwsRedisElasticache      CloudResourceKind = 250
 	CloudResourceKind_AwsOpenSearchDomain      CloudResourceKind = 251
 	CloudResourceKind_AwsMemcachedElasticache  CloudResourceKind = 252
 	CloudResourceKind_AwsServerlessElasticache CloudResourceKind = 253
-	CloudResourceKind_AwsNlb                   CloudResourceKind = 280
-	CloudResourceKind_AwsElasticIp             CloudResourceKind = 281
-	CloudResourceKind_AwsTransitGateway        CloudResourceKind = 282
-	CloudResourceKind_AwsGlobalAccelerator     CloudResourceKind = 283
-	CloudResourceKind_AwsSubnet                CloudResourceKind = 284
-	CloudResourceKind_AwsInternetGateway       CloudResourceKind = 285
+	// AwsSubnet is a prerequisite because an NLB requires at least one subnet
+	// mapping -- the spec's subnet references must resolve before the load
+	// balancer can be created.
+	CloudResourceKind_AwsNlb               CloudResourceKind = 280
+	CloudResourceKind_AwsElasticIp         CloudResourceKind = 281
+	CloudResourceKind_AwsTransitGateway    CloudResourceKind = 282
+	CloudResourceKind_AwsGlobalAccelerator CloudResourceKind = 283
+	CloudResourceKind_AwsSubnet            CloudResourceKind = 284
+	CloudResourceKind_AwsInternetGateway   CloudResourceKind = 285
 	// AwsInternetGateway is a prerequisite because a public NAT gateway can only
 	// become available once the VPC it sits in has an internet gateway attached
 	// (AWS rejects the create otherwise) -- so the gateway must be deployed first.
@@ -540,6 +559,7 @@ var (
 		211:  "AwsRdsInstance",
 		212:  "AwsRoute53Zone",
 		213:  "AwsS3Bucket",
+		214:  "AwsLbTargetGroup",
 		215:  "AwsSecurityGroup",
 		216:  "AwsVpc",
 		217:  "AwsEksNodeGroup",
@@ -557,6 +577,8 @@ var (
 		229:  "AwsIamOidcProvider",
 		230:  "AwsIamPolicy",
 		231:  "AwsIamInstanceProfile",
+		232:  "AwsLbListener",
+		233:  "AwsLbListenerRule",
 		240:  "AwsHttpApiGateway",
 		241:  "AwsStepFunction",
 		250:  "AwsRedisElasticache",
@@ -953,6 +975,7 @@ var (
 		"AwsRdsInstance":                          211,
 		"AwsRoute53Zone":                          212,
 		"AwsS3Bucket":                             213,
+		"AwsLbTargetGroup":                        214,
 		"AwsSecurityGroup":                        215,
 		"AwsVpc":                                  216,
 		"AwsEksNodeGroup":                         217,
@@ -970,6 +993,8 @@ var (
 		"AwsIamOidcProvider":                      229,
 		"AwsIamPolicy":                            230,
 		"AwsIamInstanceProfile":                   231,
+		"AwsLbListener":                           232,
+		"AwsLbListenerRule":                       233,
 		"AwsHttpApiGateway":                       240,
 		"AwsStepFunction":                         241,
 		"AwsRedisElasticache":                     250,
@@ -1597,7 +1622,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xe3\x91\x01\n" +
+	"\x02v1\x10\x01*\xeb\x92\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1606,8 +1631,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\b\x01\x10\x01\"\x04tcrk\x12$\n" +
 	"\x0eConfluentKafka\x102\x1a\x10\xa2\xf7\x04\f\b\x10\x10\x01\"\x06conkaf\x12\"\n" +
 	"\fAtlasMongodb\x103\x1a\x10\xa2\xf7\x04\f\b\v\x10\x01\"\x06atlmdb\x12'\n" +
-	"\x11SnowflakeDatabase\x104\x1a\x10\xa2\xf7\x04\f\b\x14\x10\x01\"\x06snowdb\x12\x1d\n" +
-	"\x06AwsAlb\x10\xc8\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsalb\x12*\n" +
+	"\x11SnowflakeDatabase\x104\x1a\x10\xa2\xf7\x04\f\b\x14\x10\x01\"\x06snowdb\x12!\n" +
+	"\x06AwsAlb\x10\xc8\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsalb:\x02\x9c\x02\x12*\n" +
 	"\x12AwsCertManagerCert\x10\xc9\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aacmcert\x12#\n" +
 	"\rAwsCloudFront\x10\xca\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscf\x12\"\n" +
 	"\vAwsDynamodb\x10\xcb\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsdyn\x12\x1e\n" +
@@ -1623,7 +1648,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0eAwsRdsInstance\x10\xd3\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06rdsins\x12#\n" +
 	"\x0eAwsRoute53Zone\x10\xd4\x01\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\f\x10\x01\"\x04r53z\x12!\n" +
-	"\vAwsS3Bucket\x10\xd5\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05s3bkt\x12&\n" +
+	"\vAwsS3Bucket\x10\xd5\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05s3bkt\x12)\n" +
+	"\x10AwsLbTargetGroup\x10\xd6\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04lbtg:\x02\xd8\x01\x12&\n" +
 	"\x10AwsSecurityGroup\x10\xd7\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awssg\x12\x1f\n" +
 	"\x06AwsVpc\x10\xd8\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x06awsvpc0\x01\x12%\n" +
 	"\x0fAwsEksNodeGroup\x10\xd9\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05eksng\x12\"\n" +
@@ -1641,14 +1667,16 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x12AwsEventBridgeRule\x10\xe4\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsebr\x12(\n" +
 	"\x12AwsIamOidcProvider\x10\xe5\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05oidcp\x12#\n" +
 	"\fAwsIamPolicy\x10\xe6\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06iampol\x12/\n" +
-	"\x15AwsIamInstanceProfile\x10\xe7\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05iamip:\x02\xd0\x01\x12.\n" +
+	"\x15AwsIamInstanceProfile\x10\xe7\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05iamip:\x02\xd0\x01\x12'\n" +
+	"\rAwsLbListener\x10\xe8\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x03lbl:\x04\xc8\x01\xd6\x01\x12*\n" +
+	"\x11AwsLbListenerRule\x10\xe9\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04lblr:\x02\xe8\x01\x12.\n" +
 	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12&\n" +
 	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12,\n" +
 	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsredis\x12)\n" +
 	"\x13AwsOpenSearchDomain\x10\xfb\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsos\x124\n" +
 	"\x17AwsMemcachedElasticache\x10\xfc\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawsmemcached\x122\n" +
-	"\x18AwsServerlessElasticache\x10\xfd\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawsslselc\x12\x1d\n" +
-	"\x06AwsNlb\x10\x98\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsnlb\x12#\n" +
+	"\x18AwsServerlessElasticache\x10\xfd\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawsslselc\x12!\n" +
+	"\x06AwsNlb\x10\x98\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnlb:\x02\x9c\x02\x12#\n" +
 	"\fAwsElasticIp\x10\x99\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awseip\x12(\n" +
 	"\x11AwsTransitGateway\x10\x9a\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awstgw\x12*\n" +
 	"\x14AwsGlobalAccelerator\x10\x9b\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsga\x12#\n" +

@@ -4,7 +4,6 @@ go_library(
     name = "module",
     srcs = [
         "dns.go",
-        "listener.go",
         "locals.go",
         "main.go",
         "nlb.go",

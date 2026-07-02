@@ -20,6 +20,7 @@ Chart manifests live in the [`templates`](templates) directory; every tunable va
 | **Elastic Container Registry (ECR) Repo**        | Yes            | —                          |
 | **ECS Cluster (Fargate + Spot)**                 | Yes            | —                          |
 | **Application Load Balancer (ALB)**              | Yes            | —                          |
+| **ALB Listener(s)**                              | Yes            | HTTPS pair vs plain HTTP via `httpsEnabled` |
 | **ACM Certificate (DNS‑validated)**              | *No*           | `httpsEnabled`             |
 | **ECS Service (+ Task Def)**                     | Yes            | —                          |
 | **IAM Task‑Execution Role**                      | Yes            | —                          |
@@ -29,12 +30,13 @@ Chart manifests live in the [`templates`](templates) directory; every tunable va
 * `httpsEnabled: true` →
 
     * Renders an **`AwsCertManagerCert`** resource.
-    * Adds an `ssl:` block (certificate ARN) to the ALB spec.
-    * Configures the ECS service listener to **443**.
+    * Creates an **`AwsLbListener`** on **443** (HTTPS, certificate‑terminated) plus an
+      **`AwsLbListener`** on **80** that permanently redirects to HTTPS.
+    * Configures the ECS service to attach its routing rule to the **443** listener.
 * `httpsEnabled: false` →
 
-    * Omits the certificate and `ssl:` configuration.
-    * Sets the listener to plain **80**.
+    * Omits the certificate; creates a single plain‑HTTP **`AwsLbListener`** on **80**.
+    * The ECS service attaches its routing rule to the **80** listener.
 
 ---
 
