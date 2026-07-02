@@ -81,14 +81,14 @@ Wire the Elastic IP into an NLB subnet mapping via `valueFrom`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
-kind: AwsNetworkLoadBalancer
+kind: AwsNlb
 metadata:
   name: api-nlb
   labels:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsNetworkLoadBalancer.api-nlb
+    pulumi.planton.dev/stack.name: prod.AwsNlb.api-nlb
 spec:
   subnetMappings:
     - subnetId:
@@ -150,6 +150,6 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [AwsNetworkLoadBalancer](/docs/catalog/aws/network-load-balancer) — uses `allocationId` in subnet mappings for static public IPs
+- [AwsNlb](/docs/catalog/aws/awsnlb) — uses `allocationId` in subnet mappings for static public IPs
 - [AwsVpc](/docs/catalog/aws/awsvpc) — provides the VPC and subnets where EIP consumers are deployed
 - [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — controls traffic to resources associated with the EIP

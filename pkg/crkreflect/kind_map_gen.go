@@ -100,7 +100,7 @@ import (
 	awsmwaaenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmwaaenvironment/v1"
 	awsnatgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnatgateway/v1"
 	awsneptuneclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsneptunecluster/v1"
-	awsnetworkloadbalancerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnetworkloadbalancer/v1"
+	awsnlbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnlb/v1"
 	awsopensearchdomainv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsopensearchdomain/v1"
 	awsrdsclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdscluster/v1"
 	awsrdsinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdsinstance/v1"
@@ -537,7 +537,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment:               &awsmwaaenvironmentv1.AwsMwaaEnvironment{},
 	cloudresourcekind.CloudResourceKind_AwsNatGateway:                    &awsnatgatewayv1.AwsNatGateway{},
 	cloudresourcekind.CloudResourceKind_AwsNeptuneCluster:                &awsneptuneclusterv1.AwsNeptuneCluster{},
-	cloudresourcekind.CloudResourceKind_AwsNetworkLoadBalancer:           &awsnetworkloadbalancerv1.AwsNetworkLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_AwsNlb:                           &awsnlbv1.AwsNlb{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain:              &awsopensearchdomainv1.AwsOpenSearchDomain{},
 	cloudresourcekind.CloudResourceKind_AwsRdsCluster:                    &awsrdsclusterv1.AwsRdsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                   &awsrdsinstancev1.AwsRdsInstance{},

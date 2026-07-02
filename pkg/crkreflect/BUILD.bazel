@@ -116,7 +116,7 @@ go_library(
         "//apis/dev/planton/provider/aws/awsmwaaenvironment/v1:awsmwaaenvironment",
         "//apis/dev/planton/provider/aws/awsnatgateway/v1:awsnatgateway",
         "//apis/dev/planton/provider/aws/awsneptunecluster/v1:awsneptunecluster",
-        "//apis/dev/planton/provider/aws/awsnetworkloadbalancer/v1:awsnetworkloadbalancer",
+        "//apis/dev/planton/provider/aws/awsnlb/v1:awsnlb",
         "//apis/dev/planton/provider/aws/awsopensearchdomain/v1:awsopensearchdomain",
         "//apis/dev/planton/provider/aws/awsrdscluster/v1:awsrdscluster",
         "//apis/dev/planton/provider/aws/awsrdsinstance/v1:awsrdsinstance",

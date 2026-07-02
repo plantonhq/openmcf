@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsNlb
+metadata:
+  name: <nlb-name>
+spec:
+  region: <aws-region>
+  internal: true
+  subnetMappings:
+    - subnetId:
+        value: <private-subnet-id-az1>
+    - subnetId:
+        value: <private-subnet-id-az2>
+  listeners:
+    - name: tcp-app
+      port: <listener-port>
+      protocol: TCP
+      targetGroup:
+        port: <target-port>
+        protocol: TCP

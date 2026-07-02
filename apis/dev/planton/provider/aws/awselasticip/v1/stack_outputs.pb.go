@@ -24,7 +24,7 @@ const (
 // AwsElasticIpStackOutputs captures observable identifiers from a provisioned Elastic IP.
 //
 // The primary output is `allocation_id`, which downstream resources use to wire
-// dependencies via StringValueOrRef. For example, an AwsNetworkLoadBalancer uses
+// dependencies via StringValueOrRef. For example, an AwsNlb uses
 // the allocation_id in its subnet_mapping to bind a static public IP to the NLB.
 type AwsElasticIpStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`

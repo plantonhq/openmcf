@@ -68,3 +68,6 @@ bazel-planton-hetzner-cloud/
 
 # E2E test artifacts (generated during pulumi runs)
 **/iac/pulumi/stack-input.yaml
+
+# `go build .` at the repo root produces a binary named after the package (main)
+/main

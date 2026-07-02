@@ -299,7 +299,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsslselc"
   }];
-  AwsNetworkLoadBalancer = 280 [(kind_meta) = {
+  AwsNlb = 280 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsnlb"

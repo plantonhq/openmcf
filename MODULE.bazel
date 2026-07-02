@@ -32,6 +32,7 @@ use_repo(
     "com_github_aws_aws_sdk_go_v2_config",
     "com_github_aws_aws_sdk_go_v2_credentials",
     "com_github_aws_aws_sdk_go_v2_service_ec2",
+    "com_github_aws_aws_sdk_go_v2_service_iam",
     "com_github_aws_aws_sdk_go_v2_service_s3",
     "com_github_aws_aws_sdk_go_v2_service_sts",
     "com_github_aws_smithy_go",
