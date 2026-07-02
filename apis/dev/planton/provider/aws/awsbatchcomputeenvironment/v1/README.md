@@ -120,7 +120,7 @@ spec:
 | `ec2KeyPair` | string | No | EC2/SPOT | SSH key pair name |
 | `bidPercentage` | int | No | SPOT | Max % of On-Demand price (0-100) |
 | `spotIamFleetRole` | StringValueOrRef | **Yes**\* | SPOT | Spot Fleet IAM role ARN |
-| `launchTemplate` | object | No | EC2/SPOT | Custom launch template |
+| `launchTemplate` | object | No | EC2/SPOT | Custom launch template (references an `AwsLaunchTemplate` by id) |
 | `ec2Configurations` | list | No | EC2/SPOT | AMI customization (max 2) |
 | `resourceTags` | map | No | EC2/SPOT | Tags for launched compute resources |
 

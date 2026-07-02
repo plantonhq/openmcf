@@ -131,7 +131,13 @@ const (
 	// AwsLbListener is a prerequisite because a rule only exists as an
 	// attachment on a listener -- the listener_arn reference must resolve
 	// before the rule can be created.
-	CloudResourceKind_AwsLbListenerRule        CloudResourceKind = 233
+	CloudResourceKind_AwsLbListenerRule CloudResourceKind = 233
+	CloudResourceKind_AwsLaunchTemplate CloudResourceKind = 234
+	// AwsSubnet and AwsLaunchTemplate are prerequisites because a group
+	// cannot exist without subnets to place capacity in and a launch
+	// template to launch from -- the spec's subnets and launch_template
+	// references must resolve before the group can be created.
+	CloudResourceKind_AwsAutoScalingGroup      CloudResourceKind = 235
 	CloudResourceKind_AwsHttpApiGateway        CloudResourceKind = 240
 	CloudResourceKind_AwsStepFunction          CloudResourceKind = 241
 	CloudResourceKind_AwsRedisElasticache      CloudResourceKind = 250
@@ -579,6 +585,8 @@ var (
 		231:  "AwsIamInstanceProfile",
 		232:  "AwsLbListener",
 		233:  "AwsLbListenerRule",
+		234:  "AwsLaunchTemplate",
+		235:  "AwsAutoScalingGroup",
 		240:  "AwsHttpApiGateway",
 		241:  "AwsStepFunction",
 		250:  "AwsRedisElasticache",
@@ -995,6 +1003,8 @@ var (
 		"AwsIamInstanceProfile":                   231,
 		"AwsLbListener":                           232,
 		"AwsLbListenerRule":                       233,
+		"AwsLaunchTemplate":                       234,
+		"AwsAutoScalingGroup":                     235,
 		"AwsHttpApiGateway":                       240,
 		"AwsStepFunction":                         241,
 		"AwsRedisElasticache":                     250,
@@ -1622,7 +1632,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xeb\x92\x01\n" +
+	"\x02v1\x10\x01*Ó\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1669,7 +1679,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\fAwsIamPolicy\x10\xe6\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06iampol\x12/\n" +
 	"\x15AwsIamInstanceProfile\x10\xe7\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05iamip:\x02\xd0\x01\x12'\n" +
 	"\rAwsLbListener\x10\xe8\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x03lbl:\x04\xc8\x01\xd6\x01\x12*\n" +
-	"\x11AwsLbListenerRule\x10\xe9\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04lblr:\x02\xe8\x01\x12.\n" +
+	"\x11AwsLbListenerRule\x10\xe9\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04lblr:\x02\xe8\x01\x12$\n" +
+	"\x11AwsLaunchTemplate\x10\xea\x01\x1a\f\xa2\xf7\x04\b\b\f\x10\x01\"\x02lt\x12-\n" +
+	"\x13AwsAutoScalingGroup\x10\xeb\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x03asg:\x04\x9c\x02\xea\x01\x12.\n" +
 	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12&\n" +
 	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12,\n" +
 	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsredis\x12)\n" +
@@ -1836,8 +1848,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14KubernetesClickHouse\x10\xbe\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\xbf\x06\x123\n" +
 	"\x1aKubernetesAltinityOperator\x10\xbf\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x12=\n" +
 	"!KubernetesPerconaPostgresOperator\x10\xc0\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\vk8sprcnpgop\x12;\n" +
-	"\x1eKubernetesPerconaMongoOperator\x10\xc1\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\fk8sprcnmdbop\x12:\n" +
-	"\x1eKubernetesPerconaMysqlOperator\x10\xc2\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\vk8sprcnpgop\x12(\n" +
+	"\x1eKubernetesPerconaMongoOperator\x10\xc1\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\fk8sprcnmdbop\x12=\n" +
+	"\x1eKubernetesPerconaMysqlOperator\x10\xc2\x06\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\x0ek8sprcnmysqlop\x12(\n" +
 	"\x10KubernetesHarbor\x10\xc3\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shrbr\x12+\n" +
 	"\x13KubernetesNamespace\x10\xc4\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\x05k8sns0\x01\x122\n" +
 	"\x18KubernetesGatewayApiCrds\x10\xc5\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgwcrds\x122\n" +

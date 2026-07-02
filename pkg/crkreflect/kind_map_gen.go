@@ -51,6 +51,7 @@ import (
 	awsalbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsalb/v1"
 	awsapprunnerservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsapprunnerservice/v1"
 	awsathenaworkgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsathenaworkgroup/v1"
+	awsautoscalinggroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsautoscalinggroup/v1"
 	awsbatchcomputeenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchcomputeenvironment/v1"
 	awscertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscertmanagercert/v1"
 	awsclientvpnv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsclientvpn/v1"
@@ -94,6 +95,7 @@ import (
 	awskinesisstreamconsumerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awskinesisstreamconsumer/v1"
 	awskmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awskmskey/v1"
 	awslambdav1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslambda/v1"
+	awslaunchtemplatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslaunchtemplate/v1"
 	awslblistenerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslblistener/v1"
 	awslblistenerrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslblistenerrule/v1"
 	awslbtargetgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslbtargetgroup/v1"
@@ -491,6 +493,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsAlb:                           &awsalbv1.AwsAlb{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerService:              &awsapprunnerservicev1.AwsAppRunnerService{},
 	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:               &awsathenaworkgroupv1.AwsAthenaWorkgroup{},
+	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:              &awsautoscalinggroupv1.AwsAutoScalingGroup{},
 	cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment:       &awsbatchcomputeenvironmentv1.AwsBatchComputeEnvironment{},
 	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:               &awscertmanagercertv1.AwsCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                     &awsclientvpnv1.AwsClientVpn{},
@@ -534,6 +537,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsKinesisStreamConsumer:         &awskinesisstreamconsumerv1.AwsKinesisStreamConsumer{},
 	cloudresourcekind.CloudResourceKind_AwsKmsKey:                        &awskmskeyv1.AwsKmsKey{},
 	cloudresourcekind.CloudResourceKind_AwsLambda:                        &awslambdav1.AwsLambda{},
+	cloudresourcekind.CloudResourceKind_AwsLaunchTemplate:                &awslaunchtemplatev1.AwsLaunchTemplate{},
 	cloudresourcekind.CloudResourceKind_AwsLbListener:                    &awslblistenerv1.AwsLbListener{},
 	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                &awslblistenerrulev1.AwsLbListenerRule{},
 	cloudresourcekind.CloudResourceKind_AwsLbTargetGroup:                 &awslbtargetgroupv1.AwsLbTargetGroup{},

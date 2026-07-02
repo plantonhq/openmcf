@@ -296,6 +296,33 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"rule_arn", "priority"},
 		},
 		{
+			// AwsLaunchTemplate: the template id/arn plus the two version numbers.
+			// latest_version and default_version are int64 proto fields fed from
+			// numeric engine outputs (Terraform's number, Pulumi's IntOutput) --
+			// this case guards that numeric outputs flatten onto int64 fields.
+			name: "AwsLaunchTemplate",
+			kind: cloudresourcekind.CloudResourceKind_AwsLaunchTemplate,
+			rawOutputs: map[string]interface{}{
+				"launch_template_id":  "lt-0123456789abcdef0",
+				"launch_template_arn": "arn:aws:ec2:us-west-2:123456789012:launch-template/lt-0123456789abcdef0",
+				"latest_version":      float64(3),
+				"default_version":     float64(3),
+			},
+			mustPopulate: []string{"launch_template_id", "launch_template_arn", "latest_version", "default_version"},
+		},
+		{
+			// AwsAutoScalingGroup: flat scalar outputs -- the group name is the
+			// CloudWatch dimension and ECS capacity-provider handle; the ARN scopes
+			// IAM policies and EventBridge rules.
+			name: "AwsAutoScalingGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup,
+			rawOutputs: map[string]interface{}{
+				"autoscaling_group_name": "web",
+				"autoscaling_group_arn":  "arn:aws:autoscaling:us-west-2:123456789012:autoScalingGroup:uuid:autoScalingGroupName/web",
+			},
+			mustPopulate: []string{"autoscaling_group_name", "autoscaling_group_arn"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

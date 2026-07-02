@@ -1,0 +1,152 @@
+variable "metadata" {
+  description = "Cloud resource metadata"
+  type = object({
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
+  })
+}
+
+variable "spec" {
+  description = "AwsLaunchTemplate specification"
+  type = object({
+    region = string
+    description = optional(string, "")
+    image_id = optional(string, "")
+    instance_type = optional(string, "")
+    instance_requirements = optional(object({
+      memory_mib = object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      })
+      vcpu_count = object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      })
+      allowed_instance_types = optional(list(string), [])
+      excluded_instance_types = optional(list(string), [])
+      instance_generations = optional(list(string), [])
+      cpu_manufacturers = optional(list(string), [])
+      bare_metal = optional(string, "")
+      burstable_performance = optional(string, "")
+      require_hibernate_support = optional(bool, false)
+      spot_max_price_percentage_over_lowest_price = optional(number, 0)
+      max_spot_price_as_percentage_of_optimal_on_demand_price = optional(number, 0)
+      on_demand_max_price_percentage_over_lowest_price = optional(number, 0)
+      local_storage = optional(string, "")
+      local_storage_types = optional(list(string), [])
+      total_local_storage_gb = optional(object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      }))
+      memory_gib_per_vcpu = optional(object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      }))
+      network_interface_count = optional(object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      }))
+      network_bandwidth_gbps = optional(object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      }))
+      baseline_ebs_bandwidth_mbps = optional(object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      }))
+      accelerator_count = optional(object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      }))
+      accelerator_manufacturers = optional(list(string), [])
+      accelerator_names = optional(list(string), [])
+      accelerator_types = optional(list(string), [])
+      accelerator_total_memory_mib = optional(object({
+        min = optional(number, 0)
+        max = optional(number, 0)
+      }))
+    }))
+    key_name = optional(string, "")
+    user_data = optional(string, "")
+    instance_profile = optional(string, "")
+    security_group_ids = optional(list(string), [])
+    ebs_optimized = optional(bool, false)
+    block_device_mappings = optional(list(object({
+      device_name = string
+      virtual_name = optional(string, "")
+      no_device = optional(bool, false)
+      ebs = optional(object({
+        volume_size_gb = optional(number, 0)
+        volume_type = optional(string, "")
+        iops = optional(number, 0)
+        throughput_mibps = optional(number, 0)
+        encrypted = optional(bool, false)
+        kms_key_id = optional(string, "")
+        snapshot_id = optional(string, "")
+        delete_on_termination = optional(bool)
+      }))
+    })), [])
+    network_interfaces = optional(list(object({
+      device_index = optional(number, 0)
+      network_card_index = optional(number, 0)
+      description = optional(string, "")
+      interface_type = optional(string, "")
+      network_interface_id = optional(string, "")
+      associate_public_ip_address = optional(bool)
+      delete_on_termination = optional(bool)
+      subnet_id = optional(string, "")
+      security_group_ids = optional(list(string), [])
+      private_ip_address = optional(string, "")
+      ipv4_address_count = optional(number, 0)
+      ipv4_addresses = optional(list(string), [])
+      ipv6_address_count = optional(number, 0)
+      ipv6_addresses = optional(list(string), [])
+      ipv4_prefix_count = optional(number, 0)
+      ipv4_prefixes = optional(list(string), [])
+      ipv6_prefix_count = optional(number, 0)
+      ipv6_prefixes = optional(list(string), [])
+    })), [])
+    metadata_options = optional(object({
+      http_endpoint = optional(string, "")
+      http_tokens = optional(string, "")
+      http_put_response_hop_limit = optional(number, 0)
+      http_protocol_ipv6 = optional(string, "")
+      instance_metadata_tags = optional(string, "")
+    }))
+    detailed_monitoring = optional(bool, false)
+    placement = optional(object({
+      availability_zone = optional(string, "")
+      group_name = optional(string, "")
+      partition_number = optional(number, 0)
+      tenancy = optional(string, "")
+    }))
+    cpu_options = optional(object({
+      core_count = optional(number, 0)
+      threads_per_core = optional(number, 0)
+      amd_sev_snp = optional(string, "")
+    }))
+    cpu_credits = optional(string, "")
+    spot_options = optional(object({
+      max_price = optional(string, "")
+      spot_instance_type = optional(string, "")
+      instance_interruption_behavior = optional(string, "")
+      valid_until = optional(string, "")
+    }))
+    enclave_enabled = optional(bool, false)
+    hibernation_enabled = optional(bool, false)
+    auto_recovery = optional(string, "")
+    private_dns_name_options = optional(object({
+      hostname_type = optional(string, "")
+      enable_resource_name_dns_a_record = optional(bool, false)
+      enable_resource_name_dns_aaaa_record = optional(bool, false)
+    }))
+    disable_api_stop = optional(bool, false)
+    disable_api_termination = optional(bool, false)
+    instance_initiated_shutdown_behavior = optional(string, "")
+  })
+}

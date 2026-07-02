@@ -40,6 +40,9 @@ var migratedKinds = []string{
 	"AwsInternetGateway",
 	"AwsNatGateway",
 	"AwsElasticIp",
+	// EC2 fleet compute kinds, generator-owned from the day they were forged.
+	"AwsLaunchTemplate",
+	"AwsAutoScalingGroup",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

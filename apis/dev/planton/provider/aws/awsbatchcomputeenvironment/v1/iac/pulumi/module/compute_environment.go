@@ -67,12 +67,8 @@ func computeEnvironment(
 
 		// Launch template
 		if cr.LaunchTemplate != nil {
-			lt := &batch.ComputeEnvironmentComputeResourcesLaunchTemplateArgs{}
-			if cr.LaunchTemplate.LaunchTemplateId != "" {
-				lt.LaunchTemplateId = pulumi.StringPtr(cr.LaunchTemplate.LaunchTemplateId)
-			}
-			if cr.LaunchTemplate.LaunchTemplateName != "" {
-				lt.LaunchTemplateName = pulumi.StringPtr(cr.LaunchTemplate.LaunchTemplateName)
+			lt := &batch.ComputeEnvironmentComputeResourcesLaunchTemplateArgs{
+				LaunchTemplateId: pulumi.StringPtr(cr.LaunchTemplate.LaunchTemplateId.GetValue()),
 			}
 			if cr.LaunchTemplate.Version != "" {
 				lt.Version = pulumi.StringPtr(cr.LaunchTemplate.Version)

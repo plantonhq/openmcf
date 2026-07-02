@@ -304,6 +304,24 @@ enum CloudResourceKind {
     id_prefix: "lblr"
     prerequisites: [AwsLbListener]
   }];
+  AwsLaunchTemplate = 234 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lt"
+  }];
+  // AwsSubnet and AwsLaunchTemplate are prerequisites because a group
+  // cannot exist without subnets to place capacity in and a launch
+  // template to launch from -- the spec's subnets and launch_template
+  // references must resolve before the group can be created.
+  AwsAutoScalingGroup = 235 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "asg"
+    prerequisites: [
+      AwsSubnet,
+      AwsLaunchTemplate
+    ]
+  }];
   AwsHttpApiGateway = 240 [(kind_meta) = {
     provider: aws
     version: v1
@@ -1145,7 +1163,7 @@ enum CloudResourceKind {
   KubernetesPerconaMysqlOperator = 834 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8sprcnpgop"
+    id_prefix: "k8sprcnmysqlop"
   }];
   KubernetesHarbor = 835 [(kind_meta) = {
     provider: kubernetes

@@ -45,10 +45,11 @@ variable "spec" {
       ec2_key_pair        = string
       bid_percentage      = number
       spot_iam_fleet_role = object({ value = string })
+      # launch_template_id is a StringValueOrRef in the spec; the tfvars
+      # pipeline flattens references to plain strings.
       launch_template = optional(object({
-        launch_template_id   = string
-        launch_template_name = string
-        version              = string
+        launch_template_id = string
+        version            = optional(string, "")
       }))
       ec2_configurations = list(object({
         image_type        = string

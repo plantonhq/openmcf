@@ -47,9 +47,8 @@ resource "aws_batch_compute_environment" "this" {
     dynamic "launch_template" {
       for_each = var.spec.compute_resources.launch_template != null ? [var.spec.compute_resources.launch_template] : []
       content {
-        launch_template_id   = launch_template.value.launch_template_id != "" ? launch_template.value.launch_template_id : null
-        launch_template_name = launch_template.value.launch_template_name != "" ? launch_template.value.launch_template_name : null
-        version              = launch_template.value.version != "" ? launch_template.value.version : null
+        launch_template_id = launch_template.value.launch_template_id
+        version            = launch_template.value.version != "" ? launch_template.value.version : null
       }
     }
 

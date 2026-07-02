@@ -1,0 +1,28 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsLaunchTemplate
+metadata:
+  name: <fleet-name>
+spec:
+  region: <aws-region>
+  imageId: <ami-id>
+  instanceType: t3.small
+  instanceProfile:
+    valueFrom:
+      kind: AwsIamInstanceProfile
+      name: <instance-profile-resource-name>
+      fieldPath: status.outputs.instance_profile_arn
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: <security-group-resource-name>
+        fieldPath: status.outputs.security_group_id
+  detailedMonitoring: true
+  metadataOptions:
+    httpTokens: required
+    httpPutResponseHopLimit: 2
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSizeGb: 30
+        volumeType: gp3
+        encrypted: true

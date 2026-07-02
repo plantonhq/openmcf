@@ -101,7 +101,7 @@ This creates a serverless Fargate compute environment with up to 256 vCPUs of ca
 | `computeResources.ec2KeyPair` | string | EC2/SPOT | SSH key pair name |
 | `computeResources.bidPercentage` | int32 | SPOT | Max % of On-Demand price (0-100) |
 | `computeResources.spotIamFleetRole` | StringValueOrRef | SPOT | Spot Fleet IAM role (**required** for SPOT) |
-| `computeResources.launchTemplate` | object | EC2/SPOT | Custom launch template (id or name + optional version) |
+| `computeResources.launchTemplate` | object | EC2/SPOT | Custom launch template: `launchTemplateId` (value or `valueFrom` an `AwsLaunchTemplate`'s `launch_template_id` output) + optional `version` |
 | `computeResources.ec2Configurations` | list(object) | EC2/SPOT | AMI customization (max 2 entries) |
 | `computeResources.resourceTags` | map(string) | EC2/SPOT | Tags for launched compute resources |
 
