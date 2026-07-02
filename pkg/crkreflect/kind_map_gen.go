@@ -237,15 +237,16 @@ import (
 	gcpgkenodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkenodepool/v1"
 	gcpgkeworkloadidentitybindingv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkeworkloadidentitybinding/v1"
 	gcpglobaladdressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpglobaladdress/v1"
+	gcpiamcustomrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpiamcustomrole/v1"
 	gcpkmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskey/v1"
 	gcpkmskeyringv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyring/v1"
 	gcpmemorystoreinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1"
 	gcpprojectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpproject/v1"
+	gcpprojectiammemberv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpprojectiammember/v1"
 	gcppubsubsubscriptionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubsubscription/v1"
 	gcppubsubtopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubtopic/v1"
 	gcpredisinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpredisinstance/v1"
 	gcprouternatv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1"
-	gcpsecretsmanagerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsecretsmanager/v1"
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
 	gcpspannerdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerdatabase/v1"
 	gcpspannerinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerinstance/v1"
@@ -691,15 +692,16 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpGkeNodePool:                &gcpgkenodepoolv1.GcpGkeNodePool{},
 	cloudresourcekind.CloudResourceKind_GcpGkeWorkloadIdentityBinding: &gcpgkeworkloadidentitybindingv1.GcpGkeWorkloadIdentityBinding{},
 	cloudresourcekind.CloudResourceKind_GcpGlobalAddress:              &gcpglobaladdressv1.GcpGlobalAddress{},
+	cloudresourcekind.CloudResourceKind_GcpIamCustomRole:              &gcpiamcustomrolev1.GcpIamCustomRole{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKey:                     &gcpkmskeyv1.GcpKmsKey{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKeyRing:                 &gcpkmskeyringv1.GcpKmsKeyRing{},
 	cloudresourcekind.CloudResourceKind_GcpMemorystoreInstance:        &gcpmemorystoreinstancev1.GcpMemorystoreInstance{},
 	cloudresourcekind.CloudResourceKind_GcpProject:                    &gcpprojectv1.GcpProject{},
+	cloudresourcekind.CloudResourceKind_GcpProjectIamMember:           &gcpprojectiammemberv1.GcpProjectIamMember{},
 	cloudresourcekind.CloudResourceKind_GcpPubSubSubscription:         &gcppubsubsubscriptionv1.GcpPubSubSubscription{},
 	cloudresourcekind.CloudResourceKind_GcpPubSubTopic:                &gcppubsubtopicv1.GcpPubSubTopic{},
 	cloudresourcekind.CloudResourceKind_GcpRedisInstance:              &gcpredisinstancev1.GcpRedisInstance{},
 	cloudresourcekind.CloudResourceKind_GcpRouterNat:                  &gcprouternatv1.GcpRouterNat{},
-	cloudresourcekind.CloudResourceKind_GcpSecretsManager:             &gcpsecretsmanagerv1.GcpSecretsManager{},
 	cloudresourcekind.CloudResourceKind_GcpServiceAccount:             &gcpserviceaccountv1.GcpServiceAccount{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:            &gcpspannerdatabasev1.GcpSpannerDatabase{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerInstance:            &gcpspannerinstancev1.GcpSpannerInstance{},

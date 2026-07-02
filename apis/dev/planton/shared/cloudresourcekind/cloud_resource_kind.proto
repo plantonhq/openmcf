@@ -743,10 +743,10 @@ enum CloudResourceKind {
     id_prefix: "gke"
     container_kind: true
   }];
-  GcpSecretsManager = 608 [(kind_meta) = {
+  GcpIamCustomRole = 608 [(kind_meta) = {
     provider: gcp
     version: v1
-    id_prefix: "gcpsm"
+    id_prefix: "gcprole"
   }];
   GcpProject = 609 [(kind_meta) = {
     provider: gcp
@@ -799,6 +799,15 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpdrec"
+  }];
+  GcpProjectIamMember = 619 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcppim"
+    prerequisites: [
+      GcpServiceAccount,
+      GcpIamCustomRole
+    ]
   }];
   GcpFirewallRule = 620 [(kind_meta) = {
     provider: gcp

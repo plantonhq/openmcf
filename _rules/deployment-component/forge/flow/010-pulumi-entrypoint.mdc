@@ -15,7 +15,10 @@ TOOLS
 - Reference component (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/iac/pulumi/`
   -- copy the shape of its root `main.go` (`package main` -> load `<Kind>StackInput` -> call
   `module.Resources`), `Pulumi.yaml` (`name: <kindfolder>-pulumi-project`, `runtime: name: go`),
-  and `Makefile`.
+  and `Makefile`. `Pulumi.yaml` MUST NOT set `runtime.options.binary`: a binary
+  option makes `pulumi up` require a prebuilt executable and fail out of the box
+  (E2E runs and users invoke the module source directly via the go runtime);
+  some older modules carry a stale `binary: ./pulumi` shape -- do not copy it.
 
 CRITICAL -- ENTRYPOINT LOCATION (DO NOT REGRESS)
 The entrypoint files MUST be written at the `iac/pulumi/` ROOT, never in a `main/` or

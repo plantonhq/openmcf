@@ -20,7 +20,7 @@ This preset creates a GCP service account with a JSON key for CI/CD pipelines (G
 
 | Placeholder | Description | Where to Find |
 |---|---|---|
-| `<your-sa-id>` | Service account ID (6-30 chars, lowercase) | Choose a descriptive ID (e.g., `ci-cd-pipeline`) |
+| `my-ci-deployer` (serviceAccountId) | Service account ID (6-30 chars, lowercase) | Choose a descriptive ID (e.g., `ci-cd-pipeline`) |
 | `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
 
 ## Related Presets

@@ -41,6 +41,22 @@ params:
     description: Port the container listens on
     value: "8080"
 
+  - name: container_cpu
+    description: vCPU units per instance (1, 2, or 4)
+    value: "1"
+
+  - name: container_memory_mib
+    description: Memory in MiB per instance (128-32768)
+    value: "512"
+
+  - name: container_min_replicas
+    description: Minimum warm instances (0 scales to zero)
+    value: "0"
+
+  - name: container_max_replicas
+    description: Maximum instances Cloud Run may scale to
+    value: "10"
+
   # ─── Cloud SQL Database ────────────────────────────────────────────────
   - name: databaseEnabled
     description: Create a Cloud SQL PostgreSQL database
@@ -54,6 +70,10 @@ params:
   - name: database_tier
     description: Cloud SQL machine tier
     value: db-f1-micro
+
+  - name: database_storage_gb
+    description: Storage size in GB (10-65536)
+    value: "10"
 
   - name: database_version
     description: Database version (e.g., POSTGRES_15)
@@ -96,15 +116,3 @@ params:
   - name: tasks_queue_name
     description: Cloud Tasks queue name
     value: api-tasks
-
-  # ─── Secret Manager ────────────────────────────────────────────────────
-  - name: secretsEnabled
-    description: Create Secret Manager secrets for the API service
-    type: bool
-    value: false
-
-  - name: secret_names
-    description: >
-      Comma-separated list of secret names to create
-      (e.g., "db-password,api-key,jwt-secret")
-    value: db-password,api-key

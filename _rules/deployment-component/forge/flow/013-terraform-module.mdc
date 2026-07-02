@@ -83,7 +83,14 @@ SEQUENTIAL STEPS
    -- e.g. ReferenceGrant's to[].group). Those keep the hand-written path below.
 
 2) Generate variables and read it: `echo '{"files":[]}' | python3 _rules/deployment-component/_scripts/terraform_module_write.py --provider <provider> --kindfolder <kindfolder> --kind <Kind> --stdin --make-local --generate-variables | cat`. Then open the generated `variables.tf` in the module path.
-3) Draft: Consult the reference component `iac/tf/` directories. Prepare a files JSON manifest for non-generated files. Comment the HCL to the module-comment bar (`architecture/deployment-component.md` §4.1 Code Quality): explain *why*, trade-offs, provider quirks, and non-obvious ordering -- not line-by-line narration. These modules render on the public catalog, so their comments are part of the deliverable.
+3) Draft: Consult the reference component `iac/tf/` directories. CAUTION when
+   mirroring a sibling's `variables.tf` instead of using the generator: the
+   proto->tfvars converter flattens every `StringValueOrRef` field to a PLAIN
+   STRING before the module runs (`pkg/iac/tofu/generators/typerules.go`), so a
+   ref field must be typed `string` in variables.tf — some older modules carry a
+   stale `object({ value = string })` shape that fails at plan time with
+   "attribute ...: object required". The generator emits the correct shape;
+   trust it over any hand-written sibling. Prepare a files JSON manifest for non-generated files. Comment the HCL to the module-comment bar (`architecture/deployment-component.md` §4.1 Code Quality): explain *why*, trade-offs, provider quirks, and non-obvious ordering -- not line-by-line narration. These modules render on the public catalog, so their comments are part of the deliverable.
 4) Write and validate:
    - `cat <<'JSON' | python3 _rules/deployment-component/_scripts/terraform_module_write.py --provider <provider> --kindfolder <kindfolder> --kind <Kind> --stdin --validate | cat`
      { "files": [ {"name": "provider.tf", "content": "..."}, {"name": "locals.tf", "content": "..."}, {"name": "outputs.tf", "content": "..."} ] }

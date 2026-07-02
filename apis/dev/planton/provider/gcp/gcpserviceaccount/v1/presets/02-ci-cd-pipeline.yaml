@@ -3,10 +3,12 @@ kind: GcpServiceAccount
 metadata:
   name: my-ci-cd-sa
 spec:
-  serviceAccountId: <your-sa-id>
+  serviceAccountId: my-ci-deployer  # replace: 6-30 chars, lowercase letters/digits/hyphens
   projectId:
     value: "<gcp-project-id>"
-  createKey: true  # JSON key exported for use in CI/CD systems (GitHub Actions, GitLab CI, etc.)
+  displayName: CI/CD Pipeline
+  description: Deploys releases from the pipeline; prefer Workload Identity Federation over the exported key where the CI system supports OIDC
+  createKey: true  # JSON key exported for CI/CD systems that cannot federate; rotate regularly
   projectIamRoles:
     - roles/artifactregistry.writer
     - roles/container.developer

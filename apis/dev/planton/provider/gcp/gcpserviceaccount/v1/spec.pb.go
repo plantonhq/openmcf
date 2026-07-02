@@ -24,35 +24,68 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GcpServiceAccountSpec defines the minimal config needed to create
-// a Google Cloud service account, optionally create a key for it, and
-// manage either project- or organization-level IAM roles for that service account.
+// GcpServiceAccountSpec defines the configuration for a Google Cloud service account —
+// the identity that workloads (GKE pods, Cloud Run services, Cloud Functions, Compute
+// instances, CI/CD pipelines) authenticate as when calling Google Cloud APIs.
+//
+// Identity vs. access: this resource creates the identity and can optionally attach
+// broad role lists at the project or organization scope. For fine-grained, composable
+// grants — one role, one member, per resource node — prefer the GcpProjectIamMember
+// component, which references this service account's `member` output directly.
+//
+// Keyless by default: no user-managed key is created unless `create_key` is set.
+// Prefer keyless patterns (Workload Identity on GKE, service-account impersonation,
+// Workload Identity Federation for external CI/CD) over exported keys — a key is a
+// long-lived credential that must be rotated and protected.
 type GcpServiceAccountSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// service_account_id is the short unique ID for the service account (6-30 chars),
-	// used to form the email <service_account_id>@<project>.iam.gserviceaccount.com.
-	// Required: must comply with GCP naming rules (lowercase letters, digits, etc.).
+	// The short account ID that forms the service account email:
+	// <service_account_id>@<project>.iam.gserviceaccount.com.
+	// Must be 6-30 characters, start with a lowercase letter, and contain only
+	// lowercase letters, digits, and hyphens (cannot end with a hyphen).
+	// Immutable: changing it destroys and recreates the service account, which
+	// invalidates every IAM binding and workload identity that references the old email.
 	ServiceAccountId string `protobuf:"bytes,1,opt,name=service_account_id,json=serviceAccountId,proto3" json:"service_account_id,omitempty"`
-	// project_id specifies the GCP project in which the service account is created.
-	// Can be a literal value or a reference to a GcpProject resource.
-	// If omitted, the provider default project is used. Typically recommended to set explicitly.
+	// The GCP project in which the service account is created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used — set it explicitly in
+	// multi-project layouts so the identity's home project is unambiguous.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// org_id, if set, manages org-level IAM roles for the service account.
-	// If the user wants to assign an organization role, they must provide org_id
-	// (an integer string like "123456789012", or a numeric value stored as string).
-	OrgId string `protobuf:"bytes,3,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	// create_key indicates whether a key should be automatically generated
-	// for this service account. If true, a JSON private key is created;
-	// if false, no user-managed key is created.
-	CreateKey *bool `protobuf:"varint,4,opt,name=create_key,json=createKey,proto3,oneof" json:"create_key,omitempty"`
-	// project_iam_roles is a list of IAM roles to be granted at the project level
-	// to this service account. For example: ["roles/logging.logWriter", "roles/storage.admin"].
-	// Each role in this list will be bound to the service account in the specified project_id.
-	ProjectIamRoles []string `protobuf:"bytes,5,rep,name=project_iam_roles,json=projectIamRoles,proto3" json:"project_iam_roles,omitempty"`
-	// org_iam_roles is a list of IAM roles to be granted at the organization level
-	// to this service account. For example: ["roles/resourcemanager.organizationViewer"].
-	// Each role in this list will be bound to the service account in the specified org_id.
-	OrgIamRoles   []string `protobuf:"bytes,6,rep,name=org_iam_roles,json=orgIamRoles,proto3" json:"org_iam_roles,omitempty"`
+	// Human-readable display name shown in the GCP console (max 100 characters
+	// in GCP; not validated here because the API truncates rather than rejects).
+	// If omitted, the resource's metadata name is used.
+	// Mutable: can be changed without recreating the service account.
+	DisplayName string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	// Human-readable description of what this service account is for (max 256 bytes).
+	// Surfaces in the GCP console and `gcloud iam service-accounts describe` — write it
+	// for the operator who finds this identity two years from now.
+	// Mutable: can be changed without recreating the service account.
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// Whether the service account is disabled. A disabled service account keeps its
+	// IAM bindings but cannot authenticate — tokens are rejected until it is re-enabled.
+	// Useful as a kill switch during incident response or for staged decommissioning
+	// (disable first, observe breakage, then delete).
+	Disabled *bool `protobuf:"varint,5,opt,name=disabled,proto3,oneof" json:"disabled,omitempty"`
+	// Whether to create a user-managed JSON key for this service account.
+	// Default false (keyless). When true, the private key is exported in stack outputs
+	// as `key_base64` — treat that output as a live credential. Prefer Workload Identity
+	// or federation over keys wherever the workload supports it.
+	CreateKey *bool `protobuf:"varint,6,opt,name=create_key,json=createKey,proto3,oneof" json:"create_key,omitempty"`
+	// IAM roles granted to this service account at the PROJECT scope, e.g.
+	// ["roles/logging.logWriter", "roles/storage.admin"]. Grants are additive
+	// (member-level): they never clobber other members' bindings on the same role.
+	// For grants that should be first-class, referenceable nodes in the resource
+	// graph (visible dependencies, independent lifecycle), use GcpProjectIamMember
+	// instead of this list.
+	ProjectIamRoles []string `protobuf:"bytes,7,rep,name=project_iam_roles,json=projectIamRoles,proto3" json:"project_iam_roles,omitempty"`
+	// The numeric organization ID (e.g. "123456789012") — required only when
+	// org_iam_roles is set, to identify which organization receives the grants.
+	OrgId string `protobuf:"bytes,8,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	// IAM roles granted to this service account at the ORGANIZATION scope, e.g.
+	// ["roles/resourcemanager.organizationViewer"]. Requires org_id. Grants are
+	// additive (member-level). Org-scope grants affect every project under the
+	// organization — grant sparingly.
+	OrgIamRoles   []string `protobuf:"bytes,9,rep,name=org_iam_roles,json=orgIamRoles,proto3" json:"org_iam_roles,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -101,11 +134,25 @@ func (x *GcpServiceAccountSpec) GetProjectId() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *GcpServiceAccountSpec) GetOrgId() string {
+func (x *GcpServiceAccountSpec) GetDisplayName() string {
 	if x != nil {
-		return x.OrgId
+		return x.DisplayName
 	}
 	return ""
+}
+
+func (x *GcpServiceAccountSpec) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *GcpServiceAccountSpec) GetDisabled() bool {
+	if x != nil && x.Disabled != nil {
+		return *x.Disabled
+	}
+	return false
 }
 
 func (x *GcpServiceAccountSpec) GetCreateKey() bool {
@@ -122,6 +169,13 @@ func (x *GcpServiceAccountSpec) GetProjectIamRoles() []string {
 	return nil
 }
 
+func (x *GcpServiceAccountSpec) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
 func (x *GcpServiceAccountSpec) GetOrgIamRoles() []string {
 	if x != nil {
 		return x.OrgIamRoles
@@ -133,16 +187,21 @@ var File_dev_planton_provider_gcp_gcpserviceaccount_v1_spec_proto protoreflect.F
 
 const file_dev_planton_provider_gcp_gcpserviceaccount_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/gcp/gcpserviceaccount/v1/spec.proto\x12-dev.planton.provider.gcp.gcpserviceaccount.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xef\x02\n" +
-	"\x15GcpServiceAccountSpec\x12:\n" +
-	"\x12service_account_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x06\x18\x1eR\x10serviceAccountId\x12u\n" +
+	"8dev/planton/provider/gcp/gcpserviceaccount/v1/spec.proto\x12-dev.planton.provider.gcp.gcpserviceaccount.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x99\x05\n" +
+	"\x15GcpServiceAccountSpec\x12X\n" +
+	"\x12service_account_id\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x06\x18\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x10serviceAccountId\x12u\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x15\n" +
-	"\x06org_id\x18\x03 \x01(\tR\x05orgId\x12-\n" +
+	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12*\n" +
+	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12*\n" +
+	"\bdisabled\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\bdisabled\x88\x01\x01\x12-\n" +
 	"\n" +
-	"create_key\x18\x04 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\tcreateKey\x88\x01\x01\x12*\n" +
-	"\x11project_iam_roles\x18\x05 \x03(\tR\x0fprojectIamRoles\x12\"\n" +
-	"\rorg_iam_roles\x18\x06 \x03(\tR\vorgIamRolesB\r\n" +
+	"create_key\x18\x06 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\tcreateKey\x88\x01\x01\x12*\n" +
+	"\x11project_iam_roles\x18\a \x03(\tR\x0fprojectIamRoles\x12\x15\n" +
+	"\x06org_id\x18\b \x01(\tR\x05orgId\x12\"\n" +
+	"\rorg_iam_roles\x18\t \x03(\tR\vorgIamRoles:\x81\x01\xbaH~\x1a|\n" +
+	"\x18org_roles_require_org_id\x12,org_id is required when org_iam_roles is set\x1a2size(this.org_iam_roles) == 0 || this.org_id != ''B\v\n" +
+	"\t_disabledB\r\n" +
 	"\v_create_keyB\xfe\x02\n" +
 	"1com.dev.planton.provider.gcp.gcpserviceaccount.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1;gcpserviceaccountv1\xa2\x02\x05DPPGG\xaa\x02-Dev.Planton.Provider.Gcp.Gcpserviceaccount.V1\xca\x02-Dev\\Planton\\Provider\\Gcp\\Gcpserviceaccount\\V1\xe2\x029Dev\\Planton\\Provider\\Gcp\\Gcpserviceaccount\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Gcp::Gcpserviceaccount::V1b\x06proto3"
 

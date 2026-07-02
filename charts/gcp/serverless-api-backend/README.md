@@ -1,8 +1,8 @@
 # GCP Serverless API Backend
 
-Provisions a production-ready serverless API backend on Cloud Run with private VPC networking, Cloud SQL database, and optional Redis cache, Pub/Sub messaging, Cloud Tasks async processing, and Secret Manager. This is a composable microservices infrastructure pattern -- enable only the components your API needs.
+Provisions a production-ready serverless API backend on Cloud Run with private VPC networking, Cloud SQL database, and optional Redis cache, Pub/Sub messaging, and Cloud Tasks async processing. This is a composable microservices infrastructure pattern -- enable only the components your API needs.
 
-This chart differs from the [Cloud Run Environment](../cloud-run-environment/) by focusing on backend API infrastructure patterns: caching layers, async task queues, event-driven messaging, and secrets management. The Cloud Run Environment is oriented toward frontend/backend web applications with DNS and Docker repositories.
+This chart differs from the [Cloud Run Environment](../cloud-run-environment/) by focusing on backend API infrastructure patterns: caching layers, async task queues, and event-driven messaging. The Cloud Run Environment is oriented toward frontend/backend web applications with DNS and Docker repositories.
 
 ## Architecture
 
@@ -27,13 +27,13 @@ This chart differs from the [Cloud Run Environment](../cloud-run-environment/) b
      │              │ │ (cache)  │          │              │
      └──────────────┘ └──────────┘          └──────┬───────┘
                                                    │ uses
-                                    ┌──────────────┼──────────────┐
-                                    ▼              ▼              ▼
-                            ┌────────────┐ ┌────────────┐ ┌─────────────┐
-                            │GcpPubSub   │ │GcpCloud    │ │GcpSecrets   │
-                            │  Topic     │ │  Tasks     │ │  Manager    │
-                            │(messaging) │ │  Queue     │ │             │
-                            └────────────┘ └────────────┘ └─────────────┘
+                                    ┌──────────────┴──────────────┐
+                                    ▼                             ▼
+                            ┌────────────┐               ┌────────────┐
+                            │GcpPubSub   │               │GcpCloud    │
+                            │  Topic     │               │  Tasks     │
+                            │(messaging) │               │  Queue     │
+                            └────────────┘               └────────────┘
 
                             ┌────────────────────────────┐
                             │   GcpServiceAccount        │
@@ -44,7 +44,7 @@ This chart differs from the [Cloud Run Environment](../cloud-run-environment/) b
 ## Dependency Graph
 
 ```
-Layer 0 (parallel):  GcpVpc, GcpServiceAccount, GcpPubSubTopic, GcpCloudTasksQueue, GcpSecretsManager
+Layer 0 (parallel):  GcpVpc, GcpServiceAccount, GcpPubSubTopic, GcpCloudTasksQueue
 Layer 1 (dep VPC):   GcpSubnetwork, GcpRouterNat, GcpCloudSql, GcpRedisInstance
 Layer 2 (dep all):   GcpCloudRun
 ```
@@ -62,7 +62,6 @@ Layer 2 (dep all):   GcpCloudRun
 | Redis | `GcpRedisInstance` | cache | `cacheEnabled` | In-memory cache |
 | Pub/Sub Topic | `GcpPubSubTopic` | messaging | `messagingEnabled` | Event-driven messaging |
 | Cloud Tasks Queue | `GcpCloudTasksQueue` | async | `tasksEnabled` | Async task processing |
-| Secret Manager | `GcpSecretsManager` | secrets | `secretsEnabled` | Secret storage |
 
 ## Parameters
 
@@ -76,11 +75,16 @@ Layer 2 (dep all):   GcpCloudRun
 | `service_name` | Cloud Run service name | `api-backend` | Yes |
 | `container_image` | Container image | `us-docker.pkg.dev/cloudrun/container/hello` | Yes |
 | `container_port` | Container port | `8080` | Yes |
+| `container_cpu` | vCPU per instance (1, 2, 4) | `1` | No |
+| `container_memory_mib` | Memory in MiB | `512` | No |
+| `container_min_replicas` | Minimum warm instances | `0` | No |
+| `container_max_replicas` | Maximum instances | `10` | No |
 | **Database** | | | |
 | `databaseEnabled` | Create Cloud SQL | `true` | No |
 | `database_instance_name` | Instance name | `api-database` | No |
 | `database_tier` | Machine tier | `db-f1-micro` | No |
 | `database_version` | DB version | `POSTGRES_15` | No |
+| `database_storage_gb` | Storage size in GB | `10` | No |
 | `database_root_password` | Root password | `change-me-immediately` | No |
 | **Cache** | | | |
 | `cacheEnabled` | Create Redis | `false` | No |
@@ -92,9 +96,6 @@ Layer 2 (dep all):   GcpCloudRun
 | **Tasks** | | | |
 | `tasksEnabled` | Create Cloud Tasks queue | `false` | No |
 | `tasks_queue_name` | Queue name | `api-tasks` | No |
-| **Secrets** | | | |
-| `secretsEnabled` | Create Secret Manager secrets | `false` | No |
-| `secret_names` | Comma-separated secret names | `db-password,api-key` | No |
 
 ## Common Configurations
 
@@ -105,7 +106,6 @@ databaseEnabled: true
 cacheEnabled: false
 messagingEnabled: false
 tasksEnabled: false
-secretsEnabled: false
 ```
 
 ### Full Microservices Stack
@@ -115,7 +115,6 @@ databaseEnabled: true
 cacheEnabled: true
 messagingEnabled: true
 tasksEnabled: true
-secretsEnabled: true
 ```
 
 ### API with Cache and Async Tasks
@@ -125,7 +124,6 @@ databaseEnabled: true
 cacheEnabled: true
 tasksEnabled: true
 messagingEnabled: false
-secretsEnabled: false
 ```
 
 ## Networking
@@ -146,7 +144,6 @@ The service account dynamically receives roles based on enabled components:
 | `roles/redis.editor` | When `cacheEnabled` |
 | `roles/pubsub.publisher` | When `messagingEnabled` |
 | `roles/cloudtasks.enqueuer` | When `tasksEnabled` |
-| `roles/secretmanager.secretAccessor` | When `secretsEnabled` |
 
 ## Important Notes
 
@@ -154,4 +151,3 @@ The service account dynamically receives roles based on enabled components:
 - **Rotate the `database_root_password`** immediately after deployment. The default value is a placeholder.
 - Cloud SQL uses **private IP** only (no public access). Connect from Cloud Run via the Cloud SQL Auth Proxy or direct VPC connection.
 - Redis uses **BASIC** tier (no HA). For production, modify the Redis resource to use `STANDARD_HA` after deployment.
-- Secret Manager creates **empty secrets**. Populate secret values through the GCP console or `gcloud secrets versions add` after deployment.

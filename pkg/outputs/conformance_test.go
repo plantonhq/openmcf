@@ -114,6 +114,53 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpServiceAccount: flat scalar outputs from both engines (email, the
+			// ready-made IAM member string, stable unique id, fully-qualified name,
+			// and the optional key) must each land on the StackOutputs proto.
+			name: "GcpServiceAccount",
+			kind: cloudresourcekind.CloudResourceKind_GcpServiceAccount,
+			rawOutputs: map[string]interface{}{
+				"email":      "my-sa@my-project.iam.gserviceaccount.com",
+				"member":     "serviceAccount:my-sa@my-project.iam.gserviceaccount.com",
+				"unique_id":  "112233445566778899000",
+				"name":       "projects/my-project/serviceAccounts/my-sa@my-project.iam.gserviceaccount.com",
+				"key_base64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50In0=",
+			},
+			mustPopulate: []string{
+				"email", "member", "unique_id", "name", "key_base64",
+			},
+		},
+		{
+			// GcpIamCustomRole: flat scalar outputs from both engines (the grantable
+			// fully-qualified role name, the bare role id, and the soft-delete flag)
+			// must each land on the StackOutputs proto.
+			name: "GcpIamCustomRole",
+			kind: cloudresourcekind.CloudResourceKind_GcpIamCustomRole,
+			rawOutputs: map[string]interface{}{
+				"name":    "projects/my-project/roles/logBucketWriter",
+				"role_id": "logBucketWriter",
+				"deleted": "false",
+			},
+			mustPopulate: []string{
+				"name", "role_id",
+			},
+		},
+		{
+			// GcpProjectIamMember: the grant tuple echoed by both engines (project,
+			// role, member, policy etag) must each land on the StackOutputs proto.
+			name: "GcpProjectIamMember",
+			kind: cloudresourcekind.CloudResourceKind_GcpProjectIamMember,
+			rawOutputs: map[string]interface{}{
+				"project_id": "my-project",
+				"role":       "projects/my-project/roles/logBucketWriter",
+				"member":     "serviceAccount:my-sa@my-project.iam.gserviceaccount.com",
+				"etag":       "BwYn2FQlJeM=",
+			},
+			mustPopulate: []string{
+				"project_id", "role", "member", "etag",
+			},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

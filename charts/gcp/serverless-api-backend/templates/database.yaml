@@ -16,6 +16,7 @@ spec:
   databaseEngine: POSTGRESQL
   databaseVersion: "{{ values.database_version }}"
   tier: "{{ values.database_tier }}"
+  storageGb: {{ values.database_storage_gb }}
   rootPassword: "{{ values.database_root_password }}"
   network:
     vpcId:

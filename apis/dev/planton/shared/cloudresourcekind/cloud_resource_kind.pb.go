@@ -208,7 +208,7 @@ const (
 	CloudResourceKind_GcpDnsZone                    CloudResourceKind = 605
 	CloudResourceKind_GcpGcsBucket                  CloudResourceKind = 606
 	CloudResourceKind_GcpGkeCluster                 CloudResourceKind = 607
-	CloudResourceKind_GcpSecretsManager             CloudResourceKind = 608
+	CloudResourceKind_GcpIamCustomRole              CloudResourceKind = 608
 	CloudResourceKind_GcpProject                    CloudResourceKind = 609
 	CloudResourceKind_GcpVpc                        CloudResourceKind = 610
 	CloudResourceKind_GcpSubnetwork                 CloudResourceKind = 611
@@ -219,6 +219,7 @@ const (
 	CloudResourceKind_GcpCertManagerCert            CloudResourceKind = 616
 	CloudResourceKind_GcpComputeInstance            CloudResourceKind = 617
 	CloudResourceKind_GcpDnsRecord                  CloudResourceKind = 618
+	CloudResourceKind_GcpProjectIamMember           CloudResourceKind = 619
 	CloudResourceKind_GcpFirewallRule               CloudResourceKind = 620
 	CloudResourceKind_GcpGlobalAddress              CloudResourceKind = 621
 	CloudResourceKind_GcpCloudArmorPolicy           CloudResourceKind = 622
@@ -635,7 +636,7 @@ var (
 		605:  "GcpDnsZone",
 		606:  "GcpGcsBucket",
 		607:  "GcpGkeCluster",
-		608:  "GcpSecretsManager",
+		608:  "GcpIamCustomRole",
 		609:  "GcpProject",
 		610:  "GcpVpc",
 		611:  "GcpSubnetwork",
@@ -646,6 +647,7 @@ var (
 		616:  "GcpCertManagerCert",
 		617:  "GcpComputeInstance",
 		618:  "GcpDnsRecord",
+		619:  "GcpProjectIamMember",
 		620:  "GcpFirewallRule",
 		621:  "GcpGlobalAddress",
 		622:  "GcpCloudArmorPolicy",
@@ -1047,7 +1049,7 @@ var (
 		"GcpDnsZone":                              605,
 		"GcpGcsBucket":                            606,
 		"GcpGkeCluster":                           607,
-		"GcpSecretsManager":                       608,
+		"GcpIamCustomRole":                        608,
 		"GcpProject":                              609,
 		"GcpVpc":                                  610,
 		"GcpSubnetwork":                           611,
@@ -1058,6 +1060,7 @@ var (
 		"GcpCertManagerCert":                      616,
 		"GcpComputeInstance":                      617,
 		"GcpDnsRecord":                            618,
+		"GcpProjectIamMember":                     619,
 		"GcpFirewallRule":                         620,
 		"GcpGlobalAddress":                        621,
 		"GcpCloudArmorPolicy":                     622,
@@ -1591,7 +1594,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*Ƒ\x01\n" +
+	"\x02v1\x10\x01*\xf9\x91\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1732,8 +1735,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\n" +
 	"GcpDnsZone\x10\xdd\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdns\x12#\n" +
 	"\fGcpGcsBucket\x10\xde\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcsbkt\x12#\n" +
-	"\rGcpGkeCluster\x10\xdf\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x03gke0\x01\x12'\n" +
-	"\x11GcpSecretsManager\x10\xe0\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpsm\x12#\n" +
+	"\rGcpGkeCluster\x10\xdf\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x03gke0\x01\x12(\n" +
+	"\x10GcpIamCustomRole\x10\xe0\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcprole\x12#\n" +
 	"\n" +
 	"GcpProject\x10\xe1\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpprj0\x01\x12\x1f\n" +
 	"\x06GcpVpc\x10\xe2\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpvpc0\x01\x12$\n" +
@@ -1744,7 +1747,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1dGcpGkeWorkloadIdentityBinding\x10\xe7\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gkewib\x12*\n" +
 	"\x12GcpCertManagerCert\x10\xe8\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpcert\x12(\n" +
 	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpvm\x12$\n" +
-	"\fGcpDnsRecord\x10\xea\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdrec\x12&\n" +
+	"\fGcpDnsRecord\x10\xea\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdrec\x120\n" +
+	"\x13GcpProjectIamMember\x10\xeb\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcppim:\x04\xe6\x04\xe0\x04\x12&\n" +
 	"\x0fGcpFirewallRule\x10\xec\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpfwr\x12'\n" +
 	"\x10GcpGlobalAddress\x10\xed\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpgip\x12*\n" +
 	"\x13GcpCloudArmorPolicy\x10\xee\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcap\x12(\n" +

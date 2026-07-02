@@ -178,7 +178,7 @@ Planton adopts a **minimal-configuration, security-first** philosophy for servic
 
 **Default behavior:**
 - **No keys by default:** The `create_key` field defaults to `false`. Users must explicitly opt into key creation, which discourages the anti-pattern.
-- **80/20 configuration:** The API exposes only essential fields: `service_account_id`, `project_id`, `project_iam_roles`, and optionally `org_id` with `org_iam_roles` for advanced scenarios. This covers 80% of use cases without overwhelming users with options.
+- **The full identity surface, nothing else:** The API models the complete service-account resource — `service_account_id`, `project_id`, `display_name`, `description`, and the `disabled` kill switch — plus convenience role lists (`project_iam_roles`, and `org_iam_roles` with `org_id`) for the common "identity plus its obvious roles" case. Grants that deserve to be first-class, independently-owned nodes (custom roles, conditions, cross-chart ownership) belong to the standalone project IAM grant component, which references this account's `member` output.
 - **Separation of concerns:** Project-level and organization-level IAM roles are distinct fields, making it clear when granting broad access.
 
 **Why this design:**
@@ -202,25 +202,17 @@ kind: GcpServiceAccount
 metadata:
   name: prod-app-logger
 spec:
-  service_account_id: prod-app-logger
-  project_id: my-prod-project
-  project_iam_roles:
+  serviceAccountId: prod-app-logger
+  projectId:
+    value: my-prod-project
+  displayName: Prod App Logger
+  description: Runtime identity for the prod app; writes logs and reads storage objects
+  projectIamRoles:
     - roles/logging.logWriter
     - roles/storage.objectViewer
-  create_key: false
 ```
 
 This creates a service account with just the permissions needed for logging and reading storage objects. No key is created; the account is intended to be attached to a Cloud Run service or GKE workload.
-
-## Deep Dive Topics
-
-This document provides a strategic overview of service account deployment methods and best practices. For implementation details, see:
-
-- **[Workload Identity Federation Setup Guide](./workload-identity-federation.md)** (planned): Step-by-step instructions for configuring WIF for AWS, Azure, and GitHub Actions.
-- **[Service Account Security Patterns](./security-patterns.md)** (planned): Detailed security recommendations, including IAM impersonation chains, least-privilege role design, and audit logging strategies.
-- **[Multi-Project Service Account Management](./multi-project-patterns.md)** (planned): Patterns for centralized vs. distributed service account management in large organizations.
-
-These guides will cover specific implementation details without overwhelming this overview.
 
 ## Conclusion
 

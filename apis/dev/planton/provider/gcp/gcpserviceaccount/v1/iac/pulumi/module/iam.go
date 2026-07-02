@@ -12,6 +12,9 @@ import (
 )
 
 // iam attaches the roles listed in spec.project_iam_roles and spec.org_iam_roles.
+// All grants use the ADDITIVE member form: each one manages exactly one
+// (role, member) pair and never clobbers other members' bindings on the same
+// role — safe to compose with grants made elsewhere.
 func iam(
 	ctx *pulumi.Context,
 	locals *Locals,
@@ -23,13 +26,16 @@ func iam(
 	for idx, role := range locals.GcpServiceAccount.Spec.ProjectIamRoles {
 		bindingName := fmt.Sprintf("%s-project-%d", locals.GcpServiceAccount.Metadata.Name, idx)
 
-		createdProjectIamBinding, err := projects.NewIAMMember(
+		// The grant targets the account's home project; deriving it from the
+		// created account (rather than re-reading spec) keeps the grant correct
+		// when the project fell back to the provider default.
+		createdProjectIamMember, err := projects.NewIAMMember(
 			ctx,
 			bindingName,
 			&projects.IAMMemberArgs{
-				Project: createdServiceAccount.Project, // uses Output from the account
+				Project: createdServiceAccount.Project,
 				Role:    pulumi.String(role),
-				Member:  pulumi.Sprintf("serviceAccount:%s", createdServiceAccount.Email),
+				Member:  createdServiceAccount.Member,
 			},
 			pulumi.Provider(gcpProvider),
 			pulumi.DependsOn([]pulumi.Resource{createdServiceAccount}),
@@ -37,7 +43,7 @@ func iam(
 		if err != nil {
 			return errors.Wrapf(err, "failed to add project role %s", role)
 		}
-		_ = createdProjectIamBinding
+		_ = createdProjectIamMember
 	}
 
 	// === Org-level roles ===
@@ -49,13 +55,13 @@ func iam(
 		for idx, role := range locals.GcpServiceAccount.Spec.OrgIamRoles {
 			bindingName := fmt.Sprintf("%s-org-%d", locals.GcpServiceAccount.Metadata.Name, idx)
 
-			createdOrgIamBinding, err := organizations.NewIAMMember(
+			createdOrgIamMember, err := organizations.NewIAMMember(
 				ctx,
 				bindingName,
 				&organizations.IAMMemberArgs{
 					OrgId:  pulumi.String(locals.GcpServiceAccount.Spec.OrgId),
 					Role:   pulumi.String(role),
-					Member: pulumi.Sprintf("serviceAccount:%s", createdServiceAccount.Email),
+					Member: createdServiceAccount.Member,
 				},
 				pulumi.Provider(gcpProvider),
 				pulumi.DependsOn([]pulumi.Resource{createdServiceAccount}),
@@ -63,7 +69,7 @@ func iam(
 			if err != nil {
 				return errors.Wrapf(err, "failed to add org role %s", role)
 			}
-			_ = createdOrgIamBinding
+			_ = createdOrgIamMember
 		}
 	}
 

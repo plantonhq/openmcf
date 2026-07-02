@@ -41,3 +41,8 @@ spec:
       repo: "{{ values.container_image_repo }}"
       tag: "{{ values.container_image_tag }}"
     port: {{ values.container_port }}
+    cpu: {{ values.container_cpu }}
+    memory: {{ values.container_memory_mib }}
+    replicas:
+      min: {{ values.container_min_replicas }}
+      max: {{ values.container_max_replicas }}

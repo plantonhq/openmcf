@@ -35,6 +35,11 @@ func Resources(
 
 	// === Export stack outputs ===
 	ctx.Export(OpEmail, createdServiceAccount.Email)
+	// The ready-made IAM member string ("serviceAccount:<email>") — downstream
+	// grants reference this directly, so no consumer ever assembles the prefix.
+	ctx.Export(OpMember, createdServiceAccount.Member)
+	ctx.Export(OpUniqueId, createdServiceAccount.UniqueId)
+	ctx.Export(OpName, createdServiceAccount.Name)
 
 	if createdKey != nil {
 		ctx.Export(OpKeyBase64, createdKey.PrivateKey)

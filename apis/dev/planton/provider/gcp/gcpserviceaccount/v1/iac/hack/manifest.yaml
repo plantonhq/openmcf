@@ -1,0 +1,33 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceAccount
+metadata:
+  name: my-sample-service-account
+spec:
+  # Service account ID (6-30 characters; lowercase letters, digits, hyphens;
+  # starts with a letter, cannot end with a hyphen)
+  serviceAccountId: my-sample-sa
+
+  # GCP project ID where the service account will be created.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Human-readable identity shown in the GCP console (falls back to metadata.name)
+  displayName: Sample Service Account
+
+  # What this identity is for — surfaces in the console and gcloud describe
+  description: Sample identity used to exercise the module locally
+
+  # Whether to create a JSON key for this service account
+  # Default: false (keyless is recommended for security)
+  createKey: false
+
+  # Project-level IAM roles to grant to this service account (additive grants)
+  projectIamRoles:
+    - roles/logging.logWriter
+    - roles/monitoring.metricWriter
+
+  # Organization-level IAM roles (requires orgId to be set)
+  # orgId: "123456789012"
+  # orgIamRoles:
+  #   - roles/resourcemanager.organizationViewer

@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "verify",
+    srcs = [
+        "iam_custom_role.go",
+        "project_iam_member.go",
+        "service_account.go",
+        "verifier.go",
+    ],
+    importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/aa_e2e/verify",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pkg_errors//:errors",
+        "@org_golang_google_api//cloudresourcemanager/v1:cloudresourcemanager",
+        "@org_golang_google_api//googleapi",
+        "@org_golang_google_api//iam/v1:iam",
+    ],
+)
