@@ -46,6 +46,8 @@ var verifiers = map[string]Verifier{
 	"awslblistenerrule":            &listenerRuleVerifier{},
 	"awslaunchtemplate":            &launchTemplateVerifier{},
 	"awsautoscalinggroup":          &autoScalingGroupVerifier{},
+	"awsekscluster":                &eksClusterVerifier{},
+	"awseksnodegroup":              &eksNodeGroupVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

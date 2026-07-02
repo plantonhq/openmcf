@@ -5,6 +5,8 @@ go_library(
     srcs = [
         "autoscaling_group.go",
         "egress_only_internet_gateway.go",
+        "eks_cluster.go",
+        "eks_node_group.go",
         "elastic_ip.go",
         "elbv2.go",
         "iam_instance_profile.go",
@@ -27,6 +29,8 @@ go_library(
         "@com_github_aws_aws_sdk_go_v2_service_autoscaling//:autoscaling",
         "@com_github_aws_aws_sdk_go_v2_service_ec2//:ec2",
         "@com_github_aws_aws_sdk_go_v2_service_ec2//types",
+        "@com_github_aws_aws_sdk_go_v2_service_eks//:eks",
+        "@com_github_aws_aws_sdk_go_v2_service_eks//types",
         "@com_github_aws_aws_sdk_go_v2_service_elasticloadbalancingv2//:elasticloadbalancingv2",
         "@com_github_aws_aws_sdk_go_v2_service_iam//:iam",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",

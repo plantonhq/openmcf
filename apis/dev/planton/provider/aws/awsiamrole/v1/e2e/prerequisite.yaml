@@ -1,9 +1,15 @@
 # AwsIamRole install profile used as a prerequisite by composed components
-# (AwsIamInstanceProfile, declared via prerequisites: [AwsIamRole] in the kind
-# registry). The E2E harness deploys this role first (via its Pulumi module),
-# captures its outputs, and resolves the dependent's role reference against
-# them. Full metadata is supplied and the managed-by label tags resources for
+# (declared via prerequisites: [AwsIamRole] in the kind registry). The E2E
+# harness deploys every document below (via the role's Pulumi module),
+# captures each instance's outputs under its manifest name, and resolves
+# the dependent's role references by name -- so each consumer picks exactly
+# the role shape it needs. Roles carry their own managed policies here on
+# purpose: a component never attaches policies to a role it merely
+# references, so the fixture must provision what the consumer requires.
+# Full metadata is supplied and the managed-by label tags resources for
 # orphan cleanup.
+#
+# Instance-profile composition role (ec2 trust, no policies).
 apiVersion: aws.planton.dev/v1
 kind: AwsIamRole
 metadata:
@@ -21,6 +27,67 @@ metadata:
 spec:
   region: us-west-2
   description: Planton E2E prerequisite role for instance-profile composition
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: ec2.amazonaws.com
+        Action: sts:AssumeRole
+---
+# EKS cluster (control plane) role: trusts eks.amazonaws.com and carries
+# AmazonEKSClusterPolicy itself -- the cluster module never modifies the
+# role it references.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-eks-cluster-role
+  id: planton-oss-e2e-eks-cluster-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the EKS control plane
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: eks.amazonaws.com
+        Action: sts:AssumeRole
+---
+# EKS worker-node role: trusts ec2.amazonaws.com and carries the three
+# worker policies every managed node group requires.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-eks-node-role
+  id: planton-oss-e2e-eks-node-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for EKS worker nodes
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+    - value: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+    - value: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
   trustPolicy:
     Version: "2012-10-17"
     Statement:

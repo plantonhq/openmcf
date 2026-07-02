@@ -196,6 +196,24 @@ func TestAwsAutoScalingGroup_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsautoscalinggroup", "terraform")
 }
 
+// --- AWS EKS Cluster (the control plane; slowest single resource in the suite, ~25 min/engine) ---
+
+func TestAwsEksCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsekscluster", "pulumi")
+}
+func TestAwsEksCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsekscluster", "terraform")
+}
+
+// --- AWS EKS Node Group (zero-capacity pool on a full control-plane prerequisite chain) ---
+
+func TestAwsEksNodeGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseksnodegroup", "pulumi")
+}
+func TestAwsEksNodeGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseksnodegroup", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
