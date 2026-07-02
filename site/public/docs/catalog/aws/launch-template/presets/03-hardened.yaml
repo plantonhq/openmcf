@@ -4,7 +4,7 @@ metadata:
   name: <fleet-name>
 spec:
   region: <aws-region>
-  imageId: <ami-id>
+  imageId: ami-<your-ami-id>
   instanceType: m6i.large
   instanceProfile:
     valueFrom:

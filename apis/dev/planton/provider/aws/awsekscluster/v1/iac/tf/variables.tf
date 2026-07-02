@@ -1,130 +1,45 @@
 variable "metadata" {
-  description = "metadata"
+  description = "Cloud resource metadata"
   type = object({
-
-    # name of the resource
     name = string
-
-    # id of the resource
-    id = string
-
-    # id of the organization to which the api-resource belongs to
-    org = string
-
-    # environment to which the resource belongs to
-    env = string
-
-    # labels for the resource
-    labels = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # annotations for the resource
-    annotations = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # tags for the resource
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "spec"
+  description = "AwsEksCluster specification"
   type = object({
-
-    # The AWS region where the resource will be created.
     region = string
-
-    # Description for subnet_ids
-    subnet_ids = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
+    subnet_ids = list(string)
+    cluster_role_arn = string
+    version = optional(string, "")
+    security_group_ids = optional(list(string), [])
+    endpoint_public_access = optional(bool)
+    endpoint_private_access = optional(bool, false)
+    public_access_cidrs = optional(list(string), [])
+    control_plane_egress_mode = optional(string, "")
+    ip_family = optional(string, "")
+    service_ipv4_cidr = optional(string, "")
+    enabled_cluster_log_types = optional(list(string), [])
+    kms_key_arn = optional(string, "")
+    access_config = optional(object({
+      authentication_mode = optional(string, "")
+      bootstrap_cluster_creator_admin_permissions = optional(bool)
     }))
-
-    # Description for cluster_role_arn
-    cluster_role_arn = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # Description for version
-    version = string
-
-    # Description for disable_public_endpoint
-    disable_public_endpoint = bool
-
-    # Description for public_access_cidrs
-    public_access_cidrs = list(string)
-
-    # Description for enable_control_plane_logs
-    enable_control_plane_logs = bool
-
-    # Description for kms_key_arn
-    kms_key_arn = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
+    auto_mode = optional(object({
+      enabled = optional(bool, false)
+      node_pools = optional(list(string), [])
+      node_role_arn = optional(string, "")
+    }))
+    upgrade_support_type = optional(string, "")
+    zonal_shift_enabled = optional(bool, false)
+    deletion_protection = optional(bool, false)
+    bootstrap_self_managed_addons = optional(bool)
+    force_update_version = optional(bool, false)
   })
 }

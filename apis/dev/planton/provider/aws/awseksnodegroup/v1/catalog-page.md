@@ -1,237 +1,189 @@
 # AWS EKS Node Group
 
-Deploys an AWS EKS managed node group into an existing EKS cluster, provisioning EC2 worker nodes with configurable instance types, auto-scaling, and optional SSH access.
+Deploys a managed EKS node group: an EC2 worker fleet AWS provisions,
+health-checks, and rolls, registered to an `AwsEksCluster` -- with
+launch mechanics from inline knobs or a referenced `AwsLaunchTemplate`,
+surge-enabled rollouts, and managed node auto-repair.
 
 ## What Gets Created
 
 When you deploy an AwsEksNodeGroup resource, Planton provisions:
 
-- **EKS Managed Node Group** — an `aws_eks_node_group` resource attached to the specified EKS cluster, running EC2 instances in the provided subnets with the configured scaling parameters, instance type, capacity type, and disk size
-- **Auto Scaling Group** — AWS automatically creates and manages an ASG behind the node group to enforce the min/max/desired node counts
-- **Remote Access Configuration** — created only when `sshKeyName` is provided, configures the EC2 Key Pair on the nodes to allow SSH access
+- **Managed node group** — an `aws_eks_node_group` / `eks.NodeGroup`
+  named from `metadata.name`, registered to the referenced cluster,
+  assuming the referenced node role, spread across the referenced
+  subnets, with the scaling bounds, labels, taints, update and repair
+  configuration you declare
+- Behind the scenes AWS manages an **EC2 Auto Scaling group** for the
+  fleet (surfaced as the `asg_name` output) and, when SSH is enabled
+  without explicit source groups, a **remote-access security group**
+  (surfaced as `remote_access_sg_id`)
+
+The node role is never modified: attach `AmazonEKSWorkerNodePolicy`,
+`AmazonEC2ContainerRegistryReadOnly`, and `AmazonEKS_CNI_Policy` on the
+referenced `AwsIamRole` itself (`managedPolicyArns`).
 
 ## Prerequisites
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An existing EKS cluster** (e.g., created by an AwsEksCluster resource)
-- **An IAM role** with the required EKS worker node policies (`AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, `AmazonEC2ContainerRegistryReadOnly`)
-- **At least two subnets** in different Availability Zones (typically private subnets in the cluster's VPC)
+- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
+- **An EKS cluster** (`AwsEksCluster`) for the nodes to register with.
+- **A node IAM role** (`AwsIamRole`) trusting `ec2.amazonaws.com` with the three worker policies attached.
+- **Subnets** (`AwsSubnet`) — typically the cluster VPC's private subnets.
+- **A launch template** (`AwsLaunchTemplate`) if the pool needs custom AMI/IMDSv2/storage mechanics.
 
 ## Quick Start
-
-Create a file `eks-nodegroup.yaml`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsEksNodeGroup
 metadata:
-  name: my-nodegroup
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsEksNodeGroup.my-nodegroup
+  name: general
 spec:
   region: us-west-2
-  clusterName: my-eks-cluster
-  nodeRoleArn: arn:aws:iam::123456789012:role/eks-node-role
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: platform
+      fieldPath: status.outputs.name
+  nodeRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: eks-node-role
+      fieldPath: status.outputs.role_arn
   subnetIds:
-    - subnet-0a1b2c3d4e5f00001
-    - subnet-0a1b2c3d4e5f00002
-  instanceType: t3.medium
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-b
+        fieldPath: status.outputs.subnet_id
+  instanceTypes: [m6i.large]
+  amiType: AL2023_x86_64_STANDARD
   scaling:
-    minSize: 1
-    maxSize: 3
+    minSize: 2
+    maxSize: 5
     desiredSize: 2
 ```
 
-Deploy:
-
 ```shell
-planton apply -f eks-nodegroup.yaml
+planton apply -f node-group.yaml
 ```
-
-This creates a managed node group with two `t3.medium` on-demand instances in the specified EKS cluster.
 
 ## Configuration Reference
 
 ### Required Fields
 
 | Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the node group will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `clusterName` | `StringValueOrRef` | Name of the EKS cluster to attach this node group to. Can reference an AwsEksCluster resource via `valueFrom`. | Required |
-| `nodeRoleArn` | `StringValueOrRef` | ARN of the IAM role for the EC2 worker nodes. Must have EKS worker node policies. Can reference an AwsIamRole resource via `valueFrom`. | Required |
-| `subnetIds` | `StringValueOrRef[]` | Subnet IDs where worker nodes are launched. Typically private subnets across multiple AZs. Can reference an AwsVpc resource via `valueFrom`. | Minimum 2 items |
-| `instanceType` | `string` | EC2 instance type for the worker nodes (e.g., `t3.medium`, `m5.xlarge`). | Required |
-| `scaling` | `object` | Auto-scaling configuration for the node group. | Required |
-| `scaling.minSize` | `int32` | Minimum number of nodes in the group. | >= 1 |
-| `scaling.maxSize` | `int32` | Maximum number of nodes allowed in the group. | >= 1 |
-| `scaling.desiredSize` | `int32` | Initial target number of nodes. Should be between `minSize` and `maxSize`. | >= 1 |
+| --- | --- | --- | --- |
+| `region` | `string` | AWS region; must match the cluster's. | Required; non-empty |
+| `clusterName` | `string \| valueFrom` | The cluster nodes register with. Defaults to referencing an `AwsEksCluster` `name` output. | Required |
+| `nodeRoleArn` | `string \| valueFrom` | The IAM role nodes assume (must carry the three worker policies). Defaults to referencing an `AwsIamRole` `role_arn` output. | Required |
+| `subnetIds` | `string[] \| valueFrom` | Subnets nodes launch into. One subnet is a legitimate zonal topology; use ≥2 AZs for fault tolerance. | Required; ≥1 entry |
+| `scaling` | `object` | `minSize` (≥0) / `maxSize` (≥1) / `desiredSize` (≥0, within bounds). min=desired=0 is a dormant pool. | Required |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `capacityType` | `enum` | `on_demand` | Instance purchasing model. Valid values: `on_demand`, `spot`. |
-| `diskSizeGb` | `int32` | `100` | EBS root volume size in GiB for each node. |
-| `sshKeyName` | `string` | — | Name of an existing EC2 Key Pair to enable SSH access to the nodes. Max 255 characters. |
-| `labels` | `map<string, string>` | `{}` | Kubernetes labels applied to the node group and its nodes. Keys and values max 63 characters each. |
+| --- | --- | --- | --- |
+| `launchTemplate.launchTemplateId` | `string \| valueFrom` | — | Launch from an `AwsLaunchTemplate`. Excludes `instanceTypes`, `diskSizeGb`, and `remoteAccess` (the template owns them). |
+| `launchTemplate.version` | `string` | `$Default` | Numeric pin, `$Default`, or `$Latest`. Changing it rolls the pool. |
+| `instanceTypes` | `string[]` | `t3.medium` | EC2 types AWS may launch; several types is the Spot best practice. Create-only. |
+| `amiType` | `string` | inferred | EKS AMI family (`AL2023_*`, `BOTTLEROCKET_*`, `WINDOWS_*`, `AL2_*`, `CUSTOM`). Create-only. |
+| `capacityType` | `enum` | `on_demand` | `on_demand`, `spot`, or `capacity_block`. Create-only. |
+| `diskSizeGb` | `int` | 20 (Linux) / 50 (Windows) | Root volume size; 100 is a comfortable production default. Create-only. |
+| `remoteAccess.ec2SshKey` | `string` | — | EC2 key pair for SSH. Without source groups, AWS opens port 22 to the internet — always scope it. Immutable. |
+| `remoteAccess.sourceSecurityGroupIds` | `string[] \| valueFrom` | — | Security groups allowed to SSH. Immutable. |
+| `labels` | `map` | `{}` | Kubernetes node labels. Updates in place. |
+| `taints` | `object[]` | `[]` | Up to 50 taints (`key`/`value`/`effect`) for dedicated capacity. Updates in place. |
+| `updateConfig` | `object` | 1 node | Rollout budget: exactly one of `maxUnavailable` / `maxUnavailablePercentage` (1–100), plus `updateStrategy: DEFAULT\|MINIMAL` (MINIMAL surges: launch-before-terminate). |
+| `nodeRepairConfig` | `object` | off | Managed auto-repair: `enabled`, parallelism/threshold bounds (count XOR percentage), per-condition overrides. |
+| `version` | `string` | cluster version | Kubernetes minor of the nodes; pin during control-plane upgrades, bump to roll. |
+| `releaseVersion` | `string` | latest for `version` | Exact EKS-optimized AMI release, for byte-identical fleets. |
+| `forceUpdateVersion` | `bool` | `false` | Force version updates past unsatisfiable pod disruption budgets. |
 
 ## Examples
 
-### Spot Instance Node Group
-
-Use Spot instances for cost savings on fault-tolerant workloads:
+### Dedicated GPU pool from a hardened launch template
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsEksNodeGroup
 metadata:
-  name: spot-nodegroup
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsEksNodeGroup.spot-nodegroup
-spec:
-  region: us-west-2
-  clusterName: my-eks-cluster
-  nodeRoleArn: arn:aws:iam::123456789012:role/eks-node-role
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-  instanceType: m5.large
-  scaling:
-    minSize: 2
-    maxSize: 10
-    desiredSize: 4
-  capacityType: spot
-```
-
-### Node Group with SSH Access and Labels
-
-Enable SSH for debugging and add Kubernetes labels for workload scheduling:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsEksNodeGroup
-metadata:
-  name: labeled-nodegroup
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AwsEksNodeGroup.labeled-nodegroup
-spec:
-  region: us-west-2
-  clusterName: my-eks-cluster
-  nodeRoleArn: arn:aws:iam::123456789012:role/eks-node-role
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-    - subnet-private-az3
-  instanceType: c5.xlarge
-  scaling:
-    minSize: 3
-    maxSize: 6
-    desiredSize: 3
-  diskSizeGb: 200
-  sshKeyName: ops-keypair
-  labels:
-    team: data-platform
-    workload: batch
-```
-
-### Production Node Group with Large Disks
-
-High-capacity node group for production workloads with large container images:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsEksNodeGroup
-metadata:
-  name: prod-nodegroup
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEksNodeGroup.prod-nodegroup
-spec:
-  region: us-west-2
-  clusterName: prod-eks-cluster
-  nodeRoleArn: arn:aws:iam::123456789012:role/prod-eks-node-role
-  subnetIds:
-    - subnet-prod-az1
-    - subnet-prod-az2
-    - subnet-prod-az3
-  instanceType: m5.2xlarge
-  scaling:
-    minSize: 3
-    maxSize: 20
-    desiredSize: 6
-  capacityType: on_demand
-  diskSizeGb: 500
-  labels:
-    environment: production
-    tier: compute
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsEksNodeGroup
-metadata:
-  name: ref-nodegroup
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEksNodeGroup.ref-nodegroup
+  name: gpu
 spec:
   region: us-west-2
   clusterName:
-    valueFrom:
-      kind: AwsEksCluster
-      name: my-cluster
-      field: metadata.name
+    valueFrom: { kind: AwsEksCluster, name: platform, fieldPath: status.outputs.name }
   nodeRoleArn:
-    valueFrom:
-      kind: AwsIamRole
-      name: eks-node-role
-      field: status.outputs.role_arn
+    valueFrom: { kind: AwsIamRole, name: eks-node-role, fieldPath: status.outputs.role_arn }
   subnetIds:
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-a
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-b
-        fieldPath: status.outputs.subnet_id
-  instanceType: t3.large
+    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
+    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
+  launchTemplate:
+    launchTemplateId:
+      valueFrom: { kind: AwsLaunchTemplate, name: gpu-nodes, fieldPath: status.outputs.launch_template_id }
+    version: $Default
+  amiType: AL2023_x86_64_NVIDIA
   scaling:
-    minSize: 2
-    maxSize: 8
+    minSize: 0
+    maxSize: 4
+    desiredSize: 1
+  labels:
+    pool: gpu
+  taints:
+    - key: nvidia.com/gpu
+      value: "true"
+      effect: NO_SCHEDULE
+```
+
+### Spot pool with surge rollouts and auto-repair
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsEksNodeGroup
+metadata:
+  name: batch-spot
+spec:
+  region: us-west-2
+  clusterName:
+    valueFrom: { kind: AwsEksCluster, name: platform, fieldPath: status.outputs.name }
+  nodeRoleArn:
+    valueFrom: { kind: AwsIamRole, name: eks-node-role, fieldPath: status.outputs.role_arn }
+  subnetIds:
+    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
+    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
+  instanceTypes: [m6i.large, m5.large, m6a.large]
+  capacityType: spot
+  scaling:
+    minSize: 0
+    maxSize: 10
     desiredSize: 3
+  taints:
+    - key: node-lifecycle
+      value: spot
+      effect: NO_SCHEDULE
+  updateConfig:
+    maxUnavailablePercentage: 25
+    updateStrategy: MINIMAL
+  nodeRepairConfig:
+    enabled: true
 ```
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `nodegroup_name` | `string` | Name of the created EKS managed node group |
-| `asg_name` | `string` | Name of the underlying AWS Auto Scaling Group managing the nodes |
-| `remote_access_sg_id` | `string` | ID of the security group for SSH access (present only when `sshKeyName` is set) |
-| `instance_profile_arn` | `string` | ARN of the EC2 instance profile associated with the nodes |
+| Output | Description |
+| --- | --- |
+| `nodegroup_name` | The pool's name |
+| `nodegroup_arn` | The pool's ARN — what access entries and IAM policies reference |
+| `asg_name` | The EC2 Auto Scaling group AWS manages behind the pool — the hook for ASG-level tooling |
+| `remote_access_sg_id` | The SSH security group AWS creates when remote access lacks explicit source groups; empty otherwise |
 
 ## Related Components
 
-- [AwsEksCluster](/docs/catalog/aws/awsekscluster) — provides the EKS cluster that this node group attaches to
-- [AwsIamRole](/docs/catalog/aws/awsiamrole) — supplies the IAM role assumed by the worker nodes
-- [AwsVpc](/docs/catalog/aws/awsvpc) — provides the subnets for node placement
+- [AwsEksCluster](/docs/catalog/aws/awsekscluster) — the control plane this pool registers with
+- [AwsLaunchTemplate](/docs/catalog/aws/awslaunchtemplate) — hardened launch mechanics for the pool
+- [AwsIamRole](/docs/catalog/aws/awsiamrole) — the node role (carries its own worker policies)
+- [AwsSubnet](/docs/catalog/aws/awssubnet) — where the nodes launch
+- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — SSH source scoping for remote access

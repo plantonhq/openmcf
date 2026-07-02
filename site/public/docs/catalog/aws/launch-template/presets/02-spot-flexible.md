@@ -48,7 +48,7 @@ template that should be Spot-only for every consumer.
 | --- | --- | --- |
 | `<fleet-name>` | Name for the launch template | Your fleet's name (e.g., `spot-workers`) |
 | `<aws-region>` | AWS region code (e.g., `us-east-1`) | Your deployment region |
-| `<ami-id>` | AMI to boot from | EC2 console or SSM public parameters |
+| `ami-<your-ami-id>` | AMI to boot from | EC2 console or SSM public parameters |
 | `<security-group-resource-name>` | Name of the AwsSecurityGroup resource | Your security-group manifest's `metadata.name` |
 
 ## Common Additions

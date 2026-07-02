@@ -1,0 +1,37 @@
+# AwsEksCluster install profile used as a prerequisite by composed
+# components (AwsEksNodeGroup, declared via prerequisites in the kind
+# registry). The harness deploys this control plane (via the cluster's
+# Pulumi module) after the subnet/role prerequisites it references, then
+# resolves the dependent's cluster reference against its outputs. The
+# Kubernetes version is left unset so AWS picks its current default and
+# this manifest never goes stale.
+apiVersion: aws.planton.dev/v1
+kind: AwsEksCluster
+metadata:
+  name: planton-oss-e2e-eks-cluster-prereq
+  id: planton-oss-e2e-eks-cluster-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsekscluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  clusterRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-eks-cluster-role
+      fieldPath: status.outputs.role_arn

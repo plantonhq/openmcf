@@ -35,9 +35,13 @@ type AwsEksClusterStackOutputs struct {
 	// cluster_arn is the Amazon Resource Name of the EKS cluster.
 	ClusterArn string `protobuf:"bytes,5,opt,name=cluster_arn,json=clusterArn,proto3" json:"cluster_arn,omitempty"`
 	// name is the EKS cluster name.
-	Name          string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	// platform_version is the EKS platform version of the control plane
+	// (e.g. "eks.12") -- AWS's own revision of the control plane software for
+	// the cluster's Kubernetes minor version.
+	PlatformVersion string `protobuf:"bytes,7,opt,name=platform_version,json=platformVersion,proto3" json:"platform_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AwsEksClusterStackOutputs) Reset() {
@@ -112,11 +116,18 @@ func (x *AwsEksClusterStackOutputs) GetName() string {
 	return ""
 }
 
+func (x *AwsEksClusterStackOutputs) GetPlatformVersion() string {
+	if x != nil {
+		return x.PlatformVersion
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awsekscluster_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsekscluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awsekscluster/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsekscluster.v1\"\x85\x02\n" +
+	"=dev/planton/provider/aws/awsekscluster/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsekscluster.v1\"\xb0\x02\n" +
 	"\x19AwsEksClusterStackOutputs\x12\x1a\n" +
 	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x124\n" +
 	"\x16cluster_ca_certificate\x18\x02 \x01(\tR\x14clusterCaCertificate\x129\n" +
@@ -124,7 +135,8 @@ const file_dev_planton_provider_aws_awsekscluster_v1_stack_outputs_proto_rawDesc
 	"\x0foidc_issuer_url\x18\x04 \x01(\tR\roidcIssuerUrl\x12\x1f\n" +
 	"\vcluster_arn\x18\x05 \x01(\tR\n" +
 	"clusterArn\x12\x12\n" +
-	"\x04name\x18\x06 \x01(\tR\x04nameB\xea\x02\n" +
+	"\x04name\x18\x06 \x01(\tR\x04name\x12)\n" +
+	"\x10platform_version\x18\a \x01(\tR\x0fplatformVersionB\xea\x02\n" +
 	"-com.dev.planton.provider.aws.awsekscluster.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsekscluster/v1;awseksclusterv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsekscluster.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsekscluster\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsekscluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsekscluster::V1b\x06proto3"
 
 var (

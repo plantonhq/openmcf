@@ -43,6 +43,10 @@ var migratedKinds = []string{
 	// EC2 fleet compute kinds, generator-owned from the day they were forged.
 	"AwsLaunchTemplate",
 	"AwsAutoScalingGroup",
+	// EKS control plane + managed node group, migrated off the legacy
+	// hand-written contract together.
+	"AwsEksCluster",
+	"AwsEksNodeGroup",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

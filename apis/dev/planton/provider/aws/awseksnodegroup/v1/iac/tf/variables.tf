@@ -1,153 +1,66 @@
 variable "metadata" {
-  description = "metadata for all resource objects on planton"
+  description = "Cloud resource metadata"
   type = object({
-
-    # name of the resource
     name = string
-
-    # id of the resource
-    id = string
-
-    # id of the organization to which the api-resource belongs to
-    org = string
-
-    # environment to which the resource belongs to
-    env = string
-
-    # labels for the resource
-    labels = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # annotations for the resource
-    annotations = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # tags for the resource
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for Deployment Component"
+  description = "AwsEksNodeGroup specification"
   type = object({
-
-    # The AWS region where the resource will be created.
     region = string
-
-    # Description for cluster_name
-    cluster_name = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # Description for node_role_arn
-    node_role_arn = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # Description for subnet_ids
-    subnet_ids = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
+    cluster_name = string
+    node_role_arn = string
+    subnet_ids = list(string)
+    launch_template = optional(object({
+      launch_template_id = string
+      version = optional(string, "")
     }))
-
-    # Description for instance_type
-    instance_type = string
-
-    # Description for scaling
+    instance_types = optional(list(string), [])
+    ami_type = optional(string, "")
+    capacity_type = optional(string, "")
+    disk_size_gb = optional(number, 0)
     scaling = object({
-
-      # Description for min_size
-      min_size = number
-
-      # Description for max_size
-      max_size = number
-
-      # Description for desired_size
-      desired_size = number
+      min_size = optional(number, 0)
+      max_size = optional(number, 0)
+      desired_size = optional(number, 0)
     })
-
-    # Description for capacity_type
-    capacity_type = string
-
-    # Description for disk_size_gb
-    disk_size_gb = number
-
-    # Description for ssh_key_name
-    ssh_key_name = string
-
-    # Description for labels
-    labels = object({
-
-      # Description for key
+    remote_access = optional(object({
+      ec2_ssh_key = optional(string, "")
+      source_security_group_ids = optional(list(string), [])
+    }))
+    labels = optional(map(string), {})
+    taints = optional(list(object({
       key = string
-
-      # Description for value
-      value = string
-    })
+      value = optional(string, "")
+      effect = string
+    })), [])
+    update_config = optional(object({
+      max_unavailable = optional(number, 0)
+      max_unavailable_percentage = optional(number, 0)
+      update_strategy = optional(string, "")
+    }))
+    node_repair_config = optional(object({
+      enabled = optional(bool, false)
+      max_parallel_nodes_repaired_count = optional(number, 0)
+      max_parallel_nodes_repaired_percentage = optional(number, 0)
+      max_unhealthy_node_threshold_count = optional(number, 0)
+      max_unhealthy_node_threshold_percentage = optional(number, 0)
+      overrides = optional(list(object({
+        min_repair_wait_time_mins = optional(number, 0)
+        node_monitoring_condition = string
+        node_unhealthy_reason = string
+        repair_action = string
+      })), [])
+    }))
+    version = optional(string, "")
+    release_version = optional(string, "")
+    force_update_version = optional(bool, false)
   })
 }

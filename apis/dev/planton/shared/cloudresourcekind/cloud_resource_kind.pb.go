@@ -92,19 +92,25 @@ const (
 	CloudResourceKind_AwsEcrRepo         CloudResourceKind = 204
 	CloudResourceKind_AwsEcsCluster      CloudResourceKind = 205
 	CloudResourceKind_AwsEcsService      CloudResourceKind = 206
-	CloudResourceKind_AwsEksCluster      CloudResourceKind = 207
-	CloudResourceKind_AwsIamRole         CloudResourceKind = 208
-	CloudResourceKind_AwsLambda          CloudResourceKind = 209
-	CloudResourceKind_AwsRdsCluster      CloudResourceKind = 210
-	CloudResourceKind_AwsRdsInstance     CloudResourceKind = 211
-	CloudResourceKind_AwsRoute53Zone     CloudResourceKind = 212
-	CloudResourceKind_AwsS3Bucket        CloudResourceKind = 213
+	// AwsSubnet and AwsIamRole are prerequisites because the control plane
+	// attaches its network interfaces into referenced subnets and assumes a
+	// referenced cluster role that must already carry AmazonEKSClusterPolicy.
+	CloudResourceKind_AwsEksCluster  CloudResourceKind = 207
+	CloudResourceKind_AwsIamRole     CloudResourceKind = 208
+	CloudResourceKind_AwsLambda      CloudResourceKind = 209
+	CloudResourceKind_AwsRdsCluster  CloudResourceKind = 210
+	CloudResourceKind_AwsRdsInstance CloudResourceKind = 211
+	CloudResourceKind_AwsRoute53Zone CloudResourceKind = 212
+	CloudResourceKind_AwsS3Bucket    CloudResourceKind = 213
 	// AwsVpc is a prerequisite because a target group's health checks and
 	// target registrations live inside one VPC -- the spec's vpc_id reference
 	// must resolve before the group can be created.
-	CloudResourceKind_AwsLbTargetGroup    CloudResourceKind = 214
-	CloudResourceKind_AwsSecurityGroup    CloudResourceKind = 215
-	CloudResourceKind_AwsVpc              CloudResourceKind = 216
+	CloudResourceKind_AwsLbTargetGroup CloudResourceKind = 214
+	CloudResourceKind_AwsSecurityGroup CloudResourceKind = 215
+	CloudResourceKind_AwsVpc           CloudResourceKind = 216
+	// AwsEksCluster is a prerequisite because nodes register with a live
+	// control plane; AwsIamRole and AwsSubnet back the node role and worker
+	// subnet references.
 	CloudResourceKind_AwsEksNodeGroup     CloudResourceKind = 217
 	CloudResourceKind_AwsIamUser          CloudResourceKind = 218
 	CloudResourceKind_AwsKmsKey           CloudResourceKind = 219
@@ -1632,7 +1638,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*Ó\x01\n" +
+	"\x02v1\x10\x01*ѓ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1649,8 +1655,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\n" +
 	"AwsEcrRepo\x10\xcc\x01\x1a\r\xa2\xf7\x04\t\b\f\x10\x01\"\x03ecr\x12&\n" +
 	"\rAwsEcsCluster\x10\xcd\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x06ecsclu0\x01\x12$\n" +
-	"\rAwsEcsService\x10\xce\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06ecssvc\x12#\n" +
-	"\rAwsEksCluster\x10\xcf\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x03eks0\x01\x12\x1e\n" +
+	"\rAwsEcsService\x10\xce\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06ecssvc\x12)\n" +
+	"\rAwsEksCluster\x10\xcf\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x03eks0\x01:\x04\x9c\x02\xd0\x01\x12\x1e\n" +
 	"\n" +
 	"AwsIamRole\x10\xd0\x01\x1a\r\xa2\xf7\x04\t\b\f\x10\x01\"\x03air\x12 \n" +
 	"\tAwsLambda\x10\xd1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06lambda\x12$\n" +
@@ -1661,8 +1667,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\vAwsS3Bucket\x10\xd5\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05s3bkt\x12)\n" +
 	"\x10AwsLbTargetGroup\x10\xd6\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04lbtg:\x02\xd8\x01\x12&\n" +
 	"\x10AwsSecurityGroup\x10\xd7\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awssg\x12\x1f\n" +
-	"\x06AwsVpc\x10\xd8\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x06awsvpc0\x01\x12%\n" +
-	"\x0fAwsEksNodeGroup\x10\xd9\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05eksng\x12\"\n" +
+	"\x06AwsVpc\x10\xd8\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x06awsvpc0\x01\x12-\n" +
+	"\x0fAwsEksNodeGroup\x10\xd9\x01\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\x05eksng:\x06\xcf\x01\xd0\x01\x9c\x02\x12\"\n" +
 	"\n" +
 	"AwsIamUser\x10\xda\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsuser\x12 \n" +
 	"\tAwsKmsKey\x10\xdb\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskms\x12&\n" +

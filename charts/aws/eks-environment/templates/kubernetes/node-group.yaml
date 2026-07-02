@@ -9,7 +9,7 @@ spec:
     valueFrom:
       kind: AwsEksCluster
       name: "{{ values.env }}-{{ values.cluster_name }}"
-      fieldPath: metadata.name
+      fieldPath: status.outputs.name
   nodeRoleArn:
     valueFrom:
       kind: AwsIamRole
@@ -24,7 +24,8 @@ spec:
         kind: AwsSubnet
         name: "{{ values.env }}-private-2"
         fieldPath: status.outputs.subnet_id
-  instanceType: "{{ values.node_instance_type }}"
+  instanceTypes:
+    - "{{ values.node_instance_type }}"
   scaling:
     minSize: {{ values.node_min_size }}
     maxSize: {{ values.node_max_size }}
@@ -32,7 +33,15 @@ spec:
   capacityType: "{{ values.node_capacity_type }}"
   diskSizeGb: {{ values.node_disk_size_gb }}
   {% if values.node_ssh_key_name != "" %}
-  sshKeyName: "{{ values.node_ssh_key_name }}"
+  remoteAccess:
+    ec2SshKey: "{{ values.node_ssh_key_name }}"
   {% endif %}
   labels:
     pool: "{{ values.node_group_name }}"
+  # Surge rollouts (launch-before-terminate) so version updates never dip
+  # below capacity, and managed auto-repair for unhealthy nodes.
+  updateConfig:
+    maxUnavailablePercentage: 25
+    updateStrategy: MINIMAL
+  nodeRepairConfig:
+    enabled: true

@@ -4,7 +4,7 @@ metadata:
   name: <fleet-name>
 spec:
   region: <aws-region>
-  imageId: <ami-id>
+  imageId: ami-<your-ami-id>
   instanceType: t3.small
   instanceProfile:
     valueFrom:

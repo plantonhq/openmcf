@@ -44,7 +44,7 @@ termination protection, and automatic recovery from hardware impairment.
 | --- | --- | --- |
 | `<fleet-name>` | Name for the launch template | Your workload's name |
 | `<aws-region>` | AWS region code (e.g., `us-east-1`) | Your deployment region |
-| `<ami-id>` | AMI to boot from (a hardened/golden image) | Your image pipeline output |
+| `ami-<your-ami-id>` | AMI to boot from (a hardened/golden image) | Your image pipeline output |
 | `<instance-profile-resource-name>` | Name of the AwsIamInstanceProfile resource | Your instance-profile manifest's `metadata.name` |
 | `<security-group-resource-name>` | Name of the AwsSecurityGroup resource | Your security-group manifest's `metadata.name` |
 | `<kms-key-resource-name>` | Name of the AwsKmsKey resource | Your KMS-key manifest's `metadata.name` |

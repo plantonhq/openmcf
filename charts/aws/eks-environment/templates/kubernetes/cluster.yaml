@@ -20,12 +20,27 @@ spec:
       name: "{{ values.env }}-eks-cluster-role"
       fieldPath: status.outputs.role_arn
   version: "{{ values.cluster_version }}"
-  disablePublicEndpoint: {{ values.disable_public_endpoint }}
-  {% if not values.disable_public_endpoint | bool %}
+  # The private endpoint is always on: nodes and in-VPC clients reach the
+  # API server over private ENIs regardless of the public-endpoint choice.
+  endpointPrivateAccess: true
+  {% if values.disable_public_endpoint | bool %}
+  endpointPublicAccess: false
+  {% else %}
   publicAccessCidrs:
     - "{{ values.public_access_cidr }}"
   {% endif %}
-  enableControlPlaneLogs: {{ values.enable_control_plane_logs }}
+  # Access entries are the modern access model; IAM principals are granted
+  # cluster access as first-class EKS resources.
+  accessConfig:
+    authenticationMode: API
+  {% if values.enable_control_plane_logs | bool %}
+  enabledClusterLogTypes:
+    - api
+    - audit
+    - authenticator
+    - controllerManager
+    - scheduler
+  {% endif %}
   {% if values.enable_kms_encryption | bool %}
   kmsKeyArn:
     valueFrom:

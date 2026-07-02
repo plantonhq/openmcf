@@ -1,30 +1,49 @@
-# On-Demand General Purpose Node Group
+# On-Demand General Pool
 
-This preset creates an EKS managed node group using on-demand `t3.medium` instances across two Availability Zones. The group scales between 2 and 5 nodes with 100 GiB root disks. This is the standard starting point for most Kubernetes workloads that need predictable compute capacity without Spot interruptions.
+This preset runs the workhorse node pool of a typical cluster: On-Demand
+AL2023 nodes across two availability zones, surge-enabled version
+rollouts, and managed node auto-repair. Everything composes by
+reference -- the cluster, the node role, and the subnets are all
+first-class resources.
 
 ## When to Use
 
-- General-purpose Kubernetes workloads (web servers, API services, background workers)
-- Production clusters where Spot interruptions are not acceptable
-- Starting point before right-sizing to larger or more specialized instance types
+- The default compute pool for stateless and stateful services
+- Clusters that need predictable capacity (no Spot interruptions)
 
 ## Key Configuration Choices
 
-- **On-demand instances** (`capacityType: on_demand`) -- No Spot interruptions; predictable availability
-- **t3.medium** (`instanceType`) -- 2 vCPUs, 4 GiB RAM; burstable performance suitable for most workloads
-- **2-5 nodes** (`scaling`) -- Starts with 2 nodes for HA; scales to 5 under load via Cluster Autoscaler or Karpenter
-- **100 GiB disk** (`diskSizeGb: 100`) -- Sufficient for container images, logs, and ephemeral storage
-- **Multi-AZ** -- Nodes span two AZs for high availability
+- **`amiType: AL2023_x86_64_STANDARD`** -- the current-generation
+  EKS-optimized Amazon Linux family
+- **`updateStrategy: MINIMAL` + `maxUnavailablePercentage: 25`** --
+  version updates launch replacements before terminating, so capacity
+  never dips; a quarter of the pool rolls at a time
+- **`nodeRepairConfig.enabled: true`** -- EKS replaces or reboots nodes
+  the cluster reports unhealthy, without operator intervention
+- **The node role carries its own policies** -- attach
+  `AmazonEKSWorkerNodePolicy`, `AmazonEC2ContainerRegistryReadOnly`, and
+  `AmazonEKS_CNI_Policy` on the referenced `AwsIamRole`; the node group
+  never modifies a role it references
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<eks-cluster-name>` | Name of the EKS cluster to attach this node group to | `AwsEksCluster` metadata name |
-| `<node-role-arn>` | IAM role ARN with `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, and `AmazonEC2ContainerRegistryReadOnly` | AWS IAM console or `AwsIamRole` status outputs |
-| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsVpc` status outputs |
+| `<node-group-name>` | Name for the pool | Your naming convention (e.g., `general`) |
+| `<aws-region>` | AWS region code (e.g., `us-west-2`) | Your deployment region |
+| `<cluster-resource-name>` | Name of the AwsEksCluster resource | Your cluster manifest's `metadata.name` |
+| `<node-role-resource-name>` | Name of the AwsIamRole with the worker policies | Your role manifest's `metadata.name` |
+| `<private-subnet-a/b-resource-name>` | Names of two AwsSubnet resources in different AZs | Your subnet manifests' `metadata.name` |
+
+## Common Additions
+
+- Pin `version` during a control-plane upgrade, then bump it to roll the
+  nodes on your schedule
+- Add `labels` (e.g., `pool: general`) so workloads can target the pool
+  with nodeSelectors
 
 ## Related Presets
 
-- **02-spot-cost-optimized** -- Use instead to reduce costs by running nodes on Spot instances (suitable for fault-tolerant workloads)
+- **02-spot-cost-optimized** -- interruptible capacity at steep discount
+- **03-launch-template** -- custom AMI/IMDSv2/encrypted-volume mechanics
+  from an AwsLaunchTemplate

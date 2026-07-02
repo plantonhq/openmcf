@@ -14,7 +14,7 @@ output "cluster_security_group_id" {
 }
 
 output "oidc_issuer_url" {
-  description = "The URL of the OpenID Connect issuer for the cluster (used for IAM Roles for Service Accounts)."
+  description = "The URL of the OpenID Connect issuer for the cluster (the IRSA trust anchor)."
   value       = aws_eks_cluster.this.identity[0].oidc[0].issuer
 }
 
@@ -28,4 +28,7 @@ output "name" {
   value       = aws_eks_cluster.this.name
 }
 
-
+output "platform_version" {
+  description = "The EKS platform version of the control plane (e.g. \"eks.12\")."
+  value       = aws_eks_cluster.this.platform_version
+}

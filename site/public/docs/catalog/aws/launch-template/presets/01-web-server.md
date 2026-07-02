@@ -45,7 +45,7 @@ reference. Reference this template's `launch_template_id` output from an
 | --- | --- | --- |
 | `<fleet-name>` | Name for the launch template (max 125 chars) | Your fleet's name (e.g., `web`, `api`) |
 | `<aws-region>` | AWS region code (e.g., `us-east-1`) | Your deployment region |
-| `<ami-id>` | AMI to boot from (e.g., the current AL2023 image) | EC2 console or SSM public parameters |
+| `ami-<your-ami-id>` | AMI to boot from (e.g., the current AL2023 image) | EC2 console or SSM public parameters |
 | `<instance-profile-resource-name>` | Name of the AwsIamInstanceProfile resource | Your instance-profile manifest's `metadata.name` |
 | `<security-group-resource-name>` | Name of the AwsSecurityGroup resource | Your security-group manifest's `metadata.name` |
 

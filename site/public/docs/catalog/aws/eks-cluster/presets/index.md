@@ -11,11 +11,15 @@ presets:
   - slug: "01-standard"
     rank: "01"
     title: "Standard EKS Cluster"
-    excerpt: "This preset creates an EKS cluster with a publicly accessible API endpoint and control plane logging enabled. The cluster spans two Availability Zones for high availability. This is the most common..."
+    excerpt: "This preset creates a two-AZ EKS control plane with the modern access-entries authentication model, audit-grade control-plane logging, and standard upgrade support. The API endpoint stays publicly..."
   - slug: "02-private-endpoint"
     rank: "02"
-    title: "Private Endpoint EKS Cluster"
-    excerpt: "This preset creates an EKS cluster with the API server endpoint restricted to VPC-internal access only. The Kubernetes API is not reachable from the public internet. Use this for security-sensitive..."
+    title: "Private-Endpoint EKS Cluster"
+    excerpt: "This preset creates a hardened, fully private EKS control plane: the API server is reachable only from inside the VPC, Kubernetes secrets are envelope-encrypted with a customer-managed KMS key, and..."
+  - slug: "03-auto-mode"
+    rank: "03"
+    title: "EKS Auto Mode Cluster"
+    excerpt: "This preset creates a hands-off Kubernetes platform: EKS Auto Mode provisions and scales EC2 capacity, provisions EBS volumes, and manages load balancers for the cluster's workloads. There are no..."
 ---
 
 # EKS Cluster Presets

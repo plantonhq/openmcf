@@ -147,11 +147,18 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "ecssvc"
   }];
+  // AwsSubnet and AwsIamRole are prerequisites because the control plane
+  // attaches its network interfaces into referenced subnets and assumes a
+  // referenced cluster role that must already carry AmazonEKSClusterPolicy.
   AwsEksCluster = 207 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "eks"
     container_kind: true
+    prerequisites: [
+      AwsSubnet,
+      AwsIamRole
+    ]
   }];
   AwsIamRole = 208 [(kind_meta) = {
     provider: aws
@@ -203,10 +210,18 @@ enum CloudResourceKind {
     id_prefix: "awsvpc"
     container_kind: true
   }];
+  // AwsEksCluster is a prerequisite because nodes register with a live
+  // control plane; AwsIamRole and AwsSubnet back the node role and worker
+  // subnet references.
   AwsEksNodeGroup = 217 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "eksng"
+    prerequisites: [
+      AwsEksCluster,
+      AwsIamRole,
+      AwsSubnet
+    ]
   }];
   AwsIamUser = 218 [(kind_meta) = {
     provider: aws
