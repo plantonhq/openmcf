@@ -3,6 +3,7 @@ package runner
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -91,6 +92,53 @@ func TestResolveDependencies_MissingInstallManifestErrors(t *testing.T) {
 	// httproute has a registry prereq but we create no install manifest for it.
 	if _, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute"); err == nil {
 		t.Fatal("expected an error when the prerequisite install manifest is missing, got nil")
+	}
+}
+
+// A single-document install profile passes through untouched -- the common
+// case pays no temp-file cost and keeps error messages pointing at the real file.
+func TestSplitManifestDocuments_SingleDocumentPassesThrough(t *testing.T) {
+	repoRoot := t.TempDir()
+	path := writeManifest(t, repoRoot, "single.yaml")
+
+	docs, err := splitManifestDocuments(path)
+	if err != nil {
+		t.Fatalf("splitManifestDocuments: %v", err)
+	}
+	if len(docs) != 1 || docs[0] != path {
+		t.Fatalf("expected the original path back, got %v", docs)
+	}
+}
+
+// A multi-document install profile (e.g. the two different-AZ subnets a load
+// balancer requires) splits into one deployable file per document, in order,
+// with empty documents from leading separators skipped.
+func TestSplitManifestDocuments_MultiDocumentSplits(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "prerequisite.yaml")
+	content := "---\n" + // leading separator produces an empty doc that must be skipped
+		"apiVersion: aws.planton.dev/v1\nkind: AwsSubnet\nmetadata:\n  name: subnet-a\n" +
+		"---\n" +
+		"apiVersion: aws.planton.dev/v1\nkind: AwsSubnet\nmetadata:\n  name: subnet-b\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write profile: %v", err)
+	}
+
+	docs, err := splitManifestDocuments(path)
+	if err != nil {
+		t.Fatalf("splitManifestDocuments: %v", err)
+	}
+	if len(docs) != 2 {
+		t.Fatalf("expected 2 documents, got %d: %v", len(docs), docs)
+	}
+	for i, want := range []string{"name: subnet-a", "name: subnet-b"} {
+		raw, err := os.ReadFile(docs[i])
+		if err != nil {
+			t.Fatalf("read split doc %d: %v", i, err)
+		}
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("doc %d missing %q:\n%s", i, want, raw)
+		}
 	}
 }
 

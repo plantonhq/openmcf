@@ -46,6 +46,7 @@ go_test(
     deps = [
         "//apis/dev/planton/provider/auth0/auth0resourceserver/v1:auth0resourceserver",
         "//apis/dev/planton/provider/aws/awsiamrole/v1:awsiamrole",
+        "//apis/dev/planton/provider/aws/awsnlb/v1:awsnlb",
         "//apis/dev/planton/provider/aws/awssubnet/v1:awssubnet",
         "//apis/dev/planton/shared/cloudresourcekind",
         "//internal/manifest",

@@ -8,7 +8,6 @@ import (
 
 	tt "github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 )
@@ -83,9 +82,13 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		// prerequisites' outputs -- the orchestrator's resolution step, performed
 		// here so a composed topology (e.g. subnet -> vpc) can be tested standalone.
 		if len(dependencyStates) > 0 {
-			depOutputs := make(map[cloudresourcekind.CloudResourceKind]map[string]interface{}, len(dependencyStates))
+			depOutputs := make(DependencyOutputs, len(dependencyStates))
 			for _, depState := range dependencyStates {
-				depOutputs[crkreflect.KindFromString(depState.Dependency.KindSlug)] = depState.Outputs
+				kind := crkreflect.KindFromString(depState.Dependency.KindSlug)
+				if depOutputs[kind] == nil {
+					depOutputs[kind] = make(map[string]map[string]interface{})
+				}
+				depOutputs[kind][depState.ManifestName] = depState.Outputs
 			}
 			resolvedPath, resolveErr := ResolveManifestRefs(tc.ManifestPath, depOutputs)
 			if resolveErr != nil {

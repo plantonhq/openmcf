@@ -4,7 +4,9 @@
 # prerequisites: [AwsSubnet, AwsElasticIp] in the kind registry). The harness
 # deploys AwsVpc -> AwsSubnet -> AwsElasticIp first (the subnet resolves its own
 # vpcId against the VPC), then resolves these references to the created ids before
-# the NAT gateway is applied. Full metadata is supplied for tagging/orphan cleanup.
+# the NAT gateway is applied. The subnet install profile publishes a two-AZ pair;
+# a NAT gateway lives in one subnet, so this references the first by name.
+# Full metadata is supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1
 kind: AwsNatGateway
 metadata:
@@ -25,7 +27,7 @@ spec:
   subnetId:
     valueFrom:
       kind: AwsSubnet
-      name: planton-oss-e2e-awssubnet-smoke
+      name: planton-oss-e2e-awssubnet-prereq-a
       fieldPath: status.outputs.subnet_id
   allocationId:
     valueFrom:
