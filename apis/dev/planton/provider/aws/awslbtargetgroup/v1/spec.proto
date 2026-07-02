@@ -241,6 +241,21 @@ message AwsLbTargetGroupSpec {
     expression: "this.slow_start_seconds == 0 || this.protocol in ['HTTP', 'HTTPS']"
   };
 
+  // AWS rejects slow start combined with stickiness or with the
+  // least_outstanding_requests algorithm; catching it here beats a failed
+  // apply.
+  option (buf.validate.message).cel = {
+    id: "slow_start_incompatible_with_stickiness"
+    message: "slow_start_seconds cannot be combined with stickiness"
+    expression: "this.slow_start_seconds == 0 || !has(this.stickiness)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "slow_start_incompatible_with_least_outstanding_requests"
+    message: "slow_start_seconds cannot be combined with the 'least_outstanding_requests' algorithm"
+    expression: "this.slow_start_seconds == 0 || this.load_balancing_algorithm_type != 'least_outstanding_requests'"
+  };
+
   option (buf.validate.message).cel = {
     id: "load_balancing_algorithm_valid"
     message: "load_balancing_algorithm_type must be 'round_robin', 'least_outstanding_requests', or 'weighted_random' when set"
@@ -335,7 +350,8 @@ message AwsLbTargetGroupHealthCheck {
   // HTTP matchers: a code ("200"), a range ("200-299"), or a list
   // ("200,202"). AWS default: "200".
   // GRPC matchers (protocol_version = "GRPC"): gRPC status codes, e.g. "0"
-  // or "0-99". AWS default: "12" is NOT healthy -- default is "0".
+  // or "0-99". AWS default: "12" -- gRPC UNIMPLEMENTED, so a bare health
+  // stub counts as healthy; set "0" to require an OK response.
   // Not valid for TCP probes (a TCP probe has no response body to match).
   string matcher = 9;
 

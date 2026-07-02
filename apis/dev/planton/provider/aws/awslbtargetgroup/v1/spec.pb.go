@@ -389,7 +389,8 @@ type AwsLbTargetGroupHealthCheck struct {
 	// HTTP matchers: a code ("200"), a range ("200-299"), or a list
 	// ("200,202"). AWS default: "200".
 	// GRPC matchers (protocol_version = "GRPC"): gRPC status codes, e.g. "0"
-	// or "0-99". AWS default: "12" is NOT healthy -- default is "0".
+	// or "0-99". AWS default: "12" -- gRPC UNIMPLEMENTED, so a bare health
+	// stub counts as healthy; set "0" to require an OK response.
 	// Not valid for TCP probes (a TCP probe has no response body to match).
 	Matcher       string `protobuf:"bytes,9,opt,name=matcher,proto3" json:"matcher,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -894,7 +895,7 @@ var File_dev_planton_provider_aws_awslbtargetgroup_v1_spec_proto protoreflect.Fi
 
 const file_dev_planton_provider_aws_awslbtargetgroup_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/aws/awslbtargetgroup/v1/spec.proto\x12,dev.planton.provider.aws.awslbtargetgroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9d'\n" +
+	"7dev/planton/provider/aws/awslbtargetgroup/v1/spec.proto\x12,dev.planton.provider.aws.awslbtargetgroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xae*\n" +
 	"\x14AwsLbTargetGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12i\n" +
 	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12-\n" +
@@ -920,7 +921,7 @@ const file_dev_planton_provider_aws_awslbtargetgroup_v1_spec_proto_rawDesc = "" 
 	"\"lambda_multi_value_headers_enabled\x18\x12 \x01(\bR\x1elambdaMultiValueHeadersEnabled\x12z\n" +
 	"\x13target_group_health\x18\x13 \x01(\v2J.dev.planton.provider.aws.awslbtargetgroup.v1.AwsLbTargetGroupHealthPolicyR\x11targetGroupHealth\x12\x7f\n" +
 	"\x13target_health_state\x18\x14 \x01(\v2O.dev.planton.provider.aws.awslbtargetgroup.v1.AwsLbTargetGroupTargetHealthStateR\x11targetHealthState\x12^\n" +
-	"\atargets\x18\x15 \x03(\v2D.dev.planton.provider.aws.awslbtargetgroup.v1.AwsLbTargetGroupTargetR\atargets:\xc7\x1b\xbaH\xc3\x1b\x1a\xa9\x01\n" +
+	"\atargets\x18\x15 \x03(\v2D.dev.planton.provider.aws.awslbtargetgroup.v1.AwsLbTargetGroupTargetR\atargets:\xd8\x1e\xbaH\xd4\x1e\x1a\xa9\x01\n" +
 	"\x11target_type_valid\x12Atarget_type must be 'instance', 'ip', 'lambda', or 'alb' when set\x1aQthis.target_type == '' || this.target_type in ['instance', 'ip', 'lambda', 'alb']\x1a\xa9\x01\n" +
 	"\x0eprotocol_valid\x12<protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS\x1aYthis.protocol == '' || this.protocol in ['HTTP', 'HTTPS', 'TCP', 'UDP', 'TCP_UDP', 'TLS']\x1a\xae\x01\n" +
 	"$port_protocol_required_unless_lambda\x12=port and protocol are required unless target_type is 'lambda'\x1aGthis.target_type == 'lambda' || (this.port != 0 && this.protocol != '')\x1a\xda\x01\n" +
@@ -932,7 +933,9 @@ const file_dev_planton_provider_aws_awslbtargetgroup_v1_spec_proto_rawDesc = "" 
 	"\x15ip_address_type_valid\x121ip_address_type must be 'ipv4' or 'ipv6' when set\x1aFthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'ipv6']\x1a\xaa\x01\n" +
 	"\x1aderegistration_delay_range\x127deregistration_delay_seconds must be between 0 and 3600\x1aSthis.deregistration_delay_seconds >= 0 && this.deregistration_delay_seconds <= 3600\x1a\xb4\x01\n" +
 	"\x10slow_start_range\x12=slow_start_seconds must be 0 (disabled) or between 30 and 900\x1aathis.slow_start_seconds == 0 || (this.slow_start_seconds >= 30 && this.slow_start_seconds <= 900)\x1a\xab\x01\n" +
-	"!slow_start_only_for_alb_protocols\x12Bslow_start_seconds only applies when protocol is 'HTTP' or 'HTTPS'\x1aBthis.slow_start_seconds == 0 || this.protocol in ['HTTP', 'HTTPS']\x1a\xa7\x02\n" +
+	"!slow_start_only_for_alb_protocols\x12Bslow_start_seconds only applies when protocol is 'HTTP' or 'HTTPS'\x1aBthis.slow_start_seconds == 0 || this.protocol in ['HTTP', 'HTTPS']\x1a\x97\x01\n" +
+	"'slow_start_incompatible_with_stickiness\x125slow_start_seconds cannot be combined with stickiness\x1a5this.slow_start_seconds == 0 || !has(this.stickiness)\x1a\xf4\x01\n" +
+	"7slow_start_incompatible_with_least_outstanding_requests\x12Uslow_start_seconds cannot be combined with the 'least_outstanding_requests' algorithm\x1abthis.slow_start_seconds == 0 || this.load_balancing_algorithm_type != 'least_outstanding_requests'\x1a\xa7\x02\n" +
 	"\x1eload_balancing_algorithm_valid\x12pload_balancing_algorithm_type must be 'round_robin', 'least_outstanding_requests', or 'weighted_random' when set\x1a\x92\x01this.load_balancing_algorithm_type == '' || this.load_balancing_algorithm_type in ['round_robin', 'least_outstanding_requests', 'weighted_random']\x1a\xc5\x01\n" +
 	"\x18anomaly_mitigation_valid\x12@load_balancing_anomaly_mitigation must be 'on' or 'off' when set\x1agthis.load_balancing_anomaly_mitigation == '' || this.load_balancing_anomaly_mitigation in ['on', 'off']\x1a\xfd\x01\n" +
 	"+anomaly_mitigation_requires_weighted_random\x12cload_balancing_anomaly_mitigation = 'on' requires load_balancing_algorithm_type = 'weighted_random'\x1aithis.load_balancing_anomaly_mitigation != 'on' || this.load_balancing_algorithm_type == 'weighted_random'\x1a\x8d\x02\n" +

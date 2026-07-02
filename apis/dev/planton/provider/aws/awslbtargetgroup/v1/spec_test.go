@@ -91,7 +91,6 @@ var _ = ginkgo.Describe("AwsLbTargetGroupSpec Validation Tests", func() {
 				input.Spec.ProtocolVersion = "GRPC"
 				input.Spec.IpAddressType = "ipv4"
 				input.Spec.DeregistrationDelaySeconds = 60
-				input.Spec.SlowStartSeconds = 120
 				input.Spec.LoadBalancingAlgorithmType = "weighted_random"
 				input.Spec.LoadBalancingAnomalyMitigation = "on"
 				input.Spec.LoadBalancingCrossZoneEnabled = "use_load_balancer_configuration"
@@ -99,6 +98,13 @@ var _ = ginkgo.Describe("AwsLbTargetGroupSpec Validation Tests", func() {
 					Type:                  "lb_cookie",
 					CookieDurationSeconds: 3600,
 				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for slow start without stickiness", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.SlowStartSeconds = 120
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -234,6 +240,22 @@ var _ = ginkgo.Describe("AwsLbTargetGroupSpec Validation Tests", func() {
 				input := minimalValidTargetGroup()
 				input.Spec.Protocol = "TCP"
 				input.Spec.SlowStartSeconds = 60
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for slow start combined with stickiness", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.SlowStartSeconds = 60
+				input.Spec.Stickiness = &AwsLbTargetGroupStickiness{Type: "lb_cookie"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for slow start with least_outstanding_requests", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.SlowStartSeconds = 60
+				input.Spec.LoadBalancingAlgorithmType = "least_outstanding_requests"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
