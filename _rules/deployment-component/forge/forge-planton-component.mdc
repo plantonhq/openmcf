@@ -187,7 +187,7 @@ The following 20 rules execute in order. Each rule is atomic and can be run indi
 
 12. **009-pulumi-module** - Generate module/ (main.go, locals.go, outputs.go, resources), richly commented to the module-comment bar
 13. **010-pulumi-entrypoint** - Generate entrypoint (main.go, Pulumi.yaml, Makefile)
-14. **012-pulumi-docs** - Generate iac/pulumi/README.md and debug.sh
+14. **012-pulumi-docs** - Generate iac/pulumi/README.md
 
 ### Phase 6: Terraform Implementation (Rules 013, 015)
 
