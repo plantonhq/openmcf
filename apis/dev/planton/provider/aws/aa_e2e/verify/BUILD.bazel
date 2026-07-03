@@ -4,6 +4,7 @@ go_library(
     name = "verify",
     srcs = [
         "autoscaling_group.go",
+        "ecs_cluster.go",
         "ecs_service.go",
         "ecs_task_definition.go",
         "egress_only_internet_gateway.go",
@@ -26,6 +27,7 @@ go_library(
         "subnet.go",
         "verifier.go",
         "vpc.go",
+        "vpc_endpoint.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/aa_e2e/verify",
     visibility = ["//visibility:public"],

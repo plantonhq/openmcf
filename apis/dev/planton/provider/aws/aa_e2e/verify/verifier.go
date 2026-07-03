@@ -32,6 +32,7 @@ var verifiers = map[string]Verifier{
 	"awsvpc":                       &vpcVerifier{},
 	"awsinternetgateway":           &internetGatewayVerifier{},
 	"awsegressonlyinternetgateway": &egressOnlyInternetGatewayVerifier{},
+	"awsvpcendpoint":               &vpcEndpointVerifier{},
 	"awsnatgateway":                &natGatewayVerifier{},
 	"awselasticip":                 &elasticIpVerifier{},
 	"awsiampolicy":                 &iamPolicyVerifier{},

@@ -112,6 +112,15 @@ func TestAwsEgressOnlyInternetGateway_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsegressonlyinternetgateway", "terraform")
 }
 
+// --- AWS VPC Endpoint (private service access: gateway on the VPC's default route table + interface on the subnet pair) ---
+
+func TestAwsVpcEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsvpcendpoint", "pulumi")
+}
+func TestAwsVpcEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsvpcendpoint", "terraform")
+}
+
 // --- AWS IAM Policy (leaf of the identity graph: a standalone managed policy) ---
 
 func TestAwsIamPolicy_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awsiampolicy", "pulumi") }
