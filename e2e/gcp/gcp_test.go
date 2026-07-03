@@ -178,6 +178,33 @@ func TestGcpManagedSslCertificate_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpmanagedsslcertificate", "terraform")
 }
 
+// --- GCP Target HTTP Proxy (composed frontend adapter: deploys the GcpUrlMap prerequisite chain) ---
+
+func TestGcpTargetHttpProxy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcptargethttpproxy", "pulumi")
+}
+func TestGcpTargetHttpProxy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcptargethttpproxy", "terraform")
+}
+
+// --- GCP Target HTTPS Proxy (composed TLS frontend: deploys GcpUrlMap + GcpManagedSslCertificate prerequisites) ---
+
+func TestGcpTargetHttpsProxy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcptargethttpsproxy", "pulumi")
+}
+func TestGcpTargetHttpsProxy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcptargethttpsproxy", "terraform")
+}
+
+// --- GCP Global Forwarding Rule (the VIP node; the deepest composed chain in the GCP harness) ---
+
+func TestGcpGlobalForwardingRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpglobalforwardingrule", "pulumi")
+}
+func TestGcpGlobalForwardingRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpglobalforwardingrule", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

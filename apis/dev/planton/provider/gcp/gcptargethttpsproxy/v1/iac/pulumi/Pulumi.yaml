@@ -1,0 +1,4 @@
+name: gcptargethttpsproxy-pulumi-project
+runtime:
+  name: go
+description: Planton GcpTargetHttpsProxy Pulumi module

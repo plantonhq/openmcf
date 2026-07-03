@@ -39,6 +39,8 @@ const (
 type GcpGlobalAddressSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The GCP project in which to create this global address reservation.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	// Example: "my-prod-project-123"
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the global address resource in GCP.
@@ -176,10 +178,11 @@ var File_dev_planton_provider_gcp_gcpglobaladdress_v1_spec_proto protoreflect.Fi
 
 const file_dev_planton_provider_gcp_gcpglobaladdress_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/gcp/gcpglobaladdress/v1/spec.proto\x12,dev.planton.provider.gcp.gcpglobaladdress.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x84\v\n" +
-	"\x14GcpGlobalAddressSpec\x12{\n" +
+	"7dev/planton/provider/gcp/gcpglobaladdress/v1/spec.proto\x12,dev.planton.provider.gcp.gcpglobaladdress.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfe\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
+	"\x14GcpGlobalAddressSpec\x12u\n" +
+	"\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
 	"\faddress_name\x18\x02 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\vaddressName\x12\x18\n" +
 	"\aaddress\x18\x03 \x01(\tR\aaddress\x12\x9b\x01\n" +
 	"\faddress_type\x18\x04 \x01(\tBs\xbaHd\xba\x01a\n" +

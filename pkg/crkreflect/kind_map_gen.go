@@ -219,7 +219,6 @@ import (
 	gcpbigtableinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtableinstance/v1"
 	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
 	gcpcloudarmorpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudarmorpolicy/v1"
-	gcpcloudcdnv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcdn/v1"
 	gcpcloudcomposerenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1"
 	gcpcloudfunctionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudfunction/v1"
 	gcpcloudrunv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudrun/v1"
@@ -239,6 +238,7 @@ import (
 	gcpgkenodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkenodepool/v1"
 	gcpgkeworkloadidentitybindingv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkeworkloadidentitybinding/v1"
 	gcpglobaladdressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpglobaladdress/v1"
+	gcpglobalforwardingrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpglobalforwardingrule/v1"
 	gcphealthcheckv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcphealthcheck/v1"
 	gcpiamcustomrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpiamcustomrole/v1"
 	gcpkmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskey/v1"
@@ -256,6 +256,8 @@ import (
 	gcpspannerdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerdatabase/v1"
 	gcpspannerinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerinstance/v1"
 	gcpsubnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1"
+	gcptargethttpproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpproxy/v1"
+	gcptargethttpsproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1"
 	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
 	gcpvertexaiendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiendpoint/v1"
 	gcpvertexainotebookv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexainotebook/v1"
@@ -682,7 +684,6 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpBigtableInstance:             &gcpbigtableinstancev1.GcpBigtableInstance{},
 	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:              &gcpcertmanagercertv1.GcpCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_GcpCloudArmorPolicy:             &gcpcloudarmorpolicyv1.GcpCloudArmorPolicy{},
-	cloudresourcekind.CloudResourceKind_GcpCloudCdn:                     &gcpcloudcdnv1.GcpCloudCdn{},
 	cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment:     &gcpcloudcomposerenvironmentv1.GcpCloudComposerEnvironment{},
 	cloudresourcekind.CloudResourceKind_GcpCloudFunction:                &gcpcloudfunctionv1.GcpCloudFunction{},
 	cloudresourcekind.CloudResourceKind_GcpCloudRun:                     &gcpcloudrunv1.GcpCloudRun{},
@@ -702,6 +703,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpGkeNodePool:                  &gcpgkenodepoolv1.GcpGkeNodePool{},
 	cloudresourcekind.CloudResourceKind_GcpGkeWorkloadIdentityBinding:   &gcpgkeworkloadidentitybindingv1.GcpGkeWorkloadIdentityBinding{},
 	cloudresourcekind.CloudResourceKind_GcpGlobalAddress:                &gcpglobaladdressv1.GcpGlobalAddress{},
+	cloudresourcekind.CloudResourceKind_GcpGlobalForwardingRule:         &gcpglobalforwardingrulev1.GcpGlobalForwardingRule{},
 	cloudresourcekind.CloudResourceKind_GcpHealthCheck:                  &gcphealthcheckv1.GcpHealthCheck{},
 	cloudresourcekind.CloudResourceKind_GcpIamCustomRole:                &gcpiamcustomrolev1.GcpIamCustomRole{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKey:                       &gcpkmskeyv1.GcpKmsKey{},
@@ -719,6 +721,8 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:              &gcpspannerdatabasev1.GcpSpannerDatabase{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerInstance:              &gcpspannerinstancev1.GcpSpannerInstance{},
 	cloudresourcekind.CloudResourceKind_GcpSubnetwork:                   &gcpsubnetworkv1.GcpSubnetwork{},
+	cloudresourcekind.CloudResourceKind_GcpTargetHttpProxy:              &gcptargethttpproxyv1.GcpTargetHttpProxy{},
+	cloudresourcekind.CloudResourceKind_GcpTargetHttpsProxy:             &gcptargethttpsproxyv1.GcpTargetHttpsProxy{},
 	cloudresourcekind.CloudResourceKind_GcpUrlMap:                       &gcpurlmapv1.GcpUrlMap{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint:             &gcpvertexaiendpointv1.GcpVertexAiEndpoint{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook:             &gcpvertexainotebookv1.GcpVertexAiNotebook{},

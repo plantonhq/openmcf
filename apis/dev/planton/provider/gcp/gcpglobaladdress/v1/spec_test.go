@@ -133,11 +133,11 @@ var _ = ginkgo.Describe("GcpGlobalAddressSpec", func() {
 
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject when project_id is missing", func() {
+	ginkgo.It("should accept a missing project_id (falls back to the provider's default project)", func() {
 		msg := minimalExternal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject when address_name is missing", func() {

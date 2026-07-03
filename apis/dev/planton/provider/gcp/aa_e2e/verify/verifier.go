@@ -60,6 +60,10 @@ var verifiers = map[string]Verifier{
 	"gcpsubnetwork":                   &subnetworkVerifier{},
 	"gcpvpc":                          &vpcVerifier{},
 	"gcpgcsbucket":                    &gcsBucketVerifier{},
+	"gcptargethttpproxy":              &targetHttpProxyVerifier{},
+	"gcptargethttpsproxy":             &targetHttpsProxyVerifier{},
+	"gcpglobalforwardingrule":         &globalForwardingRuleVerifier{},
+	"gcpglobaladdress":                &globalAddressVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

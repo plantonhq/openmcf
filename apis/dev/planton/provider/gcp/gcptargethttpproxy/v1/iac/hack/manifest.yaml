@@ -1,0 +1,23 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpTargetHttpProxy
+metadata:
+  name: my-sample-http-proxy
+spec:
+  # GCP project that owns the proxy.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Cloud-side name; omit to default to metadata.name.
+  proxyName: web-http-frontend
+
+  description: Port-80 frontend serving the http-to-https redirect URL map
+
+  # The URL map the proxy routes through (reference a GcpUrlMap or provide a
+  # self-link). The standard pattern points the HTTP proxy at a
+  # redirect-only URL map while the HTTPS proxy serves the application.
+  urlMap:
+    value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/urlMaps/http-redirect
+
+  # Idle client keep-alive (EXTERNAL_MANAGED only); omit for GCP's default.
+  httpKeepAliveTimeoutSec: 610

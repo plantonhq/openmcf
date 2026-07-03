@@ -707,10 +707,14 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpart"
   }];
-  GcpCloudCdn = 601 [(kind_meta) = {
+  GcpTargetHttpsProxy = 601 [(kind_meta) = {
     provider: gcp
     version: v1
-    id_prefix: "gcpcdn"
+    id_prefix: "gcpthsp"
+    prerequisites: [
+      GcpUrlMap,
+      GcpManagedSslCertificate
+    ]
   }];
   GcpCloudFunction = 602 [(kind_meta) = {
     provider: gcp
@@ -861,6 +865,12 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpmssl"
   }];
+  GcpTargetHttpProxy = 629 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpthp"
+    prerequisites: [GcpUrlMap]
+  }];
   GcpAlloydbCluster = 630 [(kind_meta) = {
     provider: gcp
     version: v1
@@ -973,6 +983,17 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpwipp"
     prerequisites: [GcpWorkloadIdentityPool]
+  }];
+  // 710–719: networking/load-balancer family (overflow block; the 623–629
+  // LB sub-band is fully allocated)
+  GcpGlobalForwardingRule = 710 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpgfr"
+    prerequisites: [
+      GcpTargetHttpsProxy,
+      GcpGlobalAddress
+    ]
   }];
 
   // 800–999: Kubernetes resources

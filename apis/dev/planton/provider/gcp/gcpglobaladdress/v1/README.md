@@ -129,7 +129,7 @@ For comprehensive examples, see [`examples.md`](examples.md), including:
 - [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network referenced by INTERNAL addresses
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project and enables the Compute Engine API
 - [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) — managed database that uses VPC peering ranges for private connectivity
-- [GcpCloudCdn](/docs/catalog/gcp/gcpcloudcdn) — CDN that uses external static IPs
+- [GcpGlobalForwardingRule](/docs/catalog/gcp/gcpglobalforwardingrule) — the load-balancer frontend that binds this static IP to a target proxy
 
 ## Additional Resources
 

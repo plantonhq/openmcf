@@ -201,7 +201,7 @@ const (
 	CloudResourceKind_AzureFrontDoorProfile         CloudResourceKind = 480
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
-	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
+	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 601
 	CloudResourceKind_GcpCloudFunction              CloudResourceKind = 602
 	CloudResourceKind_GcpCloudRun                   CloudResourceKind = 603
 	CloudResourceKind_GcpCloudSql                   CloudResourceKind = 604
@@ -229,6 +229,7 @@ const (
 	CloudResourceKind_GcpRegionNetworkEndpointGroup CloudResourceKind = 626
 	CloudResourceKind_GcpUrlMap                     CloudResourceKind = 627
 	CloudResourceKind_GcpManagedSslCertificate      CloudResourceKind = 628
+	CloudResourceKind_GcpTargetHttpProxy            CloudResourceKind = 629
 	CloudResourceKind_GcpAlloydbCluster             CloudResourceKind = 630
 	CloudResourceKind_GcpRedisInstance              CloudResourceKind = 631
 	CloudResourceKind_GcpFirestoreDatabase          CloudResourceKind = 632
@@ -253,6 +254,9 @@ const (
 	// foundation/security sub-band is fully allocated)
 	CloudResourceKind_GcpWorkloadIdentityPool         CloudResourceKind = 701
 	CloudResourceKind_GcpWorkloadIdentityPoolProvider CloudResourceKind = 702
+	// 710–719: networking/load-balancer family (overflow block; the 623–629
+	// LB sub-band is fully allocated)
+	CloudResourceKind_GcpGlobalForwardingRule CloudResourceKind = 710
 	// 800–999: Kubernetes resources
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 800
 	CloudResourceKind_KubernetesCronJob                     CloudResourceKind = 801
@@ -639,7 +643,7 @@ var (
 		471:  "AzureEventHubNamespace",
 		480:  "AzureFrontDoorProfile",
 		600:  "GcpArtifactRegistryRepo",
-		601:  "GcpCloudCdn",
+		601:  "GcpTargetHttpsProxy",
 		602:  "GcpCloudFunction",
 		603:  "GcpCloudRun",
 		604:  "GcpCloudSql",
@@ -667,6 +671,7 @@ var (
 		626:  "GcpRegionNetworkEndpointGroup",
 		627:  "GcpUrlMap",
 		628:  "GcpManagedSslCertificate",
+		629:  "GcpTargetHttpProxy",
 		630:  "GcpAlloydbCluster",
 		631:  "GcpRedisInstance",
 		632:  "GcpFirestoreDatabase",
@@ -689,6 +694,7 @@ var (
 		700:  "GcpFilestoreInstance",
 		701:  "GcpWorkloadIdentityPool",
 		702:  "GcpWorkloadIdentityPoolProvider",
+		710:  "GcpGlobalForwardingRule",
 		800:  "KubernetesArgocd",
 		801:  "KubernetesCronJob",
 		802:  "KubernetesElasticsearch",
@@ -1060,7 +1066,7 @@ var (
 		"AzureEventHubNamespace":                  471,
 		"AzureFrontDoorProfile":                   480,
 		"GcpArtifactRegistryRepo":                 600,
-		"GcpCloudCdn":                             601,
+		"GcpTargetHttpsProxy":                     601,
 		"GcpCloudFunction":                        602,
 		"GcpCloudRun":                             603,
 		"GcpCloudSql":                             604,
@@ -1088,6 +1094,7 @@ var (
 		"GcpRegionNetworkEndpointGroup":           626,
 		"GcpUrlMap":                               627,
 		"GcpManagedSslCertificate":                628,
+		"GcpTargetHttpProxy":                      629,
 		"GcpAlloydbCluster":                       630,
 		"GcpRedisInstance":                        631,
 		"GcpFirestoreDatabase":                    632,
@@ -1110,6 +1117,7 @@ var (
 		"GcpFilestoreInstance":                    700,
 		"GcpWorkloadIdentityPool":                 701,
 		"GcpWorkloadIdentityPoolProvider":         702,
+		"GcpGlobalForwardingRule":                 710,
 		"KubernetesArgocd":                        800,
 		"KubernetesCronJob":                       801,
 		"KubernetesElasticsearch":                 802,
@@ -1620,7 +1628,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf9\x94\x01\n" +
+	"\x02v1\x10\x01*\xed\x95\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1753,8 +1761,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\b\r\x10\x01\"\x04azeh\x12*\n" +
 	"\x15AzureFrontDoorProfile\x10\xe0\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azfd\x12.\n" +
-	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
-	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
+	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x121\n" +
+	"\x13GcpTargetHttpsProxy\x10\xd9\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\agcpthsp:\x04\xf3\x04\xf4\x04\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +
 	"\vGcpCloudRun\x10\xdb\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06cldrun\x12\"\n" +
 	"\vGcpCloudSql\x10\xdc\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpsql\x12!\n" +
@@ -1783,7 +1791,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x11GcpBackendService\x10\xf1\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\x05gcpbs:\x04\xef\x04\xf2\x04\x125\n" +
 	"\x1dGcpRegionNetworkEndpointGroup\x10\xf2\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcprneg\x12#\n" +
 	"\tGcpUrlMap\x10\xf3\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gcpum:\x02\xf1\x04\x120\n" +
-	"\x18GcpManagedSslCertificate\x10\xf4\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpmssl\x12(\n" +
+	"\x18GcpManagedSslCertificate\x10\xf4\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpmssl\x12-\n" +
+	"\x12GcpTargetHttpProxy\x10\xf5\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpthp:\x02\xf3\x04\x12(\n" +
 	"\x11GcpAlloydbCluster\x10\xf6\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpadb\x12'\n" +
 	"\x10GcpRedisInstance\x10\xf7\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpred\x12+\n" +
 	"\x14GcpFirestoreDatabase\x10\xf8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpfst\x12)\n" +
@@ -1805,7 +1814,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\tGcpKmsKey\x10\xb3\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpkms\x12+\n" +
 	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpnfs\x12.\n" +
 	"\x17GcpWorkloadIdentityPool\x10\xbd\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpwip\x12;\n" +
-	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpwipp:\x02\xbd\x05\x12(\n" +
+	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpwipp:\x02\xbd\x05\x124\n" +
+	"\x17GcpGlobalForwardingRule\x10\xc6\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpgfr:\x04\xd9\x04\xed\x04\x12(\n" +
 	"\x10KubernetesArgocd\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x12)\n" +
 	"\x11KubernetesCronJob\x10\xa1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8scron\x121\n" +
 	"\x17KubernetesElasticsearch\x10\xa2\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\xb6\x06\x12&\n" +

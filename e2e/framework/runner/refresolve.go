@@ -98,7 +98,9 @@ func resolveRefsInMessage(msg protoreflect.Message, flattened map[cloudresourcek
 		fd := fields.Get(i)
 
 		if fd.Kind() == protoreflect.MessageKind {
-			if string(fd.Message().FullName()) == stringValueOrRefFullName {
+			isRef := string(fd.Message().FullName()) == stringValueOrRefFullName
+
+			if isRef && !fd.IsList() {
 				if !msg.Has(fd) {
 					continue
 				}
@@ -125,14 +127,37 @@ func resolveRefsInMessage(msg protoreflect.Message, flattened map[cloudresourcek
 				list := msg.Get(fd).List()
 				for j := 0; j < list.Len(); j++ {
 					elem := list.Get(j).Message()
-					if elem.IsValid() {
-						changed, err := resolveRefsInMessage(elem, flattened)
+					if !elem.IsValid() {
+						continue
+					}
+					// A repeated StringValueOrRef field (e.g. a proxy's
+					// ssl_certificates) resolves each element in place; other
+					// repeated messages recurse for refs nested inside them.
+					if isRef {
+						ref, ok := elem.Interface().(*foreignkeyv1.StringValueOrRef)
+						if !ok || ref.GetValueFrom() == nil {
+							continue
+						}
+						val, err := resolveRefValue(fd, ref, flattened)
 						if err != nil {
 							return false, err
 						}
-						if changed {
-							resolvedAny = true
+						if val == "" {
+							continue
 						}
+						resolved := &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
+						}
+						list.Set(j, protoreflect.ValueOfMessage(resolved.ProtoReflect()))
+						resolvedAny = true
+						continue
+					}
+					changed, err := resolveRefsInMessage(elem, flattened)
+					if err != nil {
+						return false, err
+					}
+					if changed {
+						resolvedAny = true
 					}
 				}
 				continue

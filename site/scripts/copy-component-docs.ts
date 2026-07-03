@@ -205,7 +205,6 @@ function generateTitle(component: string, provider: string): string {
     'routernat': 'Router NAT',
     'natgateway': 'NAT Gateway',
     'cloudfront': 'CloudFront',
-    'cloudcdn': 'Cloud CDN',
     'cloudfunction': 'Cloud Function',
     'cloudrun': 'Cloud Run',
     'cloudsql': 'Cloud SQL',

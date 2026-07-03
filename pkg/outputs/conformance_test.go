@@ -287,6 +287,55 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpTargetHttpProxy: flat scalar outputs from both engines
+			// (self-link, name, numeric id, fingerprint) must land on StackOutputs.
+			name: "GcpTargetHttpProxy",
+			kind: cloudresourcekind.CloudResourceKind_GcpTargetHttpProxy,
+			rawOutputs: map[string]interface{}{
+				"self_link":   "https://www.googleapis.com/compute/v1/projects/my-project/global/targetHttpProxies/my-proxy",
+				"proxy_name":  "my-proxy",
+				"proxy_id":    "1234567890123456789",
+				"fingerprint": "BwYn2FQlJeM=",
+			},
+			mustPopulate: []string{
+				"self_link", "proxy_name", "proxy_id", "fingerprint",
+			},
+		},
+		{
+			// GcpTargetHttpsProxy: flat scalar outputs from both engines
+			// (self-link, name, numeric id, fingerprint) must land on StackOutputs.
+			name: "GcpTargetHttpsProxy",
+			kind: cloudresourcekind.CloudResourceKind_GcpTargetHttpsProxy,
+			rawOutputs: map[string]interface{}{
+				"self_link":   "https://www.googleapis.com/compute/v1/projects/my-project/global/targetHttpsProxies/my-proxy",
+				"proxy_name":  "my-proxy",
+				"proxy_id":    "1234567890123456789",
+				"fingerprint": "BwYn2FQlJeM=",
+			},
+			mustPopulate: []string{
+				"self_link", "proxy_name", "proxy_id", "fingerprint",
+			},
+		},
+		{
+			// GcpGlobalForwardingRule: flat scalar outputs from both engines (the
+			// VIP, self-link, name, numeric id, and the PSC connection fields)
+			// must land on StackOutputs.
+			name: "GcpGlobalForwardingRule",
+			kind: cloudresourcekind.CloudResourceKind_GcpGlobalForwardingRule,
+			rawOutputs: map[string]interface{}{
+				"ip_address":            "34.120.1.2",
+				"self_link":             "https://www.googleapis.com/compute/v1/projects/my-project/global/forwardingRules/my-frontend",
+				"forwarding_rule_name":  "my-frontend",
+				"forwarding_rule_id":    "1234567890123456789",
+				"psc_connection_id":     "1111222233334444",
+				"psc_connection_status": "ACCEPTED",
+			},
+			mustPopulate: []string{
+				"ip_address", "self_link", "forwarding_rule_name",
+				"forwarding_rule_id", "psc_connection_id", "psc_connection_status",
+			},
+		},
+		{
 			// GcpSubnetwork: scalar outputs plus the per-index secondary-range
 			// exports both engines emit must land on the StackOutputs proto,
 			// including the repeated secondary_ranges message.

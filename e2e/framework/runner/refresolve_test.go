@@ -7,6 +7,7 @@ import (
 
 	awssubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1"
 	gcpbackendservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1"
+	gcptargethttpsproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1"
 	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/manifest"
@@ -154,6 +155,67 @@ func TestResolveManifestRefs_ResolvesNestedBackendGroupByExplicitKind(t *testing
 	want := "https://www.googleapis.com/compute/v1/projects/p/regions/r/networkEndpointGroups/n"
 	if got != want {
 		t.Errorf("backends[0].group = %q, want %q", got, want)
+	}
+}
+
+const httpsProxyRepeatedRefManifest = `apiVersion: gcp.planton.dev/v1
+kind: GcpTargetHttpsProxy
+metadata:
+  name: my-https-proxy
+spec:
+  urlMap:
+    valueFrom:
+      kind: GcpUrlMap
+      name: my-url-map
+      fieldPath: status.outputs.self_link
+  sslCertificates:
+    - valueFrom:
+        kind: GcpManagedSslCertificate
+        name: my-cert
+        fieldPath: status.outputs.self_link
+`
+
+// A REPEATED StringValueOrRef field (e.g. a target HTTPS proxy's
+// ssl_certificates) must resolve each element in place — the field descriptor
+// is a list, so it must never be read as a singular message.
+func TestResolveManifestRefs_ResolvesRepeatedRefElements(t *testing.T) {
+	manifestPath := writeTempManifest(t, httpsProxyRepeatedRefManifest)
+
+	depOutputs := map[cloudresourcekind.CloudResourceKind]map[string]interface{}{
+		cloudresourcekind.CloudResourceKind_GcpUrlMap: {
+			"self_link": "https://www.googleapis.com/compute/v1/projects/p/global/urlMaps/um",
+		},
+		cloudresourcekind.CloudResourceKind_GcpManagedSslCertificate: {
+			"self_link": "https://www.googleapis.com/compute/v1/projects/p/global/sslCertificates/cert",
+		},
+	}
+
+	resolvedPath, err := ResolveManifestRefs(manifestPath, depOutputs)
+	if err != nil {
+		t.Fatalf("ResolveManifestRefs failed: %v", err)
+	}
+
+	obj, err := manifest.LoadManifest(resolvedPath)
+	if err != nil {
+		t.Fatalf("failed to load resolved manifest: %v", err)
+	}
+	proxy, ok := obj.(*gcptargethttpsproxyv1.GcpTargetHttpsProxy)
+	if !ok {
+		t.Fatalf("resolved manifest is not a GcpTargetHttpsProxy: %T", obj)
+	}
+	if got, want := proxy.GetSpec().GetUrlMap().GetValue(), "https://www.googleapis.com/compute/v1/projects/p/global/urlMaps/um"; got != want {
+		t.Errorf("url_map = %q, want %q", got, want)
+	}
+	if len(proxy.GetSpec().GetSslCertificates()) != 1 {
+		t.Fatalf("expected 1 ssl certificate, got %d", len(proxy.GetSpec().GetSslCertificates()))
+	}
+	got := proxy.GetSpec().GetSslCertificates()[0].GetValue()
+	want := "https://www.googleapis.com/compute/v1/projects/p/global/sslCertificates/cert"
+	if got != want {
+		t.Errorf("ssl_certificates[0] = %q, want %q", got, want)
+	}
+	if proxy.GetSpec().GetSslCertificates()[0].GetValueFrom() != nil {
+		t.Error("ssl_certificates[0] should be a literal after resolution, but value_from is still set")
 	}
 }
 

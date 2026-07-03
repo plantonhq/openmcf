@@ -176,6 +176,6 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project and enables the Compute Engine API
 - [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network for internal address reservations and can enable Private Services Access
-- [GcpCloudCdn](/docs/catalog/gcp/gcpcloudcdn) — uses an external global address as the frontend IP for CDN-enabled load balancers
+- [GcpGlobalForwardingRule](/docs/catalog/gcp/gcpglobalforwardingrule) — binds this external global address as the frontend VIP of a global load balancer
 - [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) — uses a VPC_PEERING range for private IP connectivity to database instances
 - [GcpCertManagerCert](/docs/catalog/gcp/gcpcertmanagercert) — provisions managed SSL certificates that attach to the same load balancer using this IP

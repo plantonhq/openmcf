@@ -87,11 +87,14 @@ operator kind, which installs from the operator's `scenarios/minimal.yaml`.
 Before a scenario (or a prerequisite manifest) is applied, the runner resolves
 every `valueFrom` reference in the spec against already-deployed prerequisite
 outputs ([refresolve.go](framework/runner/refresolve.go)). Resolution walks the
-full spec tree — including nested messages and repeated elements such as
-`backends[0].group` — and honors an explicit `valueFrom.kind` when the field
-has no `default_kind` (e.g. a URL map's `default_service` pointing at either a
-backend service or a backend bucket). Top-level refs with a field-level
-`default_kind` behave exactly as before; existing manifests are unchanged.
+full spec tree — nested messages, repeated message elements such as
+`backends[0].group`, and repeated ref fields themselves (a `repeated
+StringValueOrRef` like a target HTTPS proxy's `ssl_certificates` resolves each
+list element in place) — and honors an explicit `valueFrom.kind` when the
+field has no `default_kind` (e.g. a URL map's `default_service` pointing at
+either a backend service or a backend bucket). Top-level refs with a
+field-level `default_kind` behave exactly as before; existing manifests are
+unchanged.
 
 ## E2E Profiles
 

@@ -1,0 +1,27 @@
+# Minimal GcpTargetHttpProxy scenario: a proxy bound to the GcpUrlMap
+# prerequisite (declared via prerequisites in the kind registry, which
+# transitively installs the backend service and health check below it).
+# project_id is omitted and rides the harness-exported GOOGLE_PROJECT.
+# Target proxies are free and carry no soft-delete reservation, so the name
+# stays fixed.
+apiVersion: gcp.planton.dev/v1
+kind: GcpTargetHttpProxy
+metadata:
+  name: planton-oss-e2e-gcpthp-smoke
+  id: planton-oss-e2e-gcpthp-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcptargethttpproxy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral target HTTP proxy created by the Planton E2E harness; safe to delete
+  urlMap:
+    valueFrom:
+      kind: GcpUrlMap
+      name: planton-oss-e2e-gcpum-prereq
+      fieldPath: status.outputs.self_link
