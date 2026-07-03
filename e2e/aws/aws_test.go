@@ -205,6 +205,24 @@ func TestAwsAutoScalingGroup_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsautoscalinggroup", "terraform")
 }
 
+// --- AWS RDS Cluster (Aurora Serverless v2 with one folded db.serverless instance; managed master password) ---
+
+func TestAwsRdsCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrdscluster", "pulumi")
+}
+func TestAwsRdsCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrdscluster", "terraform")
+}
+
+// --- AWS RDS Instance (single-AZ postgres db.t4g.micro on gp3; managed master password) ---
+
+func TestAwsRdsInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrdsinstance", "pulumi")
+}
+func TestAwsRdsInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrdsinstance", "terraform")
+}
+
 // --- AWS EKS Cluster (the control plane; slowest single resource in the suite, ~25 min/engine) ---
 
 func TestAwsEksCluster_Pulumi(t *testing.T) {
