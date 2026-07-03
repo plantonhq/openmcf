@@ -171,7 +171,15 @@ const (
 	// prerequisite's outputs (vpc_id + default_route_table_id for gateway
 	// endpoints) and the AwsSubnet pair's subnet_id outputs (interface
 	// endpoints), so both are genuine deploy-order prerequisites.
-	CloudResourceKind_AwsVpcEndpoint           CloudResourceKind = 242
+	CloudResourceKind_AwsVpcEndpoint     CloudResourceKind = 242
+	CloudResourceKind_AwsElasticacheUser CloudResourceKind = 243
+	// AwsElasticacheUser is a genuine prerequisite: AWS refuses to create a
+	// user group that does not contain a user named "default", so a group's
+	// composed E2E scenario must resolve a deployed user's outputs.
+	CloudResourceKind_AwsElasticacheUserGroup CloudResourceKind = 244
+	// AwsSubnet is a prerequisite because the module builds an ElastiCache
+	// subnet group from referenced subnets -- the spec's subnet references
+	// must resolve before the replication group can deploy.
 	CloudResourceKind_AwsRedisElasticache      CloudResourceKind = 250
 	CloudResourceKind_AwsOpenSearchDomain      CloudResourceKind = 251
 	CloudResourceKind_AwsMemcachedElasticache  CloudResourceKind = 252
@@ -626,6 +634,8 @@ var (
 		240:  "AwsHttpApiGateway",
 		241:  "AwsStepFunction",
 		242:  "AwsVpcEndpoint",
+		243:  "AwsElasticacheUser",
+		244:  "AwsElasticacheUserGroup",
 		250:  "AwsRedisElasticache",
 		251:  "AwsOpenSearchDomain",
 		252:  "AwsMemcachedElasticache",
@@ -1049,6 +1059,8 @@ var (
 		"AwsHttpApiGateway":                       240,
 		"AwsStepFunction":                         241,
 		"AwsVpcEndpoint":                          242,
+		"AwsElasticacheUser":                      243,
+		"AwsElasticacheUserGroup":                 244,
 		"AwsRedisElasticache":                     250,
 		"AwsOpenSearchDomain":                     251,
 		"AwsMemcachedElasticache":                 252,
@@ -1674,7 +1686,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*ɕ\x01\n" +
+	"\x02v1\x10\x01*\xb2\x96\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1730,11 +1742,13 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14AwsEcsTaskDefinition\x10\xef\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05ecstd:\x02\xd0\x01\x12.\n" +
 	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12&\n" +
 	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12)\n" +
-	"\x0eAwsVpcEndpoint\x10\xf2\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x04vpce:\x04\xd8\x01\x9c\x02\x12,\n" +
-	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsredis\x12)\n" +
-	"\x13AwsOpenSearchDomain\x10\xfb\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsos\x124\n" +
-	"\x17AwsMemcachedElasticache\x10\xfc\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawsmemcached\x122\n" +
-	"\x18AwsServerlessElasticache\x10\xfd\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawsslselc\x12!\n" +
+	"\x0eAwsVpcEndpoint\x10\xf2\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x04vpce:\x04\xd8\x01\x9c\x02\x12)\n" +
+	"\x12AwsElasticacheUser\x10\xf3\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06ecuser\x120\n" +
+	"\x17AwsElasticacheUserGroup\x10\xf4\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04ecug:\x02\xf3\x01\x120\n" +
+	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsredis:\x02\x9c\x02\x12)\n" +
+	"\x13AwsOpenSearchDomain\x10\xfb\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsos\x128\n" +
+	"\x17AwsMemcachedElasticache\x10\xfc\x01\x1a\x1a\xa2\xf7\x04\x16\b\f\x10\x01\"\fawsmemcached:\x02\x9c\x02\x126\n" +
+	"\x18AwsServerlessElasticache\x10\xfd\x01\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawsslselc:\x02\x9c\x02\x12!\n" +
 	"\x06AwsNlb\x10\x98\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnlb:\x02\x9c\x02\x12#\n" +
 	"\fAwsElasticIp\x10\x99\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awseip\x12(\n" +
 	"\x11AwsTransitGateway\x10\x9a\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awstgw\x12*\n" +

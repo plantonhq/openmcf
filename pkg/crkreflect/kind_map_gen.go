@@ -75,6 +75,8 @@ import (
 	awseksclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsekscluster/v1"
 	awseksfargateprofilev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksfargateprofile/v1"
 	awseksnodegroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksnodegroup/v1"
+	awselasticacheuserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticacheuser/v1"
+	awselasticacheusergroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticacheusergroup/v1"
 	awselasticfilesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticfilesystem/v1"
 	awselasticipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticip/v1"
 	awseventbridgebusv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseventbridgebus/v1"
@@ -524,6 +526,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsEksNodeGroup:                  &awseksnodegroupv1.AwsEksNodeGroup{},
 	cloudresourcekind.CloudResourceKind_AwsElasticFileSystem:             &awselasticfilesystemv1.AwsElasticFileSystem{},
 	cloudresourcekind.CloudResourceKind_AwsElasticIp:                     &awselasticipv1.AwsElasticIp{},
+	cloudresourcekind.CloudResourceKind_AwsElasticacheUser:               &awselasticacheuserv1.AwsElasticacheUser{},
+	cloudresourcekind.CloudResourceKind_AwsElasticacheUserGroup:          &awselasticacheusergroupv1.AwsElasticacheUserGroup{},
 	cloudresourcekind.CloudResourceKind_AwsEventBridgeBus:                &awseventbridgebusv1.AwsEventBridgeBus{},
 	cloudresourcekind.CloudResourceKind_AwsEventBridgeRule:               &awseventbridgerulev1.AwsEventBridgeRule{},
 	cloudresourcekind.CloudResourceKind_AwsFsxLustreFileSystem:           &awsfsxlustrefilesystemv1.AwsFsxLustreFileSystem{},

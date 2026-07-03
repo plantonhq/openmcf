@@ -1,0 +1,10 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsElasticacheUserGroup
+metadata:
+  name: awselasticacheusergroup-demo
+spec:
+  region: us-west-2
+  engine: redis
+  userIds:
+    - value: rbac-default-user
+    - value: orders-service

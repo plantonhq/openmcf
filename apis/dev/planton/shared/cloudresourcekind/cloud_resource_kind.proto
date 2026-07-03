@@ -415,10 +415,28 @@ enum CloudResourceKind {
       AwsSubnet
     ]
   }];
+  AwsElasticacheUser = 243 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "ecuser"
+  }];
+  // AwsElasticacheUser is a genuine prerequisite: AWS refuses to create a
+  // user group that does not contain a user named "default", so a group's
+  // composed E2E scenario must resolve a deployed user's outputs.
+  AwsElasticacheUserGroup = 244 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "ecug"
+    prerequisites: [AwsElasticacheUser]
+  }];
+  // AwsSubnet is a prerequisite because the module builds an ElastiCache
+  // subnet group from referenced subnets -- the spec's subnet references
+  // must resolve before the replication group can deploy.
   AwsRedisElasticache = 250 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsredis"
+    prerequisites: [AwsSubnet]
   }];
   AwsOpenSearchDomain = 251 [(kind_meta) = {
     provider: aws
@@ -429,11 +447,13 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsmemcached"
+    prerequisites: [AwsSubnet]
   }];
   AwsServerlessElasticache = 253 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsslselc"
+    prerequisites: [AwsSubnet]
   }];
   // AwsSubnet is a prerequisite because an NLB requires at least one subnet
   // mapping -- the spec's subnet references must resolve before the load

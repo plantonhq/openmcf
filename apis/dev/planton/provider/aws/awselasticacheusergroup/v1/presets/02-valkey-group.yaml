@@ -1,0 +1,16 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsElasticacheUserGroup
+metadata:
+  name: <user-group-id>
+spec:
+  region: <aws-region>
+  engine: valkey
+  userIds:
+    - valueFrom:
+        kind: AwsElasticacheUser
+        name: <default-user-resource-name>
+        fieldPath: status.outputs.user_id
+    - valueFrom:
+        kind: AwsElasticacheUser
+        name: <app-user-resource-name>
+        fieldPath: status.outputs.user_id
