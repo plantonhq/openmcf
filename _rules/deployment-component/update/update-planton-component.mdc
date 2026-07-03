@@ -701,7 +701,10 @@ conventions). A rename keeps the enum **number** — only the name changes every
    `make reset-gazelle` (the Go package path changed) -> `yarn copy-docs &&
    yarn generate-structure` in `site/` (the copy script clears provider dirs first, so
    the old slug's built output disappears on its own).
-9. **Validate**: component spec tests, `go build ./...`, the Pulumi entrypoint build,
+9. **Validate**: component spec tests, targeted package builds
+   (`go build ./apis/dev/planton/provider/<provider>/<kind>/v1/...` — NEVER a repo-root
+   `go build ./...`, which compiles 70+ component modules at once and halts the machine;
+   use `make build-go` for the repo-wide gate), the Pulumi entrypoint build,
    `planton validate-refs --check`, `planton secret-coverage --check`,
    `tofu init -backend=false && tofu validate` in `iac/tf/`, and a final
    `git grep -i <oldname>` sweep that must return zero tracked-file hits (historical

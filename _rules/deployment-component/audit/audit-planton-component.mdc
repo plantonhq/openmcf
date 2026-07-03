@@ -337,6 +337,11 @@ RUNS it, it never re-derives the token list.
 planton secret-coverage --output json
 ```
 
+An installed `planton` binary elsewhere on PATH may be a different CLI without the
+analyzer commands (`secret-coverage`, `validate-refs`, `validate-outputs`). This
+repo's root module IS the CLI that carries them — when in doubt, run from the repo
+root as `go run . secret-coverage --output json` (a targeted single-binary compile).
+
 The JSON `gaps[]` entries are `"<Kind>:<spec.field.path>"` ids. Filter to THIS component's kind:
 
 - [ ] **No gap for this kind** — no `gaps[]` entry is prefixed `<Kind>:`. A gap means a field looks
