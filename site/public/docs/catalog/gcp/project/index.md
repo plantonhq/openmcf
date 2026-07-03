@@ -183,7 +183,6 @@ After deployment, the following outputs are available in `status.outputs`:
 - [GcpVpc](/docs/catalog/gcp/vpc) — creates a VPC network inside this project
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — creates subnets within a VPC in this project
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — provisions service accounts scoped to this project
-- [GcpSecretsManager](/docs/catalog/gcp/secrets-manager) — manages secrets in this project using Secret Manager
 - [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — deploys a GKE cluster into this project
 - [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — deploys Cloud SQL instances in this project
 - [GcpDnsZone](/docs/catalog/gcp/dns-zone) — creates Cloud DNS managed zones in this project

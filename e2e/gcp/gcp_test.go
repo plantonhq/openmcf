@@ -205,6 +205,24 @@ func TestGcpGlobalForwardingRule_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpglobalforwardingrule", "terraform")
 }
 
+// --- GCP SSL Policy (TLS version/cipher hardening; leaf with global + regional scenarios) ---
+
+func TestGcpSslPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsslpolicy", "pulumi")
+}
+func TestGcpSslPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsslpolicy", "terraform")
+}
+
+// --- GCP SSL Certificate (self-managed cert upload; leaf with a checked-in throwaway keypair) ---
+
+func TestGcpSslCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsslcertificate", "pulumi")
+}
+func TestGcpSslCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsslcertificate", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

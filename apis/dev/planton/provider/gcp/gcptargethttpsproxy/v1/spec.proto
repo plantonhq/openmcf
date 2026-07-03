@@ -66,9 +66,11 @@ message GcpTargetHttpsProxySpec {
   ];
 
   // Compute Engine SSL certificates presented to clients (1-15). Reference
-  // GcpManagedSslCertificate resources or provide SSL certificate self-links
-  // directly (self-managed compute certificates attach the same way). The
-  // load balancer picks the certificate matching the client's SNI hostname.
+  // GcpManagedSslCertificate resources (the default kind), self-managed
+  // GcpSslCertificate resources via an explicit valueFrom.kind, or provide
+  // SSL certificate self-links directly — both certificate kinds share one
+  // API collection and attach identically. The load balancer picks the
+  // certificate matching the client's SNI hostname.
   // Not honored by Traffic Director (INTERNAL_SELF_MANAGED) proxies — use
   // server_tls_policy there. Mutually exclusive with
   // certificate_manager_certificates and certificate_map. Mutable: GCP swaps
@@ -103,12 +105,16 @@ message GcpTargetHttpsProxySpec {
   string certificate_map = 7 [(buf.validate.field).string.max_len = 1024];
 
   // The SSL policy constraining TLS versions and cipher suites for client
-  // handshakes. Reference an SSL policy self-link directly (e.g.
+  // handshakes. Reference a GcpSslPolicy resource or provide an SSL policy
+  // self-link directly (e.g.
   // https://www.googleapis.com/compute/v1/projects/{project}/global/sslPolicies/{name}).
   // If not set, GCP applies its permissive default policy (min TLS 1.0,
   // COMPATIBLE profile) — set one to enforce modern TLS for compliance.
   // Mutable: GCP swaps it in place (setSslPolicy).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef ssl_policy = 8;
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ssl_policy = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSslPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
 
   // A network security ServerTlsPolicy resource that configures server-side
   // TLS — the mTLS mechanism: it can demand and validate client

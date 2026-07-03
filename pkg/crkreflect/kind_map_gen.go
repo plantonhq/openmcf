@@ -255,6 +255,8 @@ import (
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
 	gcpspannerdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerdatabase/v1"
 	gcpspannerinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerinstance/v1"
+	gcpsslcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsslcertificate/v1"
+	gcpsslpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsslpolicy/v1"
 	gcpsubnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1"
 	gcptargethttpproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpproxy/v1"
 	gcptargethttpsproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1"
@@ -720,6 +722,8 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpServiceAccount:               &gcpserviceaccountv1.GcpServiceAccount{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:              &gcpspannerdatabasev1.GcpSpannerDatabase{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerInstance:              &gcpspannerinstancev1.GcpSpannerInstance{},
+	cloudresourcekind.CloudResourceKind_GcpSslCertificate:               &gcpsslcertificatev1.GcpSslCertificate{},
+	cloudresourcekind.CloudResourceKind_GcpSslPolicy:                    &gcpsslpolicyv1.GcpSslPolicy{},
 	cloudresourcekind.CloudResourceKind_GcpSubnetwork:                   &gcpsubnetworkv1.GcpSubnetwork{},
 	cloudresourcekind.CloudResourceKind_GcpTargetHttpProxy:              &gcptargethttpproxyv1.GcpTargetHttpProxy{},
 	cloudresourcekind.CloudResourceKind_GcpTargetHttpsProxy:             &gcptargethttpsproxyv1.GcpTargetHttpsProxy{},

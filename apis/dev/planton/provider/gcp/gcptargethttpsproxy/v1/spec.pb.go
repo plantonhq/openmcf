@@ -70,9 +70,11 @@ type GcpTargetHttpsProxySpec struct {
 	// routing table causes no downtime.
 	UrlMap *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=url_map,json=urlMap,proto3" json:"url_map,omitempty"`
 	// Compute Engine SSL certificates presented to clients (1-15). Reference
-	// GcpManagedSslCertificate resources or provide SSL certificate self-links
-	// directly (self-managed compute certificates attach the same way). The
-	// load balancer picks the certificate matching the client's SNI hostname.
+	// GcpManagedSslCertificate resources (the default kind), self-managed
+	// GcpSslCertificate resources via an explicit valueFrom.kind, or provide
+	// SSL certificate self-links directly — both certificate kinds share one
+	// API collection and attach identically. The load balancer picks the
+	// certificate matching the client's SNI hostname.
 	// Not honored by Traffic Director (INTERNAL_SELF_MANAGED) proxies — use
 	// server_tls_policy there. Mutually exclusive with
 	// certificate_manager_certificates and certificate_map. Mutable: GCP swaps
@@ -97,7 +99,8 @@ type GcpTargetHttpsProxySpec struct {
 	// certificate_manager_certificates. Mutable.
 	CertificateMap string `protobuf:"bytes,7,opt,name=certificate_map,json=certificateMap,proto3" json:"certificate_map,omitempty"`
 	// The SSL policy constraining TLS versions and cipher suites for client
-	// handshakes. Reference an SSL policy self-link directly (e.g.
+	// handshakes. Reference a GcpSslPolicy resource or provide an SSL policy
+	// self-link directly (e.g.
 	// https://www.googleapis.com/compute/v1/projects/{project}/global/sslPolicies/{name}).
 	// If not set, GCP applies its permissive default policy (min TLS 1.0,
 	// COMPATIBLE profile) — set one to enforce modern TLS for compliance.
@@ -268,7 +271,7 @@ var File_dev_planton_provider_gcp_gcptargethttpsproxy_v1_spec_proto protoreflect
 
 const file_dev_planton_provider_gcp_gcptargethttpsproxy_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	":dev/planton/provider/gcp/gcptargethttpsproxy/v1/spec.proto\x12/dev.planton.provider.gcp.gcptargethttpsproxy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xaf\x11\n" +
+	":dev/planton/provider/gcp/gcptargethttpsproxy/v1/spec.proto\x12/dev.planton.provider.gcp.gcptargethttpsproxy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd2\x11\n" +
 	"\x17GcpTargetHttpsProxySpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x02\n" +
@@ -279,9 +282,9 @@ const file_dev_planton_provider_gcp_gcptargethttpsproxy_v1_spec_proto_rawDesc = 
 	"\aurl_map\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf3\x04\x92\xd4a\x18status.outputs.self_linkR\x06urlMap\x12\x88\x01\n" +
 	"\x10ssl_certificates\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\x10\x0f\x88\xd4a\xf4\x04\x92\xd4a\x18status.outputs.self_linkR\x0fsslCertificates\x12\xa6\x01\n" +
 	" certificate_manager_certificates\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xe8\x04\x92\xd4a\x1fstatus.outputs.certificate_nameR\x1ecertificateManagerCertificates\x121\n" +
-	"\x0fcertificate_map\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x0ecertificateMap\x12Q\n" +
+	"\x0fcertificate_map\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x0ecertificateMap\x12t\n" +
 	"\n" +
-	"ssl_policy\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\tsslPolicy\x12^\n" +
+	"ssl_policy\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xc7\x05\x92\xd4a\x18status.outputs.self_linkR\tsslPolicy\x12^\n" +
 	"\x11server_tls_policy\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0fserverTlsPolicy\x12\xb4\x01\n" +
 	"\rquic_override\x18\n" +
 	" \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +

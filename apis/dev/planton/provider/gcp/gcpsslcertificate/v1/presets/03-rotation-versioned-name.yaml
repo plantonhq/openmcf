@@ -1,0 +1,22 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpSslCertificate
+metadata:
+  name: prod-app-cert
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  # A versioned cloud-side name decoupled from metadata.name: the next
+  # rotation deploys prod-app-cert-2027 alongside this one, repoints the
+  # proxy, then destroys this resource — TLS never drops.
+  certificateName: prod-app-cert-2026
+  description: Production cert (2026 issue) — rotate create-before-destroy ahead of expire_time
+  # Sample PEM bodies shown truncated — replace BOTH blocks with your real
+  # chain and matching unencrypted key.
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    MIIDNDCCAhygAwIBAgIUYIKLPDuIarXycSz6rx3SRFmvf1s...replace-with-your-chain
+    -----END CERTIFICATE-----
+  privateKey: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoI...replace-with-your-key
+    -----END PRIVATE KEY-----

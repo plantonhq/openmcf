@@ -215,6 +215,8 @@ function generateTitle(component: string, provider: string): string {
     'keyvault': 'Key Vault',
     'kmskey': 'KMS Key',
     'securitygroup': 'Security Group',
+    'sslpolicy': 'SSL Policy',
+    'sslcertificate': 'SSL Certificate',
     'loadbalancer': 'Load Balancer',
     'appplatformservice': 'App Platform Service',
     'databasecluster': 'Database Cluster',

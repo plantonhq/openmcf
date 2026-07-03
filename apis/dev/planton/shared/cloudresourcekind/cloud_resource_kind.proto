@@ -713,7 +713,9 @@ enum CloudResourceKind {
     id_prefix: "gcpthsp"
     prerequisites: [
       GcpUrlMap,
-      GcpManagedSslCertificate
+      GcpManagedSslCertificate,
+      GcpSslPolicy,
+      GcpSslCertificate
     ]
   }];
   GcpCloudFunction = 602 [(kind_meta) = {
@@ -994,6 +996,16 @@ enum CloudResourceKind {
       GcpTargetHttpsProxy,
       GcpGlobalAddress
     ]
+  }];
+  GcpSslPolicy = 711 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsslpol"
+  }];
+  GcpSslCertificate = 712 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsslcert"
   }];
 
   // 800–999: Kubernetes resources

@@ -336,6 +336,40 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpSslPolicy: flat scalar outputs plus the repeated enabled_features
+			// cipher list both engines emit (per-index keys) must land on
+			// StackOutputs.
+			name: "GcpSslPolicy",
+			kind: cloudresourcekind.CloudResourceKind_GcpSslPolicy,
+			rawOutputs: map[string]interface{}{
+				"self_link":          "https://www.googleapis.com/compute/v1/projects/my-project/global/sslPolicies/my-policy",
+				"ssl_policy_name":    "my-policy",
+				"enabled_features.0": "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+				"enabled_features.1": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+				"region":             "",
+			},
+			mustPopulate: []string{
+				"self_link", "ssl_policy_name", "enabled_features",
+			},
+		},
+		{
+			// GcpSslCertificate: flat scalar outputs from both engines
+			// (self-link, name, id, expiry, scope region) must land on
+			// StackOutputs. The private key is write-only and never an output.
+			name: "GcpSslCertificate",
+			kind: cloudresourcekind.CloudResourceKind_GcpSslCertificate,
+			rawOutputs: map[string]interface{}{
+				"self_link":        "https://www.googleapis.com/compute/v1/projects/my-project/global/sslCertificates/my-cert",
+				"certificate_name": "my-cert",
+				"certificate_id":   "1234567890123456789",
+				"expire_time":      "2036-06-30T12:36:27Z",
+				"region":           "",
+			},
+			mustPopulate: []string{
+				"self_link", "certificate_name", "certificate_id", "expire_time",
+			},
+		},
+		{
 			// GcpSubnetwork: scalar outputs plus the per-index secondary-range
 			// exports both engines emit must land on the StackOutputs proto,
 			// including the repeated secondary_ranges message.

@@ -257,6 +257,8 @@ const (
 	// 710–719: networking/load-balancer family (overflow block; the 623–629
 	// LB sub-band is fully allocated)
 	CloudResourceKind_GcpGlobalForwardingRule CloudResourceKind = 710
+	CloudResourceKind_GcpSslPolicy            CloudResourceKind = 711
+	CloudResourceKind_GcpSslCertificate       CloudResourceKind = 712
 	// 800–999: Kubernetes resources
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 800
 	CloudResourceKind_KubernetesCronJob                     CloudResourceKind = 801
@@ -695,6 +697,8 @@ var (
 		701:  "GcpWorkloadIdentityPool",
 		702:  "GcpWorkloadIdentityPoolProvider",
 		710:  "GcpGlobalForwardingRule",
+		711:  "GcpSslPolicy",
+		712:  "GcpSslCertificate",
 		800:  "KubernetesArgocd",
 		801:  "KubernetesCronJob",
 		802:  "KubernetesElasticsearch",
@@ -1118,6 +1122,8 @@ var (
 		"GcpWorkloadIdentityPool":                 701,
 		"GcpWorkloadIdentityPoolProvider":         702,
 		"GcpGlobalForwardingRule":                 710,
+		"GcpSslPolicy":                            711,
+		"GcpSslCertificate":                       712,
 		"KubernetesArgocd":                        800,
 		"KubernetesCronJob":                       801,
 		"KubernetesElasticsearch":                 802,
@@ -1628,7 +1634,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xed\x95\x01\n" +
+	"\x02v1\x10\x01*ǖ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1761,8 +1767,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\b\r\x10\x01\"\x04azeh\x12*\n" +
 	"\x15AzureFrontDoorProfile\x10\xe0\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azfd\x12.\n" +
-	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x121\n" +
-	"\x13GcpTargetHttpsProxy\x10\xd9\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\agcpthsp:\x04\xf3\x04\xf4\x04\x12(\n" +
+	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x125\n" +
+	"\x13GcpTargetHttpsProxy\x10\xd9\x04\x1a\x1b\xa2\xf7\x04\x17\b\x12\x10\x01\"\agcpthsp:\b\xf3\x04\xf4\x04\xc7\x05\xc8\x05\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +
 	"\vGcpCloudRun\x10\xdb\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06cldrun\x12\"\n" +
 	"\vGcpCloudSql\x10\xdc\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpsql\x12!\n" +
@@ -1815,7 +1821,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpnfs\x12.\n" +
 	"\x17GcpWorkloadIdentityPool\x10\xbd\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpwip\x12;\n" +
 	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpwipp:\x02\xbd\x05\x124\n" +
-	"\x17GcpGlobalForwardingRule\x10\xc6\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpgfr:\x04\xd9\x04\xed\x04\x12(\n" +
+	"\x17GcpGlobalForwardingRule\x10\xc6\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpgfr:\x04\xd9\x04\xed\x04\x12&\n" +
+	"\fGcpSslPolicy\x10\xc7\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\tgcpsslpol\x12,\n" +
+	"\x11GcpSslCertificate\x10\xc8\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\n" +
+	"gcpsslcert\x12(\n" +
 	"\x10KubernetesArgocd\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x12)\n" +
 	"\x11KubernetesCronJob\x10\xa1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8scron\x121\n" +
 	"\x17KubernetesElasticsearch\x10\xa2\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\xb6\x06\x12&\n" +

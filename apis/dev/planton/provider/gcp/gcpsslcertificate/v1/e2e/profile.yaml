@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpsslcertificate
+spec:
+  # Leaf scenario: a self-managed certificate uploaded from a THROWAWAY
+  # self-signed keypair checked into the scenario manifest (CN=
+  # e2e-test.invalid, trusted by nothing — generated once for the harness,
+  # never a real secret). Certificates are free, create in seconds, are
+  # hard-deleted (no soft-delete reservation), and share one name namespace
+  # with managed certificates — the fixed scenario name is distinct from
+  # every managed-cert manifest's. deploy -> compute sslCertificates get
+  # verify -> destroy -> verify gone, on both provisioners.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

@@ -271,6 +271,8 @@ go_library(
         "//apis/dev/planton/provider/gcp/gcpserviceaccount/v1:gcpserviceaccount",
         "//apis/dev/planton/provider/gcp/gcpspannerdatabase/v1:gcpspannerdatabase",
         "//apis/dev/planton/provider/gcp/gcpspannerinstance/v1:gcpspannerinstance",
+        "//apis/dev/planton/provider/gcp/gcpsslcertificate/v1:gcpsslcertificate",
+        "//apis/dev/planton/provider/gcp/gcpsslpolicy/v1:gcpsslpolicy",
         "//apis/dev/planton/provider/gcp/gcpsubnetwork/v1:gcpsubnetwork",
         "//apis/dev/planton/provider/gcp/gcptargethttpproxy/v1:gcptargethttpproxy",
         "//apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1:gcptargethttpsproxy",

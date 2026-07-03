@@ -1,6 +1,6 @@
 # Static Website Bucket
 
-This preset creates a GCS bucket configured for static website hosting with public read access, CORS rules for browser access, and website routing (index.html / 404.html). For production websites, pair this with a Cloud CDN preset for HTTPS and global distribution.
+This preset creates a GCS bucket configured for static website hosting with public read access, CORS rules for browser access, and website routing (index.html / 404.html). For production websites, front this bucket with a `GcpBackendBucket` (Cloud CDN enabled) behind a global external HTTPS load balancer for TLS and global distribution.
 
 ## When to Use
 
