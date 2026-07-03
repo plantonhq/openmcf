@@ -9,7 +9,6 @@ package azurenetworksecuritygroupv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,56 +23,234 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureNetworkSecurityGroupSpec** defines the configuration for creating an
-// Azure Network Security Group (NSG) with security rules.
+// The direction of traffic a security rule filters. Values mirror ARM's
+// SecurityRuleDirection.
+type AzureNetworkSecurityGroupRuleDirection int32
+
+const (
+	// Not specified -- invalid; every rule must declare its direction.
+	AzureNetworkSecurityGroupRuleDirection_azure_network_security_group_rule_direction_unspecified AzureNetworkSecurityGroupRuleDirection = 0
+	// Traffic entering the guarded resources.
+	AzureNetworkSecurityGroupRuleDirection_INBOUND AzureNetworkSecurityGroupRuleDirection = 1
+	// Traffic leaving the guarded resources.
+	AzureNetworkSecurityGroupRuleDirection_OUTBOUND AzureNetworkSecurityGroupRuleDirection = 2
+)
+
+// Enum value maps for AzureNetworkSecurityGroupRuleDirection.
+var (
+	AzureNetworkSecurityGroupRuleDirection_name = map[int32]string{
+		0: "azure_network_security_group_rule_direction_unspecified",
+		1: "INBOUND",
+		2: "OUTBOUND",
+	}
+	AzureNetworkSecurityGroupRuleDirection_value = map[string]int32{
+		"azure_network_security_group_rule_direction_unspecified": 0,
+		"INBOUND":  1,
+		"OUTBOUND": 2,
+	}
+)
+
+func (x AzureNetworkSecurityGroupRuleDirection) Enum() *AzureNetworkSecurityGroupRuleDirection {
+	p := new(AzureNetworkSecurityGroupRuleDirection)
+	*p = x
+	return p
+}
+
+func (x AzureNetworkSecurityGroupRuleDirection) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureNetworkSecurityGroupRuleDirection) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureNetworkSecurityGroupRuleDirection) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureNetworkSecurityGroupRuleDirection) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureNetworkSecurityGroupRuleDirection.Descriptor instead.
+func (AzureNetworkSecurityGroupRuleDirection) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// The access decision when a security rule matches. Values mirror ARM's
+// SecurityRuleAccess.
+type AzureNetworkSecurityGroupRuleAccess int32
+
+const (
+	// Not specified -- invalid; every rule must declare its decision.
+	AzureNetworkSecurityGroupRuleAccess_azure_network_security_group_rule_access_unspecified AzureNetworkSecurityGroupRuleAccess = 0
+	// Permit matching traffic.
+	AzureNetworkSecurityGroupRuleAccess_ALLOW AzureNetworkSecurityGroupRuleAccess = 1
+	// Block matching traffic.
+	AzureNetworkSecurityGroupRuleAccess_DENY AzureNetworkSecurityGroupRuleAccess = 2
+)
+
+// Enum value maps for AzureNetworkSecurityGroupRuleAccess.
+var (
+	AzureNetworkSecurityGroupRuleAccess_name = map[int32]string{
+		0: "azure_network_security_group_rule_access_unspecified",
+		1: "ALLOW",
+		2: "DENY",
+	}
+	AzureNetworkSecurityGroupRuleAccess_value = map[string]int32{
+		"azure_network_security_group_rule_access_unspecified": 0,
+		"ALLOW": 1,
+		"DENY":  2,
+	}
+)
+
+func (x AzureNetworkSecurityGroupRuleAccess) Enum() *AzureNetworkSecurityGroupRuleAccess {
+	p := new(AzureNetworkSecurityGroupRuleAccess)
+	*p = x
+	return p
+}
+
+func (x AzureNetworkSecurityGroupRuleAccess) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureNetworkSecurityGroupRuleAccess) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureNetworkSecurityGroupRuleAccess) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureNetworkSecurityGroupRuleAccess) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureNetworkSecurityGroupRuleAccess.Descriptor instead.
+func (AzureNetworkSecurityGroupRuleAccess) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// The network protocol a security rule matches. Values mirror ARM's
+// SecurityRuleProtocol.
+type AzureNetworkSecurityGroupRuleProtocol int32
+
+const (
+	// Not specified -- invalid; every rule must declare its protocol.
+	AzureNetworkSecurityGroupRuleProtocol_azure_network_security_group_rule_protocol_unspecified AzureNetworkSecurityGroupRuleProtocol = 0
+	// Any protocol (ARM's "*").
+	AzureNetworkSecurityGroupRuleProtocol_ANY AzureNetworkSecurityGroupRuleProtocol = 1
+	// TCP traffic.
+	AzureNetworkSecurityGroupRuleProtocol_TCP AzureNetworkSecurityGroupRuleProtocol = 2
+	// UDP traffic.
+	AzureNetworkSecurityGroupRuleProtocol_UDP AzureNetworkSecurityGroupRuleProtocol = 3
+	// ICMP traffic (ping, traceroute).
+	AzureNetworkSecurityGroupRuleProtocol_ICMP AzureNetworkSecurityGroupRuleProtocol = 4
+	// IPsec Authentication Header traffic.
+	AzureNetworkSecurityGroupRuleProtocol_AH AzureNetworkSecurityGroupRuleProtocol = 5
+	// IPsec Encapsulating Security Payload traffic.
+	AzureNetworkSecurityGroupRuleProtocol_ESP AzureNetworkSecurityGroupRuleProtocol = 6
+)
+
+// Enum value maps for AzureNetworkSecurityGroupRuleProtocol.
+var (
+	AzureNetworkSecurityGroupRuleProtocol_name = map[int32]string{
+		0: "azure_network_security_group_rule_protocol_unspecified",
+		1: "ANY",
+		2: "TCP",
+		3: "UDP",
+		4: "ICMP",
+		5: "AH",
+		6: "ESP",
+	}
+	AzureNetworkSecurityGroupRuleProtocol_value = map[string]int32{
+		"azure_network_security_group_rule_protocol_unspecified": 0,
+		"ANY":  1,
+		"TCP":  2,
+		"UDP":  3,
+		"ICMP": 4,
+		"AH":   5,
+		"ESP":  6,
+	}
+)
+
+func (x AzureNetworkSecurityGroupRuleProtocol) Enum() *AzureNetworkSecurityGroupRuleProtocol {
+	p := new(AzureNetworkSecurityGroupRuleProtocol)
+	*p = x
+	return p
+}
+
+func (x AzureNetworkSecurityGroupRuleProtocol) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureNetworkSecurityGroupRuleProtocol) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureNetworkSecurityGroupRuleProtocol) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureNetworkSecurityGroupRuleProtocol) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureNetworkSecurityGroupRuleProtocol.Descriptor instead.
+func (AzureNetworkSecurityGroupRuleProtocol) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+// **AzureNetworkSecurityGroupSpec** defines the configuration for creating
+// an Azure Network Security Group (NSG): the stateful firewall that filters
+// inbound and outbound traffic for everything deployed in the subnets and
+// NICs it guards.
 //
-// An NSG is a stateful firewall that filters inbound and outbound traffic for
-// Azure resources based on 5-tuple rules (source, destination, port, protocol,
-// direction). NSGs are the primary network access control mechanism in Azure,
-// analogous to AWS Security Groups or GCP Firewall Rules.
+// The security rules are folded into the NSG rather than modeled as their
+// own resource: a rule has no life outside its group, is never referenced
+// by anything else, and the group's rule set is designed and reviewed as
+// one unit. An NSG with no rules is still meaningful -- Azure's implicit
+// defaults then govern (allow VNet-internal traffic and load-balancer
+// probes, deny all other inbound, allow all outbound).
 //
-// This component bundles the NSG itself (`azurerm_network_security_group`) with
-// its security rules (`azurerm_network_security_rule`) because an NSG without
-// rules allows all traffic (Azure default) -- the rules are the substance of
-// the resource. This follows DD03 (Composite Bundling Rules).
+// The subnet-side attachment is deliberately not modeled here: a subnet
+// declares which NSG guards it (AzureSubnet's network_security_group_id),
+// matching Azure's model, so one NSG serves many subnets without listing
+// them.
 //
-// NSGs are associated with subnets or NICs post-creation. This component does
-// NOT create the association -- that is an infra-chart concern handled by the
-// `azurerm_subnet_network_security_group_association` resource. This keeps the
-// NSG lifecycle independent of any particular subnet or NIC.
-//
-// **Key Azure behavior**: Azure creates implicit default rules in every NSG
-// (priorities 65000-65500) that allow VNet-to-VNet traffic, allow Azure Load
-// Balancer probes, and deny all other inbound traffic. User-defined rules
-// (priorities 100-4096) are evaluated before these defaults.
-//
-// This spec follows the 80/20 principle: exposing the essential fields that cover
-// the vast majority of deployment scenarios while keeping the configuration minimal.
+// **Key Azure behavior**: user-defined rules take priorities 100-4096 and
+// are evaluated lowest-number-first within each direction; the first match
+// wins. Azure's implicit default rules sit at priorities 65000-65500 and
+// only apply when nothing else matched.
 type AzureNetworkSecurityGroupSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure region where the NSG will be created.
-	// Must match the region of the resources it will be associated with (subnets, NICs).
-	// Examples: "eastus", "westus2", "westeurope", "southeastasia".
+	// The Azure region where the NSG will be created, e.g. "eastus",
+	// "westeurope". Must match the region of the subnets and NICs it will be
+	// associated with. Changing the region replaces the group.
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the NSG will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the NSG will be created in. Can be a literal
+	// resource-group name or a reference to an AzureResourceGroup's name
+	// output.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The name of the Network Security Group.
-	// Must be unique within the resource group.
-	// Allowed characters: alphanumeric, underscores, hyphens, and periods.
-	// Must start with alphanumeric. Length: 1 to 80 characters.
+	// The name of the NSG, unique within the resource group. 1-80 characters
+	// (alphanumerics, underscores, periods, and hyphens; must start with a
+	// letter or number and end with a letter, number, or underscore).
+	// Changing the name replaces the group, detaching it from every subnet
+	// and NIC until the replacement is re-attached -- name it after the tier
+	// it guards ("web-tier", "data-tier").
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// Security rules that define allowed or denied traffic flows.
-	// Each rule specifies a 5-tuple filter (source, destination, port, protocol, direction)
-	// combined with an access decision (Allow/Deny) and a priority for ordering.
-	//
-	// Rules are evaluated in priority order (lowest number = highest priority).
-	// The first matching rule determines whether traffic is allowed or denied.
-	// If no user-defined rule matches, Azure's implicit default rules apply.
-	//
-	// An NSG with no rules relies entirely on Azure's defaults: allow VNet-to-VNet,
-	// allow load balancer probes, deny all other inbound, allow all outbound.
-	SecurityRules []*AzureSecurityRule `protobuf:"bytes,4,rep,name=security_rules,json=securityRules,proto3" json:"security_rules,omitempty"`
+	// The security rules. Each is a 5-tuple filter (source, destination,
+	// port, protocol, direction) with an access decision and a priority.
+	// Rules update in place and take effect immediately for every subnet and
+	// NIC the group guards. An empty list is meaningful: Azure's implicit
+	// default rules then govern all traffic.
+	SecurityRules []*AzureNetworkSecurityGroupRule `protobuf:"bytes,4,rep,name=security_rules,json=securityRules,proto3" json:"security_rules,omitempty"`
+	// Free-form tags applied to the NSG, merged over the Planton-derived
+	// resource tags (organization, environment, resource id); a user tag
+	// with the same key wins. Tags are Azure's governance surface -- Azure
+	// Policy enforces them and Microsoft Cost Management groups by them.
+	// Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -129,117 +306,114 @@ func (x *AzureNetworkSecurityGroupSpec) GetName() string {
 	return ""
 }
 
-func (x *AzureNetworkSecurityGroupSpec) GetSecurityRules() []*AzureSecurityRule {
+func (x *AzureNetworkSecurityGroupSpec) GetSecurityRules() []*AzureNetworkSecurityGroupRule {
 	if x != nil {
 		return x.SecurityRules
 	}
 	return nil
 }
 
-// AzureSecurityRule defines a single network security rule within the NSG.
-// Each rule is a 5-tuple filter combined with an access decision and priority.
-//
-// Rules are evaluated in priority order within their direction (Inbound or Outbound).
-// Lower priority numbers are evaluated first. The first matching rule wins.
-type AzureSecurityRule struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// A user-chosen name for this rule.
-	// Must be unique within the NSG. Used for identification in Azure Portal, CLI,
-	// and IaC state. Use descriptive names like "allow-https-inbound" or "deny-all-outbound".
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Optional human-readable description of the rule's purpose.
-	// Useful for documenting intent (e.g., "Allow HTTPS from corporate VPN range").
-	// Maximum 140 characters.
-	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	// The evaluation priority of this rule. Lower numbers are evaluated first.
-	// Range: 100 to 4096 (inclusive).
-	// Azure reserves priorities 65000-65500 for implicit default rules.
-	//
-	// Best practice: Use increments of 10 or 100 (e.g., 100, 200, 300) to leave
-	// room for inserting rules later without renumbering.
-	Priority int32 `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
-	// The traffic direction this rule applies to.
-	// Uses Azure's exact API values for provider authenticity.
-	//
-	// Valid values:
-	// - "Inbound" -- traffic entering the resource (from external to internal)
-	// - "Outbound" -- traffic leaving the resource (from internal to external)
-	Direction string `protobuf:"bytes,4,opt,name=direction,proto3" json:"direction,omitempty"`
-	// The access decision when this rule matches.
-	// Uses Azure's exact API values.
-	//
-	// Valid values:
-	// - "Allow" -- permit matching traffic
-	// - "Deny" -- block matching traffic
-	Access string `protobuf:"bytes,5,opt,name=access,proto3" json:"access,omitempty"`
-	// The network protocol this rule matches.
-	// Uses Azure's exact API values.
-	//
-	// Valid values:
-	// - "Tcp" -- TCP traffic
-	// - "Udp" -- UDP traffic
-	// - "Icmp" -- ICMP traffic (ping, traceroute)
-	// - "*" -- any protocol
-	Protocol string `protobuf:"bytes,6,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// The source port or port range for this rule.
-	// Accepts a single port ("443"), a range ("1024-65535"), or "*" for any port.
-	// Most rules use "*" for source port since source ports are typically ephemeral.
-	// Default: "*"
-	SourcePortRange *string `protobuf:"bytes,7,opt,name=source_port_range,json=sourcePortRange,proto3,oneof" json:"source_port_range,omitempty"`
-	// The destination port or port range for this rule.
-	// Accepts a single port ("443"), a range ("1024-65535"), or "*" for any port.
-	// This is the field that typically defines what service the rule targets.
-	// Examples: "22" (SSH), "80" (HTTP), "443" (HTTPS), "3306" (MySQL), "5432" (PostgreSQL).
-	DestinationPortRange string `protobuf:"bytes,8,opt,name=destination_port_range,json=destinationPortRange,proto3" json:"destination_port_range,omitempty"`
-	// The source address prefix for this rule.
-	// Accepts a CIDR ("10.0.0.0/8"), a single IP ("10.0.0.1"), an Azure service tag
-	// ("VirtualNetwork", "AzureLoadBalancer", "Internet"), or "*" for any source.
-	// Default: "*"
-	//
-	// If source_address_prefixes (plural) is also set, the plural field takes precedence
-	// and this field is ignored. Use singular for simple rules and plural for multi-CIDR rules.
-	SourceAddressPrefix *string `protobuf:"bytes,9,opt,name=source_address_prefix,json=sourceAddressPrefix,proto3,oneof" json:"source_address_prefix,omitempty"`
-	// The destination address prefix for this rule.
-	// Accepts a CIDR ("10.0.1.0/24"), a single IP, an Azure service tag
-	// ("VirtualNetwork", "AzureLoadBalancer", "Internet"), or "*" for any destination.
-	// Default: "*"
-	//
-	// If destination_address_prefixes (plural) is also set, the plural field takes
-	// precedence and this field is ignored.
-	DestinationAddressPrefix *string `protobuf:"bytes,10,opt,name=destination_address_prefix,json=destinationAddressPrefix,proto3,oneof" json:"destination_address_prefix,omitempty"`
-	// Optional list of source address prefixes (CIDRs or IPs).
-	// Use this when a rule needs to allow/deny traffic from multiple non-contiguous
-	// source ranges in a single rule (e.g., multiple VPN CIDR blocks).
-	//
-	// When set (non-empty), this field takes precedence over source_address_prefix.
-	// Note: Azure service tags (e.g., "VirtualNetwork") are only supported in the
-	// singular source_address_prefix field, not in this list.
-	SourceAddressPrefixes []string `protobuf:"bytes,11,rep,name=source_address_prefixes,json=sourceAddressPrefixes,proto3" json:"source_address_prefixes,omitempty"`
-	// Optional list of destination address prefixes (CIDRs or IPs).
-	// Use this when a rule needs to target multiple non-contiguous destination ranges.
-	//
-	// When set (non-empty), this field takes precedence over destination_address_prefix.
-	// Note: Azure service tags are only supported in the singular destination_address_prefix
-	// field, not in this list.
-	DestinationAddressPrefixes []string `protobuf:"bytes,12,rep,name=destination_address_prefixes,json=destinationAddressPrefixes,proto3" json:"destination_address_prefixes,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+func (x *AzureNetworkSecurityGroupSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
-func (x *AzureSecurityRule) Reset() {
-	*x = AzureSecurityRule{}
+// AzureNetworkSecurityGroupRule is a single security rule: a 5-tuple filter
+// with an access decision and a priority.
+//
+// Sources and destinations each take exactly one addressing style: a single
+// prefix (CIDR, IP, service tag, or "*"), a list of prefixes (CIDRs/IPs
+// only -- service tags and "*" are singular-only), or a list of application
+// security group IDs (identity-based addressing that follows workloads as
+// they scale). Leaving all three unset means "any" (*). Port ranges take
+// the single form ("443", "1024-65535", "*") or the list form, never both.
+type AzureNetworkSecurityGroupRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The rule's name, unique within the NSG. Shown in the portal, CLI, and
+	// flow logs -- "allow-https-inbound" reads better than "rule1". 1-80
+	// characters. Renaming replaces the rule (a momentary gap in an
+	// otherwise-in-place rule set update).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Optional human-readable statement of intent, up to 140 characters --
+	// e.g. "Allow HTTPS from the corporate VPN range". Auditors and future
+	// operators read these before they read the tuples.
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// The evaluation priority, 100-4096, unique per direction within the
+	// NSG. Lower numbers evaluate first; the first matching rule decides.
+	// Leave gaps (100, 200, 300...) so rules can be inserted later without
+	// renumbering.
+	Priority int32 `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Whether the rule filters traffic entering (INBOUND) or leaving
+	// (OUTBOUND) the guarded resources.
+	Direction AzureNetworkSecurityGroupRuleDirection `protobuf:"varint,4,opt,name=direction,proto3,enum=dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleDirection" json:"direction,omitempty"`
+	// Whether matching traffic is permitted (ALLOW) or blocked (DENY).
+	Access AzureNetworkSecurityGroupRuleAccess `protobuf:"varint,5,opt,name=access,proto3,enum=dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleAccess" json:"access,omitempty"`
+	// The network protocol the rule matches. ANY matches everything; AH and
+	// ESP match IPsec traffic (site-to-site VPN scenarios).
+	Protocol AzureNetworkSecurityGroupRuleProtocol `protobuf:"varint,6,opt,name=protocol,proto3,enum=dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleProtocol" json:"protocol,omitempty"`
+	// The source port or port range: a single port ("443"), a range
+	// ("1024-65535"), or "*" for any. Unset (with source_port_ranges empty)
+	// means any -- the right choice for almost every rule, since client
+	// source ports are ephemeral. Never combined with source_port_ranges.
+	SourcePortRange *string `protobuf:"bytes,7,opt,name=source_port_range,json=sourcePortRange,proto3,oneof" json:"source_port_range,omitempty"`
+	// Multiple source ports/ranges in one rule. Never combined with
+	// source_port_range.
+	SourcePortRanges []string `protobuf:"bytes,8,rep,name=source_port_ranges,json=sourcePortRanges,proto3" json:"source_port_ranges,omitempty"`
+	// The destination port or port range -- the field that says what service
+	// the rule is about: "22" (SSH), "443" (HTTPS), "5432" (PostgreSQL), or
+	// "*" for any. Exactly one of destination_port_range or
+	// destination_port_ranges must be set.
+	DestinationPortRange *string `protobuf:"bytes,9,opt,name=destination_port_range,json=destinationPortRange,proto3,oneof" json:"destination_port_range,omitempty"`
+	// Multiple destination ports/ranges in one rule (e.g. ["80", "443"]).
+	// Exactly one of destination_port_range or destination_port_ranges must
+	// be set.
+	DestinationPortRanges []string `protobuf:"bytes,10,rep,name=destination_port_ranges,json=destinationPortRanges,proto3" json:"destination_port_ranges,omitempty"`
+	// The source as a single prefix: a CIDR ("10.0.0.0/8"), an IP, an Azure
+	// service tag ("VirtualNetwork", "AzureLoadBalancer", "Internet"), or
+	// "*". Service tags and "*" only work here, not in the plural form.
+	// At most one source addressing style may be set; all unset means any.
+	SourceAddressPrefix *string `protobuf:"bytes,11,opt,name=source_address_prefix,json=sourceAddressPrefix,proto3,oneof" json:"source_address_prefix,omitempty"`
+	// The source as multiple CIDRs/IPs (e.g. several VPN ranges in one
+	// rule). Service tags are not accepted in the list form. At most one
+	// source addressing style may be set.
+	SourceAddressPrefixes []string `protobuf:"bytes,12,rep,name=source_address_prefixes,json=sourceAddressPrefixes,proto3" json:"source_address_prefixes,omitempty"`
+	// The source as application security group membership -- identity-based
+	// addressing that follows workloads as they scale instead of pinning
+	// CIDRs. Plain ARM IDs (up to 10): application security groups are not
+	// yet modeled as a Planton kind. At most one source addressing style may
+	// be set.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationSecurityGroups/{name}
+	SourceApplicationSecurityGroupIds []string `protobuf:"bytes,13,rep,name=source_application_security_group_ids,json=sourceApplicationSecurityGroupIds,proto3" json:"source_application_security_group_ids,omitempty"`
+	// The destination as a single prefix: a CIDR, an IP, a service tag, or
+	// "*". Service tags and "*" only work here, not in the plural form. At
+	// most one destination addressing style may be set; all unset means any.
+	DestinationAddressPrefix *string `protobuf:"bytes,14,opt,name=destination_address_prefix,json=destinationAddressPrefix,proto3,oneof" json:"destination_address_prefix,omitempty"`
+	// The destination as multiple CIDRs/IPs. Service tags are not accepted
+	// in the list form. At most one destination addressing style may be set.
+	DestinationAddressPrefixes []string `protobuf:"bytes,15,rep,name=destination_address_prefixes,json=destinationAddressPrefixes,proto3" json:"destination_address_prefixes,omitempty"`
+	// The destination as application security group membership. Plain ARM
+	// IDs (up to 10). At most one destination addressing style may be set.
+	DestinationApplicationSecurityGroupIds []string `protobuf:"bytes,16,rep,name=destination_application_security_group_ids,json=destinationApplicationSecurityGroupIds,proto3" json:"destination_application_security_group_ids,omitempty"`
+	unknownFields                          protoimpl.UnknownFields
+	sizeCache                              protoimpl.SizeCache
+}
+
+func (x *AzureNetworkSecurityGroupRule) Reset() {
+	*x = AzureNetworkSecurityGroupRule{}
 	mi := &file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureSecurityRule) String() string {
+func (x *AzureNetworkSecurityGroupRule) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureSecurityRule) ProtoMessage() {}
+func (*AzureNetworkSecurityGroupRule) ProtoMessage() {}
 
-func (x *AzureSecurityRule) ProtoReflect() protoreflect.Message {
+func (x *AzureNetworkSecurityGroupRule) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -251,91 +425,119 @@ func (x *AzureSecurityRule) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureSecurityRule.ProtoReflect.Descriptor instead.
-func (*AzureSecurityRule) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureNetworkSecurityGroupRule.ProtoReflect.Descriptor instead.
+func (*AzureNetworkSecurityGroupRule) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureSecurityRule) GetName() string {
+func (x *AzureNetworkSecurityGroupRule) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *AzureSecurityRule) GetDescription() string {
+func (x *AzureNetworkSecurityGroupRule) GetDescription() string {
 	if x != nil {
 		return x.Description
 	}
 	return ""
 }
 
-func (x *AzureSecurityRule) GetPriority() int32 {
+func (x *AzureNetworkSecurityGroupRule) GetPriority() int32 {
 	if x != nil {
 		return x.Priority
 	}
 	return 0
 }
 
-func (x *AzureSecurityRule) GetDirection() string {
+func (x *AzureNetworkSecurityGroupRule) GetDirection() AzureNetworkSecurityGroupRuleDirection {
 	if x != nil {
 		return x.Direction
 	}
-	return ""
+	return AzureNetworkSecurityGroupRuleDirection_azure_network_security_group_rule_direction_unspecified
 }
 
-func (x *AzureSecurityRule) GetAccess() string {
+func (x *AzureNetworkSecurityGroupRule) GetAccess() AzureNetworkSecurityGroupRuleAccess {
 	if x != nil {
 		return x.Access
 	}
-	return ""
+	return AzureNetworkSecurityGroupRuleAccess_azure_network_security_group_rule_access_unspecified
 }
 
-func (x *AzureSecurityRule) GetProtocol() string {
+func (x *AzureNetworkSecurityGroupRule) GetProtocol() AzureNetworkSecurityGroupRuleProtocol {
 	if x != nil {
 		return x.Protocol
 	}
-	return ""
+	return AzureNetworkSecurityGroupRuleProtocol_azure_network_security_group_rule_protocol_unspecified
 }
 
-func (x *AzureSecurityRule) GetSourcePortRange() string {
+func (x *AzureNetworkSecurityGroupRule) GetSourcePortRange() string {
 	if x != nil && x.SourcePortRange != nil {
 		return *x.SourcePortRange
 	}
 	return ""
 }
 
-func (x *AzureSecurityRule) GetDestinationPortRange() string {
+func (x *AzureNetworkSecurityGroupRule) GetSourcePortRanges() []string {
 	if x != nil {
-		return x.DestinationPortRange
+		return x.SourcePortRanges
+	}
+	return nil
+}
+
+func (x *AzureNetworkSecurityGroupRule) GetDestinationPortRange() string {
+	if x != nil && x.DestinationPortRange != nil {
+		return *x.DestinationPortRange
 	}
 	return ""
 }
 
-func (x *AzureSecurityRule) GetSourceAddressPrefix() string {
+func (x *AzureNetworkSecurityGroupRule) GetDestinationPortRanges() []string {
+	if x != nil {
+		return x.DestinationPortRanges
+	}
+	return nil
+}
+
+func (x *AzureNetworkSecurityGroupRule) GetSourceAddressPrefix() string {
 	if x != nil && x.SourceAddressPrefix != nil {
 		return *x.SourceAddressPrefix
 	}
 	return ""
 }
 
-func (x *AzureSecurityRule) GetDestinationAddressPrefix() string {
-	if x != nil && x.DestinationAddressPrefix != nil {
-		return *x.DestinationAddressPrefix
-	}
-	return ""
-}
-
-func (x *AzureSecurityRule) GetSourceAddressPrefixes() []string {
+func (x *AzureNetworkSecurityGroupRule) GetSourceAddressPrefixes() []string {
 	if x != nil {
 		return x.SourceAddressPrefixes
 	}
 	return nil
 }
 
-func (x *AzureSecurityRule) GetDestinationAddressPrefixes() []string {
+func (x *AzureNetworkSecurityGroupRule) GetSourceApplicationSecurityGroupIds() []string {
+	if x != nil {
+		return x.SourceApplicationSecurityGroupIds
+	}
+	return nil
+}
+
+func (x *AzureNetworkSecurityGroupRule) GetDestinationAddressPrefix() string {
+	if x != nil && x.DestinationAddressPrefix != nil {
+		return *x.DestinationAddressPrefix
+	}
+	return ""
+}
+
+func (x *AzureNetworkSecurityGroupRule) GetDestinationAddressPrefixes() []string {
 	if x != nil {
 		return x.DestinationAddressPrefixes
+	}
+	return nil
+}
+
+func (x *AzureNetworkSecurityGroupRule) GetDestinationApplicationSecurityGroupIds() []string {
+	if x != nil {
+		return x.DestinationApplicationSecurityGroupIds
 	}
 	return nil
 }
@@ -344,35 +546,63 @@ var File_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto prot
 
 const file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/azure/azurenetworksecuritygroup/v1/spec.proto\x127dev.planton.provider.azure.azurenetworksecuritygroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe7\x02\n" +
+	"Bdev/planton/provider/azure/azurenetworksecuritygroup/v1/spec.proto\x127dev.planton.provider.azure.azurenetworksecuritygroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9b\x06\n" +
 	"\x1dAzureNetworkSecurityGroupSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
-	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12q\n" +
-	"\x0esecurity_rules\x18\x04 \x03(\v2J.dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureSecurityRuleR\rsecurityRules\"\xdb\a\n" +
-	"\x11AzureSecurityRule\x12 \n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x98\x02\n" +
+	"\x04name\x18\x03 \x01(\tB\x83\x02\xbaH\xff\x01\xba\x01\xf2\x01\n" +
+	"\x0fnsg_name_format\x12\x93\x01NSG names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12}\n" +
+	"\x0esecurity_rules\x18\x04 \x03(\v2V.dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleR\rsecurityRules\x12t\n" +
+	"\x04tags\x18\x05 \x03(\v2`.dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xaa\x13\n" +
+	"\x1dAzureNetworkSecurityGroupRule\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x8c\x01R\vdescription\x12)\n" +
 	"\bpriority\x18\x03 \x01(\x05B\r\xbaH\n" +
-	"\xc8\x01\x01\x1a\x05\x18\x80 (dR\bpriority\x12\x86\x01\n" +
-	"\tdirection\x18\x04 \x01(\tBh\xbaHe\xba\x01_\n" +
-	"\x0fdirection_valid\x12+direction must be one of: Inbound, Outbound\x1a\x1fthis in ['Inbound', 'Outbound']\xc8\x01\x01R\tdirection\x12n\n" +
-	"\x06access\x18\x05 \x01(\tBV\xbaHS\xba\x01M\n" +
-	"\faccess_valid\x12\"access must be one of: Allow, Deny\x1a\x19this in ['Allow', 'Deny']\xc8\x01\x01R\x06access\x12\x86\x01\n" +
-	"\bprotocol\x18\x06 \x01(\tBj\xbaHg\xba\x01a\n" +
-	"\x0eprotocol_valid\x12*protocol must be one of: Tcp, Udp, Icmp, *\x1a#this in ['Tcp', 'Udp', 'Icmp', '*']\xc8\x01\x01R\bprotocol\x126\n" +
-	"\x11source_port_range\x18\a \x01(\tB\x05\x8a\xa6\x1d\x01*H\x00R\x0fsourcePortRange\x88\x01\x01\x12@\n" +
-	"\x16destination_port_range\x18\b \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x14destinationPortRange\x12>\n" +
-	"\x15source_address_prefix\x18\t \x01(\tB\x05\x8a\xa6\x1d\x01*H\x01R\x13sourceAddressPrefix\x88\x01\x01\x12H\n" +
-	"\x1adestination_address_prefix\x18\n" +
-	" \x01(\tB\x05\x8a\xa6\x1d\x01*H\x02R\x18destinationAddressPrefix\x88\x01\x01\x126\n" +
-	"\x17source_address_prefixes\x18\v \x03(\tR\x15sourceAddressPrefixes\x12@\n" +
-	"\x1cdestination_address_prefixes\x18\f \x03(\tR\x1adestinationAddressPrefixesB\x14\n" +
-	"\x12_source_port_rangeB\x18\n" +
+	"\xc8\x01\x01\x1a\x05\x18\x80 (dR\bpriority\x12\x8a\x01\n" +
+	"\tdirection\x18\x04 \x01(\x0e2_.dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleDirectionB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\tdirection\x12\x81\x01\n" +
+	"\x06access\x18\x05 \x01(\x0e2\\.dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleAccessB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x06access\x12\x87\x01\n" +
+	"\bprotocol\x18\x06 \x01(\x0e2^.dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleProtocolB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\bprotocol\x12/\n" +
+	"\x11source_port_range\x18\a \x01(\tH\x00R\x0fsourcePortRange\x88\x01\x01\x12,\n" +
+	"\x12source_port_ranges\x18\b \x03(\tR\x10sourcePortRanges\x129\n" +
+	"\x16destination_port_range\x18\t \x01(\tH\x01R\x14destinationPortRange\x88\x01\x01\x126\n" +
+	"\x17destination_port_ranges\x18\n" +
+	" \x03(\tR\x15destinationPortRanges\x127\n" +
+	"\x15source_address_prefix\x18\v \x01(\tH\x02R\x13sourceAddressPrefix\x88\x01\x01\x126\n" +
+	"\x17source_address_prefixes\x18\f \x03(\tR\x15sourceAddressPrefixes\x12Z\n" +
+	"%source_application_security_group_ids\x18\r \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R!sourceApplicationSecurityGroupIds\x12A\n" +
+	"\x1adestination_address_prefix\x18\x0e \x01(\tH\x03R\x18destinationAddressPrefix\x88\x01\x01\x12@\n" +
+	"\x1cdestination_address_prefixes\x18\x0f \x03(\tR\x1adestinationAddressPrefixes\x12d\n" +
+	"*destination_application_security_group_ids\x18\x10 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R&destinationApplicationSecurityGroupIds:\x80\t\xbaH\xfc\b\x1a\xc1\x01\n" +
+	"\x19source_ports_single_style\x12^Set source ports as either source_port_range or source_port_ranges, not both (unset means any)\x1aD!(has(this.source_port_range) && this.source_port_ranges.size() > 0)\x1a\xcb\x01\n" +
+	"\x1ddestination_ports_exactly_one\x12[Set exactly one of destination_port_range or destination_port_ranges (use \"*\" for any port)\x1aMhas(this.destination_port_range) != (this.destination_port_ranges.size() > 0)\x1a\xde\x02\n" +
+	"\x1bsource_address_single_style\x12\x97\x01Set at most one source addressing style: source_address_prefix, source_address_prefixes, or source_application_security_group_ids (all unset means any)\x1a\xa4\x01(has(this.source_address_prefix) ? 1 : 0) + (this.source_address_prefixes.size() > 0 ? 1 : 0) + (this.source_application_security_group_ids.size() > 0 ? 1 : 0) <= 1\x1a\x86\x03\n" +
+	" destination_address_single_style\x12\xab\x01Set at most one destination addressing style: destination_address_prefix, destination_address_prefixes, or destination_application_security_group_ids (all unset means any)\x1a\xb3\x01(has(this.destination_address_prefix) ? 1 : 0) + (this.destination_address_prefixes.size() > 0 ? 1 : 0) + (this.destination_application_security_group_ids.size() > 0 ? 1 : 0) <= 1B\x14\n" +
+	"\x12_source_port_rangeB\x19\n" +
+	"\x17_destination_port_rangeB\x18\n" +
 	"\x16_source_address_prefixB\x1d\n" +
-	"\x1b_destination_address_prefixB\xc2\x03\n" +
+	"\x1b_destination_address_prefix*\x80\x01\n" +
+	"&AzureNetworkSecurityGroupRuleDirection\x12;\n" +
+	"7azure_network_security_group_rule_direction_unspecified\x10\x00\x12\v\n" +
+	"\aINBOUND\x10\x01\x12\f\n" +
+	"\bOUTBOUND\x10\x02*t\n" +
+	"#AzureNetworkSecurityGroupRuleAccess\x128\n" +
+	"4azure_network_security_group_rule_access_unspecified\x10\x00\x12\t\n" +
+	"\x05ALLOW\x10\x01\x12\b\n" +
+	"\x04DENY\x10\x02*\x99\x01\n" +
+	"%AzureNetworkSecurityGroupRuleProtocol\x12:\n" +
+	"6azure_network_security_group_rule_protocol_unspecified\x10\x00\x12\a\n" +
+	"\x03ANY\x10\x01\x12\a\n" +
+	"\x03TCP\x10\x02\x12\a\n" +
+	"\x03UDP\x10\x03\x12\b\n" +
+	"\x04ICMP\x10\x04\x12\x06\n" +
+	"\x02AH\x10\x05\x12\a\n" +
+	"\x03ESP\x10\x06B\xc2\x03\n" +
 	";com.dev.planton.provider.azure.azurenetworksecuritygroup.v1B\tSpecProtoP\x01Zugithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenetworksecuritygroup/v1;azurenetworksecuritygroupv1\xa2\x02\x05DPPAA\xaa\x027Dev.Planton.Provider.Azure.Azurenetworksecuritygroup.V1\xca\x027Dev\\Planton\\Provider\\Azure\\Azurenetworksecuritygroup\\V1\xe2\x02CDev\\Planton\\Provider\\Azure\\Azurenetworksecuritygroup\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Azure::Azurenetworksecuritygroup::V1b\x06proto3"
 
 var (
@@ -387,20 +617,29 @@ func file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_raw
 	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_goTypes = []any{
-	(*AzureNetworkSecurityGroupSpec)(nil), // 0: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec
-	(*AzureSecurityRule)(nil),             // 1: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureSecurityRule
-	(*v1.StringValueOrRef)(nil),           // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureNetworkSecurityGroupRuleDirection)(0), // 0: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleDirection
+	(AzureNetworkSecurityGroupRuleAccess)(0),    // 1: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleAccess
+	(AzureNetworkSecurityGroupRuleProtocol)(0),  // 2: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleProtocol
+	(*AzureNetworkSecurityGroupSpec)(nil),       // 3: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec
+	(*AzureNetworkSecurityGroupRule)(nil),       // 4: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule
+	nil,                                         // 5: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil),                 // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.security_rules:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureSecurityRule
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	6, // 0: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.security_rules:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule
+	5, // 2: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.tags:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupSpec.TagsEntry
+	0, // 3: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule.direction:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleDirection
+	1, // 4: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule.access:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleAccess
+	2, // 5: dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRule.protocol:type_name -> dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleProtocol
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_init() }
@@ -414,13 +653,14 @@ func file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_ini
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      3,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto = out.File

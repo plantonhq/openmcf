@@ -108,6 +108,12 @@ For the highest level of control and fault isolation, deploy **multiple NAT Gate
 
 **Best for:** Mission-critical, zone-aware AKS clusters or VM scale sets where you need guaranteed isolation.
 
+### Option 3: StandardV2 (Zone-Redundant by Design)
+
+Azure's next-generation **StandardV2** SKU is zone-redundant automatically: a single gateway survives the loss of any one zone without you managing per-zone stacks. You don't (and can't) pin it to a zone, and it requires StandardV2 public IPs and prefixes.
+
+**Best for:** Workloads that want zone resilience from one gateway instead of the operational overhead of zonal stacks.
+
 ## The Idle Timeout Problem (And How to Solve It)
 
 One of the most common NAT Gateway misconfigurations is leaving the default **TCP idle timeout** at 4 minutes.
@@ -126,9 +132,7 @@ This creates mysterious, intermittent failures for:
 
 **Option 1: Increase the Idle Timeout**
 
-Set `idle_timeout_in_minutes` to a higher value (10, 30, or 60 minutes). This is a simple, effective fix for applications known to have long-lived idle connections.
-
-**Planton Default:** The Planton API defaults to **10 minutes** (not the Azure default of 4), providing a safer, more production-ready baseline.
+Set `idleTimeoutInMinutes` to a higher value (10, 30, or 60 minutes; the maximum is 120). This is a simple, effective fix for applications known to have long-lived idle connections. Left unset, the gateway uses Azure's 4-minute default. Note the trade-off: higher values hold SNAT ports longer, hastening port exhaustion under load.
 
 **Option 2: Use TCP Keepalives (Best Practice)**
 
@@ -210,7 +214,7 @@ Provisioning a NAT Gateway with only one public IP for a massive AKS cluster (e.
 
 Using the 4-minute default for applications with long-lived database connections, leading to mysterious connection hangs.
 
-**✅ Solution:** Set `idle_timeout_minutes` to 10+ or configure TCP keepalives.
+**✅ Solution:** Set `idleTimeoutInMinutes` to 10+ or configure TCP keepalives.
 
 ---
 
@@ -222,13 +226,15 @@ Routing all traffic (including traffic to Azure Storage, SQL Database, Key Vault
 
 ## The Planton Approach
 
-Planton provides a declarative, protobuf-based API for deploying Azure NAT Gateways. The design philosophy prioritizes production-ready defaults and simplicity for the 80% use case while exposing advanced configuration for the 20% edge cases.
+Planton provides a declarative, protobuf-based API for deploying Azure NAT Gateways. The design philosophy is that **the gateway is just the gateway**: everything it composes with is a first-class resource it references, never something it creates invisibly.
 
-### Production-Ready Defaults
+### Composition by Reference
 
-**Idle Timeout:** The Planton API defaults `idle_timeout_minutes` to **10 minutes** (not the Azure default of 4). This provides a safer baseline for applications with persistent connections, reducing the likelihood of mysterious timeout issues.
+**Public IPs and prefixes are referenced, not created.** The `publicIpIds` and `publicIpPrefixIds` fields reference first-class `AzurePublicIp` and `AzurePublicIpPrefix` resources. This keeps your egress addresses visible in the resource graph, allowlistable by partners, and reusable across resources—instead of hidden inside the gateway's lifecycle. A gateway with no addresses deploys but cannot translate anything, so associate at least one IP or prefix for it to carry traffic.
 
-**SKU:** The API hardcodes the NAT Gateway SKU to `Standard` (the only supported SKU). There's no reason to expose this as a configuration option—it only adds confusion.
+**SKU:** The `skuName` field selects `STANDARD` (the zonal production SKU, optionally pinned to one availability zone via `zones`) or `STANDARD_V2` (zone-redundant automatically; `zones` must be empty and the referenced addresses must be StandardV2). Unset means Azure's default, Standard.
+
+**Idle Timeout:** `idleTimeoutInMinutes` is optional; left unset, the gateway uses Azure's default of 4 minutes. Raise it (up to 120) only for workloads with long-lived idle connections that must not be re-established—higher values hold SNAT ports longer.
 
 ### The Subnet Association Model
 
@@ -237,13 +243,13 @@ Azure NAT Gateway operates at the **subnet level**. Once associated with a subne
 In the Azure API, subnet association is a **property of the subnet resource**, not the NAT Gateway. The Planton API reflects this reality:
 
 - The `AzureNatGateway` resource creates and manages the NAT Gateway itself
-- Subnet association is handled via the `subnet_id` field, which references an existing Azure subnet
+- Each `AzureSubnet` declares the attachment via its `natGatewayId` field, which references the gateway's `nat_gateway_id` output
 
-This model mirrors the native Azure API structure and avoids architectural conflicts where multiple controllers might fight for control of subnet configuration.
+This model mirrors the native Azure API structure—one gateway serves many subnets without listing them—and avoids architectural conflicts where multiple controllers might fight for control of subnet configuration.
 
 ### Public IP Prefix for Scale
 
-For production deployments, use the `public_ip_prefix_length` field to provision a Public IP Prefix instead of individual IPs:
+For production deployments, create an `AzurePublicIpPrefix` and reference it via `publicIpPrefixIds` instead of individual IPs:
 
 - `/28` = 16 IPs = 1,032,192 SNAT ports (recommended for large-scale production)
 - `/29` = 8 IPs = 516,096 SNAT ports
@@ -252,7 +258,7 @@ For production deployments, use the `public_ip_prefix_length` field to provision
 
 ### Example: Development/Staging
 
-A simple NAT Gateway for a dev AKS cluster:
+A simple NAT Gateway for a dev AKS cluster, SNATing through one referenced public IP:
 
 ```yaml
 apiVersion: azure.planton.dev/v1
@@ -260,21 +266,27 @@ kind: AzureNatGateway
 metadata:
   name: dev-aks-nat-gateway
 spec:
-  subnetId: ${ref:dev-aks-vpc.status.outputs.subnet_id}
-  idle_timeout_minutes: 10
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: dev-network-rg
+  name: dev-egress-nat
+  publicIpIds:
+    - valueFrom:
+        name: dev-egress-ip
   tags:
     environment: dev
     team: platform
 ```
 
 This configuration:
-- Associates with an existing AKS node subnet
-- Uses the default 10-minute idle timeout
-- Provisions a single public IP (suitable for dev/staging)
+- SNATs through a single referenced `AzurePublicIp` (suitable for dev/staging)
+- Uses Azure's default 4-minute idle timeout
+- Serves whichever subnets set their `natGatewayId` to this gateway
 
 ### Example: Production with HA and Scale
 
-A production-grade NAT Gateway with IP prefix for scale and whitelisting:
+A production-grade NAT Gateway referencing an IP prefix for scale and whitelisting:
 
 ```yaml
 apiVersion: azure.planton.dev/v1
@@ -282,19 +294,26 @@ kind: AzureNatGateway
 metadata:
   name: prod-aks-nat-gateway-z1
 spec:
-  subnetId: ${ref:prod-aks-vpc-z1.status.outputs.subnet_id}
-  idle_timeout_minutes: 30
-  public_ip_prefix_length: 28  # 16 IPs, 1M+ ports
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: prod-network-rg
+  name: prod-egress-nat-z1
+  zones:
+    - "1"
+  idleTimeoutInMinutes: 30
+  publicIpPrefixIds:
+    - valueFrom:
+        name: prod-snat-prefix  # a /28 AzurePublicIpPrefix: 16 IPs, 1M+ ports
   tags:
     environment: production
-    availability_zone: "1"
     cost_center: platform-engineering
 ```
 
 This configuration:
-- Uses a /28 public IP prefix (16 IPs, 1M+ SNAT ports)
+- References a /28 `AzurePublicIpPrefix` (16 IPs, 1M+ SNAT ports)
 - Sets a 30-minute idle timeout for long-running connections
-- Designed as part of a "zonal stack" HA pattern (one gateway per zone)
+- Pins the gateway to zone 1 as part of a "zonal stack" HA pattern (one gateway per zone)
 
 ## Conclusion: From Bottleneck to Foundation
 
@@ -302,7 +321,7 @@ Azure NAT Gateway represents a shift from viewing outbound connectivity as a def
 
 The days of diagnosing SNAT port exhaustion at 3 AM in production are over—if you architect correctly. NAT Gateway's dynamic SNAT model, massive port capacity, and predictable egress behavior make it the production standard for any private workload needing internet access.
 
-Planton's declarative API abstracts the complexity of resource associations and provides production-ready defaults (like a sensible idle timeout) while still exposing the full power of Azure NAT Gateway for advanced scenarios.
+Planton's declarative API keeps the gateway composable—egress addresses are first-class, allowlistable resources and subnets declare their own attachment—while still exposing the full power of Azure NAT Gateway, from zonal stacks to the zone-redundant StandardV2 SKU, for advanced scenarios.
 
 When you deploy your next AKS cluster, VM scale set, or private application, don't rely on default SNAT. Make your egress path explicit. Make it scalable. Make it predictable.
 

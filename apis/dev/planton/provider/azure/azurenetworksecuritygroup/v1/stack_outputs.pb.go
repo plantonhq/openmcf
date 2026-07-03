@@ -21,23 +21,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureNetworkSecurityGroupStackOutputs** captures the outputs of provisioning
-// an Azure Network Security Group.
-//
-// The primary output is `nsg_id`, which is referenced by infra charts that create
-// subnet-to-NSG associations. In the enterprise-network-foundation infra chart,
-// each tier (web, app, data, management) gets its own NSG, and the chart wires
-// each NSG to its corresponding subnet via `azurerm_subnet_network_security_group_association`.
+// **AzureNetworkSecurityGroupStackOutputs** captures the outputs of
+// provisioning an Azure Network Security Group.
 type AzureNetworkSecurityGroupStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Network Security Group.
+	// The Azure Resource Manager ID of the NSG. This is the primary output:
+	// AzureSubnet's network_security_group_id references it to attach the
+	// group to a subnet.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/networkSecurityGroups/{name}
-	// This is the primary output used by infra charts for subnet-NSG association.
-	NsgId string `protobuf:"bytes,1,opt,name=nsg_id,json=nsgId,proto3" json:"nsg_id,omitempty"`
+	NetworkSecurityGroupId string `protobuf:"bytes,1,opt,name=network_security_group_id,json=networkSecurityGroupId,proto3" json:"network_security_group_id,omitempty"`
 	// The name of the Network Security Group.
-	NsgName       string `protobuf:"bytes,2,opt,name=nsg_name,json=nsgName,proto3" json:"nsg_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NetworkSecurityGroupName string `protobuf:"bytes,2,opt,name=network_security_group_name,json=networkSecurityGroupName,proto3" json:"network_security_group_name,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *AzureNetworkSecurityGroupStackOutputs) Reset() {
@@ -70,16 +66,16 @@ func (*AzureNetworkSecurityGroupStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureNetworkSecurityGroupStackOutputs) GetNsgId() string {
+func (x *AzureNetworkSecurityGroupStackOutputs) GetNetworkSecurityGroupId() string {
 	if x != nil {
-		return x.NsgId
+		return x.NetworkSecurityGroupId
 	}
 	return ""
 }
 
-func (x *AzureNetworkSecurityGroupStackOutputs) GetNsgName() string {
+func (x *AzureNetworkSecurityGroupStackOutputs) GetNetworkSecurityGroupName() string {
 	if x != nil {
-		return x.NsgName
+		return x.NetworkSecurityGroupName
 	}
 	return ""
 }
@@ -88,10 +84,10 @@ var File_dev_planton_provider_azure_azurenetworksecuritygroup_v1_stack_outputs_p
 
 const file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Kdev/planton/provider/azure/azurenetworksecuritygroup/v1/stack_outputs.proto\x127dev.planton.provider.azure.azurenetworksecuritygroup.v1\"Y\n" +
-	"%AzureNetworkSecurityGroupStackOutputs\x12\x15\n" +
-	"\x06nsg_id\x18\x01 \x01(\tR\x05nsgId\x12\x19\n" +
-	"\bnsg_name\x18\x02 \x01(\tR\ansgNameB\xca\x03\n" +
+	"Kdev/planton/provider/azure/azurenetworksecuritygroup/v1/stack_outputs.proto\x127dev.planton.provider.azure.azurenetworksecuritygroup.v1\"\xa1\x01\n" +
+	"%AzureNetworkSecurityGroupStackOutputs\x129\n" +
+	"\x19network_security_group_id\x18\x01 \x01(\tR\x16networkSecurityGroupId\x12=\n" +
+	"\x1bnetwork_security_group_name\x18\x02 \x01(\tR\x18networkSecurityGroupNameB\xca\x03\n" +
 	";com.dev.planton.provider.azure.azurenetworksecuritygroup.v1B\x11StackOutputsProtoP\x01Zugithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenetworksecuritygroup/v1;azurenetworksecuritygroupv1\xa2\x02\x05DPPAA\xaa\x027Dev.Planton.Provider.Azure.Azurenetworksecuritygroup.V1\xca\x027Dev\\Planton\\Provider\\Azure\\Azurenetworksecuritygroup\\V1\xe2\x02CDev\\Planton\\Provider\\Azure\\Azurenetworksecuritygroup\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Azure::Azurenetworksecuritygroup::V1b\x06proto3"
 
 var (

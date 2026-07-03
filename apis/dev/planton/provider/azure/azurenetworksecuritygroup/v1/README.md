@@ -36,23 +36,27 @@ Every NSG automatically includes three implicit default rules per direction (pri
 - **AllowAzureLoadBalancerInBound** (65001) -- Allow Azure Load Balancer health probes
 - **DenyAllInBound** (65500) -- Deny all other inbound traffic
 
-### Provider-Authentic Values
+### Enum Values
 
-This component uses Azure's exact API values for enum-like fields:
+The `direction`, `access`, and `protocol` fields are closed enums; the IaC modules
+map them to Azure's ARM values at deploy time:
 
-- **Direction**: `"Inbound"`, `"Outbound"` (not uppercase)
-- **Access**: `"Allow"`, `"Deny"` (not uppercase)
-- **Protocol**: `"Tcp"`, `"Udp"`, `"Icmp"`, `"*"` (not uppercase)
+- **Direction**: `INBOUND`, `OUTBOUND`
+- **Access**: `ALLOW`, `DENY`
+- **Protocol**: `ANY` (ARM's `*`), `TCP`, `UDP`, `ICMP`, `AH`, `ESP`
 
 ### Address Prefixes
 
-Source and destination addresses support:
+Sources and destinations each take exactly one addressing style:
 
-- CIDR blocks: `"10.0.0.0/8"`, `"192.168.1.0/24"`
-- Single IPs: `"10.0.0.1"`
-- Azure service tags: `"VirtualNetwork"`, `"AzureLoadBalancer"`, `"Internet"`
-- Wildcard: `"*"` (any address)
-- Multiple CIDRs via the plural `_prefixes` fields
+- A single prefix: a CIDR (`"10.0.0.0/8"`), an IP (`"10.0.0.1"`), an Azure service
+  tag (`"VirtualNetwork"`, `"AzureLoadBalancer"`, `"Internet"`), or `"*"` (any)
+- Multiple CIDRs/IPs via the plural `_prefixes` fields (service tags and `"*"` are
+  singular-only)
+- Application security group IDs via the `_application_security_group_ids` fields
+  (identity-based addressing, up to 10 plain ARM IDs)
+
+Leaving all three unset means any (`*`).
 
 ## Configuration Options
 
@@ -62,6 +66,7 @@ Source and destination addresses support:
 | `resource_group` | StringValueOrRef | yes | -- | Resource group |
 | `name` | string | yes | -- | NSG name (1-80 chars) |
 | `security_rules` | list | no | [] | Security rules |
+| `tags` | map | no | {} | Free-form tags merged over Planton-derived resource tags (user tag wins on key conflict) |
 
 ### Security Rule Fields
 
@@ -70,22 +75,28 @@ Source and destination addresses support:
 | `name` | string | yes | -- | Rule name (1-80 chars) |
 | `description` | string | no | -- | Description (max 140 chars) |
 | `priority` | int32 | yes | -- | Priority (100-4096) |
-| `direction` | string | yes | -- | "Inbound" or "Outbound" |
-| `access` | string | yes | -- | "Allow" or "Deny" |
-| `protocol` | string | yes | -- | "Tcp", "Udp", "Icmp", or "*" |
-| `source_port_range` | string | no | "*" | Source port/range |
-| `destination_port_range` | string | yes | -- | Destination port/range |
-| `source_address_prefix` | string | no | "*" | Source CIDR/tag |
-| `destination_address_prefix` | string | no | "*" | Destination CIDR/tag |
-| `source_address_prefixes` | list | no | -- | Multiple source CIDRs |
-| `destination_address_prefixes` | list | no | -- | Multiple destination CIDRs |
+| `direction` | enum | yes | -- | `INBOUND` or `OUTBOUND` |
+| `access` | enum | yes | -- | `ALLOW` or `DENY` |
+| `protocol` | enum | yes | -- | `ANY`, `TCP`, `UDP`, `ICMP`, `AH`, or `ESP` |
+| `source_port_range` | string | no | any | Source port/range; never combined with `source_port_ranges` |
+| `source_port_ranges` | list | no | -- | Multiple source ports/ranges; never combined with `source_port_range` |
+| `destination_port_range` | string | yes* | -- | Destination port/range |
+| `destination_port_ranges` | list | yes* | -- | Multiple destination ports/ranges |
+| `source_address_prefix` | string | no | any | Source CIDR/tag/`*` (at most one source addressing style) |
+| `source_address_prefixes` | list | no | -- | Multiple source CIDRs (at most one source addressing style) |
+| `source_application_security_group_ids` | list | no | -- | Source application security group IDs, up to 10 (at most one source addressing style) |
+| `destination_address_prefix` | string | no | any | Destination CIDR/tag/`*` (at most one destination addressing style) |
+| `destination_address_prefixes` | list | no | -- | Multiple destination CIDRs (at most one destination addressing style) |
+| `destination_application_security_group_ids` | list | no | -- | Destination application security group IDs, up to 10 (at most one destination addressing style) |
+
+\* Exactly one of `destination_port_range` or `destination_port_ranges` must be set (use `"*"` for any port).
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `nsg_id` | Azure Resource Manager ID of the NSG |
-| `nsg_name` | Name of the NSG |
+| `network_security_group_id` | Azure Resource Manager ID of the NSG |
+| `network_security_group_name` | Name of the NSG |
 
 ## Infra Chart Usage
 

@@ -21,17 +21,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Outputs produced after provisioning an Azure NAT Gateway.
+// **AzureNatGatewayStackOutputs** captures the outputs of provisioning an
+// Azure NAT Gateway.
 type AzureNatGatewayStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Resource ID of the created NAT Gateway.
+	// The Azure Resource Manager ID of the NAT gateway. This is the primary
+	// output: AzureSubnet's nat_gateway_id references it to attach the
+	// gateway to a subnet.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/natGateways/{name}
 	NatGatewayId string `protobuf:"bytes,1,opt,name=nat_gateway_id,json=natGatewayId,proto3" json:"nat_gateway_id,omitempty"`
-	// List of public IP addresses allocated to the NAT Gateway (if any individual Public IPs were created).
-	PublicIpAddresses []string `protobuf:"bytes,2,rep,name=public_ip_addresses,json=publicIpAddresses,proto3" json:"public_ip_addresses,omitempty"`
-	// Resource ID of the Public IP Prefix, if a prefix was created for this NAT Gateway.
-	PublicIpPrefixId string `protobuf:"bytes,3,opt,name=public_ip_prefix_id,json=publicIpPrefixId,proto3" json:"public_ip_prefix_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The name of the NAT gateway.
+	NatGatewayName string `protobuf:"bytes,2,opt,name=nat_gateway_name,json=natGatewayName,proto3" json:"nat_gateway_name,omitempty"`
+	// The immutable GUID ARM assigns the gateway -- useful when correlating
+	// with Azure billing, monitoring, or support data that keys on the GUID
+	// rather than the ARM ID.
+	ResourceGuid  string `protobuf:"bytes,3,opt,name=resource_guid,json=resourceGuid,proto3" json:"resource_guid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AzureNatGatewayStackOutputs) Reset() {
@@ -71,16 +77,16 @@ func (x *AzureNatGatewayStackOutputs) GetNatGatewayId() string {
 	return ""
 }
 
-func (x *AzureNatGatewayStackOutputs) GetPublicIpAddresses() []string {
+func (x *AzureNatGatewayStackOutputs) GetNatGatewayName() string {
 	if x != nil {
-		return x.PublicIpAddresses
+		return x.NatGatewayName
 	}
-	return nil
+	return ""
 }
 
-func (x *AzureNatGatewayStackOutputs) GetPublicIpPrefixId() string {
+func (x *AzureNatGatewayStackOutputs) GetResourceGuid() string {
 	if x != nil {
-		return x.PublicIpPrefixId
+		return x.ResourceGuid
 	}
 	return ""
 }
@@ -89,11 +95,11 @@ var File_dev_planton_provider_azure_azurenatgateway_v1_stack_outputs_proto proto
 
 const file_dev_planton_provider_azure_azurenatgateway_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/azure/azurenatgateway/v1/stack_outputs.proto\x12-dev.planton.provider.azure.azurenatgateway.v1\"\xa2\x01\n" +
+	"Adev/planton/provider/azure/azurenatgateway/v1/stack_outputs.proto\x12-dev.planton.provider.azure.azurenatgateway.v1\"\x92\x01\n" +
 	"\x1bAzureNatGatewayStackOutputs\x12$\n" +
-	"\x0enat_gateway_id\x18\x01 \x01(\tR\fnatGatewayId\x12.\n" +
-	"\x13public_ip_addresses\x18\x02 \x03(\tR\x11publicIpAddresses\x12-\n" +
-	"\x13public_ip_prefix_id\x18\x03 \x01(\tR\x10publicIpPrefixIdB\x84\x03\n" +
+	"\x0enat_gateway_id\x18\x01 \x01(\tR\fnatGatewayId\x12(\n" +
+	"\x10nat_gateway_name\x18\x02 \x01(\tR\x0enatGatewayName\x12#\n" +
+	"\rresource_guid\x18\x03 \x01(\tR\fresourceGuidB\x84\x03\n" +
 	"1com.dev.planton.provider.azure.azurenatgateway.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenatgateway/v1;azurenatgatewayv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Azure.Azurenatgateway.V1\xca\x02-Dev\\Planton\\Provider\\Azure\\Azurenatgateway\\V1\xe2\x029Dev\\Planton\\Provider\\Azure\\Azurenatgateway\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Azure::Azurenatgateway::V1b\x06proto3"
 
 var (

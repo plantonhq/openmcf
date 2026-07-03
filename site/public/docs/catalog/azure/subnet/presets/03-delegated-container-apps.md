@@ -24,8 +24,8 @@ This preset creates a subnet delegated to Azure Container App Environments (`Mic
 
 ## Key Configuration Choices
 
-- **Address prefix /21** (`addressPrefix: 10.0.4.0/21`) -- 2,048 IPs. Container Apps allocates IPs per active revision instance. A /23 (512 IPs) works for small deployments, but /21 is recommended for production with scale-out headroom. Minimum is /23
-- **Delegation** (`serviceName: Microsoft.App/environments`) -- Required delegation. Prevents other resources from being placed in this subnet. The subnet becomes exclusive to Container App Environments
+- **Address prefixes /21** (`addressPrefixes: ["10.0.4.0/21"]`) -- 2,048 IPs. Container Apps allocates IPs per active revision instance. A /23 (512 IPs) works for small deployments, but /21 is recommended for production with scale-out headroom. Minimum is /23
+- **Delegation** (`delegations[0].serviceName: Microsoft.App/environments`) -- Required delegation. Prevents other resources from being placed in this subnet. The subnet becomes exclusive to Container App Environments
 - **No service endpoints** -- Container Apps environments don't use service endpoints. They access other Azure services via managed identity or Private Endpoints in separate subnets
 - **CIDR offset** -- The example uses 10.0.4.0/21 (IPs 10.0.4.0–10.0.11.255). Adjust based on your VNet's address space and existing subnet allocations
 

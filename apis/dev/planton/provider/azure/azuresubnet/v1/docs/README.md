@@ -15,10 +15,12 @@ Subnets are Azure's fundamental network partitioning mechanism. They provide:
 
 ### Key Properties
 
-- **Address Prefix**: IPv4 CIDR block within the parent VNet's address space
+- **Address Prefixes**: CIDR blocks within the parent VNet's address space
+  (multiple blocks support dual-stack), or an IPAM pool allocation
 - **Service Endpoints**: Optimized routes to Azure services (Storage, SQL, Key Vault)
-- **Delegation**: Grants a PaaS service exclusive control of the subnet
+- **Delegations**: Grant a PaaS service exclusive control of the subnet
 - **Private Endpoint Policies**: Controls NSG/UDR enforcement on private endpoints
+- **Attachments**: Route table, NSG, and NAT gateway associate subnet-side
 - **Lifecycle**: Independent from the VNet (can be added/removed without VNet changes)
 
 ### Azure's Reserved IPs
@@ -106,21 +108,18 @@ kind: AzureSubnet
 metadata:
   name: app-subnet
 spec:
-  resource_group:
+  virtualNetworkId:
     valueFrom:
-      kind: AzureResourceGroup
-      name: network-rg
-      fieldPath: status.outputs.resource_group_name
-  vnet_id:
-    valueFrom:
-      kind: AzureVirtualNetwork
       name: prod-vpc
-      fieldPath: status.outputs.virtual_network_id
   name: app-subnet
-  address_prefix: "10.0.1.0/24"
-  service_endpoints:
+  addressPrefixes:
+    - "10.0.1.0/24"
+  serviceEndpoints:
     - Microsoft.Sql
     - Microsoft.Storage
+  networkSecurityGroupId:
+    valueFrom:
+      name: app-tier-nsg
 ```
 
 Declarative, Kubernetes-style API that enables infra chart composition with
@@ -128,28 +127,29 @@ Declarative, Kubernetes-style API that enables infra chart composition with
 
 ## 3. 80/20 Analysis: What We Include and What We Skip
 
-### Included (80% of Use Cases)
+### Included
 
 | Feature | Rationale |
 |---------|-----------|
-| Address prefix (singular) | 99.9% of subnets use a single CIDR |
+| Address prefixes (repeated) | Mirrors ARM's shape; multiple blocks enable dual-stack subnets |
+| IP address pool (IPAM) | Azure Network Manager IPAM allocation as the alternative address source (XOR with address prefixes) |
 | Service endpoints | Common for secure PaaS access |
-| Service delegation | Required for PostgreSQL, MySQL, Container Apps, App Service |
-| Private endpoint network policies | Enterprise private link architectures |
+| Service endpoint policies | Narrow an endpoint's reach to specific resources (plain ARM IDs) |
+| Service delegations (repeated) | Required for PostgreSQL, MySQL, Container Apps, App Service; list form mirrors ARM |
+| Private endpoint network policies | Enterprise private link architectures (enum: ENABLED / NETWORK_SECURITY_GROUP_ENABLED / ROUTE_TABLE_ENABLED) |
 | Private Link Service policies | Required for PLS providers |
+| Default outbound access | Microsoft is retiring implicit outbound; production subnets need the explicit-egress posture |
+| Sharing scope | Cross-tenant sharing via Azure Virtual Network Manager (TENANT) |
+| Route table attachment | Declared subnet-side, matching Azure's model (one table serves many subnets) |
+| NSG attachment | Declared subnet-side, matching Azure's model |
+| NAT gateway attachment | Declared subnet-side, matching Azure's model |
 
-### Excluded (20% Niche / Advanced)
+### Excluded (Niche / Advanced)
 
 | Feature | Rationale |
 |---------|-----------|
-| Multiple address prefixes | Azure supports this but it's extremely rare |
-| Service endpoint policies | Advanced traffic restriction, very niche |
-| Default outbound access | Newer feature for zero-trust; can add later |
-| IP address pool (IPAM) | Azure IPAM integration; enterprise-only feature |
-| Sharing scope | Multi-tenant subnet sharing; preview feature |
-| NSG association | Separate lifecycle, handled by AzureNetworkSecurityGroup |
-| Route table association | Advanced networking, future iteration |
-| NAT Gateway association | Handled by the standalone AzureNatGateway kind (attaches subnet-side) |
+| Application gateway IP configurations | Managed by the Application Gateway resource itself |
+| Subnet-level tags | Subnets are not tracked ARM resources and carry no tags |
 
 ## 4. Why No Region Field
 
@@ -166,12 +166,14 @@ This is a deliberate, well-reasoned deviation from the standard Azure pattern.
 
 ## 5. VNet ID Reference Design
 
-AzureSubnet references the parent VNet via `StringValueOrRef vnet_id`, which
-resolves to the VNet's ARM resource ID. The IaC modules extract the VNet name
-from the ARM ID using string parsing:
+AzureSubnet references the parent VNet via `StringValueOrRef virtual_network_id`,
+which resolves to the VNet's ARM resource ID. The IaC modules derive both the
+resource group and the VNet name from the ARM ID, so the spec carries no
+separate resource group field that could contradict the referenced network:
 
 ```
 ARM ID: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}
+Resource Group: the segment after "resourceGroups"
 VNet Name: last segment after splitting by "/"
 ```
 
@@ -247,36 +249,51 @@ because subnets have independent lifecycles. Different subnets need different
 configurations (delegations, service endpoints, policies), and bundling them all
 into the VPC spec would force VPC redeployment when a subnet changes. See DD01.
 
-### Why Singular address_prefix
+### Why Repeated address_prefixes (XOR ip_address_pool)
 
-Azure's API supports `address_prefixes` (plural), but multiple CIDRs per subnet
-is an extremely rare edge case introduced for backwards-compatibility with legacy
-configurations. Using singular `address_prefix` keeps the spec clean and matches
-the 80/20 principle. The IaC modules wrap it in a single-element list for the provider.
+`address_prefixes` is a first-class list, mirroring ARM's shape: a dual-stack
+subnet carries an IPv4 and an IPv6 block side by side. Exactly one address
+source must be set -- either self-managed `address_prefixes` or an
+`ip_address_pool` allocation from an Azure Network Manager IPAM pool, for
+organizations that manage address space centrally. Either way, the CIDRs
+actually assigned surface in the `address_prefixes` output.
 
-### Why private_endpoint_network_policies as String (Not Bool)
+### Why private_endpoint_network_policies as an Enum (Not Bool)
 
 Azure deprecated the boolean field `private_endpoint_network_policies_enabled` in
-favor of a string enum with four values: `Disabled`, `Enabled`,
-`NetworkSecurityGroupEnabled`, and `RouteTableEnabled`. The string enum provides
-granular control -- you can apply NSG policies without route table policies, or
+favor of a four-valued setting: `Disabled`, `Enabled`, `NetworkSecurityGroupEnabled`,
+and `RouteTableEnabled`. The spec models this as an enum with `ENABLED`,
+`NETWORK_SECURITY_GROUP_ENABLED`, and `ROUTE_TABLE_ENABLED`, where leaving the
+field unset applies ARM's default (`Disabled`). The enum provides granular
+control -- you can apply NSG policies without route table policies, or
 vice versa. Using the current API surface prevents future deprecation issues.
+
+### Why Attachments Are Declared Subnet-Side
+
+The route table, NSG, and NAT gateway attach TO the subnet
+(`route_table_id`, `network_security_group_id`, `nat_gateway_id`) because
+that is Azure's own model: one table, group, or gateway serves many subnets,
+while a subnet carries at most one of each. Detaching is just removing the
+field.
 
 ## 9. Scope Boundaries
 
 ### What This Component Does
 
-- Creates a subnet in an existing VNet
-- Configures service endpoints for optimized PaaS access
-- Configures service delegation for PaaS resource injection
+- Creates a subnet in an existing VNet, with self-managed address prefixes or
+  an IPAM pool allocation
+- Configures service endpoints (and endpoint policies) for optimized PaaS access
+- Configures service delegations for PaaS resource injection
 - Sets private endpoint and Private Link Service network policies
-- Tags the subnet with Planton metadata (via parent VNet tagging)
-- Exports subnet_id, subnet_name, and address_prefix for downstream consumption
+- Controls default outbound access and cross-tenant sharing scope
+- Attaches a route table, network security group, and/or NAT gateway
+- Exports subnet_id, subnet_name, address_prefixes, virtual_network_name, and
+  resource_group_name for downstream consumption
 
 ### What This Component Does NOT Do
 
-- **NSG association** -- handled by AzureNetworkSecurityGroup
-- **Route table association** -- future iteration
-- **NAT Gateway association** -- handled by the standalone AzureNatGateway kind
-- **Multiple address prefixes** -- niche feature, not included
 - **Create the parent VNet** -- VNet must exist first (AzureVirtualNetwork)
+- **Create the attached resources** -- the route table, NSG, and NAT gateway
+  are their own kinds (AzureRouteTable, AzureNetworkSecurityGroup,
+  AzureNatGateway); this component only attaches them
+- **Tag the subnet** -- subnets are not tracked ARM resources and carry no tags

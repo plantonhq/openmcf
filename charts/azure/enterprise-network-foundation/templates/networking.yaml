@@ -16,6 +16,19 @@ spec:
 {% if values.create_nat_gateway | bool %}
 ---
 apiVersion: azure.planton.dev/v1
+kind: AzurePublicIp
+metadata:
+  name: "{{ values.env }}-natgw-ip"
+spec:
+  region: "{{ values.region }}"
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "{{ values.env }}-rg"
+      fieldPath: status.outputs.resource_group_name
+  name: "{{ values.env }}-natgw-ip"
+---
+apiVersion: azure.planton.dev/v1
 kind: AzureNatGateway
 metadata:
   name: "{{ values.env }}-natgw"
@@ -26,11 +39,12 @@ spec:
       kind: AzureResourceGroup
       name: "{{ values.env }}-rg"
       fieldPath: status.outputs.resource_group_name
-  subnetId:
-    valueFrom:
-      kind: AzureSubnet
-      name: "{{ values.env }}-subnet"
-      fieldPath: status.outputs.subnet_id
+  name: "{{ values.env }}-natgw"
+  publicIpIds:
+    - valueFrom:
+        kind: AzurePublicIp
+        name: "{{ values.env }}-natgw-ip"
+        fieldPath: status.outputs.public_ip_id
 {% endif %}
 {% if values.create_app_gateway | bool %}
 ---

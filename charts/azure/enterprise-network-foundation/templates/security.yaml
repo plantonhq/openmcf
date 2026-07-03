@@ -14,27 +14,27 @@ spec:
   securityRules:
     - name: allow-https-inbound
       priority: 100
-      direction: "Inbound"
-      access: "Allow"
-      protocol: "Tcp"
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       sourceAddressPrefix: "*"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
       destinationPortRange: "443"
     - name: allow-http-inbound
       priority: 110
-      direction: "Inbound"
-      access: "Allow"
-      protocol: "Tcp"
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       sourceAddressPrefix: "*"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
       destinationPortRange: "80"
     - name: allow-all-outbound
       priority: 100
-      direction: "Outbound"
-      access: "Allow"
-      protocol: "*"
+      direction: OUTBOUND
+      access: ALLOW
+      protocol: ANY
       sourceAddressPrefix: "*"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
@@ -55,27 +55,27 @@ spec:
   securityRules:
     - name: allow-from-web-tier
       priority: 100
-      direction: "Inbound"
-      access: "Allow"
-      protocol: "Tcp"
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       sourceAddressPrefix: "{{ values.web_subnet_cidr }}"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
       destinationPortRange: "8080"
     - name: deny-internet-inbound
       priority: 4000
-      direction: "Inbound"
-      access: "Deny"
-      protocol: "*"
+      direction: INBOUND
+      access: DENY
+      protocol: ANY
       sourceAddressPrefix: "Internet"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
       destinationPortRange: "*"
     - name: allow-all-outbound
       priority: 100
-      direction: "Outbound"
-      access: "Allow"
-      protocol: "*"
+      direction: OUTBOUND
+      access: ALLOW
+      protocol: ANY
       sourceAddressPrefix: "*"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
@@ -96,45 +96,45 @@ spec:
   securityRules:
     - name: allow-from-app-tier
       priority: 100
-      direction: "Inbound"
-      access: "Allow"
-      protocol: "Tcp"
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       sourceAddressPrefix: "{{ values.app_subnet_cidr }}"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
       destinationPortRange: "1433"
     - name: allow-postgres-from-app-tier
       priority: 110
-      direction: "Inbound"
-      access: "Allow"
-      protocol: "Tcp"
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       sourceAddressPrefix: "{{ values.app_subnet_cidr }}"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
       destinationPortRange: "5432"
     - name: allow-redis-from-app-tier
       priority: 120
-      direction: "Inbound"
-      access: "Allow"
-      protocol: "Tcp"
+      direction: INBOUND
+      access: ALLOW
+      protocol: TCP
       sourceAddressPrefix: "{{ values.app_subnet_cidr }}"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
       destinationPortRange: "6380"
     - name: deny-internet-inbound
       priority: 4000
-      direction: "Inbound"
-      access: "Deny"
-      protocol: "*"
+      direction: INBOUND
+      access: DENY
+      protocol: ANY
       sourceAddressPrefix: "Internet"
       sourcePortRange: "*"
       destinationAddressPrefix: "*"
       destinationPortRange: "*"
     - name: deny-all-outbound-internet
       priority: 4000
-      direction: "Outbound"
-      access: "Deny"
-      protocol: "*"
+      direction: OUTBOUND
+      access: DENY
+      protocol: ANY
       sourceAddressPrefix: "*"
       sourcePortRange: "*"
       destinationAddressPrefix: "Internet"

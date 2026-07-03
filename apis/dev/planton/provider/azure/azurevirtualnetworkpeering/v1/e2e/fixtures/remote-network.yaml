@@ -1,0 +1,28 @@
+# The peering scenario's REMOTE network -- an extra instance of
+# AzureVirtualNetwork beyond the standard fixture network, declared by path
+# in the scenario's planton.dev/e2e-extra-prerequisites annotation (the
+# per-kind install profiles provide one instance; a peering needs two).
+# Its address space deliberately does not overlap the fixture network's
+# 10.240.0.0/16: Azure rejects peering networks with overlapping space.
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: planton-oss-e2e-azure-fixture-vnet-remote
+  id: planton-oss-e2e-azure-fixture-vnet-remote
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualnetworkpeering
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-vnet-remote
+  addressSpaces:
+    - "10.241.0.0/16"

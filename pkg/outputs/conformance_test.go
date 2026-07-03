@@ -878,6 +878,102 @@ func TestStackOutputsConformance(t *testing.T) {
 				"link_id", "link_name",
 			},
 		},
+		{
+			// AzureSubnet: the catalog's most-referenced join key (subnet_id)
+			// plus a repeated string (address_prefixes reflects the ACTUAL
+			// ranges, IPAM-provisioned when a pool delegates allocation) and
+			// the parent coordinates derived from the referenced network's
+			// ARM id.
+			name: "AzureSubnet",
+			kind: cloudresourcekind.CloudResourceKind_AzureSubnet,
+			rawOutputs: map[string]interface{}{
+				"subnet_id":            "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet/subnets/app",
+				"subnet_name":          "app",
+				"address_prefixes":     []interface{}{"10.0.1.0/24"},
+				"virtual_network_name": "prod-vnet",
+				"resource_group_name":  "network-rg",
+			},
+			mustPopulate: []string{
+				"subnet_id", "subnet_name", "address_prefixes",
+				"virtual_network_name", "resource_group_name",
+			},
+		},
+		{
+			// AzureNetworkSecurityGroup: both engines export the group's ARM
+			// id (the join key subnets attach through) and its name.
+			name: "AzureNetworkSecurityGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureNetworkSecurityGroup,
+			rawOutputs: map[string]interface{}{
+				"network_security_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/networkSecurityGroups/web-tier",
+				"network_security_group_name": "web-tier",
+			},
+			mustPopulate: []string{
+				"network_security_group_id", "network_security_group_name",
+			},
+		},
+		{
+			// AzurePublicIp: the address's ARM id (the join key gateways and
+			// load balancers attach), the allocated address itself, and the
+			// Azure-managed FQDN when a DNS label is set.
+			name: "AzurePublicIp",
+			kind: cloudresourcekind.CloudResourceKind_AzurePublicIp,
+			rawOutputs: map[string]interface{}{
+				"public_ip_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/publicIPAddresses/prod-frontend",
+				"ip_address":     "20.42.1.1",
+				"fqdn":           "prod-gateway.eastus.cloudapp.azure.com",
+				"public_ip_name": "prod-frontend",
+			},
+			mustPopulate: []string{
+				"public_ip_id", "ip_address", "fqdn", "public_ip_name",
+			},
+		},
+		{
+			// AzurePublicIpPrefix: the prefix's ARM id (referenced by public
+			// IPs and NAT gateway associations) and the ACTUAL reserved CIDR
+			// -- known only after creation, the value partners allowlist.
+			name: "AzurePublicIpPrefix",
+			kind: cloudresourcekind.CloudResourceKind_AzurePublicIpPrefix,
+			rawOutputs: map[string]interface{}{
+				"public_ip_prefix_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/publicIPPrefixes/prod-egress",
+				"ip_prefix":             "20.42.0.16/28",
+				"public_ip_prefix_name": "prod-egress",
+			},
+			mustPopulate: []string{
+				"public_ip_prefix_id", "ip_prefix", "public_ip_prefix_name",
+			},
+		},
+		{
+			// AzureNatGateway: the gateway's ARM id (the join key subnets
+			// attach through), its name, and the ARM-assigned GUID.
+			name: "AzureNatGateway",
+			kind: cloudresourcekind.CloudResourceKind_AzureNatGateway,
+			rawOutputs: map[string]interface{}{
+				"nat_gateway_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/natGateways/prod-egress",
+				"nat_gateway_name": "prod-egress",
+				"resource_guid":    "55555555-5555-5555-5555-555555555555",
+			},
+			mustPopulate: []string{
+				"nat_gateway_id", "nat_gateway_name", "resource_guid",
+			},
+		},
+		{
+			// AzureVirtualNetworkPeering: one direction's ARM id (a child of
+			// the local network: {vnet-id}/virtualNetworkPeerings/{name}),
+			// its name, and the local coordinates derived from the referenced
+			// network's ARM id.
+			name: "AzureVirtualNetworkPeering",
+			kind: cloudresourcekind.CloudResourceKind_AzureVirtualNetworkPeering,
+			rawOutputs: map[string]interface{}{
+				"peering_id":           "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/hub-rg/providers/Microsoft.Network/virtualNetworks/hub-vnet/virtualNetworkPeerings/hub-to-spoke1",
+				"peering_name":         "hub-to-spoke1",
+				"virtual_network_name": "hub-vnet",
+				"resource_group_name":  "hub-rg",
+			},
+			mustPopulate: []string{
+				"peering_id", "peering_name", "virtual_network_name",
+				"resource_group_name",
+			},
+		},
 	}
 
 	for _, tc := range cases {

@@ -23,8 +23,8 @@ This preset creates an Azure Subnet delegated to PostgreSQL Flexible Server. Del
 
 ## Key Configuration Choices
 
-- **Address prefix** (`addressPrefix: 10.0.2.0/28`) -- /28 provides 11 usable IPs (Azure reserves 5). Sufficient for most single-server deployments; use /27 or /26 for HA with multiple replicas
-- **Delegation** (`delegation.serviceName: Microsoft.DBforPostgreSQL/flexibleServers`) -- Required for VNet injection. A delegated subnet cannot be shared with other resource types
+- **Address prefixes** (`addressPrefixes: ["10.0.2.0/28"]`) -- /28 provides 11 usable IPs (Azure reserves 5). Sufficient for most single-server deployments; use /27 or /26 for HA with multiple replicas
+- **Delegation** (`delegations[0].serviceName: Microsoft.DBforPostgreSQL/flexibleServers`) -- Required for VNet injection. A delegated subnet cannot be shared with other resource types
 - **No service endpoints** -- Not needed when the database is directly injected into the subnet
 
 ## Placeholders to Replace

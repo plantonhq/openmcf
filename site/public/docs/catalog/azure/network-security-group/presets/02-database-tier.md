@@ -25,7 +25,7 @@ This preset creates a Network Security Group for database subnets, allowing only
 
 - **PostgreSQL from VNet** (`priority: 100, destinationPortRange: "5432"`) -- Allows PostgreSQL connections from any VNet resource (application servers, AKS pods)
 - **MySQL from VNet** (`priority: 110, destinationPortRange: "3306"`) -- Allows MySQL connections from any VNet resource. Remove this rule if only PostgreSQL is used
-- **Deny internet** (`priority: 4000, access: Deny`) -- Explicit deny-all for internet traffic. While Azure's implicit rules already deny most inbound, this explicit rule ensures the intent is documented and visible in the NSG
+- **Deny internet** (`priority: 4000, access: DENY`) -- Explicit deny-all for internet traffic. While Azure's implicit rules already deny most inbound, this explicit rule ensures the intent is documented and visible in the NSG
 - **Source: VirtualNetwork** -- Azure service tag matching all VNet address spaces, including peered VNets
 
 ## Placeholders to Replace

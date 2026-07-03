@@ -1,0 +1,35 @@
+# Minimal AzureVirtualNetworkPeering scenario: one direction of a peering
+# from the fixture network to a scenario-declared second network.
+#
+# The local reference resolves against the registry prerequisite's captured
+# outputs (the fixture network); the remote network is a PATH-form extra
+# fixture (see the annotation) because the standard install profiles
+# provide one instance of a kind and a peering needs two -- and the two
+# same-kind instances exercise the harness's select-by-name reference
+# resolution. allow_forwarded_traffic exercises a non-default flag; one
+# direction suffices for the create/verify/destroy proof (traffic flow
+# needs the reciprocal direction, which charts stamp as a second resource).
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetworkPeering
+metadata:
+  name: planton-oss-e2e-azurevirtualnetworkpeering-smoke
+  id: planton-oss-e2e-azurevirtualnetworkpeering-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualnetworkpeering
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1/e2e/fixtures/remote-network.yaml"
+  tags:
+    - planton-e2e
+spec:
+  name: planton-oss-e2e-peering-smoke
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  remoteVirtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet-remote
+  allowForwardedTraffic: true

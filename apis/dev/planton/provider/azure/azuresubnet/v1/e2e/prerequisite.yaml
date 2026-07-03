@@ -1,0 +1,31 @@
+# AzureSubnet install profile used as a prerequisite by composed components
+# (declared via prerequisites: [AzureSubnet] in the kind registry). The E2E
+# harness deploys this document (via the subnet's Pulumi module) after its
+# own prerequisite chain (fixture resource group -> fixture virtual
+# network), and captures its outputs -- subnet_id in particular -- for
+# dependents' references to resolve against. The subnet is a bare fixture:
+# no route table, NSG, or NAT gateway attachments -- anything a consumer
+# needs attached, its own scenario declares. Its prefix is carved from the
+# top of the fixture network's 10.240.0.0/16 space to stay clear of
+# scenario subnets.
+apiVersion: azure.planton.dev/v1
+kind: AzureSubnet
+metadata:
+  name: planton-oss-e2e-azure-fixture-subnet
+  id: planton-oss-e2e-azure-fixture-subnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuresubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  name: planton-oss-e2e-azure-fixture-subnet
+  addressPrefixes:
+    - "10.240.250.0/24"

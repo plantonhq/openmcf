@@ -208,15 +208,25 @@ const (
 	CloudResourceKind_AzureKeyVault          CloudResourceKind = 405
 	// AzureResourceGroup is a prerequisite because a virtual network is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzureVirtualNetwork       CloudResourceKind = 406
-	CloudResourceKind_AzureNatGateway           CloudResourceKind = 407
-	CloudResourceKind_AzureVirtualMachine       CloudResourceKind = 408
-	CloudResourceKind_AzureStorageAccount       CloudResourceKind = 409
-	CloudResourceKind_AzureDnsRecord            CloudResourceKind = 410
-	CloudResourceKind_AzureSubnet               CloudResourceKind = 411
+	CloudResourceKind_AzureVirtualNetwork CloudResourceKind = 406
+	// AzureResourceGroup is a prerequisite because a NAT gateway is created
+	// inside a referenced resource group in composed environments.
+	CloudResourceKind_AzureNatGateway     CloudResourceKind = 407
+	CloudResourceKind_AzureVirtualMachine CloudResourceKind = 408
+	CloudResourceKind_AzureStorageAccount CloudResourceKind = 409
+	CloudResourceKind_AzureDnsRecord      CloudResourceKind = 410
+	// AzureVirtualNetwork is a prerequisite because a subnet is an ARM child
+	// of a referenced network -- the network must exist before the subnet can
+	// be written. (The resource group arrives transitively through the
+	// network's own prerequisite declaration.)
+	CloudResourceKind_AzureSubnet CloudResourceKind = 411
+	// AzureResourceGroup is a prerequisite because a network security group is
+	// created inside a referenced resource group in composed environments.
 	CloudResourceKind_AzureNetworkSecurityGroup CloudResourceKind = 412
-	CloudResourceKind_AzurePublicIp             CloudResourceKind = 413
-	CloudResourceKind_AzurePrivateEndpoint      CloudResourceKind = 414
+	// AzureResourceGroup is a prerequisite because a public IP is created
+	// inside a referenced resource group in composed environments.
+	CloudResourceKind_AzurePublicIp        CloudResourceKind = 413
+	CloudResourceKind_AzurePrivateEndpoint CloudResourceKind = 414
 	// AzureResourceGroup is a prerequisite because a private DNS zone is created
 	// inside a referenced resource group in composed environments.
 	CloudResourceKind_AzurePrivateDnsZone     CloudResourceKind = 415
@@ -231,18 +241,27 @@ const (
 	// written. (The resource group arrives transitively through the zone's and
 	// network's own prerequisite declarations.)
 	CloudResourceKind_AzurePrivateDnsZoneVirtualNetworkLink CloudResourceKind = 419
-	CloudResourceKind_AzurePostgresqlFlexibleServer         CloudResourceKind = 430
-	CloudResourceKind_AzureRedisCache                       CloudResourceKind = 431
-	CloudResourceKind_AzureCosmosdbAccount                  CloudResourceKind = 432
-	CloudResourceKind_AzureMssqlServer                      CloudResourceKind = 433
-	CloudResourceKind_AzureMysqlFlexibleServer              CloudResourceKind = 434
-	CloudResourceKind_AzureContainerAppEnvironment          CloudResourceKind = 440
-	CloudResourceKind_AzureContainerApp                     CloudResourceKind = 441
-	CloudResourceKind_AzureServicePlan                      CloudResourceKind = 442
-	CloudResourceKind_AzureFunctionApp                      CloudResourceKind = 443
-	CloudResourceKind_AzureLinuxWebApp                      CloudResourceKind = 444
-	CloudResourceKind_AzureLogAnalyticsWorkspace            CloudResourceKind = 450
-	CloudResourceKind_AzureApplicationInsights              CloudResourceKind = 451
+	// AzureVirtualNetwork is a prerequisite because a peering is an ARM child
+	// of its local network and binds it to a remote network -- the local
+	// network must exist before the peering can be written. (The resource
+	// group arrives transitively through the network's own prerequisite
+	// declaration.)
+	CloudResourceKind_AzureVirtualNetworkPeering CloudResourceKind = 420
+	// AzureResourceGroup is a prerequisite because a public IP prefix is
+	// created inside a referenced resource group in composed environments.
+	CloudResourceKind_AzurePublicIpPrefix           CloudResourceKind = 421
+	CloudResourceKind_AzurePostgresqlFlexibleServer CloudResourceKind = 430
+	CloudResourceKind_AzureRedisCache               CloudResourceKind = 431
+	CloudResourceKind_AzureCosmosdbAccount          CloudResourceKind = 432
+	CloudResourceKind_AzureMssqlServer              CloudResourceKind = 433
+	CloudResourceKind_AzureMysqlFlexibleServer      CloudResourceKind = 434
+	CloudResourceKind_AzureContainerAppEnvironment  CloudResourceKind = 440
+	CloudResourceKind_AzureContainerApp             CloudResourceKind = 441
+	CloudResourceKind_AzureServicePlan              CloudResourceKind = 442
+	CloudResourceKind_AzureFunctionApp              CloudResourceKind = 443
+	CloudResourceKind_AzureLinuxWebApp              CloudResourceKind = 444
+	CloudResourceKind_AzureLogAnalyticsWorkspace    CloudResourceKind = 450
+	CloudResourceKind_AzureApplicationInsights      CloudResourceKind = 451
 	// AzureResourceGroup is a prerequisite because the identity is created
 	// inside a referenced resource group that must already exist.
 	CloudResourceKind_AzureUserAssignedIdentity CloudResourceKind = 460
@@ -684,6 +703,8 @@ var (
 		417:  "AzureLoadBalancer",
 		418:  "AzureRouteTable",
 		419:  "AzurePrivateDnsZoneVirtualNetworkLink",
+		420:  "AzureVirtualNetworkPeering",
+		421:  "AzurePublicIpPrefix",
 		430:  "AzurePostgresqlFlexibleServer",
 		431:  "AzureRedisCache",
 		432:  "AzureCosmosdbAccount",
@@ -1107,6 +1128,8 @@ var (
 		"AzureLoadBalancer":                       417,
 		"AzureRouteTable":                         418,
 		"AzurePrivateDnsZoneVirtualNetworkLink":   419,
+		"AzureVirtualNetworkPeering":              420,
+		"AzurePublicIpPrefix":                     421,
 		"AzurePostgresqlFlexibleServer":           430,
 		"AzureRedisCache":                         431,
 		"AzureCosmosdbAccount":                    432,
@@ -1678,7 +1701,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf5\x95\x01\n" +
+	"\x02v1\x10\x01*\xee\x96\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1776,16 +1799,16 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\fAzureDnsZone\x10\x94\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azdns\x12\"\n" +
 	"\rAzureKeyVault\x10\x95\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azkv\x120\n" +
-	"\x13AzureVirtualNetwork\x10\x96\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\x06azvnet0\x01:\x02\x90\x03\x12%\n" +
-	"\x0fAzureNatGateway\x10\x97\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aznat\x12(\n" +
+	"\x13AzureVirtualNetwork\x10\x96\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\x06azvnet0\x01:\x02\x90\x03\x12)\n" +
+	"\x0fAzureNatGateway\x10\x97\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznat:\x02\x90\x03\x12(\n" +
 	"\x13AzureVirtualMachine\x10\x98\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azvm\x12(\n" +
 	"\x13AzureStorageAccount\x10\x99\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azsa\x12%\n" +
-	"\x0eAzureDnsRecord\x10\x9a\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azdrec\x12!\n" +
-	"\vAzureSubnet\x10\x9b\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azsub\x12/\n" +
-	"\x19AzureNetworkSecurityGroup\x10\x9c\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aznsg\x12#\n" +
-	"\rAzurePublicIp\x10\x9d\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azpip\x12)\n" +
+	"\x0eAzureDnsRecord\x10\x9a\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azdrec\x12%\n" +
+	"\vAzureSubnet\x10\x9b\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azsub:\x02\x96\x03\x123\n" +
+	"\x19AzureNetworkSecurityGroup\x10\x9c\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznsg:\x02\x90\x03\x12'\n" +
+	"\rAzurePublicIp\x10\x9d\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azpip:\x02\x90\x03\x12)\n" +
 	"\x14AzurePrivateEndpoint\x10\x9e\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azpe\x12.\n" +
 	"\x13AzurePrivateDnsZone\x10\x9f\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azpdns:\x02\x90\x03\x12-\n" +
@@ -1794,7 +1817,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\b\r\x10\x01\"\x04azlb\x12(\n" +
 	"\x0fAzureRouteTable\x10\xa2\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azrt:\x02\x90\x03\x12F\n" +
 	"%AzurePrivateDnsZoneVirtualNetworkLink\x10\xa3\x03\x1a\x1a\xa2\xf7\x04\x16\b\r\x10\x01\"\n" +
-	"azpdnslink:\x04\x9f\x03\x96\x03\x122\n" +
+	"azpdnslink:\x04\x9f\x03\x96\x03\x125\n" +
+	"\x1aAzureVirtualNetworkPeering\x10\xa4\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azpeer:\x02\x96\x03\x120\n" +
+	"\x13AzurePublicIpPrefix\x10\xa5\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazpippfx:\x02\x90\x03\x122\n" +
 	"\x1dAzurePostgresqlFlexibleServer\x10\xae\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azpg\x12%\n" +
 	"\x0fAzureRedisCache\x10\xaf\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azred\x12*\n" +

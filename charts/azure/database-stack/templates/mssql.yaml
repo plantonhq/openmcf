@@ -5,18 +5,14 @@ kind: AzureSubnet
 metadata:
   name: "{{ values.env }}-pe-subnet"
 spec:
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
-  vnetId:
+  virtualNetworkId:
     valueFrom:
       kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
       fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-pe-subnet"
-  addressPrefix: "{{ values.mssql_pe_subnet_cidr }}"
+  addressPrefixes:
+    - "{{ values.mssql_pe_subnet_cidr }}"
   privateEndpointNetworkPolicies: "Disabled"
 ---
 apiVersion: azure.planton.dev/v1
@@ -75,11 +71,6 @@ metadata:
   name: "{{ values.env }}-mssql-pe"
 spec:
   region: "{{ values.region }}"
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
   subnetId:
     valueFrom:
       kind: AzureSubnet

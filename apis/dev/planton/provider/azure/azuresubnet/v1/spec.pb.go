@@ -24,99 +24,259 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureSubnetSpec** defines the configuration for creating an Azure Subnet within
-// an existing Virtual Network (VNet).
+// Network-policy evaluation modes for private endpoints in a subnet.
+// Values mirror ARM's PrivateEndpointNetworkPolicies; ARM's default
+// (Disabled) is the unspecified value, so only the opt-in filtering modes
+// are explicit choices.
+type AzureSubnetPrivateEndpointNetworkPolicies int32
+
+const (
+	// Not specified: ARM's default -- NSG rules and route tables are not
+	// evaluated for private endpoint traffic in this subnet.
+	AzureSubnetPrivateEndpointNetworkPolicies_azure_subnet_private_endpoint_network_policies_unspecified AzureSubnetPrivateEndpointNetworkPolicies = 0
+	// Both NSG rules and route tables apply to private endpoint traffic.
+	AzureSubnetPrivateEndpointNetworkPolicies_ENABLED AzureSubnetPrivateEndpointNetworkPolicies = 1
+	// Only NSG rules apply to private endpoint traffic.
+	AzureSubnetPrivateEndpointNetworkPolicies_NETWORK_SECURITY_GROUP_ENABLED AzureSubnetPrivateEndpointNetworkPolicies = 2
+	// Only route tables apply to private endpoint traffic.
+	AzureSubnetPrivateEndpointNetworkPolicies_ROUTE_TABLE_ENABLED AzureSubnetPrivateEndpointNetworkPolicies = 3
+)
+
+// Enum value maps for AzureSubnetPrivateEndpointNetworkPolicies.
+var (
+	AzureSubnetPrivateEndpointNetworkPolicies_name = map[int32]string{
+		0: "azure_subnet_private_endpoint_network_policies_unspecified",
+		1: "ENABLED",
+		2: "NETWORK_SECURITY_GROUP_ENABLED",
+		3: "ROUTE_TABLE_ENABLED",
+	}
+	AzureSubnetPrivateEndpointNetworkPolicies_value = map[string]int32{
+		"azure_subnet_private_endpoint_network_policies_unspecified": 0,
+		"ENABLED":                        1,
+		"NETWORK_SECURITY_GROUP_ENABLED": 2,
+		"ROUTE_TABLE_ENABLED":            3,
+	}
+)
+
+func (x AzureSubnetPrivateEndpointNetworkPolicies) Enum() *AzureSubnetPrivateEndpointNetworkPolicies {
+	p := new(AzureSubnetPrivateEndpointNetworkPolicies)
+	*p = x
+	return p
+}
+
+func (x AzureSubnetPrivateEndpointNetworkPolicies) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureSubnetPrivateEndpointNetworkPolicies) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureSubnetPrivateEndpointNetworkPolicies) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureSubnetPrivateEndpointNetworkPolicies) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureSubnetPrivateEndpointNetworkPolicies.Descriptor instead.
+func (AzureSubnetPrivateEndpointNetworkPolicies) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// Cross-tenant sharing scope for a subnet through Azure Virtual Network
+// Manager. Unspecified means the subnet is not shared (ARM's default).
+type AzureSubnetSharingScope int32
+
+const (
+	// Not specified: the subnet is not shared beyond its own tenant.
+	AzureSubnetSharingScope_azure_subnet_sharing_scope_unspecified AzureSubnetSharingScope = 0
+	// The subnet is shareable across the tenant through Azure Virtual
+	// Network Manager. The only sharing mode ARM currently accepts.
+	AzureSubnetSharingScope_TENANT AzureSubnetSharingScope = 1
+)
+
+// Enum value maps for AzureSubnetSharingScope.
+var (
+	AzureSubnetSharingScope_name = map[int32]string{
+		0: "azure_subnet_sharing_scope_unspecified",
+		1: "TENANT",
+	}
+	AzureSubnetSharingScope_value = map[string]int32{
+		"azure_subnet_sharing_scope_unspecified": 0,
+		"TENANT":                                 1,
+	}
+)
+
+func (x AzureSubnetSharingScope) Enum() *AzureSubnetSharingScope {
+	p := new(AzureSubnetSharingScope)
+	*p = x
+	return p
+}
+
+func (x AzureSubnetSharingScope) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureSubnetSharingScope) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureSubnetSharingScope) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureSubnetSharingScope) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureSubnetSharingScope.Descriptor instead.
+func (AzureSubnetSharingScope) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// **AzureSubnetSpec** defines the configuration for creating an Azure Subnet:
+// the workload segment that partitions a virtual network's address space.
 //
-// Subnets partition a VNet's address space into segments for different workloads,
-// network tiers, or service delegations, with full control over service endpoints,
-// delegations, and private endpoint policies.
+// The subnet is the composition hub of Azure networking. It is where the
+// network's building blocks actually meet a workload:
+//   - a route table attaches here to steer the subnet's egress (route_table_id),
+//   - a network security group attaches here to filter its traffic
+//     (network_security_group_id),
+//   - a NAT gateway attaches here to own its outbound connectivity
+//     (nat_gateway_id),
 //
-// This is the most widely referenced Azure resource in Planton. Downstream consumers
-// include AzureAksCluster, AzureContainerAppEnvironment, AzurePostgresqlFlexibleServer,
-// AzureMysqlFlexibleServer, AzureRedisCache, AzurePrivateEndpoint, AzureApplicationGateway,
-// AzureLoadBalancer, AzureVirtualMachine, AzureFunctionApp, and AzureLinuxWebApp.
+// and downstream resources -- AKS clusters, databases, private endpoints,
+// load balancers, VMs -- all deploy INTO a subnet by referencing its ID.
+// Attachments are declared subnet-side because that is Azure's own model:
+// one route table, NSG, or NAT gateway serves many subnets, while a subnet
+// carries at most one of each.
 //
-// **Note:** Subnets do not have their own region -- they inherit the region from
-// their parent VNet. This is why this spec omits the `region` field that other
-// Azure resources include.
+// **Note:** Subnets do not have their own region -- they inherit the region
+// from their parent virtual network, which is why this spec has no `region`
+// field. They are also not tracked ARM resources, so they carry no tags.
 type AzureSubnetSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Group where the parent VNet exists.
-	// Must be the same resource group as the VNet.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
-	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The Azure Resource Manager ID of the parent Virtual Network.
-	// The subnet will be created inside this VNet and must use an address prefix
-	// that falls within the VNet's address space.
+	// The parent virtual network, by ARM ID. The subnet is an ARM child of
+	// the network: the network's ID carries both the resource group and the
+	// network name, and the modules derive both from it rather than modeling
+	// redundant fields that could contradict the referenced network.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}
-	VnetId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=vnet_id,json=vnetId,proto3" json:"vnet_id,omitempty"`
-	// The name of the subnet.
-	// Must be unique within the VNet.
-	// Allowed characters: alphanumeric, underscores, hyphens, and periods.
-	// Must start with alphanumeric. Length: 1 to 80 characters.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The IPv4 CIDR block for the subnet (e.g., "10.0.1.0/24").
-	// Must be a subset of the parent VNet's address space and must not overlap
-	// with other subnets in the same VNet.
-	// Typical sizing: /24 for general workloads (254 usable IPs), /27 for Application
-	// Gateway (min 32 IPs), /28 for small delegated subnets (14 usable IPs).
-	// Note: Azure reserves 5 IPs per subnet (first 4 + last) for internal use.
-	AddressPrefix string `protobuf:"bytes,4,opt,name=address_prefix,json=addressPrefix,proto3" json:"address_prefix,omitempty"`
-	// Azure service endpoints to enable on this subnet.
-	// Service endpoints create an optimized route over the Azure backbone network
-	// to the specified Azure services, bypassing the public internet.
+	// Changing the parent replaces the subnet.
+	VirtualNetworkId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=virtual_network_id,json=virtualNetworkId,proto3" json:"virtual_network_id,omitempty"`
+	// The name of the subnet. Must be unique within the virtual network;
+	// 1-80 characters (alphanumerics, underscores, periods, and hyphens;
+	// must start with a letter or number and end with a letter, number, or
+	// underscore). Changing the name replaces the subnet -- and forces
+	// everything deployed into it to move -- so name it after the workload
+	// tier it carries ("app", "data", "gateway"), not after transient details.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// The CIDR blocks assigned to the subnet, e.g. ["10.0.1.0/24"]. Every
+	// block must fall inside the parent network's address space and must not
+	// overlap other subnets. Multiple blocks are first-class: a dual-stack
+	// subnet carries an IPv4 and an IPv6 block side by side.
 	//
-	// Common values:
-	// - "Microsoft.Storage" -- secure access to Azure Storage Accounts
-	// - "Microsoft.Sql" -- secure access to Azure SQL Database and PostgreSQL/MySQL Flexible Server
-	// - "Microsoft.KeyVault" -- secure access to Azure Key Vault
-	// - "Microsoft.AzureCosmosDB" -- secure access to Cosmos DB
-	// - "Microsoft.ServiceBus" -- secure access to Service Bus
-	// - "Microsoft.EventHub" -- secure access to Event Hubs
-	// - "Microsoft.Web" -- secure access to App Services
-	// - "Microsoft.ContainerRegistry" -- secure access to Container Registry
+	// Sizing guidance: Azure reserves 5 IPs per subnet (the first four and
+	// the last). /24 (251 usable) suits general workloads; Application
+	// Gateway needs at least /27; delegated database subnets are commonly
+	// /28. Blocks can be changed in place while the subnet is empty, but a
+	// block in use by deployed resources cannot shrink.
+	//
+	// Exactly one of address_prefixes or ip_address_pool must be set: either
+	// you plan addresses yourself (this field) or you delegate allocation to
+	// an Azure Network Manager IPAM pool (ip_address_pool).
+	AddressPrefixes []string `protobuf:"bytes,3,rep,name=address_prefixes,json=addressPrefixes,proto3" json:"address_prefixes,omitempty"`
+	// Delegated address allocation from an Azure Network Manager IP Address
+	// Management (IPAM) pool -- the alternative to hand-planned
+	// address_prefixes for organizations that manage address space centrally.
+	// The actual CIDR is provisioned by the pool at deploy time and surfaced
+	// in the subnet's address_prefixes output.
+	//
+	// Exactly one of address_prefixes or ip_address_pool must be set.
+	IpAddressPool *AzureSubnetIpAddressPool `protobuf:"bytes,4,opt,name=ip_address_pool,json=ipAddressPool,proto3" json:"ip_address_pool,omitempty"`
+	// Azure service endpoints to enable on this subnet. Service endpoints
+	// route traffic to the listed Azure services over the Azure backbone
+	// instead of the public internet, and let those services' firewalls
+	// admit traffic by subnet identity.
+	//
+	// Common values: "Microsoft.Storage", "Microsoft.Sql",
+	// "Microsoft.KeyVault", "Microsoft.AzureCosmosDB", "Microsoft.ServiceBus",
+	// "Microsoft.EventHub", "Microsoft.Web", "Microsoft.ContainerRegistry",
+	// "Microsoft.AzureActiveDirectory". ("Microsoft.Storage.Global" extends
+	// storage endpoints across regions but is subscription-feature-gated.)
 	ServiceEndpoints []string `protobuf:"bytes,5,rep,name=service_endpoints,json=serviceEndpoints,proto3" json:"service_endpoints,omitempty"`
-	// Optional service delegation for this subnet.
-	// Delegation grants an Azure service permission to create service-specific
-	// network rules and inject resources into the subnet. A subnet can have at
-	// most one delegation.
+	// ARM IDs of Service Endpoint Policies to associate with the subnet.
+	// Endpoint policies narrow a service endpoint's reach to specific
+	// resources (e.g. only your storage accounts, not all of Azure Storage).
+	// Plain ARM IDs: service endpoint policies are not modeled as a Planton
+	// kind, being a niche zero-trust refinement of service endpoints.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/serviceEndpointPolicies/{name}
+	ServiceEndpointPolicyIds []string `protobuf:"bytes,6,rep,name=service_endpoint_policy_ids,json=serviceEndpointPolicyIds,proto3" json:"service_endpoint_policy_ids,omitempty"`
+	// Service delegations for this subnet. A delegation hands the subnet to
+	// an Azure PaaS service, permitting it to inject service-managed
+	// resources and network rules. Delegated subnets are dedicated: the
+	// delegated service becomes the only thing that can deploy into them.
 	//
 	// Common delegations:
 	// - PostgreSQL Flexible Server: "Microsoft.DBforPostgreSQL/flexibleServers"
 	// - MySQL Flexible Server: "Microsoft.DBforMySQL/flexibleServers"
 	// - Container App Environment: "Microsoft.App/environments"
-	// - App Service / Function App (VNet integration): "Microsoft.Web/serverFarms"
+	// - App Service VNet integration: "Microsoft.Web/serverFarms"
 	//
-	// Note: Delegated subnets are typically dedicated to a single service and cannot
-	// be shared with other resource types.
-	Delegation *AzureSubnetDelegation `protobuf:"bytes,6,opt,name=delegation,proto3" json:"delegation,omitempty"`
-	// Controls whether network policies (NSG rules, route tables) are applied to
-	// private endpoints in this subnet.
-	//
-	// Valid values:
-	// - "Disabled" -- network policies are NOT applied to private endpoints (Azure default)
-	// - "Enabled" -- both NSG and route table policies apply to private endpoints
-	// - "NetworkSecurityGroupEnabled" -- only NSG policies apply
-	// - "RouteTableEnabled" -- only route table policies apply
-	//
-	// Most private endpoint subnets use "Disabled" (the Azure default) to allow
-	// private endpoints to receive traffic without NSG interference. Set to "Enabled"
-	// or one of the granular options only in zero-trust architectures that require
-	// explicit security rules on private endpoint traffic.
-	//
-	// Default: Disabled
-	PrivateEndpointNetworkPolicies *string `protobuf:"bytes,7,opt,name=private_endpoint_network_policies,json=privateEndpointNetworkPolicies,proto3,oneof" json:"private_endpoint_network_policies,omitempty"`
-	// Controls whether network policies are applied to Private Link Service
-	// resources in this subnet.
-	//
-	// When true (default), standard network policies (NSGs, UDRs) apply to Private
-	// Link Services. Set to false only when creating a Private Link Service that
-	// needs to bypass network policies.
-	//
-	// Default: true
-	PrivateLinkServiceNetworkPoliciesEnabled *bool `protobuf:"varint,8,opt,name=private_link_service_network_policies_enabled,json=privateLinkServiceNetworkPoliciesEnabled,proto3,oneof" json:"private_link_service_network_policies_enabled,omitempty"`
-	unknownFields                            protoimpl.UnknownFields
-	sizeCache                                protoimpl.SizeCache
+	// Nearly every real subnet has zero or one delegation; the list form
+	// mirrors ARM's shape, which admits multiple.
+	Delegations []*AzureSubnetDelegation `protobuf:"bytes,7,rep,name=delegations,proto3" json:"delegations,omitempty"`
+	// Network-policy evaluation for PRIVATE ENDPOINTS in this subnet.
+	// Unspecified applies Azure's default (disabled): NSG rules and route
+	// tables are NOT evaluated for private endpoint traffic, which is what
+	// almost every private-endpoint subnet wants. Enable one of the explicit
+	// modes only in zero-trust architectures that must filter or route
+	// private endpoint traffic; the granular values apply just the NSG side
+	// or just the route-table side.
+	PrivateEndpointNetworkPolicies AzureSubnetPrivateEndpointNetworkPolicies `protobuf:"varint,8,opt,name=private_endpoint_network_policies,json=privateEndpointNetworkPolicies,proto3,enum=dev.planton.provider.azure.azuresubnet.v1.AzureSubnetPrivateEndpointNetworkPolicies" json:"private_endpoint_network_policies,omitempty"`
+	// Whether standard network policies (NSGs, user-defined routes) apply to
+	// PRIVATE LINK SERVICE resources in this subnet. Azure's default is
+	// true; set false only on subnets hosting a Private Link Service, which
+	// requires policies off. Updatable in place.
+	PrivateLinkServiceNetworkPoliciesEnabled *bool `protobuf:"varint,9,opt,name=private_link_service_network_policies_enabled,json=privateLinkServiceNetworkPoliciesEnabled,proto3,oneof" json:"private_link_service_network_policies_enabled,omitempty"`
+	// Whether workloads in this subnet get Azure's implicit default outbound
+	// internet access. Azure's historical default is true, but Microsoft is
+	// retiring implicit outbound (announced for September 2025 onward for
+	// new subnets): production subnets should set this false and route
+	// egress explicitly through a NAT gateway (nat_gateway_id), a load
+	// balancer's outbound rules, or a firewall via route_table_id.
+	// Changing it requires the subnet to be empty of VMs.
+	DefaultOutboundAccessEnabled *bool `protobuf:"varint,10,opt,name=default_outbound_access_enabled,json=defaultOutboundAccessEnabled,proto3,oneof" json:"default_outbound_access_enabled,omitempty"`
+	// Opt the subnet into cross-tenant sharing through Azure Virtual Network
+	// Manager. TENANT is the only value ARM currently accepts, and it
+	// requires default_outbound_access_enabled to be explicitly false
+	// (enforced here, mirroring ARM's own constraint). Leave unspecified for
+	// the overwhelmingly common unshared subnet.
+	SharingScope AzureSubnetSharingScope `protobuf:"varint,11,opt,name=sharing_scope,json=sharingScope,proto3,enum=dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSharingScope" json:"sharing_scope,omitempty"`
+	// The route table that steers this subnet's traffic, by ARM ID.
+	// Attaching a table replaces Azure's default system routing with the
+	// table's user-defined routes for everything in the subnet -- the
+	// firewall-egress and forced-tunneling seam. Omit for Azure's default
+	// routing. The attachment is declared here (not on the table) because
+	// one table serves many subnets; detaching is just removing this field.
+	RouteTableId *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=route_table_id,json=routeTableId,proto3" json:"route_table_id,omitempty"`
+	// The network security group that filters this subnet's traffic, by ARM
+	// ID. The NSG's rules apply to everything deployed in the subnet --
+	// Azure's primary network access control. Omit to leave the subnet
+	// governed only by Azure's implicit default rules (allow VNet-internal
+	// and load-balancer traffic, deny other inbound). One NSG typically
+	// guards many subnets of the same tier.
+	NetworkSecurityGroupId *v1.StringValueOrRef `protobuf:"bytes,13,opt,name=network_security_group_id,json=networkSecurityGroupId,proto3" json:"network_security_group_id,omitempty"`
+	// The NAT gateway that owns this subnet's outbound connectivity, by ARM
+	// ID. Attaching a NAT gateway gives every workload in the subnet stable,
+	// SNAT-exhaustion-resistant egress through the gateway's public IPs --
+	// the production answer to Azure retiring implicit outbound access
+	// (default_outbound_access_enabled). One gateway serves many subnets in
+	// the same region.
+	NatGatewayId  *v1.StringValueOrRef `protobuf:"bytes,14,opt,name=nat_gateway_id,json=natGatewayId,proto3" json:"nat_gateway_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AzureSubnetSpec) Reset() {
@@ -149,16 +309,9 @@ func (*AzureSubnetSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureSubnetSpec) GetResourceGroup() *v1.StringValueOrRef {
+func (x *AzureSubnetSpec) GetVirtualNetworkId() *v1.StringValueOrRef {
 	if x != nil {
-		return x.ResourceGroup
-	}
-	return nil
-}
-
-func (x *AzureSubnetSpec) GetVnetId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.VnetId
+		return x.VirtualNetworkId
 	}
 	return nil
 }
@@ -170,11 +323,18 @@ func (x *AzureSubnetSpec) GetName() string {
 	return ""
 }
 
-func (x *AzureSubnetSpec) GetAddressPrefix() string {
+func (x *AzureSubnetSpec) GetAddressPrefixes() []string {
 	if x != nil {
-		return x.AddressPrefix
+		return x.AddressPrefixes
 	}
-	return ""
+	return nil
+}
+
+func (x *AzureSubnetSpec) GetIpAddressPool() *AzureSubnetIpAddressPool {
+	if x != nil {
+		return x.IpAddressPool
+	}
+	return nil
 }
 
 func (x *AzureSubnetSpec) GetServiceEndpoints() []string {
@@ -184,18 +344,25 @@ func (x *AzureSubnetSpec) GetServiceEndpoints() []string {
 	return nil
 }
 
-func (x *AzureSubnetSpec) GetDelegation() *AzureSubnetDelegation {
+func (x *AzureSubnetSpec) GetServiceEndpointPolicyIds() []string {
 	if x != nil {
-		return x.Delegation
+		return x.ServiceEndpointPolicyIds
 	}
 	return nil
 }
 
-func (x *AzureSubnetSpec) GetPrivateEndpointNetworkPolicies() string {
-	if x != nil && x.PrivateEndpointNetworkPolicies != nil {
-		return *x.PrivateEndpointNetworkPolicies
+func (x *AzureSubnetSpec) GetDelegations() []*AzureSubnetDelegation {
+	if x != nil {
+		return x.Delegations
 	}
-	return ""
+	return nil
+}
+
+func (x *AzureSubnetSpec) GetPrivateEndpointNetworkPolicies() AzureSubnetPrivateEndpointNetworkPolicies {
+	if x != nil {
+		return x.PrivateEndpointNetworkPolicies
+	}
+	return AzureSubnetPrivateEndpointNetworkPolicies_azure_subnet_private_endpoint_network_policies_unspecified
 }
 
 func (x *AzureSubnetSpec) GetPrivateLinkServiceNetworkPoliciesEnabled() bool {
@@ -205,31 +372,118 @@ func (x *AzureSubnetSpec) GetPrivateLinkServiceNetworkPoliciesEnabled() bool {
 	return false
 }
 
-// AzureSubnetDelegation defines a service delegation for the subnet.
-// Delegation grants an Azure PaaS service permission to inject service-specific
-// resources and network rules into the subnet.
+func (x *AzureSubnetSpec) GetDefaultOutboundAccessEnabled() bool {
+	if x != nil && x.DefaultOutboundAccessEnabled != nil {
+		return *x.DefaultOutboundAccessEnabled
+	}
+	return false
+}
+
+func (x *AzureSubnetSpec) GetSharingScope() AzureSubnetSharingScope {
+	if x != nil {
+		return x.SharingScope
+	}
+	return AzureSubnetSharingScope_azure_subnet_sharing_scope_unspecified
+}
+
+func (x *AzureSubnetSpec) GetRouteTableId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.RouteTableId
+	}
+	return nil
+}
+
+func (x *AzureSubnetSpec) GetNetworkSecurityGroupId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.NetworkSecurityGroupId
+	}
+	return nil
+}
+
+func (x *AzureSubnetSpec) GetNatGatewayId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.NatGatewayId
+	}
+	return nil
+}
+
+// A delegated address allocation from an Azure Network Manager IPAM pool.
+type AzureSubnetIpAddressPool struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ARM resource ID of the Network Manager IPAM pool to allocate from.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/networkManagers/{nm}/ipamPools/{pool}
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// How many IP addresses to allocate from the pool, as a positive number
+	// in string form (IPv6 allocations can exceed integer range). The
+	// allocation can grow in place but never shrink.
+	NumberOfIpAddresses string `protobuf:"bytes,2,opt,name=number_of_ip_addresses,json=numberOfIpAddresses,proto3" json:"number_of_ip_addresses,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AzureSubnetIpAddressPool) Reset() {
+	*x = AzureSubnetIpAddressPool{}
+	mi := &file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureSubnetIpAddressPool) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureSubnetIpAddressPool) ProtoMessage() {}
+
+func (x *AzureSubnetIpAddressPool) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureSubnetIpAddressPool.ProtoReflect.Descriptor instead.
+func (*AzureSubnetIpAddressPool) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AzureSubnetIpAddressPool) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AzureSubnetIpAddressPool) GetNumberOfIpAddresses() string {
+	if x != nil {
+		return x.NumberOfIpAddresses
+	}
+	return ""
+}
+
+// AzureSubnetDelegation hands the subnet to an Azure PaaS service,
+// permitting it to inject service-managed resources and network rules.
 type AzureSubnetDelegation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// A user-chosen label for this delegation.
-	// This is a logical name used in the Terraform/Pulumi configuration, not an
-	// Azure resource name. Use a descriptive name like "postgresql" or "container-apps".
+	// A label for this delegation, unique within the subnet. This is a
+	// configuration-level name (visible in the portal and IaC state), not an
+	// Azure resource name -- "postgresql" or "container-apps" reads well.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The Azure service to delegate to.
-	// This must be an exact match for one of Azure's supported delegation service names.
-	//
-	// Common values:
-	// - "Microsoft.DBforPostgreSQL/flexibleServers"
-	// - "Microsoft.DBforMySQL/flexibleServers"
-	// - "Microsoft.App/environments"
-	// - "Microsoft.Web/serverFarms"
-	// - "Microsoft.ContainerInstance/containerGroups"
-	// - "Microsoft.Netapp/volumes"
+	// The Azure service to delegate to. Must exactly match one of Azure's
+	// supported delegation service names, e.g.
+	// "Microsoft.DBforPostgreSQL/flexibleServers", "Microsoft.App/environments",
+	// "Microsoft.Web/serverFarms", "Microsoft.ContainerInstance/containerGroups",
+	// "Microsoft.Netapp/volumes", "Microsoft.Sql/managedInstances".
 	ServiceName string `protobuf:"bytes,2,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	// Optional list of actions that the delegated service is permitted to perform.
-	// If omitted, Azure uses the default actions for the service.
-	//
-	// Common action: "Microsoft.Network/virtualNetworks/subnets/action"
-	// Most delegations only need this single action, and Azure infers it if omitted.
+	// The network actions the delegated service is permitted to perform,
+	// e.g. "Microsoft.Network/virtualNetworks/subnets/join/action". Omit to
+	// let Azure apply the service's default action set -- correct for
+	// virtually all delegations; the field exists for services that document
+	// an explicit action list.
 	Actions       []string `protobuf:"bytes,3,rep,name=actions,proto3" json:"actions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -237,7 +491,7 @@ type AzureSubnetDelegation struct {
 
 func (x *AzureSubnetDelegation) Reset() {
 	*x = AzureSubnetDelegation{}
-	mi := &file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -249,7 +503,7 @@ func (x *AzureSubnetDelegation) String() string {
 func (*AzureSubnetDelegation) ProtoMessage() {}
 
 func (x *AzureSubnetDelegation) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -262,7 +516,7 @@ func (x *AzureSubnetDelegation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AzureSubnetDelegation.ProtoReflect.Descriptor instead.
 func (*AzureSubnetDelegation) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AzureSubnetDelegation) GetName() string {
@@ -290,26 +544,46 @@ var File_dev_planton_provider_azure_azuresubnet_v1_spec_proto protoreflect.FileD
 
 const file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/azure/azuresubnet/v1/spec.proto\x12)dev.planton.provider.azure.azuresubnet.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb4\b\n" +
-	"\x0fAzureSubnetSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12}\n" +
-	"\avnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a!status.outputs.virtual_network_idR\x06vnetId\x12 \n" +
-	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x121\n" +
-	"\x0eaddress_prefix\x18\x04 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\raddressPrefix\x12+\n" +
-	"\x11service_endpoints\x18\x05 \x03(\tR\x10serviceEndpoints\x12`\n" +
-	"\n" +
-	"delegation\x18\x06 \x01(\v2@.dev.planton.provider.azure.azuresubnet.v1.AzureSubnetDelegationR\n" +
-	"delegation\x12\xe6\x02\n" +
-	"!private_endpoint_network_policies\x18\a \x01(\tB\x95\x02\xbaH\x85\x02\xba\x01\x81\x02\n" +
-	"'private_endpoint_network_policies_valid\x12sprivate_endpoint_network_policies must be one of: Disabled, Enabled, NetworkSecurityGroupEnabled, RouteTableEnabled\x1aathis == '' || this in ['Disabled', 'Enabled', 'NetworkSecurityGroupEnabled', 'RouteTableEnabled']\x8a\xa6\x1d\bDisabledH\x00R\x1eprivateEndpointNetworkPolicies\x88\x01\x01\x12n\n" +
-	"-private_link_service_network_policies_enabled\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R(privateLinkServiceNetworkPoliciesEnabled\x88\x01\x01B$\n" +
-	"\"_private_endpoint_network_policiesB0\n" +
-	"._private_link_service_network_policies_enabled\"x\n" +
+	"4dev/planton/provider/azure/azuresubnet/v1/spec.proto\x12)dev.planton.provider.azure.azuresubnet.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xaa\x12\n" +
+	"\x0fAzureSubnetSpec\x12\x92\x01\n" +
+	"\x12virtual_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\x9e\x02\n" +
+	"\x04name\x18\x02 \x01(\tB\x89\x02\xbaH\x85\x02\xba\x01\xf8\x01\n" +
+	"\x12subnet_name_format\x12\x96\x01Subnet names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12)\n" +
+	"\x10address_prefixes\x18\x03 \x03(\tR\x0faddressPrefixes\x12k\n" +
+	"\x0fip_address_pool\x18\x04 \x01(\v2C.dev.planton.provider.azure.azuresubnet.v1.AzureSubnetIpAddressPoolR\ripAddressPool\x12+\n" +
+	"\x11service_endpoints\x18\x05 \x03(\tR\x10serviceEndpoints\x12=\n" +
+	"\x1bservice_endpoint_policy_ids\x18\x06 \x03(\tR\x18serviceEndpointPolicyIds\x12b\n" +
+	"\vdelegations\x18\a \x03(\v2@.dev.planton.provider.azure.azuresubnet.v1.AzureSubnetDelegationR\vdelegations\x12\x9f\x01\n" +
+	"!private_endpoint_network_policies\x18\b \x01(\x0e2T.dev.planton.provider.azure.azuresubnet.v1.AzureSubnetPrivateEndpointNetworkPoliciesR\x1eprivateEndpointNetworkPolicies\x12n\n" +
+	"-private_link_service_network_policies_enabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R(privateLinkServiceNetworkPoliciesEnabled\x88\x01\x01\x12T\n" +
+	"\x1fdefault_outbound_access_enabled\x18\n" +
+	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x1cdefaultOutboundAccessEnabled\x88\x01\x01\x12g\n" +
+	"\rsharing_scope\x18\v \x01(\x0e2B.dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSharingScopeR\fsharingScope\x12\x80\x01\n" +
+	"\x0eroute_table_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa2\x03\x92\xd4a\x1dstatus.outputs.route_table_idR\frouteTableId\x12\xa0\x01\n" +
+	"\x19network_security_group_id\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\x9c\x03\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12\x80\x01\n" +
+	"\x0enat_gateway_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\x97\x03\x92\xd4a\x1dstatus.outputs.nat_gateway_idR\fnatGatewayId:\xa8\x04\xbaH\xa4\x04\x1a\xed\x01\n" +
+	"\x1aaddress_source_exactly_one\x12\x8d\x01Set exactly one address source: either address_prefixes (self-managed CIDR blocks) or ip_address_pool (Azure Network Manager IPAM allocation)\x1a?(this.address_prefixes.size() > 0) != has(this.ip_address_pool)\x1a\xb1\x02\n" +
+	"*sharing_scope_requires_no_default_outbound\x12\x89\x01sharing_scope requires default_outbound_access_enabled to be explicitly false (ARM rejects a shared subnet with implicit outbound access)\x1awthis.sharing_scope == 0 || (has(this.default_outbound_access_enabled) && this.default_outbound_access_enabled == false)B0\n" +
+	"._private_link_service_network_policies_enabledB\"\n" +
+	" _default_outbound_access_enabled\"\xe9\x01\n" +
+	"\x18AzureSubnetIpAddressPool\x12\x1a\n" +
+	"\x02id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x02id\x12\xb0\x01\n" +
+	"\x16number_of_ip_addresses\x18\x02 \x01(\tB{\xbaHx\xba\x01r\n" +
+	"\x13ipam_count_positive\x12<number_of_ip_addresses must be a positive number, e.g. \"256\"\x1a\x1dthis.matches('^[1-9][0-9]*$')\xc8\x01\x01R\x13numberOfIpAddresses\"x\n" +
 	"\x15AzureSubnetDelegation\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12)\n" +
 	"\fservice_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vserviceName\x12\x18\n" +
-	"\aactions\x18\x03 \x03(\tR\aactionsB\xe0\x02\n" +
+	"\aactions\x18\x03 \x03(\tR\aactions*\xb5\x01\n" +
+	")AzureSubnetPrivateEndpointNetworkPolicies\x12>\n" +
+	":azure_subnet_private_endpoint_network_policies_unspecified\x10\x00\x12\v\n" +
+	"\aENABLED\x10\x01\x12\"\n" +
+	"\x1eNETWORK_SECURITY_GROUP_ENABLED\x10\x02\x12\x17\n" +
+	"\x13ROUTE_TABLE_ENABLED\x10\x03*Q\n" +
+	"\x17AzureSubnetSharingScope\x12*\n" +
+	"&azure_subnet_sharing_scope_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06TENANT\x10\x01B\xe0\x02\n" +
 	"-com.dev.planton.provider.azure.azuresubnet.v1B\tSpecProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azuresubnet/v1;azuresubnetv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Azure.Azuresubnet.V1\xca\x02)Dev\\Planton\\Provider\\Azure\\Azuresubnet\\V1\xe2\x025Dev\\Planton\\Provider\\Azure\\Azuresubnet\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Azure::Azuresubnet::V1b\x06proto3"
 
 var (
@@ -324,21 +598,30 @@ func file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDescGZIP() []b
 	return file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_goTypes = []any{
-	(*AzureSubnetSpec)(nil),       // 0: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec
-	(*AzureSubnetDelegation)(nil), // 1: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetDelegation
-	(*v1.StringValueOrRef)(nil),   // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureSubnetPrivateEndpointNetworkPolicies)(0), // 0: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetPrivateEndpointNetworkPolicies
+	(AzureSubnetSharingScope)(0),                   // 1: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSharingScope
+	(*AzureSubnetSpec)(nil),                        // 2: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec
+	(*AzureSubnetIpAddressPool)(nil),               // 3: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetIpAddressPool
+	(*AzureSubnetDelegation)(nil),                  // 4: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetDelegation
+	(*v1.StringValueOrRef)(nil),                    // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.vnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.delegation:type_name -> dev.planton.provider.azure.azuresubnet.v1.AzureSubnetDelegation
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 0: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.virtual_network_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 1: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.ip_address_pool:type_name -> dev.planton.provider.azure.azuresubnet.v1.AzureSubnetIpAddressPool
+	4, // 2: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.delegations:type_name -> dev.planton.provider.azure.azuresubnet.v1.AzureSubnetDelegation
+	0, // 3: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.private_endpoint_network_policies:type_name -> dev.planton.provider.azure.azuresubnet.v1.AzureSubnetPrivateEndpointNetworkPolicies
+	1, // 4: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.sharing_scope:type_name -> dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSharingScope
+	5, // 5: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.route_table_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 6: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.network_security_group_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 7: dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSpec.nat_gateway_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_init() }
@@ -352,13 +635,14 @@ func file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azuresubnet_v1_spec_proto = out.File

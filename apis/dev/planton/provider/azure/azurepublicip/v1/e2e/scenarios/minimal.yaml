@@ -1,0 +1,40 @@
+# Minimal AzurePublicIp scenario: a zone-redundant Standard static address
+# in the fixture resource group.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind. Zones 1-3 exercise
+# zone-redundancy (eastus has three zones); the DNS label with
+# TENANT_REUSE exercises the scope-hashed label path (the fqdn output must
+# populate on both engines) without needing a region-unique name; the
+# raised idle timeout exercises the optional int's non-default value. User
+# tags exercise the merge-over-metadata-tags path.
+apiVersion: azure.planton.dev/v1
+kind: AzurePublicIp
+metadata:
+  name: planton-oss-e2e-azurepublicip-smoke
+  id: planton-oss-e2e-azurepublicip-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurepublicip
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-pip-smoke
+  zones:
+    - "1"
+    - "2"
+    - "3"
+  domainNameLabel: planton-oss-e2e-pip-smoke
+  domainNameLabelScope: TENANT_REUSE
+  idleTimeoutInMinutes: 10
+  tags:
+    e2e-suite: azure
+    purpose: smoke

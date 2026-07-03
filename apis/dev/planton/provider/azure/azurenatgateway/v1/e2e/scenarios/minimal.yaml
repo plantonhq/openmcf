@@ -1,0 +1,45 @@
+# Minimal AzureNatGateway scenario: a zonal Standard gateway associated
+# with a public IP AND a public IP prefix -- both address forms the
+# gateway can SNAT through.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs; the address and prefix are scenario-declared extra
+# fixtures (see the annotation) -- association is an OPTIONAL seam, so the
+# address kinds must never pollute the registry prerequisites. Each
+# association reference resolves through its field's default kind against
+# the extra fixture's outputs. The pinned zone exercises the Standard
+# SKU's zonal shape; the raised idle timeout exercises the optional int's
+# non-default value. User tags exercise the merge-over-metadata-tags path.
+apiVersion: azure.planton.dev/v1
+kind: AzureNatGateway
+metadata:
+  name: planton-oss-e2e-azurenatgateway-smoke
+  id: planton-oss-e2e-azurenatgateway-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurenatgateway
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-extra-prerequisites: "AzurePublicIp, AzurePublicIpPrefix"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-nat-smoke
+  zones:
+    - "1"
+  idleTimeoutInMinutes: 10
+  publicIpIds:
+    - valueFrom:
+        name: planton-oss-e2e-azure-fixture-pip
+  publicIpPrefixIds:
+    - valueFrom:
+        name: planton-oss-e2e-azure-fixture-pippfx
+  tags:
+    e2e-suite: azure
+    purpose: smoke

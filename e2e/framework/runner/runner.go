@@ -61,7 +61,7 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 	if tc.RepoRoot != "" {
 		depStart := time.Now()
 		var err error
-		dependencyStates, err = DeployDependencies(ctx, tc.RepoRoot, tc.Provider, tc.Component, tc.BackendURL, tc.RunID, harness)
+		dependencyStates, err = DeployDependencies(ctx, tc.RepoRoot, tc.Provider, tc.Component, tc.ManifestPath, tc.BackendURL, tc.RunID, harness)
 		pr := PhaseResult{
 			Phase:    PhaseDepsUp,
 			Duration: time.Since(depStart),

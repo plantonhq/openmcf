@@ -5,25 +5,21 @@ kind: AzureSubnet
 metadata:
   name: "{{ values.env }}-pg-subnet"
 spec:
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
-  vnetId:
+  virtualNetworkId:
     valueFrom:
       kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
       fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-pg-subnet"
-  addressPrefix: "{{ values.postgres_subnet_cidr }}"
+  addressPrefixes:
+    - "{{ values.postgres_subnet_cidr }}"
   serviceEndpoints:
     - "Microsoft.Storage"
-  delegation:
-    name: postgresql
-    serviceName: "Microsoft.DBforPostgreSQL/flexibleServers"
-    actions:
-      - "Microsoft.Network/virtualNetworks/subnets/join/action"
+  delegations:
+    - name: postgresql
+      serviceName: "Microsoft.DBforPostgreSQL/flexibleServers"
+      actions:
+        - "Microsoft.Network/virtualNetworks/subnets/join/action"
 ---
 apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZone
@@ -60,11 +56,6 @@ metadata:
   name: "{{ values.env }}-{{ values.postgres_name }}"
 spec:
   region: "{{ values.region }}"
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
   name: "{{ values.env }}-{{ values.postgres_name }}"
   administratorLogin: "{{ values.postgres_admin_login }}"
   administratorPassword:

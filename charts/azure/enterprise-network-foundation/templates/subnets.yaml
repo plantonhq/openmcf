@@ -4,64 +4,73 @@ kind: AzureSubnet
 metadata:
   name: "{{ values.env }}-web-subnet"
 spec:
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
-  vnetId:
+  virtualNetworkId:
     valueFrom:
       kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
       fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-web-subnet"
-  addressPrefix: "{{ values.web_subnet_cidr }}"
+  addressPrefixes:
+    - "{{ values.web_subnet_cidr }}"
   serviceEndpoints:
     - "Microsoft.Web"
+  networkSecurityGroupId:
+    valueFrom:
+      kind: AzureNetworkSecurityGroup
+      name: "{{ values.env }}-web-nsg"
+      fieldPath: status.outputs.network_security_group_id
 ---
 apiVersion: azure.planton.dev/v1
 kind: AzureSubnet
 metadata:
   name: "{{ values.env }}-app-subnet"
 spec:
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
-  vnetId:
+  virtualNetworkId:
     valueFrom:
       kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
       fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-app-subnet"
-  addressPrefix: "{{ values.app_subnet_cidr }}"
+  addressPrefixes:
+    - "{{ values.app_subnet_cidr }}"
   serviceEndpoints:
     - "Microsoft.Sql"
     - "Microsoft.Storage"
     - "Microsoft.KeyVault"
+  networkSecurityGroupId:
+    valueFrom:
+      kind: AzureNetworkSecurityGroup
+      name: "{{ values.env }}-app-nsg"
+      fieldPath: status.outputs.network_security_group_id
+{% if values.create_nat_gateway | bool %}
+  natGatewayId:
+    valueFrom:
+      kind: AzureNatGateway
+      name: "{{ values.env }}-natgw"
+      fieldPath: status.outputs.nat_gateway_id
+{% endif %}
 ---
 apiVersion: azure.planton.dev/v1
 kind: AzureSubnet
 metadata:
   name: "{{ values.env }}-data-subnet"
 spec:
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
-  vnetId:
+  virtualNetworkId:
     valueFrom:
       kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
       fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-data-subnet"
-  addressPrefix: "{{ values.data_subnet_cidr }}"
+  addressPrefixes:
+    - "{{ values.data_subnet_cidr }}"
   serviceEndpoints:
     - "Microsoft.Sql"
     - "Microsoft.Storage"
-  privateEndpointNetworkPolicies: "Disabled"
+  networkSecurityGroupId:
+    valueFrom:
+      kind: AzureNetworkSecurityGroup
+      name: "{{ values.env }}-data-nsg"
+      fieldPath: status.outputs.network_security_group_id
 {% if values.create_app_gateway | bool %}
 ---
 apiVersion: azure.planton.dev/v1
@@ -69,16 +78,12 @@ kind: AzureSubnet
 metadata:
   name: "{{ values.env }}-gw-subnet"
 spec:
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
-  vnetId:
+  virtualNetworkId:
     valueFrom:
       kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
       fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-gw-subnet"
-  addressPrefix: "{{ values.gateway_subnet_cidr }}"
+  addressPrefixes:
+    - "{{ values.gateway_subnet_cidr }}"
 {% endif %}

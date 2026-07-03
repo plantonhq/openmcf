@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzurePublicIpPrefix
+metadata:
+  name: my-partner-allowlist
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  name: partner-allowlist
+  prefixLength: 30
+  zones:
+    - "1"
+    - "2"
+    - "3"
+  tags:
+    cost-center: <cost-center>

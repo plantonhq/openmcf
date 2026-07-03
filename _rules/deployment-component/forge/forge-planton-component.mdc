@@ -323,10 +323,25 @@ dependency (falling back to the dependency's `scenarios/minimal.yaml`). So: for
 a scenario's `valueFrom` reference to resolve, the referenced kind must be a
 registry prerequisite of the kind under test. Declare a prerequisite only when
 the dependency is genuinely required for the kind to function (a required ref);
-optional refs are exercised through a composed kind that does require them, or
+optional refs are exercised through scenario-declared extra fixtures (below) or
 with literals. Singular AND repeated `StringValueOrRef` fields both resolve,
 refs nested inside (repeated) spec messages resolve too, and a repeated list
 can mix literals with references.
+
+**Optional seams are proven with scenario-declared extra fixtures — never by
+polluting registry prerequisites.** A scenario manifest may carry the
+`planton.dev/e2e-extra-prerequisites` annotation listing kind names and/or
+repo-relative manifest paths (comma-separated). Kind names resolve through the
+kind's standard install profile (`e2e/prerequisite.yaml`, else its minimal
+scenario); manifest paths deploy that exact document (its kind derived from the
+manifest's own `kind` field — how a scenario gets a SECOND instance of a kind,
+e.g. a peering's remote network). Extra fixtures deploy after the registry
+prerequisites, each preceded by its own transitive registry prerequisites,
+deduplicated against what the chain already deployed; their outputs join the
+same reference resolution; teardown is strictly reverse-order. Use this for
+every OPTIONAL `StringValueOrRef` seam (attachments, associations) — registry
+`prerequisites` keep their strict deploy-ordering meaning (required parents
+only), which other systems also consume. Full mechanics: `e2e/README.md`.
 
 **Multi-instance prerequisites.** A prerequisite install profile
 (`e2e/prerequisite.yaml`) may carry multiple `---`-separated documents of the

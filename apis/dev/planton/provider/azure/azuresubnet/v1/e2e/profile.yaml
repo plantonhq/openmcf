@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuresubnet
+spec:
+  # The networking wave's composed showcase: the harness deploys the fixture
+  # resource group and virtual network (registry prerequisites) plus the
+  # scenario-declared extra fixtures (a route table, an NSG, and a NAT
+  # gateway), creates a subnet carrying all three attach seams, verifies it
+  # via the ARM API (generic GetByID on the subnet's ARM id), destroys it,
+  # and verifies it is gone -- on both provisioners. The subnet itself is
+  # free; the NAT gateway fixture bills for minutes.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 25

@@ -149,6 +149,60 @@ func TestAzurePrivateDnsZoneVirtualNetworkLink_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureprivatednszonevirtualnetworklink", "terraform")
 }
 
+// --- Azure Subnet (the attach-model showcase: fixture network + extra route-table/NSG/NAT fixtures -> subnet with all three seams) ---
+
+func TestAzureSubnet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuresubnet", "pulumi")
+}
+func TestAzureSubnet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuresubnet", "terraform")
+}
+
+// --- Azure Network Security Group (singular + plural rule forms in the fixture RG) ---
+
+func TestAzureNetworkSecurityGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenetworksecuritygroup", "pulumi")
+}
+func TestAzureNetworkSecurityGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenetworksecuritygroup", "terraform")
+}
+
+// --- Azure Public IP (zone-redundant static address with a scope-hashed DNS label) ---
+
+func TestAzurePublicIp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepublicip", "pulumi")
+}
+func TestAzurePublicIp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepublicip", "terraform")
+}
+
+// --- Azure Public IP Prefix (smallest reservable range, /31) ---
+
+func TestAzurePublicIpPrefix_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepublicipprefix", "pulumi")
+}
+func TestAzurePublicIpPrefix_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepublicipprefix", "terraform")
+}
+
+// --- Azure NAT Gateway (composed: extra public-IP + prefix fixtures -> gateway with both association forms) ---
+
+func TestAzureNatGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenatgateway", "pulumi")
+}
+func TestAzureNatGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenatgateway", "terraform")
+}
+
+// --- Azure Virtual Network Peering (composed: fixture network + path-declared second network -> one peering direction) ---
+
+func TestAzureVirtualNetworkPeering_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualnetworkpeering", "pulumi")
+}
+func TestAzureVirtualNetworkPeering_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualnetworkpeering", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

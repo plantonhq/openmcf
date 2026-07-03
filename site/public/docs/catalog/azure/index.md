@@ -36,6 +36,7 @@ The following AZURE resources can be deployed using Planton:
 - [Private DNS Zone Virtual Network Link](/docs/catalog/azure/private-dns-zone-virtual-network-link)
 - [Private Endpoint](/docs/catalog/azure/private-endpoint)
 - [Public IP](/docs/catalog/azure/public-ip)
+- [Public IP Prefix](/docs/catalog/azure/public-ip-prefix)
 - [Redis Cache](/docs/catalog/azure/redis-cache)
 - [Resource Group](/docs/catalog/azure/resource-group)
 - [Role Assignment](/docs/catalog/azure/role-assignment)
@@ -48,3 +49,4 @@ The following AZURE resources can be deployed using Planton:
 - [User Assigned Identity](/docs/catalog/azure/user-assigned-identity)
 - [Virtual Machine](/docs/catalog/azure/virtual-machine)
 - [Virtual Network](/docs/catalog/azure/virtual-network)
+- [Virtual Network Peering](/docs/catalog/azure/virtual-network-peering)

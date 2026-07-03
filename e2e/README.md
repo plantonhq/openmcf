@@ -82,6 +82,36 @@ before applying a GatewayClass / Gateway / route / ReferenceGrant. The Tier 3
 operator-dependent components (Postgres, Kafka, ...) likewise declare their
 operator kind, which installs from the operator's `scenarios/minimal.yaml`.
 
+### Scenario-declared extra fixtures (optional composition seams)
+
+Registry `prerequisites` carry a strict meaning -- the parents a resource cannot
+exist without -- and they double as deploy-ordering metadata, so **optional**
+composition seams must never be encoded there: adding an optional kind to a
+registry prerequisite list would force every downstream kind's fixture chain to
+deploy it forever. When a scenario needs to live-prove an optional edge (a
+subnet attaching a route table, a NAT gateway associating a public IP, a
+network peering to a second network), it declares the extra fixtures itself via
+the `planton.dev/e2e-extra-prerequisites` annotation on the scenario manifest:
+
+```yaml
+metadata:
+  annotations:
+    # Kind names install through the kind's standard install profile;
+    # repo-relative manifest paths deploy an EXTRA INSTANCE of their declared
+    # kind (for scenarios needing more instances than the profiles provide).
+    planton.dev/e2e-extra-prerequisites: "AzureRouteTable, AzureNetworkSecurityGroup"
+```
+
+Entries deploy in listed order after the registry prerequisites, each preceded
+by any of its own transitive registry prerequisites not already deployed
+(shared parents are deduplicated -- one resource group serves the whole chain).
+Kind-name entries already present in the registry chain are skipped; path
+entries always deploy, because they exist precisely to add another instance.
+All fixtures join the same transitive `value_from` reference resolution the
+registry chain uses, and teardown runs in reverse across the merged chain.
+Every kind that appears in the annotation needs a verifier and an install
+profile, exactly like a registry prerequisite.
+
 ## E2E Profiles
 
 Profiles are KRM-style YAML files (`apiVersion: qa.planton.dev/v1`) that

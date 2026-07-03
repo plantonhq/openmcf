@@ -645,10 +645,13 @@ enum CloudResourceKind {
     container_kind: true
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because a NAT gateway is created
+  // inside a referenced resource group in composed environments.
   AzureNatGateway = 407 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "aznat"
+    prerequisites: [AzureResourceGroup]
   }];
   AzureVirtualMachine = 408 [(kind_meta) = {
     provider: azure
@@ -665,20 +668,31 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azdrec"
   }];
+  // AzureVirtualNetwork is a prerequisite because a subnet is an ARM child
+  // of a referenced network -- the network must exist before the subnet can
+  // be written. (The resource group arrives transitively through the
+  // network's own prerequisite declaration.)
   AzureSubnet = 411 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azsub"
+    prerequisites: [AzureVirtualNetwork]
   }];
+  // AzureResourceGroup is a prerequisite because a network security group is
+  // created inside a referenced resource group in composed environments.
   AzureNetworkSecurityGroup = 412 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "aznsg"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because a public IP is created
+  // inside a referenced resource group in composed environments.
   AzurePublicIp = 413 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azpip"
+    prerequisites: [AzureResourceGroup]
   }];
   AzurePrivateEndpoint = 414 [(kind_meta) = {
     provider: azure
@@ -724,6 +738,25 @@ enum CloudResourceKind {
       AzurePrivateDnsZone,
       AzureVirtualNetwork
     ]
+  }];
+  // AzureVirtualNetwork is a prerequisite because a peering is an ARM child
+  // of its local network and binds it to a remote network -- the local
+  // network must exist before the peering can be written. (The resource
+  // group arrives transitively through the network's own prerequisite
+  // declaration.)
+  AzureVirtualNetworkPeering = 420 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azpeer"
+    prerequisites: [AzureVirtualNetwork]
+  }];
+  // AzureResourceGroup is a prerequisite because a public IP prefix is
+  // created inside a referenced resource group in composed environments.
+  AzurePublicIpPrefix = 421 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azpippfx"
+    prerequisites: [AzureResourceGroup]
   }];
   AzurePostgresqlFlexibleServer = 430 [(kind_meta) = {
     provider: azure

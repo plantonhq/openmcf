@@ -21,28 +21,22 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzurePublicIpStackOutputs** captures the outputs of provisioning an Azure Public IP Address.
-//
-// These outputs are used by downstream Azure resources via StringValueOrRef to establish
-// dependency edges in infra chart DAGs. The primary consumer is `public_ip_id`, which is
-// referenced by AzureApplicationGateway, AzureLoadBalancer, and AzureNatGateway.
+// **AzurePublicIpStackOutputs** captures the outputs of provisioning an
+// Azure Public IP Address.
 type AzurePublicIpStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the Public IP.
+	// The Azure Resource Manager ID of the public IP. This is the primary
+	// output: AzureApplicationGateway, AzureLoadBalancer, and
+	// AzureNatGateway reference it to attach the address.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/publicIPAddresses/{name}
-	// This is the primary output referenced by downstream resources (AzureApplicationGateway,
-	// AzureLoadBalancer, AzureNatGateway) via StringValueOrRef.
 	PublicIpId string `protobuf:"bytes,1,opt,name=public_ip_id,json=publicIpId,proto3" json:"public_ip_id,omitempty"`
-	// The allocated static IPv4 address.
-	// With Standard SKU and static allocation, this address is persistent for the lifetime
-	// of the resource. It is assigned immediately upon creation.
+	// The allocated address itself. Static for the resource's lifetime --
+	// the value that lands in DNS records and partner allowlists.
 	IpAddress string `protobuf:"bytes,2,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
-	// The fully qualified domain name associated with this Public IP.
-	// Only populated when domain_name_label is set in the spec.
-	// Format: {domain_name_label}.{region}.cloudapp.azure.com
-	// Empty string if no domain_name_label was configured.
+	// The Azure-managed FQDN ({label}.{region}.cloudapp.azure.com), populated
+	// only when domain_name_label is set; empty otherwise.
 	Fqdn string `protobuf:"bytes,3,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
-	// The name of the Public IP resource.
+	// The name of the public IP resource.
 	PublicIpName  string `protobuf:"bytes,4,opt,name=public_ip_name,json=publicIpName,proto3" json:"public_ip_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

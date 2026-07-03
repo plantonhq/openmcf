@@ -152,6 +152,7 @@ import (
 	azureprivatednszonevirtualnetworklinkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivatednszonevirtualnetworklink/v1"
 	azureprivateendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivateendpoint/v1"
 	azurepublicipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepublicip/v1"
+	azurepublicipprefixv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepublicipprefix/v1"
 	azurerediscachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurerediscache/v1"
 	azureresourcegroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureresourcegroup/v1"
 	azureroleassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroleassignment/v1"
@@ -164,6 +165,7 @@ import (
 	azureuserassignedidentityv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureuserassignedidentity/v1"
 	azurevirtualmachinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualmachine/v1"
 	azurevirtualnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualnetwork/v1"
+	azurevirtualnetworkpeeringv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1"
 	civobucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civobucket/v1"
 	civocertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civocertificate/v1"
 	civocomputeinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civocomputeinstance/v1"
@@ -602,6 +604,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZoneVirtualNetworkLink: &azureprivatednszonevirtualnetworklinkv1.AzurePrivateDnsZoneVirtualNetworkLink{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateEndpoint:                  &azureprivateendpointv1.AzurePrivateEndpoint{},
 	cloudresourcekind.CloudResourceKind_AzurePublicIp:                         &azurepublicipv1.AzurePublicIp{},
+	cloudresourcekind.CloudResourceKind_AzurePublicIpPrefix:                   &azurepublicipprefixv1.AzurePublicIpPrefix{},
 	cloudresourcekind.CloudResourceKind_AzureRedisCache:                       &azurerediscachev1.AzureRedisCache{},
 	cloudresourcekind.CloudResourceKind_AzureResourceGroup:                    &azureresourcegroupv1.AzureResourceGroup{},
 	cloudresourcekind.CloudResourceKind_AzureRoleAssignment:                   &azureroleassignmentv1.AzureRoleAssignment{},
@@ -614,6 +617,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity:             &azureuserassignedidentityv1.AzureUserAssignedIdentity{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualMachine:                   &azurevirtualmachinev1.AzureVirtualMachine{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetwork:                   &azurevirtualnetworkv1.AzureVirtualNetwork{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkPeering:            &azurevirtualnetworkpeeringv1.AzureVirtualNetworkPeering{},
 }
 
 var ProviderCivoMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

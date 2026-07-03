@@ -15,411 +15,143 @@ func TestAzureNetworkSecurityGroupSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzureNetworkSecurityGroupSpec Validation Tests")
 }
 
+// literal builds a StringValueOrRef carrying a literal value.
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+// ref builds a StringValueOrRef carrying a value_from reference.
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
+// strPtr returns a pointer to the given string (for optional fields).
+func strPtr(value string) *string {
+	return &value
+}
+
+// validRule returns a minimal valid security rule that individual cases
+// then mutate into the shape under test.
+func validRule() *AzureNetworkSecurityGroupRule {
+	return &AzureNetworkSecurityGroupRule{
+		Name:                 "allow-https-inbound",
+		Priority:             100,
+		Direction:            AzureNetworkSecurityGroupRuleDirection_INBOUND,
+		Access:               AzureNetworkSecurityGroupRuleAccess_ALLOW,
+		Protocol:             AzureNetworkSecurityGroupRuleProtocol_TCP,
+		DestinationPortRange: strPtr("443"),
+	}
+}
+
+// validResource returns a minimal valid AzureNetworkSecurityGroup that
+// individual cases then mutate into the shape under test.
+func validResource() *AzureNetworkSecurityGroup {
+	return &AzureNetworkSecurityGroup{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzureNetworkSecurityGroup",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-nsg",
+		},
+		Spec: &AzureNetworkSecurityGroupSpec{
+			Region:        "eastus",
+			ResourceGroup: literal("test-rg"),
+			Name:          "web-tier",
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AzureNetworkSecurityGroupSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_network_security_group", func() {
 
-			ginkgo.It("should not return a validation error for minimal valid fields (no rules)", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-					},
-				}
+			ginkgo.It("should not return a validation error for a rule-less group (Azure defaults govern)", func() {
+				err := protovalidate.Validate(validResource())
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept the resource group as a reference", func() {
+				input := validResource()
+				input.Spec.ResourceGroup = ref("platform-rg")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with full metadata", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-web-nsg",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "westeurope",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-network-rg",
-							},
-						},
-						Name: "prod-web-nsg",
-					},
-				}
+			ginkgo.It("should accept a minimal allow rule", func() {
+				input := validResource()
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{validRule()}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with a single inbound allow rule", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "allow-https",
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
+			ginkgo.It("should accept every protocol including AH and ESP", func() {
+				for _, protocol := range []AzureNetworkSecurityGroupRuleProtocol{
+					AzureNetworkSecurityGroupRuleProtocol_ANY,
+					AzureNetworkSecurityGroupRuleProtocol_TCP,
+					AzureNetworkSecurityGroupRuleProtocol_UDP,
+					AzureNetworkSecurityGroupRuleProtocol_ICMP,
+					AzureNetworkSecurityGroupRuleProtocol_AH,
+					AzureNetworkSecurityGroupRuleProtocol_ESP,
+				} {
+					input := validResource()
+					rule := validRule()
+					rule.Protocol = protocol
+					input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+					err := protovalidate.Validate(input)
+					gomega.Expect(err).To(gomega.BeNil())
 				}
+			})
+
+			ginkgo.It("should accept plural destination ports", func() {
+				input := validResource()
+				rule := validRule()
+				rule.DestinationPortRange = nil
+				rule.DestinationPortRanges = []string{"80", "443"}
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with multiple rules", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "web-tier-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-rg",
-							},
-						},
-						Name: "web-tier-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "allow-https",
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-							{
-								Name:                 "allow-http",
-								Priority:             200,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "80",
-							},
-							{
-								Name:                 "deny-all-inbound",
-								Priority:             4096,
-								Direction:            "Inbound",
-								Access:               "Deny",
-								Protocol:             "*",
-								DestinationPortRange: "*",
-							},
-						},
-					},
-				}
+			ginkgo.It("should accept plural source address prefixes", func() {
+				input := validResource()
+				rule := validRule()
+				rule.SourceAddressPrefixes = []string{"10.1.0.0/16", "10.2.0.0/16"}
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with rule description", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "allow-ssh",
-								Description:          "Allow SSH from corporate VPN range",
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "22",
-							},
-						},
-					},
+			ginkgo.It("should accept application security group addressing", func() {
+				input := validResource()
+				rule := validRule()
+				rule.SourceApplicationSecurityGroupIds = []string{
+					"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/web-servers",
 				}
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with source_address_prefixes (plural)", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                  "allow-vpn-ssh",
-								Priority:              100,
-								Direction:             "Inbound",
-								Access:                "Allow",
-								Protocol:              "Tcp",
-								DestinationPortRange:  "22",
-								SourceAddressPrefixes: []string{"10.0.0.0/8", "172.16.0.0/12"},
-							},
-						},
-					},
-				}
+			ginkgo.It("should accept a service-tag source with a deny decision", func() {
+				input := validResource()
+				rule := validRule()
+				rule.Name = "deny-internet-inbound"
+				rule.Access = AzureNetworkSecurityGroupRuleAccess_DENY
+				rule.SourceAddressPrefix = strPtr("Internet")
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with destination_address_prefixes (plural)", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                       "allow-app-to-db",
-								Priority:                   100,
-								Direction:                  "Outbound",
-								Access:                     "Allow",
-								Protocol:                   "Tcp",
-								DestinationPortRange:       "5432",
-								DestinationAddressPrefixes: []string{"10.0.2.0/24", "10.0.3.0/24"},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with protocol wildcard", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "deny-all",
-								Priority:             4096,
-								Direction:            "Inbound",
-								Access:               "Deny",
-								Protocol:             "*",
-								DestinationPortRange: "*",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with Udp protocol", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "allow-dns",
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Udp",
-								DestinationPortRange: "53",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with Icmp protocol", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "allow-ping",
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Icmp",
-								DestinationPortRange: "*",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with Outbound direction", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "deny-internet-outbound",
-								Priority:             100,
-								Direction:            "Outbound",
-								Access:               "Deny",
-								Protocol:             "*",
-								DestinationPortRange: "*",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with priority at minimum boundary (100)", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "high-priority-rule",
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with priority at maximum boundary (4096)", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "low-priority-deny",
-								Priority:             4096,
-								Direction:            "Inbound",
-								Access:               "Deny",
-								Protocol:             "*",
-								DestinationPortRange: "*",
-							},
-						},
-					},
-				}
+			ginkgo.It("should accept user tags", func() {
+				input := validResource()
+				input.Spec.Tags = map[string]string{"cost-center": "networking"}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -430,440 +162,170 @@ var _ = ginkgo.Describe("AzureNetworkSecurityGroupSpec Validation Tests", func()
 		ginkgo.Context("azure_network_security_group", func() {
 
 			ginkgo.It("should return a validation error when region is missing", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-					},
-				}
+				input := validResource()
+				input.Spec.Region = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						Name:   "test-nsg",
-					},
-				}
+				input := validResource()
+				input.Spec.ResourceGroup = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-					},
-				}
+			ginkgo.It("should return a validation error when name starts with a period", func() {
+				input := validResource()
+				input.Spec.Name = ".bad"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when name exceeds maximum length", func() {
-				tooLongName := ""
-				for len(tooLongName) < 81 {
-					tooLongName += "a"
-				}
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: tooLongName,
-					},
-				}
+			ginkgo.It("should return a validation error when a rule's priority is below 100", func() {
+				input := validResource()
+				rule := validRule()
+				rule.Priority = 99
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-					},
-				}
+			ginkgo.It("should return a validation error when a rule's priority is above 4096", func() {
+				input := validResource()
+				rule := validRule()
+				rule.Priority = 4097
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
+			ginkgo.It("should return a validation error when a rule's direction is unspecified", func() {
+				input := validResource()
+				rule := validRule()
+				rule.Direction = AzureNetworkSecurityGroupRuleDirection_azure_network_security_group_rule_direction_unspecified
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when a rule's access is unspecified", func() {
+				input := validResource()
+				rule := validRule()
+				rule.Access = AzureNetworkSecurityGroupRuleAccess_azure_network_security_group_rule_access_unspecified
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when a rule's protocol is unspecified", func() {
+				input := validResource()
+				rule := validRule()
+				rule.Protocol = AzureNetworkSecurityGroupRuleProtocol_azure_network_security_group_rule_protocol_unspecified
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when both destination port forms are set", func() {
+				input := validResource()
+				rule := validRule()
+				rule.DestinationPortRanges = []string{"80"}
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when no destination port form is set", func() {
+				input := validResource()
+				rule := validRule()
+				rule.DestinationPortRange = nil
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when both source port forms are set", func() {
+				input := validResource()
+				rule := validRule()
+				rule.SourcePortRange = strPtr("*")
+				rule.SourcePortRanges = []string{"1024-65535"}
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when two source addressing styles are combined", func() {
+				input := validResource()
+				rule := validRule()
+				rule.SourceAddressPrefix = strPtr("10.0.0.0/8")
+				rule.SourceAddressPrefixes = []string{"10.1.0.0/16"}
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when a prefix and an application security group are combined", func() {
+				input := validResource()
+				rule := validRule()
+				rule.DestinationAddressPrefix = strPtr("10.0.1.0/24")
+				rule.DestinationApplicationSecurityGroupIds = []string{
+					"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/db-servers",
 				}
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when more than 10 application security groups are listed", func() {
+				input := validResource()
+				rule := validRule()
+				for i := 0; i < 11; i++ {
+					rule.SourceApplicationSecurityGroupIds = append(rule.SourceApplicationSecurityGroupIds,
+						"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationSecurityGroups/asg")
+				}
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when a rule description exceeds 140 characters", func() {
+				input := validResource()
+				rule := validRule()
+				description := ""
+				for len(description) < 141 {
+					description += "d"
+				}
+				rule.Description = description
+				input.Spec.SecurityRules = []*AzureNetworkSecurityGroupRule{rule}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-					},
-				}
+				input := validResource()
+				input.ApiVersion = "wrong.version/v1"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-					},
-				}
+				input := validResource()
+				input.Kind = "WrongKind"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when rule direction is invalid", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "bad-direction",
-								Priority:             100,
-								Direction:            "INBOUND",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
+			ginkgo.It("should return a validation error when metadata is missing", func() {
+				input := validResource()
+				input.Metadata = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when rule access is invalid", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "bad-access",
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "ALLOW",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when rule protocol is invalid", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "bad-protocol",
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "HTTP",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when rule priority is below 100", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "too-high-priority",
-								Priority:             99,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when rule priority exceeds 4096", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "too-low-priority",
-								Priority:             4097,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when rule name is missing", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when rule destination_port_range is missing", func() {
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:      "missing-dest-port",
-								Priority:  100,
-								Direction: "Inbound",
-								Access:    "Allow",
-								Protocol:  "Tcp",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when rule description exceeds 140 characters", func() {
-				longDesc := ""
-				for len(longDesc) < 141 {
-					longDesc += "a"
-				}
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 "long-desc",
-								Description:          longDesc,
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when rule name exceeds 80 characters", func() {
-				longRuleName := ""
-				for len(longRuleName) < 81 {
-					longRuleName += "a"
-				}
-				input := &AzureNetworkSecurityGroup{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureNetworkSecurityGroup",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-nsg",
-					},
-					Spec: &AzureNetworkSecurityGroupSpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "my-rg",
-							},
-						},
-						Name: "test-nsg",
-						SecurityRules: []*AzureSecurityRule{
-							{
-								Name:                 longRuleName,
-								Priority:             100,
-								Direction:            "Inbound",
-								Access:               "Allow",
-								Protocol:             "Tcp",
-								DestinationPortRange: "443",
-							},
-						},
-					},
-				}
+			ginkgo.It("should return a validation error when spec is missing", func() {
+				input := validResource()
+				input.Spec = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

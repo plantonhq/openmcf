@@ -4,99 +4,107 @@ package dev.planton.provider.azure.azurenetworksecuritygroup.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
-import "dev/planton/shared/options/options.proto";
 
-// **AzureNetworkSecurityGroupSpec** defines the configuration for creating an
-// Azure Network Security Group (NSG) with security rules.
+// **AzureNetworkSecurityGroupSpec** defines the configuration for creating
+// an Azure Network Security Group (NSG): the stateful firewall that filters
+// inbound and outbound traffic for everything deployed in the subnets and
+// NICs it guards.
 //
-// An NSG is a stateful firewall that filters inbound and outbound traffic for
-// Azure resources based on 5-tuple rules (source, destination, port, protocol,
-// direction). NSGs are the primary network access control mechanism in Azure,
-// analogous to AWS Security Groups or GCP Firewall Rules.
+// The security rules are folded into the NSG rather than modeled as their
+// own resource: a rule has no life outside its group, is never referenced
+// by anything else, and the group's rule set is designed and reviewed as
+// one unit. An NSG with no rules is still meaningful -- Azure's implicit
+// defaults then govern (allow VNet-internal traffic and load-balancer
+// probes, deny all other inbound, allow all outbound).
 //
-// This component bundles the NSG itself (`azurerm_network_security_group`) with
-// its security rules (`azurerm_network_security_rule`) because an NSG without
-// rules allows all traffic (Azure default) -- the rules are the substance of
-// the resource. This follows DD03 (Composite Bundling Rules).
+// The subnet-side attachment is deliberately not modeled here: a subnet
+// declares which NSG guards it (AzureSubnet's network_security_group_id),
+// matching Azure's model, so one NSG serves many subnets without listing
+// them.
 //
-// NSGs are associated with subnets or NICs post-creation. This component does
-// NOT create the association -- that is an infra-chart concern handled by the
-// `azurerm_subnet_network_security_group_association` resource. This keeps the
-// NSG lifecycle independent of any particular subnet or NIC.
-//
-// **Key Azure behavior**: Azure creates implicit default rules in every NSG
-// (priorities 65000-65500) that allow VNet-to-VNet traffic, allow Azure Load
-// Balancer probes, and deny all other inbound traffic. User-defined rules
-// (priorities 100-4096) are evaluated before these defaults.
-//
-// This spec follows the 80/20 principle: exposing the essential fields that cover
-// the vast majority of deployment scenarios while keeping the configuration minimal.
+// **Key Azure behavior**: user-defined rules take priorities 100-4096 and
+// are evaluated lowest-number-first within each direction; the first match
+// wins. Azure's implicit default rules sit at priorities 65000-65500 and
+// only apply when nothing else matched.
 message AzureNetworkSecurityGroupSpec {
-  // The Azure region where the NSG will be created.
-  // Must match the region of the resources it will be associated with (subnets, NICs).
-  // Examples: "eastus", "westus2", "westeurope", "southeastasia".
+  // The Azure region where the NSG will be created, e.g. "eastus",
+  // "westeurope". Must match the region of the subnets and NICs it will be
+  // associated with. Changing the region replaces the group.
   string region = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The Azure Resource Group where the NSG will be created.
-  // Can be a literal string or a reference to an AzureResourceGroup output.
+  // The Azure resource group the NSG will be created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output.
   dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The name of the Network Security Group.
-  // Must be unique within the resource group.
-  // Allowed characters: alphanumeric, underscores, hyphens, and periods.
-  // Must start with alphanumeric. Length: 1 to 80 characters.
+  // The name of the NSG, unique within the resource group. 1-80 characters
+  // (alphanumerics, underscores, periods, and hyphens; must start with a
+  // letter or number and end with a letter, number, or underscore).
+  // Changing the name replaces the group, detaching it from every subnet
+  // and NIC until the replacement is re-attached -- name it after the tier
+  // it guards ("web-tier", "data-tier").
   string name = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 80
+    (buf.validate.field).string.max_len = 80,
+    (buf.validate.field).cel = {
+      id: "nsg_name_format"
+      message: "NSG names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens"
+      expression: "this == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')"
+    }
   ];
 
-  // Security rules that define allowed or denied traffic flows.
-  // Each rule specifies a 5-tuple filter (source, destination, port, protocol, direction)
-  // combined with an access decision (Allow/Deny) and a priority for ordering.
-  //
-  // Rules are evaluated in priority order (lowest number = highest priority).
-  // The first matching rule determines whether traffic is allowed or denied.
-  // If no user-defined rule matches, Azure's implicit default rules apply.
-  //
-  // An NSG with no rules relies entirely on Azure's defaults: allow VNet-to-VNet,
-  // allow load balancer probes, deny all other inbound, allow all outbound.
-  repeated AzureSecurityRule security_rules = 4;
+  // The security rules. Each is a 5-tuple filter (source, destination,
+  // port, protocol, direction) with an access decision and a priority.
+  // Rules update in place and take effect immediately for every subnet and
+  // NIC the group guards. An empty list is meaningful: Azure's implicit
+  // default rules then govern all traffic.
+  repeated AzureNetworkSecurityGroupRule security_rules = 4;
+
+  // Free-form tags applied to the NSG, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins. Tags are Azure's governance surface -- Azure
+  // Policy enforces them and Microsoft Cost Management groups by them.
+  // Updatable in place.
+  map<string, string> tags = 5;
 }
 
-// AzureSecurityRule defines a single network security rule within the NSG.
-// Each rule is a 5-tuple filter combined with an access decision and priority.
+// AzureNetworkSecurityGroupRule is a single security rule: a 5-tuple filter
+// with an access decision and a priority.
 //
-// Rules are evaluated in priority order within their direction (Inbound or Outbound).
-// Lower priority numbers are evaluated first. The first matching rule wins.
-message AzureSecurityRule {
-  // A user-chosen name for this rule.
-  // Must be unique within the NSG. Used for identification in Azure Portal, CLI,
-  // and IaC state. Use descriptive names like "allow-https-inbound" or "deny-all-outbound".
+// Sources and destinations each take exactly one addressing style: a single
+// prefix (CIDR, IP, service tag, or "*"), a list of prefixes (CIDRs/IPs
+// only -- service tags and "*" are singular-only), or a list of application
+// security group IDs (identity-based addressing that follows workloads as
+// they scale). Leaving all three unset means "any" (*). Port ranges take
+// the single form ("443", "1024-65535", "*") or the list form, never both.
+message AzureNetworkSecurityGroupRule {
+  // The rule's name, unique within the NSG. Shown in the portal, CLI, and
+  // flow logs -- "allow-https-inbound" reads better than "rule1". 1-80
+  // characters. Renaming replaces the rule (a momentary gap in an
+  // otherwise-in-place rule set update).
   string name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 80
   ];
 
-  // Optional human-readable description of the rule's purpose.
-  // Useful for documenting intent (e.g., "Allow HTTPS from corporate VPN range").
-  // Maximum 140 characters.
+  // Optional human-readable statement of intent, up to 140 characters --
+  // e.g. "Allow HTTPS from the corporate VPN range". Auditors and future
+  // operators read these before they read the tuples.
   string description = 2 [(buf.validate.field).string.max_len = 140];
 
-  // The evaluation priority of this rule. Lower numbers are evaluated first.
-  // Range: 100 to 4096 (inclusive).
-  // Azure reserves priorities 65000-65500 for implicit default rules.
-  //
-  // Best practice: Use increments of 10 or 100 (e.g., 100, 200, 300) to leave
-  // room for inserting rules later without renumbering.
+  // The evaluation priority, 100-4096, unique per direction within the
+  // NSG. Lower numbers evaluate first; the first matching rule decides.
+  // Leave gaps (100, 200, 300...) so rules can be inserted later without
+  // renumbering.
   int32 priority = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).int32 = {
@@ -105,100 +113,151 @@ message AzureSecurityRule {
     }
   ];
 
-  // The traffic direction this rule applies to.
-  // Uses Azure's exact API values for provider authenticity.
-  //
-  // Valid values:
-  // - "Inbound" -- traffic entering the resource (from external to internal)
-  // - "Outbound" -- traffic leaving the resource (from internal to external)
-  string direction = 4 [
+  // Whether the rule filters traffic entering (INBOUND) or leaving
+  // (OUTBOUND) the guarded resources.
+  AzureNetworkSecurityGroupRuleDirection direction = 4 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "direction_valid"
-      message: "direction must be one of: Inbound, Outbound"
-      expression: "this in ['Inbound', 'Outbound']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
-  // The access decision when this rule matches.
-  // Uses Azure's exact API values.
-  //
-  // Valid values:
-  // - "Allow" -- permit matching traffic
-  // - "Deny" -- block matching traffic
-  string access = 5 [
+  // Whether matching traffic is permitted (ALLOW) or blocked (DENY).
+  AzureNetworkSecurityGroupRuleAccess access = 5 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "access_valid"
-      message: "access must be one of: Allow, Deny"
-      expression: "this in ['Allow', 'Deny']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
-  // The network protocol this rule matches.
-  // Uses Azure's exact API values.
-  //
-  // Valid values:
-  // - "Tcp" -- TCP traffic
-  // - "Udp" -- UDP traffic
-  // - "Icmp" -- ICMP traffic (ping, traceroute)
-  // - "*" -- any protocol
-  string protocol = 6 [
+  // The network protocol the rule matches. ANY matches everything; AH and
+  // ESP match IPsec traffic (site-to-site VPN scenarios).
+  AzureNetworkSecurityGroupRuleProtocol protocol = 6 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "protocol_valid"
-      message: "protocol must be one of: Tcp, Udp, Icmp, *"
-      expression: "this in ['Tcp', 'Udp', 'Icmp', '*']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
-  // The source port or port range for this rule.
-  // Accepts a single port ("443"), a range ("1024-65535"), or "*" for any port.
-  // Most rules use "*" for source port since source ports are typically ephemeral.
-  // Default: "*"
-  optional string source_port_range = 7 [(dev.planton.shared.options.default) = "*"];
+  // The source port or port range: a single port ("443"), a range
+  // ("1024-65535"), or "*" for any. Unset (with source_port_ranges empty)
+  // means any -- the right choice for almost every rule, since client
+  // source ports are ephemeral. Never combined with source_port_ranges.
+  optional string source_port_range = 7;
 
-  // The destination port or port range for this rule.
-  // Accepts a single port ("443"), a range ("1024-65535"), or "*" for any port.
-  // This is the field that typically defines what service the rule targets.
-  // Examples: "22" (SSH), "80" (HTTP), "443" (HTTPS), "3306" (MySQL), "5432" (PostgreSQL).
-  string destination_port_range = 8 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
-  ];
+  // Multiple source ports/ranges in one rule. Never combined with
+  // source_port_range.
+  repeated string source_port_ranges = 8;
 
-  // The source address prefix for this rule.
-  // Accepts a CIDR ("10.0.0.0/8"), a single IP ("10.0.0.1"), an Azure service tag
-  // ("VirtualNetwork", "AzureLoadBalancer", "Internet"), or "*" for any source.
-  // Default: "*"
-  //
-  // If source_address_prefixes (plural) is also set, the plural field takes precedence
-  // and this field is ignored. Use singular for simple rules and plural for multi-CIDR rules.
-  optional string source_address_prefix = 9 [(dev.planton.shared.options.default) = "*"];
+  // The destination port or port range -- the field that says what service
+  // the rule is about: "22" (SSH), "443" (HTTPS), "5432" (PostgreSQL), or
+  // "*" for any. Exactly one of destination_port_range or
+  // destination_port_ranges must be set.
+  optional string destination_port_range = 9;
 
-  // The destination address prefix for this rule.
-  // Accepts a CIDR ("10.0.1.0/24"), a single IP, an Azure service tag
-  // ("VirtualNetwork", "AzureLoadBalancer", "Internet"), or "*" for any destination.
-  // Default: "*"
-  //
-  // If destination_address_prefixes (plural) is also set, the plural field takes
-  // precedence and this field is ignored.
-  optional string destination_address_prefix = 10 [(dev.planton.shared.options.default) = "*"];
+  // Multiple destination ports/ranges in one rule (e.g. ["80", "443"]).
+  // Exactly one of destination_port_range or destination_port_ranges must
+  // be set.
+  repeated string destination_port_ranges = 10;
 
-  // Optional list of source address prefixes (CIDRs or IPs).
-  // Use this when a rule needs to allow/deny traffic from multiple non-contiguous
-  // source ranges in a single rule (e.g., multiple VPN CIDR blocks).
-  //
-  // When set (non-empty), this field takes precedence over source_address_prefix.
-  // Note: Azure service tags (e.g., "VirtualNetwork") are only supported in the
-  // singular source_address_prefix field, not in this list.
-  repeated string source_address_prefixes = 11;
+  // The source as a single prefix: a CIDR ("10.0.0.0/8"), an IP, an Azure
+  // service tag ("VirtualNetwork", "AzureLoadBalancer", "Internet"), or
+  // "*". Service tags and "*" only work here, not in the plural form.
+  // At most one source addressing style may be set; all unset means any.
+  optional string source_address_prefix = 11;
 
-  // Optional list of destination address prefixes (CIDRs or IPs).
-  // Use this when a rule needs to target multiple non-contiguous destination ranges.
-  //
-  // When set (non-empty), this field takes precedence over destination_address_prefix.
-  // Note: Azure service tags are only supported in the singular destination_address_prefix
-  // field, not in this list.
-  repeated string destination_address_prefixes = 12;
+  // The source as multiple CIDRs/IPs (e.g. several VPN ranges in one
+  // rule). Service tags are not accepted in the list form. At most one
+  // source addressing style may be set.
+  repeated string source_address_prefixes = 12;
+
+  // The source as application security group membership -- identity-based
+  // addressing that follows workloads as they scale instead of pinning
+  // CIDRs. Plain ARM IDs (up to 10): application security groups are not
+  // yet modeled as a Planton kind. At most one source addressing style may
+  // be set.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationSecurityGroups/{name}
+  repeated string source_application_security_group_ids = 13 [(buf.validate.field).repeated.max_items = 10];
+
+  // The destination as a single prefix: a CIDR, an IP, a service tag, or
+  // "*". Service tags and "*" only work here, not in the plural form. At
+  // most one destination addressing style may be set; all unset means any.
+  optional string destination_address_prefix = 14;
+
+  // The destination as multiple CIDRs/IPs. Service tags are not accepted
+  // in the list form. At most one destination addressing style may be set.
+  repeated string destination_address_prefixes = 15;
+
+  // The destination as application security group membership. Plain ARM
+  // IDs (up to 10). At most one destination addressing style may be set.
+  repeated string destination_application_security_group_ids = 16 [(buf.validate.field).repeated.max_items = 10];
+
+  option (buf.validate.message).cel = {
+    id: "source_ports_single_style"
+    message: "Set source ports as either source_port_range or source_port_ranges, not both (unset means any)"
+    expression: "!(has(this.source_port_range) && this.source_port_ranges.size() > 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "destination_ports_exactly_one"
+    message: "Set exactly one of destination_port_range or destination_port_ranges (use \"*\" for any port)"
+    expression: "has(this.destination_port_range) != (this.destination_port_ranges.size() > 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "source_address_single_style"
+    message: "Set at most one source addressing style: source_address_prefix, source_address_prefixes, or source_application_security_group_ids (all unset means any)"
+    expression: "(has(this.source_address_prefix) ? 1 : 0) + (this.source_address_prefixes.size() > 0 ? 1 : 0) + (this.source_application_security_group_ids.size() > 0 ? 1 : 0) <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "destination_address_single_style"
+    message: "Set at most one destination addressing style: destination_address_prefix, destination_address_prefixes, or destination_application_security_group_ids (all unset means any)"
+    expression: "(has(this.destination_address_prefix) ? 1 : 0) + (this.destination_address_prefixes.size() > 0 ? 1 : 0) + (this.destination_application_security_group_ids.size() > 0 ? 1 : 0) <= 1"
+  };
+}
+
+// The direction of traffic a security rule filters. Values mirror ARM's
+// SecurityRuleDirection.
+enum AzureNetworkSecurityGroupRuleDirection {
+  // Not specified -- invalid; every rule must declare its direction.
+  azure_network_security_group_rule_direction_unspecified = 0;
+
+  // Traffic entering the guarded resources.
+  INBOUND = 1;
+
+  // Traffic leaving the guarded resources.
+  OUTBOUND = 2;
+}
+
+// The access decision when a security rule matches. Values mirror ARM's
+// SecurityRuleAccess.
+enum AzureNetworkSecurityGroupRuleAccess {
+  // Not specified -- invalid; every rule must declare its decision.
+  azure_network_security_group_rule_access_unspecified = 0;
+
+  // Permit matching traffic.
+  ALLOW = 1;
+
+  // Block matching traffic.
+  DENY = 2;
+}
+
+// The network protocol a security rule matches. Values mirror ARM's
+// SecurityRuleProtocol.
+enum AzureNetworkSecurityGroupRuleProtocol {
+  // Not specified -- invalid; every rule must declare its protocol.
+  azure_network_security_group_rule_protocol_unspecified = 0;
+
+  // Any protocol (ARM's "*").
+  ANY = 1;
+
+  // TCP traffic.
+  TCP = 2;
+
+  // UDP traffic.
+  UDP = 3;
+
+  // ICMP traffic (ping, traceroute).
+  ICMP = 4;
+
+  // IPsec Authentication Header traffic.
+  AH = 5;
+
+  // IPsec Encapsulating Security Payload traffic.
+  ESP = 6;
 }

@@ -142,6 +142,133 @@ func TestSplitManifestDocuments_MultiDocumentSplits(t *testing.T) {
 	}
 }
 
+// writeScenario creates a loadable KRM scenario manifest (real kind, optional
+// extra-prerequisites annotation) under a fake repo root and returns its path.
+func writeScenario(t *testing.T, repoRoot, relPath, kind, extraPrereqs string) string {
+	t.Helper()
+	content := "apiVersion: azure.planton.dev/v1\nkind: " + kind + "\nmetadata:\n  name: scenario-under-test\n"
+	if extraPrereqs != "" {
+		content += "  annotations:\n    planton.dev/e2e-extra-prerequisites: \"" + extraPrereqs + "\"\n"
+	}
+	full := filepath.Join(repoRoot, relPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatalf("mkdir for %s: %v", relPath, err)
+	}
+	if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+		t.Fatalf("write %s: %v", relPath, err)
+	}
+	return full
+}
+
+// A kind-name entry deploys through its standard install profile, preceded by
+// its own transitive prerequisites -- with prerequisites the registry chain
+// already schedules deduplicated (here: the resource group is shared).
+func TestResolveAllDependencies_ExtraKindEntry(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	pdnsProfile := writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureprivatednszone/v1/e2e/prerequisite.yaml")
+	scenario := writeScenario(t, repoRoot, "scenario.yaml", "AzureRouteTable", "AzurePrivateDnsZone")
+
+	deps, err := ResolveAllDependencies(repoRoot, "azure", "azureroutetable", scenario)
+	if err != nil {
+		t.Fatalf("ResolveAllDependencies: %v", err)
+	}
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"azureresourcegroup", "azureprivatednszone"}
+	if len(got) != len(want) {
+		t.Fatalf("dependency slugs = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dependency order = %v, want %v", got, want)
+		}
+	}
+	if deps[1].ManifestPath != pdnsProfile {
+		t.Errorf("extra fixture manifest = %q, want the kind's install profile %q", deps[1].ManifestPath, pdnsProfile)
+	}
+}
+
+// A kind-name entry the registry chain already deploys is skipped entirely.
+func TestResolveAllDependencies_ExtraKindAlreadyScheduled(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	scenario := writeScenario(t, repoRoot, "scenario.yaml", "AzureRouteTable", "AzureResourceGroup")
+
+	deps, err := ResolveAllDependencies(repoRoot, "azure", "azureroutetable", scenario)
+	if err != nil {
+		t.Fatalf("ResolveAllDependencies: %v", err)
+	}
+	if len(deps) != 1 || deps[0].KindSlug != "azureresourcegroup" {
+		t.Fatalf("expected only the registry chain, got %+v", deps)
+	}
+}
+
+// A path entry deploys as an EXTRA INSTANCE of its declared kind even when the
+// registry chain already deploys that kind, and its own transitive
+// prerequisites are deduplicated against the chain.
+func TestResolveAllDependencies_ExtraPathInstance(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azurevirtualnetwork/v1/e2e/prerequisite.yaml")
+	remoteRel := "apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1/e2e/fixtures/remote-network.yaml"
+	remoteAbs := writeScenario(t, repoRoot, remoteRel, "AzureVirtualNetwork", "")
+	scenario := writeScenario(t, repoRoot, "scenario.yaml", "AzureVirtualNetwork", remoteRel)
+
+	// Component under test declares AzureVirtualNetwork in its registry chain
+	// (transitively through the DNS-zone link kind, which needs zone + network).
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureprivatednszone/v1/e2e/prerequisite.yaml")
+	deps, err := ResolveAllDependencies(repoRoot, "azure", "azureprivatednszonevirtualnetworklink", scenario)
+	if err != nil {
+		t.Fatalf("ResolveAllDependencies: %v", err)
+	}
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"azureresourcegroup", "azureprivatednszone", "azurevirtualnetwork", "azurevirtualnetwork"}
+	if len(got) != len(want) {
+		t.Fatalf("dependency slugs = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dependency order = %v, want %v", got, want)
+		}
+	}
+	if deps[3].ManifestPath != remoteAbs {
+		t.Errorf("extra instance manifest = %q, want %q", deps[3].ManifestPath, remoteAbs)
+	}
+}
+
+// An entry that is neither a registered kind nor an existing manifest path
+// fails resolution loudly.
+func TestResolveAllDependencies_UnknownEntryErrors(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	scenario := writeScenario(t, repoRoot, "scenario.yaml", "AzureRouteTable", "NotARealKind")
+
+	if _, err := ResolveAllDependencies(repoRoot, "azure", "azureroutetable", scenario); err == nil {
+		t.Fatal("expected an error for an unknown annotation entry, got nil")
+	}
+}
+
+// A scenario without the annotation resolves identically to the registry chain.
+func TestResolveAllDependencies_NoAnnotation(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	scenario := writeScenario(t, repoRoot, "scenario.yaml", "AzureRouteTable", "")
+
+	deps, err := ResolveAllDependencies(repoRoot, "azure", "azureroutetable", scenario)
+	if err != nil {
+		t.Fatalf("ResolveAllDependencies: %v", err)
+	}
+	if len(deps) != 1 || deps[0].KindSlug != "azureresourcegroup" {
+		t.Fatalf("expected only the registry chain, got %+v", deps)
+	}
+}
+
 // TestResolveDependencies_TransitiveDeployOrder guards the deep-composition
 // ordering DeployDependencies relies on: AwsNatGateway ->
 // [AwsSubnet, AwsElasticIp, AwsInternetGateway] with AwsSubnet -> [AwsVpc] and

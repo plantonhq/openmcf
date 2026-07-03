@@ -3,14 +3,13 @@ kind: AzureSubnet
 metadata:
   name: my-container-apps-subnet
 spec:
-  resourceGroup:
-    value: "<your-resource-group-name>"
-  vnetId:
+  virtualNetworkId:
     value: "<vnet-resource-id>"
   name: container-apps
-  addressPrefix: 10.0.4.0/21  # /21 = 2,048 IPs — minimum recommended for Container Apps
-  delegation:
-    name: container-apps-delegation
-    serviceName: Microsoft.App/environments
-    actions:
-      - Microsoft.Network/virtualNetworks/subnets/join/action
+  addressPrefixes:
+    - 10.0.4.0/21  # /21 = 2,048 IPs — minimum recommended for Container Apps
+  delegations:
+    - name: container-apps-delegation
+      serviceName: Microsoft.App/environments
+      actions:
+        - Microsoft.Network/virtualNetworks/subnets/join/action

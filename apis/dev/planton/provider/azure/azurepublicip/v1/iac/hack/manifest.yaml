@@ -4,5 +4,15 @@ metadata:
   name: test-pip
 spec:
   region: eastus
-  resource_group: test-rg
+  resourceGroup:
+    value: test-rg
   name: test-public-ip
+  zones:
+    - "1"
+    - "2"
+    - "3"
+  domainNameLabel: planton-hack-test
+  domainNameLabelScope: TENANT_REUSE
+  idleTimeoutInMinutes: 10
+  tags:
+    purpose: hack-test

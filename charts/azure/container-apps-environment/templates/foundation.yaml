@@ -27,15 +27,11 @@ kind: AzureSubnet
 metadata:
   name: "{{ values.env }}-cae-subnet"
 spec:
-  resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: "{{ values.env }}-rg"
-      fieldPath: status.outputs.resource_group_name
-  vnetId:
+  virtualNetworkId:
     valueFrom:
       kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
       fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-cae-subnet"
-  addressPrefix: "{{ values.container_apps_subnet_cidr }}"
+  addressPrefixes:
+    - "{{ values.container_apps_subnet_cidr }}"

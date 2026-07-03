@@ -14,36 +14,39 @@ variable "metadata" {
 variable "spec" {
   description = "Azure NAT Gateway specification"
   type = object({
-    # Reference to the subnet to attach this NAT Gateway to
-    subnet_id = string
-
-    # Idle timeout in minutes for TCP connections (4-120)
-    idle_timeout_minutes = optional(number, 4)
-
-    # Optional prefix length for Public IP Prefix (28-31)
-    # If set, creates a Public IP Prefix instead of individual IP
-    public_ip_prefix_length = optional(number)
-
-    # Optional tags to assign to the NAT Gateway resource
-    tags = optional(map(string), {})
-
-    # The Azure region where the NAT Gateway will be deployed
+    # The Azure region the gateway is created in; it only serves subnets in
+    # its own region.
     region = string
 
-    # The Azure Resource Group where the NAT Gateway will be created
+    # The resource group the gateway lives in. References are resolved to a
+    # literal name by the platform before the module runs.
     resource_group = string
+
+    # The gateway's name, unique within the resource group. Renaming
+    # replaces the gateway, briefly interrupting egress for attached
+    # subnets.
+    name = string
+
+    # The SKU, as the spec enum's name string (STANDARD/STANDARD_V2).
+    # Unset lets Azure apply its default (Standard).
+    sku_name = optional(string)
+
+    # How long an idle outbound TCP connection's SNAT port stays reserved,
+    # in minutes (Azure defaults to 4).
+    idle_timeout_in_minutes = optional(number, 4)
+
+    # The availability zone pinning a STANDARD gateway (STANDARD_V2 is
+    # zone-redundant and forbids zones; spec-level validation enforces the
+    # pairing).
+    zones = optional(list(string), [])
+
+    # The public IPs and prefixes the gateway SNATs through, as resolved
+    # ARM IDs. Each drives one association resource.
+    public_ip_ids        = optional(list(string), [])
+    public_ip_prefix_ids = optional(list(string), [])
+
+    # Free-form user tags, merged over the metadata-derived tags (user tags
+    # win on key collision).
+    tags = optional(map(string), {})
   })
-
-  validation {
-    condition     = var.spec.idle_timeout_minutes >= 4 && var.spec.idle_timeout_minutes <= 120
-    error_message = "idle_timeout_minutes must be between 4 and 120 (inclusive)."
-  }
-
-  validation {
-    condition = (
-      var.spec.public_ip_prefix_length == null ||
-      (var.spec.public_ip_prefix_length >= 28 && var.spec.public_ip_prefix_length <= 31)
-    )
-    error_message = "public_ip_prefix_length, if specified, must be between 28 and 31 (inclusive)."
-  }
 }
