@@ -354,6 +354,21 @@ composition principle in the doctrine. Extra fixture instances deployed for
 other consumers are harmless when the resource is free and fast (IAM roles);
 weigh the cost for expensive kinds.
 
+**Run live E2E serially per account — never parallelize lanes.** Prerequisite
+fixtures deliberately use FIXED manifest names and CIDRs (stable identities are
+what make orphan sweeps and name-aware resolution possible), so two concurrent
+runs in the same account collide on IAM role names and subnet CIDRs and both
+fail their DEPENDENCIES-UP phase. Batch a family's runs one after another; the
+time saved by parallelism is an illusion here.
+
+**Prerequisite teardown failures FAIL the run.** The harness destroys
+prerequisites in reverse order after the component's own lifecycle, and any
+destroy/stack-removal failure (e.g. the ephemeral backend state vanished
+before teardown) fails the run's DEPENDENCIES-DOWN phase — a green run
+therefore guarantees zero orphaned prerequisites. When that phase is red,
+real cloud resources may still exist: sweep the account for the scenario's
+`planton-e2e`-tagged resources before re-running.
+
 **Reference field paths must be output-backed.** The E2E resolver (like the
 production flattening it mirrors) resolves `valueFrom` references against the
 referenced instance's captured STACK OUTPUTS — a `field_path` under
