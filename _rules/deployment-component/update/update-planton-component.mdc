@@ -124,12 +124,21 @@ Use update when you need to:
 ```
 
 **What it does:**
-1. Updates Pulumi module based on your explanation, keeping comments at the module-comment bar (`architecture/deployment-component.md` §4.1)
-2. Updates Terraform module to maintain feature parity AND comment-quality parity (never strip module comments)
-3. Updates tests if needed
-4. Runs build validation: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` (rule 018)
-5. Runs E2E tests (rules 011, 014)
-6. Runs test validation: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` (rule 019)
+1. **Entrypoint-completeness gate first:** older components may predate the full
+   module anatomy — verify `iac/pulumi/` carries `Pulumi.yaml`, `Makefile`, and
+   `main.go` before touching logic. A missing `Pulumi.yaml` passes every offline
+   gate (the Go program builds fine) and only fails at live deploy time, with the
+   misleading `pulumi stack init` error "pass the fully qualified name
+   (organization/project/stack)" — the CLI found no Pulumi project in the module
+   dir. Also verify the exact pin `= x.y.z` in `iac/tf/provider.tf` is lifted to
+   the provider family's floor constraint (see forge rule 013) before adding
+   fields that need a newer provider.
+2. Updates Pulumi module based on your explanation, keeping comments at the module-comment bar (`architecture/deployment-component.md` §4.1)
+3. Updates Terraform module to maintain feature parity AND comment-quality parity (never strip module comments)
+4. Updates tests if needed
+5. Runs build validation: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` (rule 018)
+6. Runs E2E tests (rules 011, 014)
+7. Runs test validation: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` (rule 019)
 
 **Use when:**
 - Adding new resources to deployment
