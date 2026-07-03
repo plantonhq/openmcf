@@ -15,4 +15,9 @@ message AwsAlbStackOutputs {
 
   // load_balancer_hosted_zone_id is the Route53 hosted zone ID for the ALB's DNS entry.
   string load_balancer_hosted_zone_id = 4;
+
+  // arn_suffix is the ARN suffix (e.g. "app/my-alb/50dc6c495c0c9188") used
+  // as the LoadBalancer dimension in CloudWatch metrics -- the handle
+  // alarms, dashboards, and request-count autoscaling policies need.
+  string arn_suffix = 5;
 }

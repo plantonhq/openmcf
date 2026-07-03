@@ -33,6 +33,7 @@ var migratedKinds = []string{
 	"AwsAlb",
 	"AwsCertManagerCert",
 	"AwsEcsService",
+	"AwsEcsTaskDefinition",
 	// AWS networking primitives already on the modern schema, brought under the
 	// guard so they cannot regress.
 	"AwsVpc",

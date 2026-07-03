@@ -29,6 +29,7 @@ The following AWS resources can be deployed using Planton:
 - [ECR Repo](/docs/catalog/aws/ecr-repo)
 - [ECS Cluster](/docs/catalog/aws/ecs-cluster)
 - [ECS Service](/docs/catalog/aws/ecs-service)
+- [ECS Task Definition](/docs/catalog/aws/ecs-task-definition)
 - [Egress-Only Internet Gateway](/docs/catalog/aws/egress-only-internet-gateway)
 - [EKS Access Entry](/docs/catalog/aws/eks-access-entry)
 - [EKS Add-on](/docs/catalog/aws/eks-add-on)

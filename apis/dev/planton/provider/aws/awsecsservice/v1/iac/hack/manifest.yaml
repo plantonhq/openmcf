@@ -3,15 +3,16 @@ kind: AwsEcsService
 metadata:
   name: awsecsservice-demo
 spec:
-  region: us-east-1
+  region: us-west-2
   clusterArn:
-    value: arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster
-  container:
-    image:
-      repo: nginx
-      tag: latest
-    cpu: 256
-    memory: 512
+    value: arn:aws:ecs:us-west-2:123456789012:cluster/awsecscluster-demo
+  taskDefinition:
+    value: arn:aws:ecs:us-west-2:123456789012:task-definition/awsecstaskdefinition-demo:1
+  desiredCount: 1
   network:
     subnets:
-      - value: subnet-abc123
+      - value: subnet-0123456789abcdef0
+      - value: subnet-0fedcba9876543210
+  deploymentCircuitBreaker:
+    enable: true
+    rollback: true

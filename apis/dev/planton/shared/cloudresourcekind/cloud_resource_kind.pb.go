@@ -91,7 +91,11 @@ const (
 	CloudResourceKind_AwsDynamodb        CloudResourceKind = 203
 	CloudResourceKind_AwsEcrRepo         CloudResourceKind = 204
 	CloudResourceKind_AwsEcsCluster      CloudResourceKind = 205
-	CloudResourceKind_AwsEcsService      CloudResourceKind = 206
+	// AwsEcsCluster, AwsEcsTaskDefinition, and AwsSubnet are prerequisites
+	// because a service schedules a referenced task-definition revision into
+	// a referenced live cluster and places task network interfaces into
+	// referenced subnets -- all three references must resolve first.
+	CloudResourceKind_AwsEcsService CloudResourceKind = 206
 	// AwsSubnet and AwsIamRole are prerequisites because the control plane
 	// attaches its network interfaces into referenced subnets and assumes a
 	// referenced cluster role that must already carry AmazonEKSClusterPolicy.
@@ -156,7 +160,11 @@ const (
 	// AwsEksCluster and AwsIamRole are prerequisites because an access entry
 	// grants a referenced IAM principal access to a live control plane --
 	// both references must resolve before the entry can be created.
-	CloudResourceKind_AwsEksAccessEntry        CloudResourceKind = 238
+	CloudResourceKind_AwsEksAccessEntry CloudResourceKind = 238
+	// AwsIamRole is a prerequisite because the kind's default posture --
+	// Fargate with the awslogs logging default -- is rejected by AWS at
+	// registration time without an execution role the agent can assume.
+	CloudResourceKind_AwsEcsTaskDefinition     CloudResourceKind = 239
 	CloudResourceKind_AwsHttpApiGateway        CloudResourceKind = 240
 	CloudResourceKind_AwsStepFunction          CloudResourceKind = 241
 	CloudResourceKind_AwsRedisElasticache      CloudResourceKind = 250
@@ -609,6 +617,7 @@ var (
 		236:  "AwsEksAddon",
 		237:  "AwsEksFargateProfile",
 		238:  "AwsEksAccessEntry",
+		239:  "AwsEcsTaskDefinition",
 		240:  "AwsHttpApiGateway",
 		241:  "AwsStepFunction",
 		250:  "AwsRedisElasticache",
@@ -1030,6 +1039,7 @@ var (
 		"AwsEksAddon":                             236,
 		"AwsEksFargateProfile":                    237,
 		"AwsEksAccessEntry":                       238,
+		"AwsEcsTaskDefinition":                    239,
 		"AwsHttpApiGateway":                       240,
 		"AwsStepFunction":                         241,
 		"AwsRedisElasticache":                     250,
@@ -1657,7 +1667,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*ޔ\x01\n" +
+	"\x02v1\x10\x01*\x96\x95\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1673,8 +1683,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\vAwsDynamodb\x10\xcb\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsdyn\x12\x1e\n" +
 	"\n" +
 	"AwsEcrRepo\x10\xcc\x01\x1a\r\xa2\xf7\x04\t\b\f\x10\x01\"\x03ecr\x12&\n" +
-	"\rAwsEcsCluster\x10\xcd\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x06ecsclu0\x01\x12$\n" +
-	"\rAwsEcsService\x10\xce\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06ecssvc\x12)\n" +
+	"\rAwsEcsCluster\x10\xcd\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x06ecsclu0\x01\x12,\n" +
+	"\rAwsEcsService\x10\xce\x01\x1a\x18\xa2\xf7\x04\x14\b\f\x10\x01\"\x06ecssvc:\x06\xcd\x01\xef\x01\x9c\x02\x12)\n" +
 	"\rAwsEksCluster\x10\xcf\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x03eks0\x01:\x04\x9c\x02\xd0\x01\x12\x1e\n" +
 	"\n" +
 	"AwsIamRole\x10\xd0\x01\x1a\r\xa2\xf7\x04\t\b\f\x10\x01\"\x03air\x12 \n" +
@@ -1710,6 +1720,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\vAwsEksAddon\x10\xec\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\beksaddon:\x02\xcf\x01\x122\n" +
 	"\x14AwsEksFargateProfile\x10\xed\x01\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\x05eksfp:\x06\xcf\x01\xd0\x01\x9c\x02\x12-\n" +
 	"\x11AwsEksAccessEntry\x10\xee\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05eksae:\x04\xcf\x01\xd0\x01\x12.\n" +
+	"\x14AwsEcsTaskDefinition\x10\xef\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05ecstd:\x02\xd0\x01\x12.\n" +
 	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12&\n" +
 	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12,\n" +
 	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsredis\x12)\n" +

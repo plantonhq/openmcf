@@ -68,6 +68,7 @@ import (
 	awsecrrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecrrepo/v1"
 	awsecsclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecscluster/v1"
 	awsecsservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecsservice/v1"
+	awsecstaskdefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecstaskdefinition/v1"
 	awsegressonlyinternetgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsegressonlyinternetgateway/v1"
 	awseksaccessentryv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksaccessentry/v1"
 	awseksaddonv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksaddon/v1"
@@ -513,6 +514,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsEcrRepo:                       &awsecrrepov1.AwsEcrRepo{},
 	cloudresourcekind.CloudResourceKind_AwsEcsCluster:                    &awsecsclusterv1.AwsEcsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsEcsService:                    &awsecsservicev1.AwsEcsService{},
+	cloudresourcekind.CloudResourceKind_AwsEcsTaskDefinition:             &awsecstaskdefinitionv1.AwsEcsTaskDefinition{},
 	cloudresourcekind.CloudResourceKind_AwsEgressOnlyInternetGateway:     &awsegressonlyinternetgatewayv1.AwsEgressOnlyInternetGateway{},
 	cloudresourcekind.CloudResourceKind_AwsEksAccessEntry:                &awseksaccessentryv1.AwsEksAccessEntry{},
 	cloudresourcekind.CloudResourceKind_AwsEksAddon:                      &awseksaddonv1.AwsEksAddon{},

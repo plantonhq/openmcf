@@ -142,10 +142,19 @@ enum CloudResourceKind {
     id_prefix: "ecsclu"
     container_kind: true
   }];
+  // AwsEcsCluster, AwsEcsTaskDefinition, and AwsSubnet are prerequisites
+  // because a service schedules a referenced task-definition revision into
+  // a referenced live cluster and places task network interfaces into
+  // referenced subnets -- all three references must resolve first.
   AwsEcsService = 206 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "ecssvc"
+    prerequisites: [
+      AwsEcsCluster,
+      AwsEcsTaskDefinition,
+      AwsSubnet
+    ]
   }];
   // AwsSubnet and AwsIamRole are prerequisites because the control plane
   // attaches its network interfaces into referenced subnets and assumes a
@@ -371,6 +380,15 @@ enum CloudResourceKind {
       AwsEksCluster,
       AwsIamRole
     ]
+  }];
+  // AwsIamRole is a prerequisite because the kind's default posture --
+  // Fargate with the awslogs logging default -- is rejected by AWS at
+  // registration time without an execution role the agent can assume.
+  AwsEcsTaskDefinition = 239 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "ecstd"
+    prerequisites: [AwsIamRole]
   }];
   AwsHttpApiGateway = 240 [(kind_meta) = {
     provider: aws

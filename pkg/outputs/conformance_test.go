@@ -224,9 +224,10 @@ func TestStackOutputsConformance(t *testing.T) {
 		},
 		{
 			// AwsAlb: flat scalar outputs from both engines (arn/name/dns
-			// name/hosted zone id) must each land on the StackOutputs proto --
-			// load_balancer_arn is what listeners attach through, and the DNS pair
-			// is what Route53 alias records consume.
+			// name/hosted zone id/arn suffix) must each land on the StackOutputs
+			// proto -- load_balancer_arn is what listeners attach through, the DNS
+			// pair is what Route53 alias records consume, and arn_suffix is the
+			// CloudWatch LoadBalancer dimension request-count autoscaling scopes on.
 			name: "AwsAlb",
 			kind: cloudresourcekind.CloudResourceKind_AwsAlb,
 			rawOutputs: map[string]interface{}{
@@ -234,10 +235,12 @@ func TestStackOutputsConformance(t *testing.T) {
 				"load_balancer_name":           "demo",
 				"load_balancer_dns_name":       "demo-1234567890.us-west-2.elb.amazonaws.com",
 				"load_balancer_hosted_zone_id": "Z1H1FL5HABSF5",
+				"arn_suffix":                   "app/demo/50dc6c495c0c9188",
 			},
 			mustPopulate: []string{
 				"load_balancer_arn", "load_balancer_name",
 				"load_balancer_dns_name", "load_balancer_hosted_zone_id",
+				"arn_suffix",
 			},
 		},
 		{
@@ -294,6 +297,42 @@ func TestStackOutputsConformance(t *testing.T) {
 				"priority": "10",
 			},
 			mustPopulate: []string{"rule_arn", "priority"},
+		},
+		{
+			// AwsEcsTaskDefinition: the revision-carrying ARN is the handle ECS
+			// services reference (each new revision changes it and rolls the
+			// service); revision is an int64 proto field fed from numeric engine
+			// outputs, guarding the numeric-to-int64 flattening.
+			name: "AwsEcsTaskDefinition",
+			kind: cloudresourcekind.CloudResourceKind_AwsEcsTaskDefinition,
+			rawOutputs: map[string]interface{}{
+				"task_definition_arn":  "arn:aws:ecs:us-west-2:123456789012:task-definition/api:7",
+				"arn_without_revision": "arn:aws:ecs:us-west-2:123456789012:task-definition/api",
+				"family":               "api",
+				"revision":             float64(7),
+				"log_group_name":       "/ecs/api",
+				"log_group_arn":        "arn:aws:logs:us-west-2:123456789012:log-group:/ecs/api",
+			},
+			mustPopulate: []string{
+				"task_definition_arn", "arn_without_revision", "family",
+				"revision", "log_group_name", "log_group_arn",
+			},
+		},
+		{
+			// AwsEcsService: flat scalar outputs -- the service ARN encodes both
+			// the cluster and service names (the E2E verifier's key), and the
+			// cluster/task-definition ARNs are republished resolved references.
+			name: "AwsEcsService",
+			kind: cloudresourcekind.CloudResourceKind_AwsEcsService,
+			rawOutputs: map[string]interface{}{
+				"service_arn":         "arn:aws:ecs:us-west-2:123456789012:service/prod/api",
+				"service_name":        "api",
+				"cluster_arn":         "arn:aws:ecs:us-west-2:123456789012:cluster/prod",
+				"task_definition_arn": "arn:aws:ecs:us-west-2:123456789012:task-definition/api:7",
+			},
+			mustPopulate: []string{
+				"service_arn", "service_name", "cluster_arn", "task_definition_arn",
+			},
 		},
 		{
 			// AwsLaunchTemplate: the template id/arn plus the two version numbers.

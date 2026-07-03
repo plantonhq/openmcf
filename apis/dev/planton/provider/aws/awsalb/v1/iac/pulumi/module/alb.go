@@ -117,6 +117,9 @@ func alb(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lb.LoadB
 	ctx.Export(OpAlbName, createdLoadBalancer.Name)
 	ctx.Export(OpAlbDnsName, createdLoadBalancer.DnsName)
 	ctx.Export(OpAlbHostedZoneId, createdLoadBalancer.ZoneId)
+	// The CloudWatch LoadBalancer dimension -- request-count autoscaling
+	// policies compose it with a target group's arn_suffix.
+	ctx.Export(OpAlbArnSuffix, createdLoadBalancer.ArnSuffix)
 
 	return createdLoadBalancer, nil
 }
