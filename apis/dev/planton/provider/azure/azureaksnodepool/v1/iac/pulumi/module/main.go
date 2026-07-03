@@ -162,7 +162,7 @@ func Resources(ctx *pulumi.Context, stackInput *azureaksnodepoolv1.AzureAksNodeP
 		poolArgs.NodeNetworkProfile = buildNodeNetworkProfile(spec.NodeNetworkProfile)
 	}
 	if spec.UpgradeSettings != nil {
-		poolArgs.UpgradeSettings = buildUpgradeSettings(spec.UpgradeSettings, spec.Priority)
+		poolArgs.UpgradeSettings = buildUpgradeSettings(spec.UpgradeSettings)
 	}
 	if spec.WindowsProfile != nil {
 		poolArgs.WindowsProfile = buildWindowsProfile(spec.WindowsProfile)
@@ -214,15 +214,10 @@ func evictionPolicyToArm(v azureaksnodepoolv1.AzureAksNodePoolEvictionPolicy) st
 	}
 }
 
-func buildUpgradeSettings(
-	cfg *azureaksnodepoolv1.AzureAksNodePoolUpgradeSettings,
-	priority azureaksnodepoolv1.AzureAksNodePoolPriority,
-) *containerservice.KubernetesClusterNodePoolUpgradeSettingsArgs {
-	// Spot pools do not support max_surge or max_unavailable.
-	if priority == azureaksnodepoolv1.AzureAksNodePoolPriority_SPOT {
-		return nil
-	}
-
+// buildUpgradeSettings passes the spec's rollout settings straight through:
+// spec-level CEL already forbids surge/unavailable values on spot pools, so
+// both engines send identical payloads without module-side filtering.
+func buildUpgradeSettings(cfg *azureaksnodepoolv1.AzureAksNodePoolUpgradeSettings) *containerservice.KubernetesClusterNodePoolUpgradeSettingsArgs {
 	args := &containerservice.KubernetesClusterNodePoolUpgradeSettingsArgs{}
 	if cfg.MaxSurge != "" {
 		args.MaxSurge = pulumi.String(cfg.MaxSurge)

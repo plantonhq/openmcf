@@ -1,61 +1,54 @@
 # Azure AKS Cluster
 
-Deploys an Azure Kubernetes Service cluster with configurable node pools, Azure CNI networking, optional Azure AD RBAC integration, and managed add-ons including Container Insights, Key Vault CSI driver, and Workload Identity. The component uses a system-assigned managed identity and supports both public and private cluster topologies.
+Creates an Azure Kubernetes Service (AKS) managed cluster -- the control plane, its identity and access model, its network fabric, the mandatory default (system) node pool, and the Azure-managed add-ons -- at the full `azurerm` v4.80 surface.
 
 ## What Gets Created
 
 When you deploy an AzureAksCluster resource, Planton provisions:
 
-- **AKS Managed Cluster** — a `containerservice.ManagedCluster` resource with system-assigned managed identity, the specified Kubernetes version, and a DNS prefix derived from `metadata.name`
-- **System Node Pool** — a `System` mode agent pool with autoscaling enabled, placed in the specified availability zones and VNet subnet
-- **User Node Pools** — created for each entry in `userNodePools`, each as a separate `containerservice.AgentPool` resource with independent VM size, autoscaling, and optional Spot instance configuration
-- **Network Profile** — configures the cluster networking with the selected plugin (Azure CNI or Kubenet), plugin mode (Overlay or Dynamic), a standard SKU load balancer, and service/DNS CIDRs
-- **Azure AD RBAC Integration** — enabled by default, provides managed Azure AD authentication and Kubernetes RBAC authorization
-- **OIDC Issuer + Workload Identity** — created only when `addons.enableWorkloadIdentity` is `true`, enables pods to authenticate to Azure services via Kubernetes service accounts
-- **Add-on Profiles** — conditionally enabled: Container Insights (OMS agent), Key Vault CSI secrets provider, and Azure Policy
+- **Managed Cluster** — an `azurerm_kubernetes_cluster` carrying the control plane, the default node pool, identity, networking, and add-ons
+
+The cluster deliberately carries exactly ONE node pool -- the default (system) pool Azure requires at creation. Every additional pool is its own composable `AzureAksNodePool` resource referencing this cluster's `cluster_id` output, so pools scale, upgrade, and rotate without ever touching the cluster resource.
 
 ## Prerequisites
 
 - **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the cluster will be created (can reference an AzureResourceGroup resource)
-- **A VNet subnet** for cluster nodes (can reference an AzureVirtualNetwork resource)
-- **A Log Analytics Workspace resource ID** if enabling Container Insights
+- **A resource group** to create the cluster in (an `AzureResourceGroup` in composed environments)
+- **Container service write rights**: `Microsoft.ContainerService/managedClusters/write` (Azure Kubernetes Service Contributor, Contributor, or Owner)
+- Optional: an `AzureSubnet` when bringing your own network (leave the subnet unset and AKS provisions managed networking)
 
 ## Quick Start
 
-Create a file `aks-cluster.yaml`:
+Create a file `cluster.yaml`:
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureAksCluster
 metadata:
-  name: my-cluster
+  name: prod-aks
   labels:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureAksCluster.my-cluster
+    pulumi.planton.dev/stack.name: prod.AzureAksCluster.prod-aks
 spec:
   region: eastus
-  resourceGroup: my-rg
-  vnetSubnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/nodes
-  kubernetesVersion: "1.30"
-  systemNodePool:
+  resourceGroup:
+    value: prod-rg
+  name: prod-aks
+  defaultNodePool:
+    name: system
     vmSize: Standard_D4s_v5
-    autoscaling:
-      minCount: 1
-      maxCount: 3
-    availabilityZones:
-      - "1"
+    nodeCount: 3
 ```
 
 Deploy:
 
 ```shell
-planton apply -f aks-cluster.yaml
+planton apply -f cluster.yaml
 ```
 
-This creates a public AKS cluster with a single system node pool running Kubernetes 1.30 on Azure CNI Overlay networking with Standard SKU control plane.
+This is Azure's own simplest honest cluster: a resource group, a default pool, and AKS-managed networking. No subnet, no version pin -- AKS provisions the latest recommended GA Kubernetes version into a network it manages itself.
 
 ## Configuration Reference
 
@@ -63,212 +56,119 @@ This creates a public AKS cluster with a single system node pool running Kuberne
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `region` | `string` | Azure region for the cluster (e.g., `eastus`). | Required |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `vnetSubnetId` | `StringValueOrRef` | Azure resource ID of the VNet subnet for cluster nodes. Can reference an AzureVirtualNetwork resource via `valueFrom`. | Required |
-| `systemNodePool` | `object` | System node pool configuration. See nested fields below. | Required |
-| `systemNodePool.vmSize` | `string` | Azure VM size for system nodes (e.g., `Standard_D4s_v5`). | Required. Recommended default: `Standard_D4s_v5` |
-| `systemNodePool.autoscaling` | `object` | Autoscaling configuration for the system node pool. | Required |
-| `systemNodePool.autoscaling.minCount` | `int` | Minimum number of nodes. | >= 1 |
-| `systemNodePool.autoscaling.maxCount` | `int` | Maximum number of nodes. | >= 1 |
-| `systemNodePool.availabilityZones` | `string[]` | Availability zones for the system node pool (e.g., `["1", "2", "3"]`). | Minimum 1 item |
+| `region` | `string` | Azure region for the control plane and default pool. Changing it replaces the cluster. | Required |
+| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
+| `name` | `string` | Cluster name, unique within the resource group. | Required, 1-63 chars, Azure naming rules |
+| `defaultNodePool` | `object` | The mandatory default (system) pool. See below. | Required |
 
-### Optional Fields
+### Default Node Pool
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `kubernetesVersion` | `string` | — | Kubernetes version for the control plane (e.g., `1.30`). Recommended default: `1.30`. |
-| `controlPlaneSku` | `enum` | `STANDARD` | Control plane SKU tier. Values: `STANDARD` (99.95% SLA, ~$73/month), `FREE` (no SLA, dev/test only). |
-| `networkPlugin` | `enum` | `AZURE_CNI` | Networking plugin. Values: `AZURE_CNI` (recommended), `KUBENET` (deprecated, retiring March 2028). |
-| `networkPluginMode` | `enum` | `OVERLAY` | Azure CNI mode. Only applies when `networkPlugin` is `AZURE_CNI`. Values: `OVERLAY` (pods use private CIDR), `DYNAMIC` (pods use real VNet IPs). |
-| `privateClusterEnabled` | `bool` | `false` | When `true`, the API server endpoint is private and accessible only from within the VNet. |
-| `authorizedIpRanges` | `string[]` | `[]` | CIDR blocks allowed to access the API server. Only applies to public clusters. Must match pattern `x.x.x.x/y`. |
-| `disableAzureAdRbac` | `bool` | `false` | When `true`, disables Azure AD integration for Kubernetes RBAC. |
-| `userNodePools` | `object[]` | `[]` | User node pools for application workloads. See nested fields below. |
-| `userNodePools[].name` | `string` | — | Node pool name. Must be lowercase alphanumeric, max 12 characters. Pattern: `^[a-z0-9]{1,12}$`. |
-| `userNodePools[].vmSize` | `string` | — | Azure VM size for this pool. Required per pool. |
-| `userNodePools[].autoscaling.minCount` | `int` | — | Minimum node count. >= 1. Required per pool. |
-| `userNodePools[].autoscaling.maxCount` | `int` | — | Maximum node count. >= 1. Required per pool. |
-| `userNodePools[].availabilityZones` | `string[]` | — | Availability zones for the pool. Minimum 1 item. Required per pool. |
-| `userNodePools[].spotEnabled` | `bool` | `false` | Enables Azure Spot instances. Eviction policy is `Delete` with max price set to on-demand rate. |
-| `addons.enableContainerInsights` | `bool` | `false` | Enables Azure Monitor Container Insights. Requires `addons.logAnalyticsWorkspaceId`. |
-| `addons.enableKeyVaultCsiDriver` | `bool` | `false` | Enables the Azure Key Vault CSI driver for mounting secrets as volumes. |
-| `addons.enableAzurePolicy` | `bool` | `false` | Enables the Azure Policy add-on for governance. |
-| `addons.enableWorkloadIdentity` | `bool` | `false` | Enables Azure AD Workload Identity and OIDC issuer for secret-less pod authentication. |
-| `addons.logAnalyticsWorkspaceId` | `string` | — | Azure resource ID of the Log Analytics Workspace. Required when `enableContainerInsights` is `true`. |
-| `advancedNetworking.podCidr` | `string` | `10.244.0.0/16` | Pod CIDR for Overlay mode. Only applies when `networkPluginMode` is `OVERLAY`. Must be valid CIDR. |
-| `advancedNetworking.serviceCidr` | `string` | `10.0.0.0/16` | Service CIDR for Kubernetes services. Must not overlap with VNet or pod CIDR. |
-| `advancedNetworking.dnsServiceIp` | `string` | `10.0.0.10` | DNS service IP. Must be within `serviceCidr` range. |
-| `advancedNetworking.customDnsServers` | `string[]` | `[]` | Custom DNS servers for the VNet. Leave empty for Azure-provided DNS. |
+| Field | Type | Description |
+|-------|------|-------------|
+| `defaultNodePool.name` | `string` | Pool name: 1-12 lowercase letters and numbers, starting with a letter. Required. |
+| `defaultNodePool.vmSize` | `string` | Azure VM size, e.g. `Standard_D4s_v5`. Required. |
+| `defaultNodePool.nodeCount` | `int` | Fixed node count (1-1000) without autoscaling; initial count with it. |
+| `defaultNodePool.autoScalingEnabled` | `bool` | Let the cluster autoscaler own the count between `minCount` and `maxCount`. |
+| `defaultNodePool.minCount` / `maxCount` | `int` | Autoscaling bounds (1-1000; the default pool cannot scale to zero). |
+| `defaultNodePool.zones` | `list(string)` | Availability zones (`"1"`, `"2"`, `"3"`). Empty = regional placement. |
+| `defaultNodePool.vnetSubnetId` | `StringValueOrRef` | Optional BYO subnet (references an `AzureSubnet`). Unset = AKS-managed networking. |
+| `defaultNodePool.podSubnetId` | `StringValueOrRef` | Separate pod subnet for non-overlay Azure CNI with dynamic pod IPs. |
+| `defaultNodePool.onlyCriticalAddonsEnabled` | `bool` | Taint the pool `CriticalAddonsOnly` so only system pods schedule here -- the recommended posture once workload pools exist. |
+| `defaultNodePool.*` | | Disk (size/type/kubelet disk/ultra SSD), OS SKU, orchestrator version, labels, FIPS, host encryption, node public IPs (+ prefix FK), GPU instance/driver, placement groups, scale-down mode, snapshot, workload runtime, `temporaryNameForRotation`, kubelet config, Linux OS/sysctl config, node network profile, upgrade settings, tags. |
+
+### Cluster-Wide Optional Fields (grouped)
+
+| Group | Fields |
+|-------|--------|
+| Versioning & tier | `kubernetesVersion` (unset = latest AKS-recommended GA; PIN for production), `skuTier` (`FREE`/`STANDARD`/`PREMIUM`), `supportPlan`, `automaticUpgradeChannel`, `nodeOsUpgradeChannel`, `upgradeOverride` |
+| DNS | `dnsPrefix` (unset = derived from name), `dnsPrefixPrivateCluster` (private clusters; mutually exclusive) |
+| Identity & access | `identity` (system- or user-assigned, `identityIds` reference `AzureUserAssignedIdentity`), `kubeletIdentity`, `azureActiveDirectoryRoleBasedAccessControl` (AAD RBAC; `adminGroupObjectIds`/`tenantId`/`azureRbacEnabled`), `roleBasedAccessControlEnabled`, `localAccountDisabled` |
+| API server | `apiServerAccessProfile.authorizedIpRanges`, `privateClusterEnabled`, `privateDnsZoneId` (references `AzurePrivateDnsZone`), `privateClusterPublicFqdnEnabled` |
+| Networking | `networkProfile`: plugin/mode/policy/data plane, pod & service CIDRs (dual-stack), outbound type, load-balancer + NAT-gateway profiles, `advancedNetworking` (ACNS observability/security -- requires Cilium) |
+| Workload identity | `oidcIssuerEnabled` (default ON -- publishes `oidc_issuer_url`), `workloadIdentityEnabled` |
+| Autoscaler | `autoScalerProfile` (cluster-wide autoscaler tuning) |
+| Maintenance | `maintenanceWindow`, `maintenanceWindowAutoUpgrade`, `maintenanceWindowNodeOs` |
+| Add-ons | `omsAgent` (references `AzureLogAnalyticsWorkspace`), `keyVaultSecretsProvider`, `azurePolicyEnabled`, `ingressApplicationGateway` (references `AzureApplicationGateway`), `microsoftDefender`, `monitorMetrics`, `aciConnectorLinux`, `confidentialComputing`, `webAppRouting` |
+| Platform | `serviceMeshProfile` (Istio), `storageProfile` (CSI drivers), `workloadAutoscalerProfile` (KEDA/VPA), `keyManagementService` (etcd CMK), `httpProxyConfig`, `linuxProfile`, `windowsProfile` (prerequisite for Windows pools), `imageCleaner*`, `costAnalysisEnabled`, `runCommandEnabled`, `bootstrapProfile` (references `AzureContainerRegistry`), `nodeProvisioningProfile` (NAP/Karpenter), `aiToolchainOperatorEnabled` |
+| Misc | `diskEncryptionSetId`, `edgeZone`, `nodeResourceGroup`, `customCaTrustCertificatesBase64`, `tags` |
+
+Secret-by-default: `windowsProfile.adminPassword` and `httpProxyConfig.trustedCa` are `sensitive` -- Planton forces them to managed-secret references.
 
 ## Examples
 
-### Dev/Test Cluster with Free Tier
-
-A minimal cluster for development with free control plane SKU and a single availability zone:
+### Private Cluster with Workload Identity
 
 ```yaml
 apiVersion: azure.planton.dev/v1
 kind: AzureAksCluster
 metadata:
-  name: dev-cluster
+  name: private-aks
   labels:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureAksCluster.dev-cluster
-spec:
-  region: eastus
-  resourceGroup: dev-rg
-  vnetSubnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dev-rg/providers/Microsoft.Network/virtualNetworks/dev-vnet/subnets/nodes
-  kubernetesVersion: "1.30"
-  controlPlaneSku: FREE
-  systemNodePool:
-    vmSize: Standard_D2s_v3
-    autoscaling:
-      minCount: 1
-      maxCount: 3
-    availabilityZones:
-      - "1"
-```
-
-### Production Cluster with User Node Pools
-
-A production cluster with Standard SKU, multi-AZ system pool, a general-purpose user pool, and Azure AD RBAC:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureAksCluster
-metadata:
-  name: prod-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureAksCluster.prod-cluster
-spec:
-  region: eastus
-  resourceGroup: prod-rg
-  vnetSubnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet/subnets/nodes
-  kubernetesVersion: "1.30"
-  systemNodePool:
-    vmSize: Standard_D4s_v5
-    autoscaling:
-      minCount: 3
-      maxCount: 5
-    availabilityZones:
-      - "1"
-      - "2"
-      - "3"
-  userNodePools:
-    - name: general
-      vmSize: Standard_D8s_v5
-      autoscaling:
-        minCount: 3
-        maxCount: 10
-      availabilityZones:
-        - "1"
-        - "2"
-        - "3"
-```
-
-### Private Cluster with Add-ons and Spot Pools
-
-A private cluster with no public API endpoint, full add-on suite, a general user pool, and a cost-optimized Spot pool for batch workloads:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureAksCluster
-metadata:
-  name: secure-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureAksCluster.secure-cluster
-spec:
-  region: westeurope
-  resourceGroup: secure-rg
-  vnetSubnetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/secure-rg/providers/Microsoft.Network/virtualNetworks/secure-vnet/subnets/nodes
-  kubernetesVersion: "1.30"
-  privateClusterEnabled: true
-  systemNodePool:
-    vmSize: Standard_D4s_v5
-    autoscaling:
-      minCount: 3
-      maxCount: 5
-    availabilityZones:
-      - "1"
-      - "2"
-      - "3"
-  userNodePools:
-    - name: general
-      vmSize: Standard_D8s_v5
-      autoscaling:
-        minCount: 3
-        maxCount: 15
-      availabilityZones:
-        - "1"
-        - "2"
-        - "3"
-    - name: spot
-      vmSize: Standard_D8s_v5
-      autoscaling:
-        minCount: 1
-        maxCount: 20
-      availabilityZones:
-        - "1"
-        - "2"
-        - "3"
-      spotEnabled: true
-  addons:
-    enableContainerInsights: true
-    enableKeyVaultCsiDriver: true
-    enableAzurePolicy: true
-    enableWorkloadIdentity: true
-    logAnalyticsWorkspaceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/secure-rg/providers/Microsoft.OperationalInsights/workspaces/secure-logs
-  advancedNetworking:
-    podCidr: "10.244.0.0/16"
-    serviceCidr: "10.0.0.0/16"
-    dnsServiceIp: "10.0.0.10"
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: azure.planton.dev/v1
-kind: AzureAksCluster
-metadata:
-  name: ref-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureAksCluster.ref-cluster
+    pulumi.planton.dev/stack.name: prod.AzureAksCluster.private-aks
 spec:
   region: eastus
   resourceGroup:
     valueFrom:
-      kind: AzureResourceGroup
-      name: my-rg
-      field: status.outputs.resource_group_name
-  vnetSubnetId:
-    valueFrom:
-      kind: AzureSubnet
-      name: my-vpc
-      field: status.outputs.subnet_id
-  kubernetesVersion: "1.30"
-  systemNodePool:
+      name: prod-rg
+  name: private-aks
+  skuTier: STANDARD
+  privateClusterEnabled: true
+  oidcIssuerEnabled: true
+  workloadIdentityEnabled: true
+  defaultNodePool:
+    name: system
     vmSize: Standard_D4s_v5
-    autoscaling:
-      minCount: 3
-      maxCount: 5
-    availabilityZones:
-      - "1"
-      - "2"
-      - "3"
+    autoScalingEnabled: true
+    minCount: 3
+    maxCount: 5
+    vnetSubnetId:
+      valueFrom:
+        name: nodes-subnet
+    onlyCriticalAddonsEnabled: true
+```
+
+### Monitored Production Cluster with Azure CNI Overlay
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzureAksCluster
+metadata:
+  name: prod-aks
+  labels:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: my-org
+    pulumi.planton.dev/project: my-project
+    pulumi.planton.dev/stack.name: prod.AzureAksCluster.prod-aks
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: prod-rg
+  name: prod-aks
+  kubernetesVersion: "1.35"
+  skuTier: STANDARD
+  networkProfile:
+    networkPlugin: AZURE_CNI
+    networkPluginMode: OVERLAY
+  defaultNodePool:
+    name: system
+    vmSize: Standard_D4s_v5
+    autoScalingEnabled: true
+    minCount: 3
+    maxCount: 5
+    zones: ["1", "2", "3"]
+    onlyCriticalAddonsEnabled: true
+  omsAgent:
+    logAnalyticsWorkspaceId:
+      valueFrom:
+        name: prod-logs
+    msiAuthForMonitoringEnabled: true
+  keyVaultSecretsProvider:
+    secretRotationEnabled: true
+  azurePolicyEnabled: true
 ```
 
 ## Stack Outputs
@@ -277,15 +177,23 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `api_server_endpoint` | `string` | URL of the Kubernetes API server endpoint for the AKS cluster |
-| `cluster_resource_id` | `string` | Azure Resource ID of the AKS cluster |
-| `cluster_kubeconfig` | `string` | Base64-encoded kubeconfig file contents for cluster access |
-| `managed_identity_principal_id` | `string` | Azure AD principal ID of the cluster's kubelet managed identity |
+| `cluster_id` | `string` | Full ARM ID of the managed cluster -- the parent seam every `AzureAksNodePool` consumes |
+| `cluster_name` | `string` | The cluster's name as deployed |
+| `fqdn` | `string` | Public API-server FQDN (empty for private-only clusters) |
+| `private_fqdn` | `string` | Private API-server FQDN, populated for private clusters |
+| `portal_fqdn` | `string` | FQDN the Azure Portal uses to reach the cluster |
+| `oidc_issuer_url` | `string` | OIDC issuer URL -- consumed by `AzureFederatedIdentityCredential` for workload identity |
+| `node_resource_group` | `string` | Name of the Azure-managed node resource group |
+| `node_resource_group_id` | `string` | ARM ID of the node resource group |
+| `cluster_kubeconfig` | `string` | Base64-encoded kubeconfig (treat as a secret) |
+| `cluster_identity_principal_id` | `string` | Principal ID of the cluster's managed identity |
+| `kubelet_identity_object_id` | `string` | Kubelet identity object ID -- grant it AcrPull on registries |
+| `kubelet_identity_client_id` | `string` | Kubelet identity client ID |
+| `current_kubernetes_version` | `string` | Kubernetes version the control plane is actually running |
 
 ## Related Components
 
-- [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) — provides the resource group for cluster placement
-- [AzureVirtualNetwork](/docs/catalog/azure/azurevirtualnetwork) — provides the VNet and subnet for cluster nodes
-- [AzureKeyVault](/docs/catalog/azure/azurekeyvault) — stores secrets that pods can mount via the Key Vault CSI driver
-- [AzureLogAnalyticsWorkspace](/docs/catalog/azure/azureloganalyticsworkspace) — provides the workspace for Container Insights monitoring
-- [AzureContainerRegistry](/docs/catalog/azure/azurecontainerregistry) — hosts container images for cluster workloads
+- [AzureAksNodePool](/docs/catalog/azure/aks-node-pool) — additional workload-shaped pools (general, spot, GPU, Windows) with independent lifecycles
+- [AzureSubnet](/docs/catalog/azure/subnet) — optional BYO-network placement for the default pool
+- [AzureFederatedIdentityCredential](/docs/catalog/azure/federated-identity-credential) — binds workload identity to the cluster's OIDC issuer
+- [AzurePrivateDnsZone](/docs/catalog/azure/private-dns-zone) — BYO private DNS zone for private clusters

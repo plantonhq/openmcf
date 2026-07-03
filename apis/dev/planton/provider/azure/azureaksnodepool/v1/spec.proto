@@ -325,6 +325,12 @@ message AzureAksNodePoolSpec {
   };
 
   option (buf.validate.message).cel = {
+    id: "aks_node_pool_spot_no_surge"
+    message: "Spot pools do not support upgrade_settings max_surge or max_unavailable (azurerm's contract)"
+    expression: "this.priority != 2 || !has(this.upgrade_settings) || (this.upgrade_settings.max_surge == '' && this.upgrade_settings.max_unavailable == '')"
+  };
+
+  option (buf.validate.message).cel = {
     id: "aks_node_pool_ip_prefix_requires_public_ip"
     message: "node_public_ip_prefix_id requires node_public_ip_enabled to be true"
     expression: "!has(this.node_public_ip_prefix_id) || this.node_public_ip_enabled"

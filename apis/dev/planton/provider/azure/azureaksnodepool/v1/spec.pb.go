@@ -2340,7 +2340,7 @@ var File_dev_planton_provider_azure_azureaksnodepool_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_azure_azureaksnodepool_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/azure/azureaksnodepool/v1/spec.proto\x12.dev.planton.provider.azure.azureaksnodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd80\n" +
+	"9dev/planton/provider/azure/azureaksnodepool/v1/spec.proto\x12.dev.planton.provider.azure.azureaksnodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe42\n" +
 	"\x14AzureAksNodePoolSpec\x12\x90\x01\n" +
 	"\x15kubernetes_cluster_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x91\x03\x92\xd4a\x19status.outputs.cluster_idR\x13kubernetesClusterId\x12\xc0\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xab\x01\xbaH\xa7\x01\xba\x01\xa0\x01\n" +
@@ -2402,12 +2402,13 @@ const file_dev_planton_provider_azure_azureaksnodepool_v1_spec_proto_rawDesc = "
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd0\x0e\xbaH\xcc\x0e\x1a\x91\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdc\x10\xbaH\xd8\x10\x1a\x91\x02\n" +
 	" aks_node_pool_autoscaling_bounds\x12fWith auto_scaling_enabled, set max_count (min <= max); without it, leave min_count and max_count unset\x1a\x84\x01this.auto_scaling_enabled ? (this.max_count >= this.min_count && this.max_count >= 1) : (this.min_count == 0 && this.max_count == 0)\x1a\xcf\x01\n" +
 	"&aks_node_pool_system_is_linux_ondemand\x12hSYSTEM pools must be Linux and on-demand: leave os_type unset (or LINUX) and priority unset (or REGULAR)\x1a;this.mode != 1 || (this.os_type != 2 && this.priority != 2)\x1a\x95\x01\n" +
 	"$aks_node_pool_eviction_requires_spot\x12<eviction_policy is only valid for SPOT pools (priority SPOT)\x1a/this.eviction_policy == 0 || this.priority == 2\x1a\x97\x01\n" +
 	"&aks_node_pool_spot_price_requires_spot\x12;spot_max_price is only valid for SPOT pools (priority SPOT)\x1a0this.spot_max_price == 0.0 || this.priority == 2\x1a\xe2\x01\n" +
-	"\x1eaks_node_pool_spot_price_valid\x12hspot_max_price is either -1 (pay up to the on-demand price) or a positive US-dollar amount, e.g. 0.27113\x1aVthis.spot_max_price == 0.0 || this.spot_max_price == -1.0 || this.spot_max_price > 0.0\x1a\xb5\x01\n" +
+	"\x1eaks_node_pool_spot_price_valid\x12hspot_max_price is either -1 (pay up to the on-demand price) or a positive US-dollar amount, e.g. 0.27113\x1aVthis.spot_max_price == 0.0 || this.spot_max_price == -1.0 || this.spot_max_price > 0.0\x1a\x89\x02\n" +
+	"\x1baks_node_pool_spot_no_surge\x12\\Spot pools do not support upgrade_settings max_surge or max_unavailable (azurerm's contract)\x1a\x8b\x01this.priority != 2 || !has(this.upgrade_settings) || (this.upgrade_settings.max_surge == '' && this.upgrade_settings.max_unavailable == '')\x1a\xb5\x01\n" +
 	"*aks_node_pool_ip_prefix_requires_public_ip\x12Cnode_public_ip_prefix_id requires node_public_ip_enabled to be true\x1aB!has(this.node_public_ip_prefix_id) || this.node_public_ip_enabled\x1a\xd8\x01\n" +
 	"$aks_node_pool_os_sku_matches_os_type\x12bos_sku must match os_type: Ubuntu/Azure Linux SKUs for Linux pools, Windows SKUs for Windows pools\x1aLthis.os_sku == 0 || (this.os_type == 2 ? this.os_sku >= 6 : this.os_sku < 6)\x1a\x81\x01\n" +
 	"!aks_node_pool_windows_name_length\x120Windows node pool names are at most 6 characters\x1a*this.os_type != 2 || this.name.size() <= 6\x1a\xa4\x01\n" +

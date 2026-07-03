@@ -378,6 +378,26 @@ var _ = ginkgo.Describe("AzureAksNodePoolSpec Validation Tests", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
+		ginkgo.It("should return an error for surge settings on a spot pool", func() {
+			input := validResource()
+			input.Spec.Priority = AzureAksNodePoolPriority_SPOT
+			input.Spec.UpgradeSettings = &AzureAksNodePoolUpgradeSettings{
+				MaxSurge: "10%",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept drain-timeout-only upgrade settings on a spot pool", func() {
+			input := validResource()
+			input.Spec.Priority = AzureAksNodePoolPriority_SPOT
+			input.Spec.UpgradeSettings = &AzureAksNodePoolUpgradeSettings{
+				DrainTimeoutInMinutes: 15,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
 		ginkgo.It("should return an error for an out-of-range soak duration", func() {
 			input := validResource()
 			input.Spec.UpgradeSettings = &AzureAksNodePoolUpgradeSettings{
