@@ -114,6 +114,15 @@ SUCCESS CRITERIA
 
 NOTES
 - Generate variables once up-front; derive convenience in `locals.tf`.
+- **Locals evaluate eagerly -- bound every derivation that can see an empty
+  optional.** Terraform computes ALL locals on every plan, even ones consumed
+  only inside a `count = 0` resource. A family derivation like
+  `slice(split(".", var.spec.engine_version), 0, 2)` hard-fails the whole plan
+  when `engine_version` is unpinned (split of "" yields one element; the slice
+  end exceeds the list). Bound it: `slice(parts, 0, min(2, length(parts)))`.
+  `tofu validate` cannot catch this (it never evaluates against real inputs) --
+  it surfaced only in a live E2E deploy. The Pulumi modules are immune because
+  Go helpers are called conditionally.
 - **Pin the provider as a FLOOR, never a ceiling, and check what the lock
   resolves.** `required_providers` uses a floor constraint (`>= 5.0.0`), not a
   tilde pin (`~> 5.0` caps the module at that major forever). A stale

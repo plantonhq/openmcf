@@ -130,9 +130,13 @@ Use update when you need to:
    gate (the Go program builds fine) and only fails at live deploy time, with the
    misleading `pulumi stack init` error "pass the fully qualified name
    (organization/project/stack)" — the CLI found no Pulumi project in the module
-   dir. Also verify the exact pin `= x.y.z` in `iac/tf/provider.tf` is lifted to
-   the provider family's floor constraint (see forge rule 013) before adding
-   fields that need a newer provider.
+   dir. On the Terraform side, verify `iac/tf/outputs.tf` exists: a module
+   without it passes `tofu validate` AND the variables.tf drift guard, and the
+   gap only surfaces as a cross-engine parity failure at live verify (Terraform
+   emits zero stack outputs while Pulumi exports them all — found live on
+   AwsNeptuneCluster, session 014). Also verify the exact pin `= x.y.z` in
+   `iac/tf/provider.tf` is lifted to the provider family's floor constraint
+   (see forge rule 013) before adding fields that need a newer provider.
 2. Updates Pulumi module based on your explanation, keeping comments at the module-comment bar (`architecture/deployment-component.md` §4.1)
 3. Updates Terraform module to maintain feature parity AND comment-quality parity (never strip module comments)
 4. Updates tests if needed
