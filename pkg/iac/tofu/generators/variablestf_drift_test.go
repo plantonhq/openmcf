@@ -64,6 +64,10 @@ var migratedKinds = []string{
 	"AwsRedisElasticache",
 	"AwsMemcachedElasticache",
 	"AwsServerlessElasticache",
+	// Aurora-shaped siblings (Session 014), migrated off the legacy
+	// hand-written contracts together.
+	"AwsDocumentDb",
+	"AwsNeptuneCluster",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

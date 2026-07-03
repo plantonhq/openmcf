@@ -4,6 +4,7 @@ go_library(
     name = "verify",
     srcs = [
         "autoscaling_group.go",
+        "docdb_cluster.go",
         "ecs_cluster.go",
         "ecs_service.go",
         "ecs_task_definition.go",
@@ -24,6 +25,7 @@ go_library(
         "internet_gateway.go",
         "launch_template.go",
         "nat_gateway.go",
+        "neptune_cluster.go",
         "rds_cluster.go",
         "rds_instance.go",
         "s3.go",
@@ -37,6 +39,8 @@ go_library(
     deps = [
         "@com_github_aws_aws_sdk_go_v2//aws",
         "@com_github_aws_aws_sdk_go_v2_service_autoscaling//:autoscaling",
+        "@com_github_aws_aws_sdk_go_v2_service_docdb//:docdb",
+        "@com_github_aws_aws_sdk_go_v2_service_docdb//types",
         "@com_github_aws_aws_sdk_go_v2_service_ec2//:ec2",
         "@com_github_aws_aws_sdk_go_v2_service_ec2//types",
         "@com_github_aws_aws_sdk_go_v2_service_ecs//:ecs",
@@ -47,6 +51,8 @@ go_library(
         "@com_github_aws_aws_sdk_go_v2_service_elasticache//types",
         "@com_github_aws_aws_sdk_go_v2_service_elasticloadbalancingv2//:elasticloadbalancingv2",
         "@com_github_aws_aws_sdk_go_v2_service_iam//:iam",
+        "@com_github_aws_aws_sdk_go_v2_service_neptune//:neptune",
+        "@com_github_aws_aws_sdk_go_v2_service_neptune//types",
         "@com_github_aws_aws_sdk_go_v2_service_rds//:rds",
         "@com_github_aws_aws_sdk_go_v2_service_rds//types",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",

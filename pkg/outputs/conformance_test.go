@@ -548,6 +548,63 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsDocumentDb: the identifier keys the E2E verifier; endpoint +
+			// reader_endpoint are the connection handles downstream references
+			// consume; master_user_secret_arn carries the AWS-managed credential
+			// handle; and instance_endpoints guards list outputs flattening onto a
+			// repeated string field (the folded per-name cluster instances).
+			name: "AwsDocumentDb",
+			kind: cloudresourcekind.CloudResourceKind_AwsDocumentDb,
+			rawOutputs: map[string]interface{}{
+				"cluster_identifier":              "catalog-docdb",
+				"arn":                             "arn:aws:rds:us-west-2:123456789012:cluster:catalog-docdb",
+				"cluster_resource_id":             "cluster-ABCDEFGHIJKL01234",
+				"endpoint":                        "catalog-docdb.cluster-abc123.us-west-2.docdb.amazonaws.com",
+				"reader_endpoint":                 "catalog-docdb.cluster-ro-abc123.us-west-2.docdb.amazonaws.com",
+				"port":                            27017,
+				"hosted_zone_id":                  "ZNKXH85TT8WVW",
+				"engine_version_actual":           "5.0.0",
+				"master_user_secret_arn":          "arn:aws:secretsmanager:us-west-2:123456789012:secret:rds!cluster-abc-def",
+				"db_subnet_group_name":            "catalog-docdb",
+				"db_cluster_parameter_group_name": "default.docdb5.0",
+				"instance_endpoints":              []interface{}{"catalog-docdb-writer.abc123.us-west-2.docdb.amazonaws.com"},
+			},
+			mustPopulate: []string{
+				"cluster_identifier", "arn", "cluster_resource_id", "endpoint",
+				"reader_endpoint", "port", "hosted_zone_id", "engine_version_actual",
+				"master_user_secret_arn", "db_subnet_group_name",
+				"db_cluster_parameter_group_name", "instance_endpoints",
+			},
+		},
+		{
+			// AwsNeptuneCluster: the identifier keys the E2E verifier; the
+			// cluster_resource_id is the durable handle IAM database-auth policies
+			// scope to; and instance_endpoints guards list outputs flattening onto
+			// a repeated string field. This case also guards the Terraform module's
+			// first-ever outputs.tf (its absence was a live cross-engine parity bug).
+			name: "AwsNeptuneCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsNeptuneCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_identifier":                   "knowledge-graph",
+				"arn":                                  "arn:aws:rds:us-west-2:123456789012:cluster:knowledge-graph",
+				"cluster_resource_id":                  "cluster-ABCDEFGHIJKL01234",
+				"endpoint":                             "knowledge-graph.cluster-abc123.us-west-2.neptune.amazonaws.com",
+				"reader_endpoint":                      "knowledge-graph.cluster-ro-abc123.us-west-2.neptune.amazonaws.com",
+				"port":                                 8182,
+				"hosted_zone_id":                       "Z2T2AVZR3PGPQK",
+				"engine_version_actual":                "1.4.5.1",
+				"neptune_subnet_group_name":            "knowledge-graph",
+				"neptune_cluster_parameter_group_name": "default.neptune1.4",
+				"instance_endpoints":                   []interface{}{"knowledge-graph-writer.abc123.us-west-2.neptune.amazonaws.com"},
+			},
+			mustPopulate: []string{
+				"cluster_identifier", "arn", "cluster_resource_id", "endpoint",
+				"reader_endpoint", "port", "hosted_zone_id", "engine_version_actual",
+				"neptune_subnet_group_name", "neptune_cluster_parameter_group_name",
+				"instance_endpoints",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

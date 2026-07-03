@@ -223,6 +223,24 @@ func TestAwsRdsInstance_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsrdsinstance", "terraform")
 }
 
+// --- AWS DocumentDB (one db.t4g.medium folded instance; managed master password) ---
+
+func TestAwsDocumentDb_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsdocumentdb", "pulumi")
+}
+func TestAwsDocumentDb_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsdocumentdb", "terraform")
+}
+
+// --- AWS Neptune Cluster (Serverless 1-2 NCU with one folded db.serverless instance) ---
+
+func TestAwsNeptuneCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsneptunecluster", "pulumi")
+}
+func TestAwsNeptuneCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsneptunecluster", "terraform")
+}
+
 // --- AWS ElastiCache RBAC (account-level; no VPC prerequisite) ---
 
 func TestAwsElasticacheUser_Pulumi(t *testing.T) {

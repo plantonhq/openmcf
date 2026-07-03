@@ -10,12 +10,14 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1
+	github.com/aws/aws-sdk-go-v2/service/docdb v1.49.7
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.307.1
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.86.2
 	github.com/aws/aws-sdk-go-v2/service/eks v1.88.1
 	github.com/aws/aws-sdk-go-v2/service/elasticache v1.54.5
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.55.6
 	github.com/aws/aws-sdk-go-v2/service/iam v1.54.7
+	github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/rds v1.119.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3

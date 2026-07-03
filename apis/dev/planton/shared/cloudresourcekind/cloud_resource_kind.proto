@@ -258,6 +258,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "docdb"
+    prerequisites: [AwsSubnet]
   }];
   AwsRoute53DnsRecord = 223 [(kind_meta) = {
     provider: aws
@@ -675,6 +676,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsnep"
+    prerequisites: [AwsSubnet]
   }];
 
   // In-Memory Database
