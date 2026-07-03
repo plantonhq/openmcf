@@ -31,15 +31,20 @@ locals {
   is_oidc_strategy   = var.spec.strategy == "oidc"
   is_waad_strategy   = var.spec.strategy == "waad"
 
-  # Database options with defaults
+  # Database options with defaults.
+  # password_history_size / password_no_personal_info / password_dictionary are
+  # gated behind Auth0's paid "password-advanced-options" entitlement, so they
+  # default OFF (0/false) - enabling them by default makes the module unusable on
+  # free/lower-tier tenants (Auth0 returns 403). This also keeps parity with the
+  # Pulumi module, which leaves these unset unless explicitly requested.
   database_options = var.spec.database_options != null ? {
     password_policy           = coalesce(var.spec.database_options.password_policy, "good")
     requires_username         = coalesce(var.spec.database_options.requires_username, false)
     disable_signup            = coalesce(var.spec.database_options.disable_signup, false)
     brute_force_protection    = coalesce(var.spec.database_options.brute_force_protection, true)
-    password_history_size     = coalesce(var.spec.database_options.password_history_size, 5)
-    password_no_personal_info = coalesce(var.spec.database_options.password_no_personal_info, true)
-    password_dictionary       = coalesce(var.spec.database_options.password_dictionary, true)
+    password_history_size     = coalesce(var.spec.database_options.password_history_size, 0)
+    password_no_personal_info = coalesce(var.spec.database_options.password_no_personal_info, false)
+    password_dictionary       = coalesce(var.spec.database_options.password_dictionary, false)
     mfa_enabled               = coalesce(var.spec.database_options.mfa_enabled, false)
   } : null
 

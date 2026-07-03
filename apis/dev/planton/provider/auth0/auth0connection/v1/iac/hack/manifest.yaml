@@ -23,6 +23,8 @@ spec:
     requires_username: false
     disable_signup: false
     brute_force_protection: true
+    # The three advanced password options below require a paid Auth0
+    # "password-advanced-options" entitlement (the test tenant must have it).
     password_history_size: 5
     password_no_personal_info: true
     password_dictionary: true
