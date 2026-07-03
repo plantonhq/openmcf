@@ -57,6 +57,13 @@ var migratedKinds = []string{
 	// RDS pair, migrated off the legacy hand-written contracts together.
 	"AwsRdsCluster",
 	"AwsRdsInstance",
+	// ElastiCache family (Session 013): RBAC kinds + three cache kinds, migrated
+	// off the legacy type = any contracts together.
+	"AwsElasticacheUser",
+	"AwsElasticacheUserGroup",
+	"AwsRedisElasticache",
+	"AwsMemcachedElasticache",
+	"AwsServerlessElasticache",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

@@ -57,6 +57,11 @@ var verifiers = map[string]Verifier{
 	"awseksaddon":                  &eksAddonVerifier{},
 	"awseksfargateprofile":         &eksFargateProfileVerifier{},
 	"awseksaccessentry":            &eksAccessEntryVerifier{},
+	"awselasticacheuser":           &elasticacheUserVerifier{},
+	"awselasticacheusergroup":      &elasticacheUserGroupVerifier{},
+	"awsrediselasticache":          &elasticacheReplicationGroupVerifier{},
+	"awsmemcachedelasticache":      &elasticacheClusterVerifier{},
+	"awsserverlesselasticache":     &elasticacheServerlessCacheVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

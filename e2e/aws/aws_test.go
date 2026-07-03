@@ -223,6 +223,45 @@ func TestAwsRdsInstance_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsrdsinstance", "terraform")
 }
 
+// --- AWS ElastiCache RBAC (account-level; no VPC prerequisite) ---
+
+func TestAwsElasticacheUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticacheuser", "pulumi")
+}
+func TestAwsElasticacheUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticacheuser", "terraform")
+}
+
+func TestAwsElasticacheUserGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticacheusergroup", "pulumi")
+}
+func TestAwsElasticacheUserGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticacheusergroup", "terraform")
+}
+
+// --- AWS ElastiCache caches (AwsSubnet two-AZ prerequisite chain) ---
+
+func TestAwsRedisElasticache_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrediselasticache", "pulumi")
+}
+func TestAwsRedisElasticache_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrediselasticache", "terraform")
+}
+
+func TestAwsMemcachedElasticache_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemcachedelasticache", "pulumi")
+}
+func TestAwsMemcachedElasticache_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemcachedelasticache", "terraform")
+}
+
+func TestAwsServerlessElasticache_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsserverlesselasticache", "pulumi")
+}
+func TestAwsServerlessElasticache_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsserverlesselasticache", "terraform")
+}
+
 // --- AWS EKS Cluster (the control plane; slowest single resource in the suite, ~25 min/engine) ---
 
 func TestAwsEksCluster_Pulumi(t *testing.T) {

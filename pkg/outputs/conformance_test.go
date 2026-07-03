@@ -476,6 +476,78 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			name: "AwsElasticacheUser",
+			kind: cloudresourcekind.CloudResourceKind_AwsElasticacheUser,
+			rawOutputs: map[string]interface{}{
+				"user_id":   "app-cache-user",
+				"arn":       "arn:aws:elasticache:us-west-2:123456789012:user:app-cache-user",
+				"user_name": "app-cache-user",
+			},
+			mustPopulate: []string{"user_id", "arn", "user_name"},
+		},
+		{
+			name: "AwsElasticacheUserGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsElasticacheUserGroup,
+			rawOutputs: map[string]interface{}{
+				"user_group_id": "app-cache-group",
+				"arn":           "arn:aws:elasticache:us-west-2:123456789012:usergroup:app-cache-group",
+			},
+			mustPopulate: []string{"user_group_id", "arn"},
+		},
+		{
+			name: "AwsRedisElasticache",
+			kind: cloudresourcekind.CloudResourceKind_AwsRedisElasticache,
+			rawOutputs: map[string]interface{}{
+				"replication_group_id":           "orders-cache",
+				"primary_endpoint_address":       "orders-cache.abc123.usw2.cache.amazonaws.com",
+				"reader_endpoint_address":        "orders-cache-ro.abc123.usw2.cache.amazonaws.com",
+				"configuration_endpoint_address": "",
+				"arn":                            "arn:aws:elasticache:us-west-2:123456789012:replicationgroup:orders-cache",
+				"port":                           6379,
+				"subnet_group_name":              "orders-cache",
+				"parameter_group_name":           "orders-cache-custom",
+				"engine_version_actual":          "7.1.0",
+			},
+			mustPopulate: []string{
+				"replication_group_id", "primary_endpoint_address", "reader_endpoint_address",
+				"arn", "port", "subnet_group_name", "parameter_group_name", "engine_version_actual",
+			},
+		},
+		{
+			name: "AwsMemcachedElasticache",
+			kind: cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache,
+			rawOutputs: map[string]interface{}{
+				"cluster_id":             "session-cache",
+				"cluster_address":        "session-cache.abc123.cfg.usw2.cache.amazonaws.com",
+				"configuration_endpoint": "session-cache.abc123.cfg.usw2.cache.amazonaws.com:11211",
+				"arn":                    "arn:aws:elasticache:us-west-2:123456789012:cluster:session-cache",
+				"port":                   11211,
+				"subnet_group_name":      "session-cache",
+				"parameter_group_name":   "session-cache-custom",
+			},
+			mustPopulate: []string{
+				"cluster_id", "cluster_address", "configuration_endpoint",
+				"arn", "port", "subnet_group_name", "parameter_group_name",
+			},
+		},
+		{
+			name: "AwsServerlessElasticache",
+			kind: cloudresourcekind.CloudResourceKind_AwsServerlessElasticache,
+			rawOutputs: map[string]interface{}{
+				"arn":                     "arn:aws:elasticache:us-west-2:123456789012:serverlesscache:orders-srvless",
+				"endpoint_address":        "orders-srvless-abc123.serverless.usw2.cache.amazonaws.com",
+				"endpoint_port":           6379,
+				"reader_endpoint_address": "orders-srvless-abc123-ro.serverless.usw2.cache.amazonaws.com",
+				"reader_endpoint_port":    6380,
+				"full_engine_version":     "7.1.0",
+				"name":                    "orders-srvless",
+			},
+			mustPopulate: []string{
+				"arn", "endpoint_address", "endpoint_port", "reader_endpoint_address",
+				"reader_endpoint_port", "full_engine_version", "name",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the
