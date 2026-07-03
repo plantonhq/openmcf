@@ -11,7 +11,7 @@ spec:
     subnets, per-tier Network Security Groups, NAT Gateway for outbound traffic,
     optional Application Gateway (L7) and Load Balancer (L4), Log Analytics
     Workspace, and optional Key Vault.
-  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/azure/azurevpc/v1/assets/logo.svg
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/azure/azurevirtualnetwork/v1/assets/logo.svg
   isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/azure/enterprise-network-foundation

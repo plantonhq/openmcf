@@ -7,7 +7,7 @@ Production-ready managed databases on private Azure networks.
 | Resource | Kind | Condition |
 |----------|------|-----------|
 | Resource Group | `AzureResourceGroup` | Always |
-| Virtual Network | `AzureVpc` | Always |
+| Virtual Network | `AzureVirtualNetwork` | Always |
 | PostgreSQL Subnet | `AzureSubnet` | `create_postgres` |
 | PostgreSQL DNS Zone | `AzurePrivateDnsZone` | `create_postgres` |
 | PostgreSQL Server | `AzurePostgresqlFlexibleServer` | `create_postgres` |
@@ -38,7 +38,6 @@ Redis (Premium SKU), configure the subnet reference after deployment.
 
 | Subnet | CIDR | Purpose |
 |--------|------|---------|
-| Default (VPC internal) | 10.1.0.0/24 | Reserved, created by AzureVpc |
 | PostgreSQL | 10.1.1.0/24 | Delegated to PostgreSQL Flexible Server |
 | MySQL | 10.1.2.0/24 | Delegated to MySQL Flexible Server |
 | Private Endpoint | 10.1.3.0/24 | Hosts MSSQL Private Endpoint |
@@ -52,7 +51,6 @@ Redis (Premium SKU), configure the subnet reference after deployment.
 | `region` | Azure region | `eastus` |
 | `resource_group_name` | Resource group name suffix | `db-stack-rg` |
 | `vnet_cidr` | VNet address space | `10.1.0.0/16` |
-| `default_subnet_cidr` | Default subnet CIDR | `10.1.0.0/24` |
 
 ### PostgreSQL (default on)
 

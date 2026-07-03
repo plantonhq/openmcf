@@ -289,5 +289,5 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for server placement
 - [AzurePrivateEndpoint](/docs/catalog/azure/private-endpoint) -- establishes private connectivity to the SQL Server when public access is disabled (use `subresourceNames: ["sqlServer"]`)
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) -- provides the virtual network for private endpoint integration
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) -- provides the virtual network for private endpoint integration
 - [AzureKeyVault](/docs/catalog/azure/key-vault) -- stores the administrator password and other secrets; can be referenced via `valueFrom` for the `administratorPassword` field

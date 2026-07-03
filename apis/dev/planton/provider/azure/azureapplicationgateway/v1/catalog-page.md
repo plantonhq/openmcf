@@ -404,7 +404,7 @@ The public frontend IP address is not exported here because it comes from the Az
 ## Related Components
 
 - [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) -- provides the resource group for gateway placement
-- [AzureVpc](/docs/catalog/azure/azurevpc) -- provides the virtual network containing the dedicated Application Gateway subnet
+- [AzureVirtualNetwork](/docs/catalog/azure/azurevirtualnetwork) -- provides the virtual network containing the dedicated Application Gateway subnet
 - [AzureSubnet](/docs/catalog/azure/azuresubnet) -- provides the dedicated subnet required by Application Gateway v2
 - [AzurePublicIp](/docs/catalog/azure/azurepublicip) -- provides the Standard SKU static public IP for the frontend
 - [AzureKeyVault](/docs/catalog/azure/azurekeyvault) -- stores SSL/TLS certificates referenced by HTTPS listeners

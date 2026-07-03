@@ -295,4 +295,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AzureSubnet](/docs/catalog/azure/azuresubnet) -- provides a delegated subnet for private VNet access
 - [AzurePrivateDnsZone](/docs/catalog/azure/azureprivatednszone) -- provides DNS resolution for VNet-connected clients
 - [AzureKeyVault](/docs/catalog/azure/azurekeyvault) -- stores the administrator password or connection strings as secrets
-- [AzureVpc](/docs/catalog/azure/azurevpc) -- provides the virtual network containing the delegated subnet
+- [AzureVirtualNetwork](/docs/catalog/azure/azurevirtualnetwork) -- provides the virtual network containing the delegated subnet

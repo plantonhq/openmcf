@@ -815,6 +815,69 @@ func TestStackOutputsConformance(t *testing.T) {
 				"user_assigned_identity_id", "issuer", "subject", "audience",
 			},
 		},
+		{
+			// AzureVirtualNetwork: scalar identifiers plus a repeated string
+			// (address_spaces) from both engines must land on the StackOutputs
+			// proto -- virtual_network_id is the join key subnets, peerings,
+			// and DNS links attach through, and address_spaces reflects the
+			// ACTUAL ranges (IPAM-provisioned when pools delegate allocation).
+			name: "AzureVirtualNetwork",
+			kind: cloudresourcekind.CloudResourceKind_AzureVirtualNetwork,
+			rawOutputs: map[string]interface{}{
+				"virtual_network_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet",
+				"virtual_network_name": "prod-vnet",
+				"guid":                 "44444444-4444-4444-4444-444444444444",
+				"address_spaces":       []interface{}{"10.0.0.0/16", "10.1.0.0/16"},
+			},
+			mustPopulate: []string{
+				"virtual_network_id", "virtual_network_name", "guid",
+				"address_spaces",
+			},
+		},
+		{
+			// AzureRouteTable: both engines export the table's ARM id (the
+			// join key subnets use to attach the table's routing policy) and
+			// its name.
+			name: "AzureRouteTable",
+			kind: cloudresourcekind.CloudResourceKind_AzureRouteTable,
+			rawOutputs: map[string]interface{}{
+				"route_table_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/routeTables/egress-via-firewall",
+				"route_table_name": "egress-via-firewall",
+			},
+			mustPopulate: []string{
+				"route_table_id", "route_table_name",
+			},
+		},
+		{
+			// AzurePrivateDnsZone: the zone's ARM id (the join key links,
+			// private endpoints, and databases attach through), its DNS name,
+			// and its resource group (echoed for tooling that joins on
+			// name+RG rather than parsing ARM ids).
+			name: "AzurePrivateDnsZone",
+			kind: cloudresourcekind.CloudResourceKind_AzurePrivateDnsZone,
+			rawOutputs: map[string]interface{}{
+				"zone_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com",
+				"zone_name":           "privatelink.postgres.database.azure.com",
+				"resource_group_name": "network-rg",
+			},
+			mustPopulate: []string{
+				"zone_id", "zone_name", "resource_group_name",
+			},
+		},
+		{
+			// AzurePrivateDnsZoneVirtualNetworkLink: both engines export the
+			// link's ARM id (a child of the zone:
+			// {zone-id}/virtualNetworkLinks/{name}) and its name.
+			name: "AzurePrivateDnsZoneVirtualNetworkLink",
+			kind: cloudresourcekind.CloudResourceKind_AzurePrivateDnsZoneVirtualNetworkLink,
+			rawOutputs: map[string]interface{}{
+				"link_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com/virtualNetworkLinks/hub-vnet",
+				"link_name": "hub-vnet",
+			},
+			mustPopulate: []string{
+				"link_id", "link_name",
+			},
+		},
 	}
 
 	for _, tc := range cases {

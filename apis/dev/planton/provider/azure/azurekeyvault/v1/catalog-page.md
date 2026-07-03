@@ -202,5 +202,5 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) — provides the resource group for vault placement
 - [AzureAksCluster](/docs/catalog/azure/azureakscluster) — AKS clusters can mount vault secrets via the Key Vault CSI driver add-on
-- [AzureVpc](/docs/catalog/azure/azurevpc) — provides VNet subnets for network ACL rules
+- [AzureVirtualNetwork](/docs/catalog/azure/azurevirtualnetwork) — provides VNet subnets for network ACL rules
 - [AzureUserAssignedIdentity](/docs/catalog/azure/azureuserassignedidentity) — managed identities used to authenticate to the vault

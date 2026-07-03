@@ -21,11 +21,11 @@ message AzureAksClusterSpec {
   ];
 
   // The Azure resource ID of the Virtual Network subnet to use for cluster nodes.
-  // This should reference the subnet created by an AzureVirtualNetwork resource.
+  // Can be a literal subnet ARM ID or a reference to an AzureSubnet's subnet_id output.
   dev.planton.shared.foreignkey.v1.StringValueOrRef vnet_subnet_id = 2 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpc,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.nodes_subnet_id"
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
   // Kubernetes version for the cluster control plane.

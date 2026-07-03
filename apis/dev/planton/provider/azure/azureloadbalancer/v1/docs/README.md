@@ -175,7 +175,7 @@ AzureLoadBalancer participates in the enterprise-network-foundation infra chart:
 
 ```
 AzureResourceGroup
-  └── AzureVpc
+  └── AzureVirtualNetwork
         ├── AzureSubnet (web)
         │     └── AzureNetworkSecurityGroup
         ├── AzureSubnet (app)

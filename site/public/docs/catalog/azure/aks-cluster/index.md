@@ -26,7 +26,7 @@ When you deploy an AzureAksCluster resource, Planton provisions:
 
 - **Azure credentials** configured via environment variables or Planton provider config
 - **An Azure Resource Group** where the cluster will be created (can reference an AzureResourceGroup resource)
-- **A VNet subnet** for cluster nodes (can reference an AzureVpc resource)
+- **A VNet subnet** for cluster nodes (can reference an AzureVirtualNetwork resource)
 - **A Log Analytics Workspace resource ID** if enabling Container Insights
 
 ## Quick Start
@@ -73,7 +73,7 @@ This creates a public AKS cluster with a single system node pool running Kuberne
 |-------|------|-------------|------------|
 | `region` | `string` | Azure region for the cluster (e.g., `eastus`). | Required |
 | `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `vnetSubnetId` | `StringValueOrRef` | Azure resource ID of the VNet subnet for cluster nodes. Can reference an AzureVpc resource via `valueFrom`. | Required |
+| `vnetSubnetId` | `StringValueOrRef` | Azure resource ID of the VNet subnet for cluster nodes. Can reference an AzureVirtualNetwork resource via `valueFrom`. | Required |
 | `systemNodePool` | `object` | System node pool configuration. See nested fields below. | Required |
 | `systemNodePool.vmSize` | `string` | Azure VM size for system nodes (e.g., `Standard_D4s_v5`). | Required. Recommended default: `Standard_D4s_v5` |
 | `systemNodePool.autoscaling` | `object` | Autoscaling configuration for the system node pool. | Required |
@@ -264,9 +264,9 @@ spec:
       field: status.outputs.resource_group_name
   vnetSubnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureSubnet
       name: my-vpc
-      field: status.outputs.nodes_subnet_id
+      field: status.outputs.subnet_id
   kubernetesVersion: "1.30"
   systemNodePool:
     vmSize: Standard_D4s_v5
@@ -293,7 +293,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for cluster placement
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) — provides the VNet and subnet for cluster nodes
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — provides the VNet and subnet for cluster nodes
 - [AzureKeyVault](/docs/catalog/azure/key-vault) — stores secrets that pods can mount via the Key Vault CSI driver
 - [AzureLogAnalyticsWorkspace](/docs/catalog/azure/log-analytics-workspace) — provides the workspace for Container Insights monitoring
 - [AzureContainerRegistry](/docs/catalog/azure/container-registry) — hosts container images for cluster workloads

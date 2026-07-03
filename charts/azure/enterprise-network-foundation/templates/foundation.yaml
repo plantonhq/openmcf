@@ -8,7 +8,7 @@ spec:
   region: "{{ values.region }}"
 ---
 apiVersion: azure.planton.dev/v1
-kind: AzureVpc
+kind: AzureVirtualNetwork
 metadata:
   name: "{{ values.env }}-vnet"
 spec:
@@ -18,6 +18,6 @@ spec:
       kind: AzureResourceGroup
       name: "{{ values.env }}-rg"
       fieldPath: status.outputs.resource_group_name
-  addressSpaceCidr: "{{ values.vnet_cidr }}"
-  nodesSubnetCidr: "{{ values.default_subnet_cidr }}"
-  isNatGatewayEnabled: false
+  name: "{{ values.env }}-vnet"
+  addressSpaces:
+    - "{{ values.vnet_cidr }}"

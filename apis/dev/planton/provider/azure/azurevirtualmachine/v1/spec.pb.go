@@ -301,7 +301,7 @@ type AzureVirtualMachineSpec struct {
 	VmSize *string `protobuf:"bytes,3,opt,name=vm_size,json=vmSize,proto3,oneof" json:"vm_size,omitempty"`
 	// The Azure resource ID of the subnet where this VM will be attached.
 	// This should reference a subnet within an existing Virtual Network (VNet).
-	// Can be a literal value or a reference to an AzureVpc resource's subnet output.
+	// Can be a literal value or a reference to an AzureSubnet's subnet_id output.
 	SubnetId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
 	// Operating system image configuration for the VM.
 	Image *AzureVirtualMachineImage `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
@@ -889,13 +889,13 @@ var File_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto protorefle
 
 const file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/azure/azurevirtualmachine/v1/spec.proto\x121dev.planton.provider.azure.azurevirtualmachine.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa6\x10\n" +
+	"<dev/planton/provider/azure/azurevirtualmachine/v1/spec.proto\x121dev.planton.provider.azure.azurevirtualmachine.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\x10\n" +
 	"\x17AzureVirtualMachineSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x128\n" +
-	"\avm_size\x18\x03 \x01(\tB\x1a\xbaH\x04r\x02\x10\x01\x92\xa6\x1d\x0fStandard_D2s_v3H\x00R\x06vmSize\x88\x01\x01\x12~\n" +
-	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a\x1estatus.outputs.nodes_subnet_idR\bsubnetId\x12i\n" +
+	"\avm_size\x18\x03 \x01(\tB\x1a\xbaH\x04r\x02\x10\x01\x92\xa6\x1d\x0fStandard_D2s_v3H\x00R\x06vmSize\x88\x01\x01\x12x\n" +
+	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12i\n" +
 	"\x05image\x18\x05 \x01(\v2K.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineImageB\x06\xbaH\x03\xc8\x01\x01R\x05image\x12e\n" +
 	"\aos_disk\x18\x06 \x01(\v2L.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineOsDiskR\x06osDisk\x12m\n" +
 	"\n" +

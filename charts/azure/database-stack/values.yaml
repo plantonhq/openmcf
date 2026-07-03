@@ -12,10 +12,6 @@ params:
     description: VNet address space CIDR
     value: 10.1.0.0/16
 
-  - name: default_subnet_cidr
-    description: Default subnet CIDR (created by AzureVpc, reserved for general use)
-    value: 10.1.0.0/24
-
   # ─── PostgreSQL (default‑on) ──────────────────────────────────────────────────
   - name: create_postgres
     description: Create Azure Database for PostgreSQL Flexible Server

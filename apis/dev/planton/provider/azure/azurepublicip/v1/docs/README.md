@@ -183,7 +183,7 @@ created after the resource group:
 
 ```
 AzureResourceGroup (Layer 0)
-├── AzureVpc (Layer 1)
+├── AzureVirtualNetwork (Layer 1)
 │   └── AzureSubnet (Layer 2)
 ├── AzurePublicIp [gateway] (Layer 1)  <-- THIS RESOURCE
 │   └── AzureApplicationGateway (Layer 2) -- references public_ip_id

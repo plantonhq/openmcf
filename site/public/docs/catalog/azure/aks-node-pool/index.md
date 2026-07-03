@@ -230,5 +230,5 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [AzureAksCluster](/docs/catalog/azure/aks-cluster) — provides the parent cluster that this node pool is added to
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group where the parent cluster resides
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) — provides the virtual network and subnets used by the AKS cluster
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — provides the virtual network and subnets used by the AKS cluster
 - [AzureSubnet](/docs/catalog/azure/subnet) — provides subnets that can be assigned to node pools for network isolation

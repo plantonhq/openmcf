@@ -233,7 +233,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for endpoint placement
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) -- provides the VNet containing the subnet for private IP allocation
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) -- provides the VNet containing the subnet for private IP allocation
 - [AzureSubnet](/docs/catalog/azure/subnet) -- provides the subnet from which the private endpoint's IP is allocated
 - [AzurePrivateDnsZone](/docs/catalog/azure/private-dns-zone) -- provides the DNS zone for automatic A-record registration of the private endpoint's IP
 - [AzurePostgresqlFlexibleServer](/docs/catalog/azure/postgresql-flexible-server) -- a common Private Link-enabled target for database workloads

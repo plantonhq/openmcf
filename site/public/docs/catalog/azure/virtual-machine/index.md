@@ -23,7 +23,7 @@ When you deploy an AzureVirtualMachine resource, Planton provisions:
 
 - **Azure credentials** configured via environment variables or Planton provider config
 - **An Azure Resource Group** where the VM will be created (can reference an AzureResourceGroup resource)
-- **A subnet** within an existing Virtual Network where the VM's network interface will be attached (can reference an AzureVpc resource)
+- **A subnet** within an existing Virtual Network where the VM's network interface will be attached (can reference an AzureVirtualNetwork resource)
 - **Authentication material** — either an SSH public key (Linux) or an admin password (Windows or Linux with password auth)
 
 ## Quick Start
@@ -67,7 +67,7 @@ This creates a Standard_D2s_v3 Ubuntu 22.04 VM with SSH key authentication, the 
 |-------|------|-------------|------------|
 | `region` | `string` | Azure region where the VM will be deployed (e.g., `eastus`, `westus2`, `westeurope`). | Required, minimum length 1 |
 | `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `subnetId` | `StringValueOrRef` | Azure resource ID of the subnet for the VM's network interface. Can reference an AzureVpc resource via `valueFrom`. | Required |
+| `subnetId` | `StringValueOrRef` | Azure resource ID of the subnet for the VM's network interface. Can reference an AzureVirtualNetwork resource via `valueFrom`. | Required |
 | `image` | `object` | Operating system image configuration. Must specify either marketplace image fields (`publisher`, `offer`, `sku`) or `customImageId`. | Required |
 | `image.publisher` | `string` | Marketplace image publisher (e.g., `Canonical`, `MicrosoftWindowsServer`, `RedHat`). Required when using marketplace images. | — |
 | `image.offer` | `string` | Marketplace image offer (e.g., `0001-com-ubuntu-server-jammy`, `WindowsServer`). Required when using marketplace images. | — |
@@ -277,9 +277,9 @@ spec:
       field: status.outputs.resource_group_name
   subnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureSubnet
       name: my-vnet
-      field: status.outputs.nodes_subnet_id
+      field: status.outputs.subnet_id
   image:
     publisher: Canonical
     offer: 0001-com-ubuntu-server-jammy
@@ -312,7 +312,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for VM placement
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) -- provides the VNet and subnet where the VM's network interface is attached
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) -- provides the VNet and subnet where the VM's network interface is attached
 - [AzureNetworkSecurityGroup](/docs/catalog/azure/network-security-group) -- controls inbound and outbound traffic rules for the VM's network interface
 - [AzureKeyVault](/docs/catalog/azure/key-vault) -- stores secrets such as admin passwords and disk encryption keys
 - [AzurePublicIp](/docs/catalog/azure/public-ip) -- standalone public IP management (the VM component creates its own when `network.enablePublicIp` is set)

@@ -220,4 +220,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) -- provides the resource group for cache placement
 - [AzureSubnet](/docs/catalog/azure/azuresubnet) -- provides a dedicated subnet for VNet injection (Premium)
 - [AzurePrivateEndpoint](/docs/catalog/azure/azureprivateendpoint) -- establishes private connectivity to the cache
-- [AzureVpc](/docs/catalog/azure/azurevpc) -- provides the virtual network containing the Redis subnet
+- [AzureVirtualNetwork](/docs/catalog/azure/azurevirtualnetwork) -- provides the virtual network containing the Redis subnet

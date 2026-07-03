@@ -23,7 +23,7 @@ When you deploy an AzureSubnet resource, Planton provisions:
 
 - **Azure credentials** configured via environment variables or Planton provider config
 - **An Azure Resource Group** where the parent VNet exists (can reference an AzureResourceGroup resource)
-- **An Azure Virtual Network** with an address space that contains the desired subnet CIDR block (can reference an AzureVpc resource)
+- **An Azure Virtual Network** with an address space that contains the desired subnet CIDR block (can reference an AzureVirtualNetwork resource)
 - **Network planning** — the subnet address prefix must be a subset of the parent VNet's address space and must not overlap with other subnets in the same VNet. Azure reserves 5 IPs per subnet (first 4 + last) for internal use.
 
 ## Quick Start
@@ -62,7 +62,7 @@ This creates a /24 subnet (254 usable IPs) with private endpoint network policie
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `resourceGroup` | `StringValueOrRef` | Azure Resource Group where the parent VNet exists. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `vnetId` | `StringValueOrRef` | Azure Resource Manager ID of the parent Virtual Network. The subnet is created inside this VNet and must use an address prefix within the VNet's address space. Can reference an AzureVpc resource via `valueFrom`. | Required |
+| `vnetId` | `StringValueOrRef` | Azure Resource Manager ID of the parent Virtual Network. The subnet is created inside this VNet and must use an address prefix within the VNet's address space. Can reference an AzureVirtualNetwork resource via `valueFrom`. | Required |
 | `name` | `string` | Name of the subnet. Must be unique within the VNet. Allowed characters: alphanumeric, underscores, hyphens, periods. Must start with alphanumeric. | Required, 1–80 characters |
 | `addressPrefix` | `string` | IPv4 CIDR block for the subnet (e.g., `10.0.1.0/24`). Must be a subset of the parent VNet's address space and must not overlap with other subnets. | Required, minimum length 1 |
 
@@ -175,9 +175,9 @@ spec:
       field: status.outputs.resource_group_name
   vnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureVirtualNetwork
       name: my-vnet
-      field: status.outputs.vnet_id
+      field: status.outputs.virtual_network_id
   name: app-subnet
   addressPrefix: "10.0.2.0/24"
   serviceEndpoints:
@@ -226,7 +226,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group where the parent VNet exists
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) — provides the parent Virtual Network that contains this subnet
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — provides the parent Virtual Network that contains this subnet
 - [AzureAksCluster](/docs/catalog/azure/aks-cluster) — references `subnet_id` for node pool placement
 - [AzureContainerAppEnvironment](/docs/catalog/azure/container-app-environment) — requires a delegated subnet for VNet integration
 - [AzurePostgresqlFlexibleServer](/docs/catalog/azure/postgresql-flexible-server) — requires a delegated subnet for VNet integration

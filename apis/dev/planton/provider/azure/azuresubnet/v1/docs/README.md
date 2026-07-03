@@ -113,9 +113,9 @@ spec:
       fieldPath: status.outputs.resource_group_name
   vnet_id:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureVirtualNetwork
       name: prod-vpc
-      fieldPath: status.outputs.vnet_id
+      fieldPath: status.outputs.virtual_network_id
   name: app-subnet
   address_prefix: "10.0.1.0/24"
   service_endpoints:
@@ -149,7 +149,7 @@ Declarative, Kubernetes-style API that enables infra chart composition with
 | Sharing scope | Multi-tenant subnet sharing; preview feature |
 | NSG association | Separate lifecycle, handled by AzureNetworkSecurityGroup |
 | Route table association | Advanced networking, future iteration |
-| NAT Gateway association | Handled at VNet level by AzureVpc |
+| NAT Gateway association | Handled by the standalone AzureNatGateway kind (attaches subnet-side) |
 
 ## 4. Why No Region Field
 
@@ -203,7 +203,7 @@ consume `subnet_id`:
 
 ```
 AzureResourceGroup (Layer 0)
-├── AzureVpc (Layer 1)
+├── AzureVirtualNetwork (Layer 1)
 │   ├── AzureSubnet [db-delegated] (Layer 2)  <-- THIS RESOURCE
 │   │   └── AzurePostgresqlFlexibleServer (Layer 3)
 │   ├── AzureSubnet [pe-subnet] (Layer 2)
@@ -217,7 +217,7 @@ AzureResourceGroup (Layer 0)
 
 ```
 AzureResourceGroup (Layer 0)
-├── AzureVpc (Layer 1)
+├── AzureVirtualNetwork (Layer 1)
 │   ├── AzureSubnet [app-gw] (Layer 2)       <-- App Gateway dedicated
 │   ├── AzureSubnet [app-tier] (Layer 2)      <-- Application workloads
 │   ├── AzureSubnet [db-tier] (Layer 2)       <-- Database delegations
@@ -231,7 +231,7 @@ AzureResourceGroup (Layer 0)
 
 ```
 AzureResourceGroup (Layer 0)
-├── AzureVpc (Layer 1)
+├── AzureVirtualNetwork (Layer 1)
 │   └── AzureSubnet [cae-infra] (Layer 2)     <-- /23 for Container Apps
 │       └── AzureContainerAppEnvironment (Layer 3)
 │           └── AzureContainerApp (Layer 4)
@@ -242,7 +242,7 @@ AzureResourceGroup (Layer 0)
 
 ### Why Standalone Resource (DD01)
 
-AzureSubnet exists as a standalone resource rather than being embedded in AzureVpc
+AzureSubnet exists as a standalone resource rather than being embedded in AzureVirtualNetwork
 because subnets have independent lifecycles. Different subnets need different
 configurations (delegations, service endpoints, policies), and bundling them all
 into the VPC spec would force VPC redeployment when a subnet changes. See DD01.
@@ -277,6 +277,6 @@ vice versa. Using the current API surface prevents future deprecation issues.
 
 - **NSG association** -- handled by AzureNetworkSecurityGroup
 - **Route table association** -- future iteration
-- **NAT Gateway association** -- handled by AzureVpc
+- **NAT Gateway association** -- handled by the standalone AzureNatGateway kind
 - **Multiple address prefixes** -- niche feature, not included
-- **Create the parent VNet** -- VNet must exist first (AzureVpc)
+- **Create the parent VNet** -- VNet must exist first (AzureVirtualNetwork)

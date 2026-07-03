@@ -187,7 +187,7 @@ type AzureAksClusterSpec struct {
 	// Can be a literal string or a reference to an AzureResourceGroup output.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,14,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
 	// The Azure resource ID of the Virtual Network subnet to use for cluster nodes.
-	// This should reference the subnet created by an AzureVirtualNetwork resource.
+	// Can be a literal subnet ARM ID or a reference to an AzureSubnet's subnet_id output.
 	VnetSubnetId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=vnet_subnet_id,json=vnetSubnetId,proto3" json:"vnet_subnet_id,omitempty"`
 	// Kubernetes version for the cluster control plane.
 	// It is recommended to explicitly set a version (e.g., "1.30") for production clusters to prevent unintended upgrades.
@@ -750,11 +750,11 @@ var File_dev_planton_provider_azure_azureakscluster_v1_spec_proto protoreflect.F
 
 const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/azure/azureakscluster/v1/spec.proto\x12-dev.planton.provider.azure.azureakscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf8\v\n" +
+	"8dev/planton/provider/azure/azureakscluster/v1/spec.proto\x12-dev.planton.provider.azure.azureakscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf2\v\n" +
 	"\x13AzureAksClusterSpec\x12\x1e\n" +
 	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x87\x01\n" +
-	"\x0evnet_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a\x1estatus.outputs.nodes_subnet_idR\fvnetSubnetId\x127\n" +
+	"\x0eresource_group\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x81\x01\n" +
+	"\x0evnet_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\fvnetSubnetId\x127\n" +
 	"\x12kubernetes_version\x18\x03 \x01(\tB\b\x92\xa6\x1d\x041.30R\x11kubernetesVersion\x12y\n" +
 	"\x11control_plane_sku\x18\x04 \x01(\x0e2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterControlPlaneSkuR\x0fcontrolPlaneSku\x12r\n" +
 	"\x0enetwork_plugin\x18\x05 \x01(\x0e2K.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNetworkPluginR\rnetworkPlugin\x12\x7f\n" +

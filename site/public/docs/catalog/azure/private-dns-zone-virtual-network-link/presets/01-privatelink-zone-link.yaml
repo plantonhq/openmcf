@@ -1,0 +1,10 @@
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: my-zone-link
+spec:
+  name: <network-name>
+  privateDnsZoneId:
+    value: <private-dns-zone-arm-id>
+  virtualNetworkId:
+    value: <virtual-network-arm-id>

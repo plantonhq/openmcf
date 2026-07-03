@@ -32,4 +32,4 @@ This preset creates an Azure NAT Gateway attached to a subnet, providing reliabl
 | --- | --- | --- |
 | `<azure-region>` | Azure region (must match the subnet's VNet region) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<subnet-resource-id>` | Full ARM resource ID of the target subnet | Azure portal or `AzureSubnet` / `AzureVpc` status outputs |
+| `<subnet-resource-id>` | Full ARM resource ID of the target subnet | Azure portal or `AzureSubnet` / `AzureVirtualNetwork` status outputs |

@@ -9,7 +9,7 @@ Azure Kubernetes Service (AKS) cluster resource for deploying production-ready m
 - **region**: Azure region for the cluster (e.g., `eastus`, `westus2`, `westeurope`)
   - Required field that determines the physical location of the cluster
 - **vnet_subnet_id**: Azure subnet resource ID for cluster nodes
-  - Can reference an AzureVpc resource's `status.outputs.nodes_subnet_id`
+  - Can reference an AzureVirtualNetwork resource's `status.outputs.subnet_id`
   - Nodes will be deployed in this subnet
 - **kubernetes_version**: Kubernetes version for control plane (e.g., `1.30`)
   - Recommended to pin explicitly to prevent unintended upgrades

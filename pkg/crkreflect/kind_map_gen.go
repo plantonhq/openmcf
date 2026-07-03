@@ -149,19 +149,21 @@ import (
 	azurenetworksecuritygroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenetworksecuritygroup/v1"
 	azurepostgresqlflexibleserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepostgresqlflexibleserver/v1"
 	azureprivatednszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivatednszone/v1"
+	azureprivatednszonevirtualnetworklinkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivatednszonevirtualnetworklink/v1"
 	azureprivateendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivateendpoint/v1"
 	azurepublicipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepublicip/v1"
 	azurerediscachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurerediscache/v1"
 	azureresourcegroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureresourcegroup/v1"
 	azureroleassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroleassignment/v1"
 	azureroledefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroledefinition/v1"
+	azureroutetablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroutetable/v1"
 	azureservicebusnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusnamespace/v1"
 	azureserviceplanv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureserviceplan/v1"
 	azurestorageaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageaccount/v1"
 	azuresubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuresubnet/v1"
 	azureuserassignedidentityv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureuserassignedidentity/v1"
 	azurevirtualmachinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualmachine/v1"
-	azurevpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevpc/v1"
+	azurevirtualnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualnetwork/v1"
 	civobucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civobucket/v1"
 	civocertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civocertificate/v1"
 	civocomputeinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civocomputeinstance/v1"
@@ -573,43 +575,45 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_AzureAksCluster:                  &azureaksclusterv1.AzureAksCluster{},
-	cloudresourcekind.CloudResourceKind_AzureAksNodePool:                 &azureaksnodepoolv1.AzureAksNodePool{},
-	cloudresourcekind.CloudResourceKind_AzureApplicationGateway:          &azureapplicationgatewayv1.AzureApplicationGateway{},
-	cloudresourcekind.CloudResourceKind_AzureApplicationInsights:         &azureapplicationinsightsv1.AzureApplicationInsights{},
-	cloudresourcekind.CloudResourceKind_AzureContainerApp:                &azurecontainerappv1.AzureContainerApp{},
-	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironment:     &azurecontainerappenvironmentv1.AzureContainerAppEnvironment{},
-	cloudresourcekind.CloudResourceKind_AzureContainerRegistry:           &azurecontainerregistryv1.AzureContainerRegistry{},
-	cloudresourcekind.CloudResourceKind_AzureCosmosdbAccount:             &azurecosmosdbaccountv1.AzureCosmosdbAccount{},
-	cloudresourcekind.CloudResourceKind_AzureDnsRecord:                   &azurednsrecordv1.AzureDnsRecord{},
-	cloudresourcekind.CloudResourceKind_AzureDnsZone:                     &azurednszonev1.AzureDnsZone{},
-	cloudresourcekind.CloudResourceKind_AzureEventHubNamespace:           &azureeventhubnamespacev1.AzureEventHubNamespace{},
-	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential: &azurefederatedidentitycredentialv1.AzureFederatedIdentityCredential{},
-	cloudresourcekind.CloudResourceKind_AzureFrontDoorProfile:            &azurefrontdoorprofilev1.AzureFrontDoorProfile{},
-	cloudresourcekind.CloudResourceKind_AzureFunctionApp:                 &azurefunctionappv1.AzureFunctionApp{},
-	cloudresourcekind.CloudResourceKind_AzureKeyVault:                    &azurekeyvaultv1.AzureKeyVault{},
-	cloudresourcekind.CloudResourceKind_AzureLinuxWebApp:                 &azurelinuxwebappv1.AzureLinuxWebApp{},
-	cloudresourcekind.CloudResourceKind_AzureLoadBalancer:                &azureloadbalancerv1.AzureLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_AzureLogAnalyticsWorkspace:       &azureloganalyticsworkspacev1.AzureLogAnalyticsWorkspace{},
-	cloudresourcekind.CloudResourceKind_AzureMssqlServer:                 &azuremssqlserverv1.AzureMssqlServer{},
-	cloudresourcekind.CloudResourceKind_AzureMysqlFlexibleServer:         &azuremysqlflexibleserverv1.AzureMysqlFlexibleServer{},
-	cloudresourcekind.CloudResourceKind_AzureNatGateway:                  &azurenatgatewayv1.AzureNatGateway{},
-	cloudresourcekind.CloudResourceKind_AzureNetworkSecurityGroup:        &azurenetworksecuritygroupv1.AzureNetworkSecurityGroup{},
-	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:    &azurepostgresqlflexibleserverv1.AzurePostgresqlFlexibleServer{},
-	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZone:              &azureprivatednszonev1.AzurePrivateDnsZone{},
-	cloudresourcekind.CloudResourceKind_AzurePrivateEndpoint:             &azureprivateendpointv1.AzurePrivateEndpoint{},
-	cloudresourcekind.CloudResourceKind_AzurePublicIp:                    &azurepublicipv1.AzurePublicIp{},
-	cloudresourcekind.CloudResourceKind_AzureRedisCache:                  &azurerediscachev1.AzureRedisCache{},
-	cloudresourcekind.CloudResourceKind_AzureResourceGroup:               &azureresourcegroupv1.AzureResourceGroup{},
-	cloudresourcekind.CloudResourceKind_AzureRoleAssignment:              &azureroleassignmentv1.AzureRoleAssignment{},
-	cloudresourcekind.CloudResourceKind_AzureRoleDefinition:              &azureroledefinitionv1.AzureRoleDefinition{},
-	cloudresourcekind.CloudResourceKind_AzureServiceBusNamespace:         &azureservicebusnamespacev1.AzureServiceBusNamespace{},
-	cloudresourcekind.CloudResourceKind_AzureServicePlan:                 &azureserviceplanv1.AzureServicePlan{},
-	cloudresourcekind.CloudResourceKind_AzureStorageAccount:              &azurestorageaccountv1.AzureStorageAccount{},
-	cloudresourcekind.CloudResourceKind_AzureSubnet:                      &azuresubnetv1.AzureSubnet{},
-	cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity:        &azureuserassignedidentityv1.AzureUserAssignedIdentity{},
-	cloudresourcekind.CloudResourceKind_AzureVirtualMachine:              &azurevirtualmachinev1.AzureVirtualMachine{},
-	cloudresourcekind.CloudResourceKind_AzureVpc:                         &azurevpcv1.AzureVpc{},
+	cloudresourcekind.CloudResourceKind_AzureAksCluster:                       &azureaksclusterv1.AzureAksCluster{},
+	cloudresourcekind.CloudResourceKind_AzureAksNodePool:                      &azureaksnodepoolv1.AzureAksNodePool{},
+	cloudresourcekind.CloudResourceKind_AzureApplicationGateway:               &azureapplicationgatewayv1.AzureApplicationGateway{},
+	cloudresourcekind.CloudResourceKind_AzureApplicationInsights:              &azureapplicationinsightsv1.AzureApplicationInsights{},
+	cloudresourcekind.CloudResourceKind_AzureContainerApp:                     &azurecontainerappv1.AzureContainerApp{},
+	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironment:          &azurecontainerappenvironmentv1.AzureContainerAppEnvironment{},
+	cloudresourcekind.CloudResourceKind_AzureContainerRegistry:                &azurecontainerregistryv1.AzureContainerRegistry{},
+	cloudresourcekind.CloudResourceKind_AzureCosmosdbAccount:                  &azurecosmosdbaccountv1.AzureCosmosdbAccount{},
+	cloudresourcekind.CloudResourceKind_AzureDnsRecord:                        &azurednsrecordv1.AzureDnsRecord{},
+	cloudresourcekind.CloudResourceKind_AzureDnsZone:                          &azurednszonev1.AzureDnsZone{},
+	cloudresourcekind.CloudResourceKind_AzureEventHubNamespace:                &azureeventhubnamespacev1.AzureEventHubNamespace{},
+	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential:      &azurefederatedidentitycredentialv1.AzureFederatedIdentityCredential{},
+	cloudresourcekind.CloudResourceKind_AzureFrontDoorProfile:                 &azurefrontdoorprofilev1.AzureFrontDoorProfile{},
+	cloudresourcekind.CloudResourceKind_AzureFunctionApp:                      &azurefunctionappv1.AzureFunctionApp{},
+	cloudresourcekind.CloudResourceKind_AzureKeyVault:                         &azurekeyvaultv1.AzureKeyVault{},
+	cloudresourcekind.CloudResourceKind_AzureLinuxWebApp:                      &azurelinuxwebappv1.AzureLinuxWebApp{},
+	cloudresourcekind.CloudResourceKind_AzureLoadBalancer:                     &azureloadbalancerv1.AzureLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_AzureLogAnalyticsWorkspace:            &azureloganalyticsworkspacev1.AzureLogAnalyticsWorkspace{},
+	cloudresourcekind.CloudResourceKind_AzureMssqlServer:                      &azuremssqlserverv1.AzureMssqlServer{},
+	cloudresourcekind.CloudResourceKind_AzureMysqlFlexibleServer:              &azuremysqlflexibleserverv1.AzureMysqlFlexibleServer{},
+	cloudresourcekind.CloudResourceKind_AzureNatGateway:                       &azurenatgatewayv1.AzureNatGateway{},
+	cloudresourcekind.CloudResourceKind_AzureNetworkSecurityGroup:             &azurenetworksecuritygroupv1.AzureNetworkSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:         &azurepostgresqlflexibleserverv1.AzurePostgresqlFlexibleServer{},
+	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZone:                   &azureprivatednszonev1.AzurePrivateDnsZone{},
+	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZoneVirtualNetworkLink: &azureprivatednszonevirtualnetworklinkv1.AzurePrivateDnsZoneVirtualNetworkLink{},
+	cloudresourcekind.CloudResourceKind_AzurePrivateEndpoint:                  &azureprivateendpointv1.AzurePrivateEndpoint{},
+	cloudresourcekind.CloudResourceKind_AzurePublicIp:                         &azurepublicipv1.AzurePublicIp{},
+	cloudresourcekind.CloudResourceKind_AzureRedisCache:                       &azurerediscachev1.AzureRedisCache{},
+	cloudresourcekind.CloudResourceKind_AzureResourceGroup:                    &azureresourcegroupv1.AzureResourceGroup{},
+	cloudresourcekind.CloudResourceKind_AzureRoleAssignment:                   &azureroleassignmentv1.AzureRoleAssignment{},
+	cloudresourcekind.CloudResourceKind_AzureRoleDefinition:                   &azureroledefinitionv1.AzureRoleDefinition{},
+	cloudresourcekind.CloudResourceKind_AzureRouteTable:                       &azureroutetablev1.AzureRouteTable{},
+	cloudresourcekind.CloudResourceKind_AzureServiceBusNamespace:              &azureservicebusnamespacev1.AzureServiceBusNamespace{},
+	cloudresourcekind.CloudResourceKind_AzureServicePlan:                      &azureserviceplanv1.AzureServicePlan{},
+	cloudresourcekind.CloudResourceKind_AzureStorageAccount:                   &azurestorageaccountv1.AzureStorageAccount{},
+	cloudresourcekind.CloudResourceKind_AzureSubnet:                           &azuresubnetv1.AzureSubnet{},
+	cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity:             &azureuserassignedidentityv1.AzureUserAssignedIdentity{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualMachine:                   &azurevirtualmachinev1.AzureVirtualMachine{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualNetwork:                   &azurevirtualnetworkv1.AzureVirtualNetwork{},
 }
 
 var ProviderCivoMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

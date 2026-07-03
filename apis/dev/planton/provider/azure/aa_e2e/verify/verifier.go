@@ -29,11 +29,15 @@ type Verifier interface {
 // verifiers maps a component name to its verifier. New Azure components register
 // here as they are forged.
 var verifiers = map[string]Verifier{
-	"azurefederatedidentitycredential": &federatedIdentityCredentialVerifier{},
-	"azureresourcegroup":               &resourceGroupVerifier{},
-	"azureroleassignment":              &roleAssignmentVerifier{},
-	"azureroledefinition":              &roleDefinitionVerifier{},
-	"azureuserassignedidentity":        &userAssignedIdentityVerifier{},
+	"azurefederatedidentitycredential":      &federatedIdentityCredentialVerifier{},
+	"azureprivatednszone":                   &privateDnsZoneVerifier{},
+	"azureprivatednszonevirtualnetworklink": &privateDnsZoneVirtualNetworkLinkVerifier{},
+	"azureresourcegroup":                    &resourceGroupVerifier{},
+	"azureroleassignment":                   &roleAssignmentVerifier{},
+	"azureroledefinition":                   &roleDefinitionVerifier{},
+	"azureroutetable":                       &routeTableVerifier{},
+	"azureuserassignedidentity":             &userAssignedIdentityVerifier{},
+	"azurevirtualnetwork":                   &virtualNetworkVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

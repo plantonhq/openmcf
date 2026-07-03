@@ -17,7 +17,7 @@ This component simplifies Azure VM deployment by:
 
 ## Key Features
 
-- **Network Integration**: Reference subnets from AzureVpc resources using cross-references
+- **Network Integration**: Reference subnets from AzureVirtualNetwork resources using cross-references
 - **Flexible Authentication**: SSH keys for Linux, passwords for Windows (or both)
 - **Managed Identities**: System-assigned and user-assigned identity support
 - **Disk Options**: Configure OS disk and attach additional data disks
@@ -40,9 +40,9 @@ spec:
   vm_size: Standard_D2s_v3
   subnet_id:
     value_from:
-      kind: AzureVpc
+      kind: AzureSubnet
       name: my-vpc
-      field_path: status.outputs.nodes_subnet_id
+      field_path: status.outputs.subnet_id
   image:
     publisher: Canonical
     offer: 0001-com-ubuntu-server-jammy

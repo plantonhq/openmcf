@@ -10,7 +10,6 @@ This is the most widely referenced Azure resource in Planton. Eleven downstream
 resource types consume `subnet_id` from this component's outputs, making it a
 critical building block in Azure infra charts.
 
-Unlike the built-in `nodes_subnet` in AzureVpc (which is purpose-built for AKS),
 AzureSubnet provides full control over service endpoints, delegations, and private
 endpoint policies -- enabling multi-tier enterprise architectures.
 
@@ -19,7 +18,7 @@ omits the `region` field found on other Azure resources.
 
 ## Key Features
 
-- **StringValueOrRef vnet_id** -- references an `AzureVpc` output for dependency wiring
+- **StringValueOrRef vnet_id** -- references an `AzureVirtualNetwork` output for dependency wiring
 - **Service endpoints** -- optimized routes over Azure backbone to PaaS services
 - **Service delegation** -- grants Azure PaaS services permission to inject resources
   (PostgreSQL, MySQL, Container Apps, App Service)
@@ -76,9 +75,9 @@ spec:
       fieldPath: status.outputs.resource_group_name
   vnet_id:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureVirtualNetwork
       name: prod-vpc
-      fieldPath: status.outputs.vnet_id
+      fieldPath: status.outputs.virtual_network_id
   name: prod-app-subnet
   address_prefix: "10.0.1.0/24"
   service_endpoints:
@@ -105,7 +104,7 @@ spec:
 - **Region** -- inherited from the parent VNet; including it would be misleading
 - **NSG association** -- handled by AzureNetworkSecurityGroup (separate lifecycle)
 - **Route table association** -- advanced networking, future iteration
-- **NAT Gateway association** -- handled at VNet level by AzureVpc
+- **NAT Gateway association** -- handled by the standalone AzureNatGateway kind, which attaches to a subnet by reference
 - **Multiple address prefixes** -- Azure supports this for niche scenarios but 99.9%
   of subnets use a single CIDR
 - **Service endpoint policies** -- advanced traffic restriction feature, very niche

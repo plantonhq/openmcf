@@ -113,6 +113,42 @@ func TestAzureUserAssignedIdentity_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureuserassignedidentity", "terraform")
 }
 
+// --- Azure Virtual Network (composed: multi-CIDR network in the fixture RG) ---
+
+func TestAzureVirtualNetwork_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualnetwork", "pulumi")
+}
+func TestAzureVirtualNetwork_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualnetwork", "terraform")
+}
+
+// --- Azure Route Table (composed: black-hole + service-tag routes in the fixture RG) ---
+
+func TestAzureRouteTable_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureroutetable", "pulumi")
+}
+func TestAzureRouteTable_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureroutetable", "terraform")
+}
+
+// --- Azure Private DNS Zone (composed: custom internal zone in the fixture RG) ---
+
+func TestAzurePrivateDnsZone_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednszone", "pulumi")
+}
+func TestAzurePrivateDnsZone_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednszone", "terraform")
+}
+
+// --- Azure Private DNS Zone Virtual Network Link (composed two-parent chain: fixture zone + fixture network -> link) ---
+
+func TestAzurePrivateDnsZoneVirtualNetworkLink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednszonevirtualnetworklink", "pulumi")
+}
+func TestAzurePrivateDnsZoneVirtualNetworkLink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednszonevirtualnetworklink", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

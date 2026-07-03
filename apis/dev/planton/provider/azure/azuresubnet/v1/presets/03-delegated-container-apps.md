@@ -21,7 +21,7 @@ This preset creates a subnet delegated to Azure Container App Environments (`Mic
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<vnet-resource-id>` | ARM resource ID of the VNet | `AzureVpc` status outputs |
+| `<vnet-resource-id>` | ARM resource ID of the VNet | `AzureVirtualNetwork` status outputs |
 
 ## Related Presets
 

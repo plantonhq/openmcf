@@ -10,9 +10,8 @@ import "dev/planton/shared/options/options.proto";
 // an existing Virtual Network (VNet).
 //
 // Subnets partition a VNet's address space into segments for different workloads,
-// network tiers, or service delegations. Unlike the built-in `nodes_subnet` on
-// AzureVpc (which is purpose-built for AKS), this resource creates standalone subnets
-// with full control over service endpoints, delegations, and private endpoint policies.
+// network tiers, or service delegations, with full control over service endpoints,
+// delegations, and private endpoint policies.
 //
 // This is the most widely referenced Azure resource in Planton. Downstream consumers
 // include AzureAksCluster, AzureContainerAppEnvironment, AzurePostgresqlFlexibleServer,
@@ -22,9 +21,6 @@ import "dev/planton/shared/options/options.proto";
 // **Note:** Subnets do not have their own region -- they inherit the region from
 // their parent VNet. This is why this spec omits the `region` field that other
 // Azure resources include.
-//
-// This spec follows the 80/20 principle: exposing the essential fields that cover
-// the vast majority of deployment scenarios while keeping the configuration minimal.
 message AzureSubnetSpec {
   // The Azure Resource Group where the parent VNet exists.
   // Must be the same resource group as the VNet.
@@ -41,8 +37,8 @@ message AzureSubnetSpec {
   // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}
   dev.planton.shared.foreignkey.v1.StringValueOrRef vnet_id = 2 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpc,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vnet_id"
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
   ];
 
   // The name of the subnet.

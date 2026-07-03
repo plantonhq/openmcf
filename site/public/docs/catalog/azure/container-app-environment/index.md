@@ -207,4 +207,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AzureSubnet](/docs/catalog/azure/subnet) -- provides the infrastructure subnet for VNet injection
 - [AzureLogAnalyticsWorkspace](/docs/catalog/azure/log-analytics-workspace) -- provides centralized log collection
 - [AzureContainerApp](/docs/catalog/azure/container-app) -- container apps hosted in this environment
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) -- provides the virtual network containing the infrastructure subnet
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) -- provides the virtual network containing the infrastructure subnet

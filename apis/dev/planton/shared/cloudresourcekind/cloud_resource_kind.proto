@@ -636,11 +636,14 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azkv"
   }];
-  AzureVpc = 406 [(kind_meta) = {
+  // AzureResourceGroup is a prerequisite because a virtual network is created
+  // inside a referenced resource group in composed environments.
+  AzureVirtualNetwork = 406 [(kind_meta) = {
     provider: azure
     version: v1
-    id_prefix: "azvpc"
+    id_prefix: "azvnet"
     container_kind: true
+    prerequisites: [AzureResourceGroup]
   }];
   AzureNatGateway = 407 [(kind_meta) = {
     provider: azure
@@ -682,10 +685,13 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azpe"
   }];
+  // AzureResourceGroup is a prerequisite because a private DNS zone is created
+  // inside a referenced resource group in composed environments.
   AzurePrivateDnsZone = 415 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azpdns"
+    prerequisites: [AzureResourceGroup]
   }];
   AzureApplicationGateway = 416 [(kind_meta) = {
     provider: azure
@@ -696,6 +702,28 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azlb"
+  }];
+  // AzureResourceGroup is a prerequisite because a route table is created
+  // inside a referenced resource group in composed environments.
+  AzureRouteTable = 418 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azrt"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzurePrivateDnsZone and AzureVirtualNetwork are prerequisites because a
+  // virtual network link is a child resource of a referenced zone and binds
+  // it to a referenced network -- both must exist before the link can be
+  // written. (The resource group arrives transitively through the zone's and
+  // network's own prerequisite declarations.)
+  AzurePrivateDnsZoneVirtualNetworkLink = 419 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azpdnslink"
+    prerequisites: [
+      AzurePrivateDnsZone,
+      AzureVirtualNetwork
+    ]
   }];
   AzurePostgresqlFlexibleServer = 430 [(kind_meta) = {
     provider: azure

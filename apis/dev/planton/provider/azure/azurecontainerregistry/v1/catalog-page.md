@@ -172,4 +172,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) — provides the resource group for registry placement
 - [AzureAksCluster](/docs/catalog/azure/azureakscluster) — AKS clusters pull container images from the registry
 - [AzureKeyVault](/docs/catalog/azure/azurekeyvault) — stores registry admin credentials or service principal secrets used for authentication
-- [AzureVpc](/docs/catalog/azure/azurevpc) — provides VNet subnets for private endpoint connectivity to Premium-tier registries
+- [AzureVirtualNetwork](/docs/catalog/azure/azurevirtualnetwork) — provides VNet subnets for private endpoint connectivity to Premium-tier registries

@@ -707,8 +707,12 @@ conventions). A rename keeps the enum **number** — only the name changes every
    use `make build-go` for the repo-wide gate), the Pulumi entrypoint build,
    `planton validate-refs --check`, `planton secret-coverage --check`,
    `tofu init -backend=false && tofu validate` in `iac/tf/`, and a final
-   `git grep -i <oldname>` sweep that must return zero tracked-file hits (historical
-   `_changelog/` entries are records and stay untouched).
+   `git grep -i <oldname>` sweep that must return zero tracked-file hits. Historical
+   records stay untouched and are excluded from the sweep: `_changelog/` entries AND
+   other components' dated `docs/audit/*.md` reports (rewriting a dated audit would
+   falsify what was true at audit time). The renamed component's OWN stale audit
+   reports are the exception — delete them, since they describe a kind that no longer
+   exists at that path and a fresh audit replaces them.
 
 **Use when:**
 - A kind's name diverges from the provider's own naming format

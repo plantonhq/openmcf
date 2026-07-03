@@ -11,9 +11,9 @@ spec:
       fieldPath: status.outputs.resource_group_name
   vnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
-      fieldPath: status.outputs.vnet_id
+      fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-web-subnet"
   addressPrefix: "{{ values.web_subnet_cidr }}"
   serviceEndpoints:
@@ -31,9 +31,9 @@ spec:
       fieldPath: status.outputs.resource_group_name
   vnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
-      fieldPath: status.outputs.vnet_id
+      fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-app-subnet"
   addressPrefix: "{{ values.app_subnet_cidr }}"
   serviceEndpoints:
@@ -53,9 +53,9 @@ spec:
       fieldPath: status.outputs.resource_group_name
   vnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
-      fieldPath: status.outputs.vnet_id
+      fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-data-subnet"
   addressPrefix: "{{ values.data_subnet_cidr }}"
   serviceEndpoints:
@@ -76,9 +76,9 @@ spec:
       fieldPath: status.outputs.resource_group_name
   vnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
-      fieldPath: status.outputs.vnet_id
+      fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-gw-subnet"
   addressPrefix: "{{ values.gateway_subnet_cidr }}"
 {% endif %}

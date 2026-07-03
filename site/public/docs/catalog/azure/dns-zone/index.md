@@ -242,4 +242,4 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group where the DNS zone is created
 - [AzureDnsRecord](/docs/catalog/azure/dns-record) -- manages individual DNS records as standalone resources outside of the zone spec
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) -- provides the virtual network that services resolved by this zone may run in
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) -- provides the virtual network that services resolved by this zone may run in

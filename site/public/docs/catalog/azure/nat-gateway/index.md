@@ -24,7 +24,7 @@ When you deploy an AzureNatGateway resource, Planton provisions:
 
 - **Azure credentials** configured via environment variables or Planton provider config
 - **An Azure Resource Group** where the NAT Gateway will be created (can reference an AzureResourceGroup resource)
-- **A subnet** to attach the NAT Gateway to (can reference an AzureVpc resource's nodes subnet output)
+- **A subnet** to attach the NAT Gateway to (can reference an AzureVirtualNetwork resource's nodes subnet output)
 
 ## Quick Start
 
@@ -62,7 +62,7 @@ This creates a Standard SKU NAT Gateway with a single static public IP, a 4-minu
 |-------|------|-------------|------------|
 | `region` | `string` | Azure region for the NAT Gateway (e.g., `eastus`, `westeurope`). | Required, minimum length 1 |
 | `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `subnetId` | `StringValueOrRef` | Subnet resource ID to attach the NAT Gateway to. Can reference an AzureVpc resource via `valueFrom`. | Required |
+| `subnetId` | `StringValueOrRef` | Subnet resource ID to attach the NAT Gateway to. Can reference an AzureVirtualNetwork resource via `valueFrom`. | Required |
 
 ### Optional Fields
 
@@ -165,9 +165,9 @@ spec:
       field: status.outputs.resource_group_name
   subnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureSubnet
       name: my-vpc
-      field: status.outputs.nodes_subnet_id
+      field: status.outputs.subnet_id
   idleTimeoutMinutes: 15
 ```
 
@@ -194,9 +194,9 @@ spec:
       field: status.outputs.resource_group_name
   subnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureSubnet
       name: aks-vpc
-      field: status.outputs.nodes_subnet_id
+      field: status.outputs.subnet_id
   publicIpPrefixLength: 31
   idleTimeoutMinutes: 120
   tags:
@@ -217,6 +217,6 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for gateway placement
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) -- provides the VNet and subnets that the NAT Gateway attaches to
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) -- provides the VNet and subnets that the NAT Gateway attaches to
 - [AzurePublicIp](/docs/catalog/azure/public-ip) -- standalone public IP resources, if managing IPs separately from the gateway
 - [AzureAksCluster](/docs/catalog/azure/aks-cluster) -- AKS clusters commonly use a NAT Gateway for predictable outbound IPs and SNAT port scaling

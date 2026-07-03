@@ -279,5 +279,5 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) — provides the resource group for server placement
 - [AzureSubnet](/docs/catalog/azure/azuresubnet) — provides a delegated subnet for private VNet access
 - [AzurePrivateDnsZone](/docs/catalog/azure/azureprivatednszone) — provides a private DNS zone for VNet name resolution
-- [AzureVpc](/docs/catalog/azure/azurevpc) — provides the virtual network containing delegated subnets
+- [AzureVirtualNetwork](/docs/catalog/azure/azurevirtualnetwork) — provides the virtual network containing delegated subnets
 - [AzureKeyVault](/docs/catalog/azure/azurekeyvault) — can store the administrator password as a secret

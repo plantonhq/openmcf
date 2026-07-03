@@ -36,11 +36,11 @@ message AzureVirtualMachineSpec {
 
   // The Azure resource ID of the subnet where this VM will be attached.
   // This should reference a subnet within an existing Virtual Network (VNet).
-  // Can be a literal value or a reference to an AzureVpc resource's subnet output.
+  // Can be a literal value or a reference to an AzureSubnet's subnet_id output.
   dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 4 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpc,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.nodes_subnet_id"
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
   // Operating system image configuration for the VM.

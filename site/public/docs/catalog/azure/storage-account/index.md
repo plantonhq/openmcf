@@ -267,5 +267,5 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for storage account placement
 - [AzureKeyVault](/docs/catalog/azure/key-vault) — store storage account access keys as vault secrets
-- [AzureVpc](/docs/catalog/azure/vpc-virtual-network) — provides VNet subnets for network ACL rules
+- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — provides VNet subnets for network ACL rules
 - [AzureAksCluster](/docs/catalog/azure/aks-cluster) — AKS workloads can mount blob containers as persistent volumes or access storage via managed identity

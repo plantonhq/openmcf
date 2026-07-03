@@ -12,9 +12,9 @@ spec:
       fieldPath: status.outputs.resource_group_name
   vnetSubnetId:
     valueFrom:
-      kind: AzureVpc
-      name: "{{ values.env }}-vnet"
-      fieldPath: status.outputs.nodes_subnet_id
+      kind: AzureSubnet
+      name: "{{ values.env }}-nodes-subnet"
+      fieldPath: status.outputs.subnet_id
   kubernetesVersion: "{{ values.kubernetes_version }}"
   privateClusterEnabled: {{ values.private_cluster_enabled }}
   {% if not values.private_cluster_enabled | bool %}

@@ -28,9 +28,8 @@ const (
 // an existing Virtual Network (VNet).
 //
 // Subnets partition a VNet's address space into segments for different workloads,
-// network tiers, or service delegations. Unlike the built-in `nodes_subnet` on
-// AzureVpc (which is purpose-built for AKS), this resource creates standalone subnets
-// with full control over service endpoints, delegations, and private endpoint policies.
+// network tiers, or service delegations, with full control over service endpoints,
+// delegations, and private endpoint policies.
 //
 // This is the most widely referenced Azure resource in Planton. Downstream consumers
 // include AzureAksCluster, AzureContainerAppEnvironment, AzurePostgresqlFlexibleServer,
@@ -40,9 +39,6 @@ const (
 // **Note:** Subnets do not have their own region -- they inherit the region from
 // their parent VNet. This is why this spec omits the `region` field that other
 // Azure resources include.
-//
-// This spec follows the 80/20 principle: exposing the essential fields that cover
-// the vast majority of deployment scenarios while keeping the configuration minimal.
 type AzureSubnetSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure Resource Group where the parent VNet exists.
@@ -294,10 +290,10 @@ var File_dev_planton_provider_azure_azuresubnet_v1_spec_proto protoreflect.FileD
 
 const file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/azure/azuresubnet/v1/spec.proto\x12)dev.planton.provider.azure.azuresubnet.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa9\b\n" +
+	"4dev/planton/provider/azure/azuresubnet/v1/spec.proto\x12)dev.planton.provider.azure.azuresubnet.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb4\b\n" +
 	"\x0fAzureSubnetSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12r\n" +
-	"\avnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a\x16status.outputs.vnet_idR\x06vnetId\x12 \n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12}\n" +
+	"\avnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a!status.outputs.virtual_network_idR\x06vnetId\x12 \n" +
 	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x121\n" +
 	"\x0eaddress_prefix\x18\x04 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\raddressPrefix\x12+\n" +

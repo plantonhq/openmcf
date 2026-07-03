@@ -7,7 +7,7 @@ Serverless container platform on Azure with VNet integration and centralized mon
 | Resource | Kind | Condition |
 |----------|------|-----------|
 | Resource Group | `AzureResourceGroup` | Always |
-| Virtual Network | `AzureVpc` | Always |
+| Virtual Network | `AzureVirtualNetwork` | Always |
 | Container Apps Subnet | `AzureSubnet` | Always |
 | Log Analytics Workspace | `AzureLogAnalyticsWorkspace` | Always |
 | Application Insights | `AzureApplicationInsights` | `create_app_insights` |
@@ -35,7 +35,6 @@ Application Insights is optional (default on) for application-level telemetry.
 | `region` | Azure region | `eastus` |
 | `resource_group_name` | Resource group name suffix | `cae-rg` |
 | `vnet_cidr` | VNet address space | `10.2.0.0/16` |
-| `default_subnet_cidr` | Default subnet CIDR | `10.2.0.0/24` |
 | `container_apps_subnet_cidr` | Container Apps subnet (min /21) | `10.2.8.0/21` |
 
 ### Container App Environment

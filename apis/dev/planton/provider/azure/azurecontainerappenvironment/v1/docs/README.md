@@ -132,7 +132,7 @@ The `AzureContainerAppEnvironment` is a Layer 1 resource in the `container-apps-
 
 ```
 Layer 0: AzureResourceGroup
-Layer 0: AzureVpc → AzureSubnet
+Layer 0: AzureVirtualNetwork → AzureSubnet
 Layer 0: AzureLogAnalyticsWorkspace
 Layer 1: AzureContainerAppEnvironment (this resource)
 Layer 2: AzureContainerApp (one or more)

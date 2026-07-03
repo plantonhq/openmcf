@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureVirtualNetwork
+metadata:
+  name: edge-network
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  name: edge-vnet
+  addressSpaces:
+    - "10.50.0.0/16"
+  ddosProtectionPlan:
+    id: <ddos-protection-plan-arm-id>
+    enable: true
+  encryption: ALLOW_UNENCRYPTED
+  tags:
+    cost-center: <cost-center>

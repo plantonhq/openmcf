@@ -1,0 +1,11 @@
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: shared-zone-link
+spec:
+  name: <network-name>
+  privateDnsZoneId:
+    value: <private-dns-zone-arm-id>
+  virtualNetworkId:
+    value: <virtual-network-arm-id>
+  resolutionPolicy: NX_DOMAIN_REDIRECT

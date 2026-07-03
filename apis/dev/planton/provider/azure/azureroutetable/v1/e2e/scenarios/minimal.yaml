@@ -1,0 +1,44 @@
+# Minimal AzureRouteTable scenario: a two-route table (black-hole + service
+# tag to internet) with BGP propagation disabled, in the fixture resource
+# group.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind (AzureResourceGroup ->
+# the fixture RG's name), keeping the scenario fully registry-driven. The
+# two routes exercise the repeated message on both engines with two
+# different next-hop shapes (NONE and INTERNET with a service-tag prefix);
+# a VirtualAppliance route is deliberately absent -- it would need a live
+# appliance IP inside an attached network, and the required-IP pairing is
+# already enforced by spec validation. bgp_route_propagation_enabled: false
+# exercises the non-default value of the optional bool.
+apiVersion: azure.planton.dev/v1
+kind: AzureRouteTable
+metadata:
+  name: planton-oss-e2e-azureroutetable-smoke
+  id: planton-oss-e2e-azureroutetable-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureroutetable
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-rt-smoke
+  routes:
+    - name: blackhole-test-prefix
+      addressPrefix: "192.0.2.0/24"
+      nextHopType: NONE
+    - name: backup-direct
+      addressPrefix: "AzureBackup"
+      nextHopType: INTERNET
+  bgpRoutePropagationEnabled: false
+  tags:
+    e2e-suite: azure
+    purpose: smoke

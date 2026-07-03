@@ -93,7 +93,7 @@ AzureNetworkSecurityGroup is a key component in the **enterprise-network-foundat
 infra chart, where per-tier NSGs enforce traffic segmentation:
 
 ```
-AzureVpc (VNet)
+AzureVirtualNetwork (VNet)
   └── AzureSubnet (web-tier)
         └── AzureNetworkSecurityGroup (web-nsg) ── association
   └── AzureSubnet (app-tier)

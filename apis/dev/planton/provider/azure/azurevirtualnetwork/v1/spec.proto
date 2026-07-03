@@ -1,0 +1,217 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurevirtualnetwork.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureVirtualNetworkSpec** defines the configuration for creating an Azure
+// Virtual Network (VNet): the isolated, private IP address space every
+// network-attached Azure workload lives inside.
+//
+// The virtual network is deliberately just the network. Address planning and
+// network-wide policy live here; everything that partitions or extends it is
+// its own composable resource referencing this network's outputs:
+// - AzureSubnet partitions the address space into workload segments.
+// - AzureNatGateway provides managed outbound connectivity for a subnet.
+// - AzurePrivateDnsZoneVirtualNetworkLink makes a private DNS zone
+//   resolvable from this network.
+//
+// Keeping these as separate nodes means each has its own lifecycle -- a
+// hub-and-spoke topology adds subnets and DNS links without ever touching
+// the network resource itself.
+message AzureVirtualNetworkSpec {
+  // The Azure region where the virtual network will be created, e.g.
+  // "eastus", "westeurope". A virtual network is a regional resource;
+  // changing the region replaces it (and everything inside it).
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the virtual network will be created in.
+  // Can be a literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the virtual network. Must be unique within the resource
+  // group; 2-64 characters (alphanumerics, underscores, periods, and
+  // hyphens; must start with a letter or number and end with a letter,
+  // number, or underscore). Changing the name replaces the network -- and
+  // with it every subnet and attachment inside -- so name it durably, after
+  // the environment or workload domain it carries ("prod-hub", "payments").
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.max_len = 64,
+    (buf.validate.field).cel = {
+      id: "vnet_name_format"
+      message: "Virtual network names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens"
+      expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9_]$')"
+    }
+  ];
+
+  // The IPv4/IPv6 CIDR blocks that form the network's address space, e.g.
+  // ["10.0.0.0/16"]. Multiple blocks are first-class: networks routinely
+  // grow a second range when the first fills up, and dual-stack networks
+  // carry an IPv4 and an IPv6 block side by side. Blocks can be added or
+  // removed in place, but a block in use by subnets cannot shrink. Every
+  // AzureSubnet's address_prefix must fall inside one of these blocks.
+  //
+  // Exactly one of address_spaces or ip_address_pools must be set: either
+  // you plan addresses yourself (this field) or you delegate allocation to
+  // an Azure Network Manager IPAM pool (ip_address_pools).
+  repeated string address_spaces = 4;
+
+  // Delegated address allocation from Azure Network Manager IP Address
+  // Management (IPAM) pools -- the alternative to hand-planned
+  // address_spaces for organizations that manage address space centrally.
+  // At most two entries, one per IP version (IPv4 and IPv6). The actual
+  // CIDR ranges are provisioned by the pool at deploy time and surfaced in
+  // the network's outputs.
+  //
+  // Exactly one of address_spaces or ip_address_pools must be set.
+  repeated AzureVirtualNetworkIpAddressPool ip_address_pools = 5 [(buf.validate.field).repeated.max_items = 2];
+
+  // Custom DNS server IP addresses for the network. When empty, Azure's
+  // default resolver (168.63.129.16) serves the network -- the right choice
+  // for most deployments, and required for Azure Private DNS zone
+  // resolution to work directly. Set custom servers only when integrating
+  // with on-premises DNS or a self-hosted resolver; VMs pick up the change
+  // on their next DHCP lease renewal (restart to force it).
+  repeated string dns_servers = 6;
+
+  // The BGP community attribute advertised with this network's routes over
+  // ExpressRoute, in "asn:community" notation, e.g. "12076:20010". The ASN
+  // segment is always 12076 (Microsoft's public ASN) today. Set this when
+  // on-premises routers filter or prefer routes by community; leave unset
+  // otherwise. Updatable in place.
+  string bgp_community = 7 [(buf.validate.field).cel = {
+    id: "bgp_community_format"
+    message: "BGP community must use \"asn:community\" notation with both segments between 1 and 65534, e.g. \"12076:20010\""
+    expression: "this == '' || this.matches('^(6553[0-4]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3}):(6553[0-4]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3})$')"
+  }];
+
+  // Attach a DDoS Protection Plan to shield the network's public IPs with
+  // always-on traffic monitoring and adaptive mitigation. The plan is a
+  // separate (and billed) Azure resource shared across networks; this block
+  // attaches an existing plan by its ARM ID. Omit the block entirely for
+  // Azure's free basic protection.
+  AzureVirtualNetworkDdosProtectionPlan ddos_protection_plan = 8;
+
+  // Virtual network encryption: encrypts traffic between Azure VMs inside
+  // the network (VM-to-VM over the Azure backbone). Unspecified leaves
+  // encryption off (Azure's default). When enabled, the value declares what
+  // happens to traffic from VM sizes that cannot encrypt: ALLOW_UNENCRYPTED
+  // lets it flow in plaintext; DROP_UNENCRYPTED discards it. Note: ARM
+  // currently accepts only ALLOW_UNENCRYPTED (DROP_UNENCRYPTED is not yet
+  // generally available); the value is modeled because the API defines it.
+  AzureVirtualNetworkEncryptionEnforcement encryption = 9;
+
+  // Connection-tracking flow timeout for intra-network flows, in minutes
+  // (4-30). Unset uses Azure's default (4 minutes). Raise it for
+  // long-lived idle connections (database sessions, message-bus consumers)
+  // that must not be dropped between keepalives. Updatable in place.
+  optional int32 flow_timeout_in_minutes = 10 [
+    (buf.validate.field).int32.gte = 4,
+    (buf.validate.field).int32.lte = 30
+  ];
+
+  // Network-wide private endpoint policy. Unspecified applies Azure's
+  // default (DISABLED: no network policies evaluated for private
+  // endpoints). BASIC enables basic policy evaluation on private endpoint
+  // traffic across the whole network. Subnet-level private endpoint
+  // network policies (on AzureSubnet) are the more common control; this
+  // network-wide setting exists for centrally-governed environments.
+  AzureVirtualNetworkPrivateEndpointVnetPolicies private_endpoint_vnet_policies = 11;
+
+  // Deploy the network into an Azure Edge Zone (a metro-local Azure
+  // extension) instead of the main region, e.g. "losangeles". Leave unset
+  // for the standard region -- the overwhelmingly common case. Changing
+  // the edge zone replaces the network.
+  string edge_zone = 12;
+
+  // Free-form tags applied to the virtual network, merged over the
+  // Planton-derived resource tags (organization, environment, resource id);
+  // a user tag with the same key wins. Tags are Azure's governance surface
+  // -- Azure Policy enforces them and Microsoft Cost Management groups by
+  // them -- so carry your org's ownership/cost-center conventions here.
+  // Updatable in place.
+  map<string, string> tags = 13;
+
+  option (buf.validate.message).cel = {
+    id: "address_source_exactly_one"
+    message: "Set exactly one address source: either address_spaces (self-managed CIDR blocks) or ip_address_pools (Azure Network Manager IPAM allocation)"
+    expression: "(this.address_spaces.size() > 0) != (this.ip_address_pools.size() > 0)"
+  };
+}
+
+// A delegated address allocation from an Azure Network Manager IPAM pool.
+message AzureVirtualNetworkIpAddressPool {
+  // The ARM resource ID of the Network Manager IPAM pool to allocate from.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/networkManagers/{nm}/ipamPools/{pool}
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How many IP addresses to allocate from the pool, as a positive number
+  // in string form (IPv6 allocations can exceed integer range). The
+  // allocation can grow in place but never shrink.
+  string number_of_ip_addresses = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "ipam_count_positive"
+      message: "number_of_ip_addresses must be a positive number, e.g. \"256\""
+      expression: "this.matches('^[1-9][0-9]*$')"
+    }
+  ];
+}
+
+// Attachment of an existing DDoS Protection Plan to the virtual network.
+message AzureVirtualNetworkDdosProtectionPlan {
+  // The ARM resource ID of the DDoS Protection Plan to attach.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/ddosProtectionPlans/{name}
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Whether protection through the attached plan is active. Mirrors ARM's
+  // shape exactly: a plan can stay attached with protection toggled off
+  // (enable = false) so it can be re-activated without re-attaching.
+  bool enable = 2;
+}
+
+// What happens to traffic from Azure VM sizes that do not support
+// encryption when virtual network encryption is enabled. Unspecified means
+// encryption is not enabled (Azure's default).
+enum AzureVirtualNetworkEncryptionEnforcement {
+  // Not specified: virtual network encryption is not enabled.
+  azure_virtual_network_encryption_enforcement_unspecified = 0;
+
+  // Encryption is enabled; traffic from VMs that cannot encrypt flows
+  // unencrypted. The only enforcement mode ARM currently accepts.
+  ALLOW_UNENCRYPTED = 1;
+
+  // Encryption is enabled; traffic from VMs that cannot encrypt is
+  // dropped. Defined by the API but not yet generally available in ARM.
+  DROP_UNENCRYPTED = 2;
+}
+
+// Network-wide private endpoint policy evaluation mode. Values mirror
+// ARM's PrivateEndpointVNetPolicies; ARM's default (Disabled) is the
+// unspecified value, so only the opt-in basic mode is an explicit choice.
+enum AzureVirtualNetworkPrivateEndpointVnetPolicies {
+  // Not specified: ARM's default -- no network policies are evaluated for
+  // private endpoints in this network.
+  azure_virtual_network_private_endpoint_vnet_policies_unspecified = 0;
+
+  // Basic policy evaluation is enabled for private endpoint traffic
+  // across the network.
+  BASIC = 1;
+}

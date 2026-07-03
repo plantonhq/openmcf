@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZone
+metadata:
+  name: corp-internal-zone
+spec:
+  resourceGroup:
+    value: <resource-group-name>
+  name: <internal-domain>
+  soaRecord:
+    email: <dns-admin-email-soa-format>
+    minimumTtl: 30
+  tags:
+    cost-center: <cost-center>

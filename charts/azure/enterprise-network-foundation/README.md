@@ -8,7 +8,7 @@ enterprise Azure workloads.
 | Resource | Kind | Condition |
 |----------|------|-----------|
 | Resource Group | `AzureResourceGroup` | Always |
-| Virtual Network | `AzureVpc` | Always |
+| Virtual Network | `AzureVirtualNetwork` | Always |
 | Web Tier Subnet | `AzureSubnet` | Always |
 | App Tier Subnet | `AzureSubnet` | Always |
 | Data Tier Subnet | `AzureSubnet` | Always |
@@ -85,7 +85,6 @@ The chart implements a classic three-tier network architecture:
 | `region` | Azure region | `eastus` |
 | `resource_group_name` | Resource group suffix | `network-rg` |
 | `vnet_cidr` | VNet address space | `10.0.0.0/16` |
-| `default_subnet_cidr` | Default subnet CIDR | `10.0.0.0/24` |
 
 ### Tier Subnets
 

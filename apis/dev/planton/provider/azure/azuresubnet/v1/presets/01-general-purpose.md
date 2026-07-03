@@ -20,7 +20,7 @@ This preset creates a general-purpose Azure Subnet with a /24 CIDR block (254 us
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Resource group containing the VNet | Azure portal or `AzureResourceGroup` status outputs |
-| `<vnet-resource-id>` | Full ARM resource ID of the parent VNet | Azure portal or `AzureVpc` status outputs |
+| `<vnet-resource-id>` | Full ARM resource ID of the parent VNet | Azure portal or `AzureVirtualNetwork` status outputs |
 
 ## Related Presets
 

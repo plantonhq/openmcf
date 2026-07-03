@@ -24,7 +24,7 @@ This preset deploys a production-ready AKS cluster with a public API endpoint, A
 | --- | --- | --- |
 | `<azure-region>` | Azure region (e.g., `eastus`, `westeurope`) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<nodes-subnet-id>` | ARM resource ID of the subnet for cluster nodes | Azure portal or `AzureVpc` status outputs (`nodesSubnetId`) |
+| `<nodes-subnet-id>` | ARM resource ID of the subnet for cluster nodes | Azure portal or an `AzureSubnet`'s `status.outputs.subnet_id` |
 | `<log-analytics-workspace-id>` | ARM resource ID of the Log Analytics workspace | Azure portal or `AzureLogAnalyticsWorkspace` status outputs |
 
 ## Related Presets

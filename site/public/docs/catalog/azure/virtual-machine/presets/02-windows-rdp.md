@@ -37,7 +37,7 @@ This preset deploys a Windows Server 2022 Datacenter Gen2 VM with password authe
 | --- | --- | --- |
 | `<azure-region>` | Azure region (e.g., `eastus`, `westeurope`) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<subnet-id>` | ARM resource ID of the subnet for the VM's NIC | Azure portal or `AzureVpc` / `AzureSubnet` status outputs |
+| `<subnet-id>` | ARM resource ID of the subnet for the VM's NIC | Azure portal or `AzureVirtualNetwork` / `AzureSubnet` status outputs |
 | `<your-admin-password>` | Admin password (12+ chars, uppercase, lowercase, number, special char) | Generate a strong password; store in Key Vault for production |
 
 ## Related Presets

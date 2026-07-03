@@ -12,9 +12,9 @@ spec:
       fieldPath: status.outputs.resource_group_name
   vnetId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
-      fieldPath: status.outputs.vnet_id
+      fieldPath: status.outputs.virtual_network_id
   name: "{{ values.env }}-pe-subnet"
   addressPrefix: "{{ values.mssql_pe_subnet_cidr }}"
   privateEndpointNetworkPolicies: "Disabled"
@@ -30,11 +30,23 @@ spec:
       name: "{{ values.env }}-rg"
       fieldPath: status.outputs.resource_group_name
   name: "privatelink.database.windows.net"
-  vnetId:
+---
+apiVersion: azure.planton.dev/v1
+kind: AzurePrivateDnsZoneVirtualNetworkLink
+metadata:
+  name: "{{ values.env }}-mssql-dns-link"
+spec:
+  name: "{{ values.env }}-vnet"
+  privateDnsZoneId:
     valueFrom:
-      kind: AzureVpc
+      kind: AzurePrivateDnsZone
+      name: "{{ values.env }}-mssql-dns"
+      fieldPath: status.outputs.zone_id
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
       name: "{{ values.env }}-vnet"
-      fieldPath: status.outputs.vnet_id
+      fieldPath: status.outputs.virtual_network_id
 ---
 apiVersion: azure.planton.dev/v1
 kind: AzureMssqlServer

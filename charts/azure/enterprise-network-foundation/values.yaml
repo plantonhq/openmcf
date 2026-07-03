@@ -13,10 +13,6 @@ params:
     description: VNet address space CIDR
     value: 10.0.0.0/16
 
-  - name: default_subnet_cidr
-    description: Default subnet CIDR (created by AzureVpc)
-    value: 10.0.0.0/24
-
   # ─── Tier Subnets ─────────────────────────────────────────────────────────────
   - name: web_subnet_cidr
     description: Web tier subnet CIDR (public-facing workloads)

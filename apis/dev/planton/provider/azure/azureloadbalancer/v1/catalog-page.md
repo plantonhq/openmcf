@@ -322,5 +322,5 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AzureResourceGroup](/docs/catalog/azure/azureresourcegroup) -- provides the resource group for load balancer placement
 - [AzurePublicIp](/docs/catalog/azure/azurepublicip) -- provides a Standard SKU public IP address for public load balancers
 - [AzureSubnet](/docs/catalog/azure/azuresubnet) -- provides a VNet subnet for internal load balancers
-- [AzureVpc](/docs/catalog/azure/azurevpc) -- provides the virtual network that contains subnets used by internal load balancers
+- [AzureVirtualNetwork](/docs/catalog/azure/azurevirtualnetwork) -- provides the virtual network that contains subnets used by internal load balancers
 - [AzureDnsRecord](/docs/catalog/azure/azurednsrecord) -- creates DNS A-records pointing to the load balancer frontend IP
