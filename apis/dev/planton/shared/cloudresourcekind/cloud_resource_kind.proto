@@ -337,6 +337,41 @@ enum CloudResourceKind {
       AwsLaunchTemplate
     ]
   }];
+  // AwsEksCluster is a prerequisite because an add-on installs onto a live
+  // control plane -- the spec's cluster_name reference must resolve before
+  // the add-on can be created.
+  AwsEksAddon = 236 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "eksaddon"
+    prerequisites: [AwsEksCluster]
+  }];
+  // AwsEksCluster, AwsIamRole, and AwsSubnet are prerequisites because a
+  // Fargate profile attaches to a live control plane, runs pods as a
+  // referenced pod-execution role, and launches them into referenced
+  // private subnets -- all three references must resolve first.
+  AwsEksFargateProfile = 237 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "eksfp"
+    prerequisites: [
+      AwsEksCluster,
+      AwsIamRole,
+      AwsSubnet
+    ]
+  }];
+  // AwsEksCluster and AwsIamRole are prerequisites because an access entry
+  // grants a referenced IAM principal access to a live control plane --
+  // both references must resolve before the entry can be created.
+  AwsEksAccessEntry = 238 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "eksae"
+    prerequisites: [
+      AwsEksCluster,
+      AwsIamRole
+    ]
+  }];
   AwsHttpApiGateway = 240 [(kind_meta) = {
     provider: aws
     version: v1

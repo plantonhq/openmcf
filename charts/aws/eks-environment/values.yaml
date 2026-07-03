@@ -109,6 +109,10 @@ params:
   value: true
 
 # ─── Kubernetes add‑ons ───────────────────────────────────────────────
+- name: coreAddonsEnabled
+  description: Manage the core EKS add-ons (vpc-cni, kube-proxy, coredns) as first-class AWS-managed add-ons instead of the cluster's bootstrap copies
+  type: bool
+  value: true
 - name: certManagerEnabled
   type: bool
   value: true

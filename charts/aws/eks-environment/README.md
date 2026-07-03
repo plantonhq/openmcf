@@ -8,6 +8,7 @@ This chart provisions a **complete, production‑ready Kubernetes environment on
 * Optional customer‑managed KMS key for secrets encryption
 * Private or restricted API endpoint with CloudWatch control‑plane logs
 * Managed node group with autoscaling, Spot or On‑Demand instances
+* AWS‑managed core add‑ons (vpc‑cni, kube‑proxy, CoreDNS) as first‑class nodes, adopted from the cluster's bootstrap copies
 * Optional Route 53 public zone
 * Toggleable Kubernetes add‑ons (Cert‑Manager, External‑DNS, Istio, etc.)
 

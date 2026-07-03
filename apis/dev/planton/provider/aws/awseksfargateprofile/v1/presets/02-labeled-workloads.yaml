@@ -1,0 +1,32 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsEksFargateProfile
+metadata:
+  name: <profile-resource-name>
+spec:
+  region: <aws-region>
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: <cluster-resource-name>
+      fieldPath: status.outputs.name
+  podExecutionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: <pod-execution-role-resource-name>
+      fieldPath: status.outputs.role_arn
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: <private-subnet-a-resource-name>
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: <private-subnet-b-resource-name>
+        fieldPath: status.outputs.subnet_id
+  # Only pods that opt in by label run on Fargate; the rest of the
+  # namespace stays on node groups. A pod must carry EVERY listed label
+  # to match.
+  selectors:
+    - namespace: <namespace>
+      labels:
+        compute: fargate

@@ -47,6 +47,10 @@ var migratedKinds = []string{
 	// hand-written contract together.
 	"AwsEksCluster",
 	"AwsEksNodeGroup",
+	// EKS satellites, generator-owned from the day they were forged.
+	"AwsEksAddon",
+	"AwsEksFargateProfile",
+	"AwsEksAccessEntry",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

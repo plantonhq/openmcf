@@ -143,7 +143,20 @@ const (
 	// cannot exist without subnets to place capacity in and a launch
 	// template to launch from -- the spec's subnets and launch_template
 	// references must resolve before the group can be created.
-	CloudResourceKind_AwsAutoScalingGroup      CloudResourceKind = 235
+	CloudResourceKind_AwsAutoScalingGroup CloudResourceKind = 235
+	// AwsEksCluster is a prerequisite because an add-on installs onto a live
+	// control plane -- the spec's cluster_name reference must resolve before
+	// the add-on can be created.
+	CloudResourceKind_AwsEksAddon CloudResourceKind = 236
+	// AwsEksCluster, AwsIamRole, and AwsSubnet are prerequisites because a
+	// Fargate profile attaches to a live control plane, runs pods as a
+	// referenced pod-execution role, and launches them into referenced
+	// private subnets -- all three references must resolve first.
+	CloudResourceKind_AwsEksFargateProfile CloudResourceKind = 237
+	// AwsEksCluster and AwsIamRole are prerequisites because an access entry
+	// grants a referenced IAM principal access to a live control plane --
+	// both references must resolve before the entry can be created.
+	CloudResourceKind_AwsEksAccessEntry        CloudResourceKind = 238
 	CloudResourceKind_AwsHttpApiGateway        CloudResourceKind = 240
 	CloudResourceKind_AwsStepFunction          CloudResourceKind = 241
 	CloudResourceKind_AwsRedisElasticache      CloudResourceKind = 250
@@ -593,6 +606,9 @@ var (
 		233:  "AwsLbListenerRule",
 		234:  "AwsLaunchTemplate",
 		235:  "AwsAutoScalingGroup",
+		236:  "AwsEksAddon",
+		237:  "AwsEksFargateProfile",
+		238:  "AwsEksAccessEntry",
 		240:  "AwsHttpApiGateway",
 		241:  "AwsStepFunction",
 		250:  "AwsRedisElasticache",
@@ -1011,6 +1027,9 @@ var (
 		"AwsLbListenerRule":                       233,
 		"AwsLaunchTemplate":                       234,
 		"AwsAutoScalingGroup":                     235,
+		"AwsEksAddon":                             236,
+		"AwsEksFargateProfile":                    237,
+		"AwsEksAccessEntry":                       238,
 		"AwsHttpApiGateway":                       240,
 		"AwsStepFunction":                         241,
 		"AwsRedisElasticache":                     250,
@@ -1638,7 +1657,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*ѓ\x01\n" +
+	"\x02v1\x10\x01*ޔ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1687,7 +1706,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\rAwsLbListener\x10\xe8\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x03lbl:\x04\xc8\x01\xd6\x01\x12*\n" +
 	"\x11AwsLbListenerRule\x10\xe9\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04lblr:\x02\xe8\x01\x12$\n" +
 	"\x11AwsLaunchTemplate\x10\xea\x01\x1a\f\xa2\xf7\x04\b\b\f\x10\x01\"\x02lt\x12-\n" +
-	"\x13AwsAutoScalingGroup\x10\xeb\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x03asg:\x04\x9c\x02\xea\x01\x12.\n" +
+	"\x13AwsAutoScalingGroup\x10\xeb\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x03asg:\x04\x9c\x02\xea\x01\x12(\n" +
+	"\vAwsEksAddon\x10\xec\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\beksaddon:\x02\xcf\x01\x122\n" +
+	"\x14AwsEksFargateProfile\x10\xed\x01\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\x05eksfp:\x06\xcf\x01\xd0\x01\x9c\x02\x12-\n" +
+	"\x11AwsEksAccessEntry\x10\xee\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05eksae:\x04\xcf\x01\xd0\x01\x12.\n" +
 	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12&\n" +
 	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12,\n" +
 	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsredis\x12)\n" +

@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAddon
+metadata:
+  name: awseksaddon-demo
+spec:
+  region: us-west-2
+  clusterName:
+    value: awsekscluster-demo
+  addonName: coredns
+  resolveConflictsOnCreate: OVERWRITE
+  resolveConflictsOnUpdate: OVERWRITE
+  configurationValues: '{"replicaCount":2}'

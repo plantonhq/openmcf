@@ -69,7 +69,10 @@ import (
 	awsecsclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecscluster/v1"
 	awsecsservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecsservice/v1"
 	awsegressonlyinternetgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsegressonlyinternetgateway/v1"
+	awseksaccessentryv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksaccessentry/v1"
+	awseksaddonv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksaddon/v1"
 	awseksclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsekscluster/v1"
+	awseksfargateprofilev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksfargateprofile/v1"
 	awseksnodegroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseksnodegroup/v1"
 	awselasticfilesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticfilesystem/v1"
 	awselasticipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticip/v1"
@@ -511,7 +514,10 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsEcsCluster:                    &awsecsclusterv1.AwsEcsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsEcsService:                    &awsecsservicev1.AwsEcsService{},
 	cloudresourcekind.CloudResourceKind_AwsEgressOnlyInternetGateway:     &awsegressonlyinternetgatewayv1.AwsEgressOnlyInternetGateway{},
+	cloudresourcekind.CloudResourceKind_AwsEksAccessEntry:                &awseksaccessentryv1.AwsEksAccessEntry{},
+	cloudresourcekind.CloudResourceKind_AwsEksAddon:                      &awseksaddonv1.AwsEksAddon{},
 	cloudresourcekind.CloudResourceKind_AwsEksCluster:                    &awseksclusterv1.AwsEksCluster{},
+	cloudresourcekind.CloudResourceKind_AwsEksFargateProfile:             &awseksfargateprofilev1.AwsEksFargateProfile{},
 	cloudresourcekind.CloudResourceKind_AwsEksNodeGroup:                  &awseksnodegroupv1.AwsEksNodeGroup{},
 	cloudresourcekind.CloudResourceKind_AwsElasticFileSystem:             &awselasticfilesystemv1.AwsElasticFileSystem{},
 	cloudresourcekind.CloudResourceKind_AwsElasticIp:                     &awselasticipv1.AwsElasticIp{},

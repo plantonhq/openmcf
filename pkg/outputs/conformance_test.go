@@ -323,6 +323,44 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"autoscaling_group_name", "autoscaling_group_arn"},
 		},
 		{
+			// AwsEksAddon: flat scalar outputs -- the ARN keys the E2E verifier
+			// (it encodes cluster and add-on names); addon_version reports the
+			// resolved AWS default when the spec pinned nothing.
+			name: "AwsEksAddon",
+			kind: cloudresourcekind.CloudResourceKind_AwsEksAddon,
+			rawOutputs: map[string]interface{}{
+				"addon_arn":     "arn:aws:eks:us-west-2:123456789012:addon/platform/vpc-cni/9ac7ab21-1a2b",
+				"addon_name":    "vpc-cni",
+				"addon_version": "v1.18.1-eksbuild.3",
+			},
+			mustPopulate: []string{"addon_arn", "addon_name", "addon_version"},
+		},
+		{
+			// AwsEksFargateProfile: flat scalar outputs -- the ARN keys the E2E
+			// verifier (it encodes cluster and profile names); status is ACTIVE
+			// after a successful create.
+			name: "AwsEksFargateProfile",
+			kind: cloudresourcekind.CloudResourceKind_AwsEksFargateProfile,
+			rawOutputs: map[string]interface{}{
+				"fargate_profile_arn":  "arn:aws:eks:us-west-2:123456789012:fargateprofile/platform/serverless/9ac7ab21-1a2b",
+				"fargate_profile_name": "serverless",
+				"status":               "ACTIVE",
+			},
+			mustPopulate: []string{"fargate_profile_arn", "fargate_profile_name", "status"},
+		},
+		{
+			// AwsEksAccessEntry: flat scalar outputs -- the entry ARN keys the E2E
+			// verifier (it encodes the cluster and the principal identity), and the
+			// resolved principal ARN is what downstream references consume.
+			name: "AwsEksAccessEntry",
+			kind: cloudresourcekind.CloudResourceKind_AwsEksAccessEntry,
+			rawOutputs: map[string]interface{}{
+				"access_entry_arn": "arn:aws:eks:us-west-2:123456789012:access-entry/platform/role/123456789012/TeamViewerRole/9ac7ab21-1a2b",
+				"principal_arn":    "arn:aws:iam::123456789012:role/TeamViewerRole",
+			},
+			mustPopulate: []string{"access_entry_arn", "principal_arn"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the
