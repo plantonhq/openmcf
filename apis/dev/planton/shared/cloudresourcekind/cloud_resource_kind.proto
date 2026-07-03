@@ -788,6 +788,17 @@ enum CloudResourceKind {
     id_prefix: "azrd"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureUserAssignedIdentity is the prerequisite because a federated identity
+  // credential is a child resource of a referenced managed identity -- the
+  // identity must exist before the credential can be written on it. (The
+  // resource group arrives transitively through the identity's own
+  // prerequisite declaration.)
+  AzureFederatedIdentityCredential = 463 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfic"
+    prerequisites: [AzureUserAssignedIdentity]
+  }];
   AzureServiceBusNamespace = 470 [(kind_meta) = {
     provider: azure
     version: v1

@@ -3,11 +3,12 @@
 # kind registry). The E2E harness deploys this document (via the identity's
 # Pulumi module) after its own prerequisite (the fixture resource group, whose
 # name the resource_group reference below addresses), and captures its outputs
-# -- principal_id in particular -- for dependents' references to resolve
-# against. The identity deliberately carries NO role assignments: a component
-# that references an identity never mutates its grants, so any consumer that
-# needs a grant (e.g. the role-assignment component under test) provisions it
-# itself.
+# -- principal_id and identity_id in particular -- for dependents' references
+# to resolve against (the role-assignment component grants to the principal;
+# the federated-credential component parents on the identity id). The identity
+# is a bare fixture: any grant or trust rule a consumer needs, the consumer's
+# own scenario provisions -- a component never mutates a resource it merely
+# references.
 apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:

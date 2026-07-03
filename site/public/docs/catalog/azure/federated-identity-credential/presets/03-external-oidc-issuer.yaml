@@ -1,0 +1,11 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFederatedIdentityCredential
+metadata:
+  name: my-external-issuer-trust
+spec:
+  name: <external-system>-trust
+  userAssignedIdentity:
+    value: <user-assigned-identity-arm-id>
+  issuer: <external-oidc-issuer-url>
+  subject: <external-subject>
+  audience: api://AzureADTokenExchange

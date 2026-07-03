@@ -26,9 +26,27 @@ SEQUENTIAL STEPS
 3) Write: `cat <<'YAML' | python3 _rules/deployment-component/_scripts/hack_manifest_write.py --provider <provider> --kindfolder <kindfolder> --stdin | cat`
    - If edits are needed, refine and re-run (≤3).
 
+STRINGVALUEORREF FIELDS (do not use bare scalars)
+Every `StringValueOrRef` field in the spec MUST use the structured wrapper form in the
+manifest -- `value: <literal>` (or `valueFrom: {...}` for references):
+
+```yaml
+spec:
+  resourceGroup:
+    value: test-rg
+```
+
+A bare scalar (`resourceGroup: test-rg`) fails manifest validation at plan time with a
+cryptic protoyaml syntax error (`proto: syntax error ... unexpected token`), and nothing
+catches it earlier -- the YAML is well-formed and only the proto unmarshal rejects it.
+Identify the `StringValueOrRef` fields by reading `spec.proto` before drafting.
+
 SUCCESS CRITERIA
 - Manifest exists at `.../v1/iac/hack/manifest.yaml`.
 - Minimal, valid spec with safe defaults; no credentials.
+- Every `StringValueOrRef` field uses the `value:`/`valueFrom:` wrapper form.
+- The manifest survives `planton tofu plan --manifest <path> --module-dir .../iac/tf`
+  (the plan run is the validation step that catches wrapper-form mistakes).
 
 OUTPUT STYLE IN CHAT
 - Show created path and a short snippet (no secrets).

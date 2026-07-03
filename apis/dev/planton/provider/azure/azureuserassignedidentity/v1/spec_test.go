@@ -15,154 +15,87 @@ func TestAzureUserAssignedIdentitySpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "AzureUserAssignedIdentitySpec Validation Tests")
 }
 
+// literal builds a StringValueOrRef carrying a literal value.
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+// ref builds a StringValueOrRef carrying a value_from reference.
+func ref(name string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: name},
+		},
+	}
+}
+
+// validResource returns a minimal valid AzureUserAssignedIdentity that
+// individual cases then mutate into the shape under test.
+func validResource() *AzureUserAssignedIdentity {
+	return &AzureUserAssignedIdentity{
+		ApiVersion: "azure.planton.dev/v1",
+		Kind:       "AzureUserAssignedIdentity",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-identity",
+		},
+		Spec: &AzureUserAssignedIdentitySpec{
+			Region:        "eastus",
+			ResourceGroup: literal("test-rg"),
+			Name:          "test-managed-identity",
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AzureUserAssignedIdentitySpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_user_assigned_identity", func() {
 
-			ginkgo.It("should not return a validation error for minimal valid fields (no role assignments)", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-resource-group",
-							},
-						},
-						Name: "test-identity",
-					},
+			ginkgo.It("should not return a validation error for minimal valid fields", func() {
+				err := protovalidate.Validate(validResource())
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept the resource group as a reference", func() {
+				input := validResource()
+				input.Spec.ResourceGroup = ref("platform-rg")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept regional isolation", func() {
+				input := validResource()
+				input.Spec.IsolationScope = AzureUserAssignedIdentityIsolationScope_REGIONAL
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept user tags", func() {
+				input := validResource()
+				input.Spec.Tags = map[string]string{
+					"cost-center": "platform",
+					"owner":       "identity-team",
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for identity with role assignments", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "prod-identity",
-						Org:  "mycompany",
-						Env:  "production",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "westeurope",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "prod-identity-rg",
-							},
-						},
-						Name: "prod-platform-identity",
-						RoleAssignments: []*RoleAssignment{
-							{
-								Scope: &foreignkeyv1.StringValueOrRef{
-									LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-										Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.KeyVault/vaults/prod-kv",
-									},
-								},
-								RoleDefinitionName: "Key Vault Secrets User",
-							},
-							{
-								Scope: &foreignkeyv1.StringValueOrRef{
-									LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-										Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-rg/providers/Microsoft.Storage/storageAccounts/prodstorage",
-									},
-								},
-								RoleDefinitionName: "Storage Blob Data Contributor",
-							},
-						},
-					},
-				}
+			ginkgo.It("should accept a name at the 3-character minimum", func() {
+				input := validResource()
+				input.Spec.Name = "cid"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with name at minimum length (3 chars)", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "min-name",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "abc",
-					},
+			ginkgo.It("should accept a name at the 128-character maximum", func() {
+				input := validResource()
+				long := make([]byte, 128)
+				for i := range long {
+					long[i] = 'a'
 				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with role assignment using valueFrom reference", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "ref-test",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "ref-test-identity",
-						RoleAssignments: []*RoleAssignment{
-							{
-								Scope: &foreignkeyv1.StringValueOrRef{
-									LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-										ValueFrom: &foreignkeyv1.ValueFromRef{
-											Name: "platform-kv",
-										},
-									},
-								},
-								RoleDefinitionName: "Key Vault Secrets User",
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with subscription-scoped role assignment", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "sub-scope-test",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "sub-scoped-identity",
-						RoleAssignments: []*RoleAssignment{
-							{
-								Scope: &foreignkeyv1.StringValueOrRef{
-									LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-										Value: "/subscriptions/00000000-0000-0000-0000-000000000000",
-									},
-								},
-								RoleDefinitionName: "Reader",
-							},
-						},
-					},
-				}
+				input.Spec.Name = string(long)
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -173,206 +106,68 @@ var _ = ginkgo.Describe("AzureUserAssignedIdentitySpec Validation Tests", func()
 		ginkgo.Context("azure_user_assigned_identity", func() {
 
 			ginkgo.It("should return a validation error when region is missing", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-identity",
-					},
-				}
+				input := validResource()
+				input.Spec.Region = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when resource_group is missing", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						Name:   "test-identity",
-					},
-				}
+				input := validResource()
+				input.Spec.ResourceGroup = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-					},
-				}
+				input := validResource()
+				input.Spec.Name = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when name is too short (less than 3 chars)", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "ab",
-					},
-				}
+			ginkgo.It("should return a validation error when name is shorter than 3 characters", func() {
+				input := validResource()
+				input.Spec.Name = "ab"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when role_assignment scope is missing", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-identity",
-						RoleAssignments: []*RoleAssignment{
-							{
-								RoleDefinitionName: "Reader",
-							},
-						},
-					},
+			ginkgo.It("should return a validation error when name exceeds 128 characters", func() {
+				input := validResource()
+				long := make([]byte, 129)
+				for i := range long {
+					long[i] = 'a'
 				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when role_assignment role_definition_name is missing", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-identity",
-						RoleAssignments: []*RoleAssignment{
-							{
-								Scope: &foreignkeyv1.StringValueOrRef{
-									LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-										Value: "/subscriptions/00000000-0000-0000-0000-000000000000",
-									},
-								},
-							},
-						},
-					},
-				}
+				input.Spec.Name = string(long)
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when api_version is incorrect", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "wrong.version/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-identity",
-					},
-				}
+				input := validResource()
+				input.ApiVersion = "wrong.version/v1"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when kind is incorrect", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "WrongKind",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-identity",
-					},
-				}
+				input := validResource()
+				input.Kind = "WrongKind"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when metadata is missing", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Spec: &AzureUserAssignedIdentitySpec{
-						Region: "eastus",
-						ResourceGroup: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "test-rg",
-							},
-						},
-						Name: "test-identity",
-					},
-				}
+				input := validResource()
+				input.Metadata = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzureUserAssignedIdentity{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureUserAssignedIdentity",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-identity",
-					},
-				}
+				input := validResource()
+				input.Spec = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

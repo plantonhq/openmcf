@@ -95,6 +95,24 @@ func TestAzureRoleDefinition_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureroledefinition", "terraform")
 }
 
+// --- Azure Federated Identity Credential (composed: GitHub-shaped trust rule on the fixture identity) ---
+
+func TestAzureFederatedIdentityCredential_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefederatedidentitycredential", "pulumi")
+}
+func TestAzureFederatedIdentityCredential_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefederatedidentitycredential", "terraform")
+}
+
+// --- Azure User Assigned Identity (the identity workloads act as; tags exercised) ---
+
+func TestAzureUserAssignedIdentity_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureuserassignedidentity", "pulumi")
+}
+func TestAzureUserAssignedIdentity_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureuserassignedidentity", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

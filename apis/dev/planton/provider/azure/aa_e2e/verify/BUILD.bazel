@@ -3,8 +3,10 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "verify",
     srcs = [
+        "federated_identity_credential.go",
         "resource_group.go",
         "role_assignment.go",
+        "role_definition.go",
         "user_assigned_identity.go",
         "verifier.go",
     ],

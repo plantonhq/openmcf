@@ -44,7 +44,7 @@ require (
 	github.com/pulumi/pulumi-azure-native-sdk/network/v3 v3.12.1
 	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.12.1
 	github.com/pulumi/pulumi-azure/sdk/v5 v5.89.0
-	github.com/pulumi/pulumi-azure/sdk/v6 v6.28.0
+	github.com/pulumi/pulumi-azure/sdk/v6 v6.38.0
 	github.com/pulumi/pulumi-civo/sdk/v2 v2.4.8
 	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.17.0
 	github.com/pulumi/pulumi-confluentcloud/sdk/v2 v2.49.0

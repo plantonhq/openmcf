@@ -775,6 +775,46 @@ func TestStackOutputsConformance(t *testing.T) {
 				"scope", "assignable_scopes",
 			},
 		},
+		{
+			// AzureUserAssignedIdentity: the identity's three identifiers plus
+			// its ARM id must land on the StackOutputs proto -- principal_id is
+			// what role assignments grant to, client_id is what workloads
+			// present to authenticate, identity_id is what consuming resources
+			// and federated credentials attach to.
+			name: "AzureUserAssignedIdentity",
+			kind: cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity,
+			rawOutputs: map[string]interface{}{
+				"identity_id":  "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/payments-api",
+				"principal_id": "11111111-1111-1111-1111-111111111111",
+				"client_id":    "22222222-2222-2222-2222-222222222222",
+				"tenant_id":    "33333333-3333-3333-3333-333333333333",
+			},
+			mustPopulate: []string{
+				"identity_id", "principal_id", "client_id", "tenant_id",
+			},
+		},
+		{
+			// AzureFederatedIdentityCredential: both engines export the
+			// credential's ARM id plus the trust coordinates (issuer /
+			// subject / audience) as deployed. audience is a single string on
+			// the proto even though ARM's wire shape is a one-element list --
+			// the Terraform module exports the sole element, matching the
+			// Pulumi provider's flattened attribute.
+			name: "AzureFederatedIdentityCredential",
+			kind: cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential,
+			rawOutputs: map[string]interface{}{
+				"federated_identity_credential_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ci-deployer/federatedIdentityCredentials/github-main-branch",
+				"name":                             "github-main-branch",
+				"user_assigned_identity_id":        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ci-deployer",
+				"issuer":                           "https://token.actions.githubusercontent.com",
+				"subject":                          "repo:acme/platform:ref:refs/heads/main",
+				"audience":                         "api://AzureADTokenExchange",
+			},
+			mustPopulate: []string{
+				"federated_identity_credential_id", "name",
+				"user_assigned_identity_id", "issuer", "subject", "audience",
+			},
+		},
 	}
 
 	for _, tc := range cases {

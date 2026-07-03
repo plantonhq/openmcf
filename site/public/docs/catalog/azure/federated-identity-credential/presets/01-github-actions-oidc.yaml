@@ -1,0 +1,10 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFederatedIdentityCredential
+metadata:
+  name: my-github-ci-trust
+spec:
+  name: github-main-branch
+  userAssignedIdentity:
+    value: <user-assigned-identity-arm-id>
+  issuer: https://token.actions.githubusercontent.com
+  subject: repo:<owner>/<repo>:ref:refs/heads/main

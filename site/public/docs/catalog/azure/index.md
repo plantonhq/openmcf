@@ -20,6 +20,7 @@ The following AZURE resources can be deployed using Planton:
 - [DNS Record](/docs/catalog/azure/dns-record)
 - [DNS Zone](/docs/catalog/azure/dns-zone)
 - [Event Hub Namespace](/docs/catalog/azure/event-hub-namespace)
+- [Federated Identity Credential](/docs/catalog/azure/federated-identity-credential)
 - [Front Door Profile](/docs/catalog/azure/front-door-profile)
 - [Function App](/docs/catalog/azure/function-app)
 - [Key Vault](/docs/catalog/azure/key-vault)

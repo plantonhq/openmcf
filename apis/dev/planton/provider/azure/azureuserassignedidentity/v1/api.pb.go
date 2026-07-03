@@ -23,14 +23,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzureUserAssignedIdentity is the top-level resource definition for an Azure
-// User-Assigned Managed Identity with RBAC role assignments. It follows the KRM
-// (Kubernetes Resource Model) pattern with apiVersion, kind, metadata, spec, and status.
-//
-// User-Assigned Managed Identities provide a secure, credential-free way for Azure
-// resources to authenticate to Azure services. Unlike system-assigned identities,
-// user-assigned identities have an independent lifecycle and can be shared across
-// multiple resources.
+// AzureUserAssignedIdentity is the top-level API resource for an Azure
+// user-assigned managed identity: a standalone, credential-free Azure AD
+// identity that workloads authenticate as. It is modeled as a first-class
+// composable resource so the identity, the grants it holds
+// (AzureRoleAssignment), and the external workloads trusted to act as it
+// (AzureFederatedIdentityCredential) are independent nodes in an
+// environment's graph.
 type AzureUserAssignedIdentity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// API version identifier. Must be "azure.planton.dev/v1".

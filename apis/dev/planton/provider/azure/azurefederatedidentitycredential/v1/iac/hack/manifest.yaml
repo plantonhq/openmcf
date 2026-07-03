@@ -1,0 +1,12 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFederatedIdentityCredential
+metadata:
+  name: test-federated-credential
+  org: test-org
+  env: dev
+spec:
+  name: github-main-branch
+  userAssignedIdentity:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-identity
+  issuer: https://token.actions.githubusercontent.com
+  subject: repo:test-org/platform:ref:refs/heads/main
