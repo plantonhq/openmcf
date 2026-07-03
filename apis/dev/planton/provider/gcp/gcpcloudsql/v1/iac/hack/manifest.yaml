@@ -1,29 +1,45 @@
+# Exercises the deep instance surface offline: engine/version/tier, disk,
+# explicit connectivity with an authorized network, HA with backups + PITR,
+# maintenance scheduling, Query Insights, flags, and both delete guards.
 apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSql
 metadata:
-  name: test-mysql-db
+  name: hack-postgres
 spec:
-  projectId:
-    value: planton-testing
+  # project_id omitted — falls back to the provider's default project.
+  instanceName: hack-postgres
   region: us-central1
-  database_engine: MYSQL
-  database_version: MYSQL_8_0
-  tier: db-n1-standard-1
-  storage_gb: 10
-  root_password: TestPassword123!
-#  network:
-#    vpc_id:
-#      value: projects/planton-testing/global/networks/my-vpc
-#    private_ip_enabled: true
-#    authorized_networks:
-#      - 203.0.113.0/24
-#  high_availability:
-#    enabled: true
-#    zone: us-central1-b
-#  backup:
-#    enabled: true
-#    start_time: "03:00"
-#    retention_days: 7
-#  database_flags:
-#    max_connections: "150"
-
+  databaseEngine: POSTGRESQL
+  databaseVersion: POSTGRES_16
+  tier: db-custom-2-7680
+  edition: ENTERPRISE
+  availabilityType: REGIONAL
+  disk:
+    type: PD_SSD
+    sizeGb: 20
+    autoResize: true
+    autoResizeLimit: 100
+  network:
+    ipv4Enabled: true
+    authorizedNetworks:
+      - value: 203.0.113.0/24
+        name: office
+    sslMode: ENCRYPTED_ONLY
+  backup:
+    enabled: true
+    startTime: "03:00"
+    pointInTimeRecoveryEnabled: true
+    transactionLogRetentionDays: 7
+    retainedBackups: 14
+  maintenanceWindow:
+    day: 7
+    hour: 3
+    updateTrack: stable
+  insightsConfig:
+    queryInsightsEnabled: true
+    recordApplicationTags: true
+  databaseFlags:
+    max_connections: "200"
+  deletionProtection: false
+  deletionProtectionEnabled: false
+  rootPassword: HackPassword123!

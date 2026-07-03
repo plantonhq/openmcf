@@ -6,6 +6,9 @@ go_library(
         "address.go",
         "backend_bucket.go",
         "backend_service.go",
+        "cloud_sql_database.go",
+        "cloud_sql_instance.go",
+        "cloud_sql_user.go",
         "gcs_bucket.go",
         "global_address.go",
         "global_forwarding_rule.go",
@@ -35,6 +38,7 @@ go_library(
         "@org_golang_google_api//compute/v1:compute",
         "@org_golang_google_api//googleapi",
         "@org_golang_google_api//iam/v1:iam",
+        "@org_golang_google_api//sqladmin/v1:sqladmin",
         "@org_golang_google_api//storage/v1:storage",
     ],
 )

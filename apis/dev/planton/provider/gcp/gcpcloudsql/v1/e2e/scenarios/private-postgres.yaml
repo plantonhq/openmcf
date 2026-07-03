@@ -1,0 +1,33 @@
+# Private-IP Postgres flagship: consumes the full private-services-access
+# chain the registry installs (VPC → VPC_PEERING range → service networking
+# connection) and asserts a PRIVATE address with no public PRIMARY IP.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSql
+metadata:
+  name: planton-oss-e2e-gcpsql-private
+  id: planton-oss-e2e-gcpsql-private
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcloudsql
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: planton-oss-e2e-sql-prv-${E2E_RUN_ID}
+  region: us-central1
+  databaseEngine: POSTGRESQL
+  databaseVersion: POSTGRES_15
+  tier: db-f1-micro
+  deletionProtection: false
+  deletionProtectionEnabled: false
+  network:
+    ipv4Enabled: false
+    privateNetwork:
+      valueFrom:
+        kind: GcpVpc
+        name: planton-oss-e2e-gcpvpc-prereq
+        fieldPath: status.outputs.network_id
+    enablePrivatePathForGoogleCloudServices: true

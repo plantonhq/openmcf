@@ -83,6 +83,18 @@ params:
     description: Root password (rotate immediately after deployment)
     value: change-me-immediately
 
+  - name: database_app_database_name
+    description: Application database name inside the Cloud SQL instance
+    value: app
+
+  - name: database_app_user_name
+    description: Application database user name
+    value: app-user
+
+  - name: database_app_user_password
+    description: Application database user password (rotate after deployment)
+    value: change-me-immediately
+
   # ─── Redis Cache ───────────────────────────────────────────────────────
   - name: cacheEnabled
     description: Create a Memorystore Redis instance for caching

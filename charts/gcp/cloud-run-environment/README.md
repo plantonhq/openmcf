@@ -17,9 +17,10 @@ Chart manifests live in the [`templates`](templates) directory; every tunable va
 | **VPC Network**                | *No*           | `networkingEnabled`          |
 | **Subnetwork**                 | *No*           | `networkingEnabled`          |
 | **Router NAT**                 | *No*           | `networkingEnabled`          |
+| **PSA Range + Connection**     | *No*           | `networkingEnabled`          |
 | **DNS Zone**                   | *No*           | `dnsZoneEnabled`             |
 | **Docker Repository**          | *No*           | `dockerRepoEnabled`          |
-| **Cloud SQL Database**         | *No*           | `databaseEnabled`            |
+| **Cloud SQL Instance + App DB + App User** | *No* | `databaseEnabled`         |
 | **Storage Bucket**             | *No*           | `storageBucketEnabled`       |
 | **Service Account**            | *No*           | `serviceAccountEnabled`      |
 
@@ -27,7 +28,7 @@ Chart manifests live in the [`templates`](templates) directory; every tunable va
 
 Each optional resource is controlled by a boolean flag in `values.yaml`:
 
-* **`networkingEnabled: true`** → Creates VPC, Subnetwork, and Router NAT for private networking
+* **`networkingEnabled: true`** → Creates VPC, Subnetwork, Router NAT, and the private-services-access pair (a `GcpGlobalAddress` VPC_PEERING range plus a `GcpServiceNetworkingConnection`) the database's private IP requires
 * **`backendServiceEnabled: true`** → Creates a second Cloud Run service for backend applications
 * **`dnsZoneEnabled: true`** → Creates a GCP DNS Zone for the specified domain
 * **`dockerRepoEnabled: true`** → Creates an Artifact Registry Docker repository for container images
@@ -62,7 +63,8 @@ When `networkingEnabled: true`:
 - A custom-mode VPC is created with regional routing
 - A subnetwork is created with private Google access enabled
 - A Cloud Router with NAT gateway is created for outbound internet access
-- PostgreSQL database (if enabled) uses private IP via the VPC
+- A VPC_PEERING address range and service networking connection are created (private services access)
+- The database (if enabled) uses private IP only, ordered on the connection via `depends_on`
 
 ### Service Configuration
 
@@ -99,7 +101,10 @@ When `networkingEnabled: true`:
 | **database_storage_gb**           | Storage size in GB                                       | `10`                       | Default `10`                    |
 | **database_version**              | Database version (e.g., POSTGRES_15 or MYSQL_8_0)        | `POSTGRES_15`              | Default `POSTGRES_15`           |
 | **database_root_password**        | Root password (rotate after deploy)                      | `change-me-immediately`    | Default `change-me-immediately` |
-| **database_authorized_networks**  | List of CIDR ranges allowed to connect publicly          | `["1.2.3.4/32"]`           | Default `[]` (empty)            |
+| **database_app_database_name**    | Application database created inside the instance         | `app`                      | Default `app`                   |
+| **database_app_user_name**        | Dedicated application DB user                            | `app-user`                 | Default `app-user`              |
+| **database_app_user_password**    | Application DB user password (rotate after deploy)       | `change-me-immediately`    | Default `change-me-immediately` |
+| **database_authorized_networks**  | Public CIDR allowlist (used only when networking is off) | `["1.2.3.4/32"]`           | Default `["0.0.0.0/0"]`         |
 
 **Note:** The `database_engine` parameter is a **string enum** with two allowed values: `POSTGRESQL` and `MYSQL`. When selecting an engine, ensure the `database_version` matches the engine type (e.g., `POSTGRES_15` for PostgreSQL, `MYSQL_8_0` for MySQL).
 

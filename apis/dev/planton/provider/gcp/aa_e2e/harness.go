@@ -30,6 +30,7 @@ import (
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 )
 
@@ -88,6 +89,10 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create storage client")
 	}
+	sqlAdminService, err := sqladmin.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create sqladmin client")
+	}
 
 	gotProject, err := crmService.Projects.Get(project).Context(ctx).Do()
 	if err != nil {
@@ -98,11 +103,12 @@ func (h *Harness) Setup(ctx context.Context) error {
 	fmt.Printf("  [gcp] authenticated against project %s (%s)\n", gotProject.ProjectId, gotProject.LifecycleState)
 
 	h.services = &verify.Services{
-		Project: project,
-		Crm:     crmService,
-		Iam:     iamService,
-		Compute: computeService,
-		Storage: storageService,
+		Project:  project,
+		Crm:      crmService,
+		Iam:      iamService,
+		Compute:  computeService,
+		Storage:  storageService,
+		SqlAdmin: sqlAdminService,
 	}
 	return nil
 }

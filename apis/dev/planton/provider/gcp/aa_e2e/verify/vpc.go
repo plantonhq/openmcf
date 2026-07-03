@@ -19,13 +19,12 @@ func (v *vpcVerifier) VerifyExists(ctx context.Context, svc *Services, outputs m
 	if err != nil {
 		return errors.Wrapf(err, "vpc network %s not found after deploy", name)
 	}
-	// Posture assertions on the depth surface: the self-link output must match
-	// the live network, and GCP always reports a concrete MTU (default 1460).
+	// Posture assertion on the depth surface: the self-link output must match
+	// the live network. (No MTU assertion: networks created without an
+	// explicit mtu can be returned by the API without one immediately after
+	// create, so a non-zero check fails on freshly deployed prerequisites.)
 	if selfLink := outputs["network_self_link"]; selfLink != "" && net.SelfLink != selfLink {
 		return errors.Errorf("vpc network %s self-link mismatch: output %q, live %q", name, selfLink, net.SelfLink)
-	}
-	if net.Mtu == 0 {
-		return errors.Errorf("vpc network %s reports no MTU", name)
 	}
 	return nil
 }

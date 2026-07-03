@@ -11,26 +11,14 @@ import (
 func Resources(ctx *pulumi.Context, stackInput *gcpcloudsqlv1.GcpCloudSqlStackInput) error {
 	locals := initializeLocals(stackInput)
 
-	// Set up the GCP provider from the supplied credential.
 	gcpProvider, err := pulumigoogleprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup google provider")
 	}
 
-	// Create the Cloud SQL database instance.
-	createdInstance, err := databaseInstance(ctx, locals, gcpProvider)
-	if err != nil {
-		return errors.Wrap(err, "failed to create cloud-sql instance")
+	if _, err := databaseInstance(ctx, locals, gcpProvider); err != nil {
+		return errors.Wrap(err, "failed to create cloud sql instance")
 	}
-
-	// Export stack outputs
-	ctx.Export(OpInstanceName, createdInstance.Name)
-	ctx.Export(OpConnectionName, createdInstance.ConnectionName)
-	ctx.Export(OpSelfLink, createdInstance.SelfLink)
-
-	// Export IP addresses using direct fields
-	ctx.Export(OpPublicIp, createdInstance.PublicIpAddress)
-	ctx.Export(OpPrivateIp, createdInstance.PrivateIpAddress)
 
 	return nil
 }

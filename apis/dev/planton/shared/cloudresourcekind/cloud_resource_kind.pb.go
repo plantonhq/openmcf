@@ -237,6 +237,8 @@ const (
 	CloudResourceKind_GcpSpannerDatabase            CloudResourceKind = 634
 	CloudResourceKind_GcpBigtableInstance           CloudResourceKind = 635
 	CloudResourceKind_GcpMemorystoreInstance        CloudResourceKind = 636
+	CloudResourceKind_GcpCloudSqlDatabase           CloudResourceKind = 637
+	CloudResourceKind_GcpCloudSqlUser               CloudResourceKind = 638
 	CloudResourceKind_GcpBigQueryDataset            CloudResourceKind = 650
 	CloudResourceKind_GcpDataprocCluster            CloudResourceKind = 651
 	CloudResourceKind_GcpDataprocVirtualCluster     CloudResourceKind = 652
@@ -683,6 +685,8 @@ var (
 		634:  "GcpSpannerDatabase",
 		635:  "GcpBigtableInstance",
 		636:  "GcpMemorystoreInstance",
+		637:  "GcpCloudSqlDatabase",
+		638:  "GcpCloudSqlUser",
 		650:  "GcpBigQueryDataset",
 		651:  "GcpDataprocCluster",
 		652:  "GcpDataprocVirtualCluster",
@@ -1110,6 +1114,8 @@ var (
 		"GcpSpannerDatabase":                      634,
 		"GcpBigtableInstance":                     635,
 		"GcpMemorystoreInstance":                  636,
+		"GcpCloudSqlDatabase":                     637,
+		"GcpCloudSqlUser":                         638,
 		"GcpBigQueryDataset":                      650,
 		"GcpDataprocCluster":                      651,
 		"GcpDataprocVirtualCluster":               652,
@@ -1640,7 +1646,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xae\x97\x01\n" +
+	"\x02v1\x10\x01*\x93\x98\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1776,8 +1782,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x125\n" +
 	"\x13GcpTargetHttpsProxy\x10\xd9\x04\x1a\x1b\xa2\xf7\x04\x17\b\x12\x10\x01\"\agcpthsp:\b\xf3\x04\xf4\x04\xc7\x05\xc8\x05\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +
-	"\vGcpCloudRun\x10\xdb\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06cldrun\x12\"\n" +
-	"\vGcpCloudSql\x10\xdc\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpsql\x12!\n" +
+	"\vGcpCloudRun\x10\xdb\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06cldrun\x12&\n" +
+	"\vGcpCloudSql\x10\xdc\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpsql:\x02\xc9\x05\x12!\n" +
 	"\n" +
 	"GcpDnsZone\x10\xdd\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdns\x12#\n" +
 	"\fGcpGcsBucket\x10\xde\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcsbkt\x12#\n" +
@@ -1811,7 +1817,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x12GcpSpannerInstance\x10\xf9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpspn\x12*\n" +
 	"\x12GcpSpannerDatabase\x10\xfa\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpspdb\x12)\n" +
 	"\x13GcpBigtableInstance\x10\xfb\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpbt\x12-\n" +
-	"\x16GcpMemorystoreInstance\x10\xfc\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpmsi\x12*\n" +
+	"\x16GcpMemorystoreInstance\x10\xfc\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpmsi\x120\n" +
+	"\x13GcpCloudSqlDatabase\x10\xfd\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpsqldb:\x02\xdc\x04\x12-\n" +
+	"\x0fGcpCloudSqlUser\x10\xfe\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\tgcpsqlusr:\x02\xdc\x04\x12*\n" +
 	"\x12GcpBigQueryDataset\x10\x8a\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpbqds\x12)\n" +
 	"\x12GcpDataprocCluster\x10\x8b\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdpc\x120\n" +
 	"\x19GcpDataprocVirtualCluster\x10\x8c\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdvc\x12%\n" +

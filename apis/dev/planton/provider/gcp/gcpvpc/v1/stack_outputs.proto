@@ -12,7 +12,7 @@ message GcpVpcStackOutputs {
   string network_name = 2;
 
   // GCP self-link of the VPC network (e.g., "projects/PROJECT/global/networks/NAME").
-  // Used by GcpCloudSql.spec.network.vpc_id for private-IP configuration.
+  // Used by GcpCloudSql.spec.network.private_network for private-IP configuration.
   string network_id = 3;
 
   // IPv4 address of the default internet gateway for this network (if present).

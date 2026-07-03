@@ -1,0 +1,17 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlUser
+metadata:
+  name: my-orders-app-user
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  instance:
+    valueFrom:
+      kind: GcpCloudSql
+      name: my-postgres-prod # replace with your instance's resource name
+      fieldPath: status.outputs.instance_name
+  userName: orders-app
+  password: ChangeMe-App-Password1! # replace with a generated secret
+  passwordPolicy:
+    allowedFailedAttempts: 5
+    enableFailedAttemptsCheck: true

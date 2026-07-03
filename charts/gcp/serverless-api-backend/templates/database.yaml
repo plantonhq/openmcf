@@ -15,17 +15,60 @@ metadata:
 spec:
   projectId:
     value: "{{ values.gcp_project_id }}"
+  instanceName: "{{ values.database_instance_name }}"
   region: "{{ values.region }}"
   databaseEngine: POSTGRESQL
   databaseVersion: "{{ values.database_version }}"
   tier: "{{ values.database_tier }}"
-  storageGb: {{ values.database_storage_gb }}
+  disk:
+    sizeGb: {{ values.database_storage_gb }}
   rootPassword: "{{ values.database_root_password }}"
   network:
-    vpcId:
+    ipv4Enabled: false
+    privateNetwork:
       valueFrom:
         kind: GcpVpc
         name: "{{ values.vpc_name }}"
-        fieldPath: status.outputs.network_self_link
-    privateIpEnabled: true
+        fieldPath: status.outputs.network_id
+    enablePrivatePathForGoogleCloudServices: true
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlDatabase
+metadata:
+  name: "{{ values.database_app_database_name }}"
+  group: database
+  relationships:
+    - kind: GcpCloudSql
+      name: "{{ values.database_instance_name }}"
+      type: runs_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  instance:
+    valueFrom:
+      kind: GcpCloudSql
+      name: "{{ values.database_instance_name }}"
+      fieldPath: status.outputs.instance_name
+  databaseName: "{{ values.database_app_database_name }}"
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlUser
+metadata:
+  name: "{{ values.database_app_user_name }}"
+  group: database
+  relationships:
+    - kind: GcpCloudSql
+      name: "{{ values.database_instance_name }}"
+      type: runs_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  instance:
+    valueFrom:
+      kind: GcpCloudSql
+      name: "{{ values.database_instance_name }}"
+      fieldPath: status.outputs.instance_name
+  userName: "{{ values.database_app_user_name }}"
+  password: "{{ values.database_app_user_password }}"
+  type: BUILT_IN
 {% endif %}

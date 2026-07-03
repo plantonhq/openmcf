@@ -30,7 +30,7 @@ type GcpVpcStackOutputs struct {
 	// Referenced by GcpCloudRun.spec.vpc_access.network FK.
 	NetworkName string `protobuf:"bytes,2,opt,name=network_name,json=networkName,proto3" json:"network_name,omitempty"`
 	// GCP self-link of the VPC network (e.g., "projects/PROJECT/global/networks/NAME").
-	// Used by GcpCloudSql.spec.network.vpc_id to configure Private Services Access.
+	// Used by GcpCloudSql.spec.network.vpc_id for private-IP configuration.
 	NetworkId string `protobuf:"bytes,3,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
 	// IPv4 address of the default internet gateway for this network (if present).
 	GatewayIpv4 string `protobuf:"bytes,4,opt,name=gateway_ipv4,json=gatewayIpv4,proto3" json:"gateway_ipv4,omitempty"`

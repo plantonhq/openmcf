@@ -7,7 +7,7 @@
 // CI -- never a stored secret); see the aa_e2e harness package. The test
 // project resolves from E2E_GCP_PROJECT / GOOGLE_PROJECT / the ADC credential.
 //
-// Run with: go test -tags=e2e -timeout=30m -v ./e2e/gcp/...
+// Run with: go test -tags=e2e -timeout=120m -v ./e2e/gcp/...
 package gcp
 
 import (
@@ -248,6 +248,33 @@ func TestGcpVpc_Pulumi(t *testing.T) {
 }
 func TestGcpVpc_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpvpc", "terraform")
+}
+
+// --- GCP Cloud SQL (composed PSA chain + public/private instance scenarios) ---
+
+func TestGcpCloudSql_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudsql", "pulumi")
+}
+func TestGcpCloudSql_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudsql", "terraform")
+}
+
+// --- GCP Cloud SQL Database (composed instance prerequisite) ---
+
+func TestGcpCloudSqlDatabase_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudsqldatabase", "pulumi")
+}
+func TestGcpCloudSqlDatabase_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudsqldatabase", "terraform")
+}
+
+// --- GCP Cloud SQL User (composed instance prerequisite) ---
+
+func TestGcpCloudSqlUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudsqluser", "pulumi")
+}
+func TestGcpCloudSqlUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudsqluser", "terraform")
 }
 
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.

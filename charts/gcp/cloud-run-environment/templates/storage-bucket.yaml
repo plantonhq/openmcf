@@ -13,6 +13,7 @@ metadata:
 spec:
   gcpProjectId:
     value: "{{ values.gcp_project_id }}"
+  bucketName: "{{ values.storage_bucket_name }}"
   location: "{{ values.gcp_region }}"
 {% endif %}
 

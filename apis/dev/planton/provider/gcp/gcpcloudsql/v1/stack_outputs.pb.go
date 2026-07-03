@@ -21,21 +21,34 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GcpCloudSqlStackOutputs captures values returned after provisioning a Cloud SQL instance.
+// GcpCloudSqlStackOutputs captures values returned after provisioning a Cloud
+// SQL instance.
 type GcpCloudSqlStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the Cloud SQL instance.
+	// Name of the Cloud SQL instance. The composition key: GcpCloudSqlDatabase
+	// and GcpCloudSqlUser reference an instance by this name, and a read
+	// replica's master_instance_name resolves to it.
 	InstanceName string `protobuf:"bytes,1,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
-	// Full connection name in the format project:region:instance.
+	// Full connection name in the format project:region:instance — what the
+	// Cloud SQL Auth Proxy, connectors, and serverless integrations consume.
 	ConnectionName string `protobuf:"bytes,2,opt,name=connection_name,json=connectionName,proto3" json:"connection_name,omitempty"`
-	// Private IP address of the instance (if private IP is enabled).
+	// Private IP address of the instance (empty unless private_network is
+	// configured).
 	PrivateIp string `protobuf:"bytes,3,opt,name=private_ip,json=privateIp,proto3" json:"private_ip,omitempty"`
-	// Public IP address of the instance.
+	// Public IPv4 address of the instance (empty unless ipv4_enabled).
 	PublicIp string `protobuf:"bytes,4,opt,name=public_ip,json=publicIp,proto3" json:"public_ip,omitempty"`
 	// GCP resource self link for the Cloud SQL instance.
-	SelfLink      string `protobuf:"bytes,5,opt,name=self_link,json=selfLink,proto3" json:"self_link,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SelfLink string `protobuf:"bytes,5,opt,name=self_link,json=selfLink,proto3" json:"self_link,omitempty"`
+	// The Google-managed service account this instance runs as. Grant it GCS
+	// access to enable imports/exports and SQL Server audit uploads.
+	ServiceAccountEmail string `protobuf:"bytes,6,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
+	// DNS name of the instance (populated for PSC-enabled instances).
+	DnsName string `protobuf:"bytes,7,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
+	// The PSC service attachment link consumers target with PSC endpoints
+	// (populated only when psc.enabled is true).
+	PscServiceAttachmentLink string `protobuf:"bytes,8,opt,name=psc_service_attachment_link,json=pscServiceAttachmentLink,proto3" json:"psc_service_attachment_link,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GcpCloudSqlStackOutputs) Reset() {
@@ -103,18 +116,42 @@ func (x *GcpCloudSqlStackOutputs) GetSelfLink() string {
 	return ""
 }
 
+func (x *GcpCloudSqlStackOutputs) GetServiceAccountEmail() string {
+	if x != nil {
+		return x.ServiceAccountEmail
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlStackOutputs) GetDnsName() string {
+	if x != nil {
+		return x.DnsName
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlStackOutputs) GetPscServiceAttachmentLink() string {
+	if x != nil {
+		return x.PscServiceAttachmentLink
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpcloudsql_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpcloudsql_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/gcp/gcpcloudsql/v1/stack_outputs.proto\x12'dev.planton.provider.gcp.gcpcloudsql.v1\"\xc0\x01\n" +
+	";dev/planton/provider/gcp/gcpcloudsql/v1/stack_outputs.proto\x12'dev.planton.provider.gcp.gcpcloudsql.v1\"\xce\x02\n" +
 	"\x17GcpCloudSqlStackOutputs\x12#\n" +
 	"\rinstance_name\x18\x01 \x01(\tR\finstanceName\x12'\n" +
 	"\x0fconnection_name\x18\x02 \x01(\tR\x0econnectionName\x12\x1d\n" +
 	"\n" +
 	"private_ip\x18\x03 \x01(\tR\tprivateIp\x12\x1b\n" +
 	"\tpublic_ip\x18\x04 \x01(\tR\bpublicIp\x12\x1b\n" +
-	"\tself_link\x18\x05 \x01(\tR\bselfLinkB\xdc\x02\n" +
+	"\tself_link\x18\x05 \x01(\tR\bselfLink\x122\n" +
+	"\x15service_account_email\x18\x06 \x01(\tR\x13serviceAccountEmail\x12\x19\n" +
+	"\bdns_name\x18\a \x01(\tR\adnsName\x12=\n" +
+	"\x1bpsc_service_attachment_link\x18\b \x01(\tR\x18pscServiceAttachmentLinkB\xdc\x02\n" +
 	"+com.dev.planton.provider.gcp.gcpcloudsql.v1B\x11StackOutputsProtoP\x01ZWgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsql/v1;gcpcloudsqlv1\xa2\x02\x05DPPGG\xaa\x02'Dev.Planton.Provider.Gcp.Gcpcloudsql.V1\xca\x02'Dev\\Planton\\Provider\\Gcp\\Gcpcloudsql\\V1\xe2\x023Dev\\Planton\\Provider\\Gcp\\Gcpcloudsql\\V1\\GPBMetadata\xea\x02,Dev::Planton::Provider::Gcp::Gcpcloudsql::V1b\x06proto3"
 
 var (

@@ -1,6 +1,8 @@
 package tofu
 
 import (
+	"fmt"
+
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/tofu/generators"
 	log "github.com/sirupsen/logrus"
@@ -27,5 +29,8 @@ func loadTfVarsHandler(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal("failed to generate Terraform variables: ", err)
 	}
-	println(tfvarsString)
+	// fmt (stdout), not the println builtin (stderr): the command's whole
+	// purpose is producing a var-file, so `load-tfvars m.yaml > f.tfvars`
+	// must capture the rendered content.
+	fmt.Println(tfvarsString)
 }

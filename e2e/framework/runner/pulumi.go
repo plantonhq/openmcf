@@ -25,7 +25,12 @@ func PulumiDeploy(moduleDir, stackName, backendURL, stackInputFilePath string) (
 		return nil, errors.Wrap(err, "failed to ensure pulumi stack exists")
 	}
 
-	args := []string{"up", "--stack", stackName, "--yes", "--skip-preview", "--non-interactive"}
+	// --refresh reconciles Pulumi state with the live cloud before applying.
+	// Dependency stacks are keyed by run id, so every scenario in a run reuses
+	// the same stack name; if an earlier scenario's teardown half-completed,
+	// the stale state would otherwise make this up a silent no-op while the
+	// actual cloud resource is gone.
+	args := []string{"up", "--stack", stackName, "--yes", "--skip-preview", "--non-interactive", "--refresh"}
 	return runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
 }
 

@@ -3,6 +3,7 @@ package verify
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/googleapi"
@@ -26,25 +27,44 @@ func (v *serviceNetworkingConnectionVerifier) VerifyExists(ctx context.Context, 
 		return errors.Errorf("could not parse network name from %q", networkURL)
 	}
 
-	net, err := svc.Compute.Networks.Get(svc.Project, networkName).Context(ctx).Do()
-	if err != nil {
-		return errors.Wrapf(err, "network %s not found after deploy", networkName)
-	}
-
 	peeringName := outputs["peering"]
 	if peeringName == "" {
 		return errors.New("peering output missing after deploy")
 	}
 
-	for _, p := range net.Peerings {
-		if p.Name == peeringName {
-			if p.State != "ACTIVE" && p.State != "" {
-				return errors.Errorf("peering %s exists but state is %q, want ACTIVE", peeringName, p.State)
+	// The peering is created by the Service Networking API but read back
+	// through the Compute API, and that cross-API view is eventually
+	// consistent: a networks.get issued immediately after a successful
+	// connection create can miss a peering that is already there. Poll
+	// briefly before declaring it absent.
+	var lastErr error
+	deadline := time.Now().Add(2 * time.Minute)
+	for {
+		net, err := svc.Compute.Networks.Get(svc.Project, networkName).Context(ctx).Do()
+		if err != nil {
+			return errors.Wrapf(err, "network %s not found after deploy", networkName)
+		}
+
+		lastErr = errors.Errorf("peering %s not found on network %s after deploy", peeringName, networkName)
+		for _, p := range net.Peerings {
+			if p.Name == peeringName {
+				if p.State != "ACTIVE" && p.State != "" {
+					lastErr = errors.Errorf("peering %s exists but state is %q, want ACTIVE", peeringName, p.State)
+					break
+				}
+				return nil
 			}
-			return nil
+		}
+
+		if time.Now().After(deadline) {
+			return lastErr
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Second):
 		}
 	}
-	return errors.Errorf("peering %s not found on network %s after deploy", peeringName, networkName)
 }
 
 func (v *serviceNetworkingConnectionVerifier) VerifyAbsent(ctx context.Context, svc *Services, outputs map[string]string) error {

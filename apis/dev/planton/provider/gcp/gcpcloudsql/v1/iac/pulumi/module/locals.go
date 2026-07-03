@@ -28,9 +28,12 @@ func initializeLocals(stackInput *gcpcloudsqlv1.GcpCloudSqlStackInput) *Locals {
 
 	locals.GcpProviderConfig = stackInput.ProviderConfig
 
+	// The instance name (not metadata.name) keys the resource-name label so
+	// the label matches what is visible in the GCP console — the Terraform
+	// module applies the identical set.
 	locals.GcpLabels = map[string]string{
 		gcplabelkeys.Resource:     strconv.FormatBool(true),
-		gcplabelkeys.ResourceName: target.Metadata.Name,
+		gcplabelkeys.ResourceName: target.Spec.InstanceName,
 		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpCloudSql.String()),
 	}
 

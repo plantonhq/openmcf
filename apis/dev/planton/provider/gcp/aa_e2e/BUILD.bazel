@@ -12,6 +12,7 @@ go_library(
         "@org_golang_google_api//cloudresourcemanager/v1:cloudresourcemanager",
         "@org_golang_google_api//compute/v1:compute",
         "@org_golang_google_api//iam/v1:iam",
+        "@org_golang_google_api//sqladmin/v1:sqladmin",
         "@org_golang_google_api//storage/v1:storage",
         "@org_golang_x_oauth2//google",
     ],

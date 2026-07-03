@@ -60,7 +60,9 @@ Layer 2 (dep all):   GcpCloudRun
 | Router NAT | `GcpRouterNat` | network | Always | Outbound internet for Cloud Run |
 | Service Account | `GcpServiceAccount` | identity | Always | Cloud Run service identity |
 | Cloud Run | `GcpCloudRun` | compute | Always | The API service |
-| Cloud SQL | `GcpCloudSql` | database | `databaseEnabled` | PostgreSQL database |
+| Cloud SQL | `GcpCloudSql` | database | `databaseEnabled` | PostgreSQL instance (private IP) |
+| App Database | `GcpCloudSqlDatabase` | database | `databaseEnabled` | Application database inside the instance |
+| App DB User | `GcpCloudSqlUser` | database | `databaseEnabled` | Dedicated application credential |
 | Redis | `GcpRedisInstance` | cache | `cacheEnabled` | In-memory cache |
 | Pub/Sub Topic | `GcpPubSubTopic` | messaging | `messagingEnabled` | Event-driven messaging |
 | Cloud Tasks Queue | `GcpCloudTasksQueue` | async | `tasksEnabled` | Async task processing |
@@ -88,6 +90,9 @@ Layer 2 (dep all):   GcpCloudRun
 | `database_version` | DB version | `POSTGRES_15` | No |
 | `database_storage_gb` | Storage size in GB | `10` | No |
 | `database_root_password` | Root password | `change-me-immediately` | No |
+| `database_app_database_name` | Application database name | `app` | No |
+| `database_app_user_name` | Application DB user | `app-user` | No |
+| `database_app_user_password` | Application DB user password | `change-me-immediately` | No |
 | **Cache** | | | |
 | `cacheEnabled` | Create Redis | `false` | No |
 | `redis_instance_name` | Redis name | `api-cache` | No |
@@ -150,6 +155,7 @@ The service account dynamically receives roles based on enabled components:
 ## Important Notes
 
 - The `container_image` defaults to Google's hello-world image. **Replace this** with your actual API image after initial deployment.
-- **Rotate the `database_root_password`** immediately after deployment. The default value is a placeholder.
+- **Rotate the `database_root_password` and `database_app_user_password`** immediately after deployment. The default values are placeholders.
+- The application connects as the dedicated `GcpCloudSqlUser` to the `GcpCloudSqlDatabase` — the instance's root user stays reserved for administration.
 - Cloud SQL uses **private IP** only (no public access). Connect from Cloud Run via the Cloud SQL Auth Proxy or direct VPC connection.
 - Redis uses **BASIC** tier (no HA). For production, modify the Redis resource to use `STANDARD_HA` after deployment.

@@ -80,11 +80,47 @@ VIP for a forwarding rule vs an INTERNAL VPC_PEERING range for a service
 networking connection), then the dependency's `v1/e2e/prerequisite.yaml` (its
 published install profile), then its `v1/e2e/scenarios/minimal.yaml`. Declaring
 `prerequisites: [X]` is all that is needed -- no per-component wiring.
+
+**Cloud SQL chain note:** `GcpCloudSql` declares
+`prerequisites: [GcpServiceNetworkingConnection]`, so every instance/database/user
+scenario transitively installs VPC → VPC_PEERING range → connection before the
+instance. The Cloud SQL kinds ship consumer-scoped overrides for those three
+prerequisites with `${E2E_RUN_ID}` in the cloud-side VPC and address names (fixed
+`metadata.name` for FK resolution) so parallel runs and stale orphans from a
+half-finished teardown do not 409 on recreate.
+
 *Example:* every Gateway API kind declares `KubernetesGatewayApiCrds`, so the
 harness installs the Gateway API CRDs (experimental channel, version-pinned)
 before applying a GatewayClass / Gateway / route / ReferenceGrant. The Tier 3
 operator-dependent components (Postgres, Kafka, ...) likewise declare their
 operator kind, which installs from the operator's `scenarios/minimal.yaml`.
+
+### Dependency lifecycle robustness (asynchronous producer cleanup)
+
+Two behaviors in the runner exist because cloud-side cleanup is not always
+synchronous with the IaC engine's view of it (first hit: the Cloud SQL →
+service networking connection chain):
+
+- **Dependency destroys retry with backoff** (6 attempts, 60s apart, in
+  [dependencies.go](framework/runner/dependencies.go)). Deleting a Cloud SQL
+  instance returns minutes before the service producer releases its hold on
+  the service networking connection; until then the connection destroy fails
+  with "Producer services are still using this connection". Skipping past
+  that failure is worse than an orphan: the framework would then force-delete
+  the VPC, stranding a producer-side connection record that poisons the next
+  scenario's same-named prerequisite chain (its connection create silently
+  attaches to the stale record and no peering ever materializes).
+- **Dependency deploys run `pulumi up --refresh`** ([pulumi.go](framework/runner/pulumi.go)).
+  Dependency stacks are keyed by run id, so every scenario in a run reuses the
+  same stack name; if an earlier scenario's teardown half-completed, stale
+  state would otherwise make a later `up` a silent no-op while the actual
+  cloud resource is gone.
+
+Verifiers that read a resource through a *different* API than the one that
+created it should poll briefly before declaring it absent (see the
+service-networking-connection verifier: the peering is created via the
+Service Networking API but read back through the Compute API, and that
+cross-API view is eventually consistent).
 
 ### Resolving `valueFrom` references in composed scenarios
 

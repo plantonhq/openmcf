@@ -225,6 +225,8 @@ import (
 	gcpcloudrunv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudrun/v1"
 	gcpcloudschedulerjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudschedulerjob/v1"
 	gcpcloudsqlv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsql/v1"
+	gcpcloudsqldatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsqldatabase/v1"
+	gcpcloudsqluserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsqluser/v1"
 	gcpcloudtasksqueuev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudtasksqueue/v1"
 	gcpcomputeinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcomputeinstance/v1"
 	gcpdataprocclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdataproccluster/v1"
@@ -694,6 +696,8 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpCloudRun:                     &gcpcloudrunv1.GcpCloudRun{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSchedulerJob:            &gcpcloudschedulerjobv1.GcpCloudSchedulerJob{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSql:                     &gcpcloudsqlv1.GcpCloudSql{},
+	cloudresourcekind.CloudResourceKind_GcpCloudSqlDatabase:             &gcpcloudsqldatabasev1.GcpCloudSqlDatabase{},
+	cloudresourcekind.CloudResourceKind_GcpCloudSqlUser:                 &gcpcloudsqluserv1.GcpCloudSqlUser{},
 	cloudresourcekind.CloudResourceKind_GcpCloudTasksQueue:              &gcpcloudtasksqueuev1.GcpCloudTasksQueue{},
 	cloudresourcekind.CloudResourceKind_GcpComputeInstance:              &gcpcomputeinstancev1.GcpComputeInstance{},
 	cloudresourcekind.CloudResourceKind_GcpDataprocCluster:              &gcpdataprocclusterv1.GcpDataprocCluster{},

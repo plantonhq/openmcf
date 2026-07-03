@@ -1,0 +1,50 @@
+{% if values.networkingEnabled | bool %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpGlobalAddress
+metadata:
+  name: "{{ values.vpc_name }}-psa-range"
+  group: network
+  relationships:
+    - kind: GcpVpc
+      name: "{{ values.vpc_name }}"
+      type: runs_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  addressName: "{{ values.vpc_name }}-psa-range"
+  addressType: INTERNAL
+  purpose: VPC_PEERING
+  prefixLength: 16
+  network:
+    valueFrom:
+      kind: GcpVpc
+      name: "{{ values.vpc_name }}"
+      fieldPath: status.outputs.network_self_link
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceNetworkingConnection
+metadata:
+  name: "{{ values.vpc_name }}-psa"
+  group: network
+  relationships:
+    - kind: GcpVpc
+      name: "{{ values.vpc_name }}"
+      type: runs_on
+    - kind: GcpGlobalAddress
+      name: "{{ values.vpc_name }}-psa-range"
+      type: runs_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  network:
+    valueFrom:
+      kind: GcpVpc
+      name: "{{ values.vpc_name }}"
+      fieldPath: status.outputs.network_self_link
+  reservedPeeringRanges:
+    - valueFrom:
+        kind: GcpGlobalAddress
+        name: "{{ values.vpc_name }}-psa-range"
+        fieldPath: status.outputs.name
+{% endif %}

@@ -406,6 +406,47 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"address", "self_link", "name", "region"},
 		},
 		{
+			// GcpCloudSql: instance outputs from both engines, including the
+			// service-account identity and the PSC-only fields (empty on
+			// non-PSC instances).
+			name: "GcpCloudSql",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudSql,
+			rawOutputs: map[string]interface{}{
+				"instance_name":               "orders-db",
+				"connection_name":             "my-project:us-central1:orders-db",
+				"private_ip":                  "10.20.0.5",
+				"public_ip":                   "",
+				"self_link":                   "https://sqladmin.googleapis.com/sql/v1beta4/projects/my-project/instances/orders-db",
+				"service_account_email":       "p1234-abcdef@gcp-sa-cloud-sql.iam.gserviceaccount.com",
+				"dns_name":                    "",
+				"psc_service_attachment_link": "",
+			},
+			mustPopulate: []string{
+				"instance_name", "connection_name", "self_link", "service_account_email",
+			},
+		},
+		{
+			// GcpCloudSqlDatabase: database name + self link.
+			name: "GcpCloudSqlDatabase",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudSqlDatabase,
+			rawOutputs: map[string]interface{}{
+				"database_name": "orders",
+				"self_link":     "https://sqladmin.googleapis.com/sql/v1beta4/projects/my-project/instances/orders-db/databases/orders",
+			},
+			mustPopulate: []string{"database_name", "self_link"},
+		},
+		{
+			// GcpCloudSqlUser: the stored user name (IAM users on MySQL come
+			// back truncated before the @).
+			name: "GcpCloudSqlUser",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudSqlUser,
+			rawOutputs: map[string]interface{}{
+				"user_name":     "orders-app",
+				"instance_name": "orders-db",
+			},
+			mustPopulate: []string{"user_name", "instance_name"},
+		},
+		{
 			// GcpVpc: deep-rebuilt outputs — PSA fields removed, gateway + ULA added.
 			name: "GcpVpc",
 			kind: cloudresourcekind.CloudResourceKind_GcpVpc,

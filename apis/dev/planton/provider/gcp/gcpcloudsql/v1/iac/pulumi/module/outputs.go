@@ -1,10 +1,13 @@
 package module
 
-// Keys exported by the gcp_cloud_sql Pulumi module.
+// Keys exported by the gcpcloudsql Pulumi module.
 const (
-	OpInstanceName   = "instance_name"   // Name of the Cloud SQL instance
-	OpConnectionName = "connection_name" // Full connection name (project:region:instance)
-	OpPrivateIp      = "private_ip"      // Private IP address (if enabled)
-	OpPublicIp       = "public_ip"       // Public IP address
-	OpSelfLink       = "self_link"       // GCP resource self link
+	OpInstanceName             = "instance_name"               // Composition key databases/users/replicas reference
+	OpConnectionName           = "connection_name"             // project:region:instance for Auth Proxy / connectors
+	OpPrivateIp                = "private_ip"                  // Private IP (empty unless private_network set)
+	OpPublicIp                 = "public_ip"                   // Public IPv4 (empty unless ipv4_enabled)
+	OpSelfLink                 = "self_link"                   // GCP resource self link
+	OpServiceAccountEmail      = "service_account_email"       // Instance's Google-managed service account
+	OpDnsName                  = "dns_name"                    // DNS name (PSC-enabled instances)
+	OpPscServiceAttachmentLink = "psc_service_attachment_link" // PSC service attachment for consumer endpoints
 )

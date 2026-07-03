@@ -1,0 +1,28 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSql
+metadata:
+  name: my-postgres-replica
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  instanceName: orders-db-replica-1
+  region: us-central1
+  databaseEngine: POSTGRESQL
+  databaseVersion: POSTGRES_16 # must match the primary's version
+  tier: db-custom-2-7680 # replicas may size differently than the primary
+  # The primary this replica streams from. The primary must have automated
+  # backups enabled (and binary logs if MySQL).
+  masterInstanceName:
+    valueFrom:
+      kind: GcpCloudSql
+      name: my-postgres-prod # replace with your primary's resource name
+      fieldPath: status.outputs.instance_name
+  network:
+    privateNetwork:
+      valueFrom:
+        kind: GcpVpc
+        name: my-prod-vpc # replace with your GcpVpc resource name
+        fieldPath: status.outputs.network_id
+    sslMode: ENCRYPTED_ONLY
+  insightsConfig:
+    queryInsightsEnabled: true

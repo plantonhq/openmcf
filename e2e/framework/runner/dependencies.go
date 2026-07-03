@@ -217,14 +217,40 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	return state, nil
 }
 
+// Dependency destroys retry because some producer-side cleanups are
+// asynchronous: deleting a Cloud SQL instance completes minutes before the
+// service producer releases its hold on the service networking connection,
+// and until then the connection destroy fails with "Producer services are
+// still using this connection". Skipping past that failure is worse than an
+// orphan: the framework would then force-delete the VPC, stranding a
+// producer-side connection record that poisons the NEXT scenario's
+// same-named prerequisite chain (its connection create silently attaches to
+// the stale record and no peering ever materializes).
+const (
+	dependencyDestroyAttempts = 6
+	dependencyDestroyBackoff  = 60 * time.Second
+)
+
 // TeardownDependencies destroys deployed dependencies in reverse order.
 func TeardownDependencies(deployed []DependencyState) {
 	for i := len(deployed) - 1; i >= 0; i-- {
 		dep := deployed[i]
 		fmt.Printf("  [deps] Destroying dependency %s...\n", dep.Dependency.KindSlug)
 
-		if _, err := PulumiDestroy(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); err != nil {
-			fmt.Printf("  [WARN] dependency %s destroy failed: %v\n", dep.Dependency.KindSlug, err)
+		var destroyErr error
+		for attempt := 1; attempt <= dependencyDestroyAttempts; attempt++ {
+			if _, destroyErr = PulumiDestroy(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); destroyErr == nil {
+				break
+			}
+			if attempt < dependencyDestroyAttempts {
+				fmt.Printf("  [deps] dependency %s destroy attempt %d/%d failed (waiting %s): %v\n",
+					dep.Dependency.KindSlug, attempt, dependencyDestroyAttempts, dependencyDestroyBackoff, destroyErr)
+				time.Sleep(dependencyDestroyBackoff)
+			}
+		}
+		if destroyErr != nil {
+			fmt.Printf("  [WARN] dependency %s destroy failed after %d attempts: %v\n",
+				dep.Dependency.KindSlug, dependencyDestroyAttempts, destroyErr)
 			continue
 		}
 		if err := PulumiRemoveStack(dep.ModuleDir, dep.StackName, dep.BackendURL); err != nil {

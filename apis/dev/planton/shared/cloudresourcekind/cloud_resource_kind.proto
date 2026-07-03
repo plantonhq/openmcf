@@ -732,6 +732,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpsql"
+    prerequisites: [GcpServiceNetworkingConnection]
   }];
   GcpDnsZone = 605 [(kind_meta) = {
     provider: gcp
@@ -907,6 +908,18 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpmsi"
+  }];
+  GcpCloudSqlDatabase = 637 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsqldb"
+    prerequisites: [GcpCloudSql]
+  }];
+  GcpCloudSqlUser = 638 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsqlusr"
+    prerequisites: [GcpCloudSql]
   }];
   GcpBigQueryDataset = 650 [(kind_meta) = {
     provider: gcp

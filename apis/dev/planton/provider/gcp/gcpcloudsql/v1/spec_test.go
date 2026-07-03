@@ -1,764 +1,694 @@
 package gcpcloudsqlv1
 
 import (
+	"strings"
 	"testing"
 
 	"buf.build/go/protovalidate"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
-func TestGcpCloudSqlSpec(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "GcpCloudSqlSpec Validation Suite")
+func TestSuite(t *testing.T) {
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "GcpCloudSqlSpec Suite")
 }
 
-var _ = Describe("GcpCloudSqlSpec validations", func() {
+func litRef(v string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: v},
+	}
+}
 
-	// Helper function to create a StringValueOrRef with a literal value
-	strVal := func(v string) *foreignkeyv1.StringValueOrRef {
-		return &foreignkeyv1.StringValueOrRef{
-			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: v},
+func fromRef(kind, name, fieldPath string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{
+				Name: name,
+			},
+		},
+	}
+}
+
+func ptr(s string) *string {
+	return &s
+}
+
+func intPtr(i int32) *int32 {
+	return &i
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+var _ = ginkgo.Describe("GcpCloudSqlSpec", func() {
+	var validator protovalidate.Validator
+
+	ginkgo.BeforeEach(func() {
+		var err error
+		validator, err = protovalidate.New()
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	minimalPostgres := func() *GcpCloudSql {
+		return &GcpCloudSql{
+			ApiVersion: "gcp.planton.dev/v1",
+			Kind:       "GcpCloudSql",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "test-postgres",
+			},
+			Spec: &GcpCloudSqlSpec{
+				InstanceName:    "orders-db",
+				Region:          "us-central1",
+				DatabaseEngine:  "POSTGRESQL",
+				DatabaseVersion: "POSTGRES_16",
+				Tier:            "db-custom-2-7680",
+			},
 		}
 	}
 
-	// Helper function to create a minimal valid spec
-	makeValidSpec := func() *GcpCloudSqlSpec {
-		return &GcpCloudSqlSpec{
-			ProjectId:       strVal("my-gcp-project"),
-			Region:          "us-central1",
-			DatabaseEngine:  GcpCloudSqlDatabaseEngine_MYSQL,
-			DatabaseVersion: "MYSQL_8_0",
-			Tier:            "db-n1-standard-1",
-			StorageGb:       10,
-		}
+	expectValid := func(r *GcpCloudSql) {
+		gomega.Expect(validator.Validate(r)).To(gomega.Succeed())
 	}
 
-	Context("Required fields", func() {
-		It("accepts a minimal valid spec", func() {
-			spec := makeValidSpec()
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+	expectInvalid := func(r *GcpCloudSql, substr string) {
+		err := validator.Validate(r)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), substr)).To(
+			gomega.BeTrue(), "expected error to contain %q, got: %s", substr, err)
+	}
+
+	ginkgo.Context("required fields", func() {
+		ginkgo.It("accepts a minimal PostgreSQL spec", func() {
+			expectValid(minimalPostgres())
 		})
 
-		It("rejects spec with missing project_id", func() {
-			spec := makeValidSpec()
-			spec.ProjectId = nil
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+		ginkgo.It("rejects a missing instance_name", func() {
+			r := minimalPostgres()
+			r.Spec.InstanceName = ""
+			expectInvalid(r, "instance_name")
 		})
 
-		It("rejects spec with missing region", func() {
-			spec := makeValidSpec()
-			spec.Region = ""
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+		ginkgo.It("rejects an invalid instance_name", func() {
+			r := minimalPostgres()
+			r.Spec.InstanceName = "Bad_Name"
+			expectInvalid(r, "instance_name")
 		})
 
-		It("rejects spec with missing database_engine", func() {
-			spec := makeValidSpec()
-			spec.DatabaseEngine = GcpCloudSqlDatabaseEngine_DATABASE_ENGINE_UNSPECIFIED
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+		ginkgo.It("rejects a missing region", func() {
+			r := minimalPostgres()
+			r.Spec.Region = ""
+			expectInvalid(r, "region")
 		})
 
-		It("rejects spec with missing database_version", func() {
-			spec := makeValidSpec()
-			spec.DatabaseVersion = ""
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+		ginkgo.It("rejects a malformed region", func() {
+			r := minimalPostgres()
+			r.Spec.Region = "uscentral"
+			expectInvalid(r, "region")
 		})
 
-		It("rejects spec with missing tier", func() {
-			spec := makeValidSpec()
-			spec.Tier = ""
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+		ginkgo.It("rejects a missing database_engine", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = ""
+			expectInvalid(r, "database_engine")
 		})
 
-		It("rejects spec with storage_gb = 0", func() {
-			spec := makeValidSpec()
-			spec.StorageGb = 0
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+		ginkgo.It("rejects an unknown database_engine", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "ORACLE"
+			expectInvalid(r, "database_engine")
+		})
+
+		ginkgo.It("rejects a missing tier", func() {
+			r := minimalPostgres()
+			r.Spec.Tier = ""
+			expectInvalid(r, "tier")
+		})
+
+		ginkgo.It("accepts a project_id reference", func() {
+			r := minimalPostgres()
+			r.Spec.ProjectId = fromRef("GcpProject", "my-project", "status.outputs.project_id")
+			expectValid(r)
 		})
 	})
 
-	Context("Project ID validation (StringValueOrRef)", func() {
-		It("accepts project_id with literal value", func() {
-			spec := makeValidSpec()
-			spec.ProjectId = strVal("my-project-123")
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+	ginkgo.Context("engine and version coherence", func() {
+		ginkgo.It("rejects a MySQL version on a PostgreSQL engine", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseVersion = "MYSQL_8_0"
+			expectInvalid(r, "must match database_engine")
 		})
 
-		It("accepts project_id with value_from reference", func() {
-			spec := makeValidSpec()
-			spec.ProjectId = &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-					ValueFrom: &foreignkeyv1.ValueFromRef{
-						Name:      "my-gcp-project",
-						FieldPath: "status.outputs.project_id",
-					},
-				},
+		ginkgo.It("accepts MySQL engine with a MySQL version", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "MYSQL"
+			r.Spec.DatabaseVersion = "MYSQL_8_0"
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects SQL Server without a root password", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "SQLSERVER"
+			r.Spec.DatabaseVersion = "SQLSERVER_2022_STANDARD"
+			expectInvalid(r, "required for SQL Server")
+		})
+
+		ginkgo.It("accepts SQL Server with a root password", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "SQLSERVER"
+			r.Spec.DatabaseVersion = "SQLSERVER_2022_STANDARD"
+			r.Spec.RootPassword = "SqlServer123!"
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects a short root_password", func() {
+			r := minimalPostgres()
+			r.Spec.RootPassword = "short"
+			expectInvalid(r, "root_password")
+		})
+	})
+
+	ginkgo.Context("edition and data cache", func() {
+		ginkgo.It("rejects an unknown edition", func() {
+			r := minimalPostgres()
+			r.Spec.Edition = ptr("PREMIUM")
+			expectInvalid(r, "edition")
+		})
+
+		ginkgo.It("rejects data cache on ENTERPRISE", func() {
+			r := minimalPostgres()
+			r.Spec.DataCacheEnabled = true
+			expectInvalid(r, "requires edition ENTERPRISE_PLUS")
+		})
+
+		ginkgo.It("accepts data cache on ENTERPRISE_PLUS", func() {
+			r := minimalPostgres()
+			r.Spec.Edition = ptr("ENTERPRISE_PLUS")
+			r.Spec.DataCacheEnabled = true
+			expectValid(r)
+		})
+	})
+
+	ginkgo.Context("availability and backups", func() {
+		ginkgo.It("rejects REGIONAL without backups", func() {
+			r := minimalPostgres()
+			r.Spec.AvailabilityType = ptr("REGIONAL")
+			expectInvalid(r, "requires automated backups")
+		})
+
+		ginkgo.It("accepts REGIONAL with backups enabled", func() {
+			r := minimalPostgres()
+			r.Spec.AvailabilityType = ptr("REGIONAL")
+			r.Spec.Backup = &GcpCloudSqlBackup{Enabled: true, PointInTimeRecoveryEnabled: true}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects REGIONAL MySQL without binary logs", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "MYSQL"
+			r.Spec.DatabaseVersion = "MYSQL_8_0"
+			r.Spec.AvailabilityType = ptr("REGIONAL")
+			r.Spec.Backup = &GcpCloudSqlBackup{Enabled: true}
+			expectInvalid(r, "requires backup.binary_log_enabled")
+		})
+
+		ginkgo.It("accepts REGIONAL MySQL with binary logs", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "MYSQL"
+			r.Spec.DatabaseVersion = "MYSQL_8_0"
+			r.Spec.AvailabilityType = ptr("REGIONAL")
+			r.Spec.Backup = &GcpCloudSqlBackup{Enabled: true, BinaryLogEnabled: true}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects an unknown availability_type", func() {
+			r := minimalPostgres()
+			r.Spec.AvailabilityType = ptr("MULTI_REGION")
+			expectInvalid(r, "availability_type")
+		})
+
+		ginkgo.It("rejects PITR on MySQL", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "MYSQL"
+			r.Spec.DatabaseVersion = "MYSQL_8_0"
+			r.Spec.Backup = &GcpCloudSqlBackup{Enabled: true, PointInTimeRecoveryEnabled: true}
+			expectInvalid(r, "POSTGRESQL and SQLSERVER only")
+		})
+
+		ginkgo.It("rejects binary logs on PostgreSQL", func() {
+			r := minimalPostgres()
+			r.Spec.Backup = &GcpCloudSqlBackup{Enabled: true, BinaryLogEnabled: true}
+			expectInvalid(r, "applies to MYSQL only")
+		})
+
+		ginkgo.It("rejects backup settings without enabled", func() {
+			r := minimalPostgres()
+			r.Spec.Backup = &GcpCloudSqlBackup{StartTime: "03:00"}
+			expectInvalid(r, "require backup.enabled")
+		})
+
+		ginkgo.It("rejects a malformed start_time", func() {
+			r := minimalPostgres()
+			r.Spec.Backup = &GcpCloudSqlBackup{Enabled: true, StartTime: "25:00"}
+			expectInvalid(r, "start_time")
+		})
+
+		ginkgo.It("rejects transaction log retention above 35 days", func() {
+			r := minimalPostgres()
+			r.Spec.Backup = &GcpCloudSqlBackup{Enabled: true, TransactionLogRetentionDays: intPtr(40)}
+			expectInvalid(r, "transaction_log_retention_days")
+		})
+
+		ginkgo.It("accepts a full backup block", func() {
+			r := minimalPostgres()
+			r.Spec.Backup = &GcpCloudSqlBackup{
+				Enabled:                     true,
+				StartTime:                   "03:00",
+				Location:                    "us",
+				PointInTimeRecoveryEnabled:  true,
+				TransactionLogRetentionDays: intPtr(7),
+				RetainedBackups:             intPtr(14),
 			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects empty project_id (nil)", func() {
-			spec := makeValidSpec()
-			spec.ProjectId = nil
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		// HISTORY: This test originally asserted BeNil() — documenting that an empty
-		// StringValueOrRef passed proto validation because `required = true` only
-		// checked message presence, not content. A message-level CEL rule was added
-		// to StringValueOrRef (id: "string_value_or_ref.non_empty") to fix this.
-		// The assertion is now inverted to reflect the corrected behavior.
-		It("rejects project_id with empty value (CEL rule on StringValueOrRef)", func() {
-			spec := makeValidSpec()
-			spec.ProjectId = strVal("")
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+			expectValid(r)
 		})
 	})
 
-	Context("Region validation", func() {
-		It("accepts valid region format", func() {
-			spec := makeValidSpec()
-			spec.Region = "us-west1"
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+	ginkgo.Context("disk", func() {
+		ginkgo.It("rejects an unknown disk type", func() {
+			r := minimalPostgres()
+			r.Spec.Disk = &GcpCloudSqlDisk{Type: ptr("LOCAL_SSD")}
+			expectInvalid(r, "disk")
 		})
 
-		It("accepts valid multi-region format", func() {
-			spec := makeValidSpec()
-			spec.Region = "europe-west2"
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+		ginkgo.It("rejects a disk below 10 GB", func() {
+			r := minimalPostgres()
+			r.Spec.Disk = &GcpCloudSqlDisk{SizeGb: intPtr(5)}
+			expectInvalid(r, "size_gb")
 		})
 
-		It("rejects invalid region format without number", func() {
-			spec := makeValidSpec()
-			spec.Region = "us-central"
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+		ginkgo.It("rejects a hyperdisk below 20 GB", func() {
+			r := minimalPostgres()
+			r.Spec.Disk = &GcpCloudSqlDisk{Type: ptr("HYPERDISK_BALANCED"), SizeGb: intPtr(10)}
+			expectInvalid(r, "HYPERDISK_BALANCED disks require")
 		})
 
-		It("rejects invalid region format with uppercase", func() {
-			spec := makeValidSpec()
-			spec.Region = "US-CENTRAL1"
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+		ginkgo.It("accepts a hyperdisk at 20 GB", func() {
+			r := minimalPostgres()
+			r.Spec.Disk = &GcpCloudSqlDisk{Type: ptr("HYPERDISK_BALANCED"), SizeGb: intPtr(20)}
+			expectValid(r)
 		})
 	})
 
-	Context("Database engine validation", func() {
-		It("accepts MYSQL engine", func() {
-			spec := makeValidSpec()
-			spec.DatabaseEngine = GcpCloudSqlDatabaseEngine_MYSQL
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+	ginkgo.Context("network", func() {
+		ginkgo.It("rejects a network block with no connectivity path", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{}
+			expectInvalid(r, "at least one connectivity path")
 		})
 
-		It("accepts POSTGRESQL engine", func() {
-			spec := makeValidSpec()
-			spec.DatabaseEngine = GcpCloudSqlDatabaseEngine_POSTGRESQL
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects unspecified engine", func() {
-			spec := makeValidSpec()
-			spec.DatabaseEngine = GcpCloudSqlDatabaseEngine_DATABASE_ENGINE_UNSPECIFIED
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-	})
-
-	Context("Storage GB validation", func() {
-		It("accepts minimum storage (10 GB)", func() {
-			spec := makeValidSpec()
-			spec.StorageGb = 10
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts maximum storage (65536 GB)", func() {
-			spec := makeValidSpec()
-			spec.StorageGb = 65536
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts mid-range storage (500 GB)", func() {
-			spec := makeValidSpec()
-			spec.StorageGb = 500
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects storage below minimum (9 GB)", func() {
-			spec := makeValidSpec()
-			spec.StorageGb = 9
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("rejects storage above maximum (65537 GB)", func() {
-			spec := makeValidSpec()
-			spec.StorageGb = 65537
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-	})
-
-	Context("Edition validation", func() {
-		It("accepts ENTERPRISE edition", func() {
-			spec := makeValidSpec()
-			spec.Edition = GcpCloudSqlEdition_ENTERPRISE
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts ENTERPRISE_PLUS edition", func() {
-			spec := makeValidSpec()
-			spec.Edition = GcpCloudSqlEdition_ENTERPRISE_PLUS
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts EDITION_UNSPECIFIED (defaults to ENTERPRISE)", func() {
-			spec := makeValidSpec()
-			spec.Edition = GcpCloudSqlEdition_EDITION_UNSPECIFIED
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-	})
-
-	Context("Root password validation", func() {
-		It("accepts password with minimum length (8 chars)", func() {
-			spec := makeValidSpec()
-			spec.RootPassword = "Password123"
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects password shorter than 8 characters", func() {
-			spec := makeValidSpec()
-			spec.RootPassword = "Pass123"
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("accepts spec without password (optional)", func() {
-			spec := makeValidSpec()
-			spec.RootPassword = ""
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-	})
-
-	Context("Network configuration - CEL validation", func() {
-		It("accepts private IP with VPC ID (literal value)", func() {
-			spec := makeValidSpec()
-			spec.Network = &GcpCloudSqlNetwork{
-				VpcId:            strVal("projects/my-project/global/networks/my-vpc"),
-				PrivateIpEnabled: true,
+		ginkgo.It("accepts private-only connectivity via a reference", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				PrivateNetwork: fromRef("GcpVpc", "my-vpc", "status.outputs.network_id"),
 			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+			expectValid(r)
 		})
 
-		It("accepts private IP with VPC ID (value_from reference)", func() {
-			spec := makeValidSpec()
-			spec.Network = &GcpCloudSqlNetwork{
-				VpcId: &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-						ValueFrom: &foreignkeyv1.ValueFromRef{
-							Name:      "my-vpc",
-							FieldPath: "status.outputs.network_id",
-						},
-					},
-				},
-				PrivateIpEnabled: true,
+		ginkgo.It("accepts public-only connectivity", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{Ipv4Enabled: true}
+			expectValid(r)
+		})
+
+		ginkgo.It("accepts PSC-only connectivity", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Psc: &GcpCloudSqlPscConfig{Enabled: true},
 			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+			expectValid(r)
 		})
 
-		It("rejects private IP without VPC ID (CEL rule)", func() {
-			spec := makeValidSpec()
-			spec.Network = &GcpCloudSqlNetwork{
-				VpcId:            nil,
-				PrivateIpEnabled: true,
+		ginkgo.It("rejects authorized networks without ipv4", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				PrivateNetwork:     litRef("projects/p/global/networks/n"),
+				AuthorizedNetworks: []*GcpCloudSqlAuthorizedNetwork{{Value: "10.0.0.0/8"}},
 			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
+			expectInvalid(r, "apply to the public IP")
 		})
 
-		It("accepts public IP enabled (ipv4_enabled)", func() {
-			spec := makeValidSpec()
-			spec.Network = &GcpCloudSqlNetwork{
-				Ipv4Enabled: true,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts Smart Hybrid pattern (private + public IP)", func() {
-			spec := makeValidSpec()
-			spec.Network = &GcpCloudSqlNetwork{
-				VpcId:              strVal("projects/my-project/global/networks/my-vpc"),
-				PrivateIpEnabled:   true,
+		ginkgo.It("rejects a malformed authorized network CIDR", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
 				Ipv4Enabled:        true,
-				AuthorizedNetworks: []string{},
+				AuthorizedNetworks: []*GcpCloudSqlAuthorizedNetwork{{Value: "not-a-cidr"}},
 			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+			expectInvalid(r, "value")
 		})
 
-		It("accepts valid CIDR in authorized_networks", func() {
-			spec := makeValidSpec()
-			spec.Network = &GcpCloudSqlNetwork{
+		ginkgo.It("rejects allocated_ip_range without a private network", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Ipv4Enabled:      true,
+				AllocatedIpRange: "psa-range",
+			}
+			expectInvalid(r, "allocated_ip_range applies to private IP")
+		})
+
+		ginkgo.It("rejects private path without a private network", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Ipv4Enabled:                             true,
+				EnablePrivatePathForGoogleCloudServices: true,
+			}
+			expectInvalid(r, "enable_private_path_for_google_cloud_services applies")
+		})
+
+		ginkgo.It("rejects an unknown ssl_mode", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{Ipv4Enabled: true, SslMode: "TLS_ONLY"}
+			expectInvalid(r, "ssl_mode")
+		})
+
+		ginkgo.It("rejects CUSTOMER_MANAGED_CAS_CA without a pool", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Ipv4Enabled:  true,
+				ServerCaMode: "CUSTOMER_MANAGED_CAS_CA",
+			}
+			expectInvalid(r, "server_ca_pool is required when")
+		})
+
+		ginkgo.It("rejects a pool without CUSTOMER_MANAGED_CAS_CA", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Ipv4Enabled:  true,
+				ServerCaPool: "projects/p/locations/l/caPools/pool",
+			}
+			expectInvalid(r, "server_ca_pool applies only")
+		})
+
+		ginkgo.It("rejects PSC settings when psc is disabled", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
 				Ipv4Enabled: true,
-				AuthorizedNetworks: []string{
-					"10.0.0.0/24",
-					"192.168.1.0/16",
+				Psc: &GcpCloudSqlPscConfig{
+					AllowedConsumerProjects: []string{"consumer-project"},
 				},
 			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+			expectInvalid(r, "PSC settings apply only")
 		})
 
-		It("rejects invalid CIDR format in authorized_networks", func() {
-			spec := makeValidSpec()
-			spec.Network = &GcpCloudSqlNetwork{
-				Ipv4Enabled: true,
-				AuthorizedNetworks: []string{
-					"10.0.0.0",
-				},
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("rejects duplicate CIDR in authorized_networks", func() {
-			spec := makeValidSpec()
-			spec.Network = &GcpCloudSqlNetwork{
-				Ipv4Enabled: true,
-				AuthorizedNetworks: []string{
-					"10.0.0.0/24",
-					"10.0.0.0/24",
-				},
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-	})
-
-	Context("High availability - CEL validation", func() {
-		It("accepts HA enabled with zone specified", func() {
-			spec := makeValidSpec()
-			spec.HighAvailability = &GcpCloudSqlHighAvailability{
-				Enabled: true,
-				Zone:    "us-central1-a",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects HA enabled without zone (CEL rule)", func() {
-			spec := makeValidSpec()
-			spec.HighAvailability = &GcpCloudSqlHighAvailability{
-				Enabled: true,
-				Zone:    "",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("accepts HA disabled without zone", func() {
-			spec := makeValidSpec()
-			spec.HighAvailability = &GcpCloudSqlHighAvailability{
-				Enabled: false,
-				Zone:    "",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-	})
-
-	Context("Backup configuration - CEL validations", func() {
-		It("accepts backup enabled with start_time and retention_days", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "02:00",
-				RetentionDays: 7,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects backup enabled without start_time (CEL rule)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "",
-				RetentionDays: 7,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("rejects backup enabled without retention_days (CEL rule)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "02:00",
-				RetentionDays: 0,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("accepts valid start_time format (HH:MM)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "23:59",
-				RetentionDays: 30,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects invalid start_time format (missing leading zero)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "2:00",
-				RetentionDays: 7,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("rejects start_time with invalid hour (24)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "24:00",
-				RetentionDays: 7,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("accepts retention_days at minimum (1 day)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "02:00",
-				RetentionDays: 1,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts retention_days at maximum (365 days)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "02:00",
-				RetentionDays: 365,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects retention_days above maximum (366 days)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:       true,
-				StartTime:     "02:00",
-				RetentionDays: 366,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("accepts PITR enabled when backup is enabled", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:                    true,
-				StartTime:                  "02:00",
-				RetentionDays:              7,
-				PointInTimeRecoveryEnabled: true,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects PITR enabled when backup is disabled (CEL rule)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled:                    false,
-				PointInTimeRecoveryEnabled: true,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("accepts backup disabled (no config required)", func() {
-			spec := makeValidSpec()
-			spec.Backup = &GcpCloudSqlBackup{
-				Enabled: false,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-	})
-
-	Context("Maintenance window validation", func() {
-		It("accepts valid maintenance window", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:         1, // Monday
-				Hour:        3, // 3 AM UTC
-				UpdateTrack: "stable",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts day at minimum (1 = Monday)", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:  1,
-				Hour: 0,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts day at maximum (7 = Sunday)", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:  7,
-				Hour: 0,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects day below minimum (0)", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:  0,
-				Hour: 3,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("rejects day above maximum (8)", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:  8,
-				Hour: 3,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("accepts hour at minimum (0)", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:  1,
-				Hour: 0,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts hour at maximum (23)", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:  1,
-				Hour: 23,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects hour above maximum (24)", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:  1,
-				Hour: 24,
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("accepts canary update track", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:         1,
-				Hour:        3,
-				UpdateTrack: "canary",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts stable update track", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:         1,
-				Hour:        3,
-				UpdateTrack: "stable",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts empty update track (defaults)", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:         1,
-				Hour:        3,
-				UpdateTrack: "",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("rejects invalid update track", func() {
-			spec := makeValidSpec()
-			spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
-				Day:         1,
-				Hour:        3,
-				UpdateTrack: "invalid",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).NotTo(BeNil())
-		})
-	})
-
-	Context("Database flags", func() {
-		It("accepts database flags", func() {
-			spec := makeValidSpec()
-			spec.DatabaseFlags = map[string]string{
-				"slow_query_log": "on",
-				"log_output":     "FILE",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts empty database flags", func() {
-			spec := makeValidSpec()
-			spec.DatabaseFlags = map[string]string{}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-	})
-
-	Context("Production-grade configuration example", func() {
-		It("accepts a complete production spec with all options (literal values)", func() {
-			spec := &GcpCloudSqlSpec{
-				ProjectId:            strVal("prod-database-project"),
-				Region:               "us-central1",
-				DatabaseEngine:       GcpCloudSqlDatabaseEngine_POSTGRESQL,
-				DatabaseVersion:      "POSTGRES_15",
-				Tier:                 "db-n1-standard-4",
-				StorageGb:            100,
-				DiskAutoResize:       true,
-				Edition:              GcpCloudSqlEdition_ENTERPRISE,
-				DeletionProtection:   true,
-				QueryInsightsEnabled: true,
-				MaintenanceWindow: &GcpCloudSqlMaintenanceWindow{
-					Day:         7, // Sunday
-					Hour:        2, // 2 AM UTC
-					UpdateTrack: "stable",
-				},
-				Network: &GcpCloudSqlNetwork{
-					VpcId:              strVal("projects/prod-project/global/networks/prod-vpc"),
-					PrivateIpEnabled:   true,
-					Ipv4Enabled:        true,
-					AuthorizedNetworks: []string{},
-				},
-				HighAvailability: &GcpCloudSqlHighAvailability{
-					Enabled: true,
-					Zone:    "us-central1-b",
-				},
-				Backup: &GcpCloudSqlBackup{
-					Enabled:                    true,
-					StartTime:                  "03:00",
-					RetentionDays:              30,
-					PointInTimeRecoveryEnabled: true,
-				},
-				DatabaseFlags: map[string]string{
-					"log_min_duration_statement": "1000",
-					"log_statement":              "ddl",
-				},
-				RootPassword: "SuperSecurePassword123!",
-			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
-		})
-
-		It("accepts a complete production spec with value_from references", func() {
-			spec := &GcpCloudSqlSpec{
-				ProjectId: &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-						ValueFrom: &foreignkeyv1.ValueFromRef{
-							Name:      "prod-project",
-							FieldPath: "status.outputs.project_id",
-						},
+		ginkgo.It("accepts a full PSC block", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Psc: &GcpCloudSqlPscConfig{
+					Enabled:                 true,
+					AllowedConsumerProjects: []string{"consumer-project"},
+					AutoConnections: []*GcpCloudSqlPscAutoConnection{
+						{ConsumerNetwork: "projects/p/global/networks/n"},
 					},
 				},
-				Region:               "us-central1",
-				DatabaseEngine:       GcpCloudSqlDatabaseEngine_POSTGRESQL,
-				DatabaseVersion:      "POSTGRES_15",
-				Tier:                 "db-n1-standard-4",
-				StorageGb:            100,
-				DiskAutoResize:       true,
-				Edition:              GcpCloudSqlEdition_ENTERPRISE,
-				DeletionProtection:   true,
-				QueryInsightsEnabled: true,
-				Network: &GcpCloudSqlNetwork{
-					VpcId: &foreignkeyv1.StringValueOrRef{
-						LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-							ValueFrom: &foreignkeyv1.ValueFromRef{
-								Name:      "prod-vpc",
-								FieldPath: "status.outputs.network_id",
-							},
-						},
-					},
-					PrivateIpEnabled: true,
-				},
-				HighAvailability: &GcpCloudSqlHighAvailability{
-					Enabled: true,
-					Zone:    "us-central1-b",
-				},
-				Backup: &GcpCloudSqlBackup{
-					Enabled:                    true,
-					StartTime:                  "03:00",
-					RetentionDays:              30,
-					PointInTimeRecoveryEnabled: true,
-				},
-				RootPassword: "SuperSecurePassword123!",
 			}
-			err := protovalidate.Validate(spec)
-			Expect(err).To(BeNil())
+			expectValid(r)
+		})
+	})
+
+	ginkgo.Context("maintenance", func() {
+		ginkgo.It("rejects a maintenance window without a day", func() {
+			r := minimalPostgres()
+			r.Spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{}
+			expectInvalid(r, "day")
+		})
+
+		ginkgo.It("rejects an out-of-range day", func() {
+			r := minimalPostgres()
+			r.Spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{Day: 8}
+			expectInvalid(r, "day")
+		})
+
+		ginkgo.It("accepts hour zero (midnight)", func() {
+			r := minimalPostgres()
+			r.Spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{Day: 7, Hour: intPtr(0)}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects an unknown update_track", func() {
+			r := minimalPostgres()
+			r.Spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{Day: 7, UpdateTrack: "weekly"}
+			expectInvalid(r, "update_track")
+		})
+
+		ginkgo.It("accepts the week5 update track", func() {
+			r := minimalPostgres()
+			r.Spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{Day: 7, UpdateTrack: "week5"}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects a deny period missing its time", func() {
+			r := minimalPostgres()
+			r.Spec.DenyMaintenancePeriod = &GcpCloudSqlDenyMaintenancePeriod{
+				StartDate: "2026-12-20",
+				EndDate:   "2027-01-05",
+			}
+			expectInvalid(r, "time")
+		})
+
+		ginkgo.It("accepts a recurring deny period", func() {
+			r := minimalPostgres()
+			r.Spec.DenyMaintenancePeriod = &GcpCloudSqlDenyMaintenancePeriod{
+				StartDate: "12-20",
+				EndDate:   "01-05",
+				Time:      "00:00:00",
+			}
+			expectValid(r)
+		})
+	})
+
+	ginkgo.Context("insights", func() {
+		ginkgo.It("rejects insights settings without enablement", func() {
+			r := minimalPostgres()
+			r.Spec.InsightsConfig = &GcpCloudSqlInsightsConfig{
+				RecordApplicationTags: true,
+			}
+			expectInvalid(r, "insights settings apply only")
+		})
+
+		ginkgo.It("accepts a full insights block", func() {
+			r := minimalPostgres()
+			r.Spec.InsightsConfig = &GcpCloudSqlInsightsConfig{
+				QueryInsightsEnabled:  true,
+				QueryStringLength:     intPtr(2048),
+				RecordApplicationTags: true,
+				RecordClientAddress:   true,
+				QueryPlansPerMinute:   intPtr(10),
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects an out-of-range query_string_length", func() {
+			r := minimalPostgres()
+			r.Spec.InsightsConfig = &GcpCloudSqlInsightsConfig{
+				QueryInsightsEnabled: true,
+				QueryStringLength:    intPtr(9000),
+			}
+			expectInvalid(r, "query_string_length")
+		})
+	})
+
+	ginkgo.Context("SQL Server-only surface", func() {
+		ginkgo.It("rejects time_zone on PostgreSQL", func() {
+			r := minimalPostgres()
+			r.Spec.TimeZone = "Pacific Standard Time"
+			expectInvalid(r, "time_zone applies to SQL Server")
+		})
+
+		ginkgo.It("rejects collation on MySQL", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "MYSQL"
+			r.Spec.DatabaseVersion = "MYSQL_8_0"
+			r.Spec.Collation = "SQL_Latin1_General_CP1_CI_AS"
+			expectInvalid(r, "collation (server-level) applies")
+		})
+
+		ginkgo.It("rejects threads_per_core on PostgreSQL", func() {
+			r := minimalPostgres()
+			r.Spec.ThreadsPerCore = intPtr(2)
+			expectInvalid(r, "threads_per_core applies to SQL Server")
+		})
+
+		ginkgo.It("rejects an audit config on PostgreSQL", func() {
+			r := minimalPostgres()
+			r.Spec.SqlServerAuditConfig = &GcpCloudSqlSqlServerAuditConfig{Bucket: "gs://audit"}
+			expectInvalid(r, "sql_server_audit_config applies")
+		})
+
+		ginkgo.It("accepts the full SQL Server surface", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "SQLSERVER"
+			r.Spec.DatabaseVersion = "SQLSERVER_2022_STANDARD"
+			r.Spec.RootPassword = "SqlServer123!"
+			r.Spec.TimeZone = "Pacific Standard Time"
+			r.Spec.Collation = "SQL_Latin1_General_CP1_CI_AS"
+			r.Spec.ThreadsPerCore = intPtr(1)
+			r.Spec.ActiveDirectoryDomain = "ad.example.com"
+			r.Spec.SqlServerAuditConfig = &GcpCloudSqlSqlServerAuditConfig{
+				Bucket:            "gs://audit-bucket",
+				RetentionInterval: "86400s",
+				UploadInterval:    "1800s",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects a non-gs audit bucket", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "SQLSERVER"
+			r.Spec.DatabaseVersion = "SQLSERVER_2022_STANDARD"
+			r.Spec.RootPassword = "SqlServer123!"
+			r.Spec.SqlServerAuditConfig = &GcpCloudSqlSqlServerAuditConfig{Bucket: "audit-bucket"}
+			expectInvalid(r, "gs:// URI")
+		})
+	})
+
+	ginkgo.Context("password validation policy", func() {
+		ginkgo.It("rejects password_change_interval on MySQL", func() {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "MYSQL"
+			r.Spec.DatabaseVersion = "MYSQL_8_0"
+			r.Spec.PasswordValidationPolicy = &GcpCloudSqlPasswordValidationPolicy{
+				EnablePasswordPolicy:   true,
+				PasswordChangeInterval: "3600s",
+			}
+			expectInvalid(r, "applies to POSTGRESQL instances only")
+		})
+
+		ginkgo.It("accepts a full policy on PostgreSQL", func() {
+			r := minimalPostgres()
+			r.Spec.PasswordValidationPolicy = &GcpCloudSqlPasswordValidationPolicy{
+				EnablePasswordPolicy:      true,
+				MinLength:                 intPtr(12),
+				Complexity:                "COMPLEXITY_DEFAULT",
+				ReuseInterval:             intPtr(5),
+				DisallowUsernameSubstring: true,
+				PasswordChangeInterval:    "3600s",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects a malformed change interval", func() {
+			r := minimalPostgres()
+			r.Spec.PasswordValidationPolicy = &GcpCloudSqlPasswordValidationPolicy{
+				EnablePasswordPolicy:   true,
+				PasswordChangeInterval: "1h",
+			}
+			expectInvalid(r, "seconds duration")
+		})
+	})
+
+	ginkgo.Context("replicas", func() {
+		ginkgo.It("rejects replica_configuration without a primary", func() {
+			r := minimalPostgres()
+			r.Spec.ReplicaConfiguration = &GcpCloudSqlReplicaConfiguration{FailoverTarget: true}
+			expectInvalid(r, "set master_instance_name")
+		})
+
+		ginkgo.It("accepts a replica referencing its primary", func() {
+			r := minimalPostgres()
+			r.Spec.MasterInstanceName = fromRef("GcpCloudSql", "orders-db-primary", "status.outputs.instance_name")
+			r.Spec.ReplicaConfiguration = &GcpCloudSqlReplicaConfiguration{FailoverTarget: false}
+			expectValid(r)
+		})
+
+		ginkgo.It("accepts a literal primary name", func() {
+			r := minimalPostgres()
+			r.Spec.MasterInstanceName = litRef("orders-db-primary")
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects a non-gs dump file path", func() {
+			r := minimalPostgres()
+			r.Spec.MasterInstanceName = litRef("orders-db-primary")
+			r.Spec.ReplicaConfiguration = &GcpCloudSqlReplicaConfiguration{DumpFilePath: "/tmp/dump.sql"}
+			expectInvalid(r, "gs:// URI")
+		})
+	})
+
+	ginkgo.Context("placement", func() {
+		ginkgo.It("rejects a secondary zone on a ZONAL instance", func() {
+			r := minimalPostgres()
+			r.Spec.LocationPreference = &GcpCloudSqlLocationPreference{
+				Zone:          "us-central1-a",
+				SecondaryZone: "us-central1-b",
+			}
+			expectInvalid(r, "secondary_zone applies only")
+		})
+
+		ginkgo.It("accepts a secondary zone on a REGIONAL instance", func() {
+			r := minimalPostgres()
+			r.Spec.AvailabilityType = ptr("REGIONAL")
+			r.Spec.Backup = &GcpCloudSqlBackup{Enabled: true}
+			r.Spec.LocationPreference = &GcpCloudSqlLocationPreference{
+				Zone:          "us-central1-a",
+				SecondaryZone: "us-central1-b",
+			}
+			expectValid(r)
+		})
+	})
+
+	ginkgo.Context("misc coherence", func() {
+		ginkgo.It("rejects an unknown activation_policy", func() {
+			r := minimalPostgres()
+			r.Spec.ActivationPolicy = ptr("SOMETIMES")
+			expectInvalid(r, "activation_policy")
+		})
+
+		ginkgo.It("rejects an unknown connector_enforcement", func() {
+			r := minimalPostgres()
+			r.Spec.ConnectorEnforcement = "MAYBE"
+			expectInvalid(r, "connector_enforcement")
+		})
+
+		ginkgo.It("accepts a CMEK key reference", func() {
+			r := minimalPostgres()
+			r.Spec.EncryptionKeyName = fromRef("GcpKmsKey", "sql-cmek", "status.outputs.key_id")
+			expectValid(r)
+		})
+
+		ginkgo.It("accepts a production-grade full spec", func() {
+			r := minimalPostgres()
+			r.Spec.Edition = ptr("ENTERPRISE_PLUS")
+			r.Spec.AvailabilityType = ptr("REGIONAL")
+			r.Spec.Disk = &GcpCloudSqlDisk{
+				Type:            ptr("PD_SSD"),
+				SizeGb:          intPtr(100),
+				AutoResize:      boolPtr(true),
+				AutoResizeLimit: intPtr(500),
+			}
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				PrivateNetwork: fromRef("GcpVpc", "prod-vpc", "status.outputs.network_id"),
+				SslMode:        "ENCRYPTED_ONLY",
+			}
+			r.Spec.Backup = &GcpCloudSqlBackup{
+				Enabled:                     true,
+				StartTime:                   "03:00",
+				PointInTimeRecoveryEnabled:  true,
+				TransactionLogRetentionDays: intPtr(14),
+				RetainedBackups:             intPtr(30),
+			}
+			r.Spec.MaintenanceWindow = &GcpCloudSqlMaintenanceWindow{
+				Day: 7, Hour: intPtr(3), UpdateTrack: "stable",
+			}
+			r.Spec.InsightsConfig = &GcpCloudSqlInsightsConfig{QueryInsightsEnabled: true}
+			r.Spec.DataCacheEnabled = true
+			r.Spec.DatabaseFlags = map[string]string{"max_connections": "500"}
+			r.Spec.DeletionProtection = true
+			r.Spec.DeletionProtectionEnabled = true
+			r.Spec.RetainBackupsOnDelete = true
+			r.Spec.RootPassword = "SuperSecret123!"
+			expectValid(r)
 		})
 	})
 })

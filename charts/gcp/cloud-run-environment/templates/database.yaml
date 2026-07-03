@@ -9,34 +9,81 @@ metadata:
     - kind: GcpSubnetwork
       name: "{{ values.vpc_name }}-subnet"
       type: runs_on
+    - kind: GcpServiceNetworkingConnection
+      name: "{{ values.vpc_name }}-psa"
+      type: depends_on
 {% endif %}
 spec:
   projectId:
     value: "{{ values.gcp_project_id }}"
+  instanceName: "{{ values.database_instance_name }}"
   region: "{{ values.gcp_region }}"
   databaseEngine: {{ values.database_engine }}
   databaseVersion: "{{ values.database_version }}"
   tier: "{{ values.database_tier }}"
-  storageGb: {{ values.database_storage_gb }}
-  rootPassword: "{{ values.database_root_password }}"  # IMPORTANT: Rotate this password immediately after deployment
+  disk:
+    sizeGb: {{ values.database_storage_gb }}
+  rootPassword: "{{ values.database_root_password }}"
   network:
 {% if values.networkingEnabled | bool %}
-    vpcId:
+    ipv4Enabled: false
+    privateNetwork:
       valueFrom:
         kind: GcpVpc
         name: "{{ values.vpc_name }}"
-        fieldPath: status.outputs.network_self_link
-    privateIpEnabled: true
-{% endif %}
-{% if values.database_authorized_networks | length > 0 %}
+        fieldPath: status.outputs.network_id
+    enablePrivatePathForGoogleCloudServices: true
+{% elif values.database_authorized_networks | length > 0 %}
     ipv4Enabled: true
     authorizedNetworks:
 {% for cidr in values.database_authorized_networks %}
-      - "{{ cidr }}"
+      - value: "{{ cidr }}"
 {% endfor %}
-{% elif not values.networkingEnabled | bool %}
+{% else %}
     ipv4Enabled: true
     authorizedNetworks:
-      - 0.0.0.0/0
+      - value: 0.0.0.0/0
+{% endif %}
+{% if values.database_app_database_name %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlDatabase
+metadata:
+  name: "{{ values.database_app_database_name }}"
+  relationships:
+    - kind: GcpCloudSql
+      name: "{{ values.database_instance_name }}"
+      type: runs_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  instance:
+    valueFrom:
+      kind: GcpCloudSql
+      name: "{{ values.database_instance_name }}"
+      fieldPath: status.outputs.instance_name
+  databaseName: "{{ values.database_app_database_name }}"
+{% endif %}
+{% if values.database_app_user_name %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSqlUser
+metadata:
+  name: "{{ values.database_app_user_name }}"
+  relationships:
+    - kind: GcpCloudSql
+      name: "{{ values.database_instance_name }}"
+      type: runs_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  instance:
+    valueFrom:
+      kind: GcpCloudSql
+      name: "{{ values.database_instance_name }}"
+      fieldPath: status.outputs.instance_name
+  userName: "{{ values.database_app_user_name }}"
+  password: "{{ values.database_app_user_password }}"
+  type: BUILT_IN
 {% endif %}
 {% endif %}
