@@ -241,6 +241,24 @@ func TestAwsEksAccessEntry_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awseksaccessentry", "terraform")
 }
 
+// --- AWS ECS Task Definition (revision registration only; no task launches; execution-role prerequisite) ---
+
+func TestAwsEcsTaskDefinition_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecstaskdefinition", "pulumi")
+}
+func TestAwsEcsTaskDefinition_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecstaskdefinition", "terraform")
+}
+
+// --- AWS ECS Service (desiredCount 0 on the cluster + task-definition + subnet prerequisite chain) ---
+
+func TestAwsEcsService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecsservice", "pulumi")
+}
+func TestAwsEcsService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecsservice", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
