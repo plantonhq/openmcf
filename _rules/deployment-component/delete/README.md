@@ -99,7 +99,6 @@ apis/dev/planton/provider/<provider>/<component>/v1/
     │   ├── Pulumi.yaml          ❌ Deleted
     │   ├── Makefile             ❌ Deleted
     │   ├── README.md            ❌ Deleted
-    │   ├── debug.sh             ❌ Deleted
     │   └── module/
     │       ├── main.go          ❌ Deleted
     │       ├── locals.go        ❌ Deleted

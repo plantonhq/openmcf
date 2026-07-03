@@ -31,6 +31,7 @@ type Verifier interface {
 var verifiers = map[string]Verifier{
 	"azureresourcegroup":        &resourceGroupVerifier{},
 	"azureroleassignment":       &roleAssignmentVerifier{},
+	"azureroledefinition":       &roleDefinitionVerifier{},
 	"azureuserassignedidentity": &userAssignedIdentityVerifier{},
 }
 

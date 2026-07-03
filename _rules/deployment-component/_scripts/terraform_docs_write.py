@@ -6,7 +6,7 @@ Usage:
   python3 _rules/deployment-component/_scripts/terraform_docs_write.py --provider aws --kindfolder awscloudfront \
     --readme-file /tmp/README.md
 
-Outputs JSON similar to pulumi_docs_write.py (without debug.sh).
+Outputs JSON similar to pulumi_docs_write.py.
 """
 
 import argparse

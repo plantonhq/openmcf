@@ -169,6 +169,7 @@ go_library(
         "//apis/dev/planton/provider/azure/azurerediscache/v1:azurerediscache",
         "//apis/dev/planton/provider/azure/azureresourcegroup/v1:azureresourcegroup",
         "//apis/dev/planton/provider/azure/azureroleassignment/v1:azureroleassignment",
+        "//apis/dev/planton/provider/azure/azureroledefinition/v1:azureroledefinition",
         "//apis/dev/planton/provider/azure/azureservicebusnamespace/v1:azureservicebusnamespace",
         "//apis/dev/planton/provider/azure/azureserviceplan/v1:azureserviceplan",
         "//apis/dev/planton/provider/azure/azurestorageaccount/v1:azurestorageaccount",

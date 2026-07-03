@@ -37,6 +37,7 @@ The following AZURE resources can be deployed using Planton:
 - [Redis Cache](/docs/catalog/azure/redis-cache)
 - [Resource Group](/docs/catalog/azure/resource-group)
 - [Role Assignment](/docs/catalog/azure/role-assignment)
+- [Role Definition](/docs/catalog/azure/role-definition)
 - [Service Bus Namespace](/docs/catalog/azure/service-bus-namespace)
 - [Service Plan](/docs/catalog/azure/service-plan)
 - [Storage Account](/docs/catalog/azure/storage-account)

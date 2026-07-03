@@ -754,6 +754,27 @@ func TestStackOutputsConformance(t *testing.T) {
 				"role_definition_id", "principal_id", "principal_type",
 			},
 		},
+		{
+			// AzureRoleDefinition: scalar outputs plus a repeated string
+			// (assignable_scopes) from both engines must land on the
+			// StackOutputs proto -- role_definition_id carries the fully-scoped
+			// ARM id (what an AzureRoleAssignment binds and what the E2E
+			// verifier keys on), not the bare GUID (that is
+			// role_definition_guid).
+			name: "AzureRoleDefinition",
+			kind: cloudresourcekind.CloudResourceKind_AzureRoleDefinition,
+			rawOutputs: map[string]interface{}{
+				"role_definition_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+				"role_definition_guid": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+				"role_name":            "acme-vm-operator",
+				"scope":                "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg",
+				"assignable_scopes":    []interface{}{"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg"},
+			},
+			mustPopulate: []string{
+				"role_definition_id", "role_definition_guid", "role_name",
+				"scope", "assignable_scopes",
+			},
+		},
 	}
 
 	for _, tc := range cases {

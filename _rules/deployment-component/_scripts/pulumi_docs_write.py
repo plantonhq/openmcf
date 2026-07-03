@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
-Deterministic tool: Write Pulumi docs (README.md, debug.sh) under iac/pulumi/ for a provider/kind.
+Deterministic tool: Write Pulumi docs (README.md) under iac/pulumi/ for a provider/kind.
 
 Usage:
   python3 _rules/deployment-component/_scripts/pulumi_docs_write.py --provider aws --kindfolder awscloudfront \
-    --readme-file /tmp/README.md --debug-file /tmp/debug.sh
+    --readme-file /tmp/README.md
 
 Outputs JSON:
   - base_path, base_relative_path
-  - wrote_readme/debug: bool
+  - wrote_readme: bool
   - readme_path/relative_path/bytes/sha256
-  - debug_path/relative_path/bytes/sha256 (file will be chmod +x)
   - created_dirs: list
   - error: optional string
 """
@@ -19,7 +18,6 @@ import argparse
 import hashlib
 import json
 import os
-import stat
 import sys
 from typing import List, Tuple
 
@@ -63,7 +61,6 @@ def main() -> int:
     parser.add_argument("--provider", required=True)
     parser.add_argument("--kindfolder", required=True)
     parser.add_argument("--readme-file", required=True)
-    parser.add_argument("--debug-file", required=True)
     args = parser.parse_args()
 
     try:
@@ -75,7 +72,6 @@ def main() -> int:
 
     try:
         readme_content = read_file(args.readme_file)
-        debug_content = read_file(args.debug_file)
     except Exception as exc:
         print(json.dumps({"error": f"failed to read content files: {exc}"}))
         return 3
@@ -88,7 +84,6 @@ def main() -> int:
         "base_relative_path": base_rel,
         "created_dirs": [],
         "wrote_readme": False,
-        "wrote_debug": False,
     }
 
     try:
@@ -103,18 +98,6 @@ def main() -> int:
             "readme_bytes": len(readme_content.encode("utf-8")),
             "readme_sha256": hashlib.sha256(readme_content.encode("utf-8")).hexdigest(),
             "wrote_readme": True,
-        })
-
-        debug_abs = os.path.join(base_abs, "debug.sh")
-        with open(debug_abs, "w", encoding="utf-8", newline="\n") as f:
-            f.write(debug_content)
-        os.chmod(debug_abs, os.stat(debug_abs).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        result.update({
-            "debug_path": debug_abs,
-            "debug_relative_path": os.path.join(base_rel, "debug.sh"),
-            "debug_bytes": len(debug_content.encode("utf-8")),
-            "debug_sha256": hashlib.sha256(debug_content.encode("utf-8")).hexdigest(),
-            "wrote_debug": True,
         })
 
         print(json.dumps(result))

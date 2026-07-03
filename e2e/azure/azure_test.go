@@ -86,6 +86,15 @@ func TestAzureRoleAssignment_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureroleassignment", "terraform")
 }
 
+// --- Azure Role Definition (composed: custom role scoped at the fixture RG) ---
+
+func TestAzureRoleDefinition_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureroledefinition", "pulumi")
+}
+func TestAzureRoleDefinition_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureroledefinition", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

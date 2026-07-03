@@ -237,7 +237,11 @@ const (
 	// an assignment grants a role at a referenced scope (most commonly a resource
 	// group) to a referenced principal (most commonly a managed identity) -- both
 	// must exist before the grant can be written.
-	CloudResourceKind_AzureRoleAssignment      CloudResourceKind = 461
+	CloudResourceKind_AzureRoleAssignment CloudResourceKind = 461
+	// AzureResourceGroup is a prerequisite because a custom role definition is
+	// created at a referenced scope, most commonly a resource group in composed
+	// environments -- the scope must exist before the definition can be written.
+	CloudResourceKind_AzureRoleDefinition      CloudResourceKind = 462
 	CloudResourceKind_AzureServiceBusNamespace CloudResourceKind = 470
 	CloudResourceKind_AzureEventHubNamespace   CloudResourceKind = 471
 	CloudResourceKind_AzureFrontDoorProfile    CloudResourceKind = 480
@@ -673,6 +677,7 @@ var (
 		451:  "AzureApplicationInsights",
 		460:  "AzureUserAssignedIdentity",
 		461:  "AzureRoleAssignment",
+		462:  "AzureRoleDefinition",
 		470:  "AzureServiceBusNamespace",
 		471:  "AzureEventHubNamespace",
 		480:  "AzureFrontDoorProfile",
@@ -1092,6 +1097,7 @@ var (
 		"AzureApplicationInsights":                451,
 		"AzureUserAssignedIdentity":               460,
 		"AzureRoleAssignment":                     461,
+		"AzureRoleDefinition":                     462,
 		"AzureServiceBusNamespace":                470,
 		"AzureEventHubNamespace":                  471,
 		"AzureFrontDoorProfile":                   480,
@@ -1647,7 +1653,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x85\x94\x01\n" +
+	"\x02v1\x10\x01*\xb3\x94\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1779,7 +1785,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x18AzureApplicationInsights\x10\xc3\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azai\x122\n" +
 	"\x19AzureUserAssignedIdentity\x10\xcc\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azid:\x02\x90\x03\x12.\n" +
-	"\x13AzureRoleAssignment\x10\xcd\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azra:\x04\x90\x03\xcc\x03\x12-\n" +
+	"\x13AzureRoleAssignment\x10\xcd\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azra:\x04\x90\x03\xcc\x03\x12,\n" +
+	"\x13AzureRoleDefinition\x10\xce\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azrd:\x02\x90\x03\x12-\n" +
 	"\x18AzureServiceBusNamespace\x10\xd6\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azsb\x12+\n" +
 	"\x16AzureEventHubNamespace\x10\xd7\x03\x1a\x0e\xa2\xf7\x04\n" +

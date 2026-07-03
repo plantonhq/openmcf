@@ -779,6 +779,15 @@ enum CloudResourceKind {
       AzureUserAssignedIdentity
     ]
   }];
+  // AzureResourceGroup is a prerequisite because a custom role definition is
+  // created at a referenced scope, most commonly a resource group in composed
+  // environments -- the scope must exist before the definition can be written.
+  AzureRoleDefinition = 462 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azrd"
+    prerequisites: [AzureResourceGroup]
+  }];
   AzureServiceBusNamespace = 470 [(kind_meta) = {
     provider: azure
     version: v1
