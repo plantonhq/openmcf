@@ -1,0 +1,57 @@
+# Composed GcpBackendService scenario. The health check is a value_from
+# reference to the GcpHealthCheck prerequisite (declared via prerequisites in
+# the kind registry); the E2E harness deploys the probe first and resolves
+# the reference before the backend service is applied. project_id is omitted
+# and rides the harness-exported GOOGLE_PROJECT.
+#
+# The scenario deliberately carries NO backends[] entry: a backend service
+# with a health check and no backends is a valid, common creation order, and
+# no instance-group/NEG kind exists in the catalog yet to compose against —
+# the backends path is proven offline (hack manifest through both engines)
+# and gains live coverage when the serverless NEG kind lands. CDN, cache-key
+# policy, session affinity, and sampled logging are exercised live here.
+apiVersion: gcp.planton.dev/v1
+kind: GcpBackendService
+metadata:
+  name: planton-oss-e2e-gcpbs-smoke
+  id: planton-oss-e2e-gcpbs-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbackendservice
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral backend service created by the Planton E2E harness; safe to delete
+  protocol: HTTP
+  loadBalancingScheme: EXTERNAL
+  healthCheck:
+    valueFrom:
+      kind: GcpHealthCheck
+      name: planton-oss-e2e-gcphc-prereq
+      fieldPath: status.outputs.self_link
+  sessionAffinity: GENERATED_COOKIE
+  affinityCookieTtlSec: 300
+  enableCdn: true
+  cdnPolicy:
+    cacheMode: CACHE_ALL_STATIC
+    defaultTtl: 300
+    negativeCaching: true
+    negativeCachingPolicy:
+      - code: 404
+        ttl: 30
+    cacheKeyPolicy:
+      includeHost: true
+      includeProtocol: true
+      includeQueryString: true
+      queryStringWhitelist:
+        - v
+  compressionMode: AUTOMATIC
+  logConfig:
+    enable: true
+    sampleRate: 0.5
+  customResponseHeaders:
+    - "X-Cache-Status: {cdn_cache_status}"

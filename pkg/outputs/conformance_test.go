@@ -225,6 +225,23 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpBackendService: flat scalar outputs from both engines (the
+			// self-link URL maps reference, the cloud-side name, the numeric id,
+			// and the concurrency fingerprint) must each land on the
+			// StackOutputs proto.
+			name: "GcpBackendService",
+			kind: cloudresourcekind.CloudResourceKind_GcpBackendService,
+			rawOutputs: map[string]interface{}{
+				"self_link":            "https://www.googleapis.com/compute/v1/projects/my-project/global/backendServices/web-backend",
+				"backend_service_name": "web-backend",
+				"generated_id":         "1234567890123456789",
+				"fingerprint":          "BwYn2FQlJeM=",
+			},
+			mustPopulate: []string{
+				"self_link", "backend_service_name", "generated_id", "fingerprint",
+			},
+		},
+		{
 			// GcpSubnetwork: scalar outputs plus the per-index secondary-range
 			// exports both engines emit must land on the StackOutputs proto,
 			// including the repeated secondary_ranges message.

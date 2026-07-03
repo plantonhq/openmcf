@@ -225,6 +225,7 @@ const (
 	CloudResourceKind_GcpCloudArmorPolicy           CloudResourceKind = 622
 	CloudResourceKind_GcpHealthCheck                CloudResourceKind = 623
 	CloudResourceKind_GcpBackendBucket              CloudResourceKind = 624
+	CloudResourceKind_GcpBackendService             CloudResourceKind = 625
 	CloudResourceKind_GcpAlloydbCluster             CloudResourceKind = 630
 	CloudResourceKind_GcpRedisInstance              CloudResourceKind = 631
 	CloudResourceKind_GcpFirestoreDatabase          CloudResourceKind = 632
@@ -659,6 +660,7 @@ var (
 		622:  "GcpCloudArmorPolicy",
 		623:  "GcpHealthCheck",
 		624:  "GcpBackendBucket",
+		625:  "GcpBackendService",
 		630:  "GcpAlloydbCluster",
 		631:  "GcpRedisInstance",
 		632:  "GcpFirestoreDatabase",
@@ -1076,6 +1078,7 @@ var (
 		"GcpCloudArmorPolicy":                     622,
 		"GcpHealthCheck":                          623,
 		"GcpBackendBucket":                        624,
+		"GcpBackendService":                       625,
 		"GcpAlloydbCluster":                       630,
 		"GcpRedisInstance":                        631,
 		"GcpFirestoreDatabase":                    632,
@@ -1608,7 +1611,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xbc\x93\x01\n" +
+	"\x02v1\x10\x01*\xe9\x93\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1767,7 +1770,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x10GcpGlobalAddress\x10\xed\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpgip\x12*\n" +
 	"\x13GcpCloudArmorPolicy\x10\xee\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcap\x12$\n" +
 	"\x0eGcpHealthCheck\x10\xef\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcphc\x12*\n" +
-	"\x10GcpBackendBucket\x10\xf0\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gcpbb:\x02\xde\x04\x12(\n" +
+	"\x10GcpBackendBucket\x10\xf0\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gcpbb:\x02\xde\x04\x12+\n" +
+	"\x11GcpBackendService\x10\xf1\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gcpbs:\x02\xef\x04\x12(\n" +
 	"\x11GcpAlloydbCluster\x10\xf6\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpadb\x12'\n" +
 	"\x10GcpRedisInstance\x10\xf7\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpred\x12+\n" +
 	"\x14GcpFirestoreDatabase\x10\xf8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpfst\x12)\n" +

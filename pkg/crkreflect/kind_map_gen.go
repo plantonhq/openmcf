@@ -214,6 +214,7 @@ import (
 	gcpalloydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbcluster/v1"
 	gcpartifactregistryrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1"
 	gcpbackendbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendbucket/v1"
+	gcpbackendservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1"
 	gcpbigquerydatasetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerydataset/v1"
 	gcpbigtableinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtableinstance/v1"
 	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
@@ -673,6 +674,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpAlloydbCluster:               &gcpalloydbclusterv1.GcpAlloydbCluster{},
 	cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo:         &gcpartifactregistryrepov1.GcpArtifactRegistryRepo{},
 	cloudresourcekind.CloudResourceKind_GcpBackendBucket:                &gcpbackendbucketv1.GcpBackendBucket{},
+	cloudresourcekind.CloudResourceKind_GcpBackendService:               &gcpbackendservicev1.GcpBackendService{},
 	cloudresourcekind.CloudResourceKind_GcpBigQueryDataset:              &gcpbigquerydatasetv1.GcpBigQueryDataset{},
 	cloudresourcekind.CloudResourceKind_GcpBigtableInstance:             &gcpbigtableinstancev1.GcpBigtableInstance{},
 	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:              &gcpcertmanagercertv1.GcpCertManagerCert{},

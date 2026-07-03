@@ -133,6 +133,15 @@ func TestGcpBackendBucket_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpbackendbucket", "terraform")
 }
 
+// --- GCP Backend Service (composed LB hub: deploys a GcpHealthCheck prerequisite) ---
+
+func TestGcpBackendService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbackendservice", "pulumi")
+}
+func TestGcpBackendService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbackendservice", "terraform")
+}
+
 // --- GCP Subnetwork (composed address plan: deploys a GcpVpc prerequisite) ---
 
 func TestGcpSubnetwork_Pulumi(t *testing.T) {

@@ -230,6 +230,7 @@ go_library(
         "//apis/dev/planton/provider/gcp/gcpalloydbcluster/v1:gcpalloydbcluster",
         "//apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1:gcpartifactregistryrepo",
         "//apis/dev/planton/provider/gcp/gcpbackendbucket/v1:gcpbackendbucket",
+        "//apis/dev/planton/provider/gcp/gcpbackendservice/v1:gcpbackendservice",
         "//apis/dev/planton/provider/gcp/gcpbigquerydataset/v1:gcpbigquerydataset",
         "//apis/dev/planton/provider/gcp/gcpbigtableinstance/v1:gcpbigtableinstance",
         "//apis/dev/planton/provider/gcp/gcpcertmanagercert/v1:gcpcertmanagercert",

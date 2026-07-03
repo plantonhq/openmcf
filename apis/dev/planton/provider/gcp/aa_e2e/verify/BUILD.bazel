@@ -4,6 +4,7 @@ go_library(
     name = "verify",
     srcs = [
         "backend_bucket.go",
+        "backend_service.go",
         "gcs_bucket.go",
         "health_check.go",
         "iam_custom_role.go",

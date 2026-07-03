@@ -836,6 +836,12 @@ enum CloudResourceKind {
     id_prefix: "gcpbb"
     prerequisites: [GcpGcsBucket]
   }];
+  GcpBackendService = 625 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpbs"
+    prerequisites: [GcpHealthCheck]
+  }];
   GcpAlloydbCluster = 630 [(kind_meta) = {
     provider: gcp
     version: v1

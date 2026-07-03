@@ -1,0 +1,41 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpBackendService
+metadata:
+  name: my-cdn-cached-api
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  description: Read-heavy API cached at Google's edge with Cloud CDN
+  protocol: HTTP
+  loadBalancingScheme: EXTERNAL
+  portName: http
+  healthCheck:
+    valueFrom:
+      kind: GcpHealthCheck
+      name: api-hc  # replace with your GcpHealthCheck resource name
+      fieldPath: status.outputs.self_link
+  backends:
+    - group:
+        value: https://www.googleapis.com/compute/v1/projects/my-project/zones/us-central1-a/instanceGroups/api-ig  # replace with your instance group
+      balancingMode: RATE
+      maxRatePerInstance: 200
+  enableCdn: true
+  cdnPolicy:
+    # The origin's Cache-Control headers decide what is cacheable — the
+    # right mode for an API where only some routes are cache-safe.
+    cacheMode: USE_ORIGIN_HEADERS
+    # Keep serving briefly while revalidating if the origin blips.
+    serveWhileStale: 300
+    # Collapse concurrent cache-miss fetches of one object.
+    requestCoalescing: true
+    cacheKeyPolicy:
+      includeHost: true
+      includeProtocol: true
+      includeQueryString: true
+      # Strip tracking parameters that never change the response.
+      queryStringBlacklist:
+        - utm_source
+        - utm_campaign
+  compressionMode: AUTOMATIC
+  customResponseHeaders:
+    - "X-Cache-Status: {cdn_cache_status}"  # cache observability for debugging
