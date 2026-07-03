@@ -637,7 +637,8 @@ func (x *GcpAlloydbClusterPrimaryInstance) GetSslMode() string {
 //
 // Networking uses VPC peering via Private Service Access. The cluster's
 // network field references a VPC that must have Private Service Access
-// configured (typically done via GcpVpc's private_services_access setting).
+// configured (compose GcpGlobalAddress with VPC_PEERING purpose +
+// GcpServiceNetworkingConnection on the target VPC).
 //
 // Important behavioral notes:
 //

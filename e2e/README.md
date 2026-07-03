@@ -73,9 +73,13 @@ reverse order afterward, resolved by `ResolveDependencies`
 Each kind declares its prerequisites in the proto registry
 (`CloudResourceKindMeta.prerequisites` in `cloud_resource_kind.proto`). The
 harness resolves them transitively and installs each one using, in order of
-preference, the dependency's `v1/e2e/prerequisite.yaml` (its published install
-profile) or its `v1/e2e/scenarios/minimal.yaml`. Declaring `prerequisites: [X]`
-is all that is needed -- no per-component wiring.
+preference, a consumer-scoped override at the consuming component's
+`v1/e2e/prerequisites/<dep>.yaml` (for when the same prerequisite kind needs a
+different install shape per consumer — e.g. GcpGlobalAddress as an EXTERNAL
+VIP for a forwarding rule vs an INTERNAL VPC_PEERING range for a service
+networking connection), then the dependency's `v1/e2e/prerequisite.yaml` (its
+published install profile), then its `v1/e2e/scenarios/minimal.yaml`. Declaring
+`prerequisites: [X]` is all that is needed -- no per-component wiring.
 *Example:* every Gateway API kind declares `KubernetesGatewayApiCrds`, so the
 harness installs the Gateway API CRDs (experimental channel, version-pinned)
 before applying a GatewayClass / Gateway / route / ReferenceGrant. The Tier 3

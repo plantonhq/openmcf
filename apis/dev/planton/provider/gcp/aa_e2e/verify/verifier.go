@@ -66,6 +66,8 @@ var verifiers = map[string]Verifier{
 	"gcpglobaladdress":                &globalAddressVerifier{},
 	"gcpsslpolicy":                    &sslPolicyVerifier{},
 	"gcpsslcertificate":               &sslCertificateVerifier{},
+	"gcpservicenetworkingconnection":  &serviceNetworkingConnectionVerifier{},
+	"gcpaddress":                      &addressVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

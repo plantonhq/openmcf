@@ -34,7 +34,7 @@ message GcpGlobalAddressSpec {
   option (buf.validate.message).cel = {
     id: "internal_requires_network"
     message: "network is required when address_type is INTERNAL"
-    expression: "this.address_type != 'INTERNAL' || this.network.value != ''"
+    expression: "this.address_type != 'INTERNAL' || (has(this.network) && (has(this.network.value) || has(this.network.value_from)))"
   };
 
   // The GCP project in which to create this global address reservation.

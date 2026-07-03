@@ -1,0 +1,29 @@
+# Consumer-scoped GcpGlobalAddress install profile for the service networking
+# connection chain. The address kind's published prerequisite.yaml reserves an
+# EXTERNAL VIP for the forwarding-rule chain; this INTERNAL VPC_PEERING range
+# is the shape a private-services-access connection needs.
+apiVersion: gcp.planton.dev/v1
+kind: GcpGlobalAddress
+metadata:
+  name: planton-oss-e2e-gcpgip-psa-prereq
+  id: planton-oss-e2e-gcpgip-psa-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpglobaladdress
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral VPC_PEERING range for the service networking connection E2E chain; safe to delete
+  addressName: planton-oss-e2e-gcpgip-psa-prereq
+  addressType: INTERNAL
+  purpose: VPC_PEERING
+  prefixLength: 16
+  network:
+    valueFrom:
+      kind: GcpVpc
+      name: planton-oss-e2e-gcpvpc-prereq
+      fieldPath: status.outputs.network_self_link

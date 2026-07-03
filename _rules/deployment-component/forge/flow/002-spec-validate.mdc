@@ -52,6 +52,21 @@ Quick checklist for every `message:` string:
 
 Reject and rewrite any message that is terse, generic, or exposes implementation details.
 
+CEL ON `StringValueOrRef` FIELDS (REFERENCE-SAFE PRESENCE CHECKS)
+
+A `StringValueOrRef` field can arrive as a literal (`value`) OR a reference
+(`value_from`). A CEL presence check written as `this.field.value != ''` silently
+REJECTS valid manifests that use `valueFrom` — the reference branch has no `value`,
+so the expression is false even though the field is set. This shipped as a real
+defect (GcpGlobalAddress `internal_requires_network` rejected VPC-ref manifests
+until session 011 fixed it).
+
+- Correct presence check: `has(this.field) && (has(this.field.value) || has(this.field.value_from))`
+- Worked examples: `gcpcloudsql/v1/spec.proto` (`private_ip_requires_vpc`),
+  `gcpaddress/v1/spec.proto` (`peering_purpose_requires_network`).
+- `this.field.value != ''` is only safe when the rule really is about the LITERAL
+  branch specifically (rare; document why in a comment if so).
+
 SUCCESS
 - Build succeeds with validations (`build_succeeded: true`).
 - No schema changes.

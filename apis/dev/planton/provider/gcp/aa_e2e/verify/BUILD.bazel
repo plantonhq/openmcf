@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "verify",
     srcs = [
+        "address.go",
         "backend_bucket.go",
         "backend_service.go",
         "gcs_bucket.go",
@@ -14,6 +15,7 @@ go_library(
         "project_iam_member.go",
         "region_network_endpoint_group.go",
         "service_account.go",
+        "service_networking_connection.go",
         "ssl_certificate.go",
         "ssl_policy.go",
         "subnetwork.go",

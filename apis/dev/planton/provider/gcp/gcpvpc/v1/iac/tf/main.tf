@@ -6,6 +6,7 @@ resource "google_project_service" "compute_api" {
   project                    = local.project_id
   service                    = "compute.googleapis.com"
   disable_dependent_services = true
+  disable_on_destroy         = false
 }
 
 #############################################
@@ -18,34 +19,22 @@ resource "google_compute_network" "vpc" {
   auto_create_subnetworks = var.spec.auto_create_subnetworks
   routing_mode            = local.routing_mode
 
-  # Ensure Compute API is enabled before creating VPC
+  description = var.spec.description != "" ? var.spec.description : null
+
+  mtu = var.spec.mtu != null ? var.spec.mtu : null
+
+  enable_ula_internal_ipv6 = var.spec.enable_ula_internal_ipv6 ? true : null
+  internal_ipv6_range      = var.spec.internal_ipv6_range != "" ? var.spec.internal_ipv6_range : null
+
+  network_firewall_policy_enforcement_order = var.spec.network_firewall_policy_enforcement_order != "" ? var.spec.network_firewall_policy_enforcement_order : null
+
+  network_profile = var.spec.network_profile != "" ? var.spec.network_profile : null
+
+  delete_default_routes_on_create = var.spec.delete_default_routes_on_create ? true : null
+
+  bgp_best_path_selection_mode = var.spec.bgp_best_path_selection.mode != "" ? var.spec.bgp_best_path_selection.mode : null
+  bgp_always_compare_med       = var.spec.bgp_best_path_selection.always_compare_med ? true : null
+  bgp_inter_region_cost        = var.spec.bgp_best_path_selection.inter_region_cost != "" ? var.spec.bgp_best_path_selection.inter_region_cost : null
+
   depends_on = [google_project_service.compute_api]
 }
-
-#############################################
-# Private Services Access (Optional)
-# Enables private IP connectivity to Google
-# managed services (Cloud SQL, Memorystore, etc.)
-# PREREQUISITE: servicenetworking.googleapis.com
-# must be enabled on the project via GcpProject.
-#############################################
-
-# Allocate IP range for private services
-resource "google_compute_global_address" "private_services_range" {
-  count         = local.enable_private_services ? 1 : 0
-  name          = "${var.spec.network_name}-private-svc"
-  project       = local.project_id
-  purpose       = "VPC_PEERING"
-  address_type  = "INTERNAL"
-  prefix_length = local.private_services_prefix_length
-  network       = google_compute_network.vpc.id
-}
-
-# Create private service connection (VPC peering with Google's service network)
-resource "google_service_networking_connection" "private_services" {
-  count                   = local.enable_private_services ? 1 : 0
-  network                 = google_compute_network.vpc.id
-  service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_services_range[0].name]
-}
-

@@ -26,20 +26,18 @@ type GcpVpcStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Full self-link URL of the created network (useful for connecting subnets or other resources to this VPC).
 	NetworkSelfLink string `protobuf:"bytes,1,opt,name=network_self_link,json=networkSelfLink,proto3" json:"network_self_link,omitempty"`
-	// Name of the allocated IP range for private services (only set if private_services_access is enabled).
-	// This range is used by Google managed services (Cloud SQL, Memorystore, etc.) for private IP assignment.
-	PrivateServicesIpRangeName string `protobuf:"bytes,2,opt,name=private_services_ip_range_name,json=privateServicesIpRangeName,proto3" json:"private_services_ip_range_name,omitempty"`
-	// CIDR of the allocated IP range for private services (only set if private_services_access is enabled).
-	// Example: "10.100.0.0/16"
-	PrivateServicesIpRangeCidr string `protobuf:"bytes,3,opt,name=private_services_ip_range_cidr,json=privateServicesIpRangeCidr,proto3" json:"private_services_ip_range_cidr,omitempty"`
 	// Name of the VPC network (e.g., "my-vpc-network").
 	// Referenced by GcpCloudRun.spec.vpc_access.network FK.
-	NetworkName string `protobuf:"bytes,4,opt,name=network_name,json=networkName,proto3" json:"network_name,omitempty"`
+	NetworkName string `protobuf:"bytes,2,opt,name=network_name,json=networkName,proto3" json:"network_name,omitempty"`
 	// GCP self-link of the VPC network (e.g., "projects/PROJECT/global/networks/NAME").
 	// Used by GcpCloudSql.spec.network.vpc_id to configure Private Services Access.
-	NetworkId     string `protobuf:"bytes,5,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NetworkId string `protobuf:"bytes,3,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	// IPv4 address of the default internet gateway for this network (if present).
+	GatewayIpv4 string `protobuf:"bytes,4,opt,name=gateway_ipv4,json=gatewayIpv4,proto3" json:"gateway_ipv4,omitempty"`
+	// ULA internal IPv6 range assigned to this network when ULA IPv6 is enabled.
+	InternalIpv6Range string `protobuf:"bytes,5,opt,name=internal_ipv6_range,json=internalIpv6Range,proto3" json:"internal_ipv6_range,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GcpVpcStackOutputs) Reset() {
@@ -79,20 +77,6 @@ func (x *GcpVpcStackOutputs) GetNetworkSelfLink() string {
 	return ""
 }
 
-func (x *GcpVpcStackOutputs) GetPrivateServicesIpRangeName() string {
-	if x != nil {
-		return x.PrivateServicesIpRangeName
-	}
-	return ""
-}
-
-func (x *GcpVpcStackOutputs) GetPrivateServicesIpRangeCidr() string {
-	if x != nil {
-		return x.PrivateServicesIpRangeCidr
-	}
-	return ""
-}
-
 func (x *GcpVpcStackOutputs) GetNetworkName() string {
 	if x != nil {
 		return x.NetworkName
@@ -107,18 +91,32 @@ func (x *GcpVpcStackOutputs) GetNetworkId() string {
 	return ""
 }
 
+func (x *GcpVpcStackOutputs) GetGatewayIpv4() string {
+	if x != nil {
+		return x.GatewayIpv4
+	}
+	return ""
+}
+
+func (x *GcpVpcStackOutputs) GetInternalIpv6Range() string {
+	if x != nil {
+		return x.InternalIpv6Range
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpvpc_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpvpc_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"6dev/planton/provider/gcp/gcpvpc/v1/stack_outputs.proto\x12\"dev.planton.provider.gcp.gcpvpc.v1\"\x8a\x02\n" +
+	"6dev/planton/provider/gcp/gcpvpc/v1/stack_outputs.proto\x12\"dev.planton.provider.gcp.gcpvpc.v1\"\xd5\x01\n" +
 	"\x12GcpVpcStackOutputs\x12*\n" +
-	"\x11network_self_link\x18\x01 \x01(\tR\x0fnetworkSelfLink\x12B\n" +
-	"\x1eprivate_services_ip_range_name\x18\x02 \x01(\tR\x1aprivateServicesIpRangeName\x12B\n" +
-	"\x1eprivate_services_ip_range_cidr\x18\x03 \x01(\tR\x1aprivateServicesIpRangeCidr\x12!\n" +
-	"\fnetwork_name\x18\x04 \x01(\tR\vnetworkName\x12\x1d\n" +
+	"\x11network_self_link\x18\x01 \x01(\tR\x0fnetworkSelfLink\x12!\n" +
+	"\fnetwork_name\x18\x02 \x01(\tR\vnetworkName\x12\x1d\n" +
 	"\n" +
-	"network_id\x18\x05 \x01(\tR\tnetworkIdB\xb9\x02\n" +
+	"network_id\x18\x03 \x01(\tR\tnetworkId\x12!\n" +
+	"\fgateway_ipv4\x18\x04 \x01(\tR\vgatewayIpv4\x12.\n" +
+	"\x13internal_ipv6_range\x18\x05 \x01(\tR\x11internalIpv6RangeB\xb9\x02\n" +
 	"&com.dev.planton.provider.gcp.gcpvpc.v1B\x11StackOutputsProtoP\x01ZMgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvpc/v1;gcpvpcv1\xa2\x02\x05DPPGG\xaa\x02\"Dev.Planton.Provider.Gcp.Gcpvpc.V1\xca\x02\"Dev\\Planton\\Provider\\Gcp\\Gcpvpc\\V1\xe2\x02.Dev\\Planton\\Provider\\Gcp\\Gcpvpc\\V1\\GPBMetadata\xea\x02'Dev::Planton::Provider::Gcp::Gcpvpc::V1b\x06proto3"
 
 var (

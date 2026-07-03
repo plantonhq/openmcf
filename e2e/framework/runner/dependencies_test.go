@@ -25,6 +25,35 @@ const (
 	gwCrdsMinimalRel = "apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/e2e/scenarios/minimal.yaml"
 )
 
+func TestResolveDependencies_ConsumerScopedPrerequisiteWins(t *testing.T) {
+	repoRoot := t.TempDir()
+	consumerPrereq := writeManifest(t, repoRoot,
+		"apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1/e2e/prerequisites/gcpglobaladdress.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpglobaladdress/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpvpc/v1/e2e/prerequisite.yaml")
+
+	deps, err := ResolveDependencies(repoRoot, "gcp", "gcpservicenetworkingconnection")
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+	if len(deps) != 2 {
+		t.Fatalf("expected 2 dependencies, got %d: %+v", len(deps), deps)
+	}
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"gcpvpc", "gcpglobaladdress"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dependency order = %v, want %v", got, want)
+		}
+	}
+	if deps[1].ManifestPath != consumerPrereq {
+		t.Errorf("gcpglobaladdress manifest = %q, want consumer override %q", deps[1].ManifestPath, consumerPrereq)
+	}
+}
+
 func TestResolveDependencies_RegistryPrerequisite(t *testing.T) {
 	repoRoot := t.TempDir()
 	want := writeManifest(t, repoRoot, gwCrdsPrereqRel)

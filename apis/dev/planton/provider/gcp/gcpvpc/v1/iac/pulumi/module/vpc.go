@@ -1,29 +1,28 @@
 package module
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	gcpvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvpc/v1"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/compute"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
-	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/servicenetworking"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// vpc creates the VPC Network and enables the Compute API when necessary.
-// It closely mirrors a Terraform-style module: enable provider‑level services first,
-// then declare the core resource, and finally export stack outputs.
+// vpc enables the Compute API and creates the VPC network.
+//
+// Optional spec fields follow the omit-when-empty convention shared with the
+// Terraform module: an unset field is left off the request entirely so the
+// GCP API applies its own default (mtu 1460, AFTER_CLASSIC_FIREWALL, ...),
+// rather than sending a zero value the API might reject or diff against.
 func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compute.Network, error) {
-	// 1. Enable the Compute Engine API for the target project.
-	// Honor the spec contract: an empty project_id falls back to the provider's
-	// default project. Leaving Project unset lets the gcp provider resolve its
-	// own project (configuration or the GOOGLE_PROJECT / GOOGLE_CLOUD_PROJECT
-	// environment chain); an empty string would be sent verbatim and rejected.
+	// The Compute API must be enabled before a network can be created in a
+	// fresh project. disable_on_destroy=false leaves the API on at teardown
+	// so other resources in the project keep working.
 	serviceArgs := &projects.ServiceArgs{
 		Service:                  pulumi.String("compute.googleapis.com"),
 		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
 	}
 	if locals.GcpVpc.Spec.ProjectId.GetValue() != "" {
 		serviceArgs.Project = pulumi.String(locals.GcpVpc.Spec.ProjectId.GetValue())
@@ -34,22 +33,53 @@ func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compu
 		return nil, errors.Wrap(err, "failed to enable compute api")
 	}
 
-	// 2. Build the args for the network resource.
+	spec := locals.GcpVpc.Spec
 	networkArgs := &compute.NetworkArgs{
-		AutoCreateSubnetworks: pulumi.BoolPtr(locals.GcpVpc.Spec.AutoCreateSubnetworks),
-		Name:                  pulumi.String(locals.GcpVpc.Spec.NetworkName),
+		AutoCreateSubnetworks: pulumi.BoolPtr(spec.AutoCreateSubnetworks),
+		Name:                  pulumi.String(spec.NetworkName),
 	}
-	if locals.GcpVpc.Spec.ProjectId.GetValue() != "" {
-		networkArgs.Project = pulumi.String(locals.GcpVpc.Spec.ProjectId.GetValue())
+	if spec.ProjectId.GetValue() != "" {
+		networkArgs.Project = pulumi.String(spec.ProjectId.GetValue())
 	}
 
-	// Map the routing mode enum to the expected GCP value if explicitly set.
-	if locals.GcpVpc.Spec.GetRoutingMode() != gcpvpcv1.GcpVpcRoutingMode_REGIONAL {
-		// GLOBAL is the only alternative at present.
+	if spec.GetRoutingMode() != gcpvpcv1.GcpVpcRoutingMode_REGIONAL {
 		networkArgs.RoutingMode = pulumi.StringPtr("GLOBAL")
 	}
 
-	// 3. Create the VPC network.
+	if spec.Description != "" {
+		networkArgs.Description = pulumi.StringPtr(spec.Description)
+	}
+	if spec.Mtu != nil {
+		networkArgs.Mtu = pulumi.IntPtr(int(*spec.Mtu))
+	}
+	if spec.EnableUlaInternalIpv6 {
+		networkArgs.EnableUlaInternalIpv6 = pulumi.BoolPtr(true)
+	}
+	if spec.InternalIpv6Range != "" {
+		networkArgs.InternalIpv6Range = pulumi.StringPtr(spec.InternalIpv6Range)
+	}
+	if spec.NetworkFirewallPolicyEnforcementOrder != "" {
+		networkArgs.NetworkFirewallPolicyEnforcementOrder = pulumi.StringPtr(spec.NetworkFirewallPolicyEnforcementOrder)
+	}
+	if spec.NetworkProfile != "" {
+		networkArgs.NetworkProfile = pulumi.StringPtr(spec.NetworkProfile)
+	}
+	if spec.DeleteDefaultRoutesOnCreate {
+		networkArgs.DeleteDefaultRoutesOnCreate = pulumi.BoolPtr(true)
+	}
+	if spec.BgpBestPathSelection != nil {
+		bgp := spec.BgpBestPathSelection
+		if bgp.Mode != "" {
+			networkArgs.BgpBestPathSelectionMode = pulumi.StringPtr(bgp.Mode)
+		}
+		if bgp.AlwaysCompareMed {
+			networkArgs.BgpAlwaysCompareMed = pulumi.BoolPtr(true)
+		}
+		if bgp.InterRegionCost != "" {
+			networkArgs.BgpInterRegionCost = pulumi.StringPtr(bgp.InterRegionCost)
+		}
+	}
+
 	createdNetwork, err := compute.NewNetwork(ctx,
 		"vpc",
 		networkArgs,
@@ -59,68 +89,11 @@ func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compu
 		return nil, errors.Wrap(err, "failed to create vpc network")
 	}
 
-	// 4. Export stack outputs.
 	ctx.Export(OpNetworkSelfLink, createdNetwork.SelfLink)
 	ctx.Export(OpNetworkName, createdNetwork.Name)
 	ctx.Export(OpNetworkId, createdNetwork.ID())
-
-	// 5. Configure Private Services Access if enabled.
-	// This creates VPC peering with Google's service network for managed services (Cloud SQL, Memorystore, etc.)
-	// PREREQUISITE: servicenetworking.googleapis.com must be enabled on the project via GcpProject.
-	if locals.GcpVpc.Spec.PrivateServicesAccess != nil && locals.GcpVpc.Spec.PrivateServicesAccess.Enabled {
-		if err := privateServicesAccess(ctx, locals, gcpProvider, createdNetwork); err != nil {
-			return nil, errors.Wrap(err, "failed to configure private services access")
-		}
-	}
+	ctx.Export(OpGatewayIpv4, createdNetwork.GatewayIpv4)
+	ctx.Export(OpInternalIpv6Range, createdNetwork.InternalIpv6Range)
 
 	return createdNetwork, nil
-}
-
-// privateServicesAccess creates the IP allocation and VPC peering with Google's service network.
-// This enables Google managed services (Cloud SQL, Memorystore, etc.) to use private IP addresses.
-func privateServicesAccess(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider, network *compute.Network) error {
-	spec := locals.GcpVpc.Spec
-	projectId := spec.ProjectId.GetValue()
-
-	// Determine prefix length (default to /16 if not specified)
-	prefixLength := 16
-	if spec.PrivateServicesAccess.IpRangePrefixLength > 0 {
-		prefixLength = int(spec.PrivateServicesAccess.IpRangePrefixLength)
-	}
-
-	// Allocate IP range for private services. An empty project rides the
-	// provider default, matching the ambient-project contract.
-	globalAddressArgs := &compute.GlobalAddressArgs{
-		Name:         pulumi.String(fmt.Sprintf("%s-private-svc", spec.NetworkName)),
-		Purpose:      pulumi.String("VPC_PEERING"),
-		AddressType:  pulumi.String("INTERNAL"),
-		PrefixLength: pulumi.Int(prefixLength),
-		Network:      network.ID(),
-	}
-	if projectId != "" {
-		globalAddressArgs.Project = pulumi.String(projectId)
-	}
-	privateIpAlloc, err := compute.NewGlobalAddress(ctx, "private-services-range",
-		globalAddressArgs, pulumi.Provider(gcpProvider))
-	if err != nil {
-		return errors.Wrap(err, "failed to allocate private services IP range")
-	}
-
-	// Create private service connection (VPC peering with Google's service network)
-	_, err = servicenetworking.NewConnection(ctx, "private-services-connection",
-		&servicenetworking.ConnectionArgs{
-			Network:               network.ID(),
-			Service:               pulumi.String("servicenetworking.googleapis.com"),
-			ReservedPeeringRanges: pulumi.StringArray{privateIpAlloc.Name},
-		}, pulumi.Provider(gcpProvider))
-	if err != nil {
-		return errors.Wrap(err, "failed to create private services connection")
-	}
-
-	// Export Private Services Access outputs
-	ctx.Export(OpPrivateServicesIpRangeName, privateIpAlloc.Name)
-	ctx.Export(OpPrivateServicesIpRangeCidr,
-		pulumi.Sprintf("%s/%d", privateIpAlloc.Address, prefixLength))
-
-	return nil
 }

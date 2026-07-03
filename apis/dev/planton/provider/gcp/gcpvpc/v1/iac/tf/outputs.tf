@@ -1,15 +1,24 @@
 output "network_self_link" {
-  description = "The full self-link URL of the created VPC network (useful for connecting subnets or other resources)"
+  description = "The full self-link URL of the created VPC network"
   value       = google_compute_network.vpc.self_link
 }
 
-output "private_services_ip_range_name" {
-  description = "Name of the allocated IP range for private services (only set if private_services_access is enabled)"
-  value       = local.enable_private_services ? google_compute_global_address.private_services_range[0].name : ""
+output "network_name" {
+  description = "Name of the VPC network"
+  value       = google_compute_network.vpc.name
 }
 
-output "private_services_ip_range_cidr" {
-  description = "CIDR of the allocated IP range for private services (only set if private_services_access is enabled)"
-  value       = local.enable_private_services ? "${google_compute_global_address.private_services_range[0].address}/${local.private_services_prefix_length}" : ""
+output "network_id" {
+  description = "Self-link identifier of the VPC network"
+  value       = google_compute_network.vpc.id
 }
 
+output "gateway_ipv4" {
+  description = "IPv4 address of the default internet gateway for this network"
+  value       = google_compute_network.vpc.gateway_ipv4
+}
+
+output "internal_ipv6_range" {
+  description = "ULA internal IPv6 range assigned when ULA IPv6 is enabled"
+  value       = google_compute_network.vpc.internal_ipv6_range
+}

@@ -1,0 +1,3 @@
+# GcpVpc E2E profile — leaf scenarios for the deep-rebuilt VPC kind.
+component: gcpvpc
+provider: gcp

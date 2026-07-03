@@ -12,15 +12,9 @@ This preset creates a VPC in custom subnet mode with global dynamic routing. Glo
 
 - **Custom mode** (`autoCreateSubnetworks: false`) -- subnets managed explicitly via `GcpSubnetwork`
 - **Global routing** (`routingMode: GLOBAL`) -- routes learned by any Cloud Router are propagated to all regions
-- **No Private Services Access** -- add it separately if needed for managed service private IPs
 
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID where the VPC will be created | GCP Console or `GcpProject` outputs |
-| `<your-vpc-name>` | Name for this VPC network (1-63 chars, lowercase) | Choose a descriptive name (e.g., `global-vpc`) |
+For managed-service private IP (Cloud SQL, AlloyDB, Memorystore), compose a `GcpGlobalAddress` VPC_PEERING range with a `GcpServiceNetworkingConnection` on this network.
 
 ## Related Presets
 
-- **01-custom-mode-regional** -- Use for single-region deployments with Private Services Access
+- **01-custom-mode-regional** -- Use for single-region deployments

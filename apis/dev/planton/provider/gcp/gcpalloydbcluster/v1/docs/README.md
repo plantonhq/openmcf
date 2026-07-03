@@ -88,7 +88,7 @@ AlloyDB uses Private Service Access for connectivity:
 
 **Prerequisites:**
 
-- The VPC must have Private Service Access configured (typically via `private_services_access` on a GcpVpc component)
+- The VPC must have Private Service Access configured (compose a `GcpGlobalAddress` VPC_PEERING range with a `GcpServiceNetworkingConnection` on the VPC)
 - The allocated IP range must not overlap with existing subnets
 
 ### 3.2 Why PSC Is Deferred
@@ -320,14 +320,14 @@ This prevents accidental deletion of production data.
 ### Pattern 1: VPC + Cluster (Minimal)
 
 ```
-GcpVpc (with private_services_access)
+GcpVpc + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 └── GcpAlloydbCluster (references network via valueFrom)
 ```
 
 ### Pattern 2: VPC + KMS + Cluster (Enterprise)
 
 ```
-GcpVpc (with private_services_access)
+GcpVpc + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 ├── GcpKmsKeyRing
 │   └── GcpKmsKey (cluster key)
 │   └── GcpKmsKey (backup key)
@@ -338,7 +338,7 @@ GcpVpc (with private_services_access)
 ### Pattern 3: Multi-Cluster (Multi-Tenant)
 
 ```
-GcpVpc (with private_services_access)
+GcpVpc + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 ├── GcpAlloydbCluster "tenant-a"
 ├── GcpAlloydbCluster "tenant-b"
 └── GcpAlloydbCluster "tenant-c"

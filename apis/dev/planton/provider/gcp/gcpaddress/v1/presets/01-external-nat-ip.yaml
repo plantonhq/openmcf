@@ -1,0 +1,13 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpAddress
+metadata:
+  name: my-external-nat-ip
+spec:
+  projectId:
+    value: my-gcp-project-123
+  addressName: nat-external-ip
+  region: us-central1
+  addressType: EXTERNAL  # default; reserves a public IPv4 address
+  ipVersion: IPV4  # default
+  networkTier: PREMIUM  # default when set; omit to let GCP default
+  description: Static external IP for Cloud NAT

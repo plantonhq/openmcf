@@ -17,6 +17,7 @@ func globalAddress(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 	serviceArgs := &projects.ServiceArgs{
 		Service:                  pulumi.String("compute.googleapis.com"),
 		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
 	}
 	if spec.ProjectId.GetValue() != "" {
 		serviceArgs.Project = pulumi.String(spec.ProjectId.GetValue())
@@ -78,6 +79,7 @@ func globalAddress(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 	ctx.Export(OpAddress, createdAddress.Address)
 	ctx.Export(OpSelfLink, createdAddress.SelfLink)
 	ctx.Export(OpCreationTimestamp, createdAddress.CreationTimestamp)
+	ctx.Export(OpName, createdAddress.Name)
 
 	return nil
 }

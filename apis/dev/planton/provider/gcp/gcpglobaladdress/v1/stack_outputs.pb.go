@@ -33,8 +33,12 @@ type GcpGlobalAddressStackOutputs struct {
 	SelfLink string `protobuf:"bytes,2,opt,name=self_link,json=selfLink,proto3" json:"self_link,omitempty"`
 	// Creation timestamp in RFC3339 format.
 	CreationTimestamp string `protobuf:"bytes,3,opt,name=creation_timestamp,json=creationTimestamp,proto3" json:"creation_timestamp,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Name of the global address resource in GCP (e.g. "vpc-peering-range").
+	// Referenced by GcpServiceNetworkingConnection.spec.reserved_peering_ranges
+	// when composing private services access.
+	Name          string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpGlobalAddressStackOutputs) Reset() {
@@ -88,15 +92,23 @@ func (x *GcpGlobalAddressStackOutputs) GetCreationTimestamp() string {
 	return ""
 }
 
+func (x *GcpGlobalAddressStackOutputs) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpglobaladdress_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpglobaladdress_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/gcp/gcpglobaladdress/v1/stack_outputs.proto\x12,dev.planton.provider.gcp.gcpglobaladdress.v1\"\x84\x01\n" +
+	"@dev/planton/provider/gcp/gcpglobaladdress/v1/stack_outputs.proto\x12,dev.planton.provider.gcp.gcpglobaladdress.v1\"\x98\x01\n" +
 	"\x1cGcpGlobalAddressStackOutputs\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x1b\n" +
 	"\tself_link\x18\x02 \x01(\tR\bselfLink\x12-\n" +
-	"\x12creation_timestamp\x18\x03 \x01(\tR\x11creationTimestampB\xff\x02\n" +
+	"\x12creation_timestamp\x18\x03 \x01(\tR\x11creationTimestamp\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04nameB\xff\x02\n" +
 	"0com.dev.planton.provider.gcp.gcpglobaladdress.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpglobaladdress/v1;gcpglobaladdressv1\xa2\x02\x05DPPGG\xaa\x02,Dev.Planton.Provider.Gcp.Gcpglobaladdress.V1\xca\x02,Dev\\Planton\\Provider\\Gcp\\Gcpglobaladdress\\V1\xe2\x028Dev\\Planton\\Provider\\Gcp\\Gcpglobaladdress\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Gcp::Gcpglobaladdress::V1b\x06proto3"
 
 var (

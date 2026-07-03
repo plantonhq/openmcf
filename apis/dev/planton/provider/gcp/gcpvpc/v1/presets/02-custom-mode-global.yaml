@@ -4,7 +4,7 @@ metadata:
   name: my-global-vpc
 spec:
   projectId:
-    value: "<gcp-project-id>"
-  networkName: <your-vpc-name>
+    value: my-gcp-project-123
+  networkName: my-global-vpc
   autoCreateSubnetworks: false  # custom mode
   routingMode: GLOBAL  # Cloud Routers advertise routes across all regions

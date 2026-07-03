@@ -52,9 +52,17 @@ spec:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `project_id` | StringValueOrRef | Yes | - | GCP project ID where the VPC will be created. Can reference a `GcpProject` resource |
+| `project_id` | StringValueOrRef | No | provider default | GCP project ID where the VPC will be created. Can reference a `GcpProject` resource |
 | `auto_create_subnetworks` | bool | No | `false` | Whether to automatically create subnets in all regions (not recommended for production) |
 | `routing_mode` | GcpVpcRoutingMode | No | `REGIONAL` | Dynamic routing mode for Cloud Routers. Use `GLOBAL` for multi-region routing |
+| `description` | string | No | - | Human-readable description of the network (immutable) |
+| `mtu` | int32 | No | `1460` | Maximum Transmission Unit in bytes (1300–8896, jumbo frames supported) |
+| `enable_ula_internal_ipv6` | bool | No | `false` | Assign a /48 ULA internal IPv6 range from fd20::/20 |
+| `internal_ipv6_range` | string | No | auto | Explicit /48 from fd20::/20 when ULA IPv6 is enabled (immutable) |
+| `network_firewall_policy_enforcement_order` | string | No | `AFTER_CLASSIC_FIREWALL` | Firewall policy vs classic rule evaluation order |
+| `network_profile` | string | No | - | Full or partial network profile URL, applied at creation (immutable) |
+| `bgp_best_path_selection` | object | No | - | BGP best-path selection block: `mode` (LEGACY/STANDARD), `always_compare_med`, `inter_region_cost` |
+| `delete_default_routes_on_create` | bool | No | `false` | Suppress the automatic 0.0.0.0/0 routes at creation (immutable) |
 
 ### GcpVpcRoutingMode Enum
 
@@ -121,7 +129,11 @@ After successful deployment, the following outputs are available:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `network_self_link` | string | Full self-link URL of the VPC network (format: `projects/<project>/global/networks/<name>`) |
+| `network_self_link` | string | Full self-link URL of the VPC network |
+| `network_name` | string | Name of the VPC network |
+| `network_id` | string | Self-link identifier of the network (format: `projects/<project>/global/networks/<name>`) |
+| `gateway_ipv4` | string | IPv4 address of the network's default internet gateway |
+| `internal_ipv6_range` | string | ULA internal IPv6 range when ULA IPv6 is enabled |
 
 These outputs can be referenced by other resources (e.g., `GcpSubnetwork`, `GcpGkeCluster`) to establish proper dependencies.
 
@@ -218,16 +230,12 @@ This separation provides better modularity and reusability.
 
 ### Advanced Configuration Not Exposed
 
-The following GCP VPC features are not exposed in the base API (can be added via advanced configuration if needed):
-- MTU settings (defaults to 1460 bytes)
-- IPv6 and ULA internal ranges
-- Custom BGP advertisement configuration
-- Network firewall policy enforcement
+The following GCP surfaces are deliberately not exposed (recorded skips):
+- `params.resource_manager_tags` (catalog-wide skip)
+- `numeric_id` (provider-deprecated output)
+- `deletion_policy` (catalog-wide skip)
 
-If you need these features, you can:
-1. Extend the protobuf spec with additional fields
-2. Use Terraform/Pulumi directly for that specific VPC
-3. Layer advanced configuration on top of the base VPC
+Private services access is composed from `GcpGlobalAddress` (VPC_PEERING range) + `GcpServiceNetworkingConnection` rather than bundled into this kind.
 
 ## Troubleshooting
 

@@ -53,7 +53,9 @@ Layer 2 (dep all):   GcpCloudRun
 
 | Resource | Kind | Group | Condition | Purpose |
 |----------|------|-------|-----------|---------|
-| VPC Network | `GcpVpc` | network | Always | Private networking with Private Services Access |
+| VPC Network | `GcpVpc` | network | Always | Private networking foundation |
+| PSA Range | `GcpGlobalAddress` | network | Always | Reserved VPC_PEERING range for managed services |
+| PSA Connection | `GcpServiceNetworkingConnection` | network | Always | Peering with Google's service producer network |
 | Subnetwork | `GcpSubnetwork` | network | Always | Subnet with Private Google Access |
 | Router NAT | `GcpRouterNat` | network | Always | Outbound internet for Cloud Run |
 | Service Account | `GcpServiceAccount` | identity | Always | Cloud Run service identity |
@@ -129,7 +131,7 @@ messagingEnabled: false
 ## Networking
 
 The VPC is configured with:
-- **Private Services Access (PSA)**: Enables private IP connectivity to Cloud SQL and Redis (no public IPs)
+- **Private Services Access (PSA), composed explicitly**: a `GcpGlobalAddress` VPC_PEERING range plus a `GcpServiceNetworkingConnection` enable private IP connectivity to Cloud SQL (no public IPs)
 - **Private Google Access**: Cloud Run can access Google APIs without egress through the public internet
 - **Cloud NAT**: Provides outbound internet for Cloud Run when calling external services
 

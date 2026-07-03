@@ -12,3 +12,8 @@ output "creation_timestamp" {
   description = "RFC3339 creation timestamp"
   value       = google_compute_global_address.this.creation_timestamp
 }
+
+output "name" {
+  description = "Name of the global address resource in GCP"
+  value       = google_compute_global_address.this.name
+}

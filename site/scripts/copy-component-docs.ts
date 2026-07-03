@@ -217,6 +217,8 @@ function generateTitle(component: string, provider: string): string {
     'securitygroup': 'Security Group',
     'sslpolicy': 'SSL Policy',
     'sslcertificate': 'SSL Certificate',
+    'servicenetworkingconnection': 'Service Networking Connection',
+    'globaladdress': 'Global Address',
     'loadbalancer': 'Load Balancer',
     'appplatformservice': 'App Platform Service',
     'databasecluster': 'Database Cluster',

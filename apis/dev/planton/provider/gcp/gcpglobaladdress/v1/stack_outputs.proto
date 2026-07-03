@@ -15,4 +15,9 @@ message GcpGlobalAddressStackOutputs {
 
   // Creation timestamp in RFC3339 format.
   string creation_timestamp = 3;
+
+  // Name of the global address resource in GCP (e.g. "vpc-peering-range").
+  // Referenced by GcpServiceNetworkingConnection.spec.reserved_peering_ranges
+  // when composing private services access.
+  string name = 4;
 }

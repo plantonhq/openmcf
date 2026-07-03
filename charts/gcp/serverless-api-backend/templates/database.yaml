@@ -9,6 +9,9 @@ metadata:
     - kind: GcpSubnetwork
       name: "{{ values.vpc_name }}-subnet"
       type: runs_on
+    - kind: GcpServiceNetworkingConnection
+      name: "{{ values.vpc_name }}-psa"
+      type: depends_on
 spec:
   projectId:
     value: "{{ values.gcp_project_id }}"

@@ -1,0 +1,19 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceNetworkingConnection
+metadata:
+  name: my-sample-psa-connection
+spec:
+  # GCP project used to enable the required APIs.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # The VPC network to peer with the service producer — a name or full
+  # self-link (a GcpVpc reference resolves to the self-link).
+  network:
+    value: projects/my-gcp-project-123/global/networks/my-vpc
+
+  # Names of INTERNAL VPC_PEERING global address ranges reserved for the
+  # producer. At least one is required; append more to grow capacity.
+  reservedPeeringRanges:
+    - value: my-vpc-psa-range

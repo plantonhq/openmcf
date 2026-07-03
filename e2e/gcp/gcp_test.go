@@ -223,6 +223,33 @@ func TestGcpSslCertificate_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpsslcertificate", "terraform")
 }
 
+// --- GCP Service Networking Connection (private services access peering) ---
+
+func TestGcpServiceNetworkingConnection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpservicenetworkingconnection", "pulumi")
+}
+func TestGcpServiceNetworkingConnection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpservicenetworkingconnection", "terraform")
+}
+
+// --- GCP Address (regional static IP reservation) ---
+
+func TestGcpAddress_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpaddress", "pulumi")
+}
+func TestGcpAddress_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpaddress", "terraform")
+}
+
+// --- GCP VPC (deep-rebuilt network; leaf scenario) ---
+
+func TestGcpVpc_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvpc", "pulumi")
+}
+func TestGcpVpc_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvpc", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

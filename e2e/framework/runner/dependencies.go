@@ -48,8 +48,12 @@ type DependencyState struct {
 // dependency is removed last.
 //
 // The install manifest for each prerequisite is, in order of preference:
-//   - <dep>/v1/e2e/prerequisite.yaml      (the dependency's published install profile)
-//   - <dep>/v1/e2e/scenarios/minimal.yaml (fallback to its minimal scenario)
+//   - <consumer>/v1/e2e/prerequisites/<dep>.yaml (consumer-scoped override — when
+//     the same prerequisite kind needs a different install shape for different
+//     consumers, e.g. GcpGlobalAddress as an EXTERNAL VIP for a forwarding rule
+//     vs an INTERNAL VPC_PEERING range for a service networking connection)
+//   - <dep>/v1/e2e/prerequisite.yaml         (the dependency's published install profile)
+//   - <dep>/v1/e2e/scenarios/minimal.yaml    (fallback to its minimal scenario)
 func ResolveDependencies(repoRoot, componentProvider, component string) ([]Dependency, error) {
 	kind := crkreflect.KindFromString(component)
 	if kind == cloudresourcekind.CloudResourceKind_unspecified {
@@ -65,7 +69,7 @@ func ResolveDependencies(repoRoot, componentProvider, component string) ([]Depen
 	var deps []Dependency
 	for _, p := range prereqs {
 		slug := strings.ToLower(p.String())
-		manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, slug)
+		manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, component, slug)
 		if err != nil {
 			return nil, err
 		}
@@ -78,10 +82,17 @@ func ResolveDependencies(repoRoot, componentProvider, component string) ([]Depen
 }
 
 // prerequisiteManifestPath returns the manifest used to install a prerequisite:
-// its published prerequisite.yaml if present, else its minimal scenario. Errors if
-// neither exists, so a missing install profile fails loudly rather than silently
-// skipping a required dependency.
-func prerequisiteManifestPath(repoRoot, componentProvider, slug string) (string, error) {
+// a consumer-scoped override when present, else the dependency's published
+// prerequisite.yaml, else its minimal scenario. Errors if none exist, so a
+// missing install profile fails loudly rather than silently skipping a required
+// dependency.
+func prerequisiteManifestPath(repoRoot, componentProvider, consumer, slug string) (string, error) {
+	consumerBase := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", componentProvider, consumer, "v1", "e2e")
+	consumerPrereq := filepath.Join(consumerBase, "prerequisites", slug+".yaml")
+	if pathExists(consumerPrereq) {
+		return consumerPrereq, nil
+	}
+
 	base := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", componentProvider, slug, "v1", "e2e")
 	prereq := filepath.Join(base, "prerequisite.yaml")
 	if pathExists(prereq) {
@@ -91,7 +102,7 @@ func prerequisiteManifestPath(repoRoot, componentProvider, slug string) (string,
 	if pathExists(minimal) {
 		return minimal, nil
 	}
-	return "", errors.Errorf("no install manifest for prerequisite %q: expected %s or %s", slug, prereq, minimal)
+	return "", errors.Errorf("no install manifest for prerequisite %q (consumer %q): expected %s, %s, or %s", slug, consumer, consumerPrereq, prereq, minimal)
 }
 
 // DeployDependencies resolves and deploys all prerequisite deployments for a

@@ -41,7 +41,10 @@ message GcpRouterNatSpec {
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork_self_links = 4;
 
   // Optional static external IP addresses to use for NAT (if empty, NAT will auto-allocate IPs).
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef nat_ip_names = 5;
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef nat_ip_names = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
 
   // Log filter for NAT translation logging.
   // **Default:** ERRORS_ONLY (recommended for production to detect port exhaustion and connection failures).

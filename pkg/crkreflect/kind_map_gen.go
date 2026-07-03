@@ -211,6 +211,7 @@ import (
 	digitaloceanloadbalancerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean/digitaloceanloadbalancer/v1"
 	digitaloceanvolumev1 "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean/digitaloceanvolume/v1"
 	digitaloceanvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean/digitaloceanvpc/v1"
+	gcpaddressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpaddress/v1"
 	gcpalloydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbcluster/v1"
 	gcpartifactregistryrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1"
 	gcpbackendbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendbucket/v1"
@@ -253,6 +254,7 @@ import (
 	gcpregionnetworkendpointgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpregionnetworkendpointgroup/v1"
 	gcprouternatv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1"
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
+	gcpservicenetworkingconnectionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1"
 	gcpspannerdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerdatabase/v1"
 	gcpspannerinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerinstance/v1"
 	gcpsslcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsslcertificate/v1"
@@ -678,6 +680,7 @@ var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 }
 
 var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
+	cloudresourcekind.CloudResourceKind_GcpAddress:                      &gcpaddressv1.GcpAddress{},
 	cloudresourcekind.CloudResourceKind_GcpAlloydbCluster:               &gcpalloydbclusterv1.GcpAlloydbCluster{},
 	cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo:         &gcpartifactregistryrepov1.GcpArtifactRegistryRepo{},
 	cloudresourcekind.CloudResourceKind_GcpBackendBucket:                &gcpbackendbucketv1.GcpBackendBucket{},
@@ -720,6 +723,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpRegionNetworkEndpointGroup:   &gcpregionnetworkendpointgroupv1.GcpRegionNetworkEndpointGroup{},
 	cloudresourcekind.CloudResourceKind_GcpRouterNat:                    &gcprouternatv1.GcpRouterNat{},
 	cloudresourcekind.CloudResourceKind_GcpServiceAccount:               &gcpserviceaccountv1.GcpServiceAccount{},
+	cloudresourcekind.CloudResourceKind_GcpServiceNetworkingConnection:  &gcpservicenetworkingconnectionv1.GcpServiceNetworkingConnection{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:              &gcpspannerdatabasev1.GcpSpannerDatabase{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerInstance:              &gcpspannerinstancev1.GcpSpannerInstance{},
 	cloudresourcekind.CloudResourceKind_GcpSslCertificate:               &gcpsslcertificatev1.GcpSslCertificate{},

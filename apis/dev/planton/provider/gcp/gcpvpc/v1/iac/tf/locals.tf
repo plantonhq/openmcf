@@ -1,29 +1,23 @@
 locals {
-  # Create GCP labels from metadata and spec
-  gcp_labels = {
-    resource     = var.spec.network_name
-    resource-id  = var.metadata.id
-    resource-org = var.metadata.org != null ? var.metadata.org : ""
-    env          = var.metadata.env != null ? var.metadata.env : ""
-  }
+  # Resource-identity labels built exactly like the Pulumi module's
+  # gcplabelkeys set: the "planton-ai_" prefix stands in for "planton.ai/"
+  # because GCP label keys reject dots and slashes. google_compute_network
+  # itself accepts no labels, so nothing consumes this map today — it is kept
+  # key-for-key aligned with the Pulumi engine so any future labeled
+  # sub-resource inherits an identical identity set on both engines.
+  gcp_labels = merge(
+    {
+      "planton-ai_resource" = "true"
+      "planton-ai_name"     = var.spec.network_name
+      "planton-ai_kind"     = "gcpvpc"
+    },
+    var.metadata.org != null && var.metadata.org != "" ? { "planton-ai_organization" = var.metadata.org } : {},
+    var.metadata.env != null && var.metadata.env != "" ? { "planton-ai_environment" = var.metadata.env } : {},
+    var.metadata.id != null && var.metadata.id != "" ? { "planton-ai_id" = var.metadata.id } : {}
+  )
 
-  # Map proto enum to GCP routing mode string
-  # 0=REGIONAL, 1=GLOBAL
-  routing_mode_map = {
-    0 = "REGIONAL"
-    1 = "GLOBAL"
-  }
-  
-  # Default to REGIONAL if routing_mode not specified
-  routing_mode = var.spec.routing_mode != null ? lookup(local.routing_mode_map, var.spec.routing_mode, "REGIONAL") : "REGIONAL"
+  routing_mode = var.spec.routing_mode
 
-  # Private Services Access configuration
-  enable_private_services = try(var.spec.private_services_access.enabled, false)
-  private_services_prefix_length = try(var.spec.private_services_access.ip_range_prefix_length, 16)
-}
-
-
-locals {
   # Honor the spec contract: an empty project_id falls back to the provider's
   # default project (null lets the provider resolve it; "" would be sent
   # verbatim and rejected by the API).

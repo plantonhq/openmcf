@@ -370,6 +370,57 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpGlobalAddress: name output added for service networking composition.
+			name: "GcpGlobalAddress",
+			kind: cloudresourcekind.CloudResourceKind_GcpGlobalAddress,
+			rawOutputs: map[string]interface{}{
+				"address":            "10.100.0.0",
+				"self_link":          "https://www.googleapis.com/compute/v1/projects/my-project/global/addresses/vpc-peering-range",
+				"creation_timestamp": "2026-01-01T00:00:00Z",
+				"name":               "vpc-peering-range",
+			},
+			mustPopulate: []string{
+				"address", "self_link", "creation_timestamp", "name",
+			},
+		},
+		{
+			// GcpServiceNetworkingConnection: peering + network outputs from both engines.
+			name: "GcpServiceNetworkingConnection",
+			kind: cloudresourcekind.CloudResourceKind_GcpServiceNetworkingConnection,
+			rawOutputs: map[string]interface{}{
+				"peering": "servicenetworking-googleapis-com",
+				"network": "projects/my-project/global/networks/app-vpc",
+			},
+			mustPopulate: []string{"peering", "network"},
+		},
+		{
+			// GcpAddress: regional reservation outputs including plain spec region.
+			name: "GcpAddress",
+			kind: cloudresourcekind.CloudResourceKind_GcpAddress,
+			rawOutputs: map[string]interface{}{
+				"address":   "203.0.113.10",
+				"self_link": "https://www.googleapis.com/compute/v1/projects/my-project/regions/us-central1/addresses/nat-ip",
+				"name":      "nat-ip",
+				"region":    "us-central1",
+			},
+			mustPopulate: []string{"address", "self_link", "name", "region"},
+		},
+		{
+			// GcpVpc: deep-rebuilt outputs — PSA fields removed, gateway + ULA added.
+			name: "GcpVpc",
+			kind: cloudresourcekind.CloudResourceKind_GcpVpc,
+			rawOutputs: map[string]interface{}{
+				"network_self_link":   "https://www.googleapis.com/compute/v1/projects/my-project/global/networks/app-vpc",
+				"network_name":        "app-vpc",
+				"network_id":          "projects/my-project/global/networks/app-vpc",
+				"gateway_ipv4":        "10.128.0.1",
+				"internal_ipv6_range": "fd20:1234:5678::/48",
+			},
+			mustPopulate: []string{
+				"network_self_link", "network_name", "network_id",
+			},
+		},
+		{
 			// GcpSubnetwork: scalar outputs plus the per-index secondary-range
 			// exports both engines emit must land on the StackOutputs proto,
 			// including the repeated secondary_ranges message.
