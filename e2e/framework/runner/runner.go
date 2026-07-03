@@ -73,7 +73,15 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		}
 		if err != nil {
 			result.Passed = false
-			TeardownDependencies(dependencyStates)
+			// The run already failed, but a teardown failure still gets its own
+			// phase entry: it means prerequisite resources may be leaking.
+			if tdErr := TeardownDependencies(dependencyStates); tdErr != nil {
+				result.Phases = append(result.Phases, PhaseResult{
+					Phase:  PhaseDepsDn,
+					Passed: false,
+					Error:  tdErr,
+				})
+			}
 			result.Duration = time.Since(start)
 			return result
 		}
@@ -99,7 +107,13 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 					Passed:   false,
 					Error:    errors.Wrap(resolveErr, "failed to resolve manifest references from dependency outputs"),
 				})
-				TeardownDependencies(dependencyStates)
+				if tdErr := TeardownDependencies(dependencyStates); tdErr != nil {
+					result.Phases = append(result.Phases, PhaseResult{
+						Phase:  PhaseDepsDn,
+						Passed: false,
+						Error:  tdErr,
+					})
+				}
 				result.Duration = time.Since(start)
 				return result
 			}
@@ -144,15 +158,22 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		}
 	}
 
-	// Phase 7: teardown dependencies in reverse order
+	// Phase 7: teardown dependencies in reverse order. A teardown failure
+	// FAILS the run even when every lifecycle phase passed: it means
+	// prerequisite cloud resources may still exist, and a green result would
+	// hide that leak until someone audits the account.
 	if len(dependencyStates) > 0 {
 		depStart := time.Now()
-		TeardownDependencies(dependencyStates)
+		tdErr := TeardownDependencies(dependencyStates)
 		result.Phases = append(result.Phases, PhaseResult{
 			Phase:    PhaseDepsDn,
 			Duration: time.Since(depStart),
-			Passed:   true,
+			Passed:   tdErr == nil,
+			Error:    tdErr,
 		})
+		if tdErr != nil {
+			result.Passed = false
+		}
 	}
 
 	// Clean up Terraform working directory if one was created

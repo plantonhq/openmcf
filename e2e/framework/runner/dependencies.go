@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -234,20 +235,37 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	return state, nil
 }
 
-// TeardownDependencies destroys deployed dependencies in reverse order.
-func TeardownDependencies(deployed []DependencyState) {
+// pulumiDestroyFn / pulumiRemoveStackFn are seams over the Pulumi CLI wrappers
+// so teardown aggregation can be unit-tested without a live Pulumi backend.
+// Production code never overrides them.
+var (
+	pulumiDestroyFn     = PulumiDestroy
+	pulumiRemoveStackFn = PulumiRemoveStack
+)
+
+// TeardownDependencies destroys deployed dependencies in reverse order and
+// returns the aggregated failures. Teardown is best-effort in the sense that
+// one dependency's failure never stops the remaining teardowns (stopping early
+// would leak everything deployed before it) -- but every failure is collected
+// and returned so the caller FAILS the run. A destroy that cannot run (for
+// example because the ephemeral backend state disappeared before teardown)
+// means real cloud resources may still exist; reporting success would leave
+// them leaking silently, invisible until someone audits the account.
+func TeardownDependencies(deployed []DependencyState) error {
+	var failures []error
 	for i := len(deployed) - 1; i >= 0; i-- {
 		dep := deployed[i]
 		fmt.Printf("  [deps] Destroying dependency %s...\n", dep.Dependency.KindSlug)
 
-		if _, err := PulumiDestroy(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); err != nil {
-			fmt.Printf("  [WARN] dependency %s destroy failed: %v\n", dep.Dependency.KindSlug, err)
+		if _, err := pulumiDestroyFn(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); err != nil {
+			failures = append(failures, errors.Wrapf(err, "dependency %s (stack %s) destroy failed", dep.Dependency.KindSlug, dep.StackName))
 			continue
 		}
-		if err := PulumiRemoveStack(dep.ModuleDir, dep.StackName, dep.BackendURL); err != nil {
-			fmt.Printf("  [WARN] dependency %s stack removal failed: %v\n", dep.Dependency.KindSlug, err)
+		if err := pulumiRemoveStackFn(dep.ModuleDir, dep.StackName, dep.BackendURL); err != nil {
+			failures = append(failures, errors.Wrapf(err, "dependency %s (stack %s) stack removal failed", dep.Dependency.KindSlug, dep.StackName))
 		}
 	}
+	return stderrors.Join(failures...)
 }
 
 func pathExists(path string) bool {

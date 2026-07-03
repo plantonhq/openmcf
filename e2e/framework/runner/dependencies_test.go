@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,6 +140,77 @@ func TestSplitManifestDocuments_MultiDocumentSplits(t *testing.T) {
 		if !strings.Contains(string(raw), want) {
 			t.Errorf("doc %d missing %q:\n%s", i, want, raw)
 		}
+	}
+}
+
+// TestTeardownDependencies_AggregatesFailures guards the teardown contract:
+// one dependency's destroy failure must not stop the remaining teardowns
+// (stopping early would leak everything deployed before it), yet every
+// failure must surface in the returned error so the run FAILS instead of
+// silently leaking cloud resources -- the exact failure mode when an
+// ephemeral backend's state disappears before teardown ("no stack named").
+func TestTeardownDependencies_AggregatesFailures(t *testing.T) {
+	origDestroy, origRemove := pulumiDestroyFn, pulumiRemoveStackFn
+	t.Cleanup(func() { pulumiDestroyFn, pulumiRemoveStackFn = origDestroy, origRemove })
+
+	var destroyed []string
+	pulumiDestroyFn = func(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+		destroyed = append(destroyed, stackName)
+		if stackName == "stack-b" {
+			return nil, errors.New("no stack named 'stack-b' found")
+		}
+		return &PulumiResult{}, nil
+	}
+	var removed []string
+	pulumiRemoveStackFn = func(moduleDir, stackName, backendURL string) error {
+		removed = append(removed, stackName)
+		return nil
+	}
+
+	deployed := []DependencyState{
+		{Dependency: Dependency{KindSlug: "awsvpc"}, StackName: "stack-a"},
+		{Dependency: Dependency{KindSlug: "awssubnet"}, StackName: "stack-b"},
+		{Dependency: Dependency{KindSlug: "awsiamrole"}, StackName: "stack-c"},
+	}
+
+	err := TeardownDependencies(deployed)
+	if err == nil {
+		t.Fatal("expected an aggregated error when a destroy fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "stack-b") || !strings.Contains(err.Error(), "awssubnet") {
+		t.Errorf("aggregated error should identify the failed dependency and stack, got: %v", err)
+	}
+	// Reverse order, and the failure in the middle must not stop stack-a.
+	wantDestroyed := []string{"stack-c", "stack-b", "stack-a"}
+	if len(destroyed) != len(wantDestroyed) {
+		t.Fatalf("destroyed = %v, want %v", destroyed, wantDestroyed)
+	}
+	for i := range wantDestroyed {
+		if destroyed[i] != wantDestroyed[i] {
+			t.Fatalf("destroy order = %v, want %v", destroyed, wantDestroyed)
+		}
+	}
+	// Stack removal runs only for the successful destroys.
+	if len(removed) != 2 || removed[0] != "stack-c" || removed[1] != "stack-a" {
+		t.Errorf("removed = %v, want [stack-c stack-a]", removed)
+	}
+}
+
+// A fully clean teardown returns nil so healthy runs keep passing.
+func TestTeardownDependencies_AllCleanReturnsNil(t *testing.T) {
+	origDestroy, origRemove := pulumiDestroyFn, pulumiRemoveStackFn
+	t.Cleanup(func() { pulumiDestroyFn, pulumiRemoveStackFn = origDestroy, origRemove })
+
+	pulumiDestroyFn = func(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+		return &PulumiResult{}, nil
+	}
+	pulumiRemoveStackFn = func(moduleDir, stackName, backendURL string) error { return nil }
+
+	deployed := []DependencyState{
+		{Dependency: Dependency{KindSlug: "awsvpc"}, StackName: "stack-a"},
+	}
+	if err := TeardownDependencies(deployed); err != nil {
+		t.Fatalf("expected nil for a clean teardown, got %v", err)
 	}
 }
 
