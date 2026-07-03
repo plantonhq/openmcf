@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsvpcendpoint.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/aws/awsvpcendpoint/v1/spec.proto";
+import "dev/planton/provider/aws/awsvpcendpoint/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AwsVpcEndpoint represents a VPC endpoint: a private connection from a
+// VPC to an AWS service, a PrivateLink service, or a VPC Lattice
+// resource, keeping traffic on the AWS network instead of the internet.
+message AwsVpcEndpoint {
+  // api-version must be set to "aws.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1"];
+
+  // resource-kind for this VPC endpoint resource.
+  string kind = 2 [(buf.validate.field).string.const = "AwsVpcEndpoint"];
+
+  // metadata captures identifying information (name, org, version, etc.)
+  // and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the core configuration data defining how the endpoint is provisioned.
+  AwsVpcEndpointSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds runtime or post-deployment information.
+  AwsVpcEndpointStatus status = 5;
+}
+
+// AwsVpcEndpointStatus describes the status fields for a VPC endpoint resource.
+message AwsVpcEndpointStatus {
+  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  AwsVpcEndpointStackOutputs outputs = 1;
+}

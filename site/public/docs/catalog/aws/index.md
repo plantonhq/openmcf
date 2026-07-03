@@ -89,4 +89,5 @@ The following AWS resources can be deployed using Planton:
 - [Subnet](/docs/catalog/aws/subnet)
 - [Transit Gateway](/docs/catalog/aws/transit-gateway)
 - [VPC](/docs/catalog/aws/vpc)
+- [VPC Endpoint](/docs/catalog/aws/vpc-endpoint)
 - [WAF Web ACL](/docs/catalog/aws/waf-web-acl)

@@ -192,6 +192,50 @@ spec:
 {% endif %}
           fieldPath: status.outputs.nat_gateway_id
 {% endif %}
+{% if values.s3EndpointEnabled | bool %}
+# S3 gateway endpoint: free, route-based private S3 access. Traffic to
+# S3 from the private subnets bypasses the NAT gateway (no per-GB data
+# processing) and never crosses the internet -- and with nat_mode
+# "none" this is the ONLY S3 path the private subnets have. Private
+# subnets own their route tables only when NAT gives them a default
+# route; without NAT they ride the VPC main table, so the endpoint
+# attaches there instead.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsVpcEndpoint
+metadata:
+  name: "{{ values.service_name }}-s3-gateway"
+  group: network
+  relationships:
+    - kind: AwsVpc
+      name: "{{ values.service_name }}-vpc"
+      type: uses
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.service_name }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  endpointType: Gateway
+  serviceName: "com.amazonaws.{{ values.aws_region }}.s3"
+  routeTableIds:
+{% if values.nat_mode != "none" %}
+    - valueFrom:
+        kind: AwsSubnet
+        name: "{{ values.service_name }}-private-1"
+        fieldPath: status.outputs.route_table_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: "{{ values.service_name }}-private-2"
+        fieldPath: status.outputs.route_table_id
+{% else %}
+    - valueFrom:
+        kind: AwsVpc
+        name: "{{ values.service_name }}-vpc"
+        fieldPath: status.outputs.main_route_table_id
+{% endif %}
+{% endif %}
 ---
 apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup

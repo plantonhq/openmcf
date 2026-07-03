@@ -400,6 +400,28 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"access_entry_arn", "principal_arn"},
 		},
 		{
+			// AwsVpcEndpoint: the endpoint id keys the E2E verifier; prefix_list_id
+			// is the gateway-endpoint route/security-group handle; dns_name +
+			// hosted_zone_id compose Route53 aliases to interface endpoints; and
+			// network_interface_ids guards list outputs flattening onto a repeated
+			// string field.
+			name: "AwsVpcEndpoint",
+			kind: cloudresourcekind.CloudResourceKind_AwsVpcEndpoint,
+			rawOutputs: map[string]interface{}{
+				"vpc_endpoint_id":       "vpce-0123456789abcdef0",
+				"arn":                   "arn:aws:ec2:us-west-2:123456789012:vpc-endpoint/vpce-0123456789abcdef0",
+				"state":                 "available",
+				"prefix_list_id":        "pl-68a54001",
+				"dns_name":              "vpce-0123456789abcdef0-abcd1234.sts.us-west-2.vpce.amazonaws.com",
+				"hosted_zone_id":        "Z1K56Z6FNPJRR",
+				"network_interface_ids": []interface{}{"eni-0123456789abcdef0", "eni-0f9e8d7c6b5a43210"},
+			},
+			mustPopulate: []string{
+				"vpc_endpoint_id", "arn", "state", "prefix_list_id",
+				"dns_name", "hosted_zone_id", "network_interface_ids",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

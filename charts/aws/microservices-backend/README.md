@@ -56,6 +56,7 @@ Layer 4 (dep Zone):  AwsCertManagerCert
 | Resource | Kind | Group | Condition | Purpose |
 |----------|------|-------|-----------|---------|
 | VPC | `AwsVpc` | network | Always | Isolated network with public/private subnets and NAT |
+| S3 Gateway Endpoint | `AwsVpcEndpoint` | network | `s3EndpointEnabled` | Free private S3 path -- bypasses NAT data charges; the only S3 path when `nat_mode` is `none` |
 | Security Group | `AwsSecurityGroup` | network | Always | HTTP/HTTPS ingress, all egress |
 | Route 53 Zone | `AwsRoute53Zone` | network | `dnsEnabled` | DNS hosted zone |
 | ACM Certificate | `AwsCertManagerCert` | security | `httpsEnabled` | DNS-validated TLS certificate |
@@ -79,6 +80,7 @@ Layer 4 (dep Zone):  AwsCertManagerCert
 | `domain_name` | Route 53 zone domain | `example.com` | Yes |
 | `load_balancer_domain_name` | DNS name for the ALB | `app.example.com` | Yes |
 | `dnsEnabled` | Create Route53 zone and ALB DNS | `true` | No |
+| `s3EndpointEnabled` | Create the free S3 gateway endpoint | `true` | No |
 | `httpsEnabled` | Create ACM cert and terminate TLS | `true` | No |
 | `alb_idle_timeout_seconds` | ALB idle timeout | `60` | No |
 | **Compute** | | | |

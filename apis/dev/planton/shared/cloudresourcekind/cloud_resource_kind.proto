@@ -400,6 +400,19 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awssfn"
   }];
+  // AwsVpcEndpoint's composed E2E scenarios reference the AwsVpc
+  // prerequisite's outputs (vpc_id + default_route_table_id for gateway
+  // endpoints) and the AwsSubnet pair's subnet_id outputs (interface
+  // endpoints), so both are genuine deploy-order prerequisites.
+  AwsVpcEndpoint = 242 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "vpce"
+    prerequisites: [
+      AwsVpc,
+      AwsSubnet
+    ]
+  }];
   AwsRedisElasticache = 250 [(kind_meta) = {
     provider: aws
     version: v1

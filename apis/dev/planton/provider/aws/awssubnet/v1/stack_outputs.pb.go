@@ -34,9 +34,11 @@ type AwsSubnetStackOutputs struct {
 	AvailabilityZone string `protobuf:"bytes,3,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
 	// The subnet's IPv4 CIDR block.
 	CidrBlock string `protobuf:"bytes,4,opt,name=cidr_block,json=cidrBlock,proto3" json:"cidr_block,omitempty"`
-	// The id of the route table associated with this subnet: the inline table
-	// created from routes, the externally referenced route_table_id, or the VPC's
-	// main route table when neither is set.
+	// The id of the route table this subnet owns or references: the inline table
+	// created from routes, or the externally referenced route_table_id. EMPTY when
+	// neither is set -- the subnet then rides the VPC main route table, which is
+	// deliberately not echoed here (attaching to it is an explicit choice); use
+	// the AwsVpc's main_route_table_id / default_route_table_id outputs instead.
 	RouteTableId string `protobuf:"bytes,5,opt,name=route_table_id,json=routeTableId,proto3" json:"route_table_id,omitempty"`
 	// The AWS region the subnet was created in. Echoed so downstream tooling and
 	// verifiers can target the correct region.

@@ -164,9 +164,14 @@ const (
 	// AwsIamRole is a prerequisite because the kind's default posture --
 	// Fargate with the awslogs logging default -- is rejected by AWS at
 	// registration time without an execution role the agent can assume.
-	CloudResourceKind_AwsEcsTaskDefinition     CloudResourceKind = 239
-	CloudResourceKind_AwsHttpApiGateway        CloudResourceKind = 240
-	CloudResourceKind_AwsStepFunction          CloudResourceKind = 241
+	CloudResourceKind_AwsEcsTaskDefinition CloudResourceKind = 239
+	CloudResourceKind_AwsHttpApiGateway    CloudResourceKind = 240
+	CloudResourceKind_AwsStepFunction      CloudResourceKind = 241
+	// AwsVpcEndpoint's composed E2E scenarios reference the AwsVpc
+	// prerequisite's outputs (vpc_id + default_route_table_id for gateway
+	// endpoints) and the AwsSubnet pair's subnet_id outputs (interface
+	// endpoints), so both are genuine deploy-order prerequisites.
+	CloudResourceKind_AwsVpcEndpoint           CloudResourceKind = 242
 	CloudResourceKind_AwsRedisElasticache      CloudResourceKind = 250
 	CloudResourceKind_AwsOpenSearchDomain      CloudResourceKind = 251
 	CloudResourceKind_AwsMemcachedElasticache  CloudResourceKind = 252
@@ -620,6 +625,7 @@ var (
 		239:  "AwsEcsTaskDefinition",
 		240:  "AwsHttpApiGateway",
 		241:  "AwsStepFunction",
+		242:  "AwsVpcEndpoint",
 		250:  "AwsRedisElasticache",
 		251:  "AwsOpenSearchDomain",
 		252:  "AwsMemcachedElasticache",
@@ -1042,6 +1048,7 @@ var (
 		"AwsEcsTaskDefinition":                    239,
 		"AwsHttpApiGateway":                       240,
 		"AwsStepFunction":                         241,
+		"AwsVpcEndpoint":                          242,
 		"AwsRedisElasticache":                     250,
 		"AwsOpenSearchDomain":                     251,
 		"AwsMemcachedElasticache":                 252,
@@ -1667,7 +1674,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x96\x95\x01\n" +
+	"\x02v1\x10\x01*\xc1\x95\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1722,7 +1729,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x11AwsEksAccessEntry\x10\xee\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05eksae:\x04\xcf\x01\xd0\x01\x12.\n" +
 	"\x14AwsEcsTaskDefinition\x10\xef\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05ecstd:\x02\xd0\x01\x12.\n" +
 	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12&\n" +
-	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12,\n" +
+	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12)\n" +
+	"\x0eAwsVpcEndpoint\x10\xf2\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x04vpce:\x04\xd8\x01\x9c\x02\x12,\n" +
 	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsredis\x12)\n" +
 	"\x13AwsOpenSearchDomain\x10\xfb\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsos\x124\n" +
 	"\x17AwsMemcachedElasticache\x10\xfc\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawsmemcached\x122\n" +

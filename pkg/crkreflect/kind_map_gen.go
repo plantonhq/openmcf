@@ -128,6 +128,7 @@ import (
 	awssubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1"
 	awstransitgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgateway/v1"
 	awsvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1"
+	awsvpcendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpcendpoint/v1"
 	awswafwebaclv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awswafwebacl/v1"
 	azureaksclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureakscluster/v1"
 	azureaksnodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureaksnodepool/v1"
@@ -574,6 +575,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsSubnet:                        &awssubnetv1.AwsSubnet{},
 	cloudresourcekind.CloudResourceKind_AwsTransitGateway:                &awstransitgatewayv1.AwsTransitGateway{},
 	cloudresourcekind.CloudResourceKind_AwsVpc:                           &awsvpcv1.AwsVpc{},
+	cloudresourcekind.CloudResourceKind_AwsVpcEndpoint:                   &awsvpcendpointv1.AwsVpcEndpoint{},
 	cloudresourcekind.CloudResourceKind_AwsWafWebAcl:                     &awswafwebaclv1.AwsWafWebAcl{},
 }
 

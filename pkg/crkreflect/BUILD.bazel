@@ -144,6 +144,7 @@ go_library(
         "//apis/dev/planton/provider/aws/awssubnet/v1:awssubnet",
         "//apis/dev/planton/provider/aws/awstransitgateway/v1:awstransitgateway",
         "//apis/dev/planton/provider/aws/awsvpc/v1:awsvpc",
+        "//apis/dev/planton/provider/aws/awsvpcendpoint/v1:awsvpcendpoint",
         "//apis/dev/planton/provider/aws/awswafwebacl/v1:awswafwebacl",
         "//apis/dev/planton/provider/azure/azureakscluster/v1:azureakscluster",
         "//apis/dev/planton/provider/azure/azureaksnodepool/v1:azureaksnodepool",
