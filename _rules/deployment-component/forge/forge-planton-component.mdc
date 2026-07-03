@@ -370,6 +370,28 @@ runs in the same account collide on IAM role names and subnet CIDRs and both
 fail their DEPENDENCIES-UP phase. Batch a family's runs one after another; the
 time saved by parallelism is an illusion here.
 
+**Isolate the run from OTHER suites on the same machine.** Serial-within-your-
+provider is not enough when a different provider's E2E suite runs concurrently
+on the same machine (multiple agents share these workstations): the suites
+share the global Pulumi state (`~/.pulumi` login/credentials) and `$TMPDIR`
+(where each run's ephemeral file backend lives), and the interference surfaces
+as `no stack named '<stack>' found` on a stack that was just deployed — the
+resources are then orphaned because teardown cannot find the state either.
+Machine-level temp cleaners can destroy the ephemeral backend the same way.
+Run every live lane with a private, durable environment:
+
+```bash
+mkdir -p ~/planton-e2e-tmp/pulumi-home
+export TMPDIR=~/planton-e2e-tmp PULUMI_HOME=~/planton-e2e-tmp/pulumi-home
+go test -tags e2e ./e2e/<provider>/... -run 'Test<Kind>' -v -count=1
+```
+
+(`-count=1` matters too: a cached `go test` result silently replays the old
+run instead of touching the cloud.) If a lane still fails this way, the
+leaked resources remain recoverable through the backend directory left under
+`$TMPDIR` — `pulumi destroy --stack <name>` with `PULUMI_BACKEND_URL=file://…`
+from the dependency's module directory, then sweep the account.
+
 **Prerequisite teardown failures FAIL the run.** The harness destroys
 prerequisites in reverse order after the component's own lifecycle, and any
 destroy/stack-removal failure (e.g. the ephemeral backend state vanished
