@@ -261,6 +261,34 @@ scenario is as simple as dropping a YAML file into the component's
 5. Create `.github/workflows/e2e-{provider}.yaml` with the appropriate trigger
    schedule and credential configuration
 
+### Real-cloud harness Setup: validate credentials and export preconditions
+
+For a real-cloud provider (`test_substrate: real_cloud`), the framework builds
+every stack input with a **nil provider config**, so the IaC modules resolve
+credentials from the SDK's ambient chain (a keyless CLI/SSO login locally, OIDC
+federation in CI) rather than from a stored secret. The harness `Setup` therefore
+owns two responsibilities beyond wiring verifiers:
+
+- **Fail fast on credentials.** Probe the ambient chain with a zero-permission,
+  side-effect-free identity call (e.g. AWS `sts:GetCallerIdentity`; Azure: acquire
+  a management token) so a missing/expired login is reported before any deploy.
+- **Export the environment preconditions both engines need.** The Terraform path's
+  provider block is empty and the Pulumi builders leave unset args to env-var
+  fallbacks, so any value the provider cannot infer must be exported into the
+  process environment (the Pulumi runner inherits `os.Environ()`; the Terraform
+  path layers extracted vars on top of it). Two categories recur:
+  - *Identity/scope the provider cannot infer* — e.g. Azure `azurerm` v4 no longer
+    infers the subscription, so the harness must export `ARM_SUBSCRIPTION_ID`.
+  - *Test-environment behavior that differs from production defaults* — e.g. the
+    Azure providers auto-register a broad set of resource providers at init and
+    fire the registrations concurrently, which returns HTTP 409 on a subscription
+    whose providers are not yet registered. Resource-provider registration is a
+    one-time subscription bootstrap, orthogonal to whether a module creates its
+    resource correctly (the contract E2E validates), so the harness opts out for
+    the ephemeral run via `ARM_SKIP_PROVIDER_REGISTRATION=true`. Keep such opt-outs
+    scoped to the harness and documented, so the test stays honest about what it
+    proves.
+
 ## Architecture
 
 ```

@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "verify",
+    srcs = [
+        "resource_group.go",
+        "verifier.go",
+    ],
+    importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/azure/aa_e2e/verify",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_azure_azure_sdk_for_go_sdk_azcore//:azcore",
+        "@com_github_azure_azure_sdk_for_go_sdk_resourcemanager_resources_armresources//:armresources",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
