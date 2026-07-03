@@ -1,0 +1,23 @@
+# Regional GcpHealthCheck scenario: exercises the kind's second provider
+# resource (google_compute_region_health_check) — a set region routes the
+# module down the regional branch. TCP probe with a fixed port, the shape
+# regional internal load balancers consume.
+apiVersion: gcp.planton.dev/v1
+kind: GcpHealthCheck
+metadata:
+  name: planton-oss-e2e-gcphc-regional
+  id: planton-oss-e2e-gcphc-regional
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcphealthcheck
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral regional health check created by the Planton E2E harness; safe to delete
+  region: us-central1
+  tcp:
+    port: 5432

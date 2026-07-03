@@ -1,0 +1,520 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcphealthcheck.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpHealthCheckSpec defines a Compute Engine health check — the probe that
+// decides which backends receive load-balancer traffic and which instances a
+// managed instance group auto-heals. Health checks are the leaf of the load
+// balancing family: every backend service references one, and a single check
+// is commonly shared by many backend services.
+//
+// One kind covers both scopes. Leave `region` empty for a GLOBAL health check
+// (used by global external load balancers and backend services); set it for a
+// REGIONAL health check (used by regional backend services and regional
+// managed instance groups). The two scopes expose an identical probe surface
+// in GCP — only `source_regions` (global-only) differs.
+//
+// The probe protocol is an exclusive choice (http | https | http2 | tcp |
+// ssl | grpc | grpc_tls) fixed per check; pick the protocol your backends
+// actually speak on the health-check port, which is not necessarily the
+// serving protocol (a TCP check on an HTTPS service is valid but shallow).
+message GcpHealthCheckSpec {
+  // The GCP project that owns the health check.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the health check.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the health check in GCP. Must be 1-63 characters: lowercase
+  // letters, digits, and hyphens; must start with a letter and end with a
+  // letter or digit. If not specified, defaults to metadata.name.
+  // Immutable: changing it destroys and recreates the health check, briefly
+  // breaking every backend service that references the old self_link.
+  string health_check_name = 2 [(buf.validate.field).cel = {
+    id: "valid_health_check_name"
+    message: "health_check_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')"
+  }];
+
+  // Region for a REGIONAL health check (e.g. "us-central1"), used by regional
+  // backend services and regional managed instance groups. Leave empty for a
+  // GLOBAL health check — the right scope for global external load balancers.
+  // Immutable: a health check cannot move between scopes or regions.
+  string region = 3 [(buf.validate.field).cel = {
+    id: "valid_region"
+    message: "region must be a valid GCP region name such as us-central1, or empty for a global health check"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')"
+  }];
+
+  // What this health check probes and which backends rely on it — write it
+  // for the operator debugging failover behavior later. Mutable.
+  string description = 4 [(buf.validate.field).string.max_len = 2048];
+
+  // Seconds between probe attempts from each prober (default 5). Lower values
+  // detect failures faster at the cost of more probe traffic; the effective
+  // detection time also depends on unhealthy_threshold. Mutable.
+  optional int32 check_interval_sec = 5 [
+    (dev.planton.shared.options.default) = "5",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  // Seconds to wait for a probe response before counting the attempt as a
+  // failure (default 5). Must not exceed check_interval_sec — GCP rejects a
+  // timeout longer than the interval. Mutable.
+  optional int32 timeout_sec = 6 [
+    (dev.planton.shared.options.default) = "5",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  // Consecutive successes required to mark a backend healthy again
+  // (default 2). Higher values prevent flapping backends from re-entering
+  // rotation too quickly. Mutable.
+  optional int32 healthy_threshold = 7 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  // Consecutive failures required to mark a backend unhealthy (default 2).
+  // Failure detection time ≈ check_interval_sec × unhealthy_threshold — tune
+  // both together when tightening failover. Mutable.
+  optional int32 unhealthy_threshold = 8 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  // Export a log entry on every health status change. Off by default —
+  // enable it while tuning thresholds or debugging flapping backends, and
+  // consider the log volume on large backend fleets. Mutable.
+  bool enable_logging = 9;
+
+  // GLOBAL checks only: probe from exactly 3 specific GCP regions instead of
+  // Google's default prober set, so a regional outage cannot flip global
+  // health verdicts. Constraints enforced by GCP: exactly 3 regions; only
+  // HTTP, HTTPS, and TCP protocols; check_interval_sec at least 30;
+  // proxy_header must be NONE; TCP request payload unsupported; a check with
+  // source_regions cannot be used by managed-instance-group auto-healing.
+  repeated string source_regions = 10 [
+    (buf.validate.field).cel = {
+      id: "source_regions_exactly_three"
+      message: "source_regions must list exactly 3 GCP regions (or be omitted to use Google's default probers)"
+      expression: "size(this) == 0 || size(this) == 3"
+    },
+    (buf.validate.field).repeated.items.string.pattern = "^[a-z]([-a-z0-9]*[a-z0-9])?$"
+  ];
+
+  // The probe protocol — exactly one. The choice decides which optional
+  // request/response knobs apply: HTTP-family checks probe a request_path and
+  // can match a response prefix; TCP/SSL checks open a connection and can
+  // exchange a byte string; gRPC checks call the standard gRPC health
+  // service.
+  oneof protocol {
+    option (buf.validate.oneof).required = true;
+
+    // Probe with an HTTP GET (effective default port 80). The workhorse for
+    // serverless NEGs, instance groups serving plaintext HTTP, and anything
+    // behind an internal load balancer.
+    GcpHealthCheckHttp http = 11;
+
+    // Probe with an HTTPS GET (effective default port 443). Requires the
+    // backend to present a certificate; use when backends redirect or reject
+    // plaintext.
+    GcpHealthCheckHttps https = 12;
+
+    // Probe with an HTTP/2 GET (effective default port 443). For backends
+    // that only speak HTTP/2 over TLS.
+    GcpHealthCheckHttp2 http2 = 13;
+
+    // Probe by opening a TCP connection (effective default port 80),
+    // optionally exchanging an ASCII request/response pair. The cheapest
+    // liveness signal when no HTTP endpoint exists.
+    GcpHealthCheckTcp tcp = 14;
+
+    // Probe by completing a TLS handshake (effective default port 443),
+    // optionally exchanging an ASCII request/response pair after the
+    // handshake.
+    GcpHealthCheckSsl ssl = 15;
+
+    // Probe the standard gRPC health checking service
+    // (grpc.health.v1.Health/Check) over plaintext.
+    GcpHealthCheckGrpc grpc = 16;
+
+    // Probe the standard gRPC health checking service over TLS.
+    GcpHealthCheckGrpcTls grpc_tls = 17;
+  }
+
+  option (buf.validate.message).cel = {
+    id: "timeout_within_interval"
+    message: "timeout_sec must not exceed check_interval_sec — GCP rejects a probe timeout longer than the probe interval"
+    expression: "(has(this.timeout_sec) ? this.timeout_sec : 5) <= (has(this.check_interval_sec) ? this.check_interval_sec : 5)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "source_regions_global_only"
+    message: "source_regions is only supported on global health checks — remove it or clear region"
+    expression: "size(this.source_regions) == 0 || this.region == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "source_regions_protocols"
+    message: "source_regions supports only HTTP, HTTPS, and TCP health checks"
+    expression: "size(this.source_regions) == 0 || has(this.http) || has(this.https) || has(this.tcp)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "source_regions_min_interval"
+    message: "with source_regions set, check_interval_sec must be at least 30 seconds"
+    expression: "size(this.source_regions) == 0 || (has(this.check_interval_sec) ? this.check_interval_sec : 5) >= 30"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "source_regions_no_proxy_header_or_request"
+    message: "with source_regions set, proxy_header must be NONE and the TCP request payload must be empty"
+    expression: "size(this.source_regions) == 0 || (has(this.http) ? (this.http.proxy_header == '' || this.http.proxy_header == 'NONE') : true) && (has(this.https) ? (this.https.proxy_header == '' || this.https.proxy_header == 'NONE') : true) && (has(this.tcp) ? ((this.tcp.proxy_header == '' || this.tcp.proxy_header == 'NONE') && this.tcp.request == '') : true)"
+  };
+}
+
+// An HTTP probe: GET request_path on the resolved port; healthy = 2xx
+// response (optionally required to start with `response`).
+message GcpHealthCheckHttp {
+  // Value of the Host header in the probe request. Empty uses the IP of the
+  // backend being probed — set it when backends route by virtual host.
+  string host = 1;
+
+  // TCP port for the probe when port_specification is USE_FIXED_PORT or
+  // unset. Omit to use the protocol default (80). Must be 1-65535.
+  int32 port = 2 [(buf.validate.field).cel = {
+    id: "valid_port"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // Instance-group named port to probe (only with USE_NAMED_PORT). Named
+  // ports let each instance group map the logical port to its own number.
+  string port_name = 3;
+
+  // How the probe port is chosen: USE_FIXED_PORT (the `port` field, the
+  // default), USE_NAMED_PORT (`port_name` on the instance group), or
+  // USE_SERVING_PORT (the backend's own serving port — the right choice for
+  // serverless NEGs and most instance-group backends).
+  string port_specification = 4 [(buf.validate.field).cel = {
+    id: "valid_port_specification"
+    message: "port_specification must be USE_FIXED_PORT, USE_NAMED_PORT, or USE_SERVING_PORT"
+    expression: "this == '' || this in ['USE_FIXED_PORT', 'USE_NAMED_PORT', 'USE_SERVING_PORT']"
+  }];
+
+  // Prepend a PROXY protocol v1 header to the probe (PROXY_V1) so backends
+  // behind a proxy see the original client info. Default NONE.
+  string proxy_header = 5 [(buf.validate.field).cel = {
+    id: "valid_proxy_header"
+    message: "proxy_header must be NONE or PROXY_V1"
+    expression: "this == '' || this in ['NONE', 'PROXY_V1']"
+  }];
+
+  // Request path of the probe GET (default "/"). Point it at a cheap,
+  // dependency-free endpoint (e.g. /healthz) — a path that touches databases
+  // turns their latency into load-balancer failovers.
+  string request_path = 6;
+
+  // If set, the response body must START WITH this ASCII string for the
+  // probe to pass — a guard against a wrong service answering 200 on the
+  // probed port.
+  string response = 7;
+
+  option (buf.validate.message).cel = {
+    id: "named_port_coherence"
+    message: "with USE_NAMED_PORT, set port_name and leave port unset"
+    expression: "this.port_specification != 'USE_NAMED_PORT' || (this.port == 0 && this.port_name != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "serving_port_coherence"
+    message: "with USE_SERVING_PORT, leave both port and port_name unset — the backend's serving port is probed"
+    expression: "this.port_specification != 'USE_SERVING_PORT' || (this.port == 0 && this.port_name == '')"
+  };
+}
+
+// An HTTPS probe: TLS handshake then GET request_path; healthy = 2xx
+// response (optionally required to start with `response`).
+message GcpHealthCheckHttps {
+  // Value of the Host header in the probe request. Empty uses the IP of the
+  // backend being probed — set it when backends route or present
+  // certificates by virtual host.
+  string host = 1;
+
+  // TCP port for the probe when port_specification is USE_FIXED_PORT or
+  // unset. Omit to use the protocol default (443). Must be 1-65535.
+  int32 port = 2 [(buf.validate.field).cel = {
+    id: "valid_port"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // Instance-group named port to probe (only with USE_NAMED_PORT).
+  string port_name = 3;
+
+  // How the probe port is chosen: USE_FIXED_PORT (the `port` field, the
+  // default), USE_NAMED_PORT (`port_name` on the instance group), or
+  // USE_SERVING_PORT (the backend's own serving port).
+  string port_specification = 4 [(buf.validate.field).cel = {
+    id: "valid_port_specification"
+    message: "port_specification must be USE_FIXED_PORT, USE_NAMED_PORT, or USE_SERVING_PORT"
+    expression: "this == '' || this in ['USE_FIXED_PORT', 'USE_NAMED_PORT', 'USE_SERVING_PORT']"
+  }];
+
+  // Prepend a PROXY protocol v1 header to the probe (PROXY_V1). Default NONE.
+  string proxy_header = 5 [(buf.validate.field).cel = {
+    id: "valid_proxy_header"
+    message: "proxy_header must be NONE or PROXY_V1"
+    expression: "this == '' || this in ['NONE', 'PROXY_V1']"
+  }];
+
+  // Request path of the probe GET (default "/"). Point it at a cheap,
+  // dependency-free endpoint (e.g. /healthz).
+  string request_path = 6;
+
+  // If set, the response body must START WITH this ASCII string for the
+  // probe to pass.
+  string response = 7;
+
+  option (buf.validate.message).cel = {
+    id: "named_port_coherence"
+    message: "with USE_NAMED_PORT, set port_name and leave port unset"
+    expression: "this.port_specification != 'USE_NAMED_PORT' || (this.port == 0 && this.port_name != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "serving_port_coherence"
+    message: "with USE_SERVING_PORT, leave both port and port_name unset — the backend's serving port is probed"
+    expression: "this.port_specification != 'USE_SERVING_PORT' || (this.port == 0 && this.port_name == '')"
+  };
+}
+
+// An HTTP/2-over-TLS probe: GET request_path; healthy = 2xx response
+// (optionally required to start with `response`).
+message GcpHealthCheckHttp2 {
+  // Value of the :authority pseudo-header in the probe request. Empty uses
+  // the IP of the backend being probed.
+  string host = 1;
+
+  // TCP port for the probe when port_specification is USE_FIXED_PORT or
+  // unset. Omit to use the protocol default (443). Must be 1-65535.
+  int32 port = 2 [(buf.validate.field).cel = {
+    id: "valid_port"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // Instance-group named port to probe (only with USE_NAMED_PORT).
+  string port_name = 3;
+
+  // How the probe port is chosen: USE_FIXED_PORT (the `port` field, the
+  // default), USE_NAMED_PORT (`port_name` on the instance group), or
+  // USE_SERVING_PORT (the backend's own serving port).
+  string port_specification = 4 [(buf.validate.field).cel = {
+    id: "valid_port_specification"
+    message: "port_specification must be USE_FIXED_PORT, USE_NAMED_PORT, or USE_SERVING_PORT"
+    expression: "this == '' || this in ['USE_FIXED_PORT', 'USE_NAMED_PORT', 'USE_SERVING_PORT']"
+  }];
+
+  // Prepend a PROXY protocol v1 header to the probe (PROXY_V1). Default NONE.
+  string proxy_header = 5 [(buf.validate.field).cel = {
+    id: "valid_proxy_header"
+    message: "proxy_header must be NONE or PROXY_V1"
+    expression: "this == '' || this in ['NONE', 'PROXY_V1']"
+  }];
+
+  // Request path of the probe GET (default "/").
+  string request_path = 6;
+
+  // If set, the response body must START WITH this ASCII string for the
+  // probe to pass.
+  string response = 7;
+
+  option (buf.validate.message).cel = {
+    id: "named_port_coherence"
+    message: "with USE_NAMED_PORT, set port_name and leave port unset"
+    expression: "this.port_specification != 'USE_NAMED_PORT' || (this.port == 0 && this.port_name != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "serving_port_coherence"
+    message: "with USE_SERVING_PORT, leave both port and port_name unset — the backend's serving port is probed"
+    expression: "this.port_specification != 'USE_SERVING_PORT' || (this.port == 0 && this.port_name == '')"
+  };
+}
+
+// A TCP probe: open a connection (optionally send `request` and require the
+// reply to start with `response`); healthy = successful connect/exchange.
+message GcpHealthCheckTcp {
+  // TCP port for the probe when port_specification is USE_FIXED_PORT or
+  // unset. Omit to use the protocol default (80). Must be 1-65535.
+  int32 port = 1 [(buf.validate.field).cel = {
+    id: "valid_port"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // Instance-group named port to probe (only with USE_NAMED_PORT).
+  string port_name = 2;
+
+  // How the probe port is chosen: USE_FIXED_PORT (the `port` field, the
+  // default), USE_NAMED_PORT (`port_name` on the instance group), or
+  // USE_SERVING_PORT (the backend's own serving port).
+  string port_specification = 3 [(buf.validate.field).cel = {
+    id: "valid_port_specification"
+    message: "port_specification must be USE_FIXED_PORT, USE_NAMED_PORT, or USE_SERVING_PORT"
+    expression: "this == '' || this in ['USE_FIXED_PORT', 'USE_NAMED_PORT', 'USE_SERVING_PORT']"
+  }];
+
+  // Prepend a PROXY protocol v1 header to the probe (PROXY_V1). Default NONE.
+  string proxy_header = 4 [(buf.validate.field).cel = {
+    id: "valid_proxy_header"
+    message: "proxy_header must be NONE or PROXY_V1"
+    expression: "this == '' || this in ['NONE', 'PROXY_V1']"
+  }];
+
+  // ASCII string to send after the connection opens — pair with `response`
+  // to verify an application-level banner instead of bare connectivity.
+  string request = 5;
+
+  // If set, the first bytes the backend sends must START WITH this ASCII
+  // string for the probe to pass.
+  string response = 6;
+
+  option (buf.validate.message).cel = {
+    id: "named_port_coherence"
+    message: "with USE_NAMED_PORT, set port_name and leave port unset"
+    expression: "this.port_specification != 'USE_NAMED_PORT' || (this.port == 0 && this.port_name != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "serving_port_coherence"
+    message: "with USE_SERVING_PORT, leave both port and port_name unset — the backend's serving port is probed"
+    expression: "this.port_specification != 'USE_SERVING_PORT' || (this.port == 0 && this.port_name == '')"
+  };
+}
+
+// An SSL probe: complete a TLS handshake (optionally send `request` and
+// require the reply to start with `response`); healthy = successful
+// handshake/exchange.
+message GcpHealthCheckSsl {
+  // TCP port for the probe when port_specification is USE_FIXED_PORT or
+  // unset. Omit to use the protocol default (443). Must be 1-65535.
+  int32 port = 1 [(buf.validate.field).cel = {
+    id: "valid_port"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // Instance-group named port to probe (only with USE_NAMED_PORT).
+  string port_name = 2;
+
+  // How the probe port is chosen: USE_FIXED_PORT (the `port` field, the
+  // default), USE_NAMED_PORT (`port_name` on the instance group), or
+  // USE_SERVING_PORT (the backend's own serving port).
+  string port_specification = 3 [(buf.validate.field).cel = {
+    id: "valid_port_specification"
+    message: "port_specification must be USE_FIXED_PORT, USE_NAMED_PORT, or USE_SERVING_PORT"
+    expression: "this == '' || this in ['USE_FIXED_PORT', 'USE_NAMED_PORT', 'USE_SERVING_PORT']"
+  }];
+
+  // Prepend a PROXY protocol v1 header to the probe (PROXY_V1). Default NONE.
+  string proxy_header = 4 [(buf.validate.field).cel = {
+    id: "valid_proxy_header"
+    message: "proxy_header must be NONE or PROXY_V1"
+    expression: "this == '' || this in ['NONE', 'PROXY_V1']"
+  }];
+
+  // ASCII string to send after the TLS handshake completes.
+  string request = 5;
+
+  // If set, the first bytes the backend sends must START WITH this ASCII
+  // string for the probe to pass.
+  string response = 6;
+
+  option (buf.validate.message).cel = {
+    id: "named_port_coherence"
+    message: "with USE_NAMED_PORT, set port_name and leave port unset"
+    expression: "this.port_specification != 'USE_NAMED_PORT' || (this.port == 0 && this.port_name != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "serving_port_coherence"
+    message: "with USE_SERVING_PORT, leave both port and port_name unset — the backend's serving port is probed"
+    expression: "this.port_specification != 'USE_SERVING_PORT' || (this.port == 0 && this.port_name == '')"
+  };
+}
+
+// A gRPC probe over plaintext: call the standard gRPC health checking
+// service (grpc.health.v1.Health/Check); healthy = SERVING status.
+message GcpHealthCheckGrpc {
+  // The gRPC service name passed to Health/Check. Empty probes the server's
+  // OVERALL health; set it to probe one service on a multi-service server.
+  // The backend's health implementation must recognize the same string.
+  string grpc_service_name = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // TCP port for the probe when port_specification is USE_FIXED_PORT or
+  // unset. Must be 1-65535.
+  int32 port = 2 [(buf.validate.field).cel = {
+    id: "valid_port"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // Instance-group named port to probe (only with USE_NAMED_PORT).
+  string port_name = 3;
+
+  // How the probe port is chosen: USE_FIXED_PORT (the `port` field, the
+  // default), USE_NAMED_PORT (`port_name` on the instance group), or
+  // USE_SERVING_PORT (the backend's own serving port).
+  string port_specification = 4 [(buf.validate.field).cel = {
+    id: "valid_port_specification"
+    message: "port_specification must be USE_FIXED_PORT, USE_NAMED_PORT, or USE_SERVING_PORT"
+    expression: "this == '' || this in ['USE_FIXED_PORT', 'USE_NAMED_PORT', 'USE_SERVING_PORT']"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "named_port_coherence"
+    message: "with USE_NAMED_PORT, set port_name and leave port unset"
+    expression: "this.port_specification != 'USE_NAMED_PORT' || (this.port == 0 && this.port_name != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "serving_port_coherence"
+    message: "with USE_SERVING_PORT, leave both port and port_name unset — the backend's serving port is probed"
+    expression: "this.port_specification != 'USE_SERVING_PORT' || (this.port == 0 && this.port_name == '')"
+  };
+}
+
+// A gRPC probe over TLS: call the standard gRPC health checking service
+// after a TLS handshake; healthy = SERVING status. Unlike the plaintext gRPC
+// probe, named ports are not supported for this protocol.
+message GcpHealthCheckGrpcTls {
+  // The gRPC service name passed to Health/Check. Empty probes the server's
+  // OVERALL health.
+  string grpc_service_name = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // TCP port for the probe. Required when port_specification is
+  // USE_FIXED_PORT or unset. Must be 1-65535.
+  int32 port = 2 [(buf.validate.field).cel = {
+    id: "valid_port"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // How the probe port is chosen: USE_FIXED_PORT (the `port` field, the
+  // default) or USE_SERVING_PORT (the backend's own serving port).
+  // USE_NAMED_PORT is not supported for gRPC-with-TLS probes.
+  string port_specification = 3 [(buf.validate.field).cel = {
+    id: "valid_port_specification"
+    message: "port_specification must be USE_FIXED_PORT or USE_SERVING_PORT — named ports are not supported for gRPC-with-TLS health checks"
+    expression: "this == '' || this in ['USE_FIXED_PORT', 'USE_SERVING_PORT']"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "serving_port_coherence"
+    message: "with USE_SERVING_PORT, leave port unset — the backend's serving port is probed"
+    expression: "this.port_specification != 'USE_SERVING_PORT' || this.port == 0"
+  };
+}

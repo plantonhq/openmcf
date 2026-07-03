@@ -10,7 +10,9 @@ go_library(
         "//e2e/framework/provider",
         "@com_github_pkg_errors//:errors",
         "@org_golang_google_api//cloudresourcemanager/v1:cloudresourcemanager",
+        "@org_golang_google_api//compute/v1:compute",
         "@org_golang_google_api//iam/v1:iam",
+        "@org_golang_google_api//storage/v1:storage",
         "@org_golang_x_oauth2//google",
     ],
 )

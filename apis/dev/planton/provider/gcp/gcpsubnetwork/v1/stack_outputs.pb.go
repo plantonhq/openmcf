@@ -21,22 +21,34 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GcpSubnetworkStackOutputs captures the key outputs after provisioning the subnet.
+// Outputs produced after provisioning a GCP subnetwork.
 type GcpSubnetworkStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Self-link URL of the created subnetwork (useful for GKE clusters or other resources that need to reference this subnet).
+	// Self-link URI of the subnetwork — the value GKE clusters, compute
+	// instances, and other subnet consumers reference.
 	SubnetworkSelfLink string `protobuf:"bytes,1,opt,name=subnetwork_self_link,json=subnetworkSelfLink,proto3" json:"subnetwork_self_link,omitempty"`
-	// The region where this subnetwork resides (mirrors spec, included for convenience).
+	// The region the subnetwork lives in.
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
-	// The primary IPv4 CIDR of the subnet (in dotted notation).
+	// The primary IPv4 CIDR range (empty for IPV6_ONLY subnets).
 	IpCidrRange string `protobuf:"bytes,3,opt,name=ip_cidr_range,json=ipCidrRange,proto3" json:"ip_cidr_range,omitempty"`
-	// List of secondary ranges created in this subnet, with their names and CIDRs.
+	// Secondary (alias) ranges on this subnet, with their names and CIDRs.
+	// GKE clusters select their pod/service ranges by range_name.
 	SecondaryRanges []*GcpSubnetworkSecondaryRangeStackOutput `protobuf:"bytes,4,rep,name=secondary_ranges,json=secondaryRanges,proto3" json:"secondary_ranges,omitempty"`
-	// Name of the subnetwork (e.g., "my-subnet").
-	// Referenced by GcpCloudRun.spec.vpc_access.subnet FK.
+	// Name of the subnetwork as it exists in GCP. Referenced by consumers
+	// that address subnets by name (e.g. Cloud Run Direct VPC egress).
 	SubnetworkName string `protobuf:"bytes,5,opt,name=subnetwork_name,json=subnetworkName,proto3" json:"subnetwork_name,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// IPv4 address of the subnet's default gateway.
+	GatewayAddress string `protobuf:"bytes,6,opt,name=gateway_address,json=gatewayAddress,proto3" json:"gateway_address,omitempty"`
+	// Server-assigned numeric ID of the subnetwork.
+	SubnetworkId string `protobuf:"bytes,7,opt,name=subnetwork_id,json=subnetworkId,proto3" json:"subnetwork_id,omitempty"`
+	// The internal IPv6 prefix allocated to the subnet (INTERNAL
+	// ipv6_access_type); empty otherwise.
+	InternalIpv6Prefix string `protobuf:"bytes,8,opt,name=internal_ipv6_prefix,json=internalIpv6Prefix,proto3" json:"internal_ipv6_prefix,omitempty"`
+	// The external IPv6 prefix allocated to the subnet (EXTERNAL
+	// ipv6_access_type); empty otherwise.
+	ExternalIpv6Prefix string `protobuf:"bytes,9,opt,name=external_ipv6_prefix,json=externalIpv6Prefix,proto3" json:"external_ipv6_prefix,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GcpSubnetworkStackOutputs) Reset() {
@@ -104,12 +116,40 @@ func (x *GcpSubnetworkStackOutputs) GetSubnetworkName() string {
 	return ""
 }
 
-// List of secondary ranges created in this subnet, with their names and CIDRs.
+func (x *GcpSubnetworkStackOutputs) GetGatewayAddress() string {
+	if x != nil {
+		return x.GatewayAddress
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkStackOutputs) GetSubnetworkId() string {
+	if x != nil {
+		return x.SubnetworkId
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkStackOutputs) GetInternalIpv6Prefix() string {
+	if x != nil {
+		return x.InternalIpv6Prefix
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkStackOutputs) GetExternalIpv6Prefix() string {
+	if x != nil {
+		return x.ExternalIpv6Prefix
+	}
+	return ""
+}
+
+// One secondary range as provisioned.
 type GcpSubnetworkSecondaryRangeStackOutput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the secondary range (unique within the subnet).
 	RangeName string `protobuf:"bytes,1,opt,name=range_name,json=rangeName,proto3" json:"range_name,omitempty"`
-	// The IPv4 CIDR for this secondary range (non-overlapping within the VPC).
+	// IPv4 CIDR of the secondary range.
 	IpCidrRange   string `protobuf:"bytes,2,opt,name=ip_cidr_range,json=ipCidrRange,proto3" json:"ip_cidr_range,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -163,13 +203,17 @@ var File_dev_planton_provider_gcp_gcpsubnetwork_v1_stack_outputs_proto protorefl
 
 const file_dev_planton_provider_gcp_gcpsubnetwork_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/gcp/gcpsubnetwork/v1/stack_outputs.proto\x12)dev.planton.provider.gcp.gcpsubnetwork.v1\"\xb0\x02\n" +
+	"=dev/planton/provider/gcp/gcpsubnetwork/v1/stack_outputs.proto\x12)dev.planton.provider.gcp.gcpsubnetwork.v1\"\xe2\x03\n" +
 	"\x19GcpSubnetworkStackOutputs\x120\n" +
 	"\x14subnetwork_self_link\x18\x01 \x01(\tR\x12subnetworkSelfLink\x12\x16\n" +
 	"\x06region\x18\x02 \x01(\tR\x06region\x12\"\n" +
 	"\rip_cidr_range\x18\x03 \x01(\tR\vipCidrRange\x12|\n" +
 	"\x10secondary_ranges\x18\x04 \x03(\v2Q.dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSecondaryRangeStackOutputR\x0fsecondaryRanges\x12'\n" +
-	"\x0fsubnetwork_name\x18\x05 \x01(\tR\x0esubnetworkName\"k\n" +
+	"\x0fsubnetwork_name\x18\x05 \x01(\tR\x0esubnetworkName\x12'\n" +
+	"\x0fgateway_address\x18\x06 \x01(\tR\x0egatewayAddress\x12#\n" +
+	"\rsubnetwork_id\x18\a \x01(\tR\fsubnetworkId\x120\n" +
+	"\x14internal_ipv6_prefix\x18\b \x01(\tR\x12internalIpv6Prefix\x120\n" +
+	"\x14external_ipv6_prefix\x18\t \x01(\tR\x12externalIpv6Prefix\"k\n" +
 	"&GcpSubnetworkSecondaryRangeStackOutput\x12\x1d\n" +
 	"\n" +
 	"range_name\x18\x01 \x01(\tR\trangeName\x12\"\n" +

@@ -15,7 +15,9 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/storage/v1"
 )
 
 // Services carries the resolved test project and the shared API clients every
@@ -26,6 +28,8 @@ type Services struct {
 	Project string
 	Crm     *cloudresourcemanager.Service
 	Iam     *iam.Service
+	Compute *compute.Service
+	Storage *storage.Service
 }
 
 // Verifier checks a single component's GCP resource for existence/absence.
@@ -47,6 +51,11 @@ var verifiers = map[string]Verifier{
 	"gcpprojectiammember":             &projectIamMemberVerifier{},
 	"gcpworkloadidentitypool":         &workloadIdentityPoolVerifier{},
 	"gcpworkloadidentitypoolprovider": &workloadIdentityPoolProviderVerifier{},
+	"gcphealthcheck":                  &healthCheckVerifier{},
+	"gcpbackendbucket":                &backendBucketVerifier{},
+	"gcpsubnetwork":                   &subnetworkVerifier{},
+	"gcpvpc":                          &vpcVerifier{},
+	"gcpgcsbucket":                    &gcsBucketVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

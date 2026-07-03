@@ -17,13 +17,19 @@ import (
 // then declare the core resource, and finally export stack outputs.
 func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compute.Network, error) {
 	// 1. Enable the Compute Engine API for the target project.
+	// Honor the spec contract: an empty project_id falls back to the provider's
+	// default project. Leaving Project unset lets the gcp provider resolve its
+	// own project (configuration or the GOOGLE_PROJECT / GOOGLE_CLOUD_PROJECT
+	// environment chain); an empty string would be sent verbatim and rejected.
+	serviceArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("compute.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+	}
+	if locals.GcpVpc.Spec.ProjectId.GetValue() != "" {
+		serviceArgs.Project = pulumi.String(locals.GcpVpc.Spec.ProjectId.GetValue())
+	}
 	createdComputeService, err := projects.NewService(ctx,
-		"compute-api",
-		&projects.ServiceArgs{
-			Project:                  pulumi.String(locals.GcpVpc.Spec.ProjectId.GetValue()),
-			Service:                  pulumi.String("compute.googleapis.com"),
-			DisableDependentServices: pulumi.BoolPtr(true),
-		}, pulumi.Provider(gcpProvider))
+		"compute-api", serviceArgs, pulumi.Provider(gcpProvider))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to enable compute api")
 	}
@@ -32,7 +38,9 @@ func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compu
 	networkArgs := &compute.NetworkArgs{
 		AutoCreateSubnetworks: pulumi.BoolPtr(locals.GcpVpc.Spec.AutoCreateSubnetworks),
 		Name:                  pulumi.String(locals.GcpVpc.Spec.NetworkName),
-		Project:               pulumi.String(locals.GcpVpc.Spec.ProjectId.GetValue()),
+	}
+	if locals.GcpVpc.Spec.ProjectId.GetValue() != "" {
+		networkArgs.Project = pulumi.String(locals.GcpVpc.Spec.ProjectId.GetValue())
 	}
 
 	// Map the routing mode enum to the expected GCP value if explicitly set.
@@ -80,16 +88,20 @@ func privateServicesAccess(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp
 		prefixLength = int(spec.PrivateServicesAccess.IpRangePrefixLength)
 	}
 
-	// Allocate IP range for private services
+	// Allocate IP range for private services. An empty project rides the
+	// provider default, matching the ambient-project contract.
+	globalAddressArgs := &compute.GlobalAddressArgs{
+		Name:         pulumi.String(fmt.Sprintf("%s-private-svc", spec.NetworkName)),
+		Purpose:      pulumi.String("VPC_PEERING"),
+		AddressType:  pulumi.String("INTERNAL"),
+		PrefixLength: pulumi.Int(prefixLength),
+		Network:      network.ID(),
+	}
+	if projectId != "" {
+		globalAddressArgs.Project = pulumi.String(projectId)
+	}
 	privateIpAlloc, err := compute.NewGlobalAddress(ctx, "private-services-range",
-		&compute.GlobalAddressArgs{
-			Name:         pulumi.String(fmt.Sprintf("%s-private-svc", spec.NetworkName)),
-			Project:      pulumi.String(projectId),
-			Purpose:      pulumi.String("VPC_PEERING"),
-			AddressType:  pulumi.String("INTERNAL"),
-			PrefixLength: pulumi.Int(prefixLength),
-			Network:      network.ID(),
-		}, pulumi.Provider(gcpProvider))
+		globalAddressArgs, pulumi.Provider(gcpProvider))
 	if err != nil {
 		return errors.Wrap(err, "failed to allocate private services IP range")
 	}

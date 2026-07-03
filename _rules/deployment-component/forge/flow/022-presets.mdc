@@ -47,6 +47,11 @@ SEQUENTIAL STEPS
       - `apiVersion` and `kind` match `api.proto` constants exactly
       - `metadata.name` prefixed with `my-`
       - All `StringValueOrRef` fields use `value:` wrapper with angle-bracket placeholders
+      - **Every preset must pass `planton validate`** — a placeholder must satisfy the
+        field's OWN validation rules. Angle-bracket tokens like `<gcp-region>` fail any
+        pattern-validated field; for those, use a realistic sample value with a
+        `# replace with your ...` comment instead (e.g. `region: us-central1  # replace`).
+        Reserve angle-bracket placeholders for free-form strings and `value:` wrappers.
       - Fields with `recommended_default` or `default` annotations use the annotated value with a comment
       - Boolean flags set explicitly based on the use case
       - No unnecessary quotes

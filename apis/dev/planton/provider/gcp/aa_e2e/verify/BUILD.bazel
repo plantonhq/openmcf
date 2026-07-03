@@ -3,10 +3,15 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "verify",
     srcs = [
+        "backend_bucket.go",
+        "gcs_bucket.go",
+        "health_check.go",
         "iam_custom_role.go",
         "project_iam_member.go",
         "service_account.go",
+        "subnetwork.go",
         "verifier.go",
+        "vpc.go",
         "workload_identity_pool.go",
         "workload_identity_pool_provider.go",
     ],
@@ -15,7 +20,9 @@ go_library(
     deps = [
         "@com_github_pkg_errors//:errors",
         "@org_golang_google_api//cloudresourcemanager/v1:cloudresourcemanager",
+        "@org_golang_google_api//compute/v1:compute",
         "@org_golang_google_api//googleapi",
         "@org_golang_google_api//iam/v1:iam",
+        "@org_golang_google_api//storage/v1:storage",
     ],
 )

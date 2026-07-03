@@ -1,0 +1,32 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpHealthCheck
+metadata:
+  name: my-sample-health-check
+spec:
+  # GCP project that owns the health check.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Cloud-side name; omit to default to metadata.name.
+  healthCheckName: web-backend-probe
+
+  # Leave region empty for a GLOBAL health check (global external LBs);
+  # set it (e.g. us-central1) for a REGIONAL one.
+
+  description: Probes the web tier's /healthz endpoint
+
+  # Probe cadence: every 5s, 5s timeout, 2 successes up / 2 failures down.
+  checkIntervalSec: 5
+  timeoutSec: 5
+  healthyThreshold: 2
+  unhealthyThreshold: 2
+
+  # Log every health state transition while tuning thresholds.
+  enableLogging: true
+
+  # Exactly one protocol block. USE_SERVING_PORT probes whatever port the
+  # backend actually serves on — the right choice for most backends.
+  http:
+    portSpecification: USE_SERVING_PORT
+    requestPath: /healthz

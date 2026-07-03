@@ -1,0 +1,4 @@
+name: gcpbackendbucket-pulumi-project
+runtime:
+  name: go
+description: Planton GcpBackendBucket Pulumi module

@@ -2,26 +2,46 @@ syntax = "proto3";
 
 package dev.planton.provider.gcp.gcpsubnetwork.v1;
 
-// GcpSubnetworkStackOutputs captures the key outputs after provisioning the subnet.
+// Outputs produced after provisioning a GCP subnetwork.
 message GcpSubnetworkStackOutputs {
-  // Self-link URL of the created subnetwork (useful for GKE clusters or other resources that need to reference this subnet).
+  // Self-link URI of the subnetwork — the value GKE clusters, compute
+  // instances, and other subnet consumers reference.
   string subnetwork_self_link = 1;
-  // The region where this subnetwork resides (mirrors spec, included for convenience).
+
+  // The region the subnetwork lives in.
   string region = 2;
-  // The primary IPv4 CIDR of the subnet (in dotted notation).
+
+  // The primary IPv4 CIDR range (empty for IPV6_ONLY subnets).
   string ip_cidr_range = 3;
-  // List of secondary ranges created in this subnet, with their names and CIDRs.
+
+  // Secondary (alias) ranges on this subnet, with their names and CIDRs.
+  // GKE clusters select their pod/service ranges by range_name.
   repeated GcpSubnetworkSecondaryRangeStackOutput secondary_ranges = 4;
 
-  // Name of the subnetwork (e.g., "my-subnet").
-  // Referenced by GcpCloudRun.spec.vpc_access.subnet FK.
+  // Name of the subnetwork as it exists in GCP. Referenced by consumers
+  // that address subnets by name (e.g. Cloud Run Direct VPC egress).
   string subnetwork_name = 5;
+
+  // IPv4 address of the subnet's default gateway.
+  string gateway_address = 6;
+
+  // Server-assigned numeric ID of the subnetwork.
+  string subnetwork_id = 7;
+
+  // The internal IPv6 prefix allocated to the subnet (INTERNAL
+  // ipv6_access_type); empty otherwise.
+  string internal_ipv6_prefix = 8;
+
+  // The external IPv6 prefix allocated to the subnet (EXTERNAL
+  // ipv6_access_type); empty otherwise.
+  string external_ipv6_prefix = 9;
 }
 
-// List of secondary ranges created in this subnet, with their names and CIDRs.
+// One secondary range as provisioned.
 message GcpSubnetworkSecondaryRangeStackOutput {
   // Name of the secondary range (unique within the subnet).
   string range_name = 1;
-  // The IPv4 CIDR for this secondary range (non-overlapping within the VPC).
+
+  // IPv4 CIDR of the secondary range.
   string ip_cidr_range = 2;
 }

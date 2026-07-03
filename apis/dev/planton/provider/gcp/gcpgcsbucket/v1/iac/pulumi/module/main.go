@@ -24,8 +24,16 @@ func Resources(ctx *pulumi.Context, stackInput *gcpgcsbucketv1.GcpGcsBucketStack
 		Labels:                   pulumi.ToStringMap(locals.GcpLabels),
 		Location:                 pulumi.String(locals.GcpGcsBucket.Spec.Location),
 		Name:                     pulumi.String(locals.GcpGcsBucket.Spec.BucketName),
-		Project:                  pulumi.String(locals.GcpGcsBucket.Spec.GcpProjectId.GetValue()),
 		UniformBucketLevelAccess: pulumi.Bool(locals.GcpGcsBucket.Spec.UniformBucketLevelAccessEnabled),
+	}
+
+	// Honor the spec contract: an empty gcp_project_id falls back to the
+	// provider's default project. Leaving Project unset lets the gcp provider
+	// resolve its own project (configuration or the GOOGLE_PROJECT /
+	// GOOGLE_CLOUD_PROJECT environment chain); an empty string would be sent
+	// verbatim and rejected.
+	if locals.GcpGcsBucket.Spec.GcpProjectId.GetValue() != "" {
+		bucketArgs.Project = pulumi.String(locals.GcpGcsBucket.Spec.GcpProjectId.GetValue())
 	}
 
 	// Set storage class if specified

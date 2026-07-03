@@ -11,9 +11,11 @@ variable "metadata" {
 variable "spec" {
   description = "Specification for the GCP VPC"
   type = object({
-    project_id = object({
-      value = string
-    })
+    # The GCP project that owns the network. The CLI's tfvars converter
+    # resolves StringValueOrRef fields to their literal string before the
+    # module runs, so this arrives as a plain string.
+    # If empty, the provider's default project is used.
+    project_id              = optional(string, "")
     auto_create_subnetworks = optional(bool, false)
     routing_mode            = optional(number, 0) # 0=REGIONAL (default), 1=GLOBAL
     network_name            = string

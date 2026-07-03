@@ -1,283 +1,144 @@
 # GCP Subnetwork
 
-## Overview
+Deploys a subnetwork (`google_compute_subnetwork`) in a custom-mode VPC — the regional address space workloads actually live in: a primary IPv4 range for VM interfaces, secondary ranges for alias IPs (GKE pods and services), optional IPv6, special-purpose roles (proxy-only, Private Service Connect), and VPC Flow Logs.
 
-`GcpSubnetwork` is a Planton resource for creating and managing custom-mode subnets in Google Cloud Platform VPC networks. It provides a simple, declarative interface for defining subnet configuration including primary and secondary IP ranges, regional placement, and Private Google Access settings.
+## What Gets Created
 
-**Key Features:**
-- ✅ Custom-mode subnet creation in existing VPC networks
-- ✅ Support for secondary IP ranges (for GKE pods and services)
-- ✅ Private Google Access configuration
-- ✅ Multi-region subnet deployment
-- ✅ Automated API enablement (compute.googleapis.com)
-- ✅ Pulumi and Terraform/OpenTofu support
+When you deploy a GcpSubnetwork resource, Planton provisions:
+
+- **Subnetwork** — a `google_compute_subnetwork` in the referenced VPC and region, with all configured ranges, purpose, IPv6, and logging
+- **API enablement** — the Compute Engine API is enabled on the project if it is not already (never disabled on destroy)
 
 ## Prerequisites
 
-- Existing GCP project
-- Existing custom-mode VPC network (see `GcpVpc` resource)
-- IAM permissions: `compute.subnetworks.create`, `compute.subnetworks.get`
-
-## API Reference
-
-### GcpSubnetworkSpec
-
-The main specification for defining a GCP subnetwork:
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `project_id` | string | Yes | GCP project ID where subnet will be created |
-| `vpc_self_link` | string | Yes | Self-link of the parent VPC network |
-| `region` | string | Yes | GCP region (e.g., "us-central1") |
-| `ip_cidr_range` | string | Yes | Primary IPv4 CIDR (e.g., "10.0.0.0/20") |
-| `secondary_ip_ranges` | list | No | Secondary ranges for alias IPs (GKE) |
-| `private_ip_google_access` | bool | No | Enable internal-only access to Google APIs (default: false) |
-
-### GcpSubnetworkSecondaryRange
-
-Structure for secondary IP ranges:
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `range_name` | string | Yes | Unique name (1-63 chars, lowercase) |
-| `ip_cidr_range` | string | Yes | IPv4 CIDR for this range |
-
-### Stack Outputs
-
-After deployment, the following outputs are available:
-
-| Output | Description |
-|--------|-------------|
-| `subnetwork_self_link` | Self-link URL of the created subnetwork |
-| `region` | Region where the subnetwork resides |
-| `ip_cidr_range` | Primary IPv4 CIDR of the subnet |
-| `secondary_ranges` | List of secondary ranges with names and CIDRs |
+- **GCP credentials** configured via environment variables or Planton provider config
+- **An existing custom-mode VPC** — referenced via `vpcSelfLink` (a GcpVpc resource or a literal self-link)
+- **IAM permissions** — `roles/compute.networkAdmin` on the target project
 
 ## Quick Start
 
-### Basic Subnet
-
-Create a simple subnet in a region:
+Create a file `subnetwork.yaml`:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpSubnetwork
 metadata:
-  name: app-subnet-us-central1
+  name: app-subnet
 spec:
-  project_id: my-gcp-project
-  vpc_self_link: projects/my-gcp-project/global/networks/my-vpc
+  projectId:
+    value: my-gcp-project-123
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpc
+      name: my-vpc
+      fieldPath: status.outputs.network_self_link
+  subnetworkName: app-subnet
   region: us-central1
-  ip_cidr_range: 10.100.0.0/20
-  private_ip_google_access: true
+  ipCidrRange: 10.10.0.0/20
+  privateIpGoogleAccess: true
 ```
 
-### Subnet with Secondary Ranges (GKE)
-
-For GKE clusters, define secondary ranges for pods and services:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpSubnetwork
-metadata:
-  name: gke-subnet-us-west1
-spec:
-  project_id: prod-project
-  vpc_self_link: projects/prod-project/global/networks/prod-vpc
-  region: us-west1
-  ip_cidr_range: 10.50.0.0/20
-  secondary_ip_ranges:
-    - range_name: pods
-      ip_cidr_range: 10.50.16.0/18    # 16,384 IPs for pods
-    - range_name: services
-      ip_cidr_range: 10.50.80.0/24    # 256 IPs for services
-  private_ip_google_access: true
-```
-
-## Deployment
-
-### Using Pulumi (Default)
+Deploy:
 
 ```shell
-# Preview changes
-planton pulumi preview --manifest manifest.yaml
-
-# Deploy
-planton pulumi up --manifest manifest.yaml
-
-# Destroy
-planton pulumi destroy --manifest manifest.yaml
+planton apply -f subnetwork.yaml
 ```
 
-### Using Terraform/OpenTofu
+## Configuration Reference
 
-```shell
-# Initialize
-planton tofu init --manifest manifest.yaml --backend-type gcs \
-  --backend-config="bucket=my-state-bucket" \
-  --backend-config="prefix=gcp-subnets/my-subnet"
+### Required Fields
 
-# Plan
-planton tofu plan --manifest manifest.yaml
+| Field | Type | Description |
+|-------|------|-------------|
+| `vpcSelfLink` | `StringValueOrRef` | The parent VPC network. Can reference a GcpVpc resource. Immutable. |
+| `subnetworkName` | `string` | Name in GCP (RFC1035, 1-63 chars). Immutable. |
+| `region` | `string` | Region the subnet lives in. Immutable. |
+| `ipCidrRange` | `string` | Primary IPv4 CIDR (e.g. `10.10.0.0/20`). Required except for `IPV6_ONLY` subnets. Expandable in place; shrinking recreates. |
 
-# Apply
-planton tofu apply --manifest manifest.yaml --auto-approve
+### Optional Fields
 
-# Destroy
-planton tofu destroy --manifest manifest.yaml --auto-approve
-```
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `projectId` | `StringValueOrRef` | provider default project | Project that owns the subnet. Can reference a GcpProject. Immutable. |
+| `description` | `string` | `""` | What this subnet carries. Immutable. |
+| `purpose` | `string` | `PRIVATE` | `PRIVATE`, `REGIONAL_MANAGED_PROXY` (proxy-only subnet for regional Envoy LBs), `GLOBAL_MANAGED_PROXY`, `PRIVATE_SERVICE_CONNECT`, `PEER_MIGRATION`, `PRIVATE_NAT`. |
+| `role` | `string` | — | `ACTIVE` or `BACKUP`; only on `REGIONAL_MANAGED_PROXY` subnets (drain-and-swap staging). |
+| `secondaryIpRanges` | `list` | `[]` | Named alias-IP ranges (up to 170) — how GKE gets pod/service IPs. Consumers select a range by `rangeName`. |
+| `privateIpGoogleAccess` | `bool` | `false` | Let VMs without external IPs reach Google APIs internally. Effectively mandatory for private-only subnets. |
+| `privateIpv6GoogleAccess` | `string` | GCP default | IPv6 counterpart: `DISABLE_GOOGLE_ACCESS`, `ENABLE_OUTBOUND_VM_ACCESS_TO_GOOGLE`, or `ENABLE_BIDIRECTIONAL_ACCESS_TO_GOOGLE`. |
+| `stackType` | `string` | `IPV4_ONLY` | `IPV4_ONLY`, `IPV4_IPV6` (dual-stack), `IPV6_ONLY`. |
+| `ipv6AccessType` | `string` | — | `EXTERNAL` (internet-routable GUAs) or `INTERNAL` (VPC-internal ULAs). Required for IPv6-carrying stack types. Immutable. |
+| `externalIpv6Prefix` | `string` | Google-allocated | Pin a specific external /64 (EXTERNAL access only). Immutable. |
+| `allowSubnetCidrRoutesOverlap` | `bool` | `false` | Permit the subnet CIDR to overlap routes to destinations outside the VPC (deliberate address reclaims only). |
+| `sendSecondaryIpRangeIfEmpty` | `bool` | `false` | Safety latch: `true` makes an empty `secondaryIpRanges` list REMOVE existing ranges on update; `false` leaves them untouched. |
+| `logConfig` | object | off | VPC Flow Logs — presence enables logging; see below. |
 
-## Important Considerations
+### VPC Flow Logs (`logConfig`)
 
-### Subnet Sizing
+| Field | Default | Description |
+|-------|---------|-------------|
+| `aggregationInterval` | `INTERVAL_5_SEC` | `INTERVAL_5_SEC` … `INTERVAL_15_MIN` — longer means fewer, larger log entries |
+| `flowSampling` | `0.5` | Fraction of flows sampled, 0.0-1.0 (1.0 = forensics-grade, at real Logging cost) |
+| `metadata` | `INCLUDE_ALL_METADATA` | `EXCLUDE_ALL_METADATA`, `INCLUDE_ALL_METADATA`, or `CUSTOM_METADATA` (+ `metadataFields`) |
+| `filterExpr` | all flows | CEL expression selecting flows, e.g. `connection.dest_port == 443` |
 
-Choose subnet sizes carefully—**CIDR ranges cannot be changed after creation**:
+## Sizing Guidance
 
-- **/24** (256 IPs): Small services, VPC connectors (Cloud Run/Functions)
-- **/22** (1,024 IPs): Moderate workloads
-- **/20** (4,096 IPs): Production GKE clusters (standard size)
-- **/16** (65,536 IPs): Very large environments
+GCP reserves 4 addresses per primary range. The primary range can be **expanded** in place (e.g. /24 → /20) but never shrunk — start with room to grow:
 
-**GCP reserves 4 IPs per subnet** (network, broadcast, gateway, DNS).
+- General workloads: `/24` (251 usable) to `/20` (4,091 usable)
+- GKE nodes: `/20` primary; pods commonly `/14`-`/18` secondary; services `/20` secondary
+- Proxy-only subnets: `/23` minimum (Google's recommendation)
 
-### Secondary Ranges for GKE
+## Stack Outputs
 
-If deploying GKE clusters, define secondary ranges **at subnet creation time**:
+After deployment, the following outputs are available in `status.outputs`:
 
-- **Pods range**: Size based on `max nodes × 110 pods per node`
-  - Example: 100 nodes → use /18 or /17 (16k-32k IPs)
-- **Services range**: Size based on Kubernetes Services count
-  - Example: 200 services → use /24 (256 IPs)
+| Output | Type | Description |
+|--------|------|-------------|
+| `subnetwork_self_link` | `string` | Self-link — the value GKE clusters, instances, and other consumers reference |
+| `subnetwork_name` | `string` | Name in GCP (referenced by Cloud Run Direct VPC egress and other by-name consumers) |
+| `region` | `string` | Region of the subnet |
+| `ip_cidr_range` | `string` | Primary IPv4 CIDR (empty for IPv6-only) |
+| `secondary_ranges` | `list` | Names + CIDRs of secondary ranges (GKE selects pod/service ranges by name) |
+| `gateway_address` | `string` | IPv4 address of the subnet's default gateway |
+| `subnetwork_id` | `string` | Server-assigned numeric ID |
+| `internal_ipv6_prefix` / `external_ipv6_prefix` | `string` | IPv6 prefixes actually allocated (empty without IPv6) |
 
-**Cannot add secondary ranges after GKE cluster creation.**
+## Deployment Methods
 
-### Private Google Access
+Planton supports two deployment methods:
 
-Enable `private_ip_google_access: true` when:
-- VMs or GKE nodes don't have external IPs (security best practice)
-- Workloads need access to GCS, GCR, BigQuery, or other Google APIs
-- Running private GKE clusters
+### Pulumi (Go)
 
-## CIDR Planning Best Practices
+See [`iac/pulumi/README.md`](iac/pulumi/README.md) for Pulumi-specific deployment instructions.
 
-1. **Plan for Growth**: Allocate 2-3x your initial capacity
-2. **Avoid Overlaps**: Coordinate with on-prem networks and other VPCs
-3. **Document Allocations**: Maintain an IPAM spreadsheet
-4. **Reserve Ranges**: Leave room for future subnets and environments
+### Terraform
 
-Example allocation for production:
-```
-10.0.0.0/16    Production
-  10.0.0.0/20  us-central1 app subnet
-  10.0.16.0/20 us-east1 app subnet
-  10.0.32.0/18 us-central1 GKE (primary + secondaries)
-10.1.0.0/16    Staging
-10.2.0.0/16    Development
-```
+See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment instructions.
 
-## Common Patterns
+## Important Notes
 
-### Multi-Region Subnets
+- **Almost everything identity-shaped is immutable**: name, project, region, network, and description are ForceNew — changing any of them recreates the subnet, an outage for everything addressed in it. Plan names and regions as carefully as CIDRs.
+- **The CIDR expansion asymmetry**: growing `ipCidrRange` is an in-place update; shrinking destroys and recreates. This is why starting small "to be safe" is backwards — start with room.
+- **Secondary-range safety latch**: by default an empty `secondaryIpRanges` list on update does NOT remove existing ranges (a partial manifest cannot wipe GKE pod ranges). Set `sendSecondaryIpRangeIfEmpty: true` only when removal is the intent.
+- **Proxy-only subnets are load-balancer prerequisites**: a region cannot host a regional Application Load Balancer until a `REGIONAL_MANAGED_PROXY` subnet exists in the VPC there.
+- **Flow logs cost real money at scale**: full sampling on a busy subnet generates significant Cloud Logging volume — tune `flowSampling` and `filterExpr` deliberately.
+- **Preview-surface note**: `allowSubnetCidrRoutesOverlap` is preview-stage on the current provider line; the modules select the beta provider so it is available without a retrofit.
 
-Deploy subnets across regions for high availability:
+## Related Components
 
-```yaml
-# US East
----
-apiVersion: gcp.planton.dev/v1
-kind: GcpSubnetwork
-metadata:
-  name: app-subnet-us-east1
-spec:
-  project_id: prod-project
-  vpc_self_link: projects/prod-project/global/networks/prod-vpc
-  region: us-east1
-  ip_cidr_range: 10.0.0.0/20
-  private_ip_google_access: true
----
-# Europe West
-apiVersion: gcp.planton.dev/v1
-kind: GcpSubnetwork
-metadata:
-  name: app-subnet-eu-west1
-spec:
-  project_id: prod-project
-  vpc_self_link: projects/prod-project/global/networks/prod-vpc
-  region: europe-west1
-  ip_cidr_range: 10.0.16.0/20
-  private_ip_google_access: true
-```
+- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the parent network
+- [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — consumes the subnet + secondary ranges by reference
+- [GcpRouterNat](/docs/catalog/gcp/gcprouternat) — gives private subnets outbound internet access
+- [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project that owns the subnet
 
-### Integration with GKE
+## Additional Resources
 
-Reference secondary ranges in GKE cluster configuration:
+- [VPC Subnets Documentation](https://cloud.google.com/vpc/docs/subnets)
+- [Proxy-only subnets](https://cloud.google.com/load-balancing/docs/proxy-only-subnets)
+- [VPC Flow Logs](https://cloud.google.com/vpc/docs/flow-logs)
 
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GkeCluster
-metadata:
-  name: prod-cluster
-spec:
-  # ... other fields
-  network_config:
-    subnetwork: gke-subnet-us-west1
-    cluster_secondary_range_name: pods
-    services_secondary_range_name: services
-```
+## Support
 
-## Outputs and References
-
-Access outputs for downstream resources:
-
-```yaml
-# Reference in another resource
-apiVersion: gcp.planton.dev/v1
-kind: GkeCluster
-metadata:
-  name: my-cluster
-spec:
-  network_config:
-    subnetwork_ref:
-      kind: GcpSubnetwork
-      name: gke-subnet-us-west1
-      field_path: status.outputs.subnetwork_self_link
-```
-
-## Troubleshooting
-
-### "Range already in use"
-
-**Cause**: CIDR overlaps with existing subnet in the VPC.
-
-**Solution**: Choose a non-overlapping CIDR range.
-
-### "Cannot add secondary ranges after creation"
-
-**Cause**: Attempted to modify secondary ranges after deployment.
-
-**Solution**: Destroy and recreate subnet with desired ranges (requires GKE cluster recreation if attached).
-
-### "API not enabled"
-
-**Cause**: compute.googleapis.com API disabled in project.
-
-**Solution**: The module automatically enables required APIs. Wait 30-60 seconds for API propagation.
-
-## Further Reading
-
-- [Research Documentation](docs/README.md) - Deep dive into GCP networking, CIDR planning, and deployment methods
-- [Examples](examples.md) - More practical examples and use cases
-- [GCP VPC Documentation](https://cloud.google.com/vpc/docs/vpc) - Official Google Cloud VPC guide
-- [GKE Networking](https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips) - Alias IPs and secondary ranges
-
-## Related Resources
-
-- `GcpVpc` - Create custom-mode VPC networks
-- `GcpRouterNat` - NAT gateway for outbound internet access
-- `GkeCluster` - Kubernetes clusters on GCP
-- `GcpProject` - GCP project management
-
----
-
-**Need help?** Check the [examples](examples.md) or [research documentation](docs/README.md) for detailed guidance.
-
+For issues, questions, or contributions, please refer to the Planton documentation or open an issue in the repository.

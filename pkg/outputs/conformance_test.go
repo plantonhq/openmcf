@@ -193,6 +193,63 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpHealthCheck: flat scalar outputs from both engines (the self-link
+			// backend services reference, the cloud-side name, the computed probe
+			// type, and the scope-marking region — empty for global) must each
+			// land on the StackOutputs proto.
+			name: "GcpHealthCheck",
+			kind: cloudresourcekind.CloudResourceKind_GcpHealthCheck,
+			rawOutputs: map[string]interface{}{
+				"self_link":         "https://www.googleapis.com/compute/v1/projects/my-project/global/healthChecks/web-probe",
+				"health_check_name": "web-probe",
+				"type":              "HTTP",
+				"region":            "",
+			},
+			mustPopulate: []string{
+				"self_link", "health_check_name", "type",
+			},
+		},
+		{
+			// GcpBackendBucket: flat scalar outputs from both engines (the
+			// self-link URL maps reference, the cloud-side name, and the origin
+			// bucket) must each land on the StackOutputs proto.
+			name: "GcpBackendBucket",
+			kind: cloudresourcekind.CloudResourceKind_GcpBackendBucket,
+			rawOutputs: map[string]interface{}{
+				"self_link":           "https://www.googleapis.com/compute/v1/projects/my-project/global/backendBuckets/static-assets",
+				"backend_bucket_name": "static-assets",
+				"bucket_name":         "my-assets-bucket",
+			},
+			mustPopulate: []string{
+				"self_link", "backend_bucket_name", "bucket_name",
+			},
+		},
+		{
+			// GcpSubnetwork: scalar outputs plus the per-index secondary-range
+			// exports both engines emit must land on the StackOutputs proto,
+			// including the repeated secondary_ranges message.
+			name: "GcpSubnetwork",
+			kind: cloudresourcekind.CloudResourceKind_GcpSubnetwork,
+			rawOutputs: map[string]interface{}{
+				"subnetwork_self_link":             "https://www.googleapis.com/compute/v1/projects/my-project/regions/us-central1/subnetworks/app-subnet",
+				"subnetwork_name":                  "app-subnet",
+				"region":                           "us-central1",
+				"ip_cidr_range":                    "10.10.0.0/20",
+				"gateway_address":                  "10.10.0.1",
+				"subnetwork_id":                    "1234567890123456789",
+				"internal_ipv6_prefix":             "",
+				"external_ipv6_prefix":             "",
+				"secondary_ranges.0.range_name":    "pods",
+				"secondary_ranges.0.ip_cidr_range": "10.16.0.0/14",
+				"secondary_ranges.1.range_name":    "services",
+				"secondary_ranges.1.ip_cidr_range": "10.20.0.0/20",
+			},
+			mustPopulate: []string{
+				"subnetwork_self_link", "subnetwork_name", "region",
+				"ip_cidr_range", "gateway_address", "subnetwork_id",
+			},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

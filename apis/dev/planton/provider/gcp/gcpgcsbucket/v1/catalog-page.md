@@ -57,7 +57,7 @@ This creates a standard-class GCS bucket with Uniform Bucket-Level Access in `us
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `gcpProjectId` | `string` or `valueFrom` | The GCP project ID where the bucket is created. Can be a literal value or a reference to a GcpProject resource. | Required |
+| `gcpProjectId` | `string` or `valueFrom` | The GCP project that owns the bucket. Can be a literal value or a reference to a GcpProject resource; omit to use the provider's default project. | Optional |
 | `location` | `string` | Region, dual-region, or multi-region for the bucket (e.g., `us-east1`, `US`, `EU`). Immutable after creation. | Required |
 | `bucketName` | `string` | Globally unique name for the GCS bucket. Lowercase letters, numbers, hyphens, dots. | Required, 3-63 chars, pattern `^[a-z0-9]([a-z0-9-._]*[a-z0-9])?$` |
 

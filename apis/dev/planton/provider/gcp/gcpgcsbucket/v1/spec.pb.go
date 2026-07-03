@@ -96,9 +96,10 @@ func (GcpGcsStorageClass) EnumDescriptor() ([]byte, []int) {
 // while advanced features (versioning, lifecycle, encryption, CORS) are optional for specific use cases.
 type GcpGcsBucketSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the GCP project where the storage bucket will be created.
-	// Can be a literal value or a reference to another resource (e.g., GcpProject).
-	// Required field.
+	// The GCP project that owns the storage bucket.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
+	// Immutable: changing it destroys and recreates the bucket.
 	GcpProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=gcp_project_id,json=gcpProjectId,proto3" json:"gcp_project_id,omitempty"`
 	// The location for the bucket. Can be a region (e.g., "us-east1"), dual-region (e.g., "NAM4"),
 	// or multi-region (e.g., "US", "EU", "ASIA").
@@ -860,9 +861,9 @@ var File_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto protoreflect.FileDe
 
 const file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3dev/planton/provider/gcp/gcpgcsbucket/v1/spec.proto\x12(dev.planton.provider.gcp.gcpgcsbucket.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf5\v\n" +
-	"\x10GcpGcsBucketSpec\x12\x82\x01\n" +
-	"\x0egcp_project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\fgcpProjectId\x12\"\n" +
+	"3dev/planton/provider/gcp/gcpgcsbucket/v1/spec.proto\x12(dev.planton.provider.gcp.gcpgcsbucket.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xee\v\n" +
+	"\x10GcpGcsBucketSpec\x12|\n" +
+	"\x0egcp_project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\fgcpProjectId\x12\"\n" +
 	"\blocation\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12L\n" +
 	"#uniform_bucket_level_access_enabled\x18\x03 \x01(\bR\x1funiformBucketLevelAccessEnabled\x12p\n" +
 	"\rstorage_class\x18\x04 \x01(\x0e2<.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsStorageClassB\b\xbaH\x05\x82\x01\x02\x10\x01H\x00R\fstorageClass\x88\x01\x01\x12-\n" +

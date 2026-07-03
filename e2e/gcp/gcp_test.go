@@ -115,6 +115,33 @@ func TestGcpWorkloadIdentityPoolProvider_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpworkloadidentitypoolprovider", "terraform")
 }
 
+// --- GCP Health Check (the load-balancing family's leaf; global + regional scenarios) ---
+
+func TestGcpHealthCheck_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcphealthcheck", "pulumi")
+}
+func TestGcpHealthCheck_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcphealthcheck", "terraform")
+}
+
+// --- GCP Backend Bucket (composed static origin: deploys a GcpGcsBucket prerequisite) ---
+
+func TestGcpBackendBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbackendbucket", "pulumi")
+}
+func TestGcpBackendBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbackendbucket", "terraform")
+}
+
+// --- GCP Subnetwork (composed address plan: deploys a GcpVpc prerequisite) ---
+
+func TestGcpSubnetwork_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsubnetwork", "pulumi")
+}
+func TestGcpSubnetwork_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsubnetwork", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

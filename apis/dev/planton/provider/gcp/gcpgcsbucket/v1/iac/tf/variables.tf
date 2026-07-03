@@ -14,11 +14,11 @@ variable "metadata" {
 variable "spec" {
   description = "Specification for the GCS bucket"
   type = object({
-    # The ID of the GCP project where the storage bucket will be created.
-    # Uses StringValueOrRef pattern for cross-resource references.
-    gcp_project_id = object({
-      value = string
-    })
+    # The GCP project that owns the bucket. The CLI's tfvars converter
+    # resolves StringValueOrRef fields to their literal string before the
+    # module runs, so this arrives as a plain string.
+    # If empty, the provider's default project is used.
+    gcp_project_id = optional(string, "")
 
     # The location for the bucket. Can be a region (e.g., "us-east1"), dual-region (e.g., "NAM4"),
     # or multi-region (e.g., "US", "EU", "ASIA").

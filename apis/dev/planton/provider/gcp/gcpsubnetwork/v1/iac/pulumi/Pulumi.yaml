@@ -1,6 +1,4 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-gcp-module-test
+name: gcpsubnetwork-pulumi-project
 runtime:
   name: go
-#  options:
-#    binary: ./debug.sh
+description: Planton GcpSubnetwork Pulumi module

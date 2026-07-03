@@ -28,7 +28,9 @@ import (
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/storage/v1"
 )
 
 // Harness manages the GCP E2E test lifecycle.
@@ -78,6 +80,14 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create iam client")
 	}
+	computeService, err := compute.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create compute client")
+	}
+	storageService, err := storage.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create storage client")
+	}
 
 	gotProject, err := crmService.Projects.Get(project).Context(ctx).Do()
 	if err != nil {
@@ -91,6 +101,8 @@ func (h *Harness) Setup(ctx context.Context) error {
 		Project: project,
 		Crm:     crmService,
 		Iam:     iamService,
+		Compute: computeService,
+		Storage: storageService,
 	}
 	return nil
 }

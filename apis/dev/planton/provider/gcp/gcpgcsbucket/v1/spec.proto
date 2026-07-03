@@ -12,11 +12,11 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // Following the 80/20 configuration principle, essential settings (project, location, access model) are required,
 // while advanced features (versioning, lifecycle, encryption, CORS) are optional for specific use cases.
 message GcpGcsBucketSpec {
-  // The ID of the GCP project where the storage bucket will be created.
-  // Can be a literal value or a reference to another resource (e.g., GcpProject).
-  // Required field.
+  // The GCP project that owns the storage bucket.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the bucket.
   dev.planton.shared.foreignkey.v1.StringValueOrRef gcp_project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];

@@ -3,7 +3,7 @@
 #############################################
 
 resource "google_project_service" "compute_api" {
-  project                    = var.spec.project_id.value
+  project                    = local.project_id
   service                    = "compute.googleapis.com"
   disable_dependent_services = true
 }
@@ -14,7 +14,7 @@ resource "google_project_service" "compute_api" {
 
 resource "google_compute_network" "vpc" {
   name                    = var.spec.network_name
-  project                 = var.spec.project_id.value
+  project                 = local.project_id
   auto_create_subnetworks = var.spec.auto_create_subnetworks
   routing_mode            = local.routing_mode
 
@@ -34,7 +34,7 @@ resource "google_compute_network" "vpc" {
 resource "google_compute_global_address" "private_services_range" {
   count         = local.enable_private_services ? 1 : 0
   name          = "${var.spec.network_name}-private-svc"
-  project       = var.spec.project_id.value
+  project       = local.project_id
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = local.private_services_prefix_length

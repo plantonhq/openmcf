@@ -135,8 +135,10 @@ func (x *GcpVpcPrivateServicesAccess) GetIpRangePrefixLength() int32 {
 // GcpVpcSpec defines the essential configuration for a Google Cloud VPC (Virtual Private Cloud).
 type GcpVpcSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The GCP project ID in which to create this VPC network.
-	// Example: "my-prod-project-123"
+	// The GCP project that owns this VPC network.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
+	// Immutable: changing it destroys and recreates the network.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Whether to use auto subnet mode (true) or custom subnet mode (false).
 	// **Default:** false (custom mode). Auto mode is not recommended for production:contentReference[oaicite:4]{index=4}.
@@ -230,11 +232,11 @@ const file_dev_planton_provider_gcp_gcpvpc_v1_spec_proto_rawDesc = "" +
 	"-dev/planton/provider/gcp/gcpvpc/v1/spec.proto\x12\"dev.planton.provider.gcp.gcpvpc.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x80\x01\n" +
 	"\x1bGcpVpcPrivateServicesAccess\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12G\n" +
-	"\x16ip_range_prefix_length\x18\x02 \x01(\x05B\x12\xbaH\t\xd8\x01\x01\x1a\x04\x18\x18(\b\x8a\xa6\x1d\x0216R\x13ipRangePrefixLength\"\x88\x04\n" +
+	"\x16ip_range_prefix_length\x18\x02 \x01(\x05B\x12\xbaH\t\xd8\x01\x01\x1a\x04\x18\x18(\b\x8a\xa6\x1d\x0216R\x13ipRangePrefixLength\"\x82\x04\n" +
 	"\n" +
-	"GcpVpcSpec\x12{\n" +
+	"GcpVpcSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
 	"\x17auto_create_subnetworks\x18\x02 \x01(\bR\x15autoCreateSubnetworks\x12k\n" +
 	"\frouting_mode\x18\x03 \x01(\x0e25.dev.planton.provider.gcp.gcpvpc.v1.GcpVpcRoutingModeB\f\x8a\xa6\x1d\bREGIONALH\x00R\vroutingMode\x88\x01\x01\x12N\n" +
 	"\fnetwork_name\x18\x04 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\vnetworkName\x12w\n" +

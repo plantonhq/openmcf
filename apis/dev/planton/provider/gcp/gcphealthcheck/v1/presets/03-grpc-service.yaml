@@ -1,0 +1,16 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpHealthCheck
+metadata:
+  name: my-grpc-probe
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  description: Probes the gRPC health service of the payments backend
+  grpc:
+    # The service name your backend's grpc.health.v1.Health implementation
+    # recognizes; empty probes the server's OVERALL health.
+    grpcServiceName: payments.v1.Payments  # replace or remove
+    port: 50051  # replace: the gRPC serving port
+  # Log state transitions — gRPC health wiring mistakes (unimplemented
+  # health service, wrong service name) show up here first.
+  enableLogging: true

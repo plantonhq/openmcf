@@ -22,3 +22,10 @@ locals {
   private_services_prefix_length = try(var.spec.private_services_access.ip_range_prefix_length, 16)
 }
 
+
+locals {
+  # Honor the spec contract: an empty project_id falls back to the provider's
+  # default project (null lets the provider resolve it; "" would be sent
+  # verbatim and rejected by the API).
+  project_id = var.spec.project_id != "" ? var.spec.project_id : null
+}

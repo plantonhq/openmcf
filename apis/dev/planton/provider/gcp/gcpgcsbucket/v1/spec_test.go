@@ -64,13 +64,8 @@ var _ = ginkgo.Describe("GcpGcsBucketSpec Custom Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
-		})
-	})
 
-	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("gcp_gcs_bucket", func() {
-
-			ginkgo.It("should return a validation error when gcp_project_id is missing", func() {
+			ginkgo.It("should accept a missing gcp_project_id (falls back to the provider default project)", func() {
 				input := &GcpGcsBucket{
 					ApiVersion: "gcp.planton.dev/v1",
 					Kind:       "GcpGcsBucket",
@@ -84,8 +79,13 @@ var _ = ginkgo.Describe("GcpGcsBucketSpec Custom Validation Tests", func() {
 					},
 				}
 				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err).To(gomega.BeNil())
 			})
+		})
+	})
+
+	ginkgo.Describe("When invalid input is passed", func() {
+		ginkgo.Context("gcp_gcs_bucket", func() {
 
 			ginkgo.It("should return a validation error when bucket_name has invalid format", func() {
 				input := &GcpGcsBucket{

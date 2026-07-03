@@ -9,6 +9,7 @@ package gcpsubnetworkv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -23,34 +24,115 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GcpSubnetworkSpec defines the user-provided settings for a GCP Subnetwork (custom mode).
+// GcpSubnetworkSpec defines a subnetwork in a custom-mode VPC — the regional
+// address space workloads actually live in. Subnets carry the IP plan:
+// a primary IPv4 range for VM interfaces, optional secondary ranges for
+// alias IPs (GKE pods and services), optional IPv6, and the VPC Flow Logs
+// configuration for the subnet's traffic.
+//
+// Most subnets keep the default PRIVATE purpose. The purpose field also
+// creates the special-role subnets other networking features require:
+// proxy-only subnets that reserve address space for Envoy-based load
+// balancers (REGIONAL_MANAGED_PROXY / GLOBAL_MANAGED_PROXY) and Private
+// Service Connect subnets (PRIVATE_SERVICE_CONNECT) that back published
+// services.
+//
+// Sizing note: GCP reserves 4 addresses per primary range, and a subnet's
+// primary range can be EXPANDED later without recreation — but never shrunk.
+// Start with room to grow (a /20 is a common team-sized default).
 type GcpSubnetworkSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The GCP project ID in which to create this subnetwork.
+	// The GCP project that owns this subnetwork.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
+	// Immutable: changing it destroys and recreates the subnetwork.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// Reference to the parent VPC network (must be an existing GcpVpc).
-	// This should point to the VPC's selfLink for the network:contentReference[oaicite:8]{index=8}.
+	// The parent VPC network, by self-link.
+	// Reference a GcpVpc resource or provide the self-link directly.
+	// Immutable: a subnet cannot move between networks.
 	VpcSelfLink *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=vpc_self_link,json=vpcSelfLink,proto3" json:"vpc_self_link,omitempty"`
-	// Region in which to create this subnet (e.g. "us-west1").
-	// Must be a valid GCP region code (ends with a digit) and cannot be changed after creation.
-	Region string `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"`
-	// Primary IPv4 CIDR range for the subnet. Example: "10.0.0.0/16".
-	// Must be unique and non-overlapping within the VPC. Only IPv4 ranges are supported:contentReference[oaicite:9]{index=9}.
-	IpCidrRange string `protobuf:"bytes,4,opt,name=ip_cidr_range,json=ipCidrRange,proto3" json:"ip_cidr_range,omitempty"`
-	// Secondary IP ranges for alias IPs (e.g., for GKE Pod or Service IPs). Optional.
-	// Each secondary range has a name (1-63 chars, lowercase alphanumeric or '-') and an IPv4 CIDR.
-	// Up to 170 secondary ranges can be defined per subnet:contentReference[oaicite:10]{index=10} (typical usage is one or two).
-	SecondaryIpRanges []*GcpSubnetworkSecondaryRange `protobuf:"bytes,5,rep,name=secondary_ip_ranges,json=secondaryIpRanges,proto3" json:"secondary_ip_ranges,omitempty"`
-	// Whether to enable Private Google Access on this subnet.
-	// If true, VMs without external IPs in this subnet can access Google APIs internally:contentReference[oaicite:11]{index=11}.
-	PrivateIpGoogleAccess bool `protobuf:"varint,6,opt,name=private_ip_google_access,json=privateIpGoogleAccess,proto3" json:"private_ip_google_access,omitempty"`
-	// Name of the subnetwork to create in GCP.
-	// Must be 1-63 characters, lowercase letters, numbers, or hyphens.
-	// Must start with a lowercase letter and end with a lowercase letter or number.
-	// Example: "my-subnet", "prod-uswest1-subnet"
-	SubnetworkName string `protobuf:"bytes,7,opt,name=subnetwork_name,json=subnetworkName,proto3" json:"subnetwork_name,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Name of the subnetwork in GCP. Must be 1-63 characters: lowercase
+	// letters, digits, and hyphens; must start with a letter and end with a
+	// letter or digit.
+	// Immutable: changing it destroys and recreates the subnetwork.
+	SubnetworkName string `protobuf:"bytes,3,opt,name=subnetwork_name,json=subnetworkName,proto3" json:"subnetwork_name,omitempty"`
+	// Region the subnetwork lives in (e.g. "us-central1"). Subnets are
+	// regional: workloads in any zone of this region can use it.
+	// Immutable: a subnet cannot move between regions.
+	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
+	// Primary IPv4 CIDR range (e.g. "10.10.0.0/20"). Must not overlap any
+	// other range in the VPC. Mutable in ONE direction: the range can be
+	// expanded in place (e.g. /20 → /18), but shrinking it forces destroy and
+	// recreate — plan for growth up front. Leave empty only for IPV6_ONLY
+	// subnets, which carry no IPv4 range.
+	IpCidrRange string `protobuf:"bytes,5,opt,name=ip_cidr_range,json=ipCidrRange,proto3" json:"ip_cidr_range,omitempty"`
+	// What this subnet carries and which workloads should use it — write it
+	// for the operator doing IP planning later.
+	// Immutable: description updates force recreation on this resource.
+	Description string `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	// What the subnet is FOR. PRIVATE (the default) is a regular workload
+	// subnet. REGIONAL_MANAGED_PROXY reserves address space for the region's
+	// Envoy-based load balancers (required before creating a regional internal
+	// or regional external Application Load Balancer in the VPC);
+	// GLOBAL_MANAGED_PROXY is the cross-region equivalent.
+	// PRIVATE_SERVICE_CONNECT backs published PSC services. PEER_MIGRATION
+	// stages subnet migration between peered VPCs. PRIVATE_NAT provides source
+	// ranges for Private NAT gateways.
+	// Immutable in practice: choose the purpose when the subnet is created.
+	Purpose *string `protobuf:"bytes,7,opt,name=purpose,proto3,oneof" json:"purpose,omitempty"`
+	// For REGIONAL_MANAGED_PROXY subnets only: ACTIVE means the region's Envoy
+	// proxies allocate addresses from this subnet now; BACKUP holds the subnet
+	// ready for a drain-and-swap (promote a BACKUP to ACTIVE to migrate the
+	// proxy fleet onto fresh address space). Mutable.
+	Role string `protobuf:"bytes,8,opt,name=role,proto3" json:"role,omitempty"`
+	// Secondary IPv4 ranges for alias IPs — the mechanism GKE uses for pod
+	// and service IPs (VPC-native clusters), and any workload that needs
+	// per-container addresses. Up to 170 per subnet; names are how consumers
+	// (e.g. a GKE cluster's ip_allocation_policy) select a range.
+	SecondaryIpRanges []*GcpSubnetworkSecondaryRange `protobuf:"bytes,9,rep,name=secondary_ip_ranges,json=secondaryIpRanges,proto3" json:"secondary_ip_ranges,omitempty"`
+	// Let VMs without external IPs reach Google APIs and services over the
+	// subnet's internal addresses. Effectively mandatory for private-only
+	// subnets whose workloads pull from GCR/Artifact Registry or call any
+	// Google API. Mutable.
+	PrivateIpGoogleAccess bool `protobuf:"varint,10,opt,name=private_ip_google_access,json=privateIpGoogleAccess,proto3" json:"private_ip_google_access,omitempty"`
+	// IPv6 counterpart of private_ip_google_access, controlling VM-to-Google
+	// traffic over IPv6: DISABLE_GOOGLE_ACCESS,
+	// ENABLE_OUTBOUND_VM_ACCESS_TO_GOOGLE, or
+	// ENABLE_BIDIRECTIONAL_ACCESS_TO_GOOGLE. Leave unset to keep GCP's
+	// default (disabled). Mutable.
+	PrivateIpv6GoogleAccess string `protobuf:"bytes,11,opt,name=private_ipv6_google_access,json=privateIpv6GoogleAccess,proto3" json:"private_ipv6_google_access,omitempty"`
+	// The subnet's IP stack: IPV4_ONLY (the default), IPV4_IPV6 (dual-stack —
+	// VMs can carry both), or IPV6_ONLY. Dual-stack and IPv6-only subnets
+	// also need ipv6_access_type. Mutable between IPV4_ONLY and IPV4_IPV6;
+	// moving to or from IPV6_ONLY recreates.
+	StackType *string `protobuf:"bytes,12,opt,name=stack_type,json=stackType,proto3,oneof" json:"stack_type,omitempty"`
+	// Where the subnet's IPv6 addresses are reachable from: EXTERNAL
+	// (internet-routable GUAs assigned by Google) or INTERNAL (ULAs, only
+	// routable inside the VPC — requires the VPC to have an internal IPv6
+	// range enabled). Required for IPV4_IPV6 and IPV6_ONLY subnets.
+	// Immutable: the access type cannot change after creation.
+	Ipv6AccessType string `protobuf:"bytes,13,opt,name=ipv6_access_type,json=ipv6AccessType,proto3" json:"ipv6_access_type,omitempty"`
+	// For EXTERNAL IPv6 subnets: pin a specific /64 external IPv6 prefix
+	// (must belong to a range GCP can assign). Leave empty to let Google
+	// allocate one — the normal path. Immutable.
+	ExternalIpv6Prefix string `protobuf:"bytes,14,opt,name=external_ipv6_prefix,json=externalIpv6Prefix,proto3" json:"external_ipv6_prefix,omitempty"`
+	// Permit this subnet's CIDR to overlap with routes to destinations
+	// OUTSIDE the VPC (e.g. re-using RFC1918 space that a peer or on-prem
+	// route also claims). Subnet routes still take precedence; use only when
+	// deliberately reclaiming address space. Mutable.
+	AllowSubnetCidrRoutesOverlap bool `protobuf:"varint,15,opt,name=allow_subnet_cidr_routes_overlap,json=allowSubnetCidrRoutesOverlap,proto3" json:"allow_subnet_cidr_routes_overlap,omitempty"`
+	// Controls what an EMPTY secondary_ip_ranges list means on update: true
+	// sends the empty list (removing all secondary ranges); false (the
+	// default) omits it, leaving existing secondary ranges untouched. A
+	// safety latch against wiping GKE pod ranges with a partial manifest.
+	SendSecondaryIpRangeIfEmpty bool `protobuf:"varint,16,opt,name=send_secondary_ip_range_if_empty,json=sendSecondaryIpRangeIfEmpty,proto3" json:"send_secondary_ip_range_if_empty,omitempty"`
+	// VPC Flow Logs for this subnet: samples of TCP/UDP flows for network
+	// monitoring, forensics, and cost analysis, delivered to Cloud Logging.
+	// Unset means flow logs are OFF. Logging every flow at full sampling on a
+	// busy subnet is expensive — tune flow_sampling and filter_expr.
+	LogConfig     *GcpSubnetworkLogConfig `protobuf:"bytes,17,opt,name=log_config,json=logConfig,proto3" json:"log_config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpSubnetworkSpec) Reset() {
@@ -97,6 +179,13 @@ func (x *GcpSubnetworkSpec) GetVpcSelfLink() *v1.StringValueOrRef {
 	return nil
 }
 
+func (x *GcpSubnetworkSpec) GetSubnetworkName() string {
+	if x != nil {
+		return x.SubnetworkName
+	}
+	return ""
+}
+
 func (x *GcpSubnetworkSpec) GetRegion() string {
 	if x != nil {
 		return x.Region
@@ -107,6 +196,27 @@ func (x *GcpSubnetworkSpec) GetRegion() string {
 func (x *GcpSubnetworkSpec) GetIpCidrRange() string {
 	if x != nil {
 		return x.IpCidrRange
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetPurpose() string {
+	if x != nil && x.Purpose != nil {
+		return *x.Purpose
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetRole() string {
+	if x != nil {
+		return x.Role
 	}
 	return ""
 }
@@ -125,20 +235,65 @@ func (x *GcpSubnetworkSpec) GetPrivateIpGoogleAccess() bool {
 	return false
 }
 
-func (x *GcpSubnetworkSpec) GetSubnetworkName() string {
+func (x *GcpSubnetworkSpec) GetPrivateIpv6GoogleAccess() string {
 	if x != nil {
-		return x.SubnetworkName
+		return x.PrivateIpv6GoogleAccess
 	}
 	return ""
 }
 
-// Define the structure for a secondary IP range.
+func (x *GcpSubnetworkSpec) GetStackType() string {
+	if x != nil && x.StackType != nil {
+		return *x.StackType
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetIpv6AccessType() string {
+	if x != nil {
+		return x.Ipv6AccessType
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetExternalIpv6Prefix() string {
+	if x != nil {
+		return x.ExternalIpv6Prefix
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetAllowSubnetCidrRoutesOverlap() bool {
+	if x != nil {
+		return x.AllowSubnetCidrRoutesOverlap
+	}
+	return false
+}
+
+func (x *GcpSubnetworkSpec) GetSendSecondaryIpRangeIfEmpty() bool {
+	if x != nil {
+		return x.SendSecondaryIpRangeIfEmpty
+	}
+	return false
+}
+
+func (x *GcpSubnetworkSpec) GetLogConfig() *GcpSubnetworkLogConfig {
+	if x != nil {
+		return x.LogConfig
+	}
+	return nil
+}
+
+// One secondary (alias) IPv4 range.
 type GcpSubnetworkSecondaryRange struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name for this secondary range (unique within the subnet).
-	// 1-63 characters, must start with a letter and end with a letter or digit (RFC1035):contentReference[oaicite:12]{index=12}.
+	// Name of this secondary range, unique within the subnet — the handle
+	// consumers use to select it (e.g. a GKE cluster's pods range). 1-63
+	// characters, RFC1035. Renaming a range in place is not supported by GCP.
 	RangeName string `protobuf:"bytes,1,opt,name=range_name,json=rangeName,proto3" json:"range_name,omitempty"`
-	// The IPv4 CIDR for this secondary range (non-overlapping within the VPC).
+	// IPv4 CIDR of this secondary range. Must not overlap any other range in
+	// the VPC. Size for the consumer: GKE pod ranges are commonly /14-/18,
+	// service ranges /20.
 	IpCidrRange   string `protobuf:"bytes,2,opt,name=ip_cidr_range,json=ipCidrRange,proto3" json:"ip_cidr_range,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -188,24 +343,156 @@ func (x *GcpSubnetworkSecondaryRange) GetIpCidrRange() string {
 	return ""
 }
 
+// VPC Flow Logs configuration. Presence of this message enables flow logs;
+// every field has a sensible GCP default, so an empty block turns on
+// logging with 5-second aggregation at 50% sampling with all metadata.
+type GcpSubnetworkLogConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How long flows are aggregated before a log entry is emitted. Longer
+	// intervals mean fewer, larger entries (lower cost, coarser timing).
+	AggregationInterval *string `protobuf:"bytes,1,opt,name=aggregation_interval,json=aggregationInterval,proto3,oneof" json:"aggregation_interval,omitempty"`
+	// Fraction of flows to sample, 0.0-1.0 (GCP default 0.5). 1.0 captures
+	// everything — the right choice for security forensics, at real Logging
+	// cost on busy subnets; lower it for trend monitoring.
+	FlowSampling *float64 `protobuf:"fixed64,2,opt,name=flow_sampling,json=flowSampling,proto3,oneof" json:"flow_sampling,omitempty"`
+	// Which metadata joins each log entry: INCLUDE_ALL_METADATA (the
+	// default), EXCLUDE_ALL_METADATA (smallest entries), or CUSTOM_METADATA
+	// (only the fields listed in metadata_fields).
+	Metadata *string `protobuf:"bytes,3,opt,name=metadata,proto3,oneof" json:"metadata,omitempty"`
+	// Metadata fields to include when metadata is CUSTOM_METADATA (e.g.
+	// "src_instance", "dest_vpc").
+	MetadataFields []string `protobuf:"bytes,4,rep,name=metadata_fields,json=metadataFields,proto3" json:"metadata_fields,omitempty"`
+	// CEL expression selecting which flows are logged (GCP default "true" =
+	// all sampled flows), e.g. restricting to one port:
+	// connection.dest_port == 443.
+	FilterExpr    string `protobuf:"bytes,5,opt,name=filter_expr,json=filterExpr,proto3" json:"filter_expr,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpSubnetworkLogConfig) Reset() {
+	*x = GcpSubnetworkLogConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpSubnetworkLogConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpSubnetworkLogConfig) ProtoMessage() {}
+
+func (x *GcpSubnetworkLogConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpSubnetworkLogConfig.ProtoReflect.Descriptor instead.
+func (*GcpSubnetworkLogConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpSubnetworkLogConfig) GetAggregationInterval() string {
+	if x != nil && x.AggregationInterval != nil {
+		return *x.AggregationInterval
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkLogConfig) GetFlowSampling() float64 {
+	if x != nil && x.FlowSampling != nil {
+		return *x.FlowSampling
+	}
+	return 0
+}
+
+func (x *GcpSubnetworkLogConfig) GetMetadata() string {
+	if x != nil && x.Metadata != nil {
+		return *x.Metadata
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkLogConfig) GetMetadataFields() []string {
+	if x != nil {
+		return x.MetadataFields
+	}
+	return nil
+}
+
+func (x *GcpSubnetworkLogConfig) GetFilterExpr() string {
+	if x != nil {
+		return x.FilterExpr
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/gcp/gcpsubnetwork/v1/spec.proto\x12)dev.planton.provider.gcp.gcpsubnetwork.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa9\x05\n" +
-	"\x11GcpSubnetworkSpec\x12{\n" +
+	"4dev/planton/provider/gcp/gcpsubnetwork/v1/spec.proto\x12)dev.planton.provider.gcp.gcpsubnetwork.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x97\x19\n" +
+	"\x11GcpSubnetworkSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x01\n" +
-	"\rvpc_self_link\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\vvpcSelfLink\x12>\n" +
-	"\x06region\x18\x03 \x01(\tB&\xbaH#\xc8\x01\x01r\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x06region\x12F\n" +
-	"\rip_cidr_range\x18\x04 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^\\d+\\.\\d+\\.\\d+\\.\\d+/\\d+$R\vipCidrRange\x12v\n" +
-	"\x13secondary_ip_ranges\x18\x05 \x03(\v2F.dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSecondaryRangeR\x11secondaryIpRanges\x127\n" +
-	"\x18private_ip_google_access\x18\x06 \x01(\bR\x15privateIpGoogleAccess\x12T\n" +
-	"\x0fsubnetwork_name\x18\a \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\x0esubnetworkName\"\xb0\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x01\n" +
+	"\rvpc_self_link\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\vvpcSelfLink\x12T\n" +
+	"\x0fsubnetwork_name\x18\x03 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\x0esubnetworkName\x12>\n" +
+	"\x06region\x18\x04 \x01(\tB&\xbaH#\xc8\x01\x01r\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x06region\x12\xb8\x01\n" +
+	"\rip_cidr_range\x18\x05 \x01(\tB\x93\x01\xbaH\x8f\x01\xba\x01\x8b\x01\n" +
+	"\x13valid_ip_cidr_range\x124ip_cidr_range must be an IPv4 CIDR like 10.10.0.0/20\x1a>this == '' || this.matches('^\\\\d+\\\\.\\\\d+\\\\.\\\\d+\\\\.\\\\d+/\\\\d+$')R\vipCidrRange\x12*\n" +
+	"\vdescription\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\xce\x02\n" +
+	"\apurpose\x18\a \x01(\tB\xae\x02\xbaH\x9f\x02\xba\x01\x9b\x02\n" +
+	"\rvalid_purpose\x12\x85\x01purpose must be one of PRIVATE, REGIONAL_MANAGED_PROXY, GLOBAL_MANAGED_PROXY, PRIVATE_SERVICE_CONNECT, PEER_MIGRATION, or PRIVATE_NAT\x1a\x81\x01this in ['PRIVATE', 'REGIONAL_MANAGED_PROXY', 'GLOBAL_MANAGED_PROXY', 'PRIVATE_SERVICE_CONNECT', 'PEER_MIGRATION', 'PRIVATE_NAT']\x8a\xa6\x1d\aPRIVATEH\x00R\apurpose\x88\x01\x01\x12q\n" +
+	"\x04role\x18\b \x01(\tB]\xbaHZ\xba\x01W\n" +
+	"\n" +
+	"valid_role\x12\x1drole must be ACTIVE or BACKUP\x1a*this == '' || this in ['ACTIVE', 'BACKUP']R\x04role\x12v\n" +
+	"\x13secondary_ip_ranges\x18\t \x03(\v2F.dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSecondaryRangeR\x11secondaryIpRanges\x127\n" +
+	"\x18private_ip_google_access\x18\n" +
+	" \x01(\bR\x15privateIpGoogleAccess\x12\xf3\x02\n" +
+	"\x1aprivate_ipv6_google_access\x18\v \x01(\tB\xb5\x02\xbaH\xb1\x02\xba\x01\xad\x02\n" +
+	" valid_private_ipv6_google_access\x12\x87\x01private_ipv6_google_access must be DISABLE_GOOGLE_ACCESS, ENABLE_OUTBOUND_VM_ACCESS_TO_GOOGLE, or ENABLE_BIDIRECTIONAL_ACCESS_TO_GOOGLE\x1a\x7fthis == '' || this in ['DISABLE_GOOGLE_ACCESS', 'ENABLE_OUTBOUND_VM_ACCESS_TO_GOOGLE', 'ENABLE_BIDIRECTIONAL_ACCESS_TO_GOOGLE']R\x17privateIpv6GoogleAccess\x12\xb2\x01\n" +
+	"\n" +
+	"stack_type\x18\f \x01(\tB\x8d\x01\xbaH}\xba\x01z\n" +
+	"\x10valid_stack_type\x125stack_type must be IPV4_ONLY, IPV4_IPV6, or IPV6_ONLY\x1a/this in ['IPV4_ONLY', 'IPV4_IPV6', 'IPV6_ONLY']\x8a\xa6\x1d\tIPV4_ONLYH\x01R\tstackType\x88\x01\x01\x12\xa7\x01\n" +
+	"\x10ipv6_access_type\x18\r \x01(\tB}\xbaHz\xba\x01w\n" +
+	"\x16valid_ipv6_access_type\x12-ipv6_access_type must be EXTERNAL or INTERNAL\x1a.this == '' || this in ['EXTERNAL', 'INTERNAL']R\x0eipv6AccessType\x120\n" +
+	"\x14external_ipv6_prefix\x18\x0e \x01(\tR\x12externalIpv6Prefix\x12F\n" +
+	" allow_subnet_cidr_routes_overlap\x18\x0f \x01(\bR\x1callowSubnetCidrRoutesOverlap\x12E\n" +
+	" send_secondary_ip_range_if_empty\x18\x10 \x01(\bR\x1bsendSecondaryIpRangeIfEmpty\x12`\n" +
+	"\n" +
+	"log_config\x18\x11 \x01(\v2A.dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkLogConfigR\tlogConfig:\xfb\x06\xbaH\xf7\x06\x1a\xd2\x01\n" +
+	"$ipv4_range_required_unless_ipv6_only\x12:ip_cidr_range is required (only IPV6_ONLY subnets omit it)\x1an(has(this.stack_type) && this.stack_type == 'IPV6_ONLY') ? this.ip_cidr_range == '' : this.ip_cidr_range != ''\x1a\xd8\x01\n" +
+	"#role_requires_managed_proxy_purpose\x12]role is only valid on REGIONAL_MANAGED_PROXY subnets — remove it or set purpose accordingly\x1aRthis.role == '' || (has(this.purpose) && this.purpose == 'REGIONAL_MANAGED_PROXY')\x1a\xfd\x01\n" +
+	"\x1fipv6_access_requires_ipv6_stack\x12cipv6_access_type is required for IPV4_IPV6 and IPV6_ONLY subnets, and must be omitted for IPV4_ONLY\x1au(!has(this.stack_type) || this.stack_type == 'IPV4_ONLY') ? this.ipv6_access_type == '' : this.ipv6_access_type != ''\x1a\xc4\x01\n" +
+	"-external_ipv6_prefix_requires_external_access\x12Kexternal_ipv6_prefix only applies to subnets with ipv6_access_type EXTERNAL\x1aFthis.external_ipv6_prefix == '' || this.ipv6_access_type == 'EXTERNAL'B\n" +
+	"\n" +
+	"\b_purposeB\r\n" +
+	"\v_stack_type\"\xb0\x01\n" +
 	"\x1bGcpSubnetworkSecondaryRange\x12I\n" +
 	"\n" +
 	"range_name\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x01\x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\trangeName\x12F\n" +
-	"\rip_cidr_range\x18\x02 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^\\d+\\.\\d+\\.\\d+\\.\\d+/\\d+$R\vipCidrRangeB\xe2\x02\n" +
+	"\rip_cidr_range\x18\x02 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^\\d+\\.\\d+\\.\\d+\\.\\d+/\\d+$R\vipCidrRange\"\x9f\b\n" +
+	"\x16GcpSubnetworkLogConfig\x12\xf3\x02\n" +
+	"\x14aggregation_interval\x18\x01 \x01(\tB\xba\x02\xbaH\xa4\x02\xba\x01\xa0\x02\n" +
+	"\x1avalid_aggregation_interval\x12\x88\x01aggregation_interval must be one of INTERVAL_5_SEC, INTERVAL_30_SEC, INTERVAL_1_MIN, INTERVAL_5_MIN, INTERVAL_10_MIN, or INTERVAL_15_MIN\x1awthis in ['INTERVAL_5_SEC', 'INTERVAL_30_SEC', 'INTERVAL_1_MIN', 'INTERVAL_5_MIN', 'INTERVAL_10_MIN', 'INTERVAL_15_MIN']\x8a\xa6\x1d\x0eINTERVAL_5_SECH\x00R\x13aggregationInterval\x88\x01\x01\x12H\n" +
+	"\rflow_sampling\x18\x02 \x01(\x01B\x1e\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00\x8a\xa6\x1d\x030.5H\x01R\fflowSampling\x88\x01\x01\x12\xf0\x01\n" +
+	"\bmetadata\x18\x03 \x01(\tB\xce\x01\xbaH\xb2\x01\xba\x01\xae\x01\n" +
+	"\x0evalid_metadata\x12Ometadata must be EXCLUDE_ALL_METADATA, INCLUDE_ALL_METADATA, or CUSTOM_METADATA\x1aKthis in ['EXCLUDE_ALL_METADATA', 'INCLUDE_ALL_METADATA', 'CUSTOM_METADATA']\x8a\xa6\x1d\x14INCLUDE_ALL_METADATAH\x02R\bmetadata\x88\x01\x01\x12'\n" +
+	"\x0fmetadata_fields\x18\x04 \x03(\tR\x0emetadataFields\x12)\n" +
+	"\vfilter_expr\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\n" +
+	"filterExpr:\xc5\x01\xbaH\xc1\x01\x1a\xbe\x01\n" +
+	"\x1emetadata_fields_require_custom\x12=metadata_fields only applies when metadata is CUSTOM_METADATA\x1a]size(this.metadata_fields) == 0 || (has(this.metadata) && this.metadata == 'CUSTOM_METADATA')B\x17\n" +
+	"\x15_aggregation_intervalB\x10\n" +
+	"\x0e_flow_samplingB\v\n" +
+	"\t_metadataB\xe2\x02\n" +
 	"-com.dev.planton.provider.gcp.gcpsubnetwork.v1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1;gcpsubnetworkv1\xa2\x02\x05DPPGG\xaa\x02)Dev.Planton.Provider.Gcp.Gcpsubnetwork.V1\xca\x02)Dev\\Planton\\Provider\\Gcp\\Gcpsubnetwork\\V1\xe2\x025Dev\\Planton\\Provider\\Gcp\\Gcpsubnetwork\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Gcp::Gcpsubnetwork::V1b\x06proto3"
 
 var (
@@ -220,21 +507,23 @@ func file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_rawDescGZIP() []b
 	return file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_goTypes = []any{
 	(*GcpSubnetworkSpec)(nil),           // 0: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSpec
 	(*GcpSubnetworkSecondaryRange)(nil), // 1: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSecondaryRange
-	(*v1.StringValueOrRef)(nil),         // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpSubnetworkLogConfig)(nil),      // 2: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkLogConfig
+	(*v1.StringValueOrRef)(nil),         // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSpec.vpc_self_link:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 0: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 1: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSpec.vpc_self_link:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 2: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSpec.secondary_ip_ranges:type_name -> dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSecondaryRange
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // 3: dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkSpec.log_config:type_name -> dev.planton.provider.gcp.gcpsubnetwork.v1.GcpSubnetworkLogConfig
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_init() }
@@ -242,13 +531,15 @@ func file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_init() {
 	if File_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -52,7 +52,7 @@ This creates a custom-mode VPC named `dev-network` with regional routing in the 
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project ID where the VPC is created. Can reference a GcpProject resource via `valueFrom`. | Required |
+| `projectId` | `StringValueOrRef` | GCP project that owns the VPC. Can reference a GcpProject resource via `valueFrom`; omit to use the provider's default project. | Optional |
 | `networkName` | `string` | Name of the VPC network in GCP. | 1-63 chars, lowercase letters/numbers/hyphens, must start with a letter and end with a letter or number |
 
 ### Optional Fields

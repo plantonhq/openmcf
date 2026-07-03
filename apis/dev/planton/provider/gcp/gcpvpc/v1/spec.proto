@@ -36,10 +36,11 @@ message GcpVpcPrivateServicesAccess {
 
 // GcpVpcSpec defines the essential configuration for a Google Cloud VPC (Virtual Private Cloud).
 message GcpVpcSpec {
-  // The GCP project ID in which to create this VPC network.
-  // Example: "my-prod-project-123"
+  // The GCP project that owns this VPC network.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the network.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];

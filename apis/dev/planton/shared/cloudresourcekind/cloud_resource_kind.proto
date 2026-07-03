@@ -764,6 +764,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpsnw"
+    prerequisites: [GcpVpc]
   }];
   GcpRouterNat = 612 [(kind_meta) = {
     provider: gcp
@@ -823,6 +824,17 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpcap"
+  }];
+  GcpHealthCheck = 623 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcphc"
+  }];
+  GcpBackendBucket = 624 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpbb"
+    prerequisites: [GcpGcsBucket]
   }];
   GcpAlloydbCluster = 630 [(kind_meta) = {
     provider: gcp
@@ -1119,7 +1131,7 @@ enum CloudResourceKind {
   KubernetesPerconaMysqlOperator = 834 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8sprcnpgop"
+    id_prefix: "k8sprcnmsop"
   }];
   KubernetesHarbor = 835 [(kind_meta) = {
     provider: kubernetes

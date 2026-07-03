@@ -4,7 +4,10 @@
 
 resource "google_storage_bucket" "main" {
   name                        = var.spec.bucket_name
-  project                     = var.spec.gcp_project_id.value
+  # Honor the spec contract: an empty gcp_project_id falls back to the
+  # provider's default project (null lets the provider resolve it; "" would be
+  # sent verbatim and rejected).
+  project                     = var.spec.gcp_project_id != "" ? var.spec.gcp_project_id : null
   location                    = var.spec.location
   labels                      = local.final_labels
   force_destroy               = true

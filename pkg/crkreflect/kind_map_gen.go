@@ -213,6 +213,7 @@ import (
 	digitaloceanvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean/digitaloceanvpc/v1"
 	gcpalloydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbcluster/v1"
 	gcpartifactregistryrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1"
+	gcpbackendbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendbucket/v1"
 	gcpbigquerydatasetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerydataset/v1"
 	gcpbigtableinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtableinstance/v1"
 	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
@@ -237,6 +238,7 @@ import (
 	gcpgkenodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkenodepool/v1"
 	gcpgkeworkloadidentitybindingv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkeworkloadidentitybinding/v1"
 	gcpglobaladdressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpglobaladdress/v1"
+	gcphealthcheckv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcphealthcheck/v1"
 	gcpiamcustomrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpiamcustomrole/v1"
 	gcpkmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskey/v1"
 	gcpkmskeyringv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyring/v1"
@@ -670,6 +672,7 @@ var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpAlloydbCluster:               &gcpalloydbclusterv1.GcpAlloydbCluster{},
 	cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo:         &gcpartifactregistryrepov1.GcpArtifactRegistryRepo{},
+	cloudresourcekind.CloudResourceKind_GcpBackendBucket:                &gcpbackendbucketv1.GcpBackendBucket{},
 	cloudresourcekind.CloudResourceKind_GcpBigQueryDataset:              &gcpbigquerydatasetv1.GcpBigQueryDataset{},
 	cloudresourcekind.CloudResourceKind_GcpBigtableInstance:             &gcpbigtableinstancev1.GcpBigtableInstance{},
 	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:              &gcpcertmanagercertv1.GcpCertManagerCert{},
@@ -694,6 +697,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpGkeNodePool:                  &gcpgkenodepoolv1.GcpGkeNodePool{},
 	cloudresourcekind.CloudResourceKind_GcpGkeWorkloadIdentityBinding:   &gcpgkeworkloadidentitybindingv1.GcpGkeWorkloadIdentityBinding{},
 	cloudresourcekind.CloudResourceKind_GcpGlobalAddress:                &gcpglobaladdressv1.GcpGlobalAddress{},
+	cloudresourcekind.CloudResourceKind_GcpHealthCheck:                  &gcphealthcheckv1.GcpHealthCheck{},
 	cloudresourcekind.CloudResourceKind_GcpIamCustomRole:                &gcpiamcustomrolev1.GcpIamCustomRole{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKey:                       &gcpkmskeyv1.GcpKmsKey{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKeyRing:                   &gcpkmskeyringv1.GcpKmsKeyRing{},
