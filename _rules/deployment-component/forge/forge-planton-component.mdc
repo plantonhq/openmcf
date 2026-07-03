@@ -341,6 +341,15 @@ are not coupled to profile names); a name matching none of SEVERAL instances
 fails loudly. A reference's explicit `kind`/`fieldPath` win over the field's
 `default_kind`/`default_kind_field_path` annotations.
 
+**A prerequisite kind needs its own verifier and install manifest.** The
+harness VERIFIES every dependency it deploys (and its absence after
+teardown), so declaring a kind in `prerequisites` requires that kind to
+have a registered verifier in `aa_e2e/verify/verifier.go` and an install
+manifest (`e2e/prerequisite.yaml` or `scenarios/minimal.yaml`) -- even if
+the kind has never had E2E coverage of its own. A dependency without a
+verifier fails every consumer's DEPENDENCIES-UP phase with "no verifier
+registered", after the resource has already deployed.
+
 **Consumer-specific fixture shapes live in the shared profile.** There is
 exactly ONE prerequisite profile per kind, shared by every consumer that
 declares the kind in `prerequisites` — so when consumers need differently

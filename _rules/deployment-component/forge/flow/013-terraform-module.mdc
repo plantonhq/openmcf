@@ -162,7 +162,13 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   whenever the object is null -- and `terraform validate` cannot catch it
   (only a run with the attribute pruned does). Null-guard nested-object
   access with a ternary instead: `obj != null ? obj.attr : false`, or the
-  `for_each = obj != null ? [obj] : []` dynamic-block idiom.
+  `for_each = obj != null ? [obj] : []` dynamic-block idiom. This applies in
+  EVERY expression context, not just dynamic blocks -- a `count` guard like
+  `count = enabled && var.spec.block.sub != null ? 1 : 0` errors identically
+  when `block` is null; nest ternaries there too:
+  `count = enabled ? (var.spec.block.sub != null ? 1 : 0) : 0`. Before
+  finishing, sweep the module for `&&`/`||` whose operands dereference a
+  possibly-null object.
 - Example:
   ```hcl
   # CORRECT: Planton guarantees content_type is populated (default: application/octet-stream)
