@@ -214,6 +214,33 @@ func TestAwsEksNodeGroup_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awseksnodegroup", "terraform")
 }
 
+// --- AWS EKS Add-on (kube-proxy adopted with OVERWRITE on the control-plane prerequisite chain) ---
+
+func TestAwsEksAddon_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseksaddon", "pulumi")
+}
+func TestAwsEksAddon_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseksaddon", "terraform")
+}
+
+// --- AWS EKS Fargate Profile (namespace selector; no pods scheduled; full control-plane prerequisite chain) ---
+
+func TestAwsEksFargateProfile_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseksfargateprofile", "pulumi")
+}
+func TestAwsEksFargateProfile_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseksfargateprofile", "terraform")
+}
+
+// --- AWS EKS Access Entry (STANDARD entry + view-policy association on an API-mode cluster) ---
+
+func TestAwsEksAccessEntry_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseksaccessentry", "pulumi")
+}
+func TestAwsEksAccessEntry_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseksaccessentry", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

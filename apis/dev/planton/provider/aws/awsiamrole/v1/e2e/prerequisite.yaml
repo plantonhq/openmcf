@@ -95,3 +95,33 @@ spec:
         Principal:
           Service: ec2.amazonaws.com
         Action: sts:AssumeRole
+---
+# Fargate pod-execution role: trusts eks-fargate-pods.amazonaws.com and
+# carries AmazonEKSFargatePodExecutionRolePolicy itself -- the Fargate
+# profile module never modifies the role it references.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-eks-fargate-pod-role
+  id: planton-oss-e2e-eks-fargate-pod-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for EKS Fargate pod execution
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: eks-fargate-pods.amazonaws.com
+        Action: sts:AssumeRole

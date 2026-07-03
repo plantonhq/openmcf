@@ -48,6 +48,9 @@ var verifiers = map[string]Verifier{
 	"awsautoscalinggroup":          &autoScalingGroupVerifier{},
 	"awsekscluster":                &eksClusterVerifier{},
 	"awseksnodegroup":              &eksNodeGroupVerifier{},
+	"awseksaddon":                  &eksAddonVerifier{},
+	"awseksfargateprofile":         &eksFargateProfileVerifier{},
+	"awseksaccessentry":            &eksAccessEntryVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

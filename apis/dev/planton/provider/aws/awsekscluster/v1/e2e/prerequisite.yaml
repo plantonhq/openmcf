@@ -35,3 +35,8 @@ spec:
       kind: AwsIamRole
       name: planton-oss-e2e-eks-cluster-role
       fieldPath: status.outputs.role_arn
+  # API authentication so access-entry scenarios can attach to this
+  # cluster; managed node groups are unaffected (EKS auto-creates their
+  # node-role entries in API mode).
+  accessConfig:
+    authenticationMode: API
