@@ -1,191 +1,111 @@
-# Amazon Neptune: Graph Database Architecture, Use Cases, and Query Languages
+# AwsNeptuneCluster — Architecture and Design
 
-## Introduction
+## Overview
 
-Amazon Neptune is a fully managed graph database service from AWS designed for applications that need to store and query highly connected data. Unlike relational databases that excel at tabular data with well-defined schemas, graph databases model data as nodes (vertices) and relationships (edges), making them ideal for traversing complex relationships across billions of connections in milliseconds.
+AwsNeptuneCluster provisions an Amazon Neptune graph database cluster: the shared-storage cluster resource plus its compute instances, the subnet group, and an optional cluster parameter group, in a single declarative resource. Neptune serves property-graph queries (Apache TinkerPop Gremlin, openCypher) and RDF queries (SPARQL) from the same cluster.
 
-Neptune supports two industry-standard graph models and query languages:
+The cluster's AWS identifier is taken from `metadata.name` — create-time immutable, so renaming means replacement.
 
-1. **Property Graph** with **Apache TinkerPop Gremlin** — vertices and edges with key-value properties; traversal-oriented queries
-2. **RDF (Resource Description Framework)** with **SPARQL** — triples (subject-predicate-object); W3C-standard semantic queries
+## The Cluster/Instances Split
 
-Neptune also supports **openCypher** as an additional query option for property graph workloads. This flexibility allows teams to choose the model and language that best fits their domain—whether building recommendation engines, fraud detection systems, knowledge graphs, or social networks.
+Neptune separates storage from compute the same way Aurora does: the **cluster** owns the storage volume (replicated six ways across three AZs), the endpoints, backups, and encryption; the **instances** are stateless compute that serve queries from that shared volume.
 
-## What Is a Graph Database?
+The spec folds instances in as a per-name list rather than a separate kind: an instance is a sub-resource of exactly one cluster and is referenced by nothing else. Both IaC modules manage each entry as its own provider resource keyed by `name` (`<cluster>-<name>`), so:
 
-A graph database stores data in structures optimized for relationship traversal. The core concepts:
+- Adding a reader is appending a list entry — an in-place update that touches nothing else.
+- Removing a reader deletes exactly that instance.
+- Renaming an entry replaces that one instance.
 
-- **Vertices (nodes)**: Entities such as users, products, accounts, or locations
-- **Edges (relationships)**: Connections between vertices with direction and optional properties
-- **Properties**: Key-value attributes on vertices and edges
+The instance with the lowest promotion tier that is available is the writer; all others serve reads and double as failover targets (promotion takes seconds because no data copy is needed).
 
-Example: In a social network, a "User" vertex might connect to another "User" via a "FOLLOWS" edge. Querying "friends of friends" becomes a natural graph traversal rather than complex JOINs in SQL.
+`instances` may only be empty for headless shapes that attach compute later — a snapshot restore, a replica, or a global-cluster member (CEL-enforced).
 
-### Property Graph vs. RDF
+## No Master Password — By Design
 
-| Aspect | Property Graph (Gremlin) | RDF (SPARQL) |
-|--------|--------------------------|--------------|
-| **Model** | Vertices, edges, properties | Triples (subject-predicate-object) |
-| **Use case** | Traversal, path finding, recommendations | Semantic web, knowledge graphs, linked data |
-| **Query style** | Step-by-step traversal | Declarative SELECT/WHERE |
-| **Standard** | Apache TinkerPop | W3C SPARQL 1.1 |
+Neptune has no master username or password anywhere in its API; that is AWS's design, not an omission of this spec. Access control is:
 
-## Neptune Architecture
+1. **Network reachability** — security groups on port 8182, always in effect.
+2. **IAM database authentication** (`iamDatabaseAuthenticationEnabled`) — requires every request to be SigV4-signed by an IAM identity. This is the production posture; policies can scope access down to the cluster's `cluster_resource_id`.
 
-### High-Level Design
+Engine-side integrations authenticate the other direction through `iamRoles`: the S3 bulk loader and Neptune ML assume roles the cluster associates (the roles own their policies — this cluster never mutates them).
 
-Neptune clusters consist of:
+## Provisioned vs Serverless
 
-- **Cluster**: The logical container; stores graph data in a distributed, replicated storage layer
-- **Instances**: Compute nodes that process queries; one primary (writer) and up to 15 read replicas
-- **Storage**: Automatically replicated across multiple Availability Zones; scales up to 64 TiB per cluster
-- **Subnet group**: VPC subnets where instances are deployed (minimum 2 subnets in different AZs)
-- **Parameter group**: Engine configuration (e.g., query timeout, audit logging)
+Two compute models, selected by instance class:
 
-### Storage Types
+- **Provisioned** — instances with fixed classes (`db.r6g.large`, ...). Predictable cost for steady traversal load.
+- **Neptune Serverless** — a `serverlessV2Scaling` block (NCU bounds, 1–128 on both ends) plus instances of class `db.serverless`. Each serverless instance scales independently within the bounds. The 1-NCU minimum is the idle cost floor — Neptune Serverless does not pause to zero.
 
-- **Standard**: Default; pay-per-I/O model; suitable for most workloads
-- **I/O-Optimized (iopt1)**: Higher throughput, predictable pricing; ideal for read-heavy or high-I/O workloads
+CEL enforces coherence in both directions: a scaling block requires every instance to be `db.serverless`, and any `db.serverless` instance requires the scaling block.
 
-### Neptune Serverless
+## Restore and Replication Shapes (Create-Time)
 
-Neptune Serverless uses the `db.serverless` instance class with **Neptune Capacity Units (NCUs)**. Capacity scales automatically between 1.0 and 128.0 NCUs based on workload demand. Benefits:
+- **`snapshotIdentifier`** — restore from a manual or automated cluster snapshot (create-time only).
+- **`replicationSourceIdentifier`** — make this cluster a read replica of the source cluster ARN; promote by clearing the field.
+- **`globalClusterIdentifier`** — join an existing Neptune global database; the first joiner is the global writer, later joiners are read-only secondaries.
 
-- No capacity planning; pay for what you use
-- Instant scaling for spiky or variable traffic
-- Same Gremlin/SPARQL APIs as provisioned clusters
+## Major Version Upgrades
 
-## Authentication and Security
+A major `engineVersion` change needs two fields set together (CEL-enforced): `allowMajorVersionUpgrade` (the deliberate-upgrade gate) and `neptuneInstanceParameterGroupName` (the instance-level parameter group AWS applies to the cluster's instances during the upgrade). Requiring them as a pair means an upgrade can never fail halfway for a missing parameter group.
 
-**Neptune does not use master username/password.** Access is controlled by:
+## Observability
 
-1. **IAM database authentication**: IAM users and roles authenticate using temporary credentials (SigV4 signing)
-2. **Network security**: VPC, security groups, and private subnets restrict who can reach the cluster
-3. **TLS**: All connections are encrypted in transit
+CloudWatch log exports come in two halves that must agree: the export list (`enabledCloudwatchLogsExports: [audit, slowquery]`) turns on delivery, and the matching cluster parameters (`neptune_enable_audit_log`, the slow-query threshold parameters) make the engine produce the events. The presets set both.
 
-Default port: **8182** (Gremlin) or **8182** (SPARQL over HTTP).
+## Parameter Groups
 
-### IAM Roles for S3 Bulk Loading
+Inline `parameters` produce a module-managed cluster parameter group whose family is derived from the pinned `engineVersion` ("1.4.5.1" → `neptune1.4`) — which is why inline parameters require a pinned version (CEL). Alternatively, `neptuneClusterParameterGroupName` points at an existing group. The two are mutually exclusive. Per-instance tunables go on the instance entries' `neptuneParameterGroupName`.
 
-Neptune can load graph data from S3 using the `LOAD` command (Gremlin) or `LOAD` (SPARQL). IAM roles associated with the cluster grant Neptune permission to read from S3 buckets. This is essential for bulk ingestion pipelines.
+## Networking and Encryption
 
-## Query Languages
+- At least two `subnetIds` in distinct AZs (the module manages the subnet group) or an existing `neptuneSubnetGroupName` (CEL-enforced either/or).
+- `securityGroupIds` attach by reference; ingress rules live on the referenced `AwsSecurityGroup` nodes. Empty uses the VPC default group.
+- `storageEncrypted` (recommended default true) is a create-time one-way door; `kmsKeyId` optionally replaces the AWS-managed key.
+- `storageType: iopt1` opts into I/O-Optimized storage (engine 1.3+) for I/O-heavy traversal workloads.
 
-### Gremlin (Property Graph)
+## Infra Chart Composability
 
-Gremlin is a traversal language: you walk the graph step by step.
+### Inputs (StringValueOrRef)
 
-```groovy
-// Find all people that the user "alice" follows
-g.V().has('name', 'alice').out('follows').values('name')
+| Field | Default Reference |
+|-------|-------------------|
+| `subnetIds` | `AwsSubnet.status.outputs.subnet_id` |
+| `securityGroupIds` | `AwsSecurityGroup.status.outputs.security_group_id` |
+| `kmsKeyId` | `AwsKmsKey.status.outputs.key_arn` |
+| `iamRoles` | `AwsIamRole.status.outputs.role_arn` |
 
-// Friends of friends (2-hop traversal)
-g.V().has('name', 'alice').out('follows').out('follows').values('name')
+### Outputs (for downstream)
 
-// Shortest path between two users
-g.V().has('name', 'alice').repeat(out().simplePath()).until(has('name', 'bob')).path()
+| Output | Downstream Use |
+|--------|---------------|
+| `endpoint` + `port` | Application connection config (writes) |
+| `reader_endpoint` | Read-only traversal pool |
+| `cluster_resource_id` | IAM database-auth policy scoping |
+| `arn` | IAM policies, metric dimensions |
+| `hosted_zone_id` | Route53 alias records |
+
+### Typical DAG Position
+
+```
+Layer 0: AwsVpc
+Layer 1: AwsSubnet, AwsSecurityGroup, AwsKmsKey, AwsIamRole
+Layer 2: AwsNeptuneCluster  ← this component
+Layer 3: Application configs reading endpoint + IAM auth
 ```
 
-### SPARQL (RDF)
+## Deliberately Omitted (v1)
 
-SPARQL uses SELECT and WHERE clauses to query triples.
-
-```sparql
-# Find all people Alice follows
-SELECT ?friend WHERE {
-  :alice :follows ?friend .
-}
-
-# Find mutual connections
-SELECT ?person WHERE {
-  :alice :follows ?person .
-  :bob :follows ?person .
-}
-```
-
-### openCypher
-
-openCypher provides a SQL-like syntax for property graphs:
-
-```cypher
-MATCH (a:Person {name: 'alice'})-[:FOLLOWS]->(f:Person)
-RETURN f.name
-```
-
-## Use Cases
-
-### 1. Recommendation Engines
-
-- **Product recommendations**: "Users who bought X also bought Y" — traverse co-purchase edges
-- **Content recommendations**: Similar users, similar content — multi-hop traversals
-- **Personalization**: User preferences, item attributes — property filtering
-
-### 2. Fraud Detection
-
-- **Transaction networks**: Identify rings of connected accounts
-- **Pattern detection**: Unusual paths (e.g., money laundering flows)
-- **Real-time scoring**: Graph embeddings for ML-based fraud models
-
-### 3. Knowledge Graphs
-
-- **Enterprise knowledge**: Documents, entities, relationships
-- **Semantic search**: RDF/SPARQL for ontology-based queries
-- **Data lineage**: Track data flow and dependencies
-
-### 4. Social Networks
-
-- **Friend suggestions**: Friends of friends, common connections
-- **Feed generation**: Traverse follow graph for relevance
-- **Influence analysis**: Centrality, community detection
-
-### 5. Network and IT Operations
-
-- **Infrastructure topology**: Servers, networks, dependencies
-- **Impact analysis**: "If this service fails, what is affected?"
-- **Root cause analysis**: Trace failures through dependency graph
-
-## CloudWatch Logs
-
-Neptune exports two log types to CloudWatch:
-
-- **audit**: Tracks database activity for compliance and security auditing
-- **slowquery**: Logs slow queries for performance tuning
-
-## Best Practices
-
-### High Availability
-
-- Deploy at least 2 instances (1 writer + 1 reader) in different Availability Zones
-- Use the reader endpoint for read-only queries to distribute load
-- Enable deletion protection for production clusters
-
-### Security
-
-- Use IAM database authentication instead of storing credentials
-- Place clusters in private subnets; never enable public access
-- Enable storage encryption at rest (default in Planton)
-- Associate IAM roles only when S3 bulk loading is required
-
-### Performance
-
-- Use I/O-Optimized storage (`storageType: iopt1`) for read-heavy workloads
-- Add read replicas to scale read throughput
-- Export slowquery logs and optimize traversal patterns
-- Consider Neptune Serverless for variable or unpredictable traffic
-
-### Backup and Recovery
-
-- Configure `backupRetentionPeriod` (1–35 days) for point-in-time recovery
-- Set `finalSnapshotIdentifier` when `skipFinalSnapshot` is false
-- Use `copyTagsToSnapshot` for consistent tagging
+| Feature | Reason |
+|---------|--------|
+| Creating a global database | Join-as-member via `globalClusterIdentifier` is supported; provisioning the global resource itself is a separate deferred kind |
+| Custom cluster endpoints (`aws_neptune_cluster_endpoint`) | Named instance subsets for specialized routing; deferred until real demand appears |
+| Event subscriptions (`aws_neptune_event_subscription`) | Account-level notification plumbing, not cluster shape; deferred |
+| Neptune Analytics | A separate product (`aws_neptunegraph_graph`) with its own resource model; a candidate kind of its own |
 
 ## References
 
-- [Amazon Neptune User Guide](https://docs.aws.amazon.com/neptune/latest/userguide/what-is-neptune.html)
-- [Neptune Engine Releases](https://docs.aws.amazon.com/neptune/latest/userguide/engine-releases.html)
-- [Neptune Instance Classes](https://docs.aws.amazon.com/neptune/latest/userguide/instance-classes.html)
-- [Accessing Neptune with Gremlin](https://docs.aws.amazon.com/neptune/latest/userguide/access-graph-gremlin.html)
-- [Accessing Neptune with SPARQL](https://docs.aws.amazon.com/neptune/latest/userguide/access-graph-sparql.html)
-- [Apache TinkerPop Gremlin](https://tinkerpop.apache.org/gremlin.html)
-- [W3C SPARQL 1.1](https://www.w3.org/TR/sparql11-overview/)
-- [Neptune Best Practices](https://docs.aws.amazon.com/neptune/latest/userguide/best-practices.html)
+- [Amazon Neptune User Guide](https://docs.aws.amazon.com/neptune/latest/userguide/intro.html)
+- [Neptune Serverless capacity scaling](https://docs.aws.amazon.com/neptune/latest/userguide/neptune-serverless-capacity-scaling.html)
+- [IAM database authentication](https://docs.aws.amazon.com/neptune/latest/userguide/iam-auth.html)
+- [Neptune bulk loader](https://docs.aws.amazon.com/neptune/latest/userguide/bulk-load.html)
+- [Neptune global databases](https://docs.aws.amazon.com/neptune/latest/userguide/neptune-global-database.html)

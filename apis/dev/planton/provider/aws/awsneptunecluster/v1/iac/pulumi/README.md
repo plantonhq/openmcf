@@ -46,9 +46,9 @@ planton pulumi destroy \
   --yes
 ```
 
-## Examples
+## Presets
 
-See `../../examples.md` for sample manifests.
+See `../../presets/` for sample manifests.
 
 ## Debugging
 

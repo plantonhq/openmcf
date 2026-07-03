@@ -1,126 +1,64 @@
 variable "metadata" {
-  description = "Resource metadata from the manifest"
+  description = "Cloud resource metadata"
   type = object({
     name = string
-    id   = string
-    org  = string
-    env  = string
-    labels = object({
-      key   = string
-      value = string
-    })
-    annotations = object({
-      key   = string
-      value = string
-    })
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "AwsNeptuneClusterSpec configuration"
+  description = "AwsNeptuneCluster specification"
   type = object({
-    # The AWS region where the Neptune cluster will be created.
     region = string
-
-    # Subnet IDs for the Neptune subnet group
-    subnet_ids = list(object({
-      value = string
-    }))
-
-    # Existing Neptune subnet group (alternative to subnet_ids)
-    neptune_subnet_group_name = object({
-      value = string
-    })
-
-    # Security groups to associate with the cluster
-    security_group_ids = list(object({
-      value = string
-    }))
-
-    # IPv4 CIDRs to allow ingress
-    allowed_cidr_blocks = list(string)
-
-    # VPC
-    vpc_id = object({
-      value = string
-    })
-
-    # Neptune engine version (e.g., "1.2.1.0", "1.3.0.0")
-    engine_version = string
-
-    # Connection port (default: 8182)
-    port = number
-
-    # Storage type: "standard" or "iopt1"
-    storage_type = string
-
-    # Number of instances in the cluster
-    instance_count = number
-
-    # Instance class (e.g., "db.r6g.large", "db.serverless" for Serverless)
-    instance_class = string
-
-    # Serverless v2 scaling configuration (min/max NCUs). Required when instance_class is "db.serverless".
+    subnet_ids = optional(list(string), [])
+    neptune_subnet_group_name = optional(string, "")
+    security_group_ids = optional(list(string), [])
+    availability_zones = optional(list(string), [])
+    port = optional(number, 0)
+    engine_version = optional(string, "")
+    storage_type = optional(string, "")
+    instances = optional(list(object({
+      name = string
+      instance_class = string
+      promotion_tier = optional(number, 0)
+      availability_zone = optional(string, "")
+      publicly_accessible = optional(bool, false)
+      neptune_parameter_group_name = optional(string, "")
+      auto_minor_version_upgrade = optional(bool)
+      preferred_maintenance_window = optional(string, "")
+    })), [])
     serverless_v2_scaling = optional(object({
       min_capacity = number
       max_capacity = number
     }))
-
-    # Enable storage encryption
-    storage_encrypted = bool
-
-    # KMS key for storage encryption
-    kms_key_id = object({
+    storage_encrypted = optional(bool, false)
+    kms_key_id = optional(string, "")
+    iam_database_authentication_enabled = optional(bool, false)
+    iam_roles = optional(list(string), [])
+    backup_retention_period = optional(number, 0)
+    preferred_backup_window = optional(string, "")
+    preferred_maintenance_window = optional(string, "")
+    copy_tags_to_snapshot = optional(bool, false)
+    skip_final_snapshot = optional(bool, false)
+    final_snapshot_identifier = optional(string, "")
+    deletion_protection = optional(bool, false)
+    enabled_cloudwatch_logs_exports = optional(list(string), [])
+    snapshot_identifier = optional(string, "")
+    replication_source_identifier = optional(string, "")
+    global_cluster_identifier = optional(string, "")
+    neptune_cluster_parameter_group_name = optional(string, "")
+    parameters = optional(list(object({
+      name = string
       value = string
-    })
-
-    # Enable IAM database authentication
-    iam_database_authentication_enabled = bool
-
-    # IAM role ARNs to associate (e.g., for S3 bulk data loading)
-    iam_roles = list(object({
-      value = string
-    }))
-
-    # Backup retention period in days (1-35)
-    backup_retention_period = number
-
-    # Daily backup window (hh24:mi-hh24:mi)
-    preferred_backup_window = string
-
-    # Weekly maintenance window (ddd:hh24:mi-ddd:hh24:mi)
-    preferred_maintenance_window = string
-
-    # Enable deletion protection
-    deletion_protection = bool
-
-    # Skip final snapshot on deletion
-    skip_final_snapshot = bool
-
-    # Final snapshot identifier
-    final_snapshot_identifier = string
-
-    # CloudWatch logs to export (audit, slowquery)
-    enabled_cloudwatch_logs_exports = list(string)
-
-    # Apply modifications immediately
-    apply_immediately = bool
-
-    # Copy tags to snapshots
-    copy_tags_to_snapshot = bool
-
-    # Allow major version upgrade
-    allow_major_version_upgrade = bool
-
-    # Cluster parameter group name
-    cluster_parameter_group_name = string
-
-    # Cluster parameters
-    cluster_parameters = list(object({
-      name         = string
-      value        = string
-      apply_method = string
-    }))
+      apply_method = optional(string, "")
+    })), [])
+    neptune_instance_parameter_group_name = optional(string, "")
+    apply_immediately = optional(bool, false)
+    allow_major_version_upgrade = optional(bool, false)
   })
 }

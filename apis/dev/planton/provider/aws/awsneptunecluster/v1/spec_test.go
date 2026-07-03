@@ -6,391 +6,332 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
 func TestAwsNeptuneClusterSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "AwsNeptuneClusterSpec Validation Suite")
+	ginkgo.RunSpecs(t, "AwsNeptuneClusterSpec Custom Validation Tests")
 }
 
-func int32Ptr(i int32) *int32 {
-	return &i
+// twoSubnets returns the minimum valid subnet list (two literal subnet IDs).
+func twoSubnets() []*foreignkeyv1.StringValueOrRef {
+	return []*foreignkeyv1.StringValueOrRef{
+		{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
+		{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
+	}
 }
 
-func boolPtr(b bool) *bool {
-	return &b
+// validCluster returns a minimal valid Neptune cluster that individual
+// tests mutate into specific scenarios.
+func validCluster() *AwsNeptuneCluster {
+	return &AwsNeptuneCluster{
+		ApiVersion: "aws.planton.dev/v1",
+		Kind:       "AwsNeptuneCluster",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-neptune",
+		},
+		Spec: &AwsNeptuneClusterSpec{
+			Region:            "us-west-2",
+			SubnetIds:         twoSubnets(),
+			SkipFinalSnapshot: true,
+			Instances: []*AwsNeptuneClusterInstance{
+				{Name: "writer", InstanceClass: "db.r6g.large"},
+			},
+		},
+	}
 }
 
-func stringPtr(s string) *string {
-	return &s
-}
-
-var _ = ginkgo.Describe("AwsNeptuneClusterSpec validations", func() {
+var _ = ginkgo.Describe("AwsNeptuneClusterSpec Custom Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("with minimal valid fields using subnet_ids", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+
+		ginkgo.It("accepts a minimal provisioned cluster", func() {
+			err := protovalidate.Validate(validCluster())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with neptune_subnet_group_name instead of subnet_ids", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					NeptuneSubnetGroupName: &foreignkeyv1.StringValueOrRef{
-						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "my-subnet-group"},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a cluster with writer and reader instances", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsNeptuneClusterInstance{
+				{Name: "writer", InstanceClass: "db.r6g.large", PromotionTier: 0},
+				{Name: "reader-1", InstanceClass: "db.r6g.large", PromotionTier: 1},
+			}
+			input.Spec.EnabledCloudwatchLogsExports = []string{"audit", "slowquery"}
+			input.Spec.BackupRetentionPeriod = 7
+			input.Spec.IamDatabaseAuthenticationEnabled = true
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with final_snapshot_identifier when skip_final_snapshot is false", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot:       boolPtr(false),
-					FinalSnapshotIdentifier: "my-neptune-final-snapshot",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a Neptune Serverless cluster", func() {
+			input := validCluster()
+			input.Spec.ServerlessV2Scaling = &AwsNeptuneClusterServerlessV2Scaling{
+				MinCapacity: 1,
+				MaxCapacity: 32,
+			}
+			input.Spec.Instances = []*AwsNeptuneClusterInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with valid cloudwatch logs exports", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot:            boolPtr(true),
-					EnabledCloudwatchLogsExports: []string{"audit", "slowquery"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts an existing subnet group instead of subnet ids", func() {
+			input := validCluster()
+			input.Spec.SubnetIds = nil
+			input.Spec.NeptuneSubnetGroupName = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "existing-group"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with valid CIDR blocks", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					AllowedCidrBlocks: []string{"10.0.0.0/16", "192.168.1.0/24"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a headless snapshot restore without instances", func() {
+			input := validCluster()
+			input.Spec.Instances = nil
+			input.Spec.SnapshotIdentifier = "my-snapshot"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with valid storage_type", func() {
-			ginkgo.It("should not return a validation error for iopt1", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					StorageType:       "iopt1",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a headless replica without instances", func() {
+			input := validCluster()
+			input.Spec.Instances = nil
+			input.Spec.ReplicationSourceIdentifier = "arn:aws:rds:us-west-2:123456789012:cluster:source"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with valid cluster parameters", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					ClusterParameters: []*AwsNeptuneClusterParameter{
-						{
-							Name:        "neptune_enable_audit_log",
-							Value:       "1",
-							ApplyMethod: "pending-reboot",
-						},
-					},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts inline cluster parameters with a pinned engine version", func() {
+			input := validCluster()
+			input.Spec.EngineVersion = "1.4.5.1"
+			input.Spec.Parameters = []*AwsNeptuneClusterParameter{
+				{Name: "neptune_enable_audit_log", Value: "1", ApplyMethod: "pending-reboot"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with serverless configuration", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					InstanceClass:     stringPtr("db.serverless"),
-					ServerlessV2Scaling: &AwsNeptuneClusterServerlessV2ScalingConfiguration{
-						MinCapacity: 2.5,
-						MaxCapacity: 128.0,
-					},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a major version upgrade with the instance parameter group", func() {
+			input := validCluster()
+			input.Spec.AllowMajorVersionUpgrade = true
+			input.Spec.NeptuneInstanceParameterGroupName = "upgrade-instance-params"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts iopt1 storage", func() {
+			input := validCluster()
+			input.Spec.StorageType = "iopt1"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 
-	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("with only one subnet and no neptune_subnet_group_name", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.Describe("networking validations", func() {
+
+		ginkgo.It("rejects a spec with neither subnets nor a subnet group", func() {
+			input := validCluster()
+			input.Spec.SubnetIds = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("provide at least two subnet_ids (distinct AZs) or an"))
 		})
 
-		ginkgo.Context("with skip_final_snapshot false and missing final_snapshot_identifier", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(false),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a single subnet without a subnet group", func() {
+			input := validCluster()
+			input.Spec.SubnetIds = input.Spec.SubnetIds[:1]
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("provide at least two subnet_ids (distinct AZs) or an"))
 		})
 
-		ginkgo.Context("with invalid cloudwatch logs exports", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot:            boolPtr(true),
-					EnabledCloudwatchLogsExports: []string{"audit", "invalid_type"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects more than three availability zones", func() {
+			input := validCluster()
+			input.Spec.AvailabilityZones = []string{"us-west-2a", "us-west-2b", "us-west-2c", "us-west-2d"}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with invalid CIDR block format", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					AllowedCidrBlocks: []string{"invalid-cidr"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an out-of-range port", func() {
+			input := validCluster()
+			input.Spec.Port = 70000
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with duplicate CIDR blocks", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					AllowedCidrBlocks: []string{"10.0.0.0/16", "10.0.0.0/16"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an invalid storage type", func() {
+			input := validCluster()
+			input.Spec.StorageType = "gp3"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("cluster shape validations", func() {
+
+		ginkgo.It("rejects an empty instances list on a regular cluster", func() {
+			input := validCluster()
+			input.Spec.Instances = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("instances is required"))
 		})
 
-		ginkgo.Context("with invalid backup_retention_period", func() {
-			ginkgo.It("should return a validation error when less than 1", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot:     boolPtr(true),
-					BackupRetentionPeriod: int32Ptr(0),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when greater than 35", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot:     boolPtr(true),
-					BackupRetentionPeriod: int32Ptr(36),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a provisioned instance class under serverless scaling", func() {
+			input := validCluster()
+			input.Spec.ServerlessV2Scaling = &AwsNeptuneClusterServerlessV2Scaling{
+				MinCapacity: 1,
+				MaxCapacity: 32,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("every instance must use instance_class 'db.serverless'"))
 		})
 
-		ginkgo.Context("with invalid port", func() {
-			ginkgo.It("should return a validation error when port is 0", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					Port:              int32Ptr(0),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when port exceeds 65535", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					Port:              int32Ptr(70000),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a db.serverless instance without scaling bounds", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsNeptuneClusterInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("serverless_v2_scaling is required when any instance"))
 		})
 
-		ginkgo.Context("with invalid preferred_backup_window format", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot:     boolPtr(true),
-					PreferredBackupWindow: "invalid-format",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an instance name that is not a valid identifier fragment", func() {
+			input := validCluster()
+			input.Spec.Instances[0].Name = "Writer_1"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with invalid preferred_maintenance_window format", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot:          boolPtr(true),
-					PreferredMaintenanceWindow: "invalid-format",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an instance class without the db. prefix", func() {
+			input := validCluster()
+			input.Spec.Instances[0].InstanceClass = "r6g.large"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with invalid storage_type", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					StorageType:       "invalid-type",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a promotion tier above 15", func() {
+			input := validCluster()
+			input.Spec.Instances[0].PromotionTier = 16
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("serverless scaling validations", func() {
+
+		ginkgo.It("rejects max capacity below min capacity", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsNeptuneClusterInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			input.Spec.ServerlessV2Scaling = &AwsNeptuneClusterServerlessV2Scaling{
+				MinCapacity: 64,
+				MaxCapacity: 32,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("max_capacity must be greater than or equal to min_capacity"))
 		})
 
-		ginkgo.Context("with invalid apply_method in cluster_parameters", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					ClusterParameters: []*AwsNeptuneClusterParameter{
-						{
-							Name:        "neptune_enable_audit_log",
-							Value:       "1",
-							ApplyMethod: "invalid-method",
-						},
-					},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a min capacity below the Neptune floor", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsNeptuneClusterInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			input.Spec.ServerlessV2Scaling = &AwsNeptuneClusterServerlessV2Scaling{
+				MinCapacity: 0.5,
+				MaxCapacity: 32,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with serverless_v2_scaling where max < min", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsNeptuneClusterSpec{
-					Region: "us-west-2",
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-					InstanceClass:     stringPtr("db.serverless"),
-					ServerlessV2Scaling: &AwsNeptuneClusterServerlessV2ScalingConfiguration{
-						MinCapacity: 64.0,
-						MaxCapacity: 16.0,
-					},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a max capacity above the Neptune ceiling", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsNeptuneClusterInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			input.Spec.ServerlessV2Scaling = &AwsNeptuneClusterServerlessV2Scaling{
+				MinCapacity: 1,
+				MaxCapacity: 256,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("deletion safety validations", func() {
+
+		ginkgo.It("rejects a missing final snapshot name while not skipping the snapshot", func() {
+			input := validCluster()
+			input.Spec.SkipFinalSnapshot = false
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("final_snapshot_identifier is required when"))
+		})
+	})
+
+	ginkgo.Describe("observability validations", func() {
+
+		ginkgo.It("rejects an unsupported log export type", func() {
+			input := validCluster()
+			input.Spec.EnabledCloudwatchLogsExports = []string{"general"}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("must contain only 'audit' or 'slowquery'"))
+		})
+	})
+
+	ginkgo.Describe("parameter group validations", func() {
+
+		ginkgo.It("rejects inline parameters alongside an existing group name", func() {
+			input := validCluster()
+			input.Spec.EngineVersion = "1.4.5.1"
+			input.Spec.NeptuneClusterParameterGroupName = "existing-group"
+			input.Spec.Parameters = []*AwsNeptuneClusterParameter{
+				{Name: "neptune_enable_audit_log", Value: "1"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("parameters and neptune_cluster_parameter_group_name are mutually exclusive"))
+		})
+
+		ginkgo.It("rejects inline parameters without a pinned engine version", func() {
+			input := validCluster()
+			input.Spec.Parameters = []*AwsNeptuneClusterParameter{
+				{Name: "neptune_enable_audit_log", Value: "1"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("inline parameters require a pinned engine_version"))
+		})
+
+		ginkgo.It("rejects an invalid apply method", func() {
+			input := validCluster()
+			input.Spec.EngineVersion = "1.4.5.1"
+			input.Spec.Parameters = []*AwsNeptuneClusterParameter{
+				{Name: "neptune_enable_audit_log", Value: "1", ApplyMethod: "eventually"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("apply_method must be 'immediate' or 'pending-reboot'"))
+		})
+	})
+
+	ginkgo.Describe("upgrade validations", func() {
+
+		ginkgo.It("rejects a major version upgrade without the instance parameter group", func() {
+			input := validCluster()
+			input.Spec.AllowMajorVersionUpgrade = true
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("allow_major_version_upgrade requires neptune_instance_parameter_group_name"))
 		})
 	})
 })

@@ -1,53 +1,30 @@
 # AwsNeptuneCluster
 
-Provision an AWS Neptune cluster—a fully managed graph database service supporting property-graph (Apache TinkerPop Gremlin) and RDF (SPARQL) query languages. Neptune excels at connected data: social graphs, recommendation engines, fraud detection, and knowledge graphs. Unlike relational databases, Neptune does not use master username/password; access is controlled via IAM database authentication and network-level security (VPC, security groups).
+An Amazon Neptune graph database cluster -- property graphs (Apache TinkerPop Gremlin, openCypher) and RDF (SPARQL) over shared cluster storage, provisioned or Serverless.
 
-## Spec fields (80/20)
-- subnetIds: Subnet IDs for the Neptune subnet group (>=2) or use neptuneSubnetGroupName.
-- neptuneSubnetGroupName: Existing Neptune subnet group name (alternative to subnetIds).
-- securityGroupIds: Security groups to associate with the cluster.
-- allowedCidrBlocks: IPv4 CIDRs to allow ingress to the cluster.
-- vpcId: VPC where the cluster will be deployed.
-- engineVersion: Neptune engine version (e.g., "1.2.1.0", "1.3.0.0"). Default: "1.3.0.0".
-- port: TCP port for connections. Default: 8182.
-- storageType: "standard" (default) or "iopt1" (I/O-Optimized for read-heavy workloads).
-- instanceCount: Number of instances in the cluster. Default: 1.
-- instanceClass: Instance class (e.g., "db.r6g.large", "db.r6g.xlarge"). Use "db.serverless" for Neptune Serverless.
-- serverlessV2Scaling: Min/max Neptune Capacity Units (NCUs) when using db.serverless.
-- storageEncrypted: Enable storage encryption at rest. Default: true.
-- kmsKeyId: KMS key ARN for storage encryption.
-- iamDatabaseAuthenticationEnabled: Enable IAM database authentication.
-- iamRoles: IAM role ARNs for S3 bulk loading and other service integrations.
-- backupRetentionPeriod: Days to retain automated backups (1-35). Default: 7.
-- preferredBackupWindow: Daily backup time range in UTC (hh24:mi-hh24:mi).
-- preferredMaintenanceWindow: Weekly maintenance window in UTC (ddd:hh24:mi-ddd:hh24:mi).
-- deletionProtection: Prevent accidental cluster deletion.
-- skipFinalSnapshot: Skip final snapshot on deletion. Default: false.
-- finalSnapshotIdentifier: Identifier for final snapshot when not skipping.
-- enabledCloudwatchLogsExports: Log types to export ("audit", "slowquery").
-- applyImmediately: Apply modifications immediately vs. next maintenance window.
-- copyTagsToSnapshot: Copy cluster tags to snapshots.
-- clusterParameterGroupName: Custom cluster parameter group name.
-- clusterParameters: Custom parameters for the cluster parameter group.
+The cluster is the shared-storage brain -- endpoints, backups, encryption, and engine lifecycle. The compute that serves queries is the folded `instances` list: each entry materializes as its own DB instance inside the cluster (a writer plus any readers), managed per-name so scaling readers never touches the cluster. Subnets, security groups, KMS keys, and IAM roles compose by reference.
+
+Neptune has no master username or password -- access is network reachability plus (optionally) IAM database authentication with SigV4-signed requests.
+
+## Spec highlights
+
+- **Cluster shapes** -- provisioned (`instances` with provisioned classes) or Neptune Serverless (`serverlessV2Scaling` NCU bounds 1-128 + `db.serverless` instances).
+- **Authentication** -- `iamDatabaseAuthenticationEnabled` maps IAM identities to database access; engine `iamRoles` power the S3 bulk loader and Neptune ML.
+- **Data protection** -- storage encryption (create-time one-way door), continuous backups with `backupRetentionPeriod`, deletion protection, and final-snapshot enforcement.
+- **Restore and replication shapes** -- create from a snapshot (`snapshotIdentifier`), as a replica (`replicationSourceIdentifier`), or join a Neptune global database (`globalClusterIdentifier`).
+- **Observability** -- `audit` and `slowquery` CloudWatch log exports (paired with their cluster parameters).
+- **Parameters** -- inline `parameters` (a module-managed cluster parameter group with the family derived from the pinned engine version) or an existing `neptuneClusterParameterGroupName`; `neptuneInstanceParameterGroupName` accompanies major version upgrades.
 
 ## Stack outputs
-- cluster_endpoint: Primary writer endpoint for Gremlin/SPARQL queries.
-- cluster_reader_endpoint: Reader endpoint for load-balanced read traffic.
-- cluster_id: AWS identifier of the cluster.
-- cluster_arn: Amazon Resource Name of the cluster.
-- cluster_resource_id: Internal AWS resource identifier.
-- cluster_port: Port on which the cluster accepts connections (default 8182).
-- db_subnet_group_name: Name of the associated Neptune subnet group.
-- security_group_id: Security group ID associated with the cluster.
-- cluster_parameter_group_name: Parameter group name in use.
-- hosted_zone_id: Route 53 hosted zone ID for the cluster endpoint.
+
+`cluster_identifier`, `arn`, `cluster_resource_id`, `endpoint` (writer), `reader_endpoint`, `port`, `hosted_zone_id`, `engine_version_actual`, `neptune_subnet_group_name`, `neptune_cluster_parameter_group_name`, `instance_endpoints`.
 
 ## How it works
-The CLI passes a Stack Input with provisioner choice (Pulumi or Terraform), stack info, the target `AwsNeptuneCluster` resource, and AWS credentials to the corresponding module. Neptune clusters are created with optional subnet groups, security groups, and parameter groups; instances are provisioned according to instanceCount and instanceClass (or serverless configuration).
+
+Planton provisions via the Pulumi or Terraform module in `iac/`, both implementing the same contract at full parity. The API contract is protobuf-based (`spec.proto`); stack execution is orchestrated using `AwsNeptuneClusterStackInput` (provider credentials + IaC info).
 
 ## References
-- AWS Neptune: https://docs.aws.amazon.com/neptune/latest/userguide/what-is-neptune.html
-- Neptune Engine Versions: https://docs.aws.amazon.com/neptune/latest/userguide/engine-releases.html
-- Neptune Instance Classes: https://docs.aws.amazon.com/neptune/latest/userguide/instance-classes.html
-- Gremlin: https://tinkerpop.apache.org/gremlin.html
-- SPARQL: https://www.w3.org/TR/sparql11-overview/
+
+- Neptune user guide: https://docs.aws.amazon.com/neptune/latest/userguide/intro.html
+- Neptune Serverless: https://docs.aws.amazon.com/neptune/latest/userguide/neptune-serverless.html
+- IAM database authentication: https://docs.aws.amazon.com/neptune/latest/userguide/iam-auth.html
