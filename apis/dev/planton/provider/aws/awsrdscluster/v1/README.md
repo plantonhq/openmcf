@@ -1,40 +1,28 @@
 # AwsRdsCluster
 
-AWS RDS Cluster (Aurora MySQL/PostgreSQL or Multi-AZ DB Cluster) resource. Defines cluster-level configuration such as networking (subnets/DB subnet group), engine/version, encryption, maintenance/backup windows, IAM DB auth, optional Data API, serverless v2 scaling, and cluster parameter group.
+An RDS DB cluster: an Aurora MySQL/PostgreSQL cluster (provisioned or Serverless v2), an Aurora Serverless v1 cluster, or a Multi-AZ RDS cluster for the community mysql/postgres engines.
 
-## Spec fields (80/20)
-- subnetIds: Two or more subnet IDs (usually private) for the cluster. Alternative: set db_subnet_group_name instead.
-- dbSubnetGroupName: Existing DB subnet group to use (instead of subnet_ids).
-- security_group_ids / associate_security_group_ids: Security groups to attach/use. Accepts literal or foreign-key references.
-- database_name: Initial DB name to create.
-- manage_master_user_password: Let RDS manage master user password via Secrets Manager (recommended default: true).
-- master_user_secret_kms_key_id: KMS key (ARN/alias) for the managed secret.
-- username/password: Master user credentials. If manage_master_user_password=true, do not set password.
-- engine / engineVersion: Engine family and version (e.g., aurora-mysql, aurora-postgresql).
-- storage_encrypted / kms_key_id: Enable storage encryption and optional KMS key.
-- enabled_cloudwatch_logs_exports: Log exports; validated by engine family.
-- preferred_maintenance_window: ddd:hh:mm–ddd:hh:mm (UTC).
-- backup_retention_period / preferred_backup_window: Automated backups config.
-- copy_tags_to_snapshot / skip_final_snapshot / final_snapshot_identifier: Snapshot behavior on deletion.
-- iam_database_authentication_enabled: Enable IAM auth mappings.
-- enable_http_endpoint: Data API for Aurora Serverless (where supported).
-- serverless_v2_scaling: Min/max ACUs for Aurora Serverless v2.
-- db_cluster_parameter_group_name / parameters: Cluster parameter group and overrides.
+The cluster is the shared-storage brain -- endpoints, credentials, backups, encryption, and engine lifecycle. The compute that serves queries is the folded `instances` list: each entry materializes as its own DB instance inside the cluster (a writer plus any readers), managed per-name so scaling readers never touches the cluster. Subnets, security groups, KMS keys, and IAM roles compose by reference.
+
+## Spec highlights
+
+- **Cluster shapes** -- Aurora provisioned (`instances` with provisioned classes), Aurora Serverless v2 (`serverlessV2Scaling` + `db.serverless` instances, scale-to-zero with `minCapacity: 0`), legacy Aurora Serverless v1 (`engineMode: serverless` + `serverlessV1Scaling`), and Multi-AZ RDS clusters (`engine: mysql|postgres` + `dbClusterInstanceClass` + storage sizing).
+- **Credentials** -- `manageMasterUserPassword` (recommended) keeps the master password in Secrets Manager, generated and rotated by AWS, with the secret's ARN exported; or supply `masterPassword` directly (sensitive).
+- **Data protection** -- storage encryption (create-time one-way door), continuous backups with `backupRetentionPeriod`, deletion protection, final-snapshot enforcement, `deleteAutomatedBackups: false` retention, Aurora MySQL backtrack.
+- **Restore shapes** -- create from a snapshot (`snapshotIdentifier`) or from another cluster's continuous backup (`restoreToPointInTime`, including Aurora copy-on-write fast clones).
+- **Integrations** -- IAM database authentication, engine `iamRoles` (S3 import/export, Lambda, ML), the Data API (`enableHttpEndpoint`), CloudWatch log exports, Performance Insights, Enhanced Monitoring, Database Insights, Aurora Global Database membership, and local/global write forwarding.
+- **Parameters** -- inline `parameters` (a module-managed cluster parameter group with the family derived from the pinned engine version) or an existing `dbClusterParameterGroupName`.
 
 ## Stack outputs
-- rds_cluster_endpoint: Writer endpoint DNS for the cluster.
-- rds_cluster_reader_endpoint: Reader endpoint for read replicas.
-- rds_cluster_id / rds_cluster_arn: Identifiers of the cluster.
-- rds_cluster_engine / rds_cluster_engine_version: Engine info provisioned.
-- rds_cluster_port: Port used by the cluster.
-- rds_subnet_group: Subnet group name in use.
-- rds_security_group: Security group used by the cluster (if managed here).
-- rds_cluster_parameter_group: Cluster parameter group name.
+
+`cluster_identifier`, `arn`, `cluster_resource_id`, `endpoint` (writer), `reader_endpoint`, `port`, `hosted_zone_id`, `engine_version_actual`, `master_user_secret_arn`, `db_subnet_group_name`, `db_cluster_parameter_group_name`, `instance_endpoints`.
 
 ## How it works
-Planton provisions via Pulumi or Terraform modules defined in this repository. The API contract is protobuf-based (api.proto, spec.proto) and stack execution is orchestrated by the platform using the AwsRdsClusterStackInput (includes provider credentials and IaC info).
+
+Planton provisions via the Pulumi or Terraform module in `iac/`, both implementing the same contract at full parity. The API contract is protobuf-based (`spec.proto`); stack execution is orchestrated using `AwsRdsClusterStackInput` (provider credentials + IaC info).
 
 ## References
-- AWS RDS Aurora: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html
-- Create DB Cluster API: https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_CreateDBCluster.html
-- Log exports: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.html
+
+- Aurora user guide: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html
+- Multi-AZ DB clusters: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html
+- Aurora Serverless v2: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html

@@ -1,8 +1,13 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: Serverless v2 automatic pause
+      # (serverlessv2_scaling_configuration.seconds_until_auto_pause) and
+      # database_insights_mode are late-v5 additions -- the v6 floor keeps
+      # the module on the modern major where the whole modeled surface
+      # (including the iam-db-auth-error log type) is present.
+      version = ">= 6.0.0"
     }
   }
 }
@@ -14,5 +19,3 @@ provider "aws" {
   # connections the runtime performs the STS web-identity exchange and injects the resulting
   # short-lived credentials. Keep this block empty -- do not wire region or static keys here.
 }
-
-

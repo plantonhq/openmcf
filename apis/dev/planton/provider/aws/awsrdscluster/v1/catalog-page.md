@@ -1,314 +1,160 @@
 # AWS RDS Cluster
 
-Deploys an Amazon Aurora DB cluster (MySQL or PostgreSQL) with automatic subnet group creation, managed security group configuration, optional Secrets Manager password management, and optional Serverless v2 scaling. The component handles cluster-level configuration; instance-level resources are managed separately.
+Deploys an RDS DB cluster -- an Aurora MySQL/PostgreSQL cluster
+(provisioned or Serverless v2 with scale-to-zero), a legacy Aurora
+Serverless v1 cluster, or a Multi-AZ RDS cluster of the community
+mysql/postgres engines -- with its writer and reader instances folded
+into the same spec, an AWS-managed master password in Secrets Manager,
+and every attachment (subnets, security groups, KMS keys, IAM roles)
+composed by reference.
 
 ## What Gets Created
 
 When you deploy an AwsRdsCluster resource, Planton provisions:
 
-- **RDS Aurora Cluster** — an `rds.Cluster` with the specified engine (`aurora-mysql` or `aurora-postgresql`), encryption settings, backup configuration, and optional Serverless v2 scaling
-- **DB Subnet Group** — an `rds.SubnetGroup` created automatically when `subnetIds` are provided and `dbSubnetGroupName` is not set, placing the cluster across the specified subnets
-- **Security Group** — an `ec2.SecurityGroup` created when `securityGroupIds` or `allowedCidrBlocks` are provided, with ingress rules on the cluster port from the specified sources and unrestricted egress
-- **Security Group Ingress Rules** — one `ec2.SecurityGroupRule` per source security group and one for CIDR blocks, scoped to the configured `port`
-- **Security Group Egress Rule** — an `ec2.SecurityGroupRule` allowing all outbound traffic
-- **Cluster Parameter Group** — an `rds.ClusterParameterGroup` created when inline `parameters` are provided, with the family auto-derived from the engine and engine version
+- **RDS cluster** — an `aws_rds_cluster` / `rds.Cluster` with the chosen
+  engine and shape: provisioned Aurora, Aurora Serverless v2 bounds
+  (including automatic pause at `minCapacity: 0`), legacy Serverless v1
+  scaling, or a Multi-AZ RDS cluster sized by instance class and storage
+- **Cluster instances** — one `aws_rds_cluster_instance` /
+  `rds.ClusterInstance` per `instances` entry, keyed by name so adding or
+  removing a reader is an in-place update; the lowest promotion tier
+  becomes the writer
+- **DB subnet group** — managed automatically from `subnetIds` (pure
+  glue: a named list of subnets), or an existing group by name
+- **Cluster parameter group** — managed automatically when inline
+  `parameters` are provided, with the family derived from the pinned
+  engine version
+
+The cluster never modifies a resource it merely references: security
+groups carry their own ingress rules, IAM roles own their policies, and
+KMS keys govern their own rotation.
 
 ## Prerequisites
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least two subnets** in different Availability Zones, or an existing DB subnet group name
-- **An Aurora-compatible engine** identifier (`aurora-mysql` or `aurora-postgresql`) and a valid engine version
-- **A VPC ID** if creating a managed security group with `securityGroupIds` or `allowedCidrBlocks`
-- **A KMS key ARN** if enabling storage encryption with a customer-managed key
-- **An ACM Secrets Manager KMS key** if using `manageMasterUserPassword` with a custom KMS key
+- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
+- **Two subnets in distinct AZs** (`AwsSubnet`) or an existing DB subnet group.
+- **A security group** (`AwsSecurityGroup`) allowing the database port from your application tier -- or omit to use the VPC default group.
+- **A KMS key** (`AwsKmsKey`) only when replacing the AWS-managed keys for storage, Performance Insights, or the managed master-user secret.
 
 ## Quick Start
-
-Create a file `rds-cluster.yaml`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsRdsCluster
 metadata:
-  name: my-aurora-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsRdsCluster.my-aurora-cluster
+  name: orders-db
 spec:
   region: us-west-2
-  engine: aurora-mysql
-  engineVersion: "8.0.mysql_aurora.3.05.2"
   subnetIds:
-    - subnet-0a1b2c3d4e5f00001
-    - subnet-0a1b2c3d4e5f00002
+    - valueFrom:
+        kind: AwsSubnet
+        name: platform-private-1
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: platform-private-2
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: database-sg
+        fieldPath: status.outputs.security_group_id
+  engine: aurora-postgresql
   manageMasterUserPassword: true
+  storageEncrypted: true
   skipFinalSnapshot: true
+  serverlessV2Scaling:
+    minCapacity: 0
+    maxCapacity: 4
+  instances:
+    - name: writer
+      instanceClass: db.serverless
 ```
-
-Deploy:
 
 ```shell
 planton apply -f rds-cluster.yaml
 ```
 
-This creates an Aurora MySQL cluster across two subnets with RDS-managed master password stored in AWS Secrets Manager.
+This creates an Aurora PostgreSQL Serverless v2 cluster that scales with
+demand, pauses to zero compute cost when idle, and keeps its master
+password in Secrets Manager.
 
 ## Configuration Reference
 
 ### Required Fields
 
 | Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the RDS cluster will be created. Example: `us-west-2`, `eu-west-1`. | Must be set. |
-| `engine` | `string` | Aurora engine identifier. | Must be set. Examples: `aurora-mysql`, `aurora-postgresql`. |
-| `engineVersion` | `string` | Engine version to deploy. | Must be set. Examples: `8.0.mysql_aurora.3.05.2`, `14.6`. |
-| `subnetIds` | `StringValueOrRef[]` | Subnet IDs for the DB subnet group. Provide at least two in distinct AZs. | Minimum 2 items unless `dbSubnetGroupName` is set. Can reference AwsVpc resource via `valueFrom`. |
-| `finalSnapshotIdentifier` | `string` | Identifier for the final DB snapshot on deletion. | Required when `skipFinalSnapshot` is `false`. |
+| --- | --- | --- | --- |
+| `region` | `string` | AWS region; must match the referenced subnets/SGs/keys. | Required; non-empty |
+| `engine` | `string` | `aurora-mysql`, `aurora-postgresql` (Aurora), or `mysql`, `postgres` (Multi-AZ RDS cluster). Create-only. | Required; one of the four |
+| networking | — | At least two `subnetIds` (distinct AZs) or an existing `dbSubnetGroupName`. | Enforced |
 
-### Optional Fields
+### Cluster Shape Fields
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `dbSubnetGroupName` | `StringValueOrRef` | — | Name of an existing DB subnet group. When set, `subnetIds` is not required. |
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security group IDs used to create ingress rules on the managed security group. Can reference AwsSecurityGroup resources via `valueFrom`. |
-| `allowedCidrBlocks` | `string[]` | `[]` | IPv4 CIDRs to allow ingress to the managed security group. Must be unique, valid CIDR notation. |
-| `associateSecurityGroupIds` | `StringValueOrRef[]` | `[]` | Existing security groups to attach directly to the cluster (in addition to the managed SG). Can reference AwsSecurityGroup resources via `valueFrom`. |
-| `vpcId` | `StringValueOrRef` | — | VPC ID for the managed security group. Can reference AwsVpc resource via `valueFrom`. |
-| `databaseName` | `string` | — | Name of the initial database to create in the cluster. |
-| `manageMasterUserPassword` | `bool` | `false` (recommended: `true`) | When `true`, RDS manages the master password in AWS Secrets Manager. Cannot be used with `password`. |
-| `masterUserSecretKmsKeyId` | `StringValueOrRef` | — | KMS key ARN for encrypting the managed master password secret. Only used when `manageMasterUserPassword` is `true`. Can reference AwsKmsKey resource via `valueFrom`. |
-| `username` | `string` | `"master"` | Master database user name. |
-| `password` | `string` | — | Master user password. Cannot be set when `manageMasterUserPassword` is `true`. |
-| `port` | `int32` | `0` | Port on which the cluster accepts connections. Valid range: 0-65535. |
-| `storageEncrypted` | `bool` | `false` | Enables encryption at rest for the cluster. |
-| `kmsKeyId` | `StringValueOrRef` | — | KMS key ARN for storage encryption. Used when `storageEncrypted` is `true`. Can reference AwsKmsKey resource via `valueFrom`. |
-| `enabledCloudwatchLogsExports` | `string[]` | `[]` | Log types to export to CloudWatch. Aurora MySQL: `audit`, `error`, `general`, `slowquery`. Aurora PostgreSQL: `postgresql`, `upgrade`. |
-| `deletionProtection` | `bool` | `false` | Prevents accidental cluster deletion when enabled. |
-| `preferredMaintenanceWindow` | `string` | — | Weekly maintenance window in UTC. Format: `ddd:hh24:mi-ddd:hh24:mi` (e.g., `sun:05:00-sun:06:00`). |
-| `backupRetentionPeriod` | `int32` | `0` | Number of days to retain automated backups. Valid range: 0-35. Values greater than 0 enable automated backups. |
-| `preferredBackupWindow` | `string` | — | Daily backup window in UTC. Format: `hh24:mi-hh24:mi` (e.g., `03:00-04:00`). Must not overlap the maintenance window. |
-| `copyTagsToSnapshot` | `bool` | `false` | Copies cluster tags to DB snapshots. |
-| `skipFinalSnapshot` | `bool` | `false` | When `true`, no final snapshot is created on cluster deletion. When `false`, `finalSnapshotIdentifier` is required. |
-| `iamDatabaseAuthenticationEnabled` | `bool` | `false` | Enables IAM user/role mapping to database logins. |
-| `enableHttpEndpoint` | `bool` | `false` | Enables the Data API for Aurora Serverless (where supported). |
-| `serverlessV2Scaling.minCapacity` | `double` | — | Minimum Aurora Capacity Units (ACUs) for Serverless v2. Must be greater than 0. |
-| `serverlessV2Scaling.maxCapacity` | `double` | — | Maximum ACUs for Serverless v2. Must be greater than or equal to `minCapacity`. |
-| `snapshotIdentifier` | `string` | — | Creates the cluster from the specified DB snapshot. |
-| `replicationSourceIdentifier` | `string` | — | ARN or identifier of another cluster to create a read replica. |
-| `dbClusterParameterGroupName` | `string` | — | Name of an existing cluster parameter group to associate. |
-| `parameters` | `AwsRdsClusterParameter[]` | `[]` | Inline cluster parameters. Each entry has `name`, `value`, and optional `applyMethod` (`immediate` or `pending-reboot`). |
-| `engineMode` | `string` | — | Engine mode. Valid values: `serverless` (for Aurora Serverless v1), `provisioned`. |
-| `storageType` | `string` | — | Aurora storage type. Valid values: `aurora`, `aurora-iopt1`. |
+| --- | --- | --- | --- |
+| `instances` | `list` | `[]` | The writer/reader instances (name, instanceClass incl. `db.serverless`, promotionTier, AZ pin, per-instance parameter group, PI/monitoring overrides). Empty only for Serverless v1 and Multi-AZ RDS clusters. |
+| `serverlessV2Scaling` | `object` | — | ACU bounds for `db.serverless` instances; `minCapacity: 0` enables automatic pause (`secondsUntilAutoPause` tunes the idle window). |
+| `engineMode` | `string` | `provisioned` | `serverless` selects legacy Aurora Serverless v1 (with `serverlessV1Scaling`). |
+| `dbClusterInstanceClass` + `allocatedStorageGb` + `iops` | — | — | The Multi-AZ RDS cluster trio (community engines only); AWS manages one writer + two readers internally. |
+| `storageType` | `string` | engine default | Aurora: `aurora-iopt1` (I/O-Optimized). Multi-AZ RDS: `io1`, `io2`, `gp3`. |
 
-## Examples
+### Credentials and Encryption
 
-### Aurora MySQL with Managed Password
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `manageMasterUserPassword` | `bool` | recommended `true` | AWS generates, stores, and rotates the master password in Secrets Manager; ARN exported as `master_user_secret_arn`. |
+| `masterPassword` | `string` (sensitive) | — | Direct password; mutually exclusive with the managed strategy. |
+| `masterUsername` | `string` | — | Required for a new cluster (AWS has no default); create-only. Restores, replicas, and global-database secondaries inherit it. |
+| `storageEncrypted` | `bool` | recommended `true` | Create-time one-way door. |
+| `kmsKeyId` / `masterUserSecretKmsKeyId` / `performanceInsightsKmsKeyId` | `string \| valueFrom` | AWS-managed keys | Reference `AwsKmsKey` `key_arn` outputs. |
 
-A basic Aurora MySQL cluster that delegates password management to AWS Secrets Manager:
+### Data Protection
 
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsCluster
-metadata:
-  name: app-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsRdsCluster.app-db
-spec:
-  region: us-west-2
-  engine: aurora-mysql
-  engineVersion: "8.0.mysql_aurora.3.05.2"
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-  manageMasterUserPassword: true
-  databaseName: appdb
-  skipFinalSnapshot: true
-```
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `backupRetentionPeriod` | `int` | 1 | Days of continuous backup (1-35) -- bounds point-in-time recovery. |
+| `skipFinalSnapshot` / `finalSnapshotIdentifier` | — | safe | A final-snapshot name is required unless skipping is explicit. |
+| `deletionProtection` | `bool` | `false` | Deleting becomes a deliberate two-step. |
+| `deleteAutomatedBackups` | `bool` | `true` | `false` retains backups after deletion. |
+| `backtrackWindowSeconds` | `int` | 0 | Aurora MySQL in-place rewind (up to 72h). Create-time decision. |
+| `snapshotIdentifier` / `restoreToPointInTime` | — | — | Create the cluster from a snapshot or another cluster's continuous backup (incl. copy-on-write fast clones). |
 
-### Aurora PostgreSQL with Encryption and Backups
+### Integrations
 
-A production-oriented Aurora PostgreSQL cluster with storage encryption, backup retention, and deletion protection:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsCluster
-metadata:
-  name: analytics-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsRdsCluster.analytics-db
-spec:
-  region: us-west-2
-  engine: aurora-postgresql
-  engineVersion: "14.6"
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-    - subnet-private-az3
-  manageMasterUserPassword: true
-  databaseName: analytics
-  storageEncrypted: true
-  kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/abc-12345
-  deletionProtection: true
-  backupRetentionPeriod: 14
-  preferredBackupWindow: "03:00-04:00"
-  preferredMaintenanceWindow: "sun:05:00-sun:06:00"
-  copyTagsToSnapshot: true
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: analytics-db-final
-  enabledCloudwatchLogsExports:
-    - postgresql
-    - upgrade
-```
-
-### Aurora Serverless v2
-
-An Aurora MySQL cluster using Serverless v2 auto-scaling capacity:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsCluster
-metadata:
-  name: serverless-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsRdsCluster.serverless-db
-spec:
-  region: us-west-2
-  engine: aurora-mysql
-  engineVersion: "8.0.mysql_aurora.3.05.2"
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-  manageMasterUserPassword: true
-  databaseName: myapp
-  serverlessV2Scaling:
-    minCapacity: 0.5
-    maxCapacity: 16
-  skipFinalSnapshot: true
-```
-
-### Cluster with Security Group and CIDR Access
-
-A cluster with a managed security group allowing access from specific CIDRs and existing security groups:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsCluster
-metadata:
-  name: secured-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsRdsCluster.secured-db
-spec:
-  region: us-west-2
-  engine: aurora-postgresql
-  engineVersion: "15.4"
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-  vpcId: vpc-0a1b2c3d4e5f00001
-  securityGroupIds:
-    - sg-app-servers
-  allowedCidrBlocks:
-    - "10.0.0.0/16"
-  associateSecurityGroupIds:
-    - sg-monitoring
-  manageMasterUserPassword: true
-  databaseName: proddb
-  port: 5432
-  storageEncrypted: true
-  deletionProtection: true
-  iamDatabaseAuthenticationEnabled: true
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: secured-db-final
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsRdsCluster
-metadata:
-  name: ref-db
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsRdsCluster.ref-db
-spec:
-  region: us-west-2
-  engine: aurora-mysql
-  engineVersion: "8.0.mysql_aurora.3.05.2"
-  subnetIds:
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-a
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-b
-        fieldPath: status.outputs.subnet_id
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: my-vpc
-      field: status.outputs.vpc_id
-  securityGroupIds:
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: db-sg
-        field: status.outputs.security_group_id
-  manageMasterUserPassword: true
-  masterUserSecretKmsKeyId:
-    valueFrom:
-      kind: AwsKmsKey
-      name: db-secret-key
-      field: status.outputs.key_arn
-  kmsKeyId:
-    valueFrom:
-      kind: AwsKmsKey
-      name: db-storage-key
-      field: status.outputs.key_arn
-  storageEncrypted: true
-  databaseName: myapp
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: ref-db-final
-```
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `iamDatabaseAuthenticationEnabled` | `bool` | `false` | Short-lived IAM auth tokens instead of passwords. |
+| `iamRoles` | `list \| valueFrom` | `[]` | Roles the ENGINE assumes (S3 import/export, Lambda, ML). Reference `AwsIamRole` `role_arn` outputs. |
+| `enableHttpEndpoint` | `bool` | `false` | The Data API: SQL over HTTPS -- the Lambda-native access path. |
+| `enabledCloudwatchLogsExports` | `list` | `[]` | Engine-family-validated log types. |
+| `performanceInsightsEnabled` + retention/KMS | — | off | Per-query telemetry; free at 7-day retention. |
+| `monitoringInterval` + `monitoringRoleArn` | — | off | Enhanced Monitoring (OS metrics) through a referenced role. |
+| `globalClusterIdentifier` + write forwarding | — | — | Aurora Global Database membership; local/global write forwarding. |
+| `parameters` / `dbClusterParameterGroupName` | — | engine default | Inline parameters (module-managed group) or an existing group. |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+| --- | --- |
+| `cluster_identifier` | The cluster identifier. |
+| `arn` | The cluster ARN. |
+| `cluster_resource_id` | The immutable resource ID -- survives renames; keys PITR and CloudWatch. |
+| `endpoint` | The writer endpoint. |
+| `reader_endpoint` | Load-balances across reader instances. |
+| `port` | The listening port. |
+| `hosted_zone_id` | For Route53 alias records to the endpoints. |
+| `engine_version_actual` | The resolved running version. |
+| `master_user_secret_arn` | The Secrets Manager ARN of the managed master password (managed strategy only). |
+| `db_subnet_group_name` | The subnet group in use. |
+| `db_cluster_parameter_group_name` | The parameter group in use. |
+| `instance_endpoints` | Per-instance endpoints of the folded instances, in spec order. |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `rds_cluster_endpoint` | `string` | The primary writer endpoint for the DB cluster |
-| `rds_cluster_reader_endpoint` | `string` | The reader endpoint for load-balanced read traffic across replicas |
-| `rds_cluster_id` | `string` | The AWS identifier of the DB cluster |
-| `rds_cluster_arn` | `string` | The Amazon Resource Name of the DB cluster |
-| `rds_cluster_engine` | `string` | The engine used by the cluster (e.g., `aurora-mysql`, `aurora-postgresql`) |
-| `rds_cluster_engine_version` | `string` | The engine version running on the cluster |
-| `rds_cluster_port` | `int32` | The port on which the DB cluster accepts connections |
-| `rds_subnet_group` | `string` | The name of the DB subnet group associated with the cluster (only when created by the module) |
-| `rds_security_group` | `string` | The security group associated with the cluster (only when created by the module) |
-| `rds_cluster_parameter_group` | `string` | The cluster parameter group in use (only when created by the module) |
+## Related Resources
 
-## Related Components
-
-- [AwsVpc](/docs/catalog/aws/awsvpc) — provides subnets and VPC ID for cluster placement
-- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — controls network access to the cluster
-- [AwsKmsKey](/docs/catalog/aws/awskmskey) — provides KMS keys for storage encryption and Secrets Manager
-- [AwsRoute53Zone](/docs/catalog/aws/awsroute53zone) — hosts DNS zones for CNAME records pointing to the cluster endpoint
+- [AwsSubnet](/docs/catalog/aws/awssubnet) — the private subnets the cluster spans
+- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — database ingress rules live here
+- [AwsKmsKey](/docs/catalog/aws/awskmskey) — customer-managed encryption keys
+- [AwsIamRole](/docs/catalog/aws/awsiamrole) — engine integration roles and the Enhanced Monitoring role
+- [AwsRdsInstance](/docs/catalog/aws/awsrdsinstance) — the single-node alternative

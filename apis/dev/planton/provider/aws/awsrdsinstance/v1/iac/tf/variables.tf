@@ -1,195 +1,88 @@
 variable "metadata" {
-  description = "metadata"
+  description = "Cloud resource metadata"
   type = object({
-
-    # name of the resource
     name = string
-
-    # id of the resource
-    id = string
-
-    # id of the organization to which the api-resource belongs to
-    org = string
-
-    # environment to which the resource belongs to
-    env = string
-
-    # labels for the resource
-    labels = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # annotations for the resource
-    annotations = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # tags for the resource
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "spec"
+  description = "AwsRdsInstance specification"
   type = object({
-
-    # The AWS region where the resource will be created.
     region = string
-
-    # List of subnet IDs for the DB. DB instance will be created in the VPC associated with the DB subnet group provisioned using the subnet IDs.
-    # Specify one of `subnet_ids`, `db_subnet_group_name` or `availability_zone`
-    subnet_ids = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    }))
-
-    # Name of DB subnet group. DB instance will be created in the VPC associated with the DB subnet group.
-    # Specify one of `subnet_ids`, `db_subnet_group_name` or `availability_zone`
-    db_subnet_group_name = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # The IDs of the security groups from which to allow `ingress` traffic to the DB instance
-    security_group_ids = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    }))
-
-    # The database engine to use. For supported values, see the Engine parameter in [API action CreateDBInstance]
-    # (https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_CreateDBInstance.html).
-    # Note that for Amazon Aurora instances the engine must match the DB cluster's engine'.
-    # For information on the difference between the available Aurora MySQL engines see
-    # [Comparison between Aurora MySQL 1 and Aurora MySQL 2](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/AuroraMySQL.Updates.20180206.html)
-    # in the Amazon RDS User Guide.
-    engine = string
-
-    # The engine version to use. If `autoMinorVersionUpgrade` is enabled, you can provide a prefix of the version such
-    # as `8.0` (for `8.0.36`). The actual engine version used is returned in the attribute `engineVersionActual`,
-    # see Attribute Reference below. For supported values, see the EngineVersion parameter in
-    # [API action CreateDBInstance](https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_CreateDBInstance.html).
-    # Note that for Amazon Aurora instances the engine version must match the DB cluster's engine version'.
-    engine_version = string
-
-    # The instance type of the RDS instance.
+    subnet_ids = optional(list(string), [])
+    db_subnet_group_name = optional(string, "")
+    security_group_ids = optional(list(string), [])
+    engine = optional(string, "")
+    engine_version = optional(string, "")
     instance_class = string
-
-    # Description for allocated_storage_gb
-    allocated_storage_gb = number
-
-    # Specifies whether the DB instance is
-    # encrypted. Note that if you are creating a cross-region read replica this field
-    # is ignored and you should instead declare `kmsKeyId` with a valid ARN. The
-    # default is `false` if not specified.
-    storage_encrypted = bool
-
-    # The ARN for the KMS encryption key. If creating an
-    # encrypted replica, set this to the destination KMS ARN.
-    kms_key_id = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # (Required unless a `snapshotIdentifier` or `replicateSourceDb` is provided)
-    # Username for the master DB user. Cannot be specified for a replica.
-    username = string
-
-    # (Required unless `manageMasterUserPassword` is set to true or unless a `snapshotIdentifier` or `replicateSourceDb`
-    # is provided or `manageMasterUserPassword` is set.) Password for the master DB user. Note that this may show up in
-    # logs, and it will be stored in the state file. Cannot be set if `manageMasterUserPassword` is set to `true`.
-    password = string
-
-    # The port on which the DB accepts connections.
-    port = number
-
-    # Description for publicly_accessible
-    publicly_accessible = bool
-
-    # Description for multi_az
-    multi_az = bool
-
-    # Name of the DB parameter group to associate.
-    parameter_group_name = string
-
-    # Name of the DB option group to associate
-    option_group_name = string
+    allocated_storage_gb = optional(number, 0)
+    max_allocated_storage_gb = optional(number, 0)
+    storage_type = optional(string, "")
+    iops = optional(number, 0)
+    storage_throughput = optional(number, 0)
+    dedicated_log_volume = optional(bool, false)
+    storage_encrypted = optional(bool, false)
+    kms_key_id = optional(string, "")
+    db_name = optional(string, "")
+    username = optional(string, "")
+    manage_master_user_password = optional(bool, false)
+    master_user_secret_kms_key_id = optional(string, "")
+    password = optional(string, "")
+    port = optional(number, 0)
+    multi_az = optional(bool, false)
+    availability_zone = optional(string, "")
+    publicly_accessible = optional(bool, false)
+    network_type = optional(string, "")
+    replicate_source_db = optional(string, "")
+    replica_mode = optional(string, "")
+    snapshot_identifier = optional(string, "")
+    restore_to_point_in_time = optional(object({
+      source_db_instance_identifier = optional(string, "")
+      source_dbi_resource_id = optional(string, "")
+      source_db_instance_automated_backups_arn = optional(string, "")
+      restore_time = optional(string, "")
+      use_latest_restorable_time = optional(bool, false)
+    }))
+    backup_retention_period = optional(number, 0)
+    backup_window = optional(string, "")
+    maintenance_window = optional(string, "")
+    copy_tags_to_snapshot = optional(bool, false)
+    delete_automated_backups = optional(bool)
+    skip_final_snapshot = optional(bool, false)
+    final_snapshot_identifier = optional(string, "")
+    deletion_protection = optional(bool, false)
+    iam_database_authentication_enabled = optional(bool, false)
+    enabled_cloudwatch_logs_exports = optional(list(string), [])
+    performance_insights_enabled = optional(bool, false)
+    performance_insights_kms_key_id = optional(string, "")
+    performance_insights_retention_period = optional(number, 0)
+    monitoring_interval = optional(number, 0)
+    monitoring_role_arn = optional(string, "")
+    database_insights_mode = optional(string, "")
+    parameter_group_name = optional(string, "")
+    option_group_name = optional(string, "")
+    active_directory = optional(object({
+      domain = optional(string, "")
+      domain_iam_role_name = optional(string, "")
+      domain_fqdn = optional(string, "")
+      domain_ou = optional(string, "")
+      domain_auth_secret_arn = optional(string, "")
+      domain_dns_ips = optional(list(string), [])
+    }))
+    license_model = optional(string, "")
+    character_set_name = optional(string, "")
+    nchar_character_set_name = optional(string, "")
+    timezone = optional(string, "")
+    ca_cert_identifier = optional(string, "")
+    blue_green_update_enabled = optional(bool, false)
+    auto_minor_version_upgrade = optional(bool)
+    allow_major_version_upgrade = optional(bool, false)
+    apply_immediately = optional(bool, false)
   })
 }
