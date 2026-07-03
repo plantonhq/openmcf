@@ -1,15 +1,18 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureAksNodePool
 metadata:
-  name: my-node-pool
+  name: my-gpu-pool
 spec:
   kubernetesClusterId:
     value: "<aks-cluster-arm-id>"
-  name: general
-  vmSize: Standard_D4s_v5
-  autoScalingEnabled: true
-  minCount: 2
-  maxCount: 10
+  name: gpu
+  vmSize: Standard_NC4as_T4_v3
+  nodeCount: 1
+  gpuDriver: INSTALL
+  nodeLabels:
+    workload: gpu
+  nodeTaints:
+    - "sku=gpu:NoSchedule"
   zones:
     - "1"
     - "2"

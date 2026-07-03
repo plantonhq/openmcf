@@ -29,6 +29,8 @@ type Verifier interface {
 // verifiers maps a component name to its verifier. New Azure components register
 // here as they are forged.
 var verifiers = map[string]Verifier{
+	"azureakscluster":                       &aksClusterVerifier{},
+	"azureaksnodepool":                      &aksNodePoolVerifier{},
 	"azurefederatedidentitycredential":      &federatedIdentityCredentialVerifier{},
 	"azurenatgateway":                       &natGatewayVerifier{},
 	"azurenetworksecuritygroup":             &networkSecurityGroupVerifier{},

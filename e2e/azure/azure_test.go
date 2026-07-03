@@ -203,6 +203,24 @@ func TestAzureVirtualNetworkPeering_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurevirtualnetworkpeering", "terraform")
 }
 
+// --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
+
+func TestAzureAksCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureakscluster", "pulumi")
+}
+func TestAzureAksCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureakscluster", "terraform")
+}
+
+// --- Azure AKS Node Pool (composed: fixture RG -> cluster prerequisite -> zero-node user pool) ---
+
+func TestAzureAksNodePool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaksnodepool", "pulumi")
+}
+func TestAzureAksNodePool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaksnodepool", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -1,16 +1,24 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureAksCluster
 metadata:
-  name: my-aks-cluster
+  name: my-hardened-aks-cluster
 spec:
   region: <azure-region>
   resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-aks-cluster
+  name: my-hardened-aks-cluster
   skuTier: STANDARD
+  kubernetesVersion: "<pinned-k8s-version>"
   networkProfile:
     networkPlugin: AZURE_CNI
     networkPluginMode: OVERLAY
+    networkPolicy: AZURE
+  apiServerAccessProfile:
+    authorizedIpRanges:
+      - "<office-cidr>"
+  azureActiveDirectoryRoleBasedAccessControl:
+    azureRbacEnabled: true
+  localAccountDisabled: true
   privateClusterEnabled: false
   defaultNodePool:
     name: system
@@ -18,16 +26,22 @@ spec:
     autoScalingEnabled: true
     minCount: 3
     maxCount: 5
+    vnetSubnetId:
+      value: "<nodes-subnet-id>"
     zones:
       - "1"
       - "2"
       - "3"
     onlyCriticalAddonsEnabled: true
+    hostEncryptionEnabled: true
   omsAgent:
     logAnalyticsWorkspaceId:
       value: "<log-analytics-workspace-id>"
     msiAuthForMonitoringEnabled: true
-  keyVaultSecretsProvider:
-    secretRotationEnabled: true
+  microsoftDefender:
+    logAnalyticsWorkspaceId:
+      value: "<log-analytics-workspace-id>"
   azurePolicyEnabled: true
+  oidcIssuerEnabled: true
   workloadIdentityEnabled: true
+  costAnalysisEnabled: true

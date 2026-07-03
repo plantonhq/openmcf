@@ -21,19 +21,63 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzureAksClusterStackOutputs captures key information after provisioning an AKS cluster.
+// **AzureAksClusterStackOutputs** captures the outputs of provisioning an
+// AKS managed cluster.
+//
+// The two composition-critical outputs are `cluster_id` (the parent
+// reference every standalone AzureAksNodePool consumes) and
+// `oidc_issuer_url` (the `issuer` an AzureFederatedIdentityCredential
+// binds to for workload identity federation -- the keyless path for pods
+// to act as an Azure managed identity).
 type AzureAksClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The URL of the Kubernetes API server endpoint for the AKS cluster.
-	ApiServerEndpoint string `protobuf:"bytes,1,opt,name=api_server_endpoint,json=apiServerEndpoint,proto3" json:"api_server_endpoint,omitempty"`
-	// The Azure Resource ID of the AKS cluster.
-	ClusterResourceId string `protobuf:"bytes,2,opt,name=cluster_resource_id,json=clusterResourceId,proto3" json:"cluster_resource_id,omitempty"`
-	// Kubeconfig file contents for the cluster, base64-encoded.
-	ClusterKubeconfig string `protobuf:"bytes,3,opt,name=cluster_kubeconfig,json=clusterKubeconfig,proto3" json:"cluster_kubeconfig,omitempty"`
-	// The Azure AD principal ID of the cluster's managed identity.
-	ManagedIdentityPrincipalId string `protobuf:"bytes,4,opt,name=managed_identity_principal_id,json=managedIdentityPrincipalId,proto3" json:"managed_identity_principal_id,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// The Azure Resource Manager ID of the managed cluster.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ContainerService/managedClusters/{name}
+	// This is the parent reference AzureAksNodePool resources consume.
+	ClusterId string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
+	// The name of the managed cluster.
+	ClusterName string `protobuf:"bytes,2,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// The public FQDN of the Kubernetes API server (empty for private
+	// clusters without a public FQDN).
+	Fqdn string `protobuf:"bytes,3,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
+	// The private FQDN of the API server, populated for private clusters.
+	PrivateFqdn string `protobuf:"bytes,4,opt,name=private_fqdn,json=privateFqdn,proto3" json:"private_fqdn,omitempty"`
+	// The FQDN used by the Azure Portal to reach the cluster when API
+	// Server VNet Integration is configured.
+	PortalFqdn string `protobuf:"bytes,5,opt,name=portal_fqdn,json=portalFqdn,proto3" json:"portal_fqdn,omitempty"`
+	// The cluster's OIDC issuer URL, populated when oidc_issuer_enabled is
+	// true (the default). An AzureFederatedIdentityCredential's `issuer`
+	// field consumes this value directly -- the trust anchor for workload
+	// identity federation.
+	OidcIssuerUrl string `protobuf:"bytes,6,opt,name=oidc_issuer_url,json=oidcIssuerUrl,proto3" json:"oidc_issuer_url,omitempty"`
+	// The name of the Azure-managed NODE resource group holding the
+	// cluster's infrastructure (VM scale sets, managed load balancer,
+	// managed public IPs).
+	NodeResourceGroup string `protobuf:"bytes,7,opt,name=node_resource_group,json=nodeResourceGroup,proto3" json:"node_resource_group,omitempty"`
+	// The Azure Resource Manager ID of the node resource group -- handy as
+	// a scope for role assignments over the cluster's infrastructure.
+	NodeResourceGroupId string `protobuf:"bytes,8,opt,name=node_resource_group_id,json=nodeResourceGroupId,proto3" json:"node_resource_group_id,omitempty"`
+	// Base64-encoded kubeconfig for the cluster (the user credential; with
+	// Entra ID integration it triggers the AAD login flow). Treat as a
+	// secret.
+	ClusterKubeconfig string `protobuf:"bytes,9,opt,name=cluster_kubeconfig,json=clusterKubeconfig,proto3" json:"cluster_kubeconfig,omitempty"`
+	// The principal (object) ID of the cluster's managed identity -- grant
+	// this identity Azure roles (e.g. Network Contributor on a BYO subnet,
+	// Private DNS Zone Contributor on a BYO private zone) via
+	// AzureRoleAssignment.
+	ClusterIdentityPrincipalId string `protobuf:"bytes,10,opt,name=cluster_identity_principal_id,json=clusterIdentityPrincipalId,proto3" json:"cluster_identity_principal_id,omitempty"`
+	// The object ID of the kubelet identity -- grant it AcrPull on
+	// container registries so nodes can pull images.
+	KubeletIdentityObjectId string `protobuf:"bytes,11,opt,name=kubelet_identity_object_id,json=kubeletIdentityObjectId,proto3" json:"kubelet_identity_object_id,omitempty"`
+	// The client ID of the kubelet identity -- what pods see as the node's
+	// identity when using legacy IMDS-based access.
+	KubeletIdentityClientId string `protobuf:"bytes,12,opt,name=kubelet_identity_client_id,json=kubeletIdentityClientId,proto3" json:"kubelet_identity_client_id,omitempty"`
+	// The Kubernetes version the control plane is actually running --
+	// useful when kubernetes_version was left unset (AKS picked the
+	// latest recommended GA version).
+	CurrentKubernetesVersion string `protobuf:"bytes,13,opt,name=current_kubernetes_version,json=currentKubernetesVersion,proto3" json:"current_kubernetes_version,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *AzureAksClusterStackOutputs) Reset() {
@@ -66,16 +110,58 @@ func (*AzureAksClusterStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureakscluster_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AzureAksClusterStackOutputs) GetApiServerEndpoint() string {
+func (x *AzureAksClusterStackOutputs) GetClusterId() string {
 	if x != nil {
-		return x.ApiServerEndpoint
+		return x.ClusterId
 	}
 	return ""
 }
 
-func (x *AzureAksClusterStackOutputs) GetClusterResourceId() string {
+func (x *AzureAksClusterStackOutputs) GetClusterName() string {
 	if x != nil {
-		return x.ClusterResourceId
+		return x.ClusterName
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetFqdn() string {
+	if x != nil {
+		return x.Fqdn
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetPrivateFqdn() string {
+	if x != nil {
+		return x.PrivateFqdn
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetPortalFqdn() string {
+	if x != nil {
+		return x.PortalFqdn
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetOidcIssuerUrl() string {
+	if x != nil {
+		return x.OidcIssuerUrl
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetNodeResourceGroup() string {
+	if x != nil {
+		return x.NodeResourceGroup
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetNodeResourceGroupId() string {
+	if x != nil {
+		return x.NodeResourceGroupId
 	}
 	return ""
 }
@@ -87,9 +173,30 @@ func (x *AzureAksClusterStackOutputs) GetClusterKubeconfig() string {
 	return ""
 }
 
-func (x *AzureAksClusterStackOutputs) GetManagedIdentityPrincipalId() string {
+func (x *AzureAksClusterStackOutputs) GetClusterIdentityPrincipalId() string {
 	if x != nil {
-		return x.ManagedIdentityPrincipalId
+		return x.ClusterIdentityPrincipalId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetKubeletIdentityObjectId() string {
+	if x != nil {
+		return x.KubeletIdentityObjectId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetKubeletIdentityClientId() string {
+	if x != nil {
+		return x.KubeletIdentityClientId
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetCurrentKubernetesVersion() string {
+	if x != nil {
+		return x.CurrentKubernetesVersion
 	}
 	return ""
 }
@@ -98,12 +205,24 @@ var File_dev_planton_provider_azure_azureakscluster_v1_stack_outputs_proto proto
 
 const file_dev_planton_provider_azure_azureakscluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/azure/azureakscluster/v1/stack_outputs.proto\x12-dev.planton.provider.azure.azureakscluster.v1\"\xef\x01\n" +
-	"\x1bAzureAksClusterStackOutputs\x12.\n" +
-	"\x13api_server_endpoint\x18\x01 \x01(\tR\x11apiServerEndpoint\x12.\n" +
-	"\x13cluster_resource_id\x18\x02 \x01(\tR\x11clusterResourceId\x12-\n" +
-	"\x12cluster_kubeconfig\x18\x03 \x01(\tR\x11clusterKubeconfig\x12A\n" +
-	"\x1dmanaged_identity_principal_id\x18\x04 \x01(\tR\x1amanagedIdentityPrincipalIdB\x84\x03\n" +
+	"Adev/planton/provider/azure/azureakscluster/v1/stack_outputs.proto\x12-dev.planton.provider.azure.azureakscluster.v1\"\xee\x04\n" +
+	"\x1bAzureAksClusterStackOutputs\x12\x1d\n" +
+	"\n" +
+	"cluster_id\x18\x01 \x01(\tR\tclusterId\x12!\n" +
+	"\fcluster_name\x18\x02 \x01(\tR\vclusterName\x12\x12\n" +
+	"\x04fqdn\x18\x03 \x01(\tR\x04fqdn\x12!\n" +
+	"\fprivate_fqdn\x18\x04 \x01(\tR\vprivateFqdn\x12\x1f\n" +
+	"\vportal_fqdn\x18\x05 \x01(\tR\n" +
+	"portalFqdn\x12&\n" +
+	"\x0foidc_issuer_url\x18\x06 \x01(\tR\roidcIssuerUrl\x12.\n" +
+	"\x13node_resource_group\x18\a \x01(\tR\x11nodeResourceGroup\x123\n" +
+	"\x16node_resource_group_id\x18\b \x01(\tR\x13nodeResourceGroupId\x12-\n" +
+	"\x12cluster_kubeconfig\x18\t \x01(\tR\x11clusterKubeconfig\x12A\n" +
+	"\x1dcluster_identity_principal_id\x18\n" +
+	" \x01(\tR\x1aclusterIdentityPrincipalId\x12;\n" +
+	"\x1akubelet_identity_object_id\x18\v \x01(\tR\x17kubeletIdentityObjectId\x12;\n" +
+	"\x1akubelet_identity_client_id\x18\f \x01(\tR\x17kubeletIdentityClientId\x12<\n" +
+	"\x1acurrent_kubernetes_version\x18\r \x01(\tR\x18currentKubernetesVersionB\x84\x03\n" +
 	"1com.dev.planton.provider.azure.azureakscluster.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureakscluster/v1;azureaksclusterv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Azure.Azureakscluster.V1\xca\x02-Dev\\Planton\\Provider\\Azure\\Azureakscluster\\V1\xe2\x029Dev\\Planton\\Provider\\Azure\\Azureakscluster\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Azure::Azureakscluster::V1b\x06proto3"
 
 var (

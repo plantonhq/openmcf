@@ -1,17 +1,19 @@
-# Outputs aligned to AzureAksNodePoolStackOutputs proto
+# Semantic stack outputs, matching AzureAksNodePoolStackOutputs field for
+# field. Nothing downstream deploys INTO a pool (workloads target pools
+# via Kubernetes labels/taints), so the outputs are the pool's own
+# identifiers plus the node image actually rolled out.
+
+output "node_pool_id" {
+  description = "The Azure Resource Manager ID of the agent pool."
+  value       = azurerm_kubernetes_cluster_node_pool.main.id
+}
 
 output "node_pool_name" {
-  description = "Name of the node pool in AKS"
-  value       = azurerm_kubernetes_cluster_node_pool.node_pool.name
+  description = "The name of the node pool."
+  value       = azurerm_kubernetes_cluster_node_pool.main.name
 }
 
-output "agent_pool_resource_id" {
-  description = "Azure Resource Manager ID of the created node pool"
-  value       = azurerm_kubernetes_cluster_node_pool.node_pool.id
+output "node_image_version" {
+  description = "The node image version the pool is running."
+  value       = azurerm_kubernetes_cluster_node_pool.main.node_image_version
 }
-
-output "max_pods_per_node" {
-  description = "Maximum number of pods that can run on each node"
-  value       = azurerm_kubernetes_cluster_node_pool.node_pool.max_pods
-}
-

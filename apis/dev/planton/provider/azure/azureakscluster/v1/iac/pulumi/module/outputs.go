@@ -1,15 +1,18 @@
 package module
 
+// Stack-output keys, matching AzureAksClusterStackOutputs field for field.
 const (
-	// OpApiServerEndpoint is the output key for the API server endpoint
-	OpApiServerEndpoint = "api_server_endpoint"
-
-	// OpClusterResourceId is the output key for the cluster resource ID
-	OpClusterResourceId = "cluster_resource_id"
-
-	// OpClusterKubeconfig is the output key for the cluster kubeconfig
-	OpClusterKubeconfig = "cluster_kubeconfig"
-
-	// OpManagedIdentityPrincipalId is the output key for the managed identity principal ID
-	OpManagedIdentityPrincipalId = "managed_identity_principal_id"
+	OpClusterId                  = "cluster_id"
+	OpClusterName                = "cluster_name"
+	OpFqdn                       = "fqdn"
+	OpPrivateFqdn                = "private_fqdn"
+	OpPortalFqdn                 = "portal_fqdn"
+	OpOidcIssuerUrl              = "oidc_issuer_url"
+	OpNodeResourceGroup          = "node_resource_group"
+	OpNodeResourceGroupId        = "node_resource_group_id"
+	OpClusterKubeconfig          = "cluster_kubeconfig"
+	OpClusterIdentityPrincipalId = "cluster_identity_principal_id"
+	OpKubeletIdentityObjectId    = "kubelet_identity_object_id"
+	OpKubeletIdentityClientId    = "kubelet_identity_client_id"
+	OpCurrentKubernetesVersion   = "current_kubernetes_version"
 )

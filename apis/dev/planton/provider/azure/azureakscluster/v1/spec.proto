@@ -6,216 +6,2367 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// AzureAksClusterSpec defines the specification required to deploy an Azure Kubernetes Service (AKS) cluster.
-// This spec covers the 80/20 configurations needed for production-ready AKS clusters based on Microsoft's baseline architecture.
+// **AzureAksClusterSpec** defines the configuration for creating an Azure
+// Kubernetes Service (AKS) managed cluster: the control plane, its identity
+// and access model, its network fabric, the mandatory default node pool, and
+// the Azure-managed add-ons that turn a bare cluster into a platform.
+//
+// The cluster deliberately carries exactly ONE node pool -- the default
+// (system) pool Azure requires at creation. Every additional pool is its own
+// composable AzureAksNodePool resource referencing this cluster's
+// `cluster_id` output: pools have independent lifecycles (scale, upgrade,
+// spot-evict, delete) and coupling them to the cluster would force cluster
+// updates for pool changes.
+//
+// Workload identity composition: enabling `oidc_issuer_enabled` (on by
+// default) publishes the cluster's OIDC issuer URL as the `oidc_issuer_url`
+// output, which an AzureFederatedIdentityCredential consumes as its `issuer`
+// -- the keyless (secret-less) path for pods to act as an Azure managed
+// identity.
 message AzureAksClusterSpec {
-  // Azure region in which to create the AKS cluster (e.g., "eastus").
-  string region = 1 [(buf.validate.field).required = true];
-
-  // The Azure Resource Group where the AKS Cluster will be created.
-  // Can be a literal string or a reference to an AzureResourceGroup output.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 14 [
+  // The Azure Resource Group in which to create the cluster.
+  // Can be a literal name or a reference to an AzureResourceGroup output.
+  // Changing the resource group replaces the cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The Azure resource ID of the Virtual Network subnet to use for cluster nodes.
-  // Can be a literal subnet ARM ID or a reference to an AzureSubnet's subnet_id output.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef vnet_subnet_id = 2 [
+  // The Azure region for the cluster's control plane and default node pool,
+  // e.g. "eastus", "westeurope". Changing the region replaces the cluster.
+  string region = 2 [(buf.validate.field).required = true];
+
+  // The name of the managed cluster, unique within the resource group.
+  // 1-63 characters: alphanumerics, underscores, and hyphens; must start
+  // and end with an alphanumeric. Changing the name replaces the cluster.
+  string name = 3 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).cel = {
+      id: "aks_cluster_name_format"
+      message: "AKS cluster names start and end with a letter or number and may contain alphanumerics, underscores, and hyphens"
+      expression: "this == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
   ];
 
-  // Kubernetes version for the cluster control plane.
-  // It is recommended to explicitly set a version (e.g., "1.30") for production clusters to prevent unintended upgrades.
-  string kubernetes_version = 3 [(dev.planton.shared.options.recommended_default) = "1.30"];
+  // DNS prefix for the cluster's public API-server FQDN
+  // (<prefix>-<hash>.hcp.<region>.azmk8s.io). 1-54 characters: letters,
+  // numbers, and hyphens; must begin and end with a letter or number.
+  // Leave unset to derive it from the cluster name -- the right call for
+  // nearly everyone. Mutually exclusive with dns_prefix_private_cluster.
+  // Changing it replaces the cluster.
+  string dns_prefix = 4 [(buf.validate.field).cel = {
+    id: "aks_dns_prefix_format"
+    message: "DNS prefixes begin and end with a letter or number, contain only letters, numbers, and hyphens, and are 1-54 characters long"
+    expression: "this == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9-]{0,52}[a-zA-Z0-9])?$')"
+  }];
 
-  // Control plane SKU tier. STANDARD provides financially-backed 99.95% uptime SLA (with AZs) and is required for production.
-  // FREE tier has no SLA and is only suitable for dev/test environments.
-  // Defaults to STANDARD for production-ready deployments.
-  AzureAksClusterControlPlaneSku control_plane_sku = 4;
+  // DNS prefix for the PRIVATE cluster's API-server record in its private
+  // DNS zone. Only valid for private clusters (private_cluster_enabled),
+  // and mutually exclusive with dns_prefix. Leave unset for private
+  // clusters too -- the modules derive a prefix from the cluster name.
+  // Changing it replaces the cluster.
+  string dns_prefix_private_cluster = 5;
 
-  // Networking plugin for the AKS cluster.
-  // AZURE_CNI provides advanced networking with full VNet integration. KUBENET is deprecated and will be retired in March 2028.
-  // Defaults to AZURE_CNI.
-  AzureAksClusterNetworkPlugin network_plugin = 5;
+  // Kubernetes version for the control plane, e.g. "1.35" (minor-version
+  // aliases pick the latest GA patch) or an exact "1.35.2". Leave unset to
+  // provision the latest AKS-recommended GA version -- but PIN a version
+  // for production clusters so upgrades happen when you choose, not when
+  // you redeploy. Upgrades are in-place but can only move one minor
+  // version at a time; node pools must stay within two minors of the
+  // control plane.
+  string kubernetes_version = 6;
 
-  // Network plugin mode for Azure CNI. Only applicable when network_plugin is AZURE_CNI.
-  // OVERLAY mode (recommended) uses a private CIDR for pods (10.244.0.0/16) and solves VNet IP exhaustion.
-  // DYNAMIC mode assigns pods real VNet IPs dynamically from a dedicated pod subnet.
-  // Defaults to OVERLAY.
-  AzureAksClusterNetworkPluginMode network_plugin_mode = 6;
+  // Control-plane pricing/support tier. Unspecified applies Azure's
+  // default (Free): no uptime SLA, 1000-node limit -- fine for dev/test.
+  // STANDARD adds the financially-backed 99.95% SLA (with availability
+  // zones) and 5000-node scale that production clusters need. PREMIUM
+  // additionally unlocks AKS Long Term Support. Updatable in place.
+  AzureAksClusterSkuTier sku_tier = 7;
 
-  // Deploy the cluster as a private cluster (no public API server endpoint).
-  // When true, the API server endpoint will be private and accessible only from within the VNet.
-  // When false (default), a public endpoint is created (use authorized_ip_ranges to restrict access).
-  bool private_cluster_enabled = 7;
+  // Kubernetes-version support plan. Unspecified applies Azure's default
+  // (KUBERNETES_OFFICIAL): versions supported per upstream community
+  // windows. AKS_LONG_TERM_SUPPORT extends a version's support to 2 years
+  // and requires the PREMIUM sku_tier.
+  AzureAksClusterSupportPlan support_plan = 8;
 
-  // Authorized IP address ranges (CIDR blocks) that are allowed to access the API server.
-  // This is applicable only if the cluster has a public endpoint.
-  // Leave empty to allow all (0.0.0.0/0) or for private clusters.
-  repeated string authorized_ip_ranges = 8 [(buf.validate.field).repeated.items.string.pattern = "^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}(?:\\/(?:3[0-2]|[12]?[0-9]))?$"];
+  // The default (system) node pool Azure requires at cluster creation --
+  // the one pool whose lifecycle is genuinely coupled to the cluster's.
+  // It runs critical system pods (CoreDNS, metrics-server, konnectivity)
+  // and is always Linux in System mode, which is why it carries no
+  // os_type/mode/spot knobs. Add every other pool as a standalone
+  // AzureAksNodePool resource referencing this cluster.
+  AzureAksClusterDefaultNodePool default_node_pool = 9 [(buf.validate.field).required = true];
 
-  // Disable Azure Active Directory integration for Kubernetes RBAC.
-  // By default, AKS clusters have Azure AD integration enabled (this field is false).
-  // Set to true to disable Azure AD RBAC integration.
-  bool disable_azure_ad_rbac = 9;
+  // The cluster's managed identity -- how the AKS control plane itself
+  // authenticates to Azure (to manage the node resource group, attach
+  // disks, create load balancers). Leave unset for a system-assigned
+  // identity, created and rotated by Azure -- right for most clusters.
+  // Configure USER_ASSIGNED (with identity_ids) when the cluster identity
+  // needs pre-provisioned grants -- e.g. Private DNS Zone Contributor on a
+  // BYO private zone, or Network Contributor on a BYO subnet -- so the
+  // grants exist before the cluster does.
+  AzureAksClusterIdentity identity = 10;
 
-  // System node pool configuration. Required for all clusters.
-  // System node pools run critical system pods (CoreDNS, metrics-server, etc.) and are tainted to prevent application workloads.
-  // For production, deploy across 3 availability zones with autoscaling enabled (min: 3, max: 5).
-  AzureAksClusterSystemNodePool system_node_pool = 10 [(buf.validate.field).required = true];
+  // The kubelet identity -- the identity NODES use to pull images from
+  // Azure Container Registry and access other Azure resources. Leave
+  // unset to let AKS manage one. Setting it requires a USER_ASSIGNED
+  // cluster identity, and all three fields must be set together (the
+  // client id and object id of the same user-assigned identity whose ARM
+  // id is referenced). Changing any of them replaces the cluster.
+  AzureAksClusterKubeletIdentity kubelet_identity = 11;
 
-  // User node pools for application workloads.
-  // Optional: if not specified, applications can run on system node pool (not recommended for production).
-  // For production, create dedicated user node pools with appropriate VM sizes and autoscaling configuration.
-  repeated AzureAksClusterUserNodePool user_node_pools = 11;
+  // Whether the cluster publishes an OIDC issuer endpoint. Azure's
+  // provisioning default is off, but this spec defaults it ON: the issuer
+  // is the foundation of workload identity federation (an
+  // AzureFederatedIdentityCredential's `issuer` is exactly this cluster's
+  // oidc_issuer_url output), it costs nothing, and disabling it after
+  // enabling forces cluster replacement.
+  optional bool oidc_issuer_enabled = 12 [(dev.planton.shared.options.default) = "true"];
 
-  // Add-ons configuration for the AKS cluster.
-  // Enables Azure-managed add-ons like Container Insights, Key Vault CSI driver, Azure Policy, and Workload Identity.
-  AzureAksClusterAddonsConfig addons = 12;
+  // Whether to run the Azure Workload Identity webhook in the cluster,
+  // letting pods exchange Kubernetes service-account tokens for Azure AD
+  // tokens (secret-less access to Azure APIs). Requires the OIDC issuer.
+  // The full trust chain is: this cluster's oidc_issuer_url output → an
+  // AzureFederatedIdentityCredential on a user-assigned identity → Azure
+  // role assignments on that identity.
+  bool workload_identity_enabled = 13;
 
-  // Advanced networking configuration.
-  // Optional: most users should rely on defaults. Use this only if you need custom CIDRs or DNS servers.
-  AzureAksClusterAdvancedNetworking advanced_networking = 13;
+  // Deploy as a PRIVATE cluster: the API server gets only a private IP in
+  // the cluster's VNet, reachable via VNet peering, VPN, or ExpressRoute.
+  // The hardened-enterprise posture; pair with private_dns_zone_id.
+  // Changing it replaces the cluster.
+  bool private_cluster_enabled = 14;
+
+  // For private clusters: the Private DNS zone hosting the API server's
+  // record. Referencing an AzurePrivateDnsZone (or a literal zone ARM id)
+  // requires the cluster identity to hold Private DNS Zone Contributor on
+  // it -- use a USER_ASSIGNED cluster identity so the grant can pre-exist.
+  // The literals "System" (AKS creates and manages the zone; the default)
+  // and "None" (public DNS resolving to the private IP) are also accepted.
+  // Changing it replaces the cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef private_dns_zone_id = 15 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePrivateDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // For private clusters: whether to ALSO publish a public FQDN that
+  // resolves to the API server's private IP. Useful when private-network
+  // clients cannot use the private DNS zone (e.g. on-prem resolvers);
+  // the endpoint itself stays private either way.
+  bool private_cluster_public_fqdn_enabled = 16;
+
+  // API-server access hardening for PUBLIC clusters: source-IP allowlist
+  // and API Server VNet Integration.
+  AzureAksClusterApiServerAccessProfile api_server_access_profile = 17;
+
+  // Whether Kubernetes Role-Based Access Control is enabled. Azure's
+  // default is true, and virtually nothing legitimate runs without RBAC;
+  // the field exists to mirror the provider surface. Disabling it forces
+  // cluster replacement.
+  optional bool role_based_access_control_enabled = 18 [(dev.planton.shared.options.default) = "true"];
+
+  // Disable Kubernetes local accounts (the certificate-based admin in
+  // kube_admin_config), forcing ALL access through Microsoft Entra ID.
+  // The production hardening posture -- requires
+  // azure_active_directory_role_based_access_control to be configured so
+  // someone can still get in.
+  bool local_account_disabled = 19;
+
+  // Microsoft Entra ID (Azure AD) integration for Kubernetes
+  // authentication and, optionally, authorization. Configure this for any
+  // cluster humans access: cluster admission via AAD group membership
+  // beats distributing client certificates.
+  AzureAksClusterAadRbac azure_active_directory_role_based_access_control = 20;
+
+  // The cluster's network fabric: CNI plugin and mode, network policy
+  // engine, pod/service address spaces, outbound (egress) model, and the
+  // managed load-balancer / NAT-gateway profiles. Leave unset for the
+  // modern AKS default the modules apply: Azure CNI in overlay mode with
+  // a managed Standard load balancer. Most sub-fields replace the cluster
+  // when changed -- decide the network model up front.
+  AzureAksClusterNetworkProfile network_profile = 21;
+
+  // Fine-tuning for the cluster autoscaler that scales node pools with
+  // auto_scaling_enabled. Unset fields keep Azure's defaults, which suit
+  // most clusters; the profile is cluster-wide (all pools share it).
+  AzureAksClusterAutoScalerProfile auto_scaler_profile = 22;
+
+  // Automatic upgrade channel for the cluster's KUBERNETES VERSION.
+  // Unspecified means no automatic upgrades (Azure's default) -- pin
+  // kubernetes_version and upgrade deliberately. PATCH auto-applies patch
+  // releases of the pinned minor; STABLE tracks N-1 minor; RAPID tracks
+  // the newest; NODE_IMAGE only refreshes node images (pair with
+  // node_os_upgrade_channel NODE_IMAGE).
+  AzureAksClusterUpgradeChannel automatic_upgrade_channel = 23;
+
+  // Upgrade channel for the NODE OS IMAGE (security patches to the node
+  // OS, independent of Kubernetes version). Unspecified applies Azure's
+  // default (NODE_IMAGE): nodes are re-imaged as AKS publishes patched
+  // images -- the recommended posture. SECURITY_PATCH applies patches
+  // without re-imaging; UNMANAGED leaves patching to you; NONE disables.
+  AzureAksClusterNodeOsUpgradeChannel node_os_upgrade_channel = 24;
+
+  // Dedicated maintenance window: WHEN Azure may perform routine cluster
+  // maintenance (control-plane updates it initiates). Prefer the two
+  // schedule-based windows below for upgrade operations; this legacy
+  // window shapes everything else.
+  AzureAksClusterMaintenanceWindow maintenance_window = 25;
+
+  // Schedule for AUTOMATIC KUBERNETES UPGRADES (the
+  // automatic_upgrade_channel work). Configure it whenever an upgrade
+  // channel is set so version bumps land in a window you chose.
+  AzureAksClusterMaintenanceWindowSchedule maintenance_window_auto_upgrade = 26;
+
+  // Schedule for NODE OS IMAGE maintenance (the node_os_upgrade_channel
+  // work). Configure it alongside NODE_IMAGE or SECURITY_PATCH channels
+  // so node re-imaging respects business hours.
+  AzureAksClusterMaintenanceWindowSchedule maintenance_window_node_os = 27;
+
+  // Container Insights: stream container logs, metrics, and Kubernetes
+  // events to a Log Analytics workspace -- the standard AKS observability
+  // add-on.
+  AzureAksClusterOmsAgent oms_agent = 28;
+
+  // Azure Key Vault provider for the Secrets Store CSI driver: mount Key
+  // Vault secrets/keys/certificates into pods as volumes, with optional
+  // periodic rotation.
+  AzureAksClusterKeyVaultSecretsProvider key_vault_secrets_provider = 29;
+
+  // Whether the Azure Policy add-on enforces policy-based governance
+  // (pod security baselines, allowed registries, resource limits) inside
+  // the cluster via OPA Gatekeeper. Recommended for governed estates.
+  bool azure_policy_enabled = 30;
+
+  // Microsoft Defender for Containers: runtime threat detection streaming
+  // security events to a Log Analytics workspace.
+  AzureAksClusterMicrosoftDefender microsoft_defender = 31;
+
+  // Azure Monitor managed Prometheus metrics collection. Set (even empty)
+  // to enable the metrics profile; the two filter fields extend which
+  // Kubernetes annotations/labels become metric labels.
+  AzureAksClusterMonitorMetrics monitor_metrics = 32;
+
+  // Application Gateway Ingress Controller (AGIC) add-on: program an
+  // Azure Application Gateway as the cluster's ingress. Reference an
+  // existing gateway by id, or have AKS create one from a subnet CIDR or
+  // subnet id. Exactly one of the three anchors must be set.
+  AzureAksClusterIngressApplicationGateway ingress_application_gateway = 33;
+
+  // Virtual nodes (serverless burst) via Azure Container Instances: the
+  // ACI connector schedules overflow pods into a dedicated subnet without
+  // provisioning VMs.
+  AzureAksClusterAciConnectorLinux aci_connector_linux = 34;
+
+  // Confidential computing (Intel SGX) support: deploys the SGX device
+  // plugin, and optionally the quote-helper sidecar, for enclave
+  // workloads on DC-series node pools.
+  AzureAksClusterConfidentialComputing confidential_computing = 35;
+
+  // Managed NGINX ingress (the "application routing" add-on): a
+  // production-supported NGINX ingress controller wired to Azure DNS
+  // zones for automatic record management.
+  AzureAksClusterWebAppRouting web_app_routing = 36;
+
+  // Managed Istio service mesh: Azure-operated Istio control plane with
+  // optional managed ingress gateways and a bring-your-own certificate
+  // authority from Key Vault.
+  AzureAksClusterServiceMeshProfile service_mesh_profile = 37;
+
+  // Which CSI storage drivers run in the cluster. Unset fields keep
+  // Azure's defaults (disk on, file on, snapshot controller on, blob
+  // OFF). Enable the blob driver for workloads mounting Blob Storage via
+  // NFS/FUSE.
+  AzureAksClusterStorageProfile storage_profile = 38;
+
+  // Managed workload autoscalers: KEDA (event-driven pod autoscaling) and
+  // the Vertical Pod Autoscaler, both run by Azure instead of self-hosted.
+  AzureAksClusterWorkloadAutoscalerProfile workload_autoscaler_profile = 39;
+
+  // Key Management Service etcd encryption: envelope-encrypt Kubernetes
+  // secrets at rest in etcd with YOUR Key Vault key (customer-managed
+  // key), instead of Azure's platform keys.
+  AzureAksClusterKeyManagementService key_management_service = 40;
+
+  // Corporate HTTP/HTTPS proxy configuration applied to nodes and pods --
+  // for enterprises whose egress must traverse an inspection proxy.
+  AzureAksClusterHttpProxyConfig http_proxy_config = 41;
+
+  // SSH access configuration for Linux nodes. Set it to enable direct SSH
+  // (debugging via node IP); omit it and use `kubectl debug node` --
+  // AKS generates and manages keys either way.
+  AzureAksClusterLinuxProfile linux_profile = 42;
+
+  // Windows node administrator credentials and licensing -- required
+  // before any Windows AzureAksNodePool can join this cluster.
+  AzureAksClusterWindowsProfile windows_profile = 43;
+
+  // Whether Image Cleaner removes unused, vulnerable container images
+  // from nodes on an interval. A cheap hardening win for long-lived
+  // clusters.
+  bool image_cleaner_enabled = 44;
+
+  // Image Cleaner scan interval, in hours (24-2160). Only meaningful with
+  // image_cleaner_enabled; unset applies Azure's default interval.
+  int32 image_cleaner_interval_hours = 45 [(buf.validate.field).cel = {
+    id: "aks_image_cleaner_interval_range"
+    message: "Image Cleaner interval must be between 24 and 2160 hours"
+    expression: "this == 0 || (this >= 24 && this <= 2160)"
+  }];
+
+  // Whether Microsoft Cost Management shows namespace- and
+  // deployment-level cost breakdowns for this cluster. Requires STANDARD
+  // or PREMIUM sku_tier.
+  bool cost_analysis_enabled = 46;
+
+  // Whether `az aks command invoke` (run-command) is allowed -- executing
+  // commands inside the cluster through the Azure API without direct
+  // network reach. Azure's default is enabled; hardened environments turn
+  // it off to force all access through audited kubeconfig paths.
+  optional bool run_command_enabled = 47 [(dev.planton.shared.options.default) = "true"];
+
+  // ARM id of a Disk Encryption Set for encrypting node OS disks and
+  // persistent volumes with a customer-managed key. Plain ARM id (no
+  // Planton kind models disk encryption sets). Changing it replaces the
+  // cluster.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
+  string disk_encryption_set_id = 48;
+
+  // Deploy the cluster into an Azure Extended Zone (edge location) close
+  // to end users, e.g. "losangeles". Leave unset for the standard region
+  // -- the overwhelmingly common case. Changing it replaces the cluster.
+  string edge_zone = 49;
+
+  // Name for the NODE resource group -- the Azure-managed group holding
+  // the cluster's infrastructure (VMSS instances, managed load balancer,
+  // managed public IPs). Must NOT already exist. Leave unset for Azure's
+  // default ("MC_<rg>_<cluster>_<region>"). Changing it replaces the
+  // cluster.
+  string node_resource_group = 50;
+
+  // Up to 10 base64-encoded CA certificates added to the trust store of
+  // every node -- for private registries or proxies signed by an internal
+  // CA. Requires custom CA trust (nodes re-image on change).
+  repeated string custom_ca_trust_certificates_base64 = 51 [(buf.validate.field).repeated.max_items = 10];
+
+  // Where nodes pull AKS bootstrap artifacts (system images) from.
+  // Unspecified pulls directly from the Microsoft Container Registry --
+  // fine whenever nodes have internet egress. Configure CACHE with an
+  // Azure Container Registry (ACR cache rules) for network-isolated
+  // clusters whose outbound_type is NONE or fully firewalled.
+  AzureAksClusterBootstrapProfile bootstrap_profile = 52;
+
+  // Node auto-provisioning (Karpenter): let AKS create and remove
+  // right-sized node pools automatically from pending pod requirements,
+  // instead of you pre-planning pools. AUTO mode hands node management to
+  // the platform; leave unset for classic manual pool management.
+  AzureAksClusterNodeProvisioningProfile node_provisioning_profile = 53;
+
+  // Escape hatch for cluster upgrades: force an upgrade to proceed even
+  // through drain failures or API-deprecation checks, until an expiry
+  // timestamp. Use only to unblock a stuck upgrade, never as steady state.
+  AzureAksClusterUpgradeOverride upgrade_override = 54;
+
+  // Whether the AI toolchain operator (KAITO) manages large-model
+  // inference workloads on the cluster (GPU provisioning, model serving).
+  bool ai_toolchain_operator_enabled = 55;
+
+  // Free-form tags applied to the cluster, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Tags are Azure's governance
+  // surface -- Azure Policy enforces them and Microsoft Cost Management
+  // groups by them. Updatable in place.
+  map<string, string> tags = 56;
+
+  option (buf.validate.message).cel = {
+    id: "aks_dns_prefix_exclusive"
+    message: "Set at most one of dns_prefix or dns_prefix_private_cluster -- a cluster has either a public API FQDN prefix or a private-zone prefix, never both"
+    expression: "this.dns_prefix == '' || this.dns_prefix_private_cluster == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_private_dns_prefix_requires_private_cluster"
+    message: "dns_prefix_private_cluster is only valid when private_cluster_enabled is true"
+    expression: "this.dns_prefix_private_cluster == '' || this.private_cluster_enabled"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_workload_identity_requires_oidc"
+    message: "workload_identity_enabled requires the OIDC issuer -- leave oidc_issuer_enabled unset (defaults to true) or set it to true"
+    expression: "!this.workload_identity_enabled || !has(this.oidc_issuer_enabled) || this.oidc_issuer_enabled"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_local_account_disable_requires_aad"
+    message: "Disabling local accounts requires azure_active_directory_role_based_access_control to be configured, or nobody can authenticate to the cluster"
+    expression: "!this.local_account_disabled || has(this.azure_active_directory_role_based_access_control)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_cost_analysis_requires_paid_tier"
+    message: "cost_analysis_enabled requires sku_tier STANDARD or PREMIUM"
+    expression: "!this.cost_analysis_enabled || this.sku_tier == 2 || this.sku_tier == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_lts_requires_premium"
+    message: "The AKS_LONG_TERM_SUPPORT support plan requires sku_tier PREMIUM"
+    expression: "this.support_plan != 2 || this.sku_tier == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_image_cleaner_interval_requires_enabled"
+    message: "image_cleaner_interval_hours is only meaningful when image_cleaner_enabled is true"
+    expression: "this.image_cleaner_interval_hours == 0 || this.image_cleaner_enabled"
+  };
 }
 
-// Control plane SKU tier for the AKS cluster.
-enum AzureAksClusterControlPlaneSku {
-  // Standard tier with financially-backed 99.95% uptime SLA (with Availability Zones) or 99.9% SLA (single AZ).
-  // Recommended default for production. Costs approximately $73/month per cluster.
-  STANDARD = 0;
+// Control-plane pricing/support tier. Unspecified means Azure's default
+// (Free).
+enum AzureAksClusterSkuTier {
+  // Not specified: Azure's default (Free) -- no uptime SLA.
+  azure_aks_cluster_sku_tier_unspecified = 0;
 
-  // Free tier with no uptime SLA. Suitable only for dev/test environments.
-  // Not recommended for production workloads.
+  // Free control plane: no SLA, up to 1000 nodes. Dev/test only.
   FREE = 1;
+
+  // Standard tier: financially-backed 99.95% API-server SLA (with
+  // availability zones), 5000-node scale. The production baseline.
+  STANDARD = 2;
+
+  // Premium tier: Standard plus AKS Long Term Support eligibility.
+  PREMIUM = 3;
 }
 
-// Network plugin options for the AKS cluster.
-enum AzureAksClusterNetworkPlugin {
-  // Azure CNI (Container Network Interface) provides advanced networking with full VNet integration.
-  // Recommended default. Supports both Overlay and Dynamic IP allocation modes.
-  AZURE_CNI = 0;
+// Kubernetes-version support plan.
+enum AzureAksClusterSupportPlan {
+  // Not specified: Azure's default (KubernetesOfficial).
+  azure_aks_cluster_support_plan_unspecified = 0;
 
-  // Kubenet provides basic networking with NAT.
-  // DEPRECATED: Will be retired on March 31, 2028. Do not use for new clusters.
-  KUBENET = 1;
+  // Community-aligned support windows for each Kubernetes version.
+  KUBERNETES_OFFICIAL = 1;
+
+  // Two-year long-term support for eligible versions; requires PREMIUM.
+  AKS_LONG_TERM_SUPPORT = 2;
 }
 
-// Network plugin mode for Azure CNI.
-enum AzureAksClusterNetworkPluginMode {
-  // Overlay mode (recommended): Pods get IPs from a private, non-VNet CIDR (e.g., 10.244.0.0/16).
-  // Solves VNet IP exhaustion and allows massive cluster scaling. Supports all Azure Network Policy options.
-  OVERLAY = 0;
+// The default (system) node pool created with the cluster. Always Linux,
+// always System mode -- the pool that hosts cluster-critical pods. Its
+// field shape intentionally matches the standalone AzureAksNodePool kind
+// (minus spot/os_type/mode/taints, which Azure does not allow on the
+// default pool) so moving a workload pool out to its own resource is a
+// mechanical copy.
+message AzureAksClusterDefaultNodePool {
+  // Agent-pool name: 1-12 lowercase letters and numbers, starting with a
+  // letter. Renaming normally replaces the pool -- set
+  // temporary_name_for_rotation to let AKS rotate through a stand-in pool
+  // instead of tearing the cluster's system pool down first.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "aks_default_pool_name_format"
+      message: "Node pool names are 1-12 lowercase letters and numbers and start with a letter"
+      expression: "this == '' || this.matches('^[a-z][a-z0-9]{0,11}$')"
+    }
+  ];
 
-  // Dynamic IP allocation: Pods get real VNet IPs dynamically from a dedicated pod subnet (no pre-allocation).
-  // Use this when pods need direct VNet addressability and VNet IP space is plentiful.
-  DYNAMIC = 1;
-}
-
-// Autoscaling configuration for node pools.
-message AzureAksClusterAutoscalingConfig {
-  // Minimum number of nodes. For system pools, minimum should be 3 for high availability.
-  int32 min_count = 1 [(buf.validate.field).int32.gte = 1];
-
-  // Maximum number of nodes. Autoscaler will not scale beyond this limit.
-  int32 max_count = 2 [(buf.validate.field).int32.gte = 1];
-}
-
-// System node pool configuration.
-// System node pools run critical AKS components and should be isolated from application workloads.
-message AzureAksClusterSystemNodePool {
-  // Azure VM size for system nodes (e.g., "Standard_D4s_v5").
-  // Minimum recommended: Standard_D2s_v3 for dev/test, Standard_D4s_v5 for production.
-  string vm_size = 1 [
+  // Azure VM size for the pool's nodes, e.g. "Standard_D4s_v5". System
+  // pools need at least 2 vCPUs and 4 GiB memory. Changing the size
+  // rotates the pool (see temporary_name_for_rotation).
+  string vm_size = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.options.recommended_default) = "Standard_D4s_v5"
   ];
 
-  // Autoscaling configuration.
-  // Production minimum: 3 nodes for high availability.
-  AzureAksClusterAutoscalingConfig autoscaling = 2 [(buf.validate.field).required = true];
+  // Fixed node count (1-1000) when autoscaling is off, or the initial
+  // count when it is on. With autoscaling enabled, leave unset to let the
+  // autoscaler own the count from the start.
+  int32 node_count = 3 [(buf.validate.field).cel = {
+    id: "aks_default_pool_node_count_range"
+    message: "node_count must be between 1 and 1000"
+    expression: "this == 0 || (this >= 1 && this <= 1000)"
+  }];
 
-  // Availability zones for the node pool (e.g., ["1", "2", "3"]).
-  // For production, deploy across 3 zones for 99.95% SLA.
-  // For dev/test, single zone (["1"]) is acceptable.
-  repeated string availability_zones = 3 [(buf.validate.field).repeated.min_items = 1];
-}
+  // Whether the cluster autoscaler manages this pool's node count between
+  // min_count and max_count. Tune the cluster-wide behavior through the
+  // cluster's auto_scaler_profile.
+  bool auto_scaling_enabled = 4;
 
-// User node pool configuration for application workloads.
-message AzureAksClusterUserNodePool {
-  // Name of the user node pool (e.g., "general", "compute", "memory").
-  // Must be lowercase alphanumeric, max 12 characters.
-  string name = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^[a-z0-9]{1,12}$"}
+  // Minimum node count for autoscaling (1-1000; the default pool cannot
+  // scale to zero -- it hosts the system pods). Requires
+  // auto_scaling_enabled.
+  int32 min_count = 5 [(buf.validate.field).cel = {
+    id: "aks_default_pool_min_count_range"
+    message: "min_count must be between 1 and 1000"
+    expression: "this == 0 || (this >= 1 && this <= 1000)"
+  }];
+
+  // Maximum node count for autoscaling (1-1000). Requires
+  // auto_scaling_enabled.
+  int32 max_count = 6 [(buf.validate.field).cel = {
+    id: "aks_default_pool_max_count_range"
+    message: "max_count must be between 1 and 1000"
+    expression: "this == 0 || (this >= 1 && this <= 1000)"
+  }];
+
+  // Maximum pods per node. Unset applies Azure's plugin-dependent default
+  // (250 for Azure CNI overlay, 30 for traditional Azure CNI). Set at
+  // pool creation; raising it later rotates the pool.
+  int32 max_pods = 7;
+
+  // Availability zones to spread nodes across, e.g. ["1", "2", "3"].
+  // Three-zone system pools are the production posture (and what the
+  // STANDARD tier's 99.95% SLA assumes). Leave empty for regions without
+  // zones. Changing zones rotates the pool.
+  repeated string zones = 8 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "1",
+        "2",
+        "3"
+      ]
+    }
+  }];
+
+  // The subnet nodes deploy into. Leave unset to let AKS create and
+  // manage its own network -- Azure's default and the simplest correct
+  // start. Reference an AzureSubnet to place nodes in YOUR network
+  // (required for private clusters, custom routing, or NSG control);
+  // the cluster identity then needs Network Contributor on it. Changing
+  // the subnet replaces the pool.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vnet_subnet_id = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // Azure VM size for this node pool (e.g., "Standard_D8s_v5").
-  // Choose based on workload requirements (CPU vs memory intensive).
-  string vm_size = 2 [(buf.validate.field).required = true];
+  // A separate subnet for POD IPs (traditional Azure CNI with dynamic pod
+  // IP allocation). Only meaningful with a vnet_subnet_id and the
+  // non-overlay Azure CNI; overlay mode ignores it (pods use pod_cidr).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef pod_subnet_id = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
 
-  // Autoscaling configuration for the user node pool.
-  AzureAksClusterAutoscalingConfig autoscaling = 3 [(buf.validate.field).required = true];
+  // OS disk size in GiB. Unset applies Azure's VM-size-dependent default.
+  int32 os_disk_size_gb = 11;
 
-  // Availability zones for the node pool (e.g., ["1", "2", "3"]).
-  // For production workloads, deploy across multiple zones.
-  repeated string availability_zones = 4 [(buf.validate.field).repeated.min_items = 1];
+  // OS disk placement. Unspecified applies Azure's default (MANAGED): a
+  // persistent managed disk. EPHEMERAL places the OS disk on node-local
+  // storage -- faster and free, the right choice whenever the VM size's
+  // cache disk fits the image; nodes are cattle, their OS disks need no
+  // durability.
+  AzureAksClusterOsDiskType os_disk_type = 12;
 
-  // Enable Azure Spot instances for this node pool.
-  // Spot instances provide 30-90% cost savings but can be evicted when Azure needs capacity.
-  // Only suitable for fault-tolerant, stateless workloads.
-  bool spot_enabled = 5;
+  // Where kubelet state (image layers, emptyDir volumes) lives.
+  // Unspecified applies Azure's default (OS disk). TEMPORARY uses the
+  // VM's temp disk for higher IOPS on image-churn-heavy nodes.
+  AzureAksClusterKubeletDiskType kubelet_disk_type = 13;
+
+  // Node OS image. Unspecified applies Azure's default Linux image
+  // (Ubuntu). AZURE_LINUX is Microsoft's own minimal, security-hardened
+  // distro -- smaller attack surface and faster boots; the direction AKS
+  // is heading. Version-pinned values (UBUNTU_2204/2404, AZURE_LINUX_3)
+  // pin the OS major independent of Kubernetes version.
+  AzureAksClusterOsSku os_sku = 14;
+
+  // Kubernetes version for the pool's nodes. Unset follows the control
+  // plane's version -- correct for the default pool in almost all cases.
+  string orchestrator_version = 15;
+
+  // Kubernetes labels applied to this pool's nodes, for scheduling
+  // (nodeSelector/affinity) against system-pool nodes.
+  map<string, string> node_labels = 16;
+
+  // Whether the pool is tainted CriticalAddonsOnly=true:NoSchedule so
+  // ONLY system pods schedule here. The recommended posture once real
+  // workloads run in dedicated AzureAksNodePool resources: it stops app
+  // pods from starving CoreDNS.
+  bool only_critical_addons_enabled = 17;
+
+  // Whether nodes get FIPS 140-2 validated OS images (compliance
+  // environments). Changing it rotates the pool.
+  bool fips_enabled = 18;
+
+  // Whether host-based encryption is enabled: data on the node's temp
+  // disks and disk caches is encrypted at rest. Requires the
+  // EncryptionAtHost feature on the subscription. Changing it rotates the
+  // pool.
+  bool host_encryption_enabled = 19;
+
+  // Whether each node gets its own public IP -- niche direct-node-ingress
+  // patterns (game servers). Egress normally flows through the cluster
+  // load balancer or NAT gateway instead.
+  bool node_public_ip_enabled = 20;
+
+  // Public IP prefix to allocate node public IPs from, so node IPs come
+  // from one known, allowlistable CIDR. Requires node_public_ip_enabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef node_public_ip_prefix_id = 21 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIpPrefix,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_prefix_id"
+  ];
+
+  // GPU Multi-Instance GPU (MIG) profile for A100 sizes, partitioning
+  // each physical GPU into isolated slices (e.g. "MIG1g" = 7 slices).
+  // Only for MIG-capable VM sizes. Changing it rotates the pool.
+  AzureAksClusterGpuInstance gpu_instance = 22;
+
+  // Whether AKS installs the NVIDIA GPU driver on GPU nodes. Unspecified
+  // applies Azure's default (install when the VM size has a GPU). NONE
+  // skips installation for teams that run the GPU operator themselves.
+  AzureAksClusterGpuDriver gpu_driver = 23;
+
+  // ARM id of a Proximity Placement Group to co-locate nodes for minimal
+  // inter-node latency (HPC). Plain ARM id (no Planton kind). Changing it
+  // rotates the pool.
+  string proximity_placement_group_id = 24;
+
+  // ARM id of a Dedicated Host Group to place nodes on your isolated
+  // physical hosts (compliance isolation). Plain ARM id. Changing it
+  // rotates the pool.
+  string host_group_id = 25;
+
+  // ARM id of a Capacity Reservation Group to draw guaranteed compute
+  // capacity from. Plain ARM id. Changing it rotates the pool.
+  string capacity_reservation_group_id = 26;
+
+  // What scale-down does with removed nodes. Unspecified applies Azure's
+  // default (DELETE): nodes are deleted and stop billing. DEALLOCATE
+  // stops them but keeps disks for faster scale-up at storage cost.
+  AzureAksClusterScaleDownMode scale_down_mode = 27;
+
+  // ARM id of a node-pool snapshot to source this pool's configuration
+  // from (replicating a known-good pool config across clusters). Plain
+  // ARM id.
+  string snapshot_id = 28;
+
+  // Container runtime class. Unspecified runs standard containers
+  // (OCIContainer, Azure's default). KATA_MSHV_VM_ISOLATION runs each pod
+  // in a lightweight utility VM for kernel isolation (requires supporting
+  // VM sizes).
+  AzureAksClusterWorkloadRuntime workload_runtime = 29;
+
+  // Whether nodes may use Ultra SSD (zone-pinned, highest-IOPS) data
+  // disks. Requires zones. Changing it rotates the pool.
+  bool ultra_ssd_enabled = 30;
+
+  // Stand-in pool name AKS uses to rotate this pool through otherwise
+  // replace-forcing changes (vm_size, os_disk_type, fips_enabled...):
+  // a temporary pool with this name carries the system pods while the
+  // real pool is rebuilt. Same format as name. Set it proactively on
+  // production clusters.
+  string temporary_name_for_rotation = 31 [(buf.validate.field).cel = {
+    id: "aks_default_pool_temp_name_format"
+    message: "Node pool names are 1-12 lowercase letters and numbers and start with a letter"
+    expression: "this == '' || this.matches('^[a-z][a-z0-9]{0,11}$')"
+  }];
+
+  // Kubelet tuning for this pool's nodes -- CPU manager policy, image GC
+  // thresholds, container log rotation, pid limits. Unset fields keep
+  // AKS defaults. Changing kubelet config rotates the pool.
+  AzureAksClusterKubeletConfig kubelet_config = 32;
+
+  // Linux kernel and OS tuning -- sysctl values, transparent huge pages,
+  // swap file. Unset fields keep AKS defaults. Changing OS config rotates
+  // the pool.
+  AzureAksClusterLinuxOsConfig linux_os_config = 33;
+
+  // Node-level network hardening: allowed host ports, application
+  // security groups for nodes, and tags on node public IPs.
+  AzureAksClusterNodeNetworkProfile node_network_profile = 34;
+
+  // How node upgrades roll through the pool: surge sizing, drain
+  // behavior, and soak time between nodes.
+  AzureAksClusterDefaultNodePoolUpgradeSettings upgrade_settings = 35;
+
+  // Free-form tags applied to the pool's VM scale set, merged over the
+  // Planton-derived resource tags; a user tag with the same key wins.
+  map<string, string> tags = 36;
+
+  option (buf.validate.message).cel = {
+    id: "aks_default_pool_autoscaling_bounds"
+    message: "With auto_scaling_enabled, set min_count and max_count (min <= max); without it, leave both unset"
+    expression: "this.auto_scaling_enabled ? (this.min_count >= 1 && this.max_count >= this.min_count) : (this.min_count == 0 && this.max_count == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_default_pool_fixed_count_required"
+    message: "Set node_count (1-1000) when autoscaling is disabled -- the pool needs a fixed size"
+    expression: "this.auto_scaling_enabled || this.node_count >= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_default_pool_ip_prefix_requires_public_ip"
+    message: "node_public_ip_prefix_id requires node_public_ip_enabled to be true"
+    expression: "!has(this.node_public_ip_prefix_id) || this.node_public_ip_enabled"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_default_pool_os_sku_is_linux"
+    message: "The default node pool is always Linux -- choose a Linux os_sku (Ubuntu or Azure Linux); Windows pools are standalone AzureAksNodePool resources"
+    expression: "this.os_sku < 6"
+  };
 }
 
-// Add-ons configuration for the AKS cluster.
-message AzureAksClusterAddonsConfig {
-  // Enable Azure Monitor Container Insights.
-  // Streams container logs, metrics, and Kubernetes events to Log Analytics.
-  // Requires log_analytics_workspace_id to be set in spec.
-  // Defaults to true if log_analytics_workspace_id is provided.
-  bool enable_container_insights = 1;
+// OS disk placement for AKS nodes.
+enum AzureAksClusterOsDiskType {
+  // Not specified: Azure's default (Managed).
+  azure_aks_cluster_os_disk_type_unspecified = 0;
 
-  // Enable Azure Key Vault CSI driver.
-  // Allows pods to mount secrets from Azure Key Vault as volumes.
-  // Recommended for production. Defaults to true.
-  bool enable_key_vault_csi_driver = 2;
+  // Persistent managed disk -- survives node restarts, billed separately.
+  MANAGED = 1;
 
-  // Enable Azure Policy add-on.
-  // Enforces policy-based governance on the cluster (pod security standards, resource quotas, etc.).
-  // Recommended for production. Defaults to true.
-  bool enable_azure_policy = 3;
-
-  // Enable Azure AD Workload Identity.
-  // Allows pods to authenticate to Azure services using Kubernetes service accounts (secret-less authentication).
-  // Recommended for production. Defaults to true.
-  bool enable_workload_identity = 4;
-
-  // The Azure resource ID of a Log Analytics Workspace for Container Insights.
-  // Required if enable_container_insights is true.
-  string log_analytics_workspace_id = 5;
+  // Node-local ephemeral disk -- faster, free, right for stateless nodes
+  // whenever the VM size's cache disk fits the OS image.
+  EPHEMERAL = 2;
 }
 
-// Advanced networking configuration.
-// Optional: most users should rely on defaults.
+// Kubelet state placement for AKS nodes.
+enum AzureAksClusterKubeletDiskType {
+  // Not specified: Azure's default (the OS disk).
+  azure_aks_cluster_kubelet_disk_type_unspecified = 0;
+
+  // Kubelet state on the OS disk.
+  OS = 1;
+
+  // Kubelet state on the VM's temporary disk (higher IOPS for image
+  // churn; contents lost on deallocation, which kubelet state tolerates).
+  TEMPORARY = 2;
+}
+
+// Node OS image for AKS pools. Values 1-5 are Linux; 6-7 are Windows and
+// only valid on standalone Windows node pools.
+enum AzureAksClusterOsSku {
+  // Not specified: Azure's default image for the pool's OS type
+  // (currently Ubuntu for Linux, Windows Server 2022 for Windows).
+  azure_aks_cluster_os_sku_unspecified = 0;
+
+  // Ubuntu, version following AKS's default for the Kubernetes version.
+  UBUNTU = 1;
+
+  // Ubuntu 22.04 LTS, pinned.
+  UBUNTU_2204 = 2;
+
+  // Ubuntu 24.04 LTS, pinned.
+  UBUNTU_2404 = 3;
+
+  // Azure Linux (Microsoft's minimal container-host distro), version
+  // following AKS's default.
+  AZURE_LINUX = 4;
+
+  // Azure Linux 3, pinned.
+  AZURE_LINUX_3 = 5;
+
+  // Windows Server 2019 (standalone Windows pools only; retired for new
+  // pools on Kubernetes >= 1.33).
+  WINDOWS_2019 = 6;
+
+  // Windows Server 2022 (standalone Windows pools only).
+  WINDOWS_2022 = 7;
+}
+
+// Multi-Instance GPU (MIG) partitioning profile for A100 GPU nodes.
+enum AzureAksClusterGpuInstance {
+  // Not specified: no MIG partitioning.
+  azure_aks_cluster_gpu_instance_unspecified = 0;
+
+  // Seven 1g.5gb slices per GPU.
+  MIG1G = 1;
+
+  // Three 2g.10gb slices per GPU.
+  MIG2G = 2;
+
+  // Two 3g.20gb slices per GPU.
+  MIG3G = 3;
+
+  // One 4g.20gb slice per GPU.
+  MIG4G = 4;
+
+  // One 7g.40gb slice (the whole GPU as a single MIG device).
+  MIG7G = 5;
+}
+
+// NVIDIA GPU driver installation policy for GPU node pools.
+enum AzureAksClusterGpuDriver {
+  // Not specified: Azure's default (install the driver on GPU sizes).
+  azure_aks_cluster_gpu_driver_unspecified = 0;
+
+  // AKS installs the NVIDIA driver.
+  INSTALL = 1;
+
+  // AKS skips driver installation -- for self-managed GPU operators.
+  NONE = 2;
+}
+
+// What the cluster autoscaler does with nodes it removes.
+enum AzureAksClusterScaleDownMode {
+  // Not specified: Azure's default (Delete).
+  azure_aks_cluster_scale_down_mode_unspecified = 0;
+
+  // Removed nodes are deleted -- billing stops entirely.
+  DELETE = 1;
+
+  // Removed nodes are stopped (deallocated) -- compute billing stops but
+  // disks persist for faster scale-up.
+  DEALLOCATE = 2;
+}
+
+// Container runtime class for a node pool.
+enum AzureAksClusterWorkloadRuntime {
+  // Not specified: Azure's default (OCIContainer).
+  azure_aks_cluster_workload_runtime_unspecified = 0;
+
+  // Standard OCI containers.
+  OCI_CONTAINER = 1;
+
+  // Kata Containers on Microsoft Hyper-V: each pod in a lightweight
+  // utility VM for kernel-level isolation.
+  KATA_MSHV_VM_ISOLATION = 2;
+}
+
+// Kubelet tuning for a node pool. Unset fields keep AKS defaults.
+message AzureAksClusterKubeletConfig {
+  // CPU manager policy. Unspecified keeps AKS's default ("none").
+  // STATIC gives Guaranteed-QoS pods exclusive cores -- latency-sensitive
+  // workloads (trading, real-time media).
+  AzureAksClusterCpuManagerPolicy cpu_manager_policy = 1;
+
+  // Whether CPU CFS quota enforcement applies to containers with CPU
+  // limits. Azure's default is true; disabling trades limit enforcement
+  // for throttling-sensitive latency.
+  optional bool cpu_cfs_quota_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // CPU CFS quota period, e.g. "100ms" (the kubelet default). Shorter
+  // periods smooth throttling for latency-sensitive workloads.
+  string cpu_cfs_quota_period = 3;
+
+  // Disk usage percentage that triggers image garbage collection (0-100).
+  // Unset keeps the kubelet default (85).
+  int32 image_gc_high_threshold = 4 [(buf.validate.field).cel = {
+    id: "aks_kubelet_gc_high_range"
+    message: "image_gc_high_threshold is a percentage between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+
+  // Disk usage percentage image GC frees down to (0-100). Unset keeps the
+  // kubelet default (80).
+  int32 image_gc_low_threshold = 5 [(buf.validate.field).cel = {
+    id: "aks_kubelet_gc_low_range"
+    message: "image_gc_low_threshold is a percentage between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+
+  // NUMA topology alignment policy for pod resources. Unspecified keeps
+  // the kubelet default ("none").
+  AzureAksClusterTopologyManagerPolicy topology_manager_policy = 6;
+
+  // Unsafe sysctls (or patterns like "net.*") pods may set via their
+  // security context. Empty means none -- the safe default.
+  repeated string allowed_unsafe_sysctls = 7;
+
+  // Maximum container log file size in MB before rotation.
+  int32 container_log_max_size_mb = 8;
+
+  // Maximum rotated container log files kept per container (>= 2).
+  int32 container_log_max_files = 9 [(buf.validate.field).cel = {
+    id: "aks_kubelet_log_files_min"
+    message: "container_log_max_files must be at least 2 (the active file plus one rotation)"
+    expression: "this == 0 || this >= 2"
+  }];
+
+  // Maximum processes per pod. Unset keeps the kubelet default
+  // (unlimited, -1).
+  int32 pod_max_pid = 10;
+}
+
+// Kubelet CPU manager policy.
+enum AzureAksClusterCpuManagerPolicy {
+  // Not specified: kubelet default ("none") -- shared CPU pool.
+  azure_aks_cluster_cpu_manager_policy_unspecified = 0;
+
+  // Shared CPU pool for all pods.
+  CPU_MANAGER_NONE = 1;
+
+  // Exclusive core pinning for Guaranteed-QoS pods with integer CPU
+  // requests.
+  CPU_MANAGER_STATIC = 2;
+}
+
+// Kubelet topology manager policy for NUMA alignment.
+enum AzureAksClusterTopologyManagerPolicy {
+  // Not specified: kubelet default ("none") -- no NUMA alignment.
+  azure_aks_cluster_topology_manager_policy_unspecified = 0;
+
+  // No alignment.
+  TOPOLOGY_NONE = 1;
+
+  // Prefer aligned placement, admit regardless.
+  BEST_EFFORT = 2;
+
+  // Admit only pods whose preferred alignment is achievable.
+  RESTRICTED = 3;
+
+  // Admit only pods placeable on a single NUMA node.
+  SINGLE_NUMA_NODE = 4;
+}
+
+// Linux kernel and OS tuning for a node pool. Unset fields keep AKS
+// defaults.
+message AzureAksClusterLinuxOsConfig {
+  // Kernel sysctl overrides. Only the sysctls AKS allows are modeled;
+  // each carries the ARM-enforced range in its validation.
+  AzureAksClusterSysctlConfig sysctl_config = 1;
+
+  // Transparent Huge Pages mode. Unspecified keeps the OS default
+  // ("always"). Databases with sparse access patterns often want
+  // MADVISE or NEVER.
+  AzureAksClusterTransparentHugePage transparent_huge_page = 2;
+
+  // Transparent Huge Pages defrag behavior. Unspecified keeps the OS
+  // default ("madvise").
+  AzureAksClusterTransparentHugePageDefrag transparent_huge_page_defrag = 3;
+
+  // Swap file size in MB on each node. Unset means no swap -- the
+  // Kubernetes-recommended default.
+  int32 swap_file_size_mb = 4;
+}
+
+// Transparent Huge Pages mode.
+enum AzureAksClusterTransparentHugePage {
+  // Not specified: the OS default ("always").
+  azure_aks_cluster_transparent_huge_page_unspecified = 0;
+
+  // THP for all memory regions.
+  THP_ALWAYS = 1;
+
+  // THP only for madvise(MADV_HUGEPAGE) regions.
+  THP_MADVISE = 2;
+
+  // THP disabled.
+  THP_NEVER = 3;
+}
+
+// Transparent Huge Pages defrag behavior.
+enum AzureAksClusterTransparentHugePageDefrag {
+  // Not specified: the OS default ("madvise").
+  azure_aks_cluster_transparent_huge_page_defrag_unspecified = 0;
+
+  // Synchronous defrag on every THP allocation.
+  DEFRAG_ALWAYS = 1;
+
+  // Defer defrag to kswapd.
+  DEFRAG_DEFER = 2;
+
+  // Defer generally, defrag synchronously for madvise regions.
+  DEFRAG_DEFER_MADVISE = 3;
+
+  // Defrag synchronously only for madvise regions.
+  DEFRAG_MADVISE = 4;
+
+  // Never defrag.
+  DEFRAG_NEVER = 5;
+}
+
+// Kernel sysctl overrides AKS supports on Linux nodes. Every field is
+// optional; zero means "keep the AKS default". Ranges mirror ARM's
+// accepted bounds.
+message AzureAksClusterSysctlConfig {
+  // fs.aio-max-nr (65536-6553500): max concurrent async I/O requests.
+  int32 fs_aio_max_nr = 1 [(buf.validate.field).cel = {
+    id: "sysctl_fs_aio_max_nr"
+    message: "fs_aio_max_nr must be between 65536 and 6553500"
+    expression: "this == 0 || (this >= 65536 && this <= 6553500)"
+  }];
+
+  // fs.file-max (8192-12000500): system-wide open file handle limit.
+  int32 fs_file_max = 2 [(buf.validate.field).cel = {
+    id: "sysctl_fs_file_max"
+    message: "fs_file_max must be between 8192 and 12000500"
+    expression: "this == 0 || (this >= 8192 && this <= 12000500)"
+  }];
+
+  // fs.inotify.max_user_watches (781250-2097152): inotify watch limit --
+  // raise for file-watching-heavy workloads (IDEs, log shippers).
+  int32 fs_inotify_max_user_watches = 3 [(buf.validate.field).cel = {
+    id: "sysctl_fs_inotify_watches"
+    message: "fs_inotify_max_user_watches must be between 781250 and 2097152"
+    expression: "this == 0 || (this >= 781250 && this <= 2097152)"
+  }];
+
+  // fs.nr_open (8192-20000500): per-process open file limit.
+  int32 fs_nr_open = 4 [(buf.validate.field).cel = {
+    id: "sysctl_fs_nr_open"
+    message: "fs_nr_open must be between 8192 and 20000500"
+    expression: "this == 0 || (this >= 8192 && this <= 20000500)"
+  }];
+
+  // kernel.threads-max (20-513785): system-wide thread limit.
+  int32 kernel_threads_max = 5 [(buf.validate.field).cel = {
+    id: "sysctl_kernel_threads_max"
+    message: "kernel_threads_max must be between 20 and 513785"
+    expression: "this == 0 || (this >= 20 && this <= 513785)"
+  }];
+
+  // net.core.netdev_max_backlog (1000-3240000): NIC ingress queue length.
+  int32 net_core_netdev_max_backlog = 6 [(buf.validate.field).cel = {
+    id: "sysctl_netdev_backlog"
+    message: "net_core_netdev_max_backlog must be between 1000 and 3240000"
+    expression: "this == 0 || (this >= 1000 && this <= 3240000)"
+  }];
+
+  // net.core.optmem_max (20480-4194304): per-socket ancillary buffer max.
+  int32 net_core_optmem_max = 7 [(buf.validate.field).cel = {
+    id: "sysctl_optmem_max"
+    message: "net_core_optmem_max must be between 20480 and 4194304"
+    expression: "this == 0 || (this >= 20480 && this <= 4194304)"
+  }];
+
+  // net.core.rmem_default (212992-134217728): default socket receive
+  // buffer.
+  int32 net_core_rmem_default = 8 [(buf.validate.field).cel = {
+    id: "sysctl_rmem_default"
+    message: "net_core_rmem_default must be between 212992 and 134217728"
+    expression: "this == 0 || (this >= 212992 && this <= 134217728)"
+  }];
+
+  // net.core.rmem_max (212992-134217728): max socket receive buffer.
+  int32 net_core_rmem_max = 9 [(buf.validate.field).cel = {
+    id: "sysctl_rmem_max"
+    message: "net_core_rmem_max must be between 212992 and 134217728"
+    expression: "this == 0 || (this >= 212992 && this <= 134217728)"
+  }];
+
+  // net.core.somaxconn (4096-3240000): listen backlog limit.
+  int32 net_core_somaxconn = 10 [(buf.validate.field).cel = {
+    id: "sysctl_somaxconn"
+    message: "net_core_somaxconn must be between 4096 and 3240000"
+    expression: "this == 0 || (this >= 4096 && this <= 3240000)"
+  }];
+
+  // net.core.wmem_default (212992-134217728): default socket send buffer.
+  int32 net_core_wmem_default = 11 [(buf.validate.field).cel = {
+    id: "sysctl_wmem_default"
+    message: "net_core_wmem_default must be between 212992 and 134217728"
+    expression: "this == 0 || (this >= 212992 && this <= 134217728)"
+  }];
+
+  // net.core.wmem_max (212992-134217728): max socket send buffer.
+  int32 net_core_wmem_max = 12 [(buf.validate.field).cel = {
+    id: "sysctl_wmem_max"
+    message: "net_core_wmem_max must be between 212992 and 134217728"
+    expression: "this == 0 || (this >= 212992 && this <= 134217728)"
+  }];
+
+  // net.ipv4.ip_local_port_range minimum (1024-60999).
+  int32 net_ipv4_ip_local_port_range_min = 13 [(buf.validate.field).cel = {
+    id: "sysctl_port_range_min"
+    message: "net_ipv4_ip_local_port_range_min must be between 1024 and 60999"
+    expression: "this == 0 || (this >= 1024 && this <= 60999)"
+  }];
+
+  // net.ipv4.ip_local_port_range maximum (32768-65535).
+  int32 net_ipv4_ip_local_port_range_max = 14 [(buf.validate.field).cel = {
+    id: "sysctl_port_range_max"
+    message: "net_ipv4_ip_local_port_range_max must be between 32768 and 65535"
+    expression: "this == 0 || (this >= 32768 && this <= 65535)"
+  }];
+
+  // net.ipv4.neigh.default.gc_thresh1 (128-80000): ARP cache soft floor.
+  int32 net_ipv4_neigh_default_gc_thresh1 = 15 [(buf.validate.field).cel = {
+    id: "sysctl_gc_thresh1"
+    message: "net_ipv4_neigh_default_gc_thresh1 must be between 128 and 80000"
+    expression: "this == 0 || (this >= 128 && this <= 80000)"
+  }];
+
+  // net.ipv4.neigh.default.gc_thresh2 (512-90000): ARP cache soft ceiling.
+  int32 net_ipv4_neigh_default_gc_thresh2 = 16 [(buf.validate.field).cel = {
+    id: "sysctl_gc_thresh2"
+    message: "net_ipv4_neigh_default_gc_thresh2 must be between 512 and 90000"
+    expression: "this == 0 || (this >= 512 && this <= 90000)"
+  }];
+
+  // net.ipv4.neigh.default.gc_thresh3 (1024-100000): ARP cache hard limit.
+  int32 net_ipv4_neigh_default_gc_thresh3 = 17 [(buf.validate.field).cel = {
+    id: "sysctl_gc_thresh3"
+    message: "net_ipv4_neigh_default_gc_thresh3 must be between 1024 and 100000"
+    expression: "this == 0 || (this >= 1024 && this <= 100000)"
+  }];
+
+  // net.ipv4.tcp_fin_timeout (5-120): FIN-WAIT-2 hold seconds.
+  int32 net_ipv4_tcp_fin_timeout = 18 [(buf.validate.field).cel = {
+    id: "sysctl_tcp_fin_timeout"
+    message: "net_ipv4_tcp_fin_timeout must be between 5 and 120"
+    expression: "this == 0 || (this >= 5 && this <= 120)"
+  }];
+
+  // net.ipv4.tcp_keepalive_intvl (10-90): keepalive probe interval.
+  int32 net_ipv4_tcp_keepalive_intvl = 19 [(buf.validate.field).cel = {
+    id: "sysctl_tcp_keepalive_intvl"
+    message: "net_ipv4_tcp_keepalive_intvl must be between 10 and 90"
+    expression: "this == 0 || (this >= 10 && this <= 90)"
+  }];
+
+  // net.ipv4.tcp_keepalive_probes (1-15): unanswered probes before drop.
+  int32 net_ipv4_tcp_keepalive_probes = 20 [(buf.validate.field).cel = {
+    id: "sysctl_tcp_keepalive_probes"
+    message: "net_ipv4_tcp_keepalive_probes must be between 1 and 15"
+    expression: "this == 0 || (this >= 1 && this <= 15)"
+  }];
+
+  // net.ipv4.tcp_keepalive_time (30-432000): idle seconds before
+  // keepalives start.
+  int32 net_ipv4_tcp_keepalive_time = 21 [(buf.validate.field).cel = {
+    id: "sysctl_tcp_keepalive_time"
+    message: "net_ipv4_tcp_keepalive_time must be between 30 and 432000"
+    expression: "this == 0 || (this >= 30 && this <= 432000)"
+  }];
+
+  // net.ipv4.tcp_max_syn_backlog (128-3240000): half-open connection
+  // queue.
+  int32 net_ipv4_tcp_max_syn_backlog = 22 [(buf.validate.field).cel = {
+    id: "sysctl_tcp_syn_backlog"
+    message: "net_ipv4_tcp_max_syn_backlog must be between 128 and 3240000"
+    expression: "this == 0 || (this >= 128 && this <= 3240000)"
+  }];
+
+  // net.ipv4.tcp_max_tw_buckets (8000-1440000): TIME-WAIT socket cap.
+  int32 net_ipv4_tcp_max_tw_buckets = 23 [(buf.validate.field).cel = {
+    id: "sysctl_tcp_tw_buckets"
+    message: "net_ipv4_tcp_max_tw_buckets must be between 8000 and 1440000"
+    expression: "this == 0 || (this >= 8000 && this <= 1440000)"
+  }];
+
+  // net.ipv4.tcp_tw_reuse: allow reusing TIME-WAIT sockets for new
+  // outbound connections.
+  bool net_ipv4_tcp_tw_reuse = 24;
+
+  // net.netfilter.nf_conntrack_buckets (65536-524288): conntrack hash
+  // size.
+  int32 net_netfilter_nf_conntrack_buckets = 25 [(buf.validate.field).cel = {
+    id: "sysctl_conntrack_buckets"
+    message: "net_netfilter_nf_conntrack_buckets must be between 65536 and 524288"
+    expression: "this == 0 || (this >= 65536 && this <= 524288)"
+  }];
+
+  // net.netfilter.nf_conntrack_max (131072-2097152): tracked connection
+  // cap -- raise for high-connection-count proxies.
+  int32 net_netfilter_nf_conntrack_max = 26 [(buf.validate.field).cel = {
+    id: "sysctl_conntrack_max"
+    message: "net_netfilter_nf_conntrack_max must be between 131072 and 2097152"
+    expression: "this == 0 || (this >= 131072 && this <= 2097152)"
+  }];
+
+  // vm.max_map_count (65530-262144): memory-map areas per process --
+  // Elasticsearch famously needs 262144.
+  int32 vm_max_map_count = 27 [(buf.validate.field).cel = {
+    id: "sysctl_vm_max_map_count"
+    message: "vm_max_map_count must be between 65530 and 262144"
+    expression: "this == 0 || (this >= 65530 && this <= 262144)"
+  }];
+
+  // vm.swappiness (0-100): kernel swap eagerness.
+  int32 vm_swappiness = 28 [(buf.validate.field).cel = {
+    id: "sysctl_vm_swappiness"
+    message: "vm_swappiness must be between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+
+  // vm.vfs_cache_pressure (0-100): dentry/inode cache reclaim pressure.
+  int32 vm_vfs_cache_pressure = 29 [(buf.validate.field).cel = {
+    id: "sysctl_vfs_cache_pressure"
+    message: "vm_vfs_cache_pressure must be between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+}
+
+// Node-level network hardening for a pool.
+message AzureAksClusterNodeNetworkProfile {
+  // Host port ranges pods may bind on the node -- each entry opens a
+  // port range/protocol in the node's network security rules.
+  repeated AzureAksClusterAllowedHostPorts allowed_host_ports = 1;
+
+  // ARM ids of Application Security Groups the pool's nodes join, so NSG
+  // rules can target "the AKS nodes" as a group. Plain ARM ids.
+  repeated string application_security_group_ids = 2;
+
+  // Azure tags applied to the node PUBLIC IPs (with
+  // node_public_ip_enabled), e.g. routing preference tags. Set at pool
+  // creation.
+  map<string, string> node_public_ip_tags = 3;
+}
+
+// A host port range pods may use on nodes.
+message AzureAksClusterAllowedHostPorts {
+  // Start of the port range (1-65535).
+  int32 port_start = 1 [(buf.validate.field).cel = {
+    id: "aks_host_port_start_range"
+    message: "port_start must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // End of the port range (1-65535, >= port_start).
+  int32 port_end = 2 [(buf.validate.field).cel = {
+    id: "aks_host_port_end_range"
+    message: "port_end must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // Protocol for the range.
+  AzureAksClusterHostPortProtocol protocol = 3;
+}
+
+// Protocol for an allowed host-port range.
+enum AzureAksClusterHostPortProtocol {
+  // Not specified.
+  azure_aks_cluster_host_port_protocol_unspecified = 0;
+
+  // TCP.
+  TCP = 1;
+
+  // UDP.
+  UDP = 2;
+}
+
+// Upgrade rollout behavior for the default node pool. The default pool
+// requires max_surge (Azure's own contract -- system pods need surge
+// capacity during upgrades).
+message AzureAksClusterDefaultNodePoolUpgradeSettings {
+  // Extra nodes added during an upgrade, as a count ("2") or percentage
+  // ("10%" -- AKS's recommended default). More surge = faster upgrades,
+  // more temporary cost.
+  string max_surge = 1 [(buf.validate.field).required = true];
+
+  // Minutes to wait for a node to drain before giving up (honoring pod
+  // disruption budgets). Unset keeps Azure's default (30).
+  int32 drain_timeout_in_minutes = 2;
+
+  // Minutes to soak (wait) after each upgraded node before the next
+  // (0-30). Unset upgrades continuously.
+  int32 node_soak_duration_in_minutes = 3 [(buf.validate.field).cel = {
+    id: "aks_default_pool_soak_range"
+    message: "node_soak_duration_in_minutes must be between 0 and 30"
+    expression: "this >= 0 && this <= 30"
+  }];
+
+  // What happens to a node that will not drain (PDB-blocked).
+  // Unspecified keeps Azure's default (the upgrade fails). CORDON
+  // quarantines the node and proceeds; SCHEDULE lets pods return to it.
+  AzureAksClusterUndrainableNodeBehavior undrainable_node_behavior = 4;
+}
+
+// Behavior for nodes that cannot be drained during an upgrade.
+enum AzureAksClusterUndrainableNodeBehavior {
+  // Not specified: Azure's default -- the upgrade errors on an
+  // undrainable node.
+  azure_aks_cluster_undrainable_node_behavior_unspecified = 0;
+
+  // Cordon the undrainable node into quarantine and continue.
+  CORDON = 1;
+
+  // Leave the node schedulable and continue.
+  SCHEDULE = 2;
+}
+
+// The cluster's managed identity.
+message AzureAksClusterIdentity {
+  // Identity flavor. Unspecified applies SYSTEM_ASSIGNED -- Azure creates
+  // and rotates the identity with the cluster.
+  AzureAksClusterIdentityType type = 1;
+
+  // For USER_ASSIGNED: the user-assigned identities the control plane
+  // runs as (AKS uses the first). Reference AzureUserAssignedIdentity
+  // resources so grants (Private DNS Zone Contributor, Network
+  // Contributor) can be composed before cluster creation.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "aks_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and must be empty otherwise"
+    expression: "this.type == 2 ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// Managed identity flavor for the cluster control plane.
+enum AzureAksClusterIdentityType {
+  // Not specified: SystemAssigned.
+  azure_aks_cluster_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the cluster.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring-your-own user-assigned identity (set identity_ids).
+  USER_ASSIGNED = 2;
+}
+
+// The kubelet identity nodes use (image pulls, Azure resource access).
+// All three fields describe the SAME user-assigned identity and must be
+// set together; requires a USER_ASSIGNED cluster identity.
+message AzureAksClusterKubeletIdentity {
+  // Client id of the kubelet's user-assigned identity.
+  string client_id = 1 [(buf.validate.field).required = true];
+
+  // Object (principal) id of the kubelet's user-assigned identity.
+  string object_id = 2 [(buf.validate.field).required = true];
+
+  // ARM id of the kubelet's user-assigned identity.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}
+
+// API-server access hardening for public clusters.
+message AzureAksClusterApiServerAccessProfile {
+  // CIDR blocks allowed to reach the public API server. Empty admits all
+  // source IPs -- set your office/VPN/CI ranges for any real cluster that
+  // is not private. Ignored for private clusters.
+  repeated string authorized_ip_ranges = 1 [(buf.validate.field).repeated.items.string.pattern = "^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}(?:\\/(?:3[0-2]|[12]?[0-9]))?$"];
+
+  // Whether API Server VNet Integration projects the API server into a
+  // delegated subnet in YOUR network -- API-server traffic stays private
+  // without full private-cluster mode.
+  bool virtual_network_integration_enabled = 2;
+
+  // The delegated subnet for API Server VNet Integration (delegation:
+  // Microsoft.ContainerService/managedClusters).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+}
+
+// Microsoft Entra ID (Azure AD) integration for cluster access.
+message AzureAksClusterAadRbac {
+  // Entra tenant to authenticate against. Leave unset to use the
+  // cluster's own tenant -- correct except for cross-tenant setups.
+  string tenant_id = 1 [(buf.validate.field).cel = {
+    id: "aks_aad_tenant_uuid"
+    message: "tenant_id must be a UUID"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+  }];
+
+  // Whether AZURE RBAC (role assignments on the cluster's ARM scope) is
+  // the Kubernetes authorization source, replacing in-cluster
+  // RoleBindings. One control plane for who-can-do-what, managed like
+  // every other Azure grant (composable with AzureRoleAssignment).
+  bool azure_rbac_enabled = 2;
+
+  // Entra group object ids granted cluster-admin. The break-glass and
+  // platform-team entry point when azure_rbac_enabled is off (and a
+  // sensible baseline even when it is on).
+  repeated string admin_group_object_ids = 3 [(buf.validate.field).repeated.items.string.pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"];
+}
+
+// The cluster's network fabric. Sub-field combinations mirror Azure's own
+// contracts; nearly everything here replaces the cluster when changed.
+message AzureAksClusterNetworkProfile {
+  // CNI plugin. Unspecified applies the modern AKS default the modules
+  // write explicitly: AZURE_CNI (with overlay mode unless a pod subnet
+  // says otherwise). KUBENET is deprecated (retires March 2028) and only
+  // kept for pre-existing estates; NONE brings your own CNI.
+  AzureAksClusterNetworkPlugin network_plugin = 1;
+
+  // Azure CNI addressing mode. Unspecified with AZURE_CNI applies OVERLAY
+  // -- pods get IPs from the private pod_cidr, not the VNet, eliminating
+  // VNet IP exhaustion. Leave truly unset (traditional mode) only when
+  // pods must be first-class VNet endpoints (pair with pod_subnet_id on
+  // the pools).
+  AzureAksClusterNetworkPluginMode network_plugin_mode = 2;
+
+  // Network policy engine enforcing Kubernetes NetworkPolicy objects.
+  // Unspecified means no enforcement -- policies are silently inert;
+  // enable one for any multi-tenant or zero-trust cluster. CILIUM
+  // requires the CILIUM data plane.
+  AzureAksClusterNetworkPolicy network_policy = 3;
+
+  // Dataplane technology. Unspecified applies Azure's default (iptables-
+  // based Azure dataplane). CILIUM switches to eBPF -- higher throughput,
+  // lower latency, richer observability -- and pairs with (requires)
+  // AZURE_CNI; it is also the only dataplane for CILIUM network policy.
+  AzureAksClusterNetworkDataPlane network_data_plane = 4;
+
+  // IP for Kubernetes DNS (kube-dns/CoreDNS service). Must sit inside
+  // service_cidr. Unset applies Azure's default (".10" of the service
+  // CIDR).
+  string dns_service_ip = 5 [(buf.validate.field).cel = {
+    id: "aks_dns_service_ip_format"
+    message: "dns_service_ip must be an IPv4 address, e.g. 10.0.0.10"
+    expression: "this == '' || this.matches('^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:[.](?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}$')"
+  }];
+
+  // CIDR for Kubernetes Services (ClusterIPs). Never routed outside the
+  // cluster but must not overlap the VNet or peered networks. Unset
+  // applies Azure's default (10.0.0.0/16).
+  string service_cidr = 6;
+
+  // Additional service CIDR for dual-stack (one IPv4 + one IPv6 block via
+  // service_cidrs takes precedence over service_cidr in ARM; model your
+  // dual-stack blocks here). Single-stack clusters use service_cidr.
+  repeated string service_cidrs = 7;
+
+  // CIDR pods draw IPs from in OVERLAY (or kubenet) mode. Unset applies
+  // Azure's default (10.244.0.0/16). Irrelevant in traditional CNI mode
+  // (pods use subnet IPs).
+  string pod_cidr = 8;
+
+  // Dual-stack pod CIDRs (one IPv4 + one IPv6). Single-stack clusters use
+  // pod_cidr.
+  repeated string pod_cidrs = 9;
+
+  // IP families for the cluster. Unset means IPv4-only. For dual-stack,
+  // list IPV4 then IPV6 and provide dual-stack pod_cidrs/service_cidrs.
+  repeated AzureAksClusterIpVersion ip_versions = 10;
+
+  // How cluster egress leaves Azure. Unspecified applies Azure's default
+  // (LOAD_BALANCER): SNAT through the managed Standard load balancer.
+  // MANAGED_NAT_GATEWAY swaps in an AKS-managed NAT gateway (better SNAT
+  // scaling); USER_ASSIGNED_NAT_GATEWAY uses the NAT gateway already
+  // attached to your BYO subnet (compose via AzureSubnet.nat_gateway_id);
+  // USER_DEFINED_ROUTING sends everything to your route table's next hop
+  // (the firewall-egress pattern -- requires a BYO subnet with an
+  // AzureRouteTable attached); NONE provisions no egress path at all
+  // (pair with bootstrap_profile CACHE so nodes can still pull system
+  // images).
+  AzureAksClusterOutboundType outbound_type = 11;
+
+  // Tuning for the managed STANDARD LOAD BALANCER egress path (outbound
+  // type LOAD_BALANCER): SNAT port allocation, outbound IP scaling or
+  // explicit outbound IPs.
+  AzureAksClusterLoadBalancerProfile load_balancer_profile = 12;
+
+  // Tuning for the MANAGED_NAT_GATEWAY egress path.
+  AzureAksClusterNatGatewayProfile nat_gateway_profile = 13;
+
+  // Advanced Container Networking Services: OBSERVABILITY streams
+  // pod-level network flow metrics/logs; SECURITY adds FQDN-based egress
+  // filtering. Both require the CILIUM data plane.
+  AzureAksClusterAdvancedNetworking advanced_networking = 14;
+
+  option (buf.validate.message).cel = {
+    id: "aks_cilium_policy_requires_cilium_dataplane"
+    message: "CILIUM network policy requires network_data_plane CILIUM"
+    expression: "this.network_policy != 3 || this.network_data_plane == 2"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_cilium_dataplane_requires_azure_cni"
+    message: "The CILIUM data plane requires the AZURE_CNI network plugin (leave network_plugin unset or set it to AZURE_CNI)"
+    expression: "this.network_data_plane != 2 || this.network_plugin <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_overlay_requires_azure_cni"
+    message: "OVERLAY network_plugin_mode requires the AZURE_CNI network plugin"
+    expression: "this.network_plugin_mode != 1 || this.network_plugin <= 1"
+  };
+}
+
+// CNI plugin for the cluster.
+enum AzureAksClusterNetworkPlugin {
+  // Not specified: the modules apply the modern AKS default, Azure CNI.
+  azure_aks_cluster_network_plugin_unspecified = 0;
+
+  // Azure CNI -- full VNet integration; pair with OVERLAY mode (the
+  // default) or a pod subnet for traditional dynamic allocation.
+  AZURE_CNI = 1;
+
+  // Kubenet -- basic NAT networking. Deprecated; AKS retires it March
+  // 2028. Do not use for new clusters.
+  KUBENET = 2;
+
+  // No managed CNI -- bring your own network plugin.
+  NETWORK_PLUGIN_NONE = 3;
+}
+
+// Azure CNI addressing mode.
+enum AzureAksClusterNetworkPluginMode {
+  // Not specified: with AZURE_CNI the modules apply OVERLAY (the modern
+  // default); set nothing here AND a pod_subnet_id on pools for
+  // traditional dynamic pod-IP allocation.
+  azure_aks_cluster_network_plugin_mode_unspecified = 0;
+
+  // Overlay: pods draw from pod_cidr (not VNet space). Solves IP
+  // exhaustion; the right mode for nearly every new cluster.
+  OVERLAY = 1;
+}
+
+// Network policy engine.
+enum AzureAksClusterNetworkPolicy {
+  // Not specified: no NetworkPolicy enforcement.
+  azure_aks_cluster_network_policy_unspecified = 0;
+
+  // Azure's NetworkPolicy implementation (iptables).
+  NETWORK_POLICY_AZURE = 1;
+
+  // Calico -- the widest NetworkPolicy feature set on the classic
+  // dataplane.
+  CALICO = 2;
+
+  // Cilium eBPF policy -- requires the CILIUM data plane.
+  NETWORK_POLICY_CILIUM = 3;
+}
+
+// Dataplane technology.
+enum AzureAksClusterNetworkDataPlane {
+  // Not specified: Azure's default (iptables-based) dataplane.
+  azure_aks_cluster_network_data_plane_unspecified = 0;
+
+  // The classic Azure dataplane.
+  DATA_PLANE_AZURE = 1;
+
+  // Cilium eBPF dataplane -- higher throughput and the foundation for
+  // advanced_networking observability/security.
+  DATA_PLANE_CILIUM = 2;
+}
+
+// IP family for cluster addressing.
+enum AzureAksClusterIpVersion {
+  // Not specified.
+  azure_aks_cluster_ip_version_unspecified = 0;
+
+  // IPv4.
+  IPV4 = 1;
+
+  // IPv6 (dual-stack only -- always alongside IPV4).
+  IPV6 = 2;
+}
+
+// Cluster egress model.
+enum AzureAksClusterOutboundType {
+  // Not specified: Azure's default (loadBalancer).
+  azure_aks_cluster_outbound_type_unspecified = 0;
+
+  // SNAT through the managed Standard load balancer.
+  LOAD_BALANCER = 1;
+
+  // AKS-managed NAT gateway (managed VNet clusters).
+  MANAGED_NAT_GATEWAY = 2;
+
+  // The NAT gateway attached to your BYO subnet (compose it via
+  // AzureSubnet's nat_gateway_id seam).
+  USER_ASSIGNED_NAT_GATEWAY = 3;
+
+  // Your route table decides (firewall egress / forced tunneling);
+  // requires a BYO subnet with an attached AzureRouteTable.
+  USER_DEFINED_ROUTING = 4;
+
+  // No managed egress path at all -- network-isolated clusters; pair
+  // with bootstrap_profile CACHE.
+  OUTBOUND_NONE = 5;
+}
+
+// Managed Standard load balancer egress tuning. Choose ONE outbound-IP
+// strategy: managed counts (Azure allocates), explicit AzurePublicIpPrefix
+// references, or explicit AzurePublicIp references.
+message AzureAksClusterLoadBalancerProfile {
+  // SNAT ports reserved per node (0-64000, multiples of 8). 0 (unset)
+  // lets Azure allocate dynamically by cluster size. Set explicitly for
+  // connection-heavy workloads hitting SNAT exhaustion.
+  int32 outbound_ports_allocated = 1 [(buf.validate.field).cel = {
+    id: "aks_lb_outbound_ports_range"
+    message: "outbound_ports_allocated must be between 0 and 64000"
+    expression: "this >= 0 && this <= 64000"
+  }];
+
+  // Minutes an idle outbound flow holds its SNAT port (4-100). Unset
+  // applies Azure's default (30).
+  int32 idle_timeout_in_minutes = 2 [(buf.validate.field).cel = {
+    id: "aks_lb_idle_timeout_range"
+    message: "idle_timeout_in_minutes must be between 4 and 100"
+    expression: "this == 0 || (this >= 4 && this <= 100)"
+  }];
+
+  // Number of Azure-managed outbound IPv4 addresses (1-100). More IPs =
+  // more SNAT ports. Mutually exclusive with the explicit-IP fields.
+  int32 managed_outbound_ip_count = 3 [(buf.validate.field).cel = {
+    id: "aks_lb_managed_ip_count_range"
+    message: "managed_outbound_ip_count must be between 1 and 100"
+    expression: "this == 0 || (this >= 1 && this <= 100)"
+  }];
+
+  // Number of Azure-managed outbound IPv6 addresses for dual-stack
+  // clusters (1-100).
+  int32 managed_outbound_ipv6_count = 4 [(buf.validate.field).cel = {
+    id: "aks_lb_managed_ipv6_count_range"
+    message: "managed_outbound_ipv6_count must be between 1 and 100"
+    expression: "this == 0 || (this >= 1 && this <= 100)"
+  }];
+
+  // Explicit public IP PREFIXES to SNAT from -- egress comes from known,
+  // allowlistable CIDRs. Mutually exclusive with managed counts and
+  // outbound_ip_address_ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef outbound_ip_prefix_ids = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIpPrefix,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_prefix_id"
+  ];
+
+  // Explicit public IP ADDRESSES to SNAT from. Mutually exclusive with
+  // managed counts and outbound_ip_prefix_ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef outbound_ip_address_ids = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIp,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_id"
+  ];
+
+  // How backend nodes register with the load balancer. Unspecified
+  // applies Azure's default (NODE_IP_CONFIGURATION -- VMSS NIC configs).
+  // NODE_IP registers node IPs directly.
+  AzureAksClusterLoadBalancerBackendPoolType backend_pool_type = 7;
+
+  option (buf.validate.message).cel = {
+    id: "aks_lb_one_outbound_ip_strategy"
+    message: "Choose one outbound IP strategy: managed counts, outbound_ip_prefix_ids, or outbound_ip_address_ids -- they are mutually exclusive"
+    expression: "((this.managed_outbound_ip_count > 0 || this.managed_outbound_ipv6_count > 0) ? 1 : 0) + (this.outbound_ip_prefix_ids.size() > 0 ? 1 : 0) + (this.outbound_ip_address_ids.size() > 0 ? 1 : 0) <= 1"
+  };
+}
+
+// Backend pool membership type for the managed load balancer.
+enum AzureAksClusterLoadBalancerBackendPoolType {
+  // Not specified: Azure's default (NodeIPConfiguration).
+  azure_aks_cluster_load_balancer_backend_pool_type_unspecified = 0;
+
+  // Nodes join by VMSS NIC IP configuration.
+  NODE_IP_CONFIGURATION = 1;
+
+  // Nodes join by IP address.
+  NODE_IP = 2;
+}
+
+// Managed NAT gateway egress tuning (outbound type MANAGED_NAT_GATEWAY).
+message AzureAksClusterNatGatewayProfile {
+  // Minutes an idle outbound flow holds its SNAT port (4-120). Unset
+  // applies Azure's default (4).
+  int32 idle_timeout_in_minutes = 1 [(buf.validate.field).cel = {
+    id: "aks_nat_idle_timeout_range"
+    message: "idle_timeout_in_minutes must be between 4 and 120"
+    expression: "this == 0 || (this >= 4 && this <= 120)"
+  }];
+
+  // Number of managed outbound IPs on the NAT gateway (1-100).
+  int32 managed_outbound_ip_count = 2 [(buf.validate.field).cel = {
+    id: "aks_nat_managed_ip_count_range"
+    message: "managed_outbound_ip_count must be between 1 and 100"
+    expression: "this == 0 || (this >= 1 && this <= 100)"
+  }];
+}
+
+// Advanced Container Networking Services (requires the Cilium dataplane).
 message AzureAksClusterAdvancedNetworking {
-  // Pod CIDR for Overlay mode (e.g., "10.244.0.0/16").
-  // Only applicable when network_plugin_mode is OVERLAY.
-  // Leave empty to use default (10.244.0.0/16).
-  string pod_cidr = 1 [(buf.validate.field).string.pattern = "^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}(?:\\/(?:3[0-2]|[12]?[0-9]))?$"];
+  // Pod-level network observability: flow metrics and logs surfaced
+  // through Azure Monitor.
+  bool observability_enabled = 1;
 
-  // Service CIDR for Kubernetes services (e.g., "10.0.0.0/16").
-  // Must not overlap with VNet, pod CIDR, or other networks.
-  // Leave empty to use default (10.0.0.0/16).
-  string service_cidr = 2 [(buf.validate.field).string.pattern = "^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}(?:\\/(?:3[0-2]|[12]?[0-9]))?$"];
+  // FQDN-based egress policy filtering.
+  bool security_enabled = 2;
+}
 
-  // DNS service IP address (must be within service_cidr range).
-  // Leave empty to use default (10.0.0.10).
-  string dns_service_ip = 3 [(buf.validate.field).string.pattern = "^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}$"];
+// Cluster autoscaler tuning. Every field is optional; unset keeps Azure's
+// default (noted per field). Durations are strings like "10m" or "600s".
+message AzureAksClusterAutoScalerProfile {
+  // Treat node groups with identical instance types/labels as one when
+  // balancing scale-out. Azure default: false.
+  bool balance_similar_node_groups = 1;
 
-  // Custom DNS servers for the VNet.
-  // Leave empty to use Azure-provided DNS.
-  repeated string custom_dns_servers = 4 [(buf.validate.field).repeated.items.string.pattern = "^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])){3}$"];
+  // Allow evicting DaemonSet pods from EMPTY nodes at scale-down. Azure
+  // default: false.
+  bool daemonset_eviction_for_empty_nodes_enabled = 2;
+
+  // Allow evicting DaemonSet pods from OCCUPIED nodes at scale-down.
+  // Azure default: true.
+  optional bool daemonset_eviction_for_occupied_nodes_enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // Which node group grows on scale-out. Unspecified keeps Azure's
+  // default (RANDOM). LEAST_WASTE picks the best resource fit;
+  // PRIORITY follows your priority config; MOST_PODS maximizes scheduled
+  // pods.
+  AzureAksClusterAutoscalerExpander expander = 4;
+
+  // Ignore DaemonSet resource usage when computing node utilization.
+  // Azure default: false.
+  bool ignore_daemonsets_utilization_enabled = 5;
+
+  // Seconds the autoscaler waits for graceful pod termination at
+  // scale-down. Azure default: 600.
+  int32 max_graceful_termination_sec = 6;
+
+  // Longest a provisioning node may take before being abandoned, e.g.
+  // "15m" (Azure's default).
+  string max_node_provisioning_time = 7;
+
+  // Max unready nodes tolerated before autoscaling pauses. Azure
+  // default: 3.
+  int32 max_unready_nodes = 8;
+
+  // Max unready percentage tolerated before autoscaling pauses (0-100).
+  // Azure default: 45.
+  int32 max_unready_percentage = 9 [(buf.validate.field).cel = {
+    id: "aks_cas_unready_pct_range"
+    message: "max_unready_percentage must be between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+
+  // Delay before unschedulable pods trigger scale-up, e.g. "10s" (Azure's
+  // default "0s" scales immediately).
+  string new_pod_scale_up_delay = 10;
+
+  // How often the autoscaler re-evaluates, e.g. "10s" (Azure's default).
+  string scan_interval = 11;
+
+  // Cool-down after a scale-UP before scale-down evaluation resumes, e.g.
+  // "10m" (Azure's default).
+  string scale_down_delay_after_add = 12;
+
+  // Cool-down after a node DELETION, e.g. "10s".
+  string scale_down_delay_after_delete = 13;
+
+  // Cool-down after a scale-down FAILURE, e.g. "3m" (Azure's default).
+  string scale_down_delay_after_failure = 14;
+
+  // How long a node must be unneeded before removal, e.g. "10m" (Azure's
+  // default).
+  string scale_down_unneeded = 15;
+
+  // How long an UNREADY node must be unneeded before removal, e.g. "20m"
+  // (Azure's default).
+  string scale_down_unready = 16;
+
+  // Utilization below which a node is scale-down eligible, as a fraction
+  // string, e.g. "0.5" (Azure's default).
+  string scale_down_utilization_threshold = 17;
+
+  // Max empty nodes deleted in one pass. Azure default: 10.
+  int32 empty_bulk_delete_max = 18;
+
+  // Skip scale-down for nodes whose pods use local storage. Azure
+  // default: false.
+  bool skip_nodes_with_local_storage = 19;
+
+  // Skip scale-down for nodes running non-DaemonSet kube-system pods.
+  // Azure default: true.
+  optional bool skip_nodes_with_system_pods = 20 [(dev.planton.shared.options.default) = "true"];
+}
+
+// Cluster autoscaler scale-out expander strategy.
+enum AzureAksClusterAutoscalerExpander {
+  // Not specified: Azure's default (random).
+  azure_aks_cluster_autoscaler_expander_unspecified = 0;
+
+  // Pick the group wasting the least resources for the pending pods.
+  LEAST_WASTE = 1;
+
+  // Pick the group that schedules the most pending pods.
+  MOST_PODS = 2;
+
+  // Follow user-configured group priorities.
+  PRIORITY = 3;
+
+  // Random choice.
+  RANDOM = 4;
+}
+
+// Automatic Kubernetes-version upgrade channel.
+enum AzureAksClusterUpgradeChannel {
+  // Not specified: no automatic Kubernetes upgrades (Azure's default).
+  azure_aks_cluster_upgrade_channel_unspecified = 0;
+
+  // Auto-apply patch releases of the current minor.
+  PATCH = 1;
+
+  // Track the latest supported minor (N-1 of newest).
+  STABLE = 2;
+
+  // Track the newest supported minor.
+  RAPID = 3;
+
+  // Only refresh node images to the latest for the current version.
+  NODE_IMAGE = 4;
+}
+
+// Node OS image upgrade channel.
+enum AzureAksClusterNodeOsUpgradeChannel {
+  // Not specified: Azure's default (NodeImage).
+  azure_aks_cluster_node_os_upgrade_channel_unspecified = 0;
+
+  // Re-image nodes as AKS publishes patched images (recommended).
+  NODE_OS_NODE_IMAGE = 1;
+
+  // Apply OS security patches in place without re-imaging.
+  SECURITY_PATCH = 2;
+
+  // You manage node OS patching entirely.
+  UNMANAGED = 3;
+
+  // No automatic node OS updates.
+  NODE_OS_NONE = 4;
+}
+
+// Legacy dedicated maintenance window: hour-of-week allowances and
+// blackout spans for routine Azure-initiated maintenance.
+message AzureAksClusterMaintenanceWindow {
+  // Hours of specific weekdays when maintenance MAY run.
+  repeated AzureAksClusterMaintenanceWindowAllowed allowed = 1;
+
+  // Absolute time spans when maintenance MUST NOT run (freeze windows).
+  repeated AzureAksClusterMaintenanceWindowNotAllowed not_allowed = 2;
+}
+
+// An allowed maintenance slot: a weekday and its permitted hours.
+message AzureAksClusterMaintenanceWindowAllowed {
+  // The weekday this allowance covers.
+  AzureAksClusterWeekDay day = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Permitted hours on that day, 0-23 (cluster-local UTC hours).
+  repeated int32 hours = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.int32.gte = 0,
+    (buf.validate.field).repeated.items.int32.lte = 23
+  ];
+}
+
+// A maintenance blackout span.
+message AzureAksClusterMaintenanceWindowNotAllowed {
+  // Span start, RFC 3339, e.g. "2035-01-01T00:00:00Z".
+  string start = 1 [(buf.validate.field).required = true];
+
+  // Span end, RFC 3339.
+  string end = 2 [(buf.validate.field).required = true];
+}
+
+// Day of week for maintenance scheduling.
+enum AzureAksClusterWeekDay {
+  // Not specified.
+  azure_aks_cluster_week_day_unspecified = 0;
+
+  // Sunday.
+  SUNDAY = 1;
+
+  // Monday.
+  MONDAY = 2;
+
+  // Tuesday.
+  TUESDAY = 3;
+
+  // Wednesday.
+  WEDNESDAY = 4;
+
+  // Thursday.
+  THURSDAY = 5;
+
+  // Friday.
+  FRIDAY = 6;
+
+  // Saturday.
+  SATURDAY = 7;
+}
+
+// A recurring maintenance schedule -- shared by the auto-upgrade window
+// (Kubernetes version work) and the node-OS window (image/patch work).
+message AzureAksClusterMaintenanceWindowSchedule {
+  // How the schedule recurs. DAILY/WEEKLY use interval as
+  // days/weeks-between; the monthly frequencies pick a day via
+  // week_index+day_of_week (RELATIVE_MONTHLY) or day_of_month
+  // (ABSOLUTE_MONTHLY).
+  AzureAksClusterMaintenanceFrequency frequency = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // Recurrence interval: every N days/weeks/months (>= 1).
+  int32 interval = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Window length in hours (4-24). Azure needs at least 4 hours to make
+  // progress.
+  int32 duration = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 4,
+    (buf.validate.field).int32.lte = 24
+  ];
+
+  // Weekday for WEEKLY and RELATIVE_MONTHLY schedules.
+  AzureAksClusterWeekDay day_of_week = 4;
+
+  // Which occurrence of day_of_week for RELATIVE_MONTHLY (e.g. FIRST
+  // Tuesday).
+  AzureAksClusterWeekIndex week_index = 5;
+
+  // Day of month (1-31) for ABSOLUTE_MONTHLY schedules.
+  int32 day_of_month = 6 [(buf.validate.field).cel = {
+    id: "aks_mw_day_of_month_range"
+    message: "day_of_month must be between 1 and 31"
+    expression: "this == 0 || (this >= 1 && this <= 31)"
+  }];
+
+  // Date the schedule takes effect, "yyyy-MM-dd". Unset starts
+  // immediately.
+  string start_date = 7;
+
+  // Window start time-of-day, "HH:mm" (with utc_offset applied), e.g.
+  // "02:00".
+  string start_time = 8 [(buf.validate.field).cel = {
+    id: "aks_mw_start_time_format"
+    message: "start_time must be HH:mm, e.g. \"02:00\""
+    expression: "this == '' || this.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')"
+  }];
+
+  // UTC offset for start_time, "+HH:mm" or "-HH:mm", e.g. "+05:30".
+  // Unset means UTC.
+  string utc_offset = 9 [(buf.validate.field).cel = {
+    id: "aks_mw_utc_offset_format"
+    message: "utc_offset must be +HH:mm or -HH:mm, e.g. \"-08:00\""
+    expression: "this == '' || this.matches('^[+-]([01][0-9]|2[0-3]):[0-5][0-9]$')"
+  }];
+
+  // Blackout spans that override the recurrence (freezes).
+  repeated AzureAksClusterMaintenanceWindowNotAllowed not_allowed = 10;
+}
+
+// Maintenance schedule recurrence.
+enum AzureAksClusterMaintenanceFrequency {
+  // Not specified.
+  azure_aks_cluster_maintenance_frequency_unspecified = 0;
+
+  // Every `interval` days.
+  DAILY = 1;
+
+  // Every `interval` weeks on day_of_week.
+  WEEKLY = 2;
+
+  // Every `interval` months on the week_index-th day_of_week.
+  RELATIVE_MONTHLY = 3;
+
+  // Every `interval` months on day_of_month.
+  ABSOLUTE_MONTHLY = 4;
+}
+
+// Week-of-month index for RELATIVE_MONTHLY maintenance.
+enum AzureAksClusterWeekIndex {
+  // Not specified.
+  azure_aks_cluster_week_index_unspecified = 0;
+
+  // First occurrence of the weekday.
+  FIRST = 1;
+
+  // Second occurrence.
+  SECOND = 2;
+
+  // Third occurrence.
+  THIRD = 3;
+
+  // Fourth occurrence.
+  FOURTH = 4;
+
+  // Last occurrence.
+  LAST = 5;
+}
+
+// Container Insights (OMS agent) add-on.
+message AzureAksClusterOmsAgent {
+  // The Log Analytics workspace logs and metrics stream to.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_analytics_workspace_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_id"
+  ];
+
+  // Authenticate the agent with the cluster's managed identity instead
+  // of a workspace key -- the modern, secret-less mode; enable it on new
+  // clusters.
+  bool msi_auth_for_monitoring_enabled = 2;
+}
+
+// Azure Key Vault provider for the Secrets Store CSI driver.
+message AzureAksClusterKeyVaultSecretsProvider {
+  // Whether mounted secrets re-sync from Key Vault on an interval.
+  // Without rotation, pods see updated secrets only on restart.
+  bool secret_rotation_enabled = 1;
+
+  // Poll interval for rotation, e.g. "2m" (Azure's default). Only
+  // meaningful with secret_rotation_enabled.
+  string secret_rotation_interval = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "Rotation poll interval (e.g. 2m) -- operational timing, not secret material"];
+}
+
+// Microsoft Defender for Containers.
+message AzureAksClusterMicrosoftDefender {
+  // The Log Analytics workspace security events stream to.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_analytics_workspace_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_id"
+  ];
+}
+
+// Azure Monitor managed Prometheus metrics.
+message AzureAksClusterMonitorMetrics {
+  // Comma-separated Kubernetes ANNOTATION keys exported as metric labels.
+  string annotations_allowed = 1;
+
+  // Comma-separated Kubernetes LABEL keys exported as metric labels.
+  string labels_allowed = 2;
+}
+
+// Application Gateway Ingress Controller add-on. Anchor it with exactly
+// one of: an existing gateway (gateway_id), a new gateway in a new subnet
+// (subnet_cidr), or a new gateway in an existing subnet (subnet_id).
+message AzureAksClusterIngressApplicationGateway {
+  // Existing Application Gateway AGIC programs. The gateway must be
+  // reachable from the cluster network (peered or same VNet).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gateway_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.app_gateway_id"
+  ];
+
+  // Name for the AKS-created gateway (with subnet_cidr/subnet_id
+  // anchors). Unset lets AKS derive one.
+  string gateway_name = 2;
+
+  // CIDR for a NEW subnet AKS creates in the cluster VNet to host a new
+  // gateway, e.g. "10.225.0.0/24" (at least /27).
+  string subnet_cidr = 3;
+
+  // Existing subnet to host the new gateway -- must be dedicated to it
+  // and at least /27.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "aks_agic_exactly_one_anchor"
+    message: "Set exactly one of gateway_id, subnet_cidr, or subnet_id to anchor the Application Gateway"
+    expression: "(has(this.gateway_id) ? 1 : 0) + (this.subnet_cidr != '' ? 1 : 0) + (has(this.subnet_id) ? 1 : 0) == 1"
+  };
+}
+
+// Virtual nodes (ACI connector) add-on.
+message AzureAksClusterAciConnectorLinux {
+  // Name of the subnet (in the cluster's VNet) delegated to ACI
+  // (delegation: Microsoft.ContainerInstance/containerGroups) where
+  // virtual-node pods run.
+  string subnet_name = 1 [(buf.validate.field).required = true];
+}
+
+// Confidential computing (Intel SGX) add-on.
+message AzureAksClusterConfidentialComputing {
+  // Whether the SGX quote-helper sidecar runs for out-of-proc enclave
+  // attestation.
+  bool sgx_quote_helper_enabled = 1;
+}
+
+// Managed NGINX ingress ("application routing") add-on.
+message AzureAksClusterWebAppRouting {
+  // Azure DNS zones (public and/or private) the add-on manages records
+  // in as Ingress resources come and go. Empty enables the controller
+  // without DNS automation.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef dns_zone_ids = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Posture of the default NGINX controller. Unspecified applies Azure's
+  // default (ANNOTATION_CONTROLLED: per-Ingress annotations decide).
+  // INTERNAL/EXTERNAL pin the default controller's load balancer
+  // visibility; NGINX_NONE deploys no default controller.
+  AzureAksClusterNginxDefaultController default_nginx_controller = 2;
+}
+
+// Default NGINX controller posture for web app routing.
+enum AzureAksClusterNginxDefaultController {
+  // Not specified: Azure's default (AnnotationControlled).
+  azure_aks_cluster_nginx_default_controller_unspecified = 0;
+
+  // Per-Ingress annotations choose internal/external.
+  ANNOTATION_CONTROLLED = 1;
+
+  // Default controller behind an internal (VNet-only) load balancer.
+  INTERNAL = 2;
+
+  // Default controller behind an external (public) load balancer.
+  EXTERNAL = 3;
+
+  // No default controller.
+  NGINX_NONE = 4;
+}
+
+// Managed Istio service mesh.
+message AzureAksClusterServiceMeshProfile {
+  // Mesh mode -- ISTIO is the only supported value; the field exists for
+  // future modes.
+  AzureAksClusterServiceMeshMode mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // Istio control-plane revisions in the cluster, e.g. ["asm-1-24"].
+  // Two entries only during a canary control-plane upgrade.
+  repeated string revisions = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 2
+  ];
+
+  // Whether the managed INTERNAL (VNet-only) Istio ingress gateway runs.
+  bool internal_ingress_gateway_enabled = 3;
+
+  // Whether the managed EXTERNAL (public) Istio ingress gateway runs.
+  bool external_ingress_gateway_enabled = 4;
+
+  // Bring-your-own root certificate authority for mesh mTLS, sourced
+  // from Key Vault. Omit for Istio's self-signed CA.
+  AzureAksClusterServiceMeshCertificateAuthority certificate_authority = 5;
+}
+
+// Service mesh mode.
+enum AzureAksClusterServiceMeshMode {
+  // Not specified.
+  azure_aks_cluster_service_mesh_mode_unspecified = 0;
+
+  // Azure-managed Istio.
+  ISTIO = 1;
+}
+
+// Plug-in CA for the managed Istio mesh, from Key Vault objects.
+message AzureAksClusterServiceMeshCertificateAuthority {
+  // The Key Vault holding the CA objects. The cluster identity needs
+  // get/list on its certificates and secrets.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_id"
+  ];
+
+  // Key Vault object name of the root certificate.
+  string root_cert_object_name = 2 [(buf.validate.field).required = true];
+
+  // Key Vault object name of the certificate chain.
+  string cert_chain_object_name = 3 [(buf.validate.field).required = true];
+
+  // Key Vault object name of the intermediate certificate.
+  string cert_object_name = 4 [(buf.validate.field).required = true];
+
+  // Key Vault object name of the intermediate's private key.
+  string key_object_name = 5 [(buf.validate.field).required = true];
+}
+
+// CSI storage driver toggles.
+message AzureAksClusterStorageProfile {
+  // Azure Blob CSI driver (NFS/FUSE blob mounts). Azure default: false.
+  bool blob_driver_enabled = 1;
+
+  // Azure Disk CSI driver. Azure default: true -- most PVCs depend on it.
+  optional bool disk_driver_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // Azure Files CSI driver. Azure default: true.
+  optional bool file_driver_enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // CSI snapshot controller. Azure default: true.
+  optional bool snapshot_controller_enabled = 4 [(dev.planton.shared.options.default) = "true"];
+}
+
+// Managed workload autoscalers.
+message AzureAksClusterWorkloadAutoscalerProfile {
+  // Azure-managed KEDA (event-driven autoscaling from queue depths,
+  // Kafka lag, custom metrics).
+  bool keda_enabled = 1;
+
+  // Azure-managed Vertical Pod Autoscaler.
+  bool vertical_pod_autoscaler_enabled = 2;
+}
+
+// KMS etcd encryption with a customer-managed Key Vault key.
+message AzureAksClusterKeyManagementService {
+  // VERSIONED Key Vault key id used to envelope-encrypt Kubernetes
+  // secrets in etcd, e.g.
+  // https://myvault.vault.azure.net/keys/etcd-cmk/<version>.
+  // Plain string: rotate by updating the version. The cluster identity
+  // needs encrypt/decrypt on the key.
+  string key_vault_key_id = 1 [(buf.validate.field).required = true];
+
+  // Whether the Key Vault is reached over public network or private
+  // link. Unspecified applies Azure's default (PUBLIC).
+  AzureAksClusterKeyVaultNetworkAccess key_vault_network_access = 2;
+}
+
+// Key Vault network reachability for KMS.
+enum AzureAksClusterKeyVaultNetworkAccess {
+  // Not specified: Azure's default (Public).
+  azure_aks_cluster_key_vault_network_access_unspecified = 0;
+
+  // Key Vault reachable over its public endpoint.
+  KMS_PUBLIC = 1;
+
+  // Key Vault reachable over private endpoints only.
+  KMS_PRIVATE = 2;
+}
+
+// Corporate HTTP/HTTPS proxy for nodes and pods.
+message AzureAksClusterHttpProxyConfig {
+  // Proxy URL for HTTP traffic, e.g. "http://proxy.corp.example:3128".
+  string http_proxy = 1;
+
+  // Proxy URL for HTTPS traffic.
+  string https_proxy = 2;
+
+  // Hosts/domains/CIDRs that bypass the proxy. AKS automatically adds
+  // the cluster-internal ranges.
+  repeated string no_proxy = 3;
+
+  // Base64-encoded CA certificate of a TLS-intercepting proxy, trusted
+  // by nodes. Marked sensitive: internal CA material identifies and
+  // impersonates the interception layer.
+  string trusted_ca = 4 [(dev.planton.shared.options.sensitive) = true];
+}
+
+// SSH configuration for Linux nodes.
+message AzureAksClusterLinuxProfile {
+  // Admin username for SSH, beginning with a letter; letters, numbers,
+  // hyphens, and underscores.
+  string admin_username = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "aks_linux_admin_username_format"
+      message: "admin_username begins with a letter and contains only letters, numbers, underscores, and hyphens"
+      expression: "this == '' || this.matches('^[A-Za-z][-A-Za-z0-9_]*$')"
+    }
+  ];
+
+  // SSH PUBLIC key (e.g. "ssh-rsa AAAA...") installed for the admin
+  // user. Public material -- the private half never leaves you.
+  string ssh_public_key = 2 [(buf.validate.field).required = true];
+}
+
+// Windows node credentials and licensing -- prerequisite for Windows
+// AzureAksNodePool resources.
+message AzureAksClusterWindowsProfile {
+  // Windows administrator username.
+  string admin_username = 1 [(buf.validate.field).required = true];
+
+  // Windows administrator password, 8-123 characters with the usual
+  // complexity requirements.
+  string admin_password = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 8,
+    (buf.validate.field).string.max_len = 123,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // License flavor. Set WINDOWS_SERVER to apply the Azure Hybrid Use
+  // Benefit (bring your own Windows Server licenses).
+  AzureAksClusterWindowsLicense license = 3;
+
+  // Group Managed Service Account (gMSA) support for Windows containers
+  // authenticating to Active Directory.
+  AzureAksClusterWindowsGmsa gmsa = 4;
+}
+
+// Windows license option.
+enum AzureAksClusterWindowsLicense {
+  // Not specified: pay-as-you-go Windows licensing.
+  azure_aks_cluster_windows_license_unspecified = 0;
+
+  // Azure Hybrid Use Benefit -- bring your own Windows Server licenses.
+  WINDOWS_SERVER = 1;
+}
+
+// gMSA configuration for Windows pools.
+message AzureAksClusterWindowsGmsa {
+  // DNS server for the Active Directory domain. Set both fields, or
+  // leave both empty to inherit from the VNet DNS configuration.
+  string dns_server = 1;
+
+  // Root domain name for gMSA, e.g. "corp.example.com". Set with
+  // dns_server.
+  string root_domain = 2;
+
+  option (buf.validate.message).cel = {
+    id: "aks_gmsa_fields_together"
+    message: "Set dns_server and root_domain together, or leave both empty to inherit the VNet DNS configuration"
+    expression: "(this.dns_server == '') == (this.root_domain == '')"
+  };
+}
+
+// Bootstrap artifact source for network-isolated clusters.
+message AzureAksClusterBootstrapProfile {
+  // Where nodes pull AKS system images. Unspecified applies Azure's
+  // default (DIRECT: Microsoft Container Registry over the internet).
+  AzureAksClusterBootstrapArtifactSource artifact_source = 1;
+
+  // For CACHE: the Azure Container Registry (with ACR cache rules for
+  // MCR) nodes pull through.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef container_registry_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerRegistry,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.registry_resource_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "aks_bootstrap_cache_requires_registry"
+    message: "artifact_source CACHE requires container_registry_id (the ACR that caches Microsoft Container Registry content)"
+    expression: "this.artifact_source != 2 || has(this.container_registry_id)"
+  };
+}
+
+// Bootstrap artifact source.
+enum AzureAksClusterBootstrapArtifactSource {
+  // Not specified: Azure's default (Direct from Microsoft Container
+  // Registry).
+  azure_aks_cluster_bootstrap_artifact_source_unspecified = 0;
+
+  // Pull directly from Microsoft Container Registry.
+  DIRECT = 1;
+
+  // Pull through your caching Azure Container Registry (network-isolated
+  // clusters).
+  CACHE = 2;
+}
+
+// Node auto-provisioning (Karpenter).
+message AzureAksClusterNodeProvisioningProfile {
+  // Provisioning mode. Unspecified applies Azure's default (MANUAL): you
+  // size and manage node pools. AUTO lets AKS create right-sized pools
+  // from pending pod requirements.
+  AzureAksClusterNodeProvisioningMode mode = 1;
+
+  // In AUTO mode: whether AKS seeds default system node pools.
+  // Unspecified applies Azure's default (NODE_POOLS_AUTO).
+  AzureAksClusterNodeProvisioningDefaultPools default_node_pools = 2;
+}
+
+// Node auto-provisioning mode.
+enum AzureAksClusterNodeProvisioningMode {
+  // Not specified: Azure's default (Manual).
+  azure_aks_cluster_node_provisioning_mode_unspecified = 0;
+
+  // You manage node pools.
+  MANUAL = 1;
+
+  // AKS (Karpenter) provisions and removes pools automatically.
+  AUTO = 2;
+}
+
+// Default system pools behavior under node auto-provisioning.
+enum AzureAksClusterNodeProvisioningDefaultPools {
+  // Not specified: Azure's default (Auto).
+  azure_aks_cluster_node_provisioning_default_pools_unspecified = 0;
+
+  // AKS seeds managed default pools.
+  NODE_POOLS_AUTO = 1;
+
+  // No seeded pools -- everything auto-provisions from workload demand.
+  NODE_POOLS_NONE = 2;
+}
+
+// Force-upgrade escape hatch.
+message AzureAksClusterUpgradeOverride {
+  // Whether upgrades ignore drain failures and deprecated-API checks.
+  bool force_upgrade_enabled = 1 [(buf.validate.field).required = true];
+
+  // RFC 3339 timestamp the override stops applying, e.g.
+  // "2035-01-01T00:00:00Z". Always set one -- an unbounded force
+  // override is a standing foot-gun.
+  string effective_until = 2;
 }

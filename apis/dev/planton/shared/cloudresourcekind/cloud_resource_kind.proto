@@ -610,16 +610,23 @@ enum CloudResourceKind {
     id_prefix: "azrg"
     container_kind: true
   }];
+  // AzureResourceGroup is the only required parent: the cluster is created
+  // inside a referenced resource group. Subnet is optional on the default
+  // node pool (AKS provisions managed networking when unset).
   AzureAksCluster = 401 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "aks"
     container_kind: true
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureAksCluster is a prerequisite because a node pool attaches to an
+  // existing cluster by ARM ID; the resource group chains transitively.
   AzureAksNodePool = 402 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "aksnp"
+    prerequisites: [AzureAksCluster]
   }];
   AzureContainerRegistry = 403 [(kind_meta) = {
     provider: azure

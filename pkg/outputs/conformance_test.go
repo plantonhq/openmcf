@@ -974,6 +974,48 @@ func TestStackOutputsConformance(t *testing.T) {
 				"resource_group_name",
 			},
 		},
+		{
+			// AzureAksCluster: cluster_id is the parent seam every standalone
+			// AzureAksNodePool consumes; oidc_issuer_url is the trust anchor
+			// AzureFederatedIdentityCredential binds to.
+			name: "AzureAksCluster",
+			kind: cloudresourcekind.CloudResourceKind_AzureAksCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_id":                    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/aks-rg/providers/Microsoft.ContainerService/managedClusters/prod-aks",
+				"cluster_name":                  "prod-aks",
+				"fqdn":                          "prod-aks-abc123.hcp.eastus.azmk8s.io",
+				"private_fqdn":                  "",
+				"portal_fqdn":                   "prod-aks-abc123.privatelink.eastus.azmk8s.io",
+				"oidc_issuer_url":               "https://eastus.oic.prod-aks.abc123.azmk8s.io/00000000-0000-0000-0000-000000000000/",
+				"node_resource_group":           "MC_aks-rg_prod-aks_eastus",
+				"node_resource_group_id":        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/MC_aks-rg_prod-aks_eastus",
+				"cluster_kubeconfig":            "YXBpVmVyc2lvbjogdjE=",
+				"cluster_identity_principal_id": "11111111-1111-1111-1111-111111111111",
+				"kubelet_identity_object_id":    "22222222-2222-2222-2222-222222222222",
+				"kubelet_identity_client_id":    "33333333-3333-3333-3333-333333333333",
+				"current_kubernetes_version":    "1.35.2",
+			},
+			mustPopulate: []string{
+				"cluster_id", "cluster_name", "fqdn", "oidc_issuer_url",
+				"node_resource_group", "node_resource_group_id",
+				"cluster_identity_principal_id", "current_kubernetes_version",
+			},
+		},
+		{
+			// AzureAksNodePool: the pool's ARM id (node_pool_id) is the
+			// verification key; node_image_version reflects the OS patch
+			// level actually rolled out.
+			name: "AzureAksNodePool",
+			kind: cloudresourcekind.CloudResourceKind_AzureAksNodePool,
+			rawOutputs: map[string]interface{}{
+				"node_pool_id":       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/aks-rg/providers/Microsoft.ContainerService/managedClusters/prod-aks/agentPools/general",
+				"node_pool_name":     "general",
+				"node_image_version": "AKSUbuntu-2204gen2containerd-202502.03.0",
+			},
+			mustPopulate: []string{
+				"node_pool_id", "node_pool_name", "node_image_version",
+			},
+		},
 	}
 
 	for _, tc := range cases {

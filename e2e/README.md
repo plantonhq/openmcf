@@ -207,6 +207,22 @@ To use HashiCorp Terraform instead:
 PLANTON_E2E_TF_BINARY=terraform make e2e-test-kubernetes-terraform-tier1
 ```
 
+### Long-running Azure components (AKS)
+
+AKS clusters take roughly 5–10 minutes to create and a similar time to delete.
+Component E2E profiles for `azureakscluster` and `azureaksnodepool` set
+`timeout_minutes: 60–75`. When invoking tests directly, size `-timeout` beyond
+the default 30m:
+
+```bash
+go test -tags=e2e -timeout=90m -v -count=1 \
+  -run 'TestAzureAksCluster_Pulumi/minimal' ./e2e/azure/...
+```
+
+Burstable VM sizes in `eastus` may support only availability zone `1` — multi-zone
+lists fail with `AvailabilityZoneNotSupported`. AKS E2E scenarios in this repo
+use `zones: ["1"]` for the test subscription.
+
 ### How the Terraform path works
 
 The Terraform runner uses [Terratest](https://github.com/gruntwork-io/terratest)

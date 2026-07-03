@@ -3,6 +3,8 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "verify",
     srcs = [
+        "aks_cluster.go",
+        "aks_node_pool.go",
         "federated_identity_credential.go",
         "nat_gateway.go",
         "network_security_group.go",
