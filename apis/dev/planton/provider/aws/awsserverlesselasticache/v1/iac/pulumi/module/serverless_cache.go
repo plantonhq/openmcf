@@ -7,22 +7,29 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// serverlessCache creates the ElastiCache Serverless cache and exports outputs.
+// serverlessCache provisions the aws_elasticache_serverless_cache itself —
+// a fully managed, auto-scaling cache with no node types or replica counts.
+// The cache composes onto its neighbors instead of embedding them: subnets,
+// security groups, and KMS keys attach by reference, and client ingress
+// rules live on the referenced AwsSecurityGroup nodes — this module never
+// creates or mutates a resource that deserves to be its own node.
+//
+// Create-only in AWS: the cache name, engine (when switching to/from
+// memcached), subnet IDs, KMS key, network_type, and snapshot restore
+// sources. Everything else updates in place.
 func serverlessCache(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	spec := locals.Spec
 
 	args := &elasticache.ServerlessCacheArgs{
 		Engine: pulumi.String(spec.Engine),
-		Name:   pulumi.String(locals.Target.Metadata.Id),
+		Name:   pulumi.String(locals.CacheName),
 		Tags:   pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	// Description
 	if spec.Description != "" {
 		args.Description = pulumi.String(spec.Description)
 	}
 
-	// Major engine version
 	if spec.MajorEngineVersion != "" {
 		args.MajorEngineVersion = pulumi.String(spec.MajorEngineVersion)
 	}
@@ -68,24 +75,28 @@ func serverlessCache(ctx *pulumi.Context, locals *Locals, provider *aws.Provider
 	// Networking
 	// -------------------------------------------------------------------
 
-	var subnetIds pulumi.StringArray
-	for _, s := range spec.SubnetIds {
-		if s.GetValue() != "" {
-			subnetIds = append(subnetIds, pulumi.String(s.GetValue()))
+	subnetIds := pulumi.StringArray{}
+	for _, subnetId := range spec.SubnetIds {
+		if subnetId.GetValue() != "" {
+			subnetIds = append(subnetIds, pulumi.String(subnetId.GetValue()))
 		}
 	}
 	if len(subnetIds) > 0 {
 		args.SubnetIds = subnetIds
 	}
 
-	var sgIds pulumi.StringArray
-	for _, sg := range spec.SecurityGroupIds {
-		if sg.GetValue() != "" {
-			sgIds = append(sgIds, pulumi.String(sg.GetValue()))
+	securityGroupIds := pulumi.StringArray{}
+	for _, securityGroupId := range spec.SecurityGroupIds {
+		if securityGroupId.GetValue() != "" {
+			securityGroupIds = append(securityGroupIds, pulumi.String(securityGroupId.GetValue()))
 		}
 	}
-	if len(sgIds) > 0 {
-		args.SecurityGroupIds = sgIds
+	if len(securityGroupIds) > 0 {
+		args.SecurityGroupIds = securityGroupIds
+	}
+
+	if spec.NetworkType != "" {
+		args.NetworkType = pulumi.String(spec.NetworkType)
 	}
 
 	// -------------------------------------------------------------------
@@ -108,36 +119,31 @@ func serverlessCache(ctx *pulumi.Context, locals *Locals, provider *aws.Provider
 		args.SnapshotRetentionLimit = pulumi.Int(int(spec.SnapshotRetentionLimit))
 	}
 
+	if len(spec.SnapshotArnsToRestore) > 0 {
+		args.SnapshotArnsToRestores = pulumi.ToStringArray(spec.SnapshotArnsToRestore)
+	}
+
 	// -------------------------------------------------------------------
 	// Authentication (Redis/Valkey only — CEL guards prevent Memcached usage)
 	// -------------------------------------------------------------------
 
-	if spec.UserGroupId != "" {
-		args.UserGroupId = pulumi.String(spec.UserGroupId)
+	if spec.UserGroupId.GetValue() != "" {
+		args.UserGroupId = pulumi.String(spec.UserGroupId.GetValue())
 	}
 
-	// -------------------------------------------------------------------
-	// Create serverless cache
-	// -------------------------------------------------------------------
-
-	cache, err := elasticache.NewServerlessCache(ctx, "serverless-cache", args, pulumi.Provider(provider))
+	createdCache, err := elasticache.NewServerlessCache(ctx, "serverless-cache", args, pulumi.Provider(provider))
 	if err != nil {
 		return errors.Wrap(err, "create serverless cache")
 	}
 
-	// -------------------------------------------------------------------
-	// Export outputs
-	// -------------------------------------------------------------------
+	ctx.Export(OpArn, createdCache.Arn)
+	ctx.Export(OpFullEngineVersion, createdCache.FullEngineVersion)
+	ctx.Export(OpName, createdCache.Name)
 
-	ctx.Export(OpArn, cache.Arn)
-	ctx.Export(OpFullEngineVersion, cache.FullEngineVersion)
-	ctx.Export(OpName, cache.Name)
-
-	// Endpoint and reader endpoint are arrays of objects; extract the first element.
-	ctx.Export(OpEndpointAddress, cache.Endpoints.Index(pulumi.Int(0)).Address())
-	ctx.Export(OpEndpointPort, cache.Endpoints.Index(pulumi.Int(0)).Port())
-	ctx.Export(OpReaderEndpointAddress, cache.ReaderEndpoints.Index(pulumi.Int(0)).Address())
-	ctx.Export(OpReaderEndpointPort, cache.ReaderEndpoints.Index(pulumi.Int(0)).Port())
+	ctx.Export(OpEndpointAddress, createdCache.Endpoints.Index(pulumi.Int(0)).Address())
+	ctx.Export(OpEndpointPort, createdCache.Endpoints.Index(pulumi.Int(0)).Port())
+	ctx.Export(OpReaderEndpointAddress, createdCache.ReaderEndpoints.Index(pulumi.Int(0)).Address())
+	ctx.Export(OpReaderEndpointPort, createdCache.ReaderEndpoints.Index(pulumi.Int(0)).Port())
 
 	return nil
 }

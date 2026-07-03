@@ -99,6 +99,8 @@ Security Group ──► ElastiCache VPC Endpoints (in your subnets)
 ElastiCache Serverless (managed by AWS)
 ```
 
+- **`networkType`**: IP addressing for the cache's VPC endpoints — `"ipv4"` (default), `"ipv6"`, or `"dual_stack"`. ForceNew — changing the network type destroys and recreates the cache. Dual-stack requires subnets with both IPv4 and IPv6 CIDRs.
+
 If no `subnet_ids` are specified, AWS creates the cache in a default configuration
 that is accessible from the VPC.
 
@@ -114,28 +116,39 @@ The KMS key is ForceNew — changing it after creation destroys and recreates th
 
 ## Snapshots and Persistence (Redis/Valkey Only)
 
-Serverless Redis/Valkey supports automatic daily snapshots:
+Serverless Redis/Valkey supports automatic daily snapshots and create-time restore:
 
-- `daily_snapshot_time`: UTC time for the snapshot window (e.g., "03:00")
-- `snapshot_retention_limit`: Number of days to keep snapshots (0–35)
+- **`dailySnapshotTime`**: UTC time for the snapshot window (e.g., `"03:00"`)
+- **`snapshotRetentionLimit`**: Number of days to keep snapshots (0–35)
+- **`snapshotArnsToRestore`**: ARNs of existing ElastiCache snapshots to seed a new cache from — the migration path from a node-based Redis/Valkey cluster to serverless (snapshot the cluster, restore here). Create-time-only.
 
-Memcached has no persistence mechanism — snapshots are not available.
+Memcached has no persistence mechanism — snapshots and restore are not available.
 
 ## Authentication (Redis/Valkey Only)
 
-Serverless Redis/Valkey supports Redis ACL user groups via `user_group_id`. This
-provides fine-grained command-level and key-pattern access control.
+Serverless Redis/Valkey supports Redis ACL user groups via `userGroupId` — a `StringValueOrRef` defaulting to `AwsElasticacheUserGroup.status.outputs.user_group_id`. Serverless caches accept exactly one group.
+
+### RBAC Composition Path
+
+```
+AwsElasticacheUser  →  AwsElasticacheUserGroup  →  AwsServerlessElasticache
+     (WHO / WHAT)            (membership)              (userGroupId)
+```
+
+Adding an application to a cache is a membership edit on the group — the cache resource never changes.
 
 Memcached has no authentication. Access control relies entirely on VPC security
 groups (network-level isolation).
 
-## Deliberate v1 Omissions
+## Deliberately Omitted (v1)
 
-- **`snapshot_arns_to_restore`**: ForceNew, disaster recovery use case. Not included
-  for v1 to keep the spec lean. Can be added in v2 if there's demand.
-- **Parameter groups**: Serverless caches do not support custom parameter groups.
-  AWS manages engine configuration internally.
-- **Maintenance windows**: AWS manages maintenance for serverless caches. There is
-  no user-configurable maintenance window.
-- **Multi-AZ configuration**: Serverless caches are inherently multi-AZ. There is
-  no user toggle — AWS distributes endpoints across AZs automatically.
+| Feature | Reason |
+|---------|--------|
+| Parameter groups | Serverless caches do not support custom parameter groups — AWS manages engine configuration internally |
+| Maintenance windows | AWS manages maintenance for serverless caches — there is no user-configurable maintenance window |
+| Multi-AZ configuration | Serverless caches are inherently multi-AZ — AWS distributes endpoints across AZs automatically; there is no user toggle |
+
+## References
+
+- [ElastiCache Serverless User Guide](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.serverless.html)
+- [ElastiCache Serverless Cache API](https://docs.aws.amazon.com/AmazonElastiCache/latest/APIReference/API_CreateServerlessCache.html)

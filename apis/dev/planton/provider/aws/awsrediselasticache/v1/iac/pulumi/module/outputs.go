@@ -7,6 +7,7 @@ const (
 	OpConfigurationEndpointAddress = "configuration_endpoint_address"
 	OpArn                          = "arn"
 	OpPort                         = "port"
+	OpEngineVersionActual          = "engine_version_actual"
 	OpSubnetGroupName              = "subnet_group_name"
 	OpParameterGroupName           = "parameter_group_name"
 )

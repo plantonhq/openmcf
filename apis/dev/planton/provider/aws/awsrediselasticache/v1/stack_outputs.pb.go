@@ -54,8 +54,12 @@ type AwsRedisElasticacheStackOutputs struct {
 	// Only populated when `parameters` were provided and a parameter group
 	// was created by the module.
 	ParameterGroupName string `protobuf:"bytes,8,opt,name=parameter_group_name,json=parameterGroupName,proto3" json:"parameter_group_name,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The engine version actually running, as resolved by AWS. Useful for
+	// confirming the exact version deployed when `engine_version` was left
+	// empty or given as a major version only.
+	EngineVersionActual string `protobuf:"bytes,9,opt,name=engine_version_actual,json=engineVersionActual,proto3" json:"engine_version_actual,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AwsRedisElasticacheStackOutputs) Reset() {
@@ -144,11 +148,18 @@ func (x *AwsRedisElasticacheStackOutputs) GetParameterGroupName() string {
 	return ""
 }
 
+func (x *AwsRedisElasticacheStackOutputs) GetEngineVersionActual() string {
+	if x != nil {
+		return x.EngineVersionActual
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awsrediselasticache_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsrediselasticache_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/aws/awsrediselasticache/v1/stack_outputs.proto\x12/dev.planton.provider.aws.awsrediselasticache.v1\"\x8f\x03\n" +
+	"Cdev/planton/provider/aws/awsrediselasticache/v1/stack_outputs.proto\x12/dev.planton.provider.aws.awsrediselasticache.v1\"\xc3\x03\n" +
 	"\x1fAwsRedisElasticacheStackOutputs\x120\n" +
 	"\x14replication_group_id\x18\x01 \x01(\tR\x12replicationGroupId\x128\n" +
 	"\x18primary_endpoint_address\x18\x02 \x01(\tR\x16primaryEndpointAddress\x126\n" +
@@ -157,7 +168,8 @@ const file_dev_planton_provider_aws_awsrediselasticache_v1_stack_outputs_proto_r
 	"\x03arn\x18\x05 \x01(\tR\x03arn\x12\x12\n" +
 	"\x04port\x18\x06 \x01(\x05R\x04port\x12*\n" +
 	"\x11subnet_group_name\x18\a \x01(\tR\x0fsubnetGroupName\x120\n" +
-	"\x14parameter_group_name\x18\b \x01(\tR\x12parameterGroupNameB\x94\x03\n" +
+	"\x14parameter_group_name\x18\b \x01(\tR\x12parameterGroupName\x122\n" +
+	"\x15engine_version_actual\x18\t \x01(\tR\x13engineVersionActualB\x94\x03\n" +
 	"3com.dev.planton.provider.aws.awsrediselasticache.v1B\x11StackOutputsProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrediselasticache/v1;awsrediselasticachev1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Aws.Awsrediselasticache.V1\xca\x02/Dev\\Planton\\Provider\\Aws\\Awsrediselasticache\\V1\xe2\x02;Dev\\Planton\\Provider\\Aws\\Awsrediselasticache\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Aws::Awsrediselasticache::V1b\x06proto3"
 
 var (

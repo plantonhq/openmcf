@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsrediselasticache
+spec:
+  # ElastiCache Redis replication group under live E2E: the harness deploys the
+  # AwsVpc + two-AZ AwsSubnet prerequisites, runs deploy ->
+  # DescribeReplicationGroups verify -> destroy -> verify-destroyed on both
+  # provisioners. The scenario is a single-node cache.t4g.micro with encryption
+  # at rest only (no AUTH token — transit encryption off keeps the footprint
+  # minimal). Replication group provisioning dominates runtime at roughly
+  # ten minutes each way per engine.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

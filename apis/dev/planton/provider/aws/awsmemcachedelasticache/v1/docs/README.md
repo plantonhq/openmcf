@@ -6,7 +6,7 @@ AwsMemcachedElasticache provisions AWS ElastiCache clusters running the Memcache
 
 ## Why a Separate Component from Redis?
 
-During the planning phase for the AWS resource expansion project, ElastiCache was initially planned as a single component (`AwsElasticacheCluster`). Deep research into the Terraform provider revealed that Memcached and Redis use fundamentally different AWS resources:
+ElastiCache supports three engines, but Memcached and Redis/Valkey use fundamentally different AWS resources:
 
 | Aspect | Memcached | Redis/Valkey |
 |--------|-----------|-------------|
@@ -17,7 +17,7 @@ During the planning phase for the AWS resource expansion project, ElastiCache wa
 | **Auth** | None | AUTH token, Redis ACL |
 | **Encryption at rest** | Not supported | Supported |
 
-The field delta is ~15+ unique fields per engine. Combining them into one component would require extensive conditional logic, confusing CEL validations, and a degraded user experience. The split into `AwsRedisElasticache` and `AwsMemcachedElasticache` produces two focused, clean components.
+The field delta is ~15+ unique fields per engine. The split into `AwsRedisElasticache` and `AwsMemcachedElasticache` produces two focused, clean components.
 
 ## Memcached Topology
 
@@ -43,6 +43,8 @@ The configuration endpoint is exposed in stack outputs as `configuration_endpoin
 
 - **single-az**: All nodes are placed in one Availability Zone. Lower latency between nodes, but vulnerable to AZ failure.
 - **cross-az**: Nodes are distributed across multiple AZs. Provides resilience against AZ-level failures at the cost of slightly higher inter-node latency (irrelevant for Memcached since nodes don't communicate with each other).
+
+Use `preferredAvailabilityZones` to pin each node to a specific AZ (list length must match `numCacheNodes`).
 
 ## Scaling Behavior
 
@@ -75,9 +77,19 @@ This makes `securityGroupIds` and `subnetIds` the most important security contro
 | At rest | **Not supported** | Memcached stores data exclusively in memory; there is no disk persistence to encrypt |
 | In transit | Supported (1.6.12+) | TLS encryption for client-to-node connections |
 
+## Networking
+
+- **`networkType`**: IP addressing for the cluster — `"ipv4"` (default), `"ipv6"`, or `"dual_stack"`. ForceNew — changing the network type replaces the cluster. Dual-stack requires subnets with both IPv4 and IPv6 CIDRs.
+- **`ipDiscovery`**: Which address family DNS discovery returns to clients — `"ipv4"` or `"ipv6"`. Only meaningful alongside dual-stack `networkType`; updates in place.
+
 ## Parameter Groups
 
-Memcached parameter groups use families like `memcached1.4`, `memcached1.5`, `memcached1.6`. Common tuning parameters:
+Memcached parameter groups use families like `memcached1.4`, `memcached1.5`, `memcached1.6`. The spec supports two arms:
+
+- **Managed**: Provide `parameters` with a `parameterGroupFamily` — a parameter group is created automatically
+- **Bring-your-own**: Provide `parameterGroupName` to reference an existing parameter group shared across caches
+
+Common tuning parameters:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -86,6 +98,10 @@ Memcached parameter groups use families like `memcached1.4`, `memcached1.5`, `me
 | `max_simultaneous_connections` | 65000 | Maximum concurrent connections |
 | `binding_protocol` | auto | Protocol: `auto`, `ascii`, `binary` |
 | `large_memory_pages` | no | Use large memory pages (2MB) |
+
+## Engine Version
+
+`engineVersion` is optional — leave empty to use the AWS default for a versionless manifest that never goes stale. When set, uses three-part versioning (`"1.6.22"`, `"1.6.17"`, etc.). Transit encryption requires version 1.6.12 or later.
 
 ## Resource Lifecycle
 
@@ -105,11 +121,11 @@ CREATE                          UPDATE                          DELETE
 Both Pulumi and Terraform modules follow the same structure:
 
 1. **Region configuration** — The `region` field on the spec determines which AWS region the provider targets
-2. **Conditional subnet group** — Only created when `subnetIds` are provided
-3. **Conditional parameter group** — Only created when `parameters` and `parameterGroupFamily` are provided
+2. **Conditional subnet group** — Created when `subnetIds` are provided; or use `subnetGroupName` for bring-your-own
+3. **Conditional parameter group** — Created when `parameters` and `parameterGroupFamily` are provided; or use `parameterGroupName` for bring-your-own
 4. **Cluster** — Always created, references the conditional resources above
 
-The engine is hardcoded to `"memcached"` in the IaC modules. Unlike AwsRedisElasticache where the user selects between `redis` and `valkey`, the Memcached component always creates a Memcached cluster.
+The engine is hardcoded to `"memcached"` in the IaC modules.
 
 ## Infra Chart Composability
 
@@ -118,3 +134,15 @@ AwsMemcachedElasticache is designed as a leaf-layer caching resource in infra ch
 - **Depends on**: AwsVpc (subnets), AwsSecurityGroup (access control), AwsSnsTopic (notifications)
 - **Depended on by**: Application-layer resources that need cache endpoints
 - **Key outputs for wiring**: `configuration_endpoint` (for application connection strings), `arn` (for IAM policies)
+
+## Deliberately Omitted (v1)
+
+| Feature | Reason |
+|---------|--------|
+| Outpost fields (`CacheOutpostArns`) | ElastiCache on Outposts is a separate deployment surface; deferred until real demand appears |
+| EC2-Classic `security_group_names` | Legacy networking model; VPC security groups via `securityGroupIds` are the supported path |
+
+## References
+
+- [AWS ElastiCache for Memcached User Guide](https://docs.aws.amazon.com/AmazonElastiCache/latest/mem-ug/WhatIs.html)
+- [ElastiCache Cluster API](https://docs.aws.amazon.com/AmazonElastiCache/latest/APIReference/API_CreateCacheCluster.html)

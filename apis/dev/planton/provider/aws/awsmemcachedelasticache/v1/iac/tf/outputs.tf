@@ -24,11 +24,11 @@ output "port" {
 }
 
 output "subnet_group_name" {
-  description = "The name of the created subnet group (empty if none created)."
-  value       = local.has_subnets ? aws_elasticache_subnet_group.this[0].name : ""
+  description = "The name of the managed subnet group (empty when an existing group was referenced or no subnets were provided)."
+  value       = local.manage_subnet_group ? aws_elasticache_subnet_group.this[0].name : ""
 }
 
 output "parameter_group_name" {
-  description = "The name of the created parameter group (empty if none created)."
-  value       = local.has_parameters ? aws_elasticache_parameter_group.this[0].name : ""
+  description = "The name of the managed parameter group (empty when an existing group was referenced or no inline parameters were provided)."
+  value       = local.manage_parameter_group ? aws_elasticache_parameter_group.this[0].name : ""
 }

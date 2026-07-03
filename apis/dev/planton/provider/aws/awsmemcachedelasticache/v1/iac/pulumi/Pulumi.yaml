@@ -1,0 +1,3 @@
+name: aws-memcached-elasticache
+runtime: go
+description: Deploy an AWS ElastiCache Memcached cluster using Planton
