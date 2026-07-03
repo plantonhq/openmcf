@@ -422,6 +422,60 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsRdsCluster: the identifier keys the E2E verifier; endpoint +
+			// reader_endpoint are the connection handles downstream references
+			// consume; master_user_secret_arn carries the AWS-managed credential
+			// handle; and instance_endpoints guards list outputs flattening onto a
+			// repeated string field (the folded per-name cluster instances).
+			name: "AwsRdsCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsRdsCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_identifier":              "orders-db",
+				"arn":                             "arn:aws:rds:us-west-2:123456789012:cluster:orders-db",
+				"cluster_resource_id":             "cluster-ABCDEFGHIJKL01234",
+				"endpoint":                        "orders-db.cluster-abc123.us-west-2.rds.amazonaws.com",
+				"reader_endpoint":                 "orders-db.cluster-ro-abc123.us-west-2.rds.amazonaws.com",
+				"port":                            5432,
+				"hosted_zone_id":                  "Z1PVIF0B656C1W",
+				"engine_version_actual":           "16.4",
+				"master_user_secret_arn":          "arn:aws:secretsmanager:us-west-2:123456789012:secret:rds!cluster-abc-def",
+				"db_subnet_group_name":            "orders-db",
+				"db_cluster_parameter_group_name": "default.aurora-postgresql16",
+				"instance_endpoints":              []interface{}{"orders-db-writer.abc123.us-west-2.rds.amazonaws.com"},
+			},
+			mustPopulate: []string{
+				"cluster_identifier", "arn", "cluster_resource_id", "endpoint",
+				"reader_endpoint", "port", "hosted_zone_id", "engine_version_actual",
+				"master_user_secret_arn", "db_subnet_group_name",
+				"db_cluster_parameter_group_name", "instance_endpoints",
+			},
+		},
+		{
+			// AwsRdsInstance: the identifier keys the E2E verifier; endpoint is
+			// address:port while address is the bare hostname (both are real AWS
+			// attributes downstream references consume differently); resource_id is
+			// the durable handle for IAM auth policies and point-in-time restores.
+			name: "AwsRdsInstance",
+			kind: cloudresourcekind.CloudResourceKind_AwsRdsInstance,
+			rawOutputs: map[string]interface{}{
+				"instance_identifier":    "billing-db",
+				"arn":                    "arn:aws:rds:us-west-2:123456789012:db:billing-db",
+				"resource_id":            "db-ABCDEFGHIJKL01234",
+				"endpoint":               "billing-db.abc123.us-west-2.rds.amazonaws.com:5432",
+				"address":                "billing-db.abc123.us-west-2.rds.amazonaws.com",
+				"port":                   5432,
+				"hosted_zone_id":         "Z1PVIF0B656C1W",
+				"engine_version_actual":  "16.4",
+				"master_user_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:rds!db-abc-def",
+				"db_subnet_group_name":   "billing-db",
+			},
+			mustPopulate: []string{
+				"instance_identifier", "arn", "resource_id", "endpoint", "address",
+				"port", "hosted_zone_id", "engine_version_actual",
+				"master_user_secret_arn", "db_subnet_group_name",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

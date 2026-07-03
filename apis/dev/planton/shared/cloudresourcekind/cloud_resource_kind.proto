@@ -183,11 +183,13 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "rdsclu"
+    prerequisites: [AwsSubnet]
   }];
   AwsRdsInstance = 211 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "rdsins"
+    prerequisites: [AwsSubnet]
   }];
   AwsRoute53Zone = 212 [(kind_meta) = {
     provider: aws

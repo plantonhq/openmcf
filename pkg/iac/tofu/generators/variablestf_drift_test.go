@@ -54,6 +54,9 @@ var migratedKinds = []string{
 	"AwsEksAccessEntry",
 	// Networking fast-follow, generator-owned from the day it was forged.
 	"AwsVpcEndpoint",
+	// RDS pair, migrated off the legacy hand-written contracts together.
+	"AwsRdsCluster",
+	"AwsRdsInstance",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed
