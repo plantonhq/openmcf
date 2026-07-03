@@ -27,10 +27,11 @@ type Verifier interface {
 }
 
 // verifiers maps a component name to its verifier. New Azure components register
-// here as they are forged; today it carries the AzureResourceGroup walking
-// skeleton only.
+// here as they are forged.
 var verifiers = map[string]Verifier{
-	"azureresourcegroup": &resourceGroupVerifier{},
+	"azureresourcegroup":        &resourceGroupVerifier{},
+	"azureroleassignment":       &roleAssignmentVerifier{},
+	"azureuserassignedidentity": &userAssignedIdentityVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

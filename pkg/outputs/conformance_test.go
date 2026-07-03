@@ -718,6 +718,42 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 			mustPopulate: []string{"status"},
 		},
+		{
+			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
+			// name, region) must each land on the StackOutputs proto --
+			// resource_group_name is the FK target every other Azure kind
+			// references, and resource_group_id is the default scope for role
+			// assignments.
+			name: "AzureResourceGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureResourceGroup,
+			rawOutputs: map[string]interface{}{
+				"resource_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg",
+				"resource_group_name": "platform-rg",
+				"region":              "eastus",
+			},
+			mustPopulate: []string{"resource_group_id", "resource_group_name", "region"},
+		},
+		{
+			// AzureRoleAssignment: flat scalar outputs from both engines (the
+			// fully-scoped assignment id, GUID name, scope, resolved role
+			// definition id, principal id/type) must each land on the StackOutputs
+			// proto -- role_assignment_id is what the authorization API and the
+			// E2E verifier key on.
+			name: "AzureRoleAssignment",
+			kind: cloudresourcekind.CloudResourceKind_AzureRoleAssignment,
+			rawOutputs: map[string]interface{}{
+				"role_assignment_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Authorization/roleAssignments/a67e1183-4b2d-4b6e-93f1-2b2b8d2e1c11",
+				"name":               "a67e1183-4b2d-4b6e-93f1-2b2b8d2e1c11",
+				"scope":              "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg",
+				"role_definition_id": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7",
+				"principal_id":       "11111111-1111-1111-1111-111111111111",
+				"principal_type":     "ServicePrincipal",
+			},
+			mustPopulate: []string{
+				"role_assignment_id", "name", "scope",
+				"role_definition_id", "principal_id", "principal_type",
+			},
+		},
 	}
 
 	for _, tc := range cases {

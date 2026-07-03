@@ -758,10 +758,26 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azai"
   }];
+  // AzureResourceGroup is a prerequisite because the identity is created
+  // inside a referenced resource group that must already exist.
   AzureUserAssignedIdentity = 460 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azid"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureResourceGroup and AzureUserAssignedIdentity are prerequisites because
+  // an assignment grants a role at a referenced scope (most commonly a resource
+  // group) to a referenced principal (most commonly a managed identity) -- both
+  // must exist before the grant can be written.
+  AzureRoleAssignment = 461 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azra"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureUserAssignedIdentity
+    ]
   }];
   AzureServiceBusNamespace = 470 [(kind_meta) = {
     provider: azure

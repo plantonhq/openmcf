@@ -230,10 +230,17 @@ const (
 	CloudResourceKind_AzureLinuxWebApp              CloudResourceKind = 444
 	CloudResourceKind_AzureLogAnalyticsWorkspace    CloudResourceKind = 450
 	CloudResourceKind_AzureApplicationInsights      CloudResourceKind = 451
-	CloudResourceKind_AzureUserAssignedIdentity     CloudResourceKind = 460
-	CloudResourceKind_AzureServiceBusNamespace      CloudResourceKind = 470
-	CloudResourceKind_AzureEventHubNamespace        CloudResourceKind = 471
-	CloudResourceKind_AzureFrontDoorProfile         CloudResourceKind = 480
+	// AzureResourceGroup is a prerequisite because the identity is created
+	// inside a referenced resource group that must already exist.
+	CloudResourceKind_AzureUserAssignedIdentity CloudResourceKind = 460
+	// AzureResourceGroup and AzureUserAssignedIdentity are prerequisites because
+	// an assignment grants a role at a referenced scope (most commonly a resource
+	// group) to a referenced principal (most commonly a managed identity) -- both
+	// must exist before the grant can be written.
+	CloudResourceKind_AzureRoleAssignment      CloudResourceKind = 461
+	CloudResourceKind_AzureServiceBusNamespace CloudResourceKind = 470
+	CloudResourceKind_AzureEventHubNamespace   CloudResourceKind = 471
+	CloudResourceKind_AzureFrontDoorProfile    CloudResourceKind = 480
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -665,6 +672,7 @@ var (
 		450:  "AzureLogAnalyticsWorkspace",
 		451:  "AzureApplicationInsights",
 		460:  "AzureUserAssignedIdentity",
+		461:  "AzureRoleAssignment",
 		470:  "AzureServiceBusNamespace",
 		471:  "AzureEventHubNamespace",
 		480:  "AzureFrontDoorProfile",
@@ -1083,6 +1091,7 @@ var (
 		"AzureLogAnalyticsWorkspace":              450,
 		"AzureApplicationInsights":                451,
 		"AzureUserAssignedIdentity":               460,
+		"AzureRoleAssignment":                     461,
 		"AzureServiceBusNamespace":                470,
 		"AzureEventHubNamespace":                  471,
 		"AzureFrontDoorProfile":                   480,
@@ -1638,7 +1647,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*ѓ\x01\n" +
+	"\x02v1\x10\x01*\x85\x94\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1768,9 +1777,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x10AzureLinuxWebApp\x10\xbc\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azweb\x120\n" +
 	"\x1aAzureLogAnalyticsWorkspace\x10\xc2\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azlaw\x12-\n" +
 	"\x18AzureApplicationInsights\x10\xc3\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azai\x12.\n" +
-	"\x19AzureUserAssignedIdentity\x10\xcc\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azid\x12-\n" +
+	"\b\r\x10\x01\"\x04azai\x122\n" +
+	"\x19AzureUserAssignedIdentity\x10\xcc\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azid:\x02\x90\x03\x12.\n" +
+	"\x13AzureRoleAssignment\x10\xcd\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azra:\x04\x90\x03\xcc\x03\x12-\n" +
 	"\x18AzureServiceBusNamespace\x10\xd6\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azsb\x12+\n" +
 	"\x16AzureEventHubNamespace\x10\xd7\x03\x1a\x0e\xa2\xf7\x04\n" +

@@ -28,6 +28,11 @@ func init() {
 	Terraform.PersistentFlags().String(string(flag.ModuleDir), pwd, "directory containing the terraform module")
 	Terraform.PersistentFlags().StringToString(string(flag.Set), map[string]string{}, "override resource manifest values using key=value pairs")
 
+	// Stack input file flag: the shared manifest resolver reads this on every
+	// command, so it must be registered here (as on the pulumi command group)
+	// or resolution fails before --manifest is even considered.
+	Terraform.PersistentFlags().StringP(string(flag.StackInput), "i", "", "path to a YAML file containing the stack input (bypasses building stack input from manifest)")
+
 	// Provider config flag (unified)
 	Terraform.PersistentFlags().StringP(string(flag.ProviderConfig), "p", "", "path to provider credentials file")
 

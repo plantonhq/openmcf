@@ -152,6 +152,7 @@ import (
 	azurepublicipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepublicip/v1"
 	azurerediscachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurerediscache/v1"
 	azureresourcegroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureresourcegroup/v1"
+	azureroleassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroleassignment/v1"
 	azureservicebusnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusnamespace/v1"
 	azureserviceplanv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureserviceplan/v1"
 	azurestorageaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageaccount/v1"
@@ -597,6 +598,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzurePublicIp:                 &azurepublicipv1.AzurePublicIp{},
 	cloudresourcekind.CloudResourceKind_AzureRedisCache:               &azurerediscachev1.AzureRedisCache{},
 	cloudresourcekind.CloudResourceKind_AzureResourceGroup:            &azureresourcegroupv1.AzureResourceGroup{},
+	cloudresourcekind.CloudResourceKind_AzureRoleAssignment:           &azureroleassignmentv1.AzureRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureServiceBusNamespace:      &azureservicebusnamespacev1.AzureServiceBusNamespace{},
 	cloudresourcekind.CloudResourceKind_AzureServicePlan:              &azureserviceplanv1.AzureServicePlan{},
 	cloudresourcekind.CloudResourceKind_AzureStorageAccount:           &azurestorageaccountv1.AzureStorageAccount{},

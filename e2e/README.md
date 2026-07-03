@@ -289,6 +289,22 @@ owns two responsibilities beyond wiring verifiers:
     scoped to the harness and documented, so the test stays honest about what it
     proves.
 
+### Authoring verifiers and prerequisite fixtures
+
+- **Every kind that appears in another kind's `kind_meta.prerequisites` needs its
+  own verifier registered in the provider harness** — the dependency deployer
+  verifies each fixture right after installing it, so a missing verifier fails the
+  composed scenario at DEPENDENCIES-UP with "no verifier registered", not at the
+  component under test. Wiring a new composed component therefore means wiring
+  verifiers for its whole prerequisite chain (plus a `prerequisite.yaml` or minimal
+  scenario for each prerequisite).
+- **Prefer a GET-by-ID existence probe over a HEAD unless the service is known to
+  support HEAD.** ARM's generic `CheckExistenceByID` (HEAD) is not implemented by
+  every resource provider — e.g. `Microsoft.ManagedIdentity` answers HEAD with
+  405 Method Not Allowed while GET works fine. A GET with the typed 404 as the
+  absence signal works everywhere; treat every non-404 failure as a real error so
+  auth/network problems never masquerade as "absent".
+
 ## Architecture
 
 ```

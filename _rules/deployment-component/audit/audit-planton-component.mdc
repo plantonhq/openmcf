@@ -283,7 +283,6 @@ Open `iac/pulumi/module/*.go` and `iac/tf/*.tf` and compare each dimension from
 
 **Helper Files (3.33%):**
 - [ ] `iac/hack/manifest.yaml` exists
-- [ ] `iac/pulumi/debug.sh` exists
 
 **Scoring:** Each sub-category scored independently
 

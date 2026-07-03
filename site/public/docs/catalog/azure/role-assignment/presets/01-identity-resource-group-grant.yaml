@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: my-role-assignment
+spec:
+  scope:
+    valueFrom:
+      name: <your-resource-group>
+  roleDefinitionName: <built-in-role-name>
+  principalId:
+    valueFrom:
+      name: <your-managed-identity>
+  skipServicePrincipalAadCheck: true
+  description: <why-this-grant-exists>

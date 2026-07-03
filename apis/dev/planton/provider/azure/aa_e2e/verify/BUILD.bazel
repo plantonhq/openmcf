@@ -4,12 +4,15 @@ go_library(
     name = "verify",
     srcs = [
         "resource_group.go",
+        "role_assignment.go",
+        "user_assigned_identity.go",
         "verifier.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/azure/aa_e2e/verify",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_azure_azure_sdk_for_go_sdk_azcore//:azcore",
+        "@com_github_azure_azure_sdk_for_go_sdk_resourcemanager_authorization_armauthorization_v2//:armauthorization",
         "@com_github_azure_azure_sdk_for_go_sdk_resourcemanager_resources_armresources//:armresources",
         "@com_github_pkg_errors//:errors",
     ],
