@@ -1,618 +1,115 @@
-# Deploying AWS DocumentDB: From Manual Operations to Production Infrastructure as Code
+# AwsDocumentDb — Architecture and Design
 
-## Introduction
+## Overview
 
-Amazon DocumentDB represents AWS's answer to the growing demand for MongoDB-compatible document databases in the cloud—a fully managed service that provides fast, scalable, and highly available document storage with an API compatible with MongoDB 4.0 and 5.0 workloads. While MongoDB Atlas offers the "official" MongoDB experience, DocumentDB provides an AWS-native alternative deeply integrated with the AWS ecosystem.
+AwsDocumentDb provisions an Amazon DocumentDB (with MongoDB compatibility) cluster: the shared-storage cluster resource plus its compute instances, the subnet group, and an optional cluster parameter group, in a single declarative resource. DocumentDB speaks the MongoDB 4.0/5.0 wire protocol; existing MongoDB drivers, tools, and application code connect unchanged.
 
-The fundamental challenge isn't whether you can create a DocumentDB cluster—the AWS console makes that straightforward. The challenge is deploying DocumentDB **consistently**, **securely**, and **reproducibly** across multiple environments while managing the complexity of networking, encryption, backup policies, and credential management that production workloads demand.
+The cluster's AWS identifier is taken from `metadata.name` — create-time immutable, so renaming means replacement.
 
-This document explores the landscape of DocumentDB deployment methods, from anti-patterns that plague many organizations to production-ready infrastructure-as-code solutions. More importantly, it explains why Planton standardizes on specific approaches and what that means for teams building reliable document database infrastructure.
+## The Cluster/Instances Split
 
-## Evolution and Historical Context
+DocumentDB separates storage from compute the same way Aurora does: the **cluster** owns the storage volume (replicated six ways across three AZs), the endpoints, credentials, backups, and encryption; the **instances** are stateless compute that serve queries from that shared volume.
 
-### The Rise of Document Databases
+The spec folds instances in as a per-name list rather than a separate kind: an instance is a sub-resource of exactly one cluster and is referenced by nothing else. Both IaC modules manage each entry as its own provider resource keyed by `name` (`<cluster>-<name>`), so:
 
-The early 2010s saw an explosion in document database adoption, led by MongoDB. Unlike traditional relational databases with rigid schemas, document databases store data in flexible JSON-like documents, making them ideal for:
+- Adding a reader is appending a list entry — an in-place update that touches nothing else.
+- Removing a reader deletes exactly that instance.
+- Renaming an entry replaces that one instance.
 
-- **Rapidly evolving schemas**: Applications where data structures change frequently
-- **Hierarchical data**: Nested objects that map naturally to document structures
-- **Developer velocity**: JavaScript developers found MongoDB's JSON documents intuitive
-- **Horizontal scaling**: Built-in sharding for distributed workloads
+The instance with the lowest promotion tier that is available is the writer; all others serve reads from the shared volume and double as failover targets (promotion takes seconds because no data copy is needed).
 
-MongoDB became the de facto standard for NoSQL document databases, but running it reliably in production presented challenges:
+`instances` may only be empty for headless shapes that attach compute later — a snapshot or point-in-time restore, or a global-cluster member (CEL-enforced).
 
-- **Operational complexity**: Managing replica sets, shards, elections, and failover
-- **Security configuration**: Authentication, encryption, network isolation
-- **Backup and recovery**: Point-in-time recovery, disaster recovery planning
-- **Performance tuning**: Index management, query optimization, resource provisioning
+## Provisioned vs Serverless
 
-### AWS DocumentDB: MongoDB Compatibility, AWS Operations
+Two compute models, selected by instance class:
 
-In January 2019, AWS launched DocumentDB with MongoDB compatibility—a fully managed service that implements the MongoDB 3.6 API (later expanded to 4.0 and 5.0) on top of AWS's proven distributed storage architecture, similar to Aurora.
+- **Provisioned** — instances with fixed classes (`db.r6g.large`, `db.t4g.medium`, ...). Predictable cost for steady load.
+- **DocumentDB Serverless** — a `serverlessV2Scaling` block (DCU bounds, 0.5–256 in half-steps) plus instances of class `db.serverless`. Each serverless instance scales independently within the bounds. The minimum DCU is the idle cost floor — DocumentDB Serverless does not pause to zero.
 
-**Key architectural differences from MongoDB:**
+CEL enforces coherence in both directions: a scaling block requires every instance to be `db.serverless`, and any `db.serverless` instance requires the scaling block.
 
-- **Storage layer**: DocumentDB uses a distributed, fault-tolerant storage layer (similar to Aurora) that automatically replicates data 6 ways across 3 Availability Zones
-- **Compute-storage separation**: Storage scales automatically; you only provision compute instances
-- **AWS integration**: Native VPC support, IAM authentication, CloudWatch metrics, AWS Backup
-- **Managed operations**: Automated patching, backups, failover—no MongoDB operational expertise required
+One asymmetry worth knowing (the module comments carry it too): adding or modifying the serverless block on a live cluster applies in place, but **removing** it replaces the cluster — AWS cannot switch a cluster off serverless.
 
-**Trade-offs:**
+## Credentials
 
-- **Not open source**: Unlike MongoDB Community Edition, DocumentDB is proprietary
-- **MongoDB compatibility gaps**: Some MongoDB features aren't supported (see compatibility matrix)
-- **AWS lock-in**: Deep AWS integration means limited portability
-- **Pricing model**: Different from MongoDB Atlas; requires AWS cost management expertise
+Two mutually exclusive strategies (CEL-enforced):
 
-### The Deployment Challenge
+1. **Managed master password** (`manageMasterUserPassword: true`, the recommended default) — AWS generates the password, stores it in Secrets Manager, and rotates it on schedule. No secret ever appears in the manifest or IaC state. The secret's ARN is exported as `master_user_secret_arn`.
+2. **Direct password** (`masterPassword`, sensitive) — supplied by the operator and stored in IaC state. Supported for migration paths; prefer the managed strategy.
 
-Whether you choose MongoDB Atlas or AWS DocumentDB, the deployment challenge is similar: how do you provision, configure, and maintain document database infrastructure reliably across environments?
+`masterUsername` is required for a brand-new cluster (AWS has no default and rejects a blank value); clusters created from a snapshot, a point-in-time restore, or as global-cluster members inherit credentials from their source and leave it empty (CEL allows exactly these shapes).
 
-Manual operations (console clicking, ad-hoc CLI commands) work for exploration but fail at scale. Infrastructure as Code—defining your database infrastructure in version-controlled, reviewable, testable code—is the production answer.
+## Restore Shapes (Create-Time)
 
-## The Deployment Maturity Spectrum
+Two mutually exclusive restore sources seed a new cluster at creation:
 
-### Level 0: Manual Console Operations (The Anti-Pattern)
+- **`snapshotIdentifier`** — restore from a manual or automated cluster snapshot.
+- **`restoreToPointInTime`** — restore from another cluster's continuous backup: a named source cluster, a timestamp XOR latest-restorable-time, and a restore type of `full-copy` (independent storage) or `copy-on-write` (a fast clone that shares storage with the source and pays only for divergence — the prod-data staging pattern).
 
-The AWS Management Console provides the quickest path to a running DocumentDB cluster. Navigate to DocumentDB, click "Create cluster," fill in the configuration form, and within minutes you have a functioning document database.
+Both are create-time only. `globalClusterIdentifier` joins an existing DocumentDB global cluster; the first joiner is the global writer, later joiners are read-only secondaries.
 
-For learning AWS or running a proof-of-concept, this approach works. For anything beyond exploration, it's a trap.
+## Observability
 
-**Why console operations fail at scale:**
+CloudWatch log exports come in two halves that must agree: the export list (`enabledCloudwatchLogsExports: [audit, profiler]`) turns on delivery, and the matching cluster parameters (`audit_logs`, `profiler` + thresholds) make the engine produce the events. The presets set both.
 
-1. **No reproducibility**: Creating a cluster through the GUI involves dozens of decisions—subnet groups, security groups, parameter groups, instance classes, encryption settings—none of which is captured in a reviewable, versionable format.
+Performance Insights is **instance-scoped** on DocumentDB (unlike Aurora there is no cluster-level toggle) — enable it per instance entry, with an optional KMS key per instance.
 
-2. **Configuration drift**: When someone manually tweaks a setting (maybe adjusting backup windows or modifying parameter groups), those changes exist only in AWS's state. Six months later, nobody remembers why that change was made.
+## Parameter Groups
 
-3. **Environment inconsistency**: Your production cluster was created manually. Staging was created manually. Development was created manually. They're probably all configured differently in subtle, undocumented ways.
+Inline `parameters` produce a module-managed cluster parameter group whose family is derived from the pinned `engineVersion` ("5.0.0" → `docdb5.0`) — which is why inline parameters require a pinned version (CEL). Alternatively, `dbClusterParameterGroupName` points at an existing group. The two are mutually exclusive.
 
-4. **Security blind spots**: One checkbox—"Publicly accessible"—can expose your database to the internet. Without code review, these mistakes slip through.
+## Networking and Encryption
 
-**Verdict:** Acceptable for learning and one-off experiments. Unacceptable for any environment that matters.
+- At least two `subnetIds` in distinct AZs (the module manages the subnet group) or an existing `dbSubnetGroupName` (CEL-enforced either/or).
+- `securityGroupIds` attach by reference; ingress rules live on the referenced `AwsSecurityGroup` nodes. Empty uses the VPC default group.
+- `storageEncrypted` (recommended default true) is a create-time one-way door; `kmsKeyId` optionally replaces the AWS-managed key.
+- `networkType: DUAL` enables dual-stack IPv4+IPv6 given IPv6-capable subnets.
+- `port` (default 27017) accepts 1150–65535 — DocumentDB rejects lower ports — and is create-time only.
 
-### Level 1: AWS CLI Scripts (Scriptable but Stateless)
+## Infra Chart Composability
 
-The AWS CLI represents the first step toward automation:
+### Inputs (StringValueOrRef)
 
-```bash
-# Create a DocumentDB cluster
-aws docdb create-db-cluster \
-  --db-cluster-identifier my-docdb-cluster \
-  --engine docdb \
-  --engine-version 5.0.0 \
-  --master-username docdbadmin \
-  --master-user-password "SecurePassword123!" \
-  --vpc-security-group-ids sg-abc123 \
-  --db-subnet-group-name my-docdb-subnet-group \
-  --storage-encrypted \
-  --backup-retention-period 7
+| Field | Default Reference |
+|-------|-------------------|
+| `subnetIds` | `AwsSubnet.status.outputs.subnet_id` |
+| `securityGroupIds` | `AwsSecurityGroup.status.outputs.security_group_id` |
+| `kmsKeyId` | `AwsKmsKey.status.outputs.key_arn` |
+| per-instance `performanceInsightsKmsKeyId` | `AwsKmsKey.status.outputs.key_arn` |
 
-# Add instances to the cluster
-aws docdb create-db-instance \
-  --db-instance-identifier my-docdb-instance-1 \
-  --db-instance-class db.r6g.large \
-  --db-cluster-identifier my-docdb-cluster \
-  --engine docdb
+### Outputs (for downstream)
 
-aws docdb create-db-instance \
-  --db-instance-identifier my-docdb-instance-2 \
-  --db-instance-class db.r6g.large \
-  --db-cluster-identifier my-docdb-cluster \
-  --engine docdb
+| Output | Downstream Use |
+|--------|---------------|
+| `endpoint` + `port` | Application connection config (writes) |
+| `reader_endpoint` | Read-only connection pool |
+| `master_user_secret_arn` | Runtime credential fetch from Secrets Manager |
+| `arn` / `cluster_resource_id` | IAM policies, metric dimensions, PITR sources |
+| `hosted_zone_id` | Route53 alias records |
+
+### Typical DAG Position
+
+```
+Layer 0: AwsVpc
+Layer 1: AwsSubnet, AwsSecurityGroup, AwsKmsKey
+Layer 2: AwsDocumentDb  ← this component
+Layer 3: Application configs reading endpoint + secret ARN
 ```
 
-This is better—commands can be saved, version controlled, and repeated. But CLI scripting is **imperative** and **stateless**:
-
-- The CLI doesn't know what already exists
-- Running the script twice fails (resources already exist)
-- Updating configurations requires different commands (`modify-db-cluster`)
-- Deletion requires yet another command, and you must remember all resources
-- No drift detection (manual changes aren't tracked)
-
-**Operational challenges:**
-
-- Complex dependency ordering (subnet groups before clusters, clusters before instances)
-- Credential management is your problem (passwords in scripts or environment variables)
-- State tracking is manual (maintain lists of what exists where)
-- No preview of changes before applying
-
-**Verdict:** Useful for automation scripts and quick operations. Insufficient for production infrastructure requiring lifecycle management.
-
-### Level 2: Configuration Management Tools (Ansible)
-
-Ansible adds **declarative intent** to imperative scripting:
-
-```yaml
-- name: Ensure DocumentDB cluster exists
-  amazon.aws.docdb_cluster:
-    db_cluster_identifier: my-docdb-cluster
-    engine: docdb
-    engine_version: "5.0.0"
-    master_username: docdbadmin
-    master_user_password: "{{ vault_docdb_password }}"
-    vpc_security_group_ids:
-      - sg-abc123
-    db_subnet_group_name: my-docdb-subnet-group
-    storage_encrypted: true
-    backup_retention_period: 7
-    state: present
-```
-
-Ansible ensures the cluster exists with specified configuration, creating only if needed (idempotent). However, configuration management tools have limitations for cloud infrastructure:
-
-- **Limited state management**: No native understanding of cloud resource dependencies
-- **Basic drift detection**: Less sophisticated than dedicated IaC tools
-- **No plan/preview**: Changes apply directly without showing what will happen first
-
-**Verdict:** Valuable for orchestration, but typically paired with dedicated IaC tools for infrastructure management.
-
-### Level 3: Production Infrastructure as Code (Terraform, Pulumi)
-
-Modern IaC tools provide the rigor required for production operations:
-
-- **Declarative configuration**: Define desired state, not steps
-- **State tracking**: Know what exists, detect drift
-- **Dependency graphs**: Automatic ordering of resource operations
-- **Change previewing**: See what will change before applying
-- **Concurrent safety**: Locking prevents conflicting changes
-
-## Comparing Production-Ready IaC Tools
-
-### Terraform/OpenTofu: The Industry Standard
-
-Terraform has become the de facto standard for infrastructure-as-code:
-
-```hcl
-resource "aws_docdb_cluster" "main" {
-  cluster_identifier      = "my-docdb-cluster"
-  engine                  = "docdb"
-  engine_version          = "5.0.0"
-  master_username         = "docdbadmin"
-  master_password         = var.master_password
-  
-  db_subnet_group_name    = aws_docdb_subnet_group.main.name
-  vpc_security_group_ids  = [aws_security_group.docdb.id]
-  
-  storage_encrypted       = true
-  kms_key_id              = aws_kms_key.docdb.arn
-  
-  backup_retention_period = 7
-  preferred_backup_window = "03:00-04:00"
-  
-  deletion_protection     = true
-  skip_final_snapshot     = false
-  final_snapshot_identifier = "my-docdb-final-snapshot"
-  
-  enabled_cloudwatch_logs_exports = ["audit", "profiler"]
-  
-  tags = {
-    Environment = "production"
-    ManagedBy   = "terraform"
-  }
-}
-
-resource "aws_docdb_cluster_instance" "instances" {
-  count              = 3
-  identifier         = "my-docdb-instance-${count.index + 1}"
-  cluster_identifier = aws_docdb_cluster.main.id
-  instance_class     = "db.r6g.large"
-  
-  auto_minor_version_upgrade = true
-  
-  tags = {
-    Environment = "production"
-    ManagedBy   = "terraform"
-  }
-}
-
-resource "aws_docdb_subnet_group" "main" {
-  name       = "my-docdb-subnet-group"
-  subnet_ids = var.private_subnet_ids
-  
-  tags = {
-    Name = "DocumentDB Subnet Group"
-  }
-}
-```
-
-**Strengths:**
-- **Massive ecosystem**: Thousands of providers and community modules
-- **Multi-cloud support**: Same tooling for AWS, GCP, Azure
-- **Mature state management**: Remote backends with locking
-- **Battle-tested at scale**: Enterprises managing thousands of resources
-
-**OpenTofu** is the community fork maintaining Terraform compatibility with open-source governance.
-
-**When to choose Terraform/OpenTofu:**
-- Building multi-cloud infrastructure
-- Team values mature, well-documented ecosystem
-- Preference for declarative configuration over general-purpose programming
-
-### Pulumi: Infrastructure as Real Code
-
-Pulumi uses familiar programming languages for infrastructure:
-
-```go
-package main
-
-import (
-    "github.com/pulumi/pulumi-aws/sdk/v6/go/aws/docdb"
-    "github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
-    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-)
-
-func main() {
-    pulumi.Run(func(ctx *pulumi.Context) error {
-        // Create subnet group
-        subnetGroup, err := docdb.NewSubnetGroup(ctx, "docdb-subnet-group", &docdb.SubnetGroupArgs{
-            SubnetIds: pulumi.StringArray{
-                pulumi.String("subnet-12345678"),
-                pulumi.String("subnet-87654321"),
-            },
-        })
-        if err != nil {
-            return err
-        }
-
-        // Create security group
-        securityGroup, err := ec2.NewSecurityGroup(ctx, "docdb-sg", &ec2.SecurityGroupArgs{
-            VpcId: pulumi.String("vpc-12345678"),
-            Ingress: ec2.SecurityGroupIngressArray{
-                &ec2.SecurityGroupIngressArgs{
-                    Protocol:   pulumi.String("tcp"),
-                    FromPort:   pulumi.Int(27017),
-                    ToPort:     pulumi.Int(27017),
-                    CidrBlocks: pulumi.StringArray{pulumi.String("10.0.0.0/16")},
-                },
-            },
-        })
-        if err != nil {
-            return err
-        }
-
-        // Create DocumentDB cluster
-        cluster, err := docdb.NewCluster(ctx, "docdb-cluster", &docdb.ClusterArgs{
-            ClusterIdentifier:       pulumi.String("my-docdb-cluster"),
-            Engine:                  pulumi.String("docdb"),
-            EngineVersion:           pulumi.String("5.0.0"),
-            MasterUsername:          pulumi.String("docdbadmin"),
-            MasterPassword:          cfg.RequireSecret("docdb_password"),
-            DbSubnetGroupName:       subnetGroup.Name,
-            VpcSecurityGroupIds:     pulumi.StringArray{securityGroup.ID()},
-            StorageEncrypted:        pulumi.Bool(true),
-            BackupRetentionPeriod:   pulumi.Int(7),
-            PreferredBackupWindow:   pulumi.String("03:00-04:00"),
-            DeletionProtection:      pulumi.Bool(true),
-            SkipFinalSnapshot:       pulumi.Bool(false),
-            FinalSnapshotIdentifier: pulumi.String("my-docdb-final-snapshot"),
-            EnabledCloudwatchLogsExports: pulumi.StringArray{
-                pulumi.String("audit"),
-                pulumi.String("profiler"),
-            },
-        })
-        if err != nil {
-            return err
-        }
-
-        // Create cluster instances
-        for i := 0; i < 3; i++ {
-            _, err := docdb.NewClusterInstance(ctx, fmt.Sprintf("docdb-instance-%d", i+1), &docdb.ClusterInstanceArgs{
-                Identifier:             pulumi.Sprintf("my-docdb-instance-%d", i+1),
-                ClusterIdentifier:      cluster.ID(),
-                InstanceClass:          pulumi.String("db.r6g.large"),
-                AutoMinorVersionUpgrade: pulumi.Bool(true),
-            })
-            if err != nil {
-                return err
-            }
-        }
-
-        // Export outputs
-        ctx.Export("clusterEndpoint", cluster.Endpoint)
-        ctx.Export("clusterReaderEndpoint", cluster.ReaderEndpoint)
-        
-        return nil
-    })
-}
-```
-
-**Strengths:**
-- **Use familiar languages**: Go, TypeScript, Python, C#, Java
-- **Full IDE support**: Type checking, autocompletion, refactoring
-- **Programming language power**: Loops, conditionals, functions, testing
-- **Excellent secrets management**: Encrypted in state by default
-
-**When to choose Pulumi:**
-- Team consists of software developers preferring code over DSLs
-- Complex logic needed in infrastructure definitions
-- Want infrastructure tightly coupled with application code
-
-### CloudFormation: AWS-Native IaC
-
-CloudFormation is AWS's original IaC service:
-
-```yaml
-Resources:
-  DocumentDBCluster:
-    Type: AWS::DocDB::DBCluster
-    Properties:
-      DBClusterIdentifier: my-docdb-cluster
-      Engine: docdb
-      EngineVersion: "5.0.0"
-      MasterUsername: docdbadmin
-      MasterUserPassword: !Ref MasterPassword
-      DBSubnetGroupName: !Ref DocDBSubnetGroup
-      VpcSecurityGroupIds:
-        - !Ref DocDBSecurityGroup
-      StorageEncrypted: true
-      BackupRetentionPeriod: 7
-      DeletionProtection: true
-      EnableCloudwatchLogsExports:
-        - audit
-        - profiler
-```
-
-**Strengths:**
-- No external state management
-- Zero additional cost
-- Immediate AWS feature support
-- Deep AWS integration
-- Robust rollback on failures
-
-**Considerations:**
-- AWS-only (no multi-cloud)
-- Verbose templates
-- Limited modularity
-
-**When to choose CloudFormation:**
-- All-in on AWS with no multi-cloud requirements
-- Want minimal external dependencies
-- Prefer AWS-native solutions
-
-## The Planton Approach
-
-Planton provides a minimal, validated API that abstracts DocumentDB deployment complexity while supporting both Terraform and Pulumi as first-class deployment targets.
-
-### The 80/20 Configuration Philosophy
-
-AWS DocumentDB exposes dozens of configuration parameters. Most teams need about 20% of them for 80% of use cases. Planton's API reflects this philosophy.
-
-### Essential Fields (What Planton Exposes)
-
-#### Region
-- **region**: The AWS region where the resource will be created (required)
-
-#### Networking
-- **subnetIds**: Private subnets for the DB subnet group (>=2 for HA)
-- **dbSubnetGroupName**: Alternative to subnet_ids if group already exists
-- **securityGroupIds**: Security groups controlling database access
-- **allowedCidrBlocks**: IPv4 CIDRs for ingress rules
-- **vpcId**: VPC for cluster networking context
-
-#### Engine Configuration
-- **engineVersion**: DocumentDB version ("4.0.0", "5.0.0")
-- **port**: Connection port (default: 27017)
-
-#### Compute and Scaling
-- **instanceCount**: Number of instances in the cluster
-- **instanceClass**: Instance type (db.r5.large, db.r6g.xlarge, etc.)
-
-#### Authentication
-- **masterUsername**: Master user name
-- **masterPassword**: Master password (should use secrets management)
-
-#### Encryption
-- **storageEncrypted**: Enable encryption at rest (default: true)
-- **kmsKeyId**: Customer-managed KMS key for encryption
-
-#### Backup and Recovery
-- **backupRetentionPeriod**: Days to retain backups (1-35)
-- **preferredBackupWindow**: Daily backup window
-- **skipFinalSnapshot**: Whether to skip final snapshot on deletion
-- **finalSnapshotIdentifier**: Identifier for final snapshot
-
-#### Maintenance
-- **preferredMaintenanceWindow**: Weekly maintenance window
-- **autoMinorVersionUpgrade**: Enable automatic minor version upgrades
-
-#### Protection
-- **deletionProtection**: Prevent accidental cluster deletion
-
-#### Monitoring
-- **enabledCloudwatchLogsExports**: Log types to export (audit, profiler)
-
-#### Custom Parameters
-- **clusterParameterGroupName**: Custom parameter group
-- **clusterParameters**: Custom parameters for the group
-
-### What We Default or Omit
-
-Many settings have sensible defaults or are managed at the infrastructure platform level:
-
-- **Engine**: Always "docdb" (this is DocumentDB-specific)
-- **Storage type**: DocumentDB uses distributed storage (no configuration needed)
-- **Instance availability zones**: Automatically distributed by AWS
-- **Performance Insights**: Not available for DocumentDB
-- **Read replicas**: Managed through instanceCount (all instances can serve reads)
-
-### Why Dual IaC Support
-
-Different teams have different needs. Rather than forcing a choice:
-
-1. **Define once**: Specify configuration in Planton's validated API schema
-2. **Deploy with your preferred tool**: Planton generates Terraform HCL or Pulumi code
-3. **Maintain flexibility**: Teams choose the IaC tool that fits their culture
-
-## Production Best Practices
-
-### High Availability: Multiple Instances Are Non-Negotiable
-
-DocumentDB clusters support up to 15 instances (1 primary, up to 15 replicas). For production:
-
-- **Minimum 3 instances**: 1 primary + 2 replicas across different AZs
-- **Automatic failover**: If primary fails, replica promotes automatically (typically <30 seconds)
-- **Read scaling**: All replicas can serve read traffic
-
-```yaml
-spec:
-  region: us-east-1
-  instanceCount: 3
-  instanceClass: db.r6g.large
-```
-
-### Network Isolation: Private Subnets Only
-
-Production DocumentDB clusters should **never** have public access:
-
-- Place in private subnets across multiple AZs
-- Security groups allow access only from application tier
-- Use bastion hosts or VPN for administrative access
-- Consider AWS PrivateLink for cross-VPC access
-
-### Encryption: Always, Everywhere
-
-**At-rest encryption** (via KMS):
-- Enable for all clusters containing sensitive data
-- Use customer-managed keys for compliance requirements
-- Cannot be enabled after cluster creation—start encrypted
-
-**In-transit encryption** (TLS):
-- DocumentDB enforces TLS by default
-- Applications must use TLS-enabled connection strings
-- Download the AWS DocumentDB CA certificate for connections
-
-```yaml
-spec:
-  region: us-east-1
-  storageEncrypted: true
-  kmsKeyId:
-    valueFrom:
-      kind: AwsKmsKey
-      name: docdb-key
-      fieldPath: status.outputs.key_arn
-```
-
-### Backup Strategy
-
-**Automated backups**:
-- Enabled by default with configurable retention (1-35 days)
-- Point-in-time recovery within retention window
-- Backups stored redundantly
-
-**Manual snapshots**:
-- Create before major changes (engine upgrades, migrations)
-- Can be copied cross-region for disaster recovery
-- Retained until explicitly deleted
-
-**Final snapshots**:
-- Create when deleting clusters (unless explicitly skipped)
-- Essential for data preservation compliance
-
-```yaml
-spec:
-  region: us-east-1
-  backupRetentionPeriod: 14
-  preferredBackupWindow: "03:00-04:00"
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: docdb-prod-final-snapshot
-```
-
-### Credential Management: No Hardcoded Passwords
-
-**Best practices:**
-- Use secrets management (AWS Secrets Manager, Vault)
-- Reference secrets in manifests via secret syntax
-- Rotate credentials regularly
-- Consider IAM database authentication where supported
-
-```yaml
-spec:
-  region: us-east-1
-  masterPassword: ${secrets-group/docdb/MASTER_PASSWORD}
-```
-
-### Monitoring and Observability
-
-**CloudWatch metrics** to monitor:
-- `CPUUtilization`: Instance CPU usage
-- `DatabaseConnections`: Active connections
-- `ReadLatency` / `WriteLatency`: Query latency
-- `FreeableMemory`: Available memory
-- `VolumeBytesUsed`: Storage consumption
-
-**CloudWatch Logs** to export:
-- **audit**: Track database activity for compliance
-- **profiler**: Analyze slow queries and performance
-
-```yaml
-spec:
-  region: us-east-1
-  enabledCloudwatchLogsExports:
-    - audit
-    - profiler
-```
-
-### Cost Optimization
-
-**Instance right-sizing:**
-- Start with smaller instances, scale based on actual usage
-- Use Graviton instances (db.r6g) for ~20% cost savings
-- Monitor and adjust based on CPU/memory utilization
-
-**Reserved instances:**
-- 1-year commitment: ~35% savings
-- 3-year commitment: ~55% savings
-- Ideal for stable production workloads
-
-**Non-production environments:**
-- Use smaller instance classes
-- Consider single-instance clusters (no HA)
-- Stop clusters outside business hours (up to 7 days)
-
-## MongoDB Compatibility Considerations
-
-DocumentDB implements the MongoDB API but is not MongoDB. Key differences:
-
-### Supported Features
-- Basic CRUD operations
-- Aggregation pipeline (most operators)
-- Indexes (single field, compound, geospatial, text)
-- Transactions (single and multi-document)
-- Change streams
-
-### Notable Limitations
-- **No sharding**: DocumentDB handles scaling differently
-- **No full-text search**: Use Amazon OpenSearch instead
-- **Limited aggregation operators**: Some pipeline stages unsupported
-- **No MongoDB Realm**: Cloud sync and serverless functions not available
-- **Driver version requirements**: Use specific driver versions for compatibility
-
-### Migration Considerations
-- Test application against DocumentDB before migration
-- Use AWS Database Migration Service for data migration
-- Review MongoDB compatibility matrix for unsupported features
-- Plan for application changes if using unsupported features
-
-## Conclusion
-
-AWS DocumentDB provides a compelling option for teams needing MongoDB-compatible document databases with AWS-native operations. The managed service eliminates operational complexity—no replica set management, no manual backups, no security patch scheduling.
-
-The deployment challenge, however, remains: manual console operations don't scale, and ad-hoc scripting creates technical debt. Infrastructure as Code—whether Terraform, Pulumi, or CloudFormation—provides the foundation for reliable, reproducible database infrastructure.
-
-Planton's approach simplifies DocumentDB deployment by:
-1. **Focusing on essential configuration**: The 80/20 fields that matter for production
-2. **Providing validated APIs**: Catch configuration errors before deployment
-3. **Supporting multiple IaC tools**: Choose Terraform or Pulumi based on team preference
-4. **Enforcing best practices**: Encryption, network isolation, and backup policies by default
-
-Whether migrating from self-managed MongoDB, evaluating DocumentDB against MongoDB Atlas, or standardizing on a document database platform, the key is treating database infrastructure as code—reviewable, testable, version-controlled, and reproducible.
+## Deliberately Omitted (v1)
+
+| Feature | Reason |
+|---------|--------|
+| DocumentDB Elastic Clusters (`aws_docdbelastic_cluster`) | A separate product surface with its own resource, sharding, and auth model; deferred until real demand appears |
+| Creating a global cluster | Join-as-member via `globalClusterIdentifier` is supported; provisioning the global resource itself is a separate deferred kind |
+| Event subscriptions (`aws_docdb_event_subscription`) | Account-level notification plumbing, not cluster shape; deferred |
+| Terraform write-only password (`master_password_wo`) | An engine-asymmetric ephemeral that Pulumi has no equivalent for; the managed-password strategy already keeps secrets out of state |
 
 ## References
 
-- [AWS DocumentDB Developer Guide](https://docs.aws.amazon.com/documentdb/latest/developerguide/what-is.html)
-- [DocumentDB Instance Classes](https://docs.aws.amazon.com/documentdb/latest/developerguide/db-instance-classes.html)
-- [DocumentDB Engine Versions](https://docs.aws.amazon.com/documentdb/latest/developerguide/release-notes.html)
-- [MongoDB Compatibility](https://docs.aws.amazon.com/documentdb/latest/developerguide/mongo-apis.html)
-- [DocumentDB Best Practices](https://docs.aws.amazon.com/documentdb/latest/developerguide/best-practices.html)
-- [Terraform AWS DocumentDB Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/docdb_cluster)
-- [Pulumi AWS DocumentDB](https://www.pulumi.com/registry/packages/aws/api-docs/docdb/)
+- [Amazon DocumentDB Developer Guide](https://docs.aws.amazon.com/documentdb/latest/developerguide/what-is.html)
+- [DocumentDB Serverless](https://docs.aws.amazon.com/documentdb/latest/developerguide/docdb-serverless.html)
+- [Managing DocumentDB users with Secrets Manager](https://docs.aws.amazon.com/documentdb/latest/developerguide/secrets-manager.html)
+- [Auditing DocumentDB events](https://docs.aws.amazon.com/documentdb/latest/developerguide/event-auditing.html)
+- [DocumentDB global clusters](https://docs.aws.amazon.com/documentdb/latest/developerguide/global-clusters.html)

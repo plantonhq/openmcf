@@ -2,36 +2,52 @@ syntax = "proto3";
 
 package dev.planton.provider.aws.awsdocumentdb.v1;
 
-// AwsDocumentDbStackOutputs captures observable identifiers and endpoints from the DocumentDB cluster.
+// AwsDocumentDbStackOutputs captures the observable identifiers and
+// connection endpoints of the DocumentDB cluster after deployment.
 message AwsDocumentDbStackOutputs {
-  // The primary endpoint for connecting to the DocumentDB cluster (writer endpoint).
-  string cluster_endpoint = 1;
+  // The cluster identifier (e.g. "orders-docdb").
+  string cluster_identifier = 1;
 
-  // The reader endpoint for load-balanced read traffic across replica instances.
-  string cluster_reader_endpoint = 2;
+  // The Amazon Resource Name of the cluster.
+  string arn = 2;
 
-  // The AWS identifier of the DocumentDB cluster.
-  string cluster_id = 3;
+  // The immutable cluster resource ID (cluster-...). Survives
+  // identifier renames -- the durable handle for point-in-time restores
+  // and CloudWatch dimensions.
+  string cluster_resource_id = 3;
 
-  // The Amazon Resource Name (ARN) of the DocumentDB cluster.
-  string cluster_arn = 4;
+  // The writer endpoint -- connect here for reads and writes.
+  string endpoint = 4;
 
-  // The port on which the DocumentDB cluster accepts connections.
-  int32 cluster_port = 5;
+  // The reader endpoint -- load-balances connections across the
+  // cluster's reader instances.
+  string reader_endpoint = 5;
 
-  // The name of the DB subnet group associated with the cluster.
-  string db_subnet_group_name = 6;
+  // The port the cluster accepts connections on.
+  int32 port = 6;
 
-  // The security group ID associated with the cluster (if created by the module).
-  string security_group_id = 7;
+  // The Route53 hosted zone ID of the cluster endpoints, for DNS alias
+  // records.
+  string hosted_zone_id = 7;
 
-  // The cluster parameter group name in use by the cluster.
-  string cluster_parameter_group_name = 8;
+  // The resolved engine version actually running (meaningful when the
+  // spec leaves engine_version to the AWS default).
+  string engine_version_actual = 8;
 
-  // The connection string for MongoDB-compatible drivers.
-  // Format: mongodb://user:password@endpoint:port/database
-  string connection_string = 9;
+  // The ARN of the AWS-managed master-user secret in Secrets Manager.
+  // Populated only when manage_master_user_password is true -- the
+  // handle applications use to fetch credentials at runtime.
+  string master_user_secret_arn = 9;
 
-  // The cluster resource ID (internal AWS identifier).
-  string cluster_resource_id = 10;
+  // The name of the DB subnet group the cluster runs in.
+  string db_subnet_group_name = 10;
+
+  // The name of the cluster parameter group in use (module-managed or
+  // the referenced existing group).
+  string db_cluster_parameter_group_name = 11;
+
+  // Per-instance endpoints of the cluster's folded instances, ordered
+  // as declared in spec.instances. Empty for headless shapes (restores
+  // and global-cluster members created without instances).
+  repeated string instance_endpoints = 12;
 }

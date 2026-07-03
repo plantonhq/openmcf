@@ -6,332 +6,377 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
 func TestAwsDocumentDbSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "AwsDocumentDbSpec Validation Suite")
+	ginkgo.RunSpecs(t, "AwsDocumentDbSpec Custom Validation Tests")
 }
 
-// Helper functions for pointer types
-func stringPtr(s string) *string {
-	return &s
+// twoSubnets returns the minimum valid subnet list (two literal subnet IDs).
+func twoSubnets() []*foreignkeyv1.StringValueOrRef {
+	return []*foreignkeyv1.StringValueOrRef{
+		{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
+		{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
+	}
 }
 
-func int32Ptr(i int32) *int32 {
-	return &i
+// validCluster returns a minimal valid DocumentDB cluster that individual
+// tests mutate into specific scenarios.
+func validCluster() *AwsDocumentDb {
+	return &AwsDocumentDb{
+		ApiVersion: "aws.planton.dev/v1",
+		Kind:       "AwsDocumentDb",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-docdb",
+		},
+		Spec: &AwsDocumentDbSpec{
+			Region:                   "us-west-2",
+			SubnetIds:                twoSubnets(),
+			MasterUsername:           "docadmin",
+			ManageMasterUserPassword: true,
+			SkipFinalSnapshot:        true,
+			Instances: []*AwsDocumentDbInstance{
+				{Name: "writer", InstanceClass: "db.t4g.medium"},
+			},
+		},
+	}
 }
 
-func boolPtr(b bool) *bool {
-	return &b
-}
-
-var _ = ginkgo.Describe("AwsDocumentDbSpec validations", func() {
+var _ = ginkgo.Describe("AwsDocumentDbSpec Custom Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("with minimal valid fields using subnets", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:             "MySecureP@ssword123",
-					SkipFinalSnapshot:          boolPtr(true),
-					PreferredBackupWindow:      "03:00-04:00",
-					PreferredMaintenanceWindow: "sun:05:00-sun:06:00",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+
+		ginkgo.It("accepts a minimal provisioned cluster", func() {
+			err := protovalidate.Validate(validCluster())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with db_subnet_group instead of subnets", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					DbSubnetGroup: &foreignkeyv1.StringValueOrRef{
-						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "my-subnet-group"},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(true),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a cluster with writer and reader instances", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsDocumentDbInstance{
+				{Name: "writer", InstanceClass: "db.r6g.large", PromotionTier: 0},
+				{Name: "reader-1", InstanceClass: "db.r6g.large", PromotionTier: 1},
+			}
+			input.Spec.EnabledCloudwatchLogsExports = []string{"audit", "profiler"}
+			input.Spec.BackupRetentionPeriod = 7
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with final_snapshot_identifier when skip_final_snapshot is false", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:          "MySecureP@ssword123",
-					SkipFinalSnapshot:       boolPtr(false),
-					FinalSnapshotIdentifier: "my-final-snapshot",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a DocumentDB Serverless cluster", func() {
+			input := validCluster()
+			input.Spec.ServerlessV2Scaling = &AwsDocumentDbServerlessV2Scaling{
+				MinCapacity: 0.5,
+				MaxCapacity: 4,
+			}
+			input.Spec.Instances = []*AwsDocumentDbInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with valid cloudwatch logs exports", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:               "MySecureP@ssword123",
-					SkipFinalSnapshot:            boolPtr(true),
-					EnabledCloudwatchLogsExports: []string{"audit", "profiler"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a direct master password without managed password", func() {
+			input := validCluster()
+			input.Spec.ManageMasterUserPassword = false
+			input.Spec.MasterPassword = "super-secret-password"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with valid CIDR blocks", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(true),
-					AllowedCidrs:      []string{"10.0.0.0/16", "192.168.1.0/24"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts an existing subnet group instead of subnet ids", func() {
+			input := validCluster()
+			input.Spec.SubnetIds = nil
+			input.Spec.DbSubnetGroupName = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "existing-group"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a headless snapshot restore without username or instances", func() {
+			input := validCluster()
+			input.Spec.MasterUsername = ""
+			input.Spec.Instances = nil
+			input.Spec.SnapshotIdentifier = "my-snapshot"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a point-in-time restore with latest restorable time", func() {
+			input := validCluster()
+			input.Spec.RestoreToPointInTime = &AwsDocumentDbRestoreToPointInTime{
+				SourceClusterIdentifier: "source-cluster",
+				UseLatestRestorableTime: true,
+				RestoreType:             "copy-on-write",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a global cluster secondary without credentials", func() {
+			input := validCluster()
+			input.Spec.MasterUsername = ""
+			input.Spec.ManageMasterUserPassword = false
+			input.Spec.Instances = nil
+			input.Spec.GlobalClusterIdentifier = "global-docdb"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts inline cluster parameters with a pinned engine version", func() {
+			input := validCluster()
+			input.Spec.EngineVersion = "5.0.0"
+			input.Spec.Parameters = []*AwsDocumentDbParameter{
+				{Name: "audit_logs", Value: "enabled", ApplyMethod: "immediate"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a custom port in the DocumentDB range", func() {
+			input := validCluster()
+			input.Spec.Port = 27018
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 
-	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("with missing master_password", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					SkipFinalSnapshot: boolPtr(true),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.Describe("networking validations", func() {
+
+		ginkgo.It("rejects a spec with neither subnets nor a subnet group", func() {
+			input := validCluster()
+			input.Spec.SubnetIds = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("provide at least two subnet_ids (distinct AZs) or an"))
 		})
 
-		ginkgo.Context("with only one subnet and no db_subnet_group", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(true),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a single subnet without a subnet group", func() {
+			input := validCluster()
+			input.Spec.SubnetIds = input.Spec.SubnetIds[:1]
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("provide at least two subnet_ids (distinct AZs) or an"))
 		})
 
-		ginkgo.Context("with skip_final_snapshot false and missing final_snapshot_identifier", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(false),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an invalid network_type", func() {
+			input := validCluster()
+			input.Spec.NetworkType = "IPV6"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("network_type must be 'IPV4' or 'DUAL' when set"))
 		})
 
-		ginkgo.Context("with invalid cloudwatch logs exports", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:               "MySecureP@ssword123",
-					SkipFinalSnapshot:            boolPtr(true),
-					EnabledCloudwatchLogsExports: []string{"audit", "invalid_log_type"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a port below the DocumentDB floor", func() {
+			input := validCluster()
+			input.Spec.Port = 1024
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("port must be between 1150 and 65535"))
+		})
+	})
+
+	ginkgo.Describe("password strategy validations", func() {
+
+		ginkgo.It("rejects a master password alongside the managed password", func() {
+			input := validCluster()
+			input.Spec.MasterPassword = "also-a-password"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("master_password cannot be set when"))
 		})
 
-		ginkgo.Context("with invalid CIDR block format", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(true),
-					AllowedCidrs:      []string{"invalid-cidr"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a new cluster without a master username", func() {
+			input := validCluster()
+			input.Spec.MasterUsername = ""
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("master_username is required"))
+		})
+	})
+
+	ginkgo.Describe("cluster shape validations", func() {
+
+		ginkgo.It("rejects an empty instances list on a regular cluster", func() {
+			input := validCluster()
+			input.Spec.Instances = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("instances is required"))
 		})
 
-		ginkgo.Context("with duplicate CIDR blocks", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(true),
-					AllowedCidrs:      []string{"10.0.0.0/16", "10.0.0.0/16"},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a provisioned instance class under serverless scaling", func() {
+			input := validCluster()
+			input.Spec.ServerlessV2Scaling = &AwsDocumentDbServerlessV2Scaling{
+				MinCapacity: 0.5,
+				MaxCapacity: 4,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("every instance must use instance_class 'db.serverless'"))
 		})
 
-		ginkgo.Context("with invalid backup_retention_period", func() {
-			ginkgo.It("should return a validation error when less than 1", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:        "MySecureP@ssword123",
-					SkipFinalSnapshot:     boolPtr(true),
-					BackupRetentionPeriod: int32Ptr(0),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when greater than 35", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:        "MySecureP@ssword123",
-					SkipFinalSnapshot:     boolPtr(true),
-					BackupRetentionPeriod: int32Ptr(36),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a db.serverless instance without scaling bounds", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsDocumentDbInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("serverless_v2_scaling is required when any instance"))
 		})
 
-		ginkgo.Context("with invalid port", func() {
-			ginkgo.It("should return a validation error when port is 0", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(true),
-					Port:              int32Ptr(0),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when port exceeds 65535", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(true),
-					Port:              int32Ptr(70000),
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an instance name that is not a valid identifier fragment", func() {
+			input := validCluster()
+			input.Spec.Instances[0].Name = "Writer_1"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with invalid preferred_backup_window format", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:        "MySecureP@ssword123",
-					SkipFinalSnapshot:     boolPtr(true),
-					PreferredBackupWindow: "invalid-format",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an instance class without the db. prefix", func() {
+			input := validCluster()
+			input.Spec.Instances[0].InstanceClass = "r6g.large"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with invalid preferred_maintenance_window format", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:             "MySecureP@ssword123",
-					SkipFinalSnapshot:          boolPtr(true),
-					PreferredMaintenanceWindow: "invalid-format",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a promotion tier above 15", func() {
+			input := validCluster()
+			input.Spec.Instances[0].PromotionTier = 16
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("serverless scaling validations", func() {
+
+		ginkgo.It("rejects max capacity below min capacity", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsDocumentDbInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			input.Spec.ServerlessV2Scaling = &AwsDocumentDbServerlessV2Scaling{
+				MinCapacity: 8,
+				MaxCapacity: 4,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("max_capacity must be greater than or equal to min_capacity"))
 		})
 
-		ginkgo.Context("with invalid apply_method in cluster_parameters", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := &AwsDocumentDbSpec{
-					Region: "us-west-2",
-					Subnets: []*foreignkeyv1.StringValueOrRef{
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-12345678"}},
-						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-87654321"}},
-					},
-					MasterPassword:    "MySecureP@ssword123",
-					SkipFinalSnapshot: boolPtr(true),
-					ClusterParameters: []*AwsDocumentDbParameter{
-						{
-							Name:        "tls",
-							Value:       "enabled",
-							ApplyMethod: "invalid-method",
-						},
-					},
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects capacities that are not half-step multiples", func() {
+			input := validCluster()
+			input.Spec.Instances = []*AwsDocumentDbInstance{
+				{Name: "writer", InstanceClass: "db.serverless"},
+			}
+			input.Spec.ServerlessV2Scaling = &AwsDocumentDbServerlessV2Scaling{
+				MinCapacity: 0.7,
+				MaxCapacity: 4,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("must be multiples of 0.5"))
+		})
+	})
+
+	ginkgo.Describe("deletion safety validations", func() {
+
+		ginkgo.It("rejects a missing final snapshot name while not skipping the snapshot", func() {
+			input := validCluster()
+			input.Spec.SkipFinalSnapshot = false
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("final_snapshot_identifier is required when"))
+		})
+	})
+
+	ginkgo.Describe("restore validations", func() {
+
+		ginkgo.It("rejects both restore sources together", func() {
+			input := validCluster()
+			input.Spec.SnapshotIdentifier = "my-snapshot"
+			input.Spec.RestoreToPointInTime = &AwsDocumentDbRestoreToPointInTime{
+				SourceClusterIdentifier: "source-cluster",
+				UseLatestRestorableTime: true,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive create-time restore sources"))
+		})
+
+		ginkgo.It("rejects a point-in-time restore with both time strategies", func() {
+			input := validCluster()
+			input.Spec.RestoreToPointInTime = &AwsDocumentDbRestoreToPointInTime{
+				SourceClusterIdentifier: "source-cluster",
+				RestoreToTime:           "2026-07-01T09:45:00Z",
+				UseLatestRestorableTime: true,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one of restore_to_time or use_latest_restorable_time"))
+		})
+
+		ginkgo.It("rejects an invalid restore type", func() {
+			input := validCluster()
+			input.Spec.RestoreToPointInTime = &AwsDocumentDbRestoreToPointInTime{
+				SourceClusterIdentifier: "source-cluster",
+				UseLatestRestorableTime: true,
+				RestoreType:             "shallow-copy",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("restore_type must be 'full-copy' or 'copy-on-write'"))
+		})
+	})
+
+	ginkgo.Describe("observability validations", func() {
+
+		ginkgo.It("rejects an unsupported log export type", func() {
+			input := validCluster()
+			input.Spec.EnabledCloudwatchLogsExports = []string{"general"}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("must contain only 'audit' or 'profiler'"))
+		})
+	})
+
+	ginkgo.Describe("parameter group validations", func() {
+
+		ginkgo.It("rejects inline parameters alongside an existing group name", func() {
+			input := validCluster()
+			input.Spec.EngineVersion = "5.0.0"
+			input.Spec.DbClusterParameterGroupName = "existing-group"
+			input.Spec.Parameters = []*AwsDocumentDbParameter{
+				{Name: "audit_logs", Value: "enabled"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("parameters and db_cluster_parameter_group_name are mutually exclusive"))
+		})
+
+		ginkgo.It("rejects inline parameters without a pinned engine version", func() {
+			input := validCluster()
+			input.Spec.Parameters = []*AwsDocumentDbParameter{
+				{Name: "audit_logs", Value: "enabled"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("inline parameters require a pinned engine_version"))
+		})
+
+		ginkgo.It("rejects an invalid apply method", func() {
+			input := validCluster()
+			input.Spec.EngineVersion = "5.0.0"
+			input.Spec.Parameters = []*AwsDocumentDbParameter{
+				{Name: "audit_logs", Value: "enabled", ApplyMethod: "eventually"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("apply_method must be 'immediate' or 'pending-reboot'"))
 		})
 	})
 })
