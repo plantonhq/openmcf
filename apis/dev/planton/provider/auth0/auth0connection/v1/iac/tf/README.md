@@ -57,6 +57,8 @@ spec = {
   database_options = {
     password_policy        = "good"
     brute_force_protection = true
+    # password_history_size (>0) needs Auth0's paid "password-advanced-options"
+    # entitlement; leave it 0/unset on free/lower-tier tenants.
     password_history_size  = 5
   }
 }
@@ -144,6 +146,8 @@ spec = {
   database_options = {
     password_policy        = "good"
     brute_force_protection = true
+    # password_history_size (>0) needs Auth0's paid "password-advanced-options"
+    # entitlement; leave it 0/unset on free/lower-tier tenants.
     password_history_size  = 5
   }
 }

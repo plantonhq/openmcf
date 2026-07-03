@@ -227,9 +227,10 @@ Rather than a flat structure with all possible fields, we use strategy-specific 
 All optional fields have production-appropriate defaults:
 - `password_policy: "good"` (not "none")
 - `brute_force_protection: true`
-- `password_dictionary: true`
 
-**Rationale:** Secure by default; users opt-out of security, not opt-in.
+**Rationale:** Secure defaults that work on every Auth0 plan; users opt-out of security, not opt-in.
+
+The three "advanced password options" - `password_history_size`, `password_no_personal_info`, and `password_dictionary` - are an exception: they require Auth0's paid `password-advanced-options` entitlement, so they default to disabled (`0`/`false`). Enabling them on a tenant without the entitlement makes Auth0 reject the deploy with a `403`, so they are opt-in.
 
 #### 3. Validation Rules
 
@@ -273,7 +274,7 @@ Both implementations support identical features:
 1. **Password Policies**: Use "good" or "excellent" for production
 2. **Brute Force**: Always enable brute force protection
 3. **MFA**: Consider MFA for high-security applications
-4. **Password History**: Prevent password reuse (5-10 entries)
+4. **Password History**: Prevent password reuse (5-10 entries) - requires the paid `password-advanced-options` entitlement
 
 ### Operations
 
