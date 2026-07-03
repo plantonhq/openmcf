@@ -57,13 +57,10 @@ jobs:
   # ============================================================================
   build-check:
     runs-on: ubuntu-latest
+    container: ghcr.io/plantonhq/planton/ci-toolchain:latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
 
       - name: Compile AWS E2E tests
         run: go test -tags=e2e -c -o /dev/null ./e2e/aws/...
@@ -78,14 +75,11 @@ jobs:
     needs: build-check
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    container: ghcr.io/plantonhq/planton/ci-toolchain:latest
     timeout-minutes: 30
     environment: e2e-aws
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
 
       # Keyless: exchange the GitHub OIDC token for short-lived AWS credentials.
       # vars.PLANTON_OSS_GITHUB_ACTIONS_ROLE_ARN is the role in the test account
@@ -99,19 +93,6 @@ jobs:
 
       - name: Verify AWS identity
         run: aws sts get-caller-identity
-
-      - name: Install gotestsum
-        run: go install gotest.tools/gotestsum@latest
-
-      - name: Install Pulumi
-        run: curl -fsSL https://get.pulumi.com | sh && echo "$HOME/.pulumi/bin" >> "$GITHUB_PATH"
-
-      - name: Install OpenTofu
-        run: |
-          curl -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
-          chmod +x install-opentofu.sh
-          ./install-opentofu.sh --install-method standalone --skip-verify
-          rm install-opentofu.sh
 
       - name: Run AWS E2E tests
         run: |
