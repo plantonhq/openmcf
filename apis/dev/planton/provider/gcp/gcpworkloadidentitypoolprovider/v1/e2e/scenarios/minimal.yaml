@@ -1,0 +1,38 @@
+# Composed GcpWorkloadIdentityPoolProvider scenario. The pool is a value_from
+# reference to the GcpWorkloadIdentityPool prerequisite (declared via
+# prerequisites in the kind registry); the E2E harness deploys the pool first
+# and resolves the reference to the created pool's ID before the provider is
+# applied. project_id is omitted and rides the harness-exported
+# GOOGLE_PROJECT. The OIDC arm uses the public GitHub Actions issuer — it
+# creates without any external dependency — with the org-scoping condition
+# every GitHub provider should carry. The provider ID carries ${E2E_RUN_ID}
+# because soft-deleted provider IDs are reserved for ~30 days.
+apiVersion: gcp.planton.dev/v1
+kind: GcpWorkloadIdentityPoolProvider
+metadata:
+  name: planton-oss-e2e-gcpwipp-smoke
+  id: planton-oss-e2e-gcpwipp-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpworkloadidentitypoolprovider
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workloadIdentityPoolId:
+    valueFrom:
+      kind: GcpWorkloadIdentityPool
+      name: planton-oss-e2e-gcpwip-prereq
+      fieldPath: status.outputs.workload_identity_pool_id
+  workloadIdentityPoolProviderId: e2e-smoke-${E2E_RUN_ID}
+  displayName: Planton E2E Smoke Provider
+  description: Ephemeral provider created by the Planton E2E harness; safe to delete
+  attributeMapping:
+    google.subject: assertion.sub
+    attribute.repository: assertion.repository
+  attributeCondition: assertion.repository_owner == "plantonhq"
+  oidc:
+    issuerUri: https://token.actions.githubusercontent.com

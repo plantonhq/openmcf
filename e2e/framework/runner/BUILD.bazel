@@ -11,6 +11,7 @@ go_library(
         "stackinput.go",
         "terraform.go",
         "terraform_input.go",
+        "tokens.go",
     ],
     importpath = "github.com/plantonhq/planton/e2e/framework/runner",
     visibility = ["//visibility:public"],
@@ -41,6 +42,7 @@ go_test(
         "dependencies_test.go",
         "outputs_verifier_test.go",
         "refresolve_test.go",
+        "tokens_test.go",
     ],
     embed = [":runner"],
     deps = [

@@ -161,6 +161,38 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpWorkloadIdentityPool: flat scalar outputs from both engines (the
+			// full pool resource name principals embed, the bare pool id providers
+			// reference, and the lifecycle state) must each land on the
+			// StackOutputs proto.
+			name: "GcpWorkloadIdentityPool",
+			kind: cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPool,
+			rawOutputs: map[string]interface{}{
+				"name":                      "projects/123456789/locations/global/workloadIdentityPools/github-actions",
+				"workload_identity_pool_id": "github-actions",
+				"state":                     "ACTIVE",
+			},
+			mustPopulate: []string{
+				"name", "workload_identity_pool_id", "state",
+			},
+		},
+		{
+			// GcpWorkloadIdentityPoolProvider: flat scalar outputs from both
+			// engines (the full provider resource name — the token-exchange
+			// audience — the bare provider id, and the lifecycle state) must each
+			// land on the StackOutputs proto.
+			name: "GcpWorkloadIdentityPoolProvider",
+			kind: cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPoolProvider,
+			rawOutputs: map[string]interface{}{
+				"name":                               "projects/123456789/locations/global/workloadIdentityPools/github-actions/providers/github-oidc",
+				"workload_identity_pool_provider_id": "github-oidc",
+				"state":                              "ACTIVE",
+			},
+			mustPopulate: []string{
+				"name", "workload_identity_pool_provider_id", "state",
+			},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

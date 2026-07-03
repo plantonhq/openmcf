@@ -1,0 +1,22 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpWorkloadIdentityPoolProvider
+metadata:
+  name: github-actions-oidc
+spec:
+  workloadIdentityPoolId:
+    valueFrom:
+      kind: GcpWorkloadIdentityPool
+      name: ci-federation-pool # replace with your pool resource's name
+      fieldPath: status.outputs.workload_identity_pool_id
+  workloadIdentityPoolProviderId: github-oidc # replace: 4-32 chars; lowercase letters, digits, hyphens
+  displayName: GitHub Actions OIDC
+  description: Trusts GitHub-minted workflow tokens for the organization
+  attributeMapping:
+    google.subject: assertion.sub
+    attribute.repository: assertion.repository
+    attribute.repository_owner: assertion.repository_owner
+  # GitHub's issuer signs tokens for EVERY repository on github.com — this
+  # condition is what scopes trust to your organization. Never omit it.
+  attributeCondition: assertion.repository_owner == "<github-org>"
+  oidc:
+    issuerUri: https://token.actions.githubusercontent.com

@@ -97,6 +97,24 @@ func TestGcpProjectIamMember_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpprojectiammember", "terraform")
 }
 
+// --- GCP Workload Identity Pool (the keyless-auth trust boundary) ---
+
+func TestGcpWorkloadIdentityPool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpworkloadidentitypool", "pulumi")
+}
+func TestGcpWorkloadIdentityPool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpworkloadidentitypool", "terraform")
+}
+
+// --- GCP Workload Identity Pool Provider (composed issuer: deploys a GcpWorkloadIdentityPool prerequisite) ---
+
+func TestGcpWorkloadIdentityPoolProvider_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpworkloadidentitypoolprovider", "pulumi")
+}
+func TestGcpWorkloadIdentityPoolProvider_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpworkloadidentitypoolprovider", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

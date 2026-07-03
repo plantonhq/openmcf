@@ -1,0 +1,4 @@
+name: gcpworkloadidentitypool-pulumi-project
+runtime:
+  name: go
+description: Planton GcpWorkloadIdentityPool Pulumi module

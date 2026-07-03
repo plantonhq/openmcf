@@ -55,6 +55,23 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		Passed:    true,
 	}
 
+	// Expand per-run unique-id tokens before anything parses the manifest, so
+	// identifiers that cloud providers reserve across soft-delete windows get a
+	// fresh value on every run (and on each engine within a run).
+	expandRunID := EngineScopedRunID(tc.RunID, tc.Engine)
+	expandedPath, err := ExpandManifestTokens(tc.ManifestPath, expandRunID)
+	if err != nil {
+		result.Passed = false
+		result.Phases = append(result.Phases, PhaseResult{
+			Phase:  PhaseValidate,
+			Passed: false,
+			Error:  errors.Wrap(err, "failed to expand manifest tokens"),
+		})
+		result.Duration = time.Since(start)
+		return result
+	}
+	tc.ManifestPath = expandedPath
+
 	verifyCtx := context.WithValue(ctx, provider.ManifestPathKey{}, tc.ManifestPath)
 
 	// Phase 0: deploy dependencies (registry prerequisites)
@@ -62,7 +79,10 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 	if tc.RepoRoot != "" {
 		depStart := time.Now()
 		var err error
-		dependencyStates, err = DeployDependencies(ctx, tc.RepoRoot, tc.Provider, tc.Component, tc.BackendURL, tc.RunID, harness)
+		// The engine-scoped id is passed down so prerequisite manifests expand to
+		// the same values as the scenario under test (their tokens must line up),
+		// and so each engine's prerequisite deploys get distinct identifiers.
+		dependencyStates, err = DeployDependencies(ctx, tc.RepoRoot, tc.Provider, tc.Component, tc.BackendURL, expandRunID, harness)
 		pr := PhaseResult{
 			Phase:    PhaseDepsUp,
 			Duration: time.Since(depStart),

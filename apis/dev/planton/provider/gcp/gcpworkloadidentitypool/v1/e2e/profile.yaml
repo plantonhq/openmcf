@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpworkloadidentitypool
+spec:
+  # Leaf trust-boundary scenario: deploy -> workloadIdentityPools.get verify
+  # (must be ACTIVE) -> destroy -> verify soft-deleted-or-gone, on both
+  # provisioners. Pool destroy is a soft delete (~30 days) and the pool ID is
+  # NOT reusable while soft-deleted (no undelete-on-create), so the scenario's
+  # pool ID carries the ${E2E_RUN_ID} token — every run and every engine gets
+  # a fresh identifier and never collides with a prior run's ghost.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

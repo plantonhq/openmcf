@@ -243,6 +243,10 @@ const (
 	CloudResourceKind_GcpKmsKeyRing                 CloudResourceKind = 690
 	CloudResourceKind_GcpKmsKey                     CloudResourceKind = 691
 	CloudResourceKind_GcpFilestoreInstance          CloudResourceKind = 700
+	// 701–709: IAM/identity family (overflow block; the 600–622
+	// foundation/security sub-band is fully allocated)
+	CloudResourceKind_GcpWorkloadIdentityPool         CloudResourceKind = 701
+	CloudResourceKind_GcpWorkloadIdentityPoolProvider CloudResourceKind = 702
 	// 800–999: Kubernetes resources
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 800
 	CloudResourceKind_KubernetesCronJob                     CloudResourceKind = 801
@@ -671,6 +675,8 @@ var (
 		690:  "GcpKmsKeyRing",
 		691:  "GcpKmsKey",
 		700:  "GcpFilestoreInstance",
+		701:  "GcpWorkloadIdentityPool",
+		702:  "GcpWorkloadIdentityPoolProvider",
 		800:  "KubernetesArgocd",
 		801:  "KubernetesCronJob",
 		802:  "KubernetesElasticsearch",
@@ -1084,6 +1090,8 @@ var (
 		"GcpKmsKeyRing":                           690,
 		"GcpKmsKey":                               691,
 		"GcpFilestoreInstance":                    700,
+		"GcpWorkloadIdentityPool":                 701,
+		"GcpWorkloadIdentityPoolProvider":         702,
 		"KubernetesArgocd":                        800,
 		"KubernetesCronJob":                       801,
 		"KubernetesElasticsearch":                 802,
@@ -1594,7 +1602,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf9\x91\x01\n" +
+	"\x02v1\x10\x01*\xe6\x92\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1771,7 +1779,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1bGcpCloudComposerEnvironment\x10\xa8\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcce\x12#\n" +
 	"\rGcpKmsKeyRing\x10\xb2\x05\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpkr\x12 \n" +
 	"\tGcpKmsKey\x10\xb3\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpkms\x12+\n" +
-	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpnfs\x12(\n" +
+	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpnfs\x12.\n" +
+	"\x17GcpWorkloadIdentityPool\x10\xbd\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpwip\x12;\n" +
+	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpwipp:\x02\xbd\x05\x12(\n" +
 	"\x10KubernetesArgocd\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x12)\n" +
 	"\x11KubernetesCronJob\x10\xa1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8scron\x121\n" +
 	"\x17KubernetesElasticsearch\x10\xa2\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\xb6\x06\x12&\n" +

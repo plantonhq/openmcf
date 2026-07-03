@@ -42,9 +42,11 @@ type Verifier interface {
 // verifiers maps a component name to its verifier. New GCP components register
 // here as they are forged.
 var verifiers = map[string]Verifier{
-	"gcpserviceaccount":   &serviceAccountVerifier{},
-	"gcpiamcustomrole":    &iamCustomRoleVerifier{},
-	"gcpprojectiammember": &projectIamMemberVerifier{},
+	"gcpserviceaccount":               &serviceAccountVerifier{},
+	"gcpiamcustomrole":                &iamCustomRoleVerifier{},
+	"gcpprojectiammember":             &projectIamMemberVerifier{},
+	"gcpworkloadidentitypool":         &workloadIdentityPoolVerifier{},
+	"gcpworkloadidentitypoolprovider": &workloadIdentityPoolProviderVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

@@ -345,6 +345,20 @@ scenario omits permissions so it needs no pre-existing resource server). Add a
 richer scenario (seeding the dependency) when you need live coverage of dependent
 fields.
 
+**Soft-delete-reserved identifiers need the `${E2E_RUN_ID}` token.** Some cloud
+resources reserve their user-chosen identifier long after deletion (e.g. GCP
+workload identity pools/providers and KMS key rings hold their IDs through a
+soft-delete retention window, with no undelete-on-create). A scenario or
+prerequisite manifest that hardcodes such an identifier can never be deployed
+twice — the second engine's run minutes later collides with the first run's
+soft-deleted ghost. Embed `${E2E_RUN_ID}` in the cloud-side identifier field
+(e.g. `poolId: e2e-smoke-${E2E_RUN_ID}`); the shared runner expands it to an
+engine-scoped per-run value in both scenario and prerequisite manifests. Keep
+`metadata.name` fixed — prerequisite FK resolution and human debugging key off
+it, and only the cloud-side identifier needs uniqueness. Note the raw manifest
+will not pass `planton validate` until the token is substituted; validate it
+with a sample value substituted.
+
 ## Reference
 
 - **Ideal State Definition:** `architecture/deployment-component.md`

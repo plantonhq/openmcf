@@ -40,6 +40,20 @@ SUCCESS
 
 NOTES
 - Later rules will add validations, status/outputs, tests, and IaC. This rule purposefully keeps `spec.proto` minimal and unvalidated for quick iteration.
+- **Verify field availability against a RELEASED provider, not only the cloned
+  provider source.** A locally cloned Terraform provider repo typically sits on
+  `main`, which can be months ahead of the latest published release (and a field
+  can also exist in the released beta provider but not the released GA one, or
+  vice versa). A field modeled from the clone that the pinned/released provider
+  does not accept fails only at `terraform validate`/plan. Cheap ground truth
+  before modeling a borderline field:
+  ```bash
+  # in a scratch dir with just the required_providers block:
+  tofu init -input=false && tofu providers schema -json | \
+    python3 -c "import json,sys; s=json.load(sys.stdin); ..."  # inspect the resource's attributes/blocks
+  ```
+  If a field exists on main but not in any released provider, do not model it yet —
+  record it in `docs/README.md` as a coverage decision and pick it up when it ships.
 - Deterministic read/write responsibilities are fully delegated to the Python tools defined above to ensure repeatable file system effects.
 - When creating enums, follow these guidelines (and the reference component `spec.proto` files):
   - Nest enums inside messages where they're used

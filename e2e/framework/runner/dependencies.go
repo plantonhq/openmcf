@@ -119,6 +119,16 @@ func DeployDependencies(ctx context.Context, repoRoot, componentProvider, compon
 
 	var deployed []DependencyState
 	for _, dep := range deps {
+		// Prerequisites redeploy for every engine run, so their manifests need the
+		// same per-run unique-id expansion as the scenario under test (same token,
+		// same run id — a dependent's ${E2E_RUN_ID}-suffixed reference lines up
+		// with the prerequisite it points at).
+		expandedManifestPath, err := ExpandManifestTokens(dep.ManifestPath, runID)
+		if err != nil {
+			return deployed, errors.Wrapf(err, "failed to expand manifest tokens for dependency %q", dep.KindSlug)
+		}
+		dep.ManifestPath = expandedManifestPath
+
 		resolvedManifestPath, err := ResolveManifestRefs(dep.ManifestPath, accumulated)
 		if err != nil {
 			return deployed, errors.Wrapf(err, "failed to resolve references for dependency %q", dep.KindSlug)

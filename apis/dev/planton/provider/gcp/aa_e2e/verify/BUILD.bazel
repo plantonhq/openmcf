@@ -7,6 +7,8 @@ go_library(
         "project_iam_member.go",
         "service_account.go",
         "verifier.go",
+        "workload_identity_pool.go",
+        "workload_identity_pool_provider.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/aa_e2e/verify",
     visibility = ["//visibility:public"],
