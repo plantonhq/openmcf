@@ -242,6 +242,51 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpRegionNetworkEndpointGroup: flat scalar outputs from both engines
+			// (self-link, name, endpoint type, region) must land on StackOutputs.
+			name: "GcpRegionNetworkEndpointGroup",
+			kind: cloudresourcekind.CloudResourceKind_GcpRegionNetworkEndpointGroup,
+			rawOutputs: map[string]interface{}{
+				"self_link":                   "https://www.googleapis.com/compute/v1/projects/my-project/regions/us-central1/networkEndpointGroups/my-neg",
+				"network_endpoint_group_name": "my-neg",
+				"network_endpoint_type":       "SERVERLESS",
+				"region":                      "us-central1",
+			},
+			mustPopulate: []string{
+				"self_link", "network_endpoint_group_name", "network_endpoint_type", "region",
+			},
+		},
+		{
+			// GcpUrlMap: flat scalar outputs from both engines (self-link, name,
+			// numeric id, fingerprint) must land on StackOutputs.
+			name: "GcpUrlMap",
+			kind: cloudresourcekind.CloudResourceKind_GcpUrlMap,
+			rawOutputs: map[string]interface{}{
+				"self_link":    "https://www.googleapis.com/compute/v1/projects/my-project/global/urlMaps/my-map",
+				"url_map_name": "my-map",
+				"map_id":       "1234567890123456789",
+				"fingerprint":  "BwYn2FQlJeM=",
+			},
+			mustPopulate: []string{
+				"self_link", "url_map_name", "map_id", "fingerprint",
+			},
+		},
+		{
+			// GcpManagedSslCertificate: flat scalar outputs from both engines
+			// (self-link, name, id, expire_time) must land on StackOutputs.
+			name: "GcpManagedSslCertificate",
+			kind: cloudresourcekind.CloudResourceKind_GcpManagedSslCertificate,
+			rawOutputs: map[string]interface{}{
+				"self_link":        "https://www.googleapis.com/compute/v1/projects/my-project/global/sslCertificates/my-cert",
+				"certificate_name": "my-cert",
+				"certificate_id":   "1234567890123456789",
+				"expire_time":      "2027-01-01T00:00:00Z",
+			},
+			mustPopulate: []string{
+				"self_link", "certificate_name", "certificate_id", "expire_time",
+			},
+		},
+		{
 			// GcpSubnetwork: scalar outputs plus the per-index secondary-range
 			// exports both engines emit must land on the StackOutputs proto,
 			// including the repeated secondary_ranges message.

@@ -21,11 +21,17 @@ func (v *backendServiceVerifier) VerifyExists(ctx context.Context, svc *Services
 	if err != nil {
 		return errors.Wrapf(err, "backend service %s not found after deploy", name)
 	}
-	// The scenario wires exactly one health check by reference; the deployed
-	// service must carry it. (GCP itself caps the list at one.)
-	if len(backendService.HealthChecks) != 1 {
-		return errors.Errorf("backend service %s carries %d health checks, expected exactly 1",
+	// When a health check is wired, the deployed service must carry exactly one
+	// (GCP caps the list at one). Serverless-NEG scenarios omit health_check —
+	// those backends manage their own health — so an empty list is valid too.
+	if len(backendService.HealthChecks) > 1 {
+		return errors.Errorf("backend service %s carries %d health checks, expected at most 1",
 			name, len(backendService.HealthChecks))
+	}
+	// The neg-backend scenario wires a live NEG; confirm at least one backend
+	// group is attached when no health check is present.
+	if len(backendService.HealthChecks) == 0 && len(backendService.Backends) == 0 {
+		return errors.Errorf("backend service %s has neither health checks nor backends after deploy", name)
 	}
 	return nil
 }

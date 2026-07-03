@@ -428,9 +428,15 @@ message GcpBackendServiceBackend {
   // serving this backend. Accepts an instance group (zonal or regional) or
   // a NEG self-link; all backends of one service must be the same family —
   // GCP rejects mixing instance groups with NEGs. Provide the URL directly
-  // or reference the resource that owns it. For NEG backends GCP ignores
-  // utilization-based settings.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef group = 1 [(buf.validate.field).required = true];
+  // or reference the resource that owns it: the default reference kind is a
+  // GcpRegionNetworkEndpointGroup (the serverless/PSC/internet backend
+  // bridge), but any group producer can be referenced explicitly by kind.
+  // For NEG backends GCP ignores utilization-based settings.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpRegionNetworkEndpointGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
 
   // How this backend's capacity is measured: UTILIZATION (instance CPU,
   // the default — instance groups only), RATE (HTTP requests per second),

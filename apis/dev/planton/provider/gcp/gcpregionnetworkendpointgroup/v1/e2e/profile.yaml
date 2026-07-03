@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpregionnetworkendpointgroup
+spec:
+  # A leaf scenario: a serverless (Cloud Run) NEG. NEGs are free, instant to
+  # create/destroy, carry no soft-delete reservation, and need no live Cloud
+  # Run service (GCP resolves serverless endpoints at serving time). deploy ->
+  # compute regionNetworkEndpointGroups get verify -> destroy -> verify 404,
+  # on both provisioners.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

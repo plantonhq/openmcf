@@ -1,0 +1,27 @@
+# Minimal GcpRegionNetworkEndpointGroup scenario: a serverless Cloud Run NEG.
+# project_id is deliberately omitted: the module falls back to the provider's
+# default project, which the E2E harness exports as GOOGLE_PROJECT from the
+# resolved test project. The Cloud Run service name is a literal that need not
+# exist — GCP resolves serverless endpoints at serving time — so the NEG
+# creates cleanly on its own. NEGs carry no soft-delete reservation, so the
+# name stays fixed.
+apiVersion: gcp.planton.dev/v1
+kind: GcpRegionNetworkEndpointGroup
+metadata:
+  name: planton-oss-e2e-gcprneg-smoke
+  id: planton-oss-e2e-gcprneg-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpregionnetworkendpointgroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral serverless NEG created by the Planton E2E harness; safe to delete
+  region: us-central1
+  cloudRun:
+    service:
+      value: planton-oss-e2e-cloud-run-placeholder

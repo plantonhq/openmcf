@@ -840,7 +840,26 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpbs"
-    prerequisites: [GcpHealthCheck]
+    prerequisites: [
+      GcpHealthCheck,
+      GcpRegionNetworkEndpointGroup
+    ]
+  }];
+  GcpRegionNetworkEndpointGroup = 626 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcprneg"
+  }];
+  GcpUrlMap = 627 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpum"
+    prerequisites: [GcpBackendService]
+  }];
+  GcpManagedSslCertificate = 628 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpmssl"
   }];
   GcpAlloydbCluster = 630 [(kind_meta) = {
     provider: gcp

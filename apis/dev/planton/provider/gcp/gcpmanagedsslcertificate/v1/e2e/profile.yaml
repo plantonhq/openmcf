@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpmanagedsslcertificate
+spec:
+  # Leaf scenario: a managed SSL certificate with a synthetic domain. Certs are
+  # free, create instantly (PROVISIONING is fine — the object exists), and need
+  # no live DNS or HTTPS proxy attachment for deploy/destroy smoke tests.
+  # deploy -> compute sslCertificates get verify -> destroy -> verify gone, on
+  # both provisioners. The domain carries ${E2E_RUN_ID} so parallel runs and
+  # re-runs never collide on the same hostname in audit logs.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

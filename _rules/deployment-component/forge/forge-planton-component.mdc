@@ -359,6 +359,14 @@ it, and only the cloud-side identifier needs uniqueness. Note the raw manifest
 will not pass `planton validate` until the token is substituted; validate it
 with a sample value substituted.
 
+**Regional outputs: emit the spec region, not the provider attribute.** On
+released google/google-beta 6.x lines the `.region` attribute on regional
+resources (NEGs, subnetworks, regional health checks) may be a region self-link
+(`https://www.googleapis.com/compute/v1/projects/.../regions/us-central1`) rather
+than the plain name (`us-central1`). Stack outputs and E2E verifiers expect the
+plain name — export `var.spec.region` / `pulumi.String(spec.Region)` instead of
+the resource's `.region` attribute when the output proto documents a region name.
+
 ## Reference
 
 - **Ideal State Definition:** `architecture/deployment-component.md`

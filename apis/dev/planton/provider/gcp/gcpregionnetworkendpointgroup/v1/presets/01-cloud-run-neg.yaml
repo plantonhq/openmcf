@@ -1,0 +1,13 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpRegionNetworkEndpointGroup
+metadata:
+  name: cloud-run-neg
+spec:
+  projectId:
+    value: "my-gcp-project-123" # replace: your GCP project id
+  region: us-central1 # replace: the region of your Cloud Run service
+  # SERVERLESS is the default endpoint type.
+  cloudRun:
+    # Reference a GcpCloudRun resource, or set a literal service name here.
+    service:
+      value: "my-cloud-run-service" # replace: your Cloud Run service name

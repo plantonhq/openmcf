@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	awssubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1"
+	gcpbackendservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1"
+	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/manifest"
 )
@@ -91,5 +93,95 @@ func TestResolveManifestRefs_MissingOutputErrors(t *testing.T) {
 
 	if _, err := ResolveManifestRefs(manifestPath, depOutputs); err == nil {
 		t.Fatal("expected an error when the prerequisite output is missing, got nil")
+	}
+}
+
+const backendServiceNegManifest = `apiVersion: gcp.planton.dev/v1
+kind: GcpBackendService
+metadata:
+  name: neg-backend
+spec:
+  protocol: HTTP
+  loadBalancingScheme: EXTERNAL_MANAGED
+  backends:
+    - group:
+        valueFrom:
+          kind: GcpRegionNetworkEndpointGroup
+          name: my-neg
+          fieldPath: status.outputs.self_link
+      balancingMode: RATE
+      maxRate: 100
+`
+
+const urlMapExplicitKindManifest = `apiVersion: gcp.planton.dev/v1
+kind: GcpUrlMap
+metadata:
+  name: my-url-map
+spec:
+  defaultService:
+    valueFrom:
+      kind: GcpBackendService
+      name: my-backend
+      fieldPath: status.outputs.self_link
+`
+
+func TestResolveManifestRefs_ResolvesNestedBackendGroupByExplicitKind(t *testing.T) {
+	manifestPath := writeTempManifest(t, backendServiceNegManifest)
+
+	depOutputs := map[cloudresourcekind.CloudResourceKind]map[string]interface{}{
+		cloudresourcekind.CloudResourceKind_GcpRegionNetworkEndpointGroup: {
+			"self_link": "https://www.googleapis.com/compute/v1/projects/p/regions/r/networkEndpointGroups/n",
+		},
+	}
+
+	resolvedPath, err := ResolveManifestRefs(manifestPath, depOutputs)
+	if err != nil {
+		t.Fatalf("ResolveManifestRefs failed: %v", err)
+	}
+
+	obj, err := manifest.LoadManifest(resolvedPath)
+	if err != nil {
+		t.Fatalf("failed to load resolved manifest: %v", err)
+	}
+	bs, ok := obj.(*gcpbackendservicev1.GcpBackendService)
+	if !ok {
+		t.Fatalf("resolved manifest is not a GcpBackendService: %T", obj)
+	}
+	if len(bs.GetSpec().GetBackends()) != 1 {
+		t.Fatalf("expected 1 backend, got %d", len(bs.GetSpec().GetBackends()))
+	}
+	got := bs.GetSpec().GetBackends()[0].GetGroup().GetValue()
+	want := "https://www.googleapis.com/compute/v1/projects/p/regions/r/networkEndpointGroups/n"
+	if got != want {
+		t.Errorf("backends[0].group = %q, want %q", got, want)
+	}
+}
+
+func TestResolveManifestRefs_ResolvesExplicitValueFromKindWithoutDefaultKind(t *testing.T) {
+	manifestPath := writeTempManifest(t, urlMapExplicitKindManifest)
+
+	depOutputs := map[cloudresourcekind.CloudResourceKind]map[string]interface{}{
+		cloudresourcekind.CloudResourceKind_GcpBackendService: {
+			"self_link": "https://www.googleapis.com/compute/v1/projects/p/global/backendServices/bs",
+		},
+	}
+
+	resolvedPath, err := ResolveManifestRefs(manifestPath, depOutputs)
+	if err != nil {
+		t.Fatalf("ResolveManifestRefs failed: %v", err)
+	}
+
+	obj, err := manifest.LoadManifest(resolvedPath)
+	if err != nil {
+		t.Fatalf("failed to load resolved manifest: %v", err)
+	}
+	um, ok := obj.(*gcpurlmapv1.GcpUrlMap)
+	if !ok {
+		t.Fatalf("resolved manifest is not a GcpUrlMap: %T", obj)
+	}
+	got := um.GetSpec().GetDefaultService().GetValue()
+	want := "https://www.googleapis.com/compute/v1/projects/p/global/backendServices/bs"
+	if got != want {
+		t.Errorf("default_service = %q, want %q", got, want)
 	}
 }

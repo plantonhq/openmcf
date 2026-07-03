@@ -82,6 +82,17 @@ before applying a GatewayClass / Gateway / route / ReferenceGrant. The Tier 3
 operator-dependent components (Postgres, Kafka, ...) likewise declare their
 operator kind, which installs from the operator's `scenarios/minimal.yaml`.
 
+### Resolving `valueFrom` references in composed scenarios
+
+Before a scenario (or a prerequisite manifest) is applied, the runner resolves
+every `valueFrom` reference in the spec against already-deployed prerequisite
+outputs ([refresolve.go](framework/runner/refresolve.go)). Resolution walks the
+full spec tree — including nested messages and repeated elements such as
+`backends[0].group` — and honors an explicit `valueFrom.kind` when the field
+has no `default_kind` (e.g. a URL map's `default_service` pointing at either a
+backend service or a backend bucket). Top-level refs with a field-level
+`default_kind` behave exactly as before; existing manifests are unchanged.
+
 ## E2E Profiles
 
 Profiles are KRM-style YAML files (`apiVersion: qa.planton.dev/v1`) that

@@ -543,8 +543,10 @@ type GcpBackendServiceBackend struct {
 	// serving this backend. Accepts an instance group (zonal or regional) or
 	// a NEG self-link; all backends of one service must be the same family —
 	// GCP rejects mixing instance groups with NEGs. Provide the URL directly
-	// or reference the resource that owns it. For NEG backends GCP ignores
-	// utilization-based settings.
+	// or reference the resource that owns it: the default reference kind is a
+	// GcpRegionNetworkEndpointGroup (the serverless/PSC/internet backend
+	// bridge), but any group producer can be referenced explicitly by kind.
+	// For NEG backends GCP ignores utilization-based settings.
 	Group *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
 	// How this backend's capacity is measured: UTILIZATION (instance CPU,
 	// the default — instance groups only), RATE (HTTP requests per second),
@@ -2521,9 +2523,9 @@ const file_dev_planton_provider_gcp_gcpbackendservice_v1_spec_proto_rawDesc = ""
 	"\x16_load_balancing_schemeB\x0e\n" +
 	"\f_timeout_secB\"\n" +
 	" _connection_draining_timeout_secB\x13\n" +
-	"\x11_session_affinity\"\xed\x10\n" +
-	"\x18GcpBackendServiceBackend\x12P\n" +
-	"\x05group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x05group\x12\xf9\x01\n" +
+	"\x11_session_affinity\"\x8e\x11\n" +
+	"\x18GcpBackendServiceBackend\x12q\n" +
+	"\x05group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf2\x04\x92\xd4a\x18status.outputs.self_linkR\x05group\x12\xf9\x01\n" +
 	"\x0ebalancing_mode\x18\x02 \x01(\tB\xcc\x01\xbaH\xb9\x01\xba\x01\xb5\x01\n" +
 	"\x14valid_balancing_mode\x12Nbalancing_mode must be one of UTILIZATION, RATE, CONNECTION, or CUSTOM_METRICS\x1aMthis == '' || this in ['UTILIZATION', 'RATE', 'CONNECTION', 'CUSTOM_METRICS']\x8a\xa6\x1d\vUTILIZATIONH\x00R\rbalancingMode\x88\x01\x01\x12L\n" +
 	"\x0fcapacity_scaler\x18\x03 \x01(\x01B\x1e\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00\x8a\xa6\x1d\x031.0H\x01R\x0ecapacityScaler\x88\x01\x01\x12*\n" +

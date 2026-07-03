@@ -151,6 +151,33 @@ func TestGcpSubnetwork_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpsubnetwork", "terraform")
 }
 
+// --- GCP Region Network Endpoint Group (serverless NEG bridge) ---
+
+func TestGcpRegionNetworkEndpointGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpregionnetworkendpointgroup", "pulumi")
+}
+func TestGcpRegionNetworkEndpointGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpregionnetworkendpointgroup", "terraform")
+}
+
+// --- GCP URL Map (composed routing: deploys GcpBackendService + GcpHealthCheck prerequisites) ---
+
+func TestGcpUrlMap_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpurlmap", "pulumi")
+}
+func TestGcpUrlMap_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpurlmap", "terraform")
+}
+
+// --- GCP Managed SSL Certificate (global managed cert leaf) ---
+
+func TestGcpManagedSslCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmanagedsslcertificate", "pulumi")
+}
+func TestGcpManagedSslCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmanagedsslcertificate", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

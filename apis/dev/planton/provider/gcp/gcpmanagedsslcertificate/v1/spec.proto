@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpmanagedsslcertificate.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpManagedSslCertificateSpec defines a Google-managed SSL certificate — a
+// global Compute Engine SSL certificate whose private key and issuance are
+// handled entirely by Google. Attach it to a target HTTPS proxy to terminate
+// TLS at a global external Application Load Balancer without ever handling key
+// material yourself.
+//
+// Provisioning is asynchronous and DNS-gated: creation returns immediately,
+// but the certificate stays PROVISIONING until each domain's DNS points at the
+// load balancer's IP (the same forwarding rule the proxy this cert is attached
+// to serves). Until then the domain serves Google's default certificate.
+//
+// The whole resource is immutable in GCP: name and domains are ForceNew, so
+// changing the domain list destroys and recreates the certificate. Because a
+// cert attached to a proxy cannot be deleted, rotate by creating the
+// replacement first and swapping the proxy's reference before destroying the
+// old one (create-before-destroy) — otherwise the destroy fails and TLS drops
+// during the gap.
+message GcpManagedSslCertificateSpec {
+  // The GCP project that owns the certificate.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the certificate.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the certificate in GCP. Must be 1-63 characters: lowercase
+  // letters, digits, and hyphens; must start with a letter and end with a
+  // letter or digit. If not specified, defaults to metadata.name.
+  // Immutable: changing it destroys and recreates the certificate, briefly
+  // breaking every target HTTPS proxy that references the old self_link.
+  string certificate_name = 2 [(buf.validate.field).cel = {
+    id: "valid_certificate_name"
+    message: "certificate_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')"
+  }];
+
+  // What this certificate secures and which proxy uses it — write it for the
+  // operator debugging a TLS provisioning issue later. Immutable.
+  string description = 3 [(buf.validate.field).string.max_len = 2048];
+
+  // The domains the certificate is valid for (1-100). Each must be a
+  // fully-qualified domain name; a leading "*." wildcard is NOT supported by
+  // Google-managed certificates. Every domain must have DNS pointing at the
+  // load balancer before the certificate can finish provisioning. Immutable:
+  // changing the list destroys and recreates the certificate.
+  repeated string domains = 4 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 100,
+    (buf.validate.field).cel = {
+      id: "valid_managed_cert_domains"
+      message: "each domain must be a fully-qualified domain name (no wildcards) such as app.example.com"
+      expression: "this.all(d, d.matches('^([a-z0-9]([-a-z0-9]*[a-z0-9])?\\\\.)+[a-z]{2,63}\\\\.?$'))"
+    }
+  ];
+}

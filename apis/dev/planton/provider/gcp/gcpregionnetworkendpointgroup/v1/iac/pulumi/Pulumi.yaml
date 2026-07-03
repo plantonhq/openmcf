@@ -1,0 +1,4 @@
+name: gcpregionnetworkendpointgroup-pulumi-project
+runtime:
+  name: go
+description: Planton GcpRegionNetworkEndpointGroup Pulumi module

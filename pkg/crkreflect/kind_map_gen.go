@@ -243,17 +243,20 @@ import (
 	gcpiamcustomrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpiamcustomrole/v1"
 	gcpkmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskey/v1"
 	gcpkmskeyringv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyring/v1"
+	gcpmanagedsslcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmanagedsslcertificate/v1"
 	gcpmemorystoreinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1"
 	gcpprojectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpproject/v1"
 	gcpprojectiammemberv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpprojectiammember/v1"
 	gcppubsubsubscriptionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubsubscription/v1"
 	gcppubsubtopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubtopic/v1"
 	gcpredisinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpredisinstance/v1"
+	gcpregionnetworkendpointgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpregionnetworkendpointgroup/v1"
 	gcprouternatv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1"
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
 	gcpspannerdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerdatabase/v1"
 	gcpspannerinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerinstance/v1"
 	gcpsubnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1"
+	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
 	gcpvertexaiendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiendpoint/v1"
 	gcpvertexainotebookv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexainotebook/v1"
 	gcpvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvpc/v1"
@@ -703,17 +706,20 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpIamCustomRole:                &gcpiamcustomrolev1.GcpIamCustomRole{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKey:                       &gcpkmskeyv1.GcpKmsKey{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKeyRing:                   &gcpkmskeyringv1.GcpKmsKeyRing{},
+	cloudresourcekind.CloudResourceKind_GcpManagedSslCertificate:        &gcpmanagedsslcertificatev1.GcpManagedSslCertificate{},
 	cloudresourcekind.CloudResourceKind_GcpMemorystoreInstance:          &gcpmemorystoreinstancev1.GcpMemorystoreInstance{},
 	cloudresourcekind.CloudResourceKind_GcpProject:                      &gcpprojectv1.GcpProject{},
 	cloudresourcekind.CloudResourceKind_GcpProjectIamMember:             &gcpprojectiammemberv1.GcpProjectIamMember{},
 	cloudresourcekind.CloudResourceKind_GcpPubSubSubscription:           &gcppubsubsubscriptionv1.GcpPubSubSubscription{},
 	cloudresourcekind.CloudResourceKind_GcpPubSubTopic:                  &gcppubsubtopicv1.GcpPubSubTopic{},
 	cloudresourcekind.CloudResourceKind_GcpRedisInstance:                &gcpredisinstancev1.GcpRedisInstance{},
+	cloudresourcekind.CloudResourceKind_GcpRegionNetworkEndpointGroup:   &gcpregionnetworkendpointgroupv1.GcpRegionNetworkEndpointGroup{},
 	cloudresourcekind.CloudResourceKind_GcpRouterNat:                    &gcprouternatv1.GcpRouterNat{},
 	cloudresourcekind.CloudResourceKind_GcpServiceAccount:               &gcpserviceaccountv1.GcpServiceAccount{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:              &gcpspannerdatabasev1.GcpSpannerDatabase{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerInstance:              &gcpspannerinstancev1.GcpSpannerInstance{},
 	cloudresourcekind.CloudResourceKind_GcpSubnetwork:                   &gcpsubnetworkv1.GcpSubnetwork{},
+	cloudresourcekind.CloudResourceKind_GcpUrlMap:                       &gcpurlmapv1.GcpUrlMap{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint:             &gcpvertexaiendpointv1.GcpVertexAiEndpoint{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook:             &gcpvertexainotebookv1.GcpVertexAiNotebook{},
 	cloudresourcekind.CloudResourceKind_GcpVpc:                          &gcpvpcv1.GcpVpc{},
