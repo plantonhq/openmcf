@@ -14,7 +14,7 @@ This preset creates a zonal Windows Server 2022 VM with trusted launch (secure b
 - **`licenseType: WINDOWS_SERVER`** -- Azure Hybrid Benefit cuts the compute bill substantially when you hold a license with Software Assurance; drop the field for pay-as-you-go
 - **Trusted launch** (`secureBootEnabled` + `vtpmEnabled`) -- the modern security baseline for Gen2 images; fixed at creation, so decide it here
 - **Computer-name limit** -- Windows hostnames cap at 15 characters and default to the VM name; use `osProfile.computerName` if the VM name must be longer
-- **Patch orchestration** -- the image's default is Windows Update (`AUTOMATIC_BY_OS`); set `patchMode: AUTOMATIC_BY_PLATFORM` plus `patching.rebootSetting` to hand scheduling to Azure Update Manager
+- **Patch orchestration** -- the image's default is Windows Update (`AUTOMATIC_BY_OS`); set `patchMode: WINDOWS_AUTOMATIC_BY_PLATFORM` plus `patching.rebootSetting` to hand scheduling to Azure Update Manager
 - **RDP exposure** -- keep the NIC private and reach the VM through Azure Bastion or a VPN; a public IP on 3389 is an attack magnet
 
 ## Placeholders to Replace
