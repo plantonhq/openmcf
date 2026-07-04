@@ -171,6 +171,7 @@ import (
 	azurevirtualmachinescalesetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualmachinescaleset/v1"
 	azurevirtualnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualnetwork/v1"
 	azurevirtualnetworkpeeringv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1"
+	azurewebapplicationfirewallpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurewebapplicationfirewallpolicy/v1"
 	civobucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civobucket/v1"
 	civocertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civocertificate/v1"
 	civocomputeinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civocomputeinstance/v1"
@@ -628,6 +629,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureVirtualMachineScaleSet:           &azurevirtualmachinescalesetv1.AzureVirtualMachineScaleSet{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetwork:                   &azurevirtualnetworkv1.AzureVirtualNetwork{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkPeering:            &azurevirtualnetworkpeeringv1.AzureVirtualNetworkPeering{},
+	cloudresourcekind.CloudResourceKind_AzureWebApplicationFirewallPolicy:     &azurewebapplicationfirewallpolicyv1.AzureWebApplicationFirewallPolicy{},
 }
 
 var ProviderCivoMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

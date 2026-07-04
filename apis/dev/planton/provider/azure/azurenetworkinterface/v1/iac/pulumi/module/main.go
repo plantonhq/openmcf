@@ -170,7 +170,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurenetworkinterfacev1.AzureNet
 			}
 		}
 		for i, poolId := range config.ApplicationGatewayBackendAddressPoolIds {
-			if poolId == "" {
+			if poolId.GetValue() == "" {
 				continue
 			}
 			if _, err := network.NewNetworkInterfaceApplicationGatewayBackendAddressPoolAssociation(ctx,
@@ -178,7 +178,7 @@ func Resources(ctx *pulumi.Context, stackInput *azurenetworkinterfacev1.AzureNet
 				&network.NetworkInterfaceApplicationGatewayBackendAddressPoolAssociationArgs{
 					NetworkInterfaceId:   createdNetworkInterface.ID(),
 					IpConfigurationName:  pulumi.String(config.Name),
-					BackendAddressPoolId: pulumi.String(poolId),
+					BackendAddressPoolId: pulumi.String(poolId.GetValue()),
 				},
 				pulumi.Provider(azureProvider)); err != nil {
 				return errors.Wrapf(err, "failed to associate application gateway backend pool %d with ip configuration %s", i, config.Name)

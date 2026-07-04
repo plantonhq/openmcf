@@ -31,6 +31,7 @@ type Verifier interface {
 var verifiers = map[string]Verifier{
 	"azureakscluster":                       &aksClusterVerifier{},
 	"azureaksnodepool":                      &aksNodePoolVerifier{},
+	"azureapplicationgateway":               &applicationGatewayVerifier{},
 	"azurecontainerregistry":                &containerRegistryVerifier{},
 	"azurefederatedidentitycredential":      &federatedIdentityCredentialVerifier{},
 	"azurekeyvault":                         &keyVaultVerifier{},
@@ -41,6 +42,7 @@ var verifiers = map[string]Verifier{
 	"azurenatgateway":                       &natGatewayVerifier{},
 	"azurenetworkinterface":                 &networkInterfaceVerifier{},
 	"azurenetworksecuritygroup":             &networkSecurityGroupVerifier{},
+	"azurepostgresqlflexibleserver":         &postgresqlFlexibleServerVerifier{},
 	"azureprivatednszone":                   &privateDnsZoneVerifier{},
 	"azureprivatednszonevirtualnetworklink": &privateDnsZoneVirtualNetworkLinkVerifier{},
 	"azurepublicip":                         &publicIpVerifier{},
@@ -55,6 +57,7 @@ var verifiers = map[string]Verifier{
 	"azurevirtualmachinescaleset":           &virtualMachineScaleSetVerifier{},
 	"azurevirtualnetwork":                   &virtualNetworkVerifier{},
 	"azurevirtualnetworkpeering":            &virtualNetworkPeeringVerifier{},
+	"azurewebapplicationfirewallpolicy":     &webApplicationFirewallPolicyVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

@@ -118,8 +118,8 @@ var _ = ginkgo.Describe("AzureNetworkInterfaceSpec Custom Validation Tests", fun
 			spec.IpConfigurations[0].LoadBalancerInboundNatRuleIds = []*foreignkeyv1.StringValueOrRef{
 				stringRef("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/loadBalancers/lb/inboundNatRules/ssh-admin"),
 			}
-			spec.IpConfigurations[0].ApplicationGatewayBackendAddressPoolIds = []string{
-				"/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/applicationGateways/agw/backendAddressPools/web",
+			spec.IpConfigurations[0].ApplicationGatewayBackendAddressPoolIds = []*foreignkeyv1.StringValueOrRef{
+				stringRef("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/applicationGateways/agw/backendAddressPools/web"),
 			}
 			err := protovalidate.Validate(validInput(spec))
 			gomega.Expect(err).To(gomega.BeNil())

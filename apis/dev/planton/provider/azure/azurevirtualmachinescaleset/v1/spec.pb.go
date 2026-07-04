@@ -2930,9 +2930,9 @@ type AzureVirtualMachineScaleSetIpConfiguration struct {
 	// "status.outputs.nat_rule_ids.per-instance-ssh".
 	LoadBalancerInboundNatRuleIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=load_balancer_inbound_nat_rule_ids,json=loadBalancerInboundNatRuleIds,proto3" json:"load_balancer_inbound_nat_rule_ids,omitempty"`
 	// Application Gateway backend pools every instance joins, by pool ARM
-	// ID. Plain ARM IDs: the Application Gateway does not export per-pool
-	// IDs yet.
-	ApplicationGatewayBackendAddressPoolIds []string `protobuf:"bytes,7,rep,name=application_gateway_backend_address_pool_ids,json=applicationGatewayBackendAddressPoolIds,proto3" json:"application_gateway_backend_address_pool_ids,omitempty"`
+	// ID. Reference a pool through the gateway's name-keyed map output,
+	// e.g. valueFrom fieldPath "status.outputs.backend_address_pool_ids.web".
+	ApplicationGatewayBackendAddressPoolIds []*v1.StringValueOrRef `protobuf:"bytes,7,rep,name=application_gateway_backend_address_pool_ids,json=applicationGatewayBackendAddressPoolIds,proto3" json:"application_gateway_backend_address_pool_ids,omitempty"`
 	// Application security groups instances join (up to 20), by ARM ID,
 	// so NSG rules can target the fleet as a workload group.
 	ApplicationSecurityGroupIds []string `protobuf:"bytes,8,rep,name=application_security_group_ids,json=applicationSecurityGroupIds,proto3" json:"application_security_group_ids,omitempty"`
@@ -3016,7 +3016,7 @@ func (x *AzureVirtualMachineScaleSetIpConfiguration) GetLoadBalancerInboundNatRu
 	return nil
 }
 
-func (x *AzureVirtualMachineScaleSetIpConfiguration) GetApplicationGatewayBackendAddressPoolIds() []string {
+func (x *AzureVirtualMachineScaleSetIpConfiguration) GetApplicationGatewayBackendAddressPoolIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.ApplicationGatewayBackendAddressPoolIds
 	}
@@ -4786,7 +4786,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x0eauxiliary_mode\x18\b \x01(\x0e2c.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAuxiliaryModeR\rauxiliaryMode\x12\x87\x01\n" +
 	"\rauxiliary_sku\x18\t \x01(\x0e2b.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAuxiliarySkuR\fauxiliarySku:\x86\x03\xbaH\x82\x03\x1a\xa6\x01\n" +
 	"\"vmss_nic_auxiliary_mode_sku_paired\x12Gauxiliary_mode and auxiliary_sku must be set together (both or neither)\x1a7(this.auxiliary_mode == 0) == (this.auxiliary_sku == 0)\x1a\xd6\x01\n" +
-	"5vmss_nic_first_ip_configuration_primary_when_multiple\x12Twhen a NIC template has multiple ip_configurations, the first must be marked primary\x1aGthis.ip_configurations.size() <= 1 || this.ip_configurations[0].primary\"\xef\a\n" +
+	"5vmss_nic_first_ip_configuration_primary_when_multiple\x12Twhen a NIC template has multiple ip_configurations, the first must be marked primary\x1aGthis.ip_configurations.size() <= 1 || this.ip_configurations[0].primary\"\xd6\b\n" +
 	"*AzureVirtualMachineScaleSetIpConfiguration\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x18\n" +
@@ -4794,8 +4794,8 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12y\n" +
 	"\aversion\x18\x04 \x01(\x0e2_.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersionR\aversion\x12\xaf\x01\n" +
 	"&load_balancer_backend_address_pool_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xa1\x03\x92\xd4a\x1fstatus.outputs.backend_pool_idsR!loadBalancerBackendAddressPoolIds\x12\xa3\x01\n" +
-	"\"load_balancer_inbound_nat_rule_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xa1\x03\x92\xd4a\x1bstatus.outputs.nat_rule_idsR\x1dloadBalancerInboundNatRuleIds\x12]\n" +
-	",application_gateway_backend_address_pool_ids\x18\a \x03(\tR'applicationGatewayBackendAddressPoolIds\x12M\n" +
+	"\"load_balancer_inbound_nat_rule_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xa1\x03\x92\xd4a\x1bstatus.outputs.nat_rule_idsR\x1dloadBalancerInboundNatRuleIds\x12\xc3\x01\n" +
+	",application_gateway_backend_address_pool_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xa0\x03\x92\xd4a'status.outputs.backend_address_pool_idsR'applicationGatewayBackendAddressPoolIds\x12M\n" +
 	"\x1eapplication_security_group_ids\x18\b \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x14R\x1bapplicationSecurityGroupIds\x12\x91\x01\n" +
 	"\x11public_ip_address\x18\t \x01(\v2e.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddressR\x0fpublicIpAddress\"\xd9\x04\n" +
 	"*AzureVirtualMachineScaleSetPublicIpAddress\x12\x1a\n" +
@@ -5159,30 +5159,31 @@ var file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_de
 	8,  // 55: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.version:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersion
 	60, // 56: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.load_balancer_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	60, // 57: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.load_balancer_inbound_nat_rule_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	37, // 58: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.public_ip_address:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress
-	8,  // 59: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.version:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersion
-	60, // 60: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.public_ip_prefix_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	38, // 61: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.ip_tags:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpTag
-	9,  // 62: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.mode:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradeMode
-	40, // 63: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.rolling:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRollingUpgradePolicy
-	41, // 64: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.automatic_os_upgrade:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticOsUpgrade
-	60, // 65: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.health_probe_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 66: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.eviction_policy:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetEvictionPolicy
-	43, // 67: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.restore:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpotRestore
-	44, // 68: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.priority_mix:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPriorityMix
-	10, // 69: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentity.type:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentityType
-	60, // 70: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 71: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticInstanceRepair.action:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRepairAction
-	50, // 72: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtension.protected_settings_from_key_vault:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault
-	60, // 73: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault.source_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 74: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleIn.rule:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleInRule
-	60, // 75: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	55, // 76: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecret.certificates:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecretCertificate
-	77, // [77:77] is the sub-list for method output_type
-	77, // [77:77] is the sub-list for method input_type
-	77, // [77:77] is the sub-list for extension type_name
-	77, // [77:77] is the sub-list for extension extendee
-	0,  // [0:77] is the sub-list for field type_name
+	60, // 58: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.application_gateway_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	37, // 59: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpConfiguration.public_ip_address:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress
+	8,  // 60: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.version:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersion
+	60, // 61: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.public_ip_prefix_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	38, // 62: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddress.ip_tags:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpTag
+	9,  // 63: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.mode:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradeMode
+	40, // 64: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.rolling:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRollingUpgradePolicy
+	41, // 65: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.automatic_os_upgrade:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticOsUpgrade
+	60, // 66: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradePolicy.health_probe_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 67: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.eviction_policy:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetEvictionPolicy
+	43, // 68: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.restore:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpotRestore
+	44, // 69: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSpot.priority_mix:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPriorityMix
+	10, // 70: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentity.type:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentityType
+	60, // 71: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 72: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticInstanceRepair.action:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRepairAction
+	50, // 73: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtension.protected_settings_from_key_vault:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault
+	60, // 74: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault.source_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 75: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleIn.rule:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleInRule
+	60, // 76: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	55, // 77: dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecret.certificates:type_name -> dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecretCertificate
+	78, // [78:78] is the sub-list for method output_type
+	78, // [78:78] is the sub-list for method input_type
+	78, // [78:78] is the sub-list for extension type_name
+	78, // [78:78] is the sub-list for extension extendee
+	0,  // [0:78] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_init() }

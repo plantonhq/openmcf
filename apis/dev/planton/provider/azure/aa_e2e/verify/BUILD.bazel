@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "aks_cluster.go",
         "aks_node_pool.go",
+        "application_gateway.go",
         "container_registry.go",
         "federated_identity_credential.go",
         "key_vault.go",
@@ -15,6 +16,7 @@ go_library(
         "nat_gateway.go",
         "network_interface.go",
         "network_security_group.go",
+        "postgresql_flexible_server.go",
         "private_dns_zone.go",
         "private_dns_zone_virtual_network_link.go",
         "public_ip.go",
@@ -30,6 +32,7 @@ go_library(
         "virtual_machine_scale_set.go",
         "virtual_network.go",
         "virtual_network_peering.go",
+        "web_application_firewall_policy.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/azure/aa_e2e/verify",
     visibility = ["//visibility:public"],

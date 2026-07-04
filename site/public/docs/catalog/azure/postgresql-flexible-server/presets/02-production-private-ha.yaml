@@ -1,0 +1,44 @@
+apiVersion: azure.planton.dev/v1
+kind: AzurePostgresqlFlexibleServer
+metadata:
+  name: prod-postgres
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  serverName: <globally-unique-server-name>
+  administratorLogin: <admin-login>
+  administratorPassword:
+    value: <admin-password>
+  skuName: GP_Standard_D4ds_v5
+  storageMb: 262144
+  autoGrowEnabled: true
+  # Pin the primary and standby to different zones for zone-redundant
+  # failover.
+  zone: "1"
+  highAvailability:
+    mode: ZONE_REDUNDANT
+    standbyAvailabilityZone: "2"
+  backupRetentionDays: 35
+  geoRedundantBackupEnabled: true
+  # VNet injection: the server lives on a delegated subnet with no public
+  # endpoint. Azure requires public access explicitly OFF when injected.
+  publicNetworkAccessEnabled: false
+  delegatedSubnetId:
+    valueFrom:
+      kind: AzureSubnet
+      name: <database-subnet-resource-name>
+      fieldPath: status.outputs.subnet_id
+  privateDnsZoneId:
+    valueFrom:
+      kind: AzurePrivateDnsZone
+      name: <postgres-dns-zone-resource-name>
+      fieldPath: status.outputs.zone_id
+  maintenanceWindow:
+    dayOfWeek: 0
+    startHour: 3
+    startMinute: 0
+  databases:
+    - name: <application-database-name>
+  tags:
+    cost-center: <cost-center>

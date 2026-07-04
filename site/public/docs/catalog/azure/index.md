@@ -55,3 +55,4 @@ The following AZURE resources can be deployed using Planton:
 - [Virtual Machine Scale Set](/docs/catalog/azure/virtual-machine-scale-set)
 - [Virtual Network](/docs/catalog/azure/virtual-network)
 - [Virtual Network Peering](/docs/catalog/azure/virtual-network-peering)
+- [Web Application Firewall Policy](/docs/catalog/azure/web-application-firewall-policy)

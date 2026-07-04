@@ -5,39 +5,42 @@ package dev.planton.provider.azure.azurepostgresqlflexibleserver.v1;
 // **AzurePostgresqlFlexibleServerStackOutputs** captures the outputs of
 // provisioning an Azure Database for PostgreSQL Flexible Server.
 //
-// The primary outputs are `server_id` for resource identification, `fqdn`
-// for constructing connection strings, and `administrator_login` for
-// authentication. The `database_ids` map provides individual database
-// resource IDs for downstream references.
-//
-// In the database-stack infra chart, the `fqdn` and `administrator_login`
-// outputs are used by applications to construct PostgreSQL connection strings.
-// The `server_id` is referenced by AzurePrivateEndpoint for private connectivity.
+// `fqdn` + `administrator_login` are what applications need to construct
+// connection strings. `server_id` is the join key for everything that
+// attaches to or derives from the server: AzurePrivateEndpoint's
+// private_connection_resource_id, and another
+// AzurePostgresqlFlexibleServer's source_server_id when composing read
+// replicas or restores. `identity_principal_id` is the grant seam for the
+// server's system-assigned identity.
 message AzurePostgresqlFlexibleServerStackOutputs {
-  // The Azure Resource Manager ID of the PostgreSQL Flexible Server.
+  // The Azure Resource Manager ID of the server.
   // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DBforPostgreSQL/flexibleServers/{name}
-  //
   // Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-  // for establishing private connectivity to the database server.
+  // and by replica/restore servers (source_server_id).
   string server_id = 1;
 
-  // The name of the PostgreSQL Flexible Server.
+  // The name of the server.
   string server_name = 2;
 
-  // The fully qualified domain name of the PostgreSQL Flexible Server.
-  // Format: {name}.postgres.database.azure.com
-  //
-  // Used to construct connection strings:
-  //   postgresql://{admin_login}:{password}@{fqdn}:5432/{database}?sslmode=require
+  // The server's fully qualified domain name
+  // ({name}.postgres.database.azure.com). For a VNet-injected server it
+  // resolves to the private address through the private DNS zone.
+  // Connection strings take the shape:
+  //   postgresql://{login}:{password}@{fqdn}:5432/{database}?sslmode=require
   string fqdn = 3;
 
-  // The administrator login name.
-  // Exported so downstream resources and applications can construct
-  // connection strings without needing to duplicate this value.
+  // The administrator login, echoed so applications can construct
+  // connection strings without duplicating the value. Empty on an
+  // Entra-only server (password auth disabled).
   string administrator_login = 4;
 
-  // Map of database names to their Azure Resource Manager IDs.
-  // Only populated for databases defined in the spec's `databases` field.
-  // Format: { "myapp": "/subscriptions/.../databases/myapp" }
+  // The ARM ID of each database declared in the spec, keyed by database
+  // name.
+  // Example valueFrom fieldPath: status.outputs.database_ids.myapp
   map<string, string> database_ids = 5;
+
+  // The principal (directory object) ID of the server's system-assigned
+  // managed identity -- the subject for AzureRoleAssignment grants. Empty
+  // unless the identity type includes SYSTEM_ASSIGNED.
+  string identity_principal_id = 6;
 }

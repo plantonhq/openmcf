@@ -6835,10 +6835,10 @@ const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = ""
 	"\x1alog_analytics_workspace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\"w\n" +
 	"\x1dAzureAksClusterMonitorMetrics\x12/\n" +
 	"\x13annotations_allowed\x18\x01 \x01(\tR\x12annotationsAllowed\x12%\n" +
-	"\x0elabels_allowed\x18\x02 \x01(\tR\rlabelsAllowed\"\xc8\x04\n" +
-	"(AzureAksClusterIngressApplicationGateway\x12y\n" +
+	"\x0elabels_allowed\x18\x02 \x01(\tR\rlabelsAllowed\"\xd1\x04\n" +
+	"(AzureAksClusterIngressApplicationGateway\x12\x81\x01\n" +
 	"\n" +
-	"gateway_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa0\x03\x92\xd4a\x1dstatus.outputs.app_gateway_idR\tgatewayId\x12!\n" +
+	"gateway_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xa0\x03\x92\xd4a%status.outputs.application_gateway_idR\tgatewayId\x12!\n" +
 	"\fgateway_name\x18\x02 \x01(\tR\vgatewayName\x12\x1f\n" +
 	"\vsubnet_cidr\x18\x03 \x01(\tR\n" +
 	"subnetCidr\x12r\n" +

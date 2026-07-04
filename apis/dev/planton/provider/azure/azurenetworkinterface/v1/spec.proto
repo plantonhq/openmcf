@@ -234,11 +234,15 @@ message AzureNetworkInterfaceIpConfiguration {
   ];
 
   // Application Gateway backend pools this configuration joins, by pool
-  // ARM ID. Plain ARM IDs: the Application Gateway does not export
-  // per-pool IDs yet (they arrive with its depth work). Realized as
+  // ARM ID -- membership is expressed from the member side in Azure's
+  // model. Reference a pool through the gateway's name-keyed map output,
+  // e.g. valueFrom fieldPath
+  // "status.outputs.backend_address_pool_ids.web". Realized as
   // association resources.
-  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationGateways/{name}/backendAddressPools/{pool}
-  repeated string application_gateway_backend_address_pool_ids = 11;
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef application_gateway_backend_address_pool_ids = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backend_address_pool_ids"
+  ];
 
   option (buf.validate.message).cel = {
     id: "nic_static_allocation_requires_address"

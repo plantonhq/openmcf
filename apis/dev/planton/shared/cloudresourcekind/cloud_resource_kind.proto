@@ -724,10 +724,17 @@ enum CloudResourceKind {
     id_prefix: "azpdns"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureSubnet is a prerequisite because a gateway cannot exist without
+  // its dedicated gateway_ip_configuration subnet (the network and
+  // resource group chain transitively through the subnet's own
+  // prerequisites); public frontends additionally reference a public IP,
+  // but private-only gateways are legal, so it is not a registry
+  // prerequisite.
   AzureApplicationGateway = 416 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azagw"
+    prerequisites: [AzureSubnet]
   }];
   // AzureResourceGroup is a prerequisite because a load balancer is
   // created inside a referenced resource group (frontends additionally
@@ -827,10 +834,24 @@ enum CloudResourceKind {
     id_prefix: "azkvcert"
     prerequisites: [AzureKeyVault]
   }];
+  // AzureResourceGroup is a prerequisite because a WAF policy is created
+  // inside a referenced resource group; the Application Gateways that
+  // attach the policy reference it, never the reverse.
+  AzureWebApplicationFirewallPolicy = 427 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azwafpol"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureResourceGroup is a prerequisite because a server is created inside
+  // a referenced resource group (VNet injection additionally references a
+  // delegated subnet and a private DNS zone, but neither is universally
+  // required, so they are not registry prerequisites).
   AzurePostgresqlFlexibleServer = 430 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azpg"
+    prerequisites: [AzureResourceGroup]
   }];
   AzureRedisCache = 431 [(kind_meta) = {
     provider: azure
@@ -842,15 +863,39 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azcdb"
   }];
+  // AzureResourceGroup is a prerequisite because the logical server is
+  // created inside a referenced resource group.
   AzureMssqlServer = 433 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azmsql"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because a server is created inside
+  // a referenced resource group (VNet injection additionally references a
+  // delegated subnet and a private DNS zone, but neither is universally
+  // required, so they are not registry prerequisites).
   AzureMysqlFlexibleServer = 434 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azmysql"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureMssqlServer is a prerequisite because every database lives on a
+  // referenced logical server (the server's resource group is transitive).
+  AzureMssqlDatabase = 435 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmsqldb"
+    prerequisites: [AzureMssqlServer]
+  }];
+  // AzureMssqlServer is a prerequisite because every elastic pool lives on
+  // a referenced logical server (the server's resource group is transitive).
+  AzureMssqlElasticPool = 436 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmsqlpool"
+    prerequisites: [AzureMssqlServer]
   }];
   AzureContainerAppEnvironment = 440 [(kind_meta) = {
     provider: azure

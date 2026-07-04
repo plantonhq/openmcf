@@ -187,6 +187,7 @@ go_library(
         "//apis/dev/planton/provider/azure/azurevirtualmachinescaleset/v1:azurevirtualmachinescaleset",
         "//apis/dev/planton/provider/azure/azurevirtualnetwork/v1:azurevirtualnetwork",
         "//apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1:azurevirtualnetworkpeering",
+        "//apis/dev/planton/provider/azure/azurewebapplicationfirewallpolicy/v1:azurewebapplicationfirewallpolicy",
         "//apis/dev/planton/provider/civo/civobucket/v1:civobucket",
         "//apis/dev/planton/provider/civo/civocertificate/v1:civocertificate",
         "//apis/dev/planton/provider/civo/civocomputeinstance/v1:civocomputeinstance",

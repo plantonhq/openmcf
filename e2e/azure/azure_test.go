@@ -302,6 +302,33 @@ func TestAzureKeyVaultCertificate_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurekeyvaultcertificate", "terraform")
 }
 
+// --- Azure Application Gateway (composed: fixture RG -> VNet -> dedicated subnet + extra-fixture public IP -> Standard_v2 gateway; the waf-attach scenario adds the fixture WAF policy) ---
+
+func TestAzureApplicationGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureapplicationgateway", "pulumi")
+}
+func TestAzureApplicationGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureapplicationgateway", "terraform")
+}
+
+// --- Azure Web Application Firewall Policy (fixture RG -> OWASP 3.2 policy with a rate-limit rule, override, and log scrubbing) ---
+
+func TestAzureWebApplicationFirewallPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurewebapplicationfirewallpolicy", "pulumi")
+}
+func TestAzureWebApplicationFirewallPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurewebapplicationfirewallpolicy", "terraform")
+}
+
+// --- Azure PostgreSQL Flexible Server (fixture RG -> burstable public server with database, firewall rule, and server parameter) ---
+
+func TestAzurePostgresqlFlexibleServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepostgresqlflexibleserver", "pulumi")
+}
+func TestAzurePostgresqlFlexibleServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepostgresqlflexibleserver", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

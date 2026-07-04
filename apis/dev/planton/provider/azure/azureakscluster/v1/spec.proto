@@ -2019,7 +2019,7 @@ message AzureAksClusterIngressApplicationGateway {
   // reachable from the cluster network (peered or same VNet).
   dev.planton.shared.foreignkey.v1.StringValueOrRef gateway_id = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationGateway,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.app_gateway_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.application_gateway_id"
   ];
 
   // Name for the AKS-created gateway (with subnet_cidr/subnet_id

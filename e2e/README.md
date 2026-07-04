@@ -231,6 +231,21 @@ Burstable VM sizes in `eastus` may support only availability zone `1` — multi-
 lists fail with `AvailabilityZoneNotSupported`. AKS E2E scenarios in this repo
 use `zones: ["1"]` for the test subscription.
 
+### Offer-restricted services on free/PAYG subscriptions
+
+Some Azure services reject provisioning on free-tier and new pay-as-you-go
+subscriptions regardless of region: the ARM API returns
+`LocationIsOfferRestricted` ("Subscriptions are restricted from provisioning
+in location ...") for every region tried. PostgreSQL Flexible Server is a
+verified example (blocked in both `eastus` and `eastus2` on the test
+subscription). This is a subscription-level quota gate, not a module or
+scenario defect — the fix is a quota request through the link in the ARM
+error message (for Postgres: https://aka.ms/postgres-request-quota-increase)
+or a subscription that already carries the quota. When an E2E run hits this,
+record the deferral rather than burning time on region roulette: trying a
+second region confirms whether the restriction is regional or
+subscription-wide, and two failures mean subscription-wide.
+
 ### How the Terraform path works
 
 The Terraform runner uses [Terratest](https://github.com/gruntwork-io/terratest)

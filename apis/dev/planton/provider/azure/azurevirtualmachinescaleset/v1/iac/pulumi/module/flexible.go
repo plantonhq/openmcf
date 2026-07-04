@@ -291,8 +291,8 @@ func createFlexible(ctx *pulumi.Context, locals *Locals, azureProvider pulumi.Pr
 			if pools := refValues(config.LoadBalancerBackendAddressPoolIds); len(pools) > 0 {
 				configArgs.LoadBalancerBackendAddressPoolIds = pools
 			}
-			if len(config.ApplicationGatewayBackendAddressPoolIds) > 0 {
-				configArgs.ApplicationGatewayBackendAddressPoolIds = pulumi.ToStringArray(config.ApplicationGatewayBackendAddressPoolIds)
+			if pools := refValues(config.ApplicationGatewayBackendAddressPoolIds); len(pools) > 0 {
+				configArgs.ApplicationGatewayBackendAddressPoolIds = pools
 			}
 			if len(config.ApplicationSecurityGroupIds) > 0 {
 				configArgs.ApplicationSecurityGroupIds = pulumi.ToStringArray(config.ApplicationSecurityGroupIds)

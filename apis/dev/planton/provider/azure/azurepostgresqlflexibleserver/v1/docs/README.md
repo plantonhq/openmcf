@@ -1,145 +1,145 @@
-# AzurePostgresqlFlexibleServer - Research & Design Documentation
+# AzurePostgresqlFlexibleServer -- Design Research
 
-## Deployment Landscape
+## The Resource
 
-### Azure Database for PostgreSQL: Flexible Server
+An Azure Database for PostgreSQL Flexible Server
+(`Microsoft.DBforPostgreSQL/flexibleServers`) is Azure's managed PostgreSQL:
+per-server compute/storage sizing, zone-redundant high availability,
+Microsoft Entra authentication, customer-managed-key encryption, and
+point-in-time restore. The component maps onto
+`azurerm_postgresql_flexible_server` (azurerm v4.x,
+`internal/services/postgres/postgresql_flexible_server_resource.go`) and its
+child resources, parity-verified against pulumi-azure v6
+(`postgresql.FlexibleServer*`).
 
-Azure Database for PostgreSQL Flexible Server is Microsoft's current-generation managed PostgreSQL offering. It replaced the previous "Single Server" deployment option, which reached end-of-life and is being retired. Flexible Server provides more granular control over compute, storage, networking, and high availability than its predecessor.
+## Field Mapping (azurerm → spec)
 
-**Key differentiators from Single Server:**
-- Zone-redundant and same-zone high availability
-- Burstable compute tier for dev/test
-- VNet integration via delegated subnets (not just Private Link)
-- Maintenance window control
-- Storage auto-grow
-- Customer-managed encryption keys
-- PostgreSQL 12 through 17 support
+| azurerm | spec | Notes |
+|---|---|---|
+| `name` | `server_name` | Required, ForceNew, globally unique (DNS name); azurerm's real charset allows a leading digit |
+| `location` | `region` | Required, ForceNew |
+| `resource_group_name` | `resource_group` | FK → AzureResourceGroup |
+| `create_mode` | `create_mode` enum | DEFAULT / POINT_IN_TIME_RESTORE / REPLICA / GEO_RESTORE / REVIVE_DROPPED; unspecified not sent (same as azurerm's omitted default) |
+| `source_server_id` | `source_server_id` | FK → this kind's own `server_id` output -- the replica/restore seam; mode-paired by CEL |
+| `point_in_time_restore_time_in_utc` | same | RFC-3339; required for the two restore modes, forbidden elsewhere (CEL) |
+| `replication_role` | `replication_role` enum | Only legal value NONE (replica promotion); day-2 only -- Azure rejects it at create |
+| `administrator_login` / `administrator_password` | same | Conditional per CEL: required for a fresh password-auth server, forbidden when password auth is off; login reserved-name rule mirrored |
+| `version` | `version` | "11"-"18", default "16"; only sent for a fresh server (replicas/restores inherit); downgrade = ForceNew |
+| `sku_name` | `sku_name` | Pattern-validated {TIER}\_Standard\_{SIZE}; required for DEFAULT (CEL), a replica left unset inherits |
+| `storage_mb` | `storage_mb` | Closed 12-value ladder; shrink = ForceNew |
+| `storage_tier` | `storage_tier` enum | P4-P80; the size→valid-tier matrix mirrored as one message CEL |
+| `auto_grow_enabled` | same | Plain bool, Azure default false |
+| `zone` | `zone` | "1"/"2"/"3"; post-create changes only via planned failover |
+| `high_availability` | `high_availability` | Mode enum (ZONE_REDUNDANT / SAME_ZONE) + standby zone (create-only) |
+| `maintenance_window` | `maintenance_window` | day/hour/minute; absence = system-managed window |
+| `backup_retention_days` | same | 7-35, default 7 |
+| `geo_redundant_backup_enabled` | same | Plain bool, ForceNew |
+| `public_network_access_enabled` | same | optional bool default true -- modeled explicitly (the prior spec derived it from subnet presence; azurerm's real contract has both dials) |
+| `delegated_subnet_id` / `private_dns_zone_id` | same | FK → AzureSubnet / AzurePrivateDnsZone; pairing + public-access-off enforced by CEL |
+| `authentication` | `authentication` | password (default true) + Entra + tenant (falls back to the deploying credential's tenant on both engines) |
+| `identity` | `identity` | SYSTEM_ASSIGNED / USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED; ids FK → AzureUserAssignedIdentity |
+| `customer_managed_key` | `customer_managed_key` | Key FK → AzureKeyVaultKey `versionless_id` (rotation propagates); geo-backup pair CEL-coupled; ForceNew |
+| `cluster` | `cluster` | Elastic cluster (PG 17+, DEFAULT mode only -- both CEL-enforced); size 1-20 grows only |
+| `tags` | `tags` | User tags merged over Planton-derived tags |
 
-### Deployment Methods Compared
+Child resources folded into the spec (see Decomposition):
 
-| Method | Strengths | Weaknesses |
-|--------|-----------|------------|
-| Azure Portal | Visual, guided, immediate | Manual, not repeatable |
-| Azure CLI | Scriptable, CI/CD friendly | Imperative, state management burden |
-| ARM Templates | Declarative, Azure-native | Verbose JSON, complex for multi-resource |
-| Terraform (`azurerm`) | Declarative, state management, mature | HCL learning curve |
-| Pulumi (azure classic) | Declarative, general-purpose languages | Smaller community than Terraform |
-| Planton | Opinionated defaults, infra-chart composability | Opinionated (by design) |
+| azurerm | spec |
+|---|---|
+| `azurerm_postgresql_flexible_server_database` | `databases[]` (name/charset/collation, all ForceNew) |
+| `azurerm_postgresql_flexible_server_firewall_rule` | `firewall_rules[]` (IPv4 range allowlist) |
+| `azurerm_postgresql_flexible_server_configuration` | `server_parameters` map (user overrides; delete = reset to default) |
+| `azurerm_postgresql_flexible_server_active_directory_administrator` | `aad_administrators[]` (object id FK → UAI principal id) |
 
-### Why Planton
+## Decomposition Decisions
 
-Planton's AzurePostgresqlFlexibleServer component provides:
+- **Databases, firewall rules, server parameters, and Entra administrators
+  FOLD into the server spec.** None has an independent lifecycle apart from
+  its server, none is FK-referenced by any other kind, and all are
+  configured as one administrative unit with the server. Each is still its
+  own Azure sub-resource on both engines, so per-entry changes never touch
+  the server.
+- **A replica is another `AzurePostgresqlFlexibleServer`** (create_mode
+  REPLICA + `source_server_id` referencing the primary's `server_id`
+  output) -- a primary-plus-replicas topology composes in one manifest set
+  with no dedicated replica kind.
 
-1. **Opinionated defaults** -- Password auth enabled, sensible storage defaults, Standard create mode
-2. **Infra-chart composability** -- StringValueOrRef fields enable wiring to subnets, DNS zones, resource groups
-3. **Bundled sub-resources** -- Server + databases + firewall rules managed as a unit
-4. **Dual IaC** -- Both Pulumi and Terraform modules with feature parity
+## Recorded Skips (with reasons)
 
-## 80/20 Scoping Rationale
+- **`administrator_password_wo` / `administrator_password_wo_version`** --
+  Terraform's write-only-attribute ergonomic for the same password value;
+  duplicating the sensitive `administrator_password` field with no pulumi
+  analog would add a second way to say one thing.
+- **`azurerm_postgresql_flexible_server_virtual_endpoint`** -- a stable
+  connection name that spans a source↔replica PAIR and follows failover;
+  it is a two-server topology object, not a property of one server.
+  Adoption backlog: revisit as a standalone kind when replica topologies
+  become a chart scenario.
+- **`azurerm_postgresql_flexible_server_backup`** -- triggers a one-time
+  on-demand backup; an imperative action, not declarative state.
+- **Create-mode `Update`** -- azurerm's internal vehicle for
+  login-change calls, not a state a user declares.
 
-### Included (covers 80%+ of production use cases)
+## Design Decisions
 
-- **Standard create mode** -- New server creation (most common)
-- **Password authentication** -- Default and most widely used auth method
-- **Storage provisioning** -- All Azure-supported sizes from 32 GB to 32 TB
-- **High availability** -- Both ZoneRedundant and SameZone modes
-- **VNet integration** -- Delegated subnet + private DNS zone
-- **Multiple databases** -- With charset/collation customization
-- **Firewall rules** -- IP-based access control for public mode
-- **Backup configuration** -- Retention days (7-35) and geo-redundant backup
-- **Auto-grow storage** -- Automatic storage scaling
+- **`public_network_access_enabled` modeled explicitly.** The prior spec
+  derived it from subnet presence "to eliminate contradiction risk" --
+  but azurerm's real contract has two independent dials, and the invented
+  coupling made a no-public-access, no-VNet server (private endpoints
+  only) inexpressible. CEL enforces the one true constraint (VNet
+  injection requires public access off) and leaves the rest of the matrix
+  open.
+- **Entra auth + AAD administrators modeled in full** (the prior spec
+  hard-coded password-only auth). An Entra-only server omits credentials
+  entirely -- CEL mirrors azurerm's create-time contract in both
+  directions.
+- **The size→tier matrix is spec validation, not module logic.** azurerm
+  validates storage tiers in CustomizeDiff; the equivalent lives in one
+  message CEL so both engines reject an invalid tier before any cloud
+  call.
+- **`version` is sent only for fresh servers on both engines.** Replicas
+  and restores inherit the source's version; materializing the spec
+  default ("16") onto a replica would fight the service.
+- **The admin-login reserved-name rule uses a field CEL** mirroring
+  azurerm's `AdminUsernames` validator (reserved names + the `pg_`
+  prefix), so the error surfaces at validation time, not after a
+  15-minute create.
 
-### Excluded (advanced/niche features deferred to v2)
+## Operational Behavior Worth Knowing
 
-- **Azure AD authentication** -- Requires tenant configuration, service principal setup. Can be enabled post-deployment via Azure portal.
-- **Customer-managed encryption keys** -- Requires Key Vault with specific access policies. Enterprise-only feature.
-- **Point-in-time restore / Replica creation** -- Uses different `create_mode` values. Restore operations are typically one-off, not declarative IaC.
-- **Server configurations** (e.g., `max_connections`, `work_mem`) -- Runtime tuning done post-deployment. Azure provides defaults appropriate for the SKU.
-- **Maintenance window** -- Terraform provider limitation (cannot set on create). Configure post-deployment.
-- **Cluster feature** (PostgreSQL 17+) -- New feature for horizontal read scaling. Requires cluster-aware application design.
-- **Read replicas** -- Cross-region read scaling. Managed separately from primary.
+- **Creates run ~8-15 minutes**; HA roughly doubles it. Destroys are
+  fast (~2 min).
+- **Static server parameters need a restart**: Azure applies the value
+  but reports "pending restart". Neither engine restarts automatically --
+  restart is a control-plane action outside declarative state.
+- **`administrator_login` is immutable once set** (azurerm forces
+  replacement); the password rotates in place.
+- **Zone changes are failovers**: after creation, `zone` and
+  `standby_availability_zone` can only change by swapping them together,
+  which Azure executes as a planned failover.
+- **Burstable SKUs** (`B_Standard_*`) support neither high availability
+  nor read replicas -- the cheapest tier is a genuinely different
+  capability envelope.
+- **CMK identity ordering**: the user-assigned identity must hold
+  wrap/unwrap on the key's vault BEFORE the server create starts, and the
+  key's vault must have purge protection enabled.
 
-## Provider Research
+## Composition
 
-### Terraform Provider (`azurerm`)
-
-The `azurerm_postgresql_flexible_server` resource (API version 2025-08-01) supports approximately 25 top-level fields. Key findings from provider source analysis:
-
-**Storage model:**
-- `storage_mb` is in MB (not GB) with specific allowed values
-- `storage_tier` is separate but defaults based on `storage_mb`
-- We expose `storage_mb` only (80/20) and let Azure choose the tier
-
-**Authentication model:**
-- `authentication` block with `password_auth_enabled` and `active_directory_auth_enabled`
-- We hardcode password auth = true (80/20)
-
-**Network model:**
-- `delegated_subnet_id` and `private_dns_zone_id` are independent (both optional)
-- `public_network_access_enabled` defaults to true
-- We derive public access from the presence of `delegated_subnet_id`
-
-**ForceNew fields** (resource recreation on change):
-- `name`, `administrator_login`, `delegated_subnet_id`, `geo_redundant_backup_enabled`
-- `customer_managed_key` (not exposed), `cluster` (not exposed)
-
-### Pulumi Provider
-
-Uses `github.com/pulumi/pulumi-azure/sdk/v6/go/azure/postgresql` (classic provider), consistent with all other Azure modules in Planton. The classic provider mirrors Terraform's schema closely.
-
-Key types:
-- `postgresql.FlexibleServer` -- Main server resource
-- `postgresql.FlexibleServerDatabase` -- Database resource
-- `postgresql.FlexibleServerFirewallRule` -- Firewall rule resource
-- `postgresql.FlexibleServerArgs` -- Server constructor arguments
-- `postgresql.FlexibleServerAuthenticationArgs` -- Auth configuration
-
-## Design Decisions Applied
-
-### C1-C2: Required resource_group and region (DD05 compliance)
-Every Azure resource in Planton requires `resource_group` (StringValueOrRef) and `region` (string). These were missing from the original T02 spec.
-
-### C3: String+CEL for version (not proto enum)
-Following the established pattern from R02, R06, R09, version uses string with CEL `in` validation. This preserves Azure's exact API values and avoids proto enum maintenance burden.
-
-### C4: Optional HA message (not bool+enum)
-If the `high_availability` message is present, HA is enabled. No separate boolean needed. Mode uses string+CEL with Azure's exact values ("ZoneRedundant", "SameZone").
-
-### C7: auto_grow_enabled
-Added as a production safety net. Default false matches Azure's behavior. Critical for databases with unpredictable growth patterns.
-
-### C8: Repeated databases (not initial_database_name)
-Changed from a single string to `repeated AzurePostgresqlDatabase` following the LB backend_pools pattern. Supports multiple databases with custom charset/collation.
-
-### C9: Polymorphic StringValueOrRef for password
-No `default_kind` annotation since the password source varies (literal, chart variable, external secret). Matches the UserAssignedIdentity `scope` pattern.
-
-### C10: Hardcoded public_network_access logic
-Not exposed as a spec field. IaC modules derive from `delegated_subnet_id` presence:
-- Subnet set -> public access disabled
-- Subnet not set -> public access enabled
-
-### C11: Maintenance window omitted
-Cannot be set on create in the Terraform provider. Deferred to v2.
-
-## Infra Chart Integration
-
-### database-stack chart pattern
-
-```
-AzureResourceGroup
-└── AzureSubnet (delegated to PostgreSQL)
-    └── AzurePrivateDnsZone (privatelink.postgres.database.azure.com)
-        └── AzurePostgresqlFlexibleServer
-            ├── delegated_subnet_id: valueFrom AzureSubnet
-            ├── private_dns_zone_id: valueFrom AzurePrivateDnsZone
-            └── resource_group: valueFrom AzureResourceGroup
-```
-
-### Referenced by
-- **AzurePrivateEndpoint** -- `private_connection_resource_id` references `server_id` (for non-VNet-integrated servers)
-
-### References
-- **AzureResourceGroup** -- `resource_group` (required)
-- **AzureSubnet** -- `delegated_subnet_id` (optional, for VNet integration)
-- **AzurePrivateDnsZone** -- `private_dns_zone_id` (optional, for private DNS)
+- `resource_group` → `AzureResourceGroup.status.outputs.resource_group_name`
+- `delegated_subnet_id` → `AzureSubnet.status.outputs.subnet_id` (subnet
+  delegated to `Microsoft.DBforPostgreSQL/flexibleServers`)
+- `private_dns_zone_id` → `AzurePrivateDnsZone.status.outputs.zone_id`
+- `source_server_id` → another server's `status.outputs.server_id`
+- `identity.identity_ids[]` / `customer_managed_key.*_identity_id` →
+  `AzureUserAssignedIdentity.status.outputs.identity_id`
+- `customer_managed_key.key_vault_key_id` →
+  `AzureKeyVaultKey.status.outputs.versionless_id`
+- `aad_administrators[].object_id` →
+  `AzureUserAssignedIdentity.status.outputs.principal_id`
+- `server_id` output is consumed by
+  `AzurePrivateEndpoint.private_connection_resource_id` and replica/restore
+  servers' `source_server_id`
+- `fqdn` + `administrator_login` outputs are what applications build
+  connection strings from; `identity_principal_id` is the
+  `AzureRoleAssignment` seam for the system-assigned identity

@@ -1192,6 +1192,69 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureApplicationGateway: the name-keyed maps are the
+			// composition seams -- backend_address_pool_ids is what NIC
+			// ip_configurations and scale-set network profiles join;
+			// frontend_ip_configuration_ids chains frontends; a private
+			// frontend's address is what internal DNS records point at.
+			name: "AzureApplicationGateway",
+			kind: cloudresourcekind.CloudResourceKind_AzureApplicationGateway,
+			rawOutputs: map[string]interface{}{
+				"application_gateway_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/applicationGateways/web-gateway",
+				"application_gateway_name": "web-gateway",
+				"backend_address_pool_ids": map[string]interface{}{
+					"web": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/applicationGateways/web-gateway/backendAddressPools/web",
+				},
+				"frontend_ip_configuration_ids": map[string]interface{}{
+					"public": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/applicationGateways/web-gateway/frontendIPConfigurations/public",
+				},
+				"private_ip_address":   "10.0.2.10",
+				"private_ip_addresses": []interface{}{"10.0.2.10"},
+			},
+			mustPopulate: []string{
+				"application_gateway_id", "application_gateway_name",
+				"backend_address_pool_ids", "frontend_ip_configuration_ids",
+				"private_ip_address", "private_ip_addresses",
+			},
+		},
+		{
+			// AzureWebApplicationFirewallPolicy: policy_id is the seam
+			// Application Gateways attach the policy through -- gateway-wide,
+			// per listener, and per URL path rule.
+			name: "AzureWebApplicationFirewallPolicy",
+			kind: cloudresourcekind.CloudResourceKind_AzureWebApplicationFirewallPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/org-waf-baseline",
+				"policy_name": "org-waf-baseline",
+			},
+			mustPopulate: []string{
+				"policy_id", "policy_name",
+			},
+		},
+		{
+			// AzurePostgresqlFlexibleServer: fqdn + administrator_login are
+			// what applications build connection strings from; server_id is
+			// the seam private endpoints and replica/restore servers
+			// (source_server_id) reference; database_ids is the name-keyed
+			// map seam for per-database references.
+			name: "AzurePostgresqlFlexibleServer",
+			kind: cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer,
+			rawOutputs: map[string]interface{}{
+				"server_id":           "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/orders-pg",
+				"server_name":         "orders-pg",
+				"fqdn":                "orders-pg.postgres.database.azure.com",
+				"administrator_login": "pgadmin",
+				"database_ids": map[string]interface{}{
+					"orders": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/orders-pg/databases/orders",
+				},
+				"identity_principal_id": "44444444-4444-4444-4444-444444444444",
+			},
+			mustPopulate: []string{
+				"server_id", "server_name", "fqdn", "administrator_login",
+				"database_ids", "identity_principal_id",
+			},
+		},
+		{
 			// AzureKeyVaultCertificate: the secret face
 			// (versionless_secret_id) is the seam TLS terminators
 			// (Application Gateway) consume so renewals propagate; the

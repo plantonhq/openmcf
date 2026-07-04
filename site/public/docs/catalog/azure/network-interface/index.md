@@ -91,7 +91,7 @@ This creates a private-only NIC with one dynamic IPv4 configuration in the refer
 | `gatewayLoadBalancerFrontendIpConfigurationId` | `string` | — | The frontend of a Gateway-SKU load balancer that chains this NIC into a gateway appliance path. A niche service-chaining seam; plain ARM ID. |
 | `loadBalancerBackendAddressPoolIds` | `StringValueOrRef[]` | `[]` | Load-balancer backend pools this configuration joins — membership is expressed from the member side in Azure's model. Reference a pool through the load balancer's name-keyed map output, e.g. `valueFrom` fieldPath `status.outputs.backend_pool_ids.web`. Each membership is realized as its own association resource, so joining and leaving pools never touches the NIC. |
 | `loadBalancerInboundNatRuleIds` | `StringValueOrRef[]` | `[]` | Single-target inbound NAT rules this configuration completes — the load balancer declares the port forward, the NIC-side association picks the receiving instance. Reference a rule through the load balancer's name-keyed map output, e.g. `valueFrom` fieldPath `status.outputs.nat_rule_ids.ssh-admin`. Realized as association resources. |
-| `applicationGatewayBackendAddressPoolIds` | `string[]` | `[]` | Application Gateway backend pools this configuration joins, by plain ARM ID (the Application Gateway does not export per-pool IDs yet). Realized as association resources. |
+| `applicationGatewayBackendAddressPoolIds` | `StringValueOrRef[]` | `[]` | Application Gateway backend pools this configuration joins -- reference a pool through the gateway's map output (e.g. `status.outputs.backend_address_pool_ids.web`). Realized as association resources. |
 
 ### Optional Fields
 

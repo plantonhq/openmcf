@@ -1,288 +1,218 @@
 package module
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	azureapplicationgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureapplicationgateway/v1"
-	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/network"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func Resources(ctx *pulumi.Context, stackInput *azureapplicationgatewayv1.AzureApplicationGatewayStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
-	azureProviderConfig := stackInput.ProviderConfig
 
-	// Create azure provider using the credentials from the input
-	azureProvider, err := azure.NewProvider(ctx,
-		"azure",
-		&azure.ProviderArgs{
-			ClientId:       pulumi.String(azureProviderConfig.ClientId),
-			ClientSecret:   pulumi.String(azureProviderConfig.ClientSecret),
-			SubscriptionId: pulumi.String(azureProviderConfig.SubscriptionId),
-			TenantId:       pulumi.String(azureProviderConfig.TenantId),
-		})
+	// Build the Azure provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
+	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}
 
 	spec := locals.AzureApplicationGateway.Spec
 
-	// Build SKU block.
-	// Name and Tier use the same value (e.g. "Standard_v2" or "WAF_v2").
-	// Capacity is set only when autoscale is not configured.
-	skuArgs := network.ApplicationGatewaySkuArgs{
-		Name: pulumi.String(spec.Sku),
-		Tier: pulumi.String(spec.Sku),
+	// SKU name and tier carry the same value on the v2 platform (and
+	// Basic); capacity is fixed sizing, autoscale replaces it (spec
+	// validation guarantees exactly one of the two).
+	skuArgs := &network.ApplicationGatewaySkuArgs{
+		Name: pulumi.String(skuStrings[spec.Sku]),
+		Tier: pulumi.String(skuStrings[spec.Sku]),
 	}
-	if spec.Autoscale == nil {
-		// Use fixed capacity (defaults to 2 via proto default)
-		capacity := int(spec.GetCapacity())
-		if capacity == 0 {
-			capacity = 2
-		}
-		skuArgs.Capacity = pulumi.IntPtr(capacity)
+	if spec.Capacity != nil {
+		skuArgs.Capacity = pulumi.Int(int(spec.GetCapacity()))
 	}
 
-	// Build gateway IP configuration (single entry, auto-derived name).
-	gatewayIpConfigs := network.ApplicationGatewayGatewayIpConfigurationArray{
-		&network.ApplicationGatewayGatewayIpConfigurationArgs{
-			Name:     pulumi.String(locals.GatewayIpConfigName),
-			SubnetId: pulumi.String(spec.SubnetId.GetValue()),
+	// One atomic ARM resource: every sub-object below wires to the others
+	// BY NAME within this args tree. Applies routinely run 15-25 minutes.
+	gatewayArgs := &network.ApplicationGatewayArgs{
+		Name:              pulumi.String(spec.Name),
+		Location:          pulumi.String(spec.Region),
+		ResourceGroupName: pulumi.String(locals.ResourceGroupName),
+		Tags:              pulumi.ToStringMap(locals.AzureTags),
+		Sku:               skuArgs,
+
+		// The gateway's dedicated-subnet anchor -- pure ARM plumbing
+		// derived from the spec's subnet_id; users never name it.
+		GatewayIpConfigurations: network.ApplicationGatewayGatewayIpConfigurationArray{
+			&network.ApplicationGatewayGatewayIpConfigurationArgs{
+				Name:     pulumi.String(locals.GatewayIpConfigName),
+				SubnetId: pulumi.String(spec.SubnetId.GetValue()),
+			},
 		},
+
+		FrontendIpConfigurations: buildFrontendIpConfigurations(spec.FrontendIpConfigurations),
+		FrontendPorts:            buildFrontendPorts(spec.FrontendPorts),
+		BackendAddressPools:      buildBackendAddressPools(spec.BackendAddressPools),
 	}
-
-	// Build frontend IP configuration (single entry, auto-derived name).
-	frontendIpConfigs := network.ApplicationGatewayFrontendIpConfigurationArray{
-		&network.ApplicationGatewayFrontendIpConfigurationArgs{
-			Name:              pulumi.String(locals.FrontendIpConfigName),
-			PublicIpAddressId: pulumi.StringPtr(spec.PublicIpId.GetValue()),
-		},
-	}
-
-	// Build frontend ports (auto-derived from listeners as "{listener_name}-port").
-	frontendPorts := network.ApplicationGatewayFrontendPortArray{}
-	for _, listener := range spec.HttpListeners {
-		frontendPorts = append(frontendPorts, &network.ApplicationGatewayFrontendPortArgs{
-			Name: pulumi.String(fmt.Sprintf("%s-port", listener.Name)),
-			Port: pulumi.Int(int(listener.Port)),
-		})
-	}
-
-	// Build backend address pools from spec.
-	backendPools := network.ApplicationGatewayBackendAddressPoolArray{}
-	for _, pool := range spec.BackendAddressPools {
-		poolArgs := &network.ApplicationGatewayBackendAddressPoolArgs{
-			Name: pulumi.String(pool.Name),
-		}
-		if len(pool.Fqdns) > 0 {
-			poolArgs.Fqdns = pulumi.ToStringArray(pool.Fqdns)
-		}
-		if len(pool.IpAddresses) > 0 {
-			poolArgs.IpAddresses = pulumi.ToStringArray(pool.IpAddresses)
-		}
-		backendPools = append(backendPools, poolArgs)
-	}
-
-	// Build backend HTTP settings from spec.
-	backendHttpSettings := network.ApplicationGatewayBackendHttpSettingArray{}
-	for _, settings := range spec.BackendHttpSettings {
-		settingsArgs := &network.ApplicationGatewayBackendHttpSettingArgs{
-			Name:     pulumi.String(settings.Name),
-			Port:     pulumi.Int(int(settings.Port)),
-			Protocol: pulumi.String(settings.Protocol),
-		}
-
-		// Cookie-based affinity (defaults to "Disabled")
-		cookieAffinity := settings.GetCookieBasedAffinity()
-		if cookieAffinity == "" {
-			cookieAffinity = "Disabled"
-		}
-		settingsArgs.CookieBasedAffinity = pulumi.String(cookieAffinity)
-
-		// Request timeout (defaults to 30)
-		requestTimeout := int(settings.GetRequestTimeout())
-		if requestTimeout == 0 {
-			requestTimeout = 30
-		}
-		settingsArgs.RequestTimeout = pulumi.IntPtr(requestTimeout)
-
-		// Optional probe name reference
-		if settings.ProbeName != "" {
-			settingsArgs.ProbeName = pulumi.StringPtr(settings.ProbeName)
-		}
-
-		// Optional host name override
-		if settings.HostName != "" {
-			settingsArgs.HostName = pulumi.StringPtr(settings.HostName)
-		}
-
-		// Pick host name from backend address
-		if settings.GetPickHostNameFromBackendAddress() {
-			settingsArgs.PickHostNameFromBackendAddress = pulumi.BoolPtr(true)
-		}
-
-		backendHttpSettings = append(backendHttpSettings, settingsArgs)
-	}
-
-	// Build HTTP listeners from spec.
-	httpListeners := network.ApplicationGatewayHttpListenerArray{}
-	for _, listener := range spec.HttpListeners {
-		listenerArgs := &network.ApplicationGatewayHttpListenerArgs{
-			Name:                        pulumi.String(listener.Name),
-			FrontendIpConfigurationName: pulumi.String(locals.FrontendIpConfigName),
-			FrontendPortName:            pulumi.String(fmt.Sprintf("%s-port", listener.Name)),
-			Protocol:                    pulumi.String(listener.Protocol),
-		}
-
-		// Optional host name for host-based routing
-		if listener.HostName != "" {
-			listenerArgs.HostName = pulumi.StringPtr(listener.HostName)
-		}
-
-		// Optional SSL certificate reference for HTTPS listeners
-		if listener.SslCertificateName != "" {
-			listenerArgs.SslCertificateName = pulumi.StringPtr(listener.SslCertificateName)
-		}
-
-		httpListeners = append(httpListeners, listenerArgs)
-	}
-
-	// Build request routing rules from spec.
-	// Only Basic rule type is supported.
-	routingRules := network.ApplicationGatewayRequestRoutingRuleArray{}
-	for _, rule := range spec.RequestRoutingRules {
-		routingRules = append(routingRules, &network.ApplicationGatewayRequestRoutingRuleArgs{
-			Name:                    pulumi.String(rule.Name),
-			RuleType:                pulumi.String("Basic"),
-			HttpListenerName:        pulumi.String(rule.HttpListenerName),
-			BackendAddressPoolName:  pulumi.StringPtr(rule.BackendAddressPoolName),
-			BackendHttpSettingsName: pulumi.StringPtr(rule.BackendHttpSettingsName),
-			Priority:                pulumi.IntPtr(int(rule.Priority)),
-		})
-	}
-
-	// Build Application Gateway args
-	appGwArgs := &network.ApplicationGatewayArgs{
-		Name:                     pulumi.String(spec.Name),
-		Location:                 pulumi.String(spec.Region),
-		ResourceGroupName:        pulumi.String(locals.ResourceGroupName),
-		Sku:                      skuArgs,
-		GatewayIpConfigurations:  gatewayIpConfigs,
-		FrontendIpConfigurations: frontendIpConfigs,
-		FrontendPorts:            frontendPorts,
-		BackendAddressPools:      backendPools,
-		BackendHttpSettings:      backendHttpSettings,
-		HttpListeners:            httpListeners,
-		RequestRoutingRules:      routingRules,
-		Tags:                     pulumi.ToStringMap(locals.AzureTags),
-		EnableHttp2:              pulumi.BoolPtr(spec.GetEnableHttp2()),
-	}
-
-	// Build health probes (optional).
-	if len(spec.Probes) > 0 {
-		probes := network.ApplicationGatewayProbeArray{}
-		for _, probe := range spec.Probes {
-			probeArgs := &network.ApplicationGatewayProbeArgs{
-				Name:     pulumi.String(probe.Name),
-				Protocol: pulumi.String(probe.Protocol),
-				Path:     pulumi.String(probe.Path),
-			}
-
-			// Optional host header
-			if probe.Host != "" {
-				probeArgs.Host = pulumi.StringPtr(probe.Host)
-			}
-
-			// Interval (defaults to 30)
-			interval := int(probe.GetInterval())
-			if interval == 0 {
-				interval = 30
-			}
-			probeArgs.Interval = pulumi.Int(interval)
-
-			// Timeout (defaults to 30)
-			timeout := int(probe.GetTimeout())
-			if timeout == 0 {
-				timeout = 30
-			}
-			probeArgs.Timeout = pulumi.Int(timeout)
-
-			// Unhealthy threshold (defaults to 3)
-			unhealthyThreshold := int(probe.GetUnhealthyThreshold())
-			if unhealthyThreshold == 0 {
-				unhealthyThreshold = 3
-			}
-			probeArgs.UnhealthyThreshold = pulumi.Int(unhealthyThreshold)
-
-			probes = append(probes, probeArgs)
-		}
-		appGwArgs.Probes = probes
-	}
-
-	// Build SSL certificates (optional).
-	if len(spec.SslCertificates) > 0 {
-		sslCerts := network.ApplicationGatewaySslCertificateArray{}
-		for _, cert := range spec.SslCertificates {
-			sslCerts = append(sslCerts, &network.ApplicationGatewaySslCertificateArgs{
-				Name:             pulumi.String(cert.Name),
-				KeyVaultSecretId: pulumi.StringPtr(cert.KeyVaultSecretId.GetValue()),
-			})
-		}
-		appGwArgs.SslCertificates = sslCerts
-	}
-
-	// Build identity block (optional, only if identity_ids is non-empty).
-	// Required when SSL certificates reference Key Vault secrets.
-	if len(spec.IdentityIds) > 0 {
-		identityIdStrs := pulumi.StringArray{}
-		for _, idRef := range spec.IdentityIds {
-			identityIdStrs = append(identityIdStrs, pulumi.String(idRef.GetValue()))
-		}
-		appGwArgs.Identity = network.ApplicationGatewayIdentityArgs{
-			Type:        pulumi.String("UserAssigned"),
-			IdentityIds: identityIdStrs,
-		}
-	}
-
-	// Build WAF configuration (optional, only if waf_enabled is true).
-	if spec.GetWafEnabled() {
-		wafMode := spec.GetWafMode()
-		if wafMode == "" {
-			wafMode = "Prevention"
-		}
-		appGwArgs.WafConfiguration = network.ApplicationGatewayWafConfigurationArgs{
-			Enabled:        pulumi.Bool(true),
-			FirewallMode:   pulumi.String(wafMode),
-			RuleSetType:    pulumi.StringPtr("OWASP"),
-			RuleSetVersion: pulumi.String("3.2"),
-		}
-	}
-
-	// Build autoscale configuration (optional, mutually exclusive with SKU capacity).
 	if spec.Autoscale != nil {
-		autoscaleArgs := network.ApplicationGatewayAutoscaleConfigurationArgs{
+		autoscaleArgs := &network.ApplicationGatewayAutoscaleConfigurationArgs{
 			MinCapacity: pulumi.Int(int(spec.Autoscale.MinCapacity)),
 		}
 		if spec.Autoscale.MaxCapacity != nil {
-			autoscaleArgs.MaxCapacity = pulumi.IntPtr(int(spec.Autoscale.GetMaxCapacity()))
+			autoscaleArgs.MaxCapacity = pulumi.Int(int(spec.Autoscale.GetMaxCapacity()))
 		}
-		appGwArgs.AutoscaleConfiguration = autoscaleArgs
+		gatewayArgs.AutoscaleConfiguration = autoscaleArgs
 	}
 
-	// Create the Application Gateway.
-	appGateway, err := network.NewApplicationGateway(ctx,
+	if len(spec.Zones) > 0 {
+		gatewayArgs.Zones = pulumi.ToStringArray(spec.Zones)
+	}
+
+	if spec.Identity != nil {
+		identityIds := make([]string, 0, len(spec.Identity.IdentityIds))
+		for _, identityId := range spec.Identity.IdentityIds {
+			identityIds = append(identityIds, identityId.GetValue())
+		}
+		identityArgs := &network.ApplicationGatewayIdentityArgs{
+			Type: pulumi.String(identityTypeStrings[spec.Identity.Type]),
+		}
+		if len(identityIds) > 0 {
+			identityArgs.IdentityIds = pulumi.ToStringArray(identityIds)
+		}
+		gatewayArgs.Identity = identityArgs
+	}
+
+	if len(spec.BackendHttpSettings) > 0 {
+		gatewayArgs.BackendHttpSettings = buildBackendHttpSettings(spec.BackendHttpSettings)
+	}
+	if len(spec.HttpListeners) > 0 {
+		gatewayArgs.HttpListeners = buildHttpListeners(spec.HttpListeners)
+	}
+	if len(spec.RequestRoutingRules) > 0 {
+		gatewayArgs.RequestRoutingRules = buildRequestRoutingRules(spec.RequestRoutingRules)
+	}
+	if len(spec.UrlPathMaps) > 0 {
+		gatewayArgs.UrlPathMaps = buildUrlPathMaps(spec.UrlPathMaps)
+	}
+	if len(spec.Probes) > 0 {
+		gatewayArgs.Probes = buildProbes(spec.Probes)
+	}
+	if len(spec.SslCertificates) > 0 {
+		gatewayArgs.SslCertificates = buildSslCertificates(spec.SslCertificates)
+	}
+	if len(spec.TrustedRootCertificates) > 0 {
+		gatewayArgs.TrustedRootCertificates = buildTrustedRootCertificates(spec.TrustedRootCertificates)
+	}
+	if len(spec.TrustedClientCertificates) > 0 {
+		gatewayArgs.TrustedClientCertificates = buildTrustedClientCertificates(spec.TrustedClientCertificates)
+	}
+	if len(spec.SslProfiles) > 0 {
+		gatewayArgs.SslProfiles = buildSslProfiles(spec.SslProfiles)
+	}
+	if spec.SslPolicy != nil {
+		gatewayArgs.SslPolicy = buildGlobalSslPolicy(spec.SslPolicy)
+	}
+	if len(spec.RedirectConfigurations) > 0 {
+		gatewayArgs.RedirectConfigurations = buildRedirectConfigurations(spec.RedirectConfigurations)
+	}
+	if len(spec.RewriteRuleSets) > 0 {
+		gatewayArgs.RewriteRuleSets = buildRewriteRuleSets(spec.RewriteRuleSets)
+	}
+	if len(spec.Listeners) > 0 {
+		gatewayArgs.Listeners = buildLayer4Listeners(spec.Listeners)
+	}
+	if len(spec.Backends) > 0 {
+		gatewayArgs.Backends = buildLayer4Backends(spec.Backends)
+	}
+	if len(spec.RoutingRules) > 0 {
+		gatewayArgs.RoutingRules = buildLayer4RoutingRules(spec.RoutingRules)
+	}
+	if len(spec.CustomErrorConfigurations) > 0 {
+		gatewayArgs.CustomErrorConfigurations = buildCustomErrorConfigurations(spec.CustomErrorConfigurations)
+	}
+	if len(spec.PrivateLinkConfigurations) > 0 {
+		gatewayArgs.PrivateLinkConfigurations = buildPrivateLinkConfigurations(spec.PrivateLinkConfigurations)
+	}
+
+	// The WAF policy attachment (WAF_v2 only; per-listener and per-path
+	// overrides live on their blocks).
+	if spec.FirewallPolicyId.GetValue() != "" {
+		gatewayArgs.FirewallPolicyId = pulumi.String(spec.FirewallPolicyId.GetValue())
+	}
+	gatewayArgs.ForceFirewallPolicyAssociation = pulumi.Bool(spec.ForceFirewallPolicyAssociation)
+
+	// Presence-guarded false-default: unset falls back to Azure's default
+	// (HTTP/2 off) -- stack inputs built from a manifest do NOT
+	// materialize proto defaults.
+	if spec.Http2Enabled != nil {
+		gatewayArgs.Http2Enabled = pulumi.Bool(spec.GetHttp2Enabled())
+	} else {
+		gatewayArgs.Http2Enabled = pulumi.Bool(false)
+	}
+	gatewayArgs.FipsEnabled = pulumi.Bool(spec.FipsEnabled)
+
+	// Request/response buffering (Azure defaults both to true when the
+	// block is absent; spec validation requires both when declared).
+	if spec.GlobalConfiguration != nil {
+		gatewayArgs.Global = &network.ApplicationGatewayGlobalArgs{
+			RequestBufferingEnabled:  pulumi.Bool(spec.GlobalConfiguration.GetRequestBufferingEnabled()),
+			ResponseBufferingEnabled: pulumi.Bool(spec.GlobalConfiguration.GetResponseBufferingEnabled()),
+		}
+	}
+
+	createdGateway, err := network.NewApplicationGateway(ctx,
 		spec.Name,
-		appGwArgs,
+		gatewayArgs,
 		pulumi.Provider(azureProvider))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create Application Gateway %s", spec.Name)
+		return errors.Wrapf(err, "failed to create application gateway %s", spec.Name)
 	}
 
-	// Export stack outputs.
-	ctx.Export(OpAppGatewayId, appGateway.ID())
-	ctx.Export(OpAppGatewayName, appGateway.Name)
+	// Export stack outputs. The name-keyed maps are the composition
+	// seams: NICs and scale sets join pools through
+	// backend_address_pool_ids; frontends chain through
+	// frontend_ip_configuration_ids.
+	ctx.Export(OpApplicationGatewayId, createdGateway.ID())
+	ctx.Export(OpApplicationGatewayName, createdGateway.Name)
+
+	ctx.Export(OpBackendAddressPoolIds, createdGateway.BackendAddressPools.ApplyT(func(pools []network.ApplicationGatewayBackendAddressPool) map[string]string {
+		ids := make(map[string]string, len(pools))
+		for _, pool := range pools {
+			if pool.Id != nil {
+				ids[pool.Name] = *pool.Id
+			}
+		}
+		return ids
+	}))
+
+	ctx.Export(OpFrontendIpConfigurationIds, createdGateway.FrontendIpConfigurations.ApplyT(func(frontends []network.ApplicationGatewayFrontendIpConfiguration) map[string]string {
+		ids := make(map[string]string, len(frontends))
+		for _, frontend := range frontends {
+			if frontend.Id != nil {
+				ids[frontend.Name] = *frontend.Id
+			}
+		}
+		return ids
+	}))
+
+	// The private frontends' addresses (a public frontend's address
+	// lives on its referenced AzurePublicIp resource).
+	ctx.Export(OpPrivateIpAddress, createdGateway.FrontendIpConfigurations.ApplyT(func(frontends []network.ApplicationGatewayFrontendIpConfiguration) string {
+		for _, frontend := range frontends {
+			if frontend.PrivateIpAddress != nil && *frontend.PrivateIpAddress != "" {
+				return *frontend.PrivateIpAddress
+			}
+		}
+		return ""
+	}))
+	ctx.Export(OpPrivateIpAddresses, createdGateway.FrontendIpConfigurations.ApplyT(func(frontends []network.ApplicationGatewayFrontendIpConfiguration) []string {
+		addresses := make([]string, 0, len(frontends))
+		for _, frontend := range frontends {
+			if frontend.PrivateIpAddress != nil && *frontend.PrivateIpAddress != "" {
+				addresses = append(addresses, *frontend.PrivateIpAddress)
+			}
+		}
+		return addresses
+	}))
 
 	return nil
 }

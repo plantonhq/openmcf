@@ -67,7 +67,7 @@ In Azure's model, a load balancer declares its backend *pools*, but never their 
 
 **`loadBalancerInboundNatRuleIds`** completes single-target inbound NAT rules. The load balancer declares the port forward (frontend port → backend port); the NIC-side association picks which instance receives it — referenced the same way, e.g. fieldPath `status.outputs.nat_rule_ids.ssh-admin`. This is the per-instance admin-access pattern: the rule lives with the load balancer, the attachment lives with the machine.
 
-**`applicationGatewayBackendAddressPoolIds`** is the Layer 7 counterpart: joining an Application Gateway's backend pool, also realized as association resources. These take plain ARM IDs — the Application Gateway does not export per-pool IDs yet, so the reference crosses the model boundary as a literal until it does.
+**`applicationGatewayBackendAddressPoolIds`** is the Layer 7 counterpart: joining an Application Gateway's backend pool, also realized as association resources. Pools are referenced through the gateway's name-keyed `backend_address_pool_ids` map output (e.g. `status.outputs.backend_address_pool_ids.web`) -- the same member-side seam as the load balancer's.
 
 The division of labor is worth internalizing: the load balancer owns the routing topology (frontends, pools, probes, rules), the NIC owns its own memberships, and the name-keyed output maps are the seam between them. Neither resource ever edits the other.
 
@@ -138,8 +138,6 @@ A declarative API earns trust by being explicit about its edges.
 
 **Application security groups as a first-class kind**: ASG memberships are accepted today as plain ARM IDs, because the ASG itself is not yet a modeled resource. The membership mechanism (association resources) will not change when it becomes one — only the reference will.
 
-**Application Gateway pools as references**: the same edge on the Layer 7 side. Pool memberships are accepted as plain ARM IDs because the Application Gateway does not export per-pool IDs; when it does, the field upgrades from literal to reference without the mechanism changing.
-
 Nothing else notable is withheld. The spec covers the NIC's full production surface: multi-configuration addressing, dual-stack, static pinning, public fronting, both DNS levers, accelerated networking, IP forwarding, the preview auxiliary acceleration, edge-zone placement, gateway load-balancer chaining, NIC-level NSG, ASG memberships, load-balancer pool and NAT-rule memberships, Application Gateway pool memberships, and tags.
 
 ## The Planton Approach
@@ -152,7 +150,7 @@ Planton provides a declarative, protobuf-based API for deploying Azure Network I
 - **Each IP configuration references its subnet** (`subnetId` → an `AzureSubnet`'s `subnet_id` output) **and optionally a public IP** (`publicIpAddressId` → an `AzurePublicIp`'s `public_ip_id` output). The public address stays visible in the resource graph, allowlistable, and reusable if the NIC is replaced.
 - **The NIC-level NSG is referenced** (`networkSecurityGroupId` → an `AzureNetworkSecurityGroup`'s output) and realized as an association resource — Azure's own model — so filtering changes never touch the NIC.
 - **Load-balancer memberships reference the load balancer's name-keyed maps**: `loadBalancerBackendAddressPoolIds` → `status.outputs.backend_pool_ids.<pool-name>` and `loadBalancerInboundNatRuleIds` → `status.outputs.nat_rule_ids.<rule-name>`, one association resource per membership.
-- **ASG memberships** take plain ARM IDs (one association resource each) until application security groups become a modeled kind — as do **Application Gateway pool memberships** (`applicationGatewayBackendAddressPoolIds`) until the gateway exports per-pool IDs.
+- **ASG memberships** take plain ARM IDs (one association resource each) until application security groups become a modeled kind. **Application Gateway pool memberships** reference the gateway's name-keyed `backend_address_pool_ids` map output.
 
 ### Validation Where ARM Would Only Fail at Deploy Time
 

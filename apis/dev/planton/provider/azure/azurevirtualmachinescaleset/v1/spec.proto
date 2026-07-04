@@ -952,9 +952,12 @@ message AzureVirtualMachineScaleSetIpConfiguration {
   ];
 
   // Application Gateway backend pools every instance joins, by pool ARM
-  // ID. Plain ARM IDs: the Application Gateway does not export per-pool
-  // IDs yet.
-  repeated string application_gateway_backend_address_pool_ids = 7;
+  // ID. Reference a pool through the gateway's name-keyed map output,
+  // e.g. valueFrom fieldPath "status.outputs.backend_address_pool_ids.web".
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef application_gateway_backend_address_pool_ids = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backend_address_pool_ids"
+  ];
 
   // Application security groups instances join (up to 20), by ARM ID,
   // so NSG rules can target the fleet as a workload group.
