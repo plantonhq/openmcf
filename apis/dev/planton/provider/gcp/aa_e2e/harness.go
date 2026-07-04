@@ -32,6 +32,7 @@ import (
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/redis/v1"
+	run "google.golang.org/api/run/v2"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 )
@@ -103,6 +104,10 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create container client")
 	}
+	runService, err := run.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create run client")
+	}
 
 	gotProject, err := crmService.Projects.Get(project).Context(ctx).Do()
 	if err != nil {
@@ -121,6 +126,7 @@ func (h *Harness) Setup(ctx context.Context) error {
 		SqlAdmin:  sqlAdminService,
 		Redis:     redisService,
 		Container: containerService,
+		Run:       runService,
 	}
 	return nil
 }

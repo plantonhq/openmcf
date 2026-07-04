@@ -14,6 +14,7 @@ go_library(
         "@org_golang_google_api//container/v1:container",
         "@org_golang_google_api//iam/v1:iam",
         "@org_golang_google_api//redis/v1:redis",
+        "@org_golang_google_api//run/v2:run",
         "@org_golang_google_api//sqladmin/v1:sqladmin",
         "@org_golang_google_api//storage/v1:storage",
         "@org_golang_x_oauth2//google",

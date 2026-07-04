@@ -519,6 +519,26 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpCloudRun: the serving URL, the service-name handle serverless
+			// NEGs reference, the latest ready revision, and the identifiers
+			// API callers use.
+			name: "GcpCloudRun",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudRun,
+			rawOutputs: map[string]interface{}{
+				"url":          "https://my-api-abc123-uc.a.run.app",
+				"service_name": "my-api",
+				"revision":     "my-api-00042-abc",
+				"location":     "us-central1",
+				"uid":          "12345678-1234-1234-1234-123456789012",
+				"urls": []interface{}{
+					"https://my-api-abc123-uc.a.run.app",
+				},
+			},
+			mustPopulate: []string{
+				"url", "service_name", "revision", "location", "uid", "urls",
+			},
+		},
+		{
 			// GcpRouterNat: NAT name, router self link, and the manual NAT IP
 			// self links (empty for auto-allocation).
 			name: "GcpRouterNat",

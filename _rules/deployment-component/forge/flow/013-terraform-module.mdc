@@ -121,6 +121,15 @@ SUCCESS CRITERIA
 
 NOTES
 - Generate variables once up-front; derive convenience in `locals.tf`.
+- **Offline plans through the CLI must point at the LIVE module with an ABSOLUTE
+  `--module-dir`:** `planton tofu plan --manifest <abs path> --module-dir <abs
+  path to .../v1/iac/tf>`. Without `--module-dir` (or when the working directory
+  is not the module dir) the CLI silently falls back to a STAGING CLONE of the
+  repo — a stale checkout whose `variables.tf` predates your edits — and the
+  plan fails with schema errors that look like your module's ("attributes ...
+  are required") but come from code you never wrote. A RELATIVE `--module-dir`
+  also fails (the generated tfvars path resolves against the wrong root). Both
+  paths absolute, always.
 - **Variable validations on nullable optional objects must guard with `try()`:**
   HCL's `||` evaluates BOTH operands (it does not short-circuit), so a validation
   shaped `var.spec.block == null || length(var.spec.block.field) > 0` fails at

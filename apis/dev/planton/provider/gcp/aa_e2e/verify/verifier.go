@@ -19,6 +19,7 @@ import (
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/redis/v1"
+	run "google.golang.org/api/run/v2"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 )
@@ -36,6 +37,7 @@ type Services struct {
 	SqlAdmin  *sqladmin.Service
 	Redis     *redis.Service
 	Container *container.Service
+	Run       *run.Service
 }
 
 // Verifier checks a single component's GCP resource for existence/absence.
@@ -81,6 +83,7 @@ var verifiers = map[string]Verifier{
 	"gcprouternat":                    &routerNatVerifier{},
 	"gcpgkecluster":                   &gkeClusterVerifier{},
 	"gcpgkenodepool":                  &gkeNodePoolVerifier{},
+	"gcpcloudrun":                     &cloudRunVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

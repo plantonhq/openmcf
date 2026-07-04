@@ -1,106 +1,248 @@
 variable "metadata" {
   description = "Metadata for the resource, including name and labels"
   type = object({
-    name    = string
-    id      = optional(string)
-    org     = optional(string)
-    env     = optional(string)
-    labels  = optional(map(string))
-    tags    = optional(list(string))
+    name    = string,
+    id      = optional(string),
+    org     = optional(string),
+    env     = optional(string),
+    labels  = optional(map(string)),
+    tags    = optional(list(string)),
     version = optional(object({ id = string, message = string }))
   })
 }
 
 variable "spec" {
-  description = "GCP Cloud Run service specification"
+  description = "Specification for the GCP Cloud Run service"
   type = object({
-    # Required: GCP project ID where the Cloud Run service will be created
-    # Can be a direct value or a reference to a GcpProject resource
-    project_id = object({
-      value = string
-    })
+    # The GCP project the service is created in. The CLI's tfvars converter
+    # resolves StringValueOrRef fields to their literal string before the
+    # module runs, so this arrives as a plain string. Empty falls back to
+    # the provider's default project.
+    project_id = optional(string, "")
 
-    # Required: GCP region where the service is deployed (e.g., "us-central1")
+    # Region the service is deployed in, e.g. "us-central1". Immutable.
     region = string
 
-    # Optional: Custom service name (defaults to metadata.name if not provided)
-    service_name = optional(string)
+    # Service name in GCP. Empty means "use metadata.name". Immutable.
+    service_name = optional(string, "")
 
-    # Optional: Service account email that the Cloud Run service runs as
-    service_account = optional(string)
+    # Human-readable description shown in the console.
+    description = optional(string, "")
 
-    # Required: Container configuration
-    container = object({
-      # Container image configuration
-      image = object({
-        repo = string # Image repository (e.g., "us-docker.pkg.dev/prj/registry/app")
-        tag  = string # Image tag (e.g., "1.0.0")
-      })
+    # User labels on the service object; merged beneath the platform
+    # attribution labels.
+    labels = optional(map(string), {})
 
-      # Optional: Environment variables and secrets
-      env = optional(object({
-        variables = optional(map(string)) # Plain environment variables
-        secrets   = optional(map(string)) # Secret Manager references
-      }))
+    # The instance's containers: the serving container plus any sidecars.
+    containers = list(object({
+      name    = optional(string, "")
+      image   = string
+      command = optional(list(string), [])
+      args    = optional(list(string), [])
 
-      # Container port (defaults to 8080)
-      port = optional(number, 8080)
+      # Environment variables: a literal value XOR a Secret Manager
+      # reference (the proto guarantees never both).
+      env = optional(list(object({
+        name  = string
+        value = optional(string, "")
+        value_from_secret = optional(object({
+          secret  = string
+          version = optional(string, "")
+        }), null)
+      })), [])
 
-      # Required: CPU units (1, 2, or 4)
-      cpu = number
+      # The single traffic-serving port (at most one container sets it).
+      # name selects the protocol: "http1" (default) or "h2c" for HTTP/2.
+      ports = optional(object({
+        container_port = optional(number, null)
+        name           = optional(string, "")
+      }), null)
 
-      # Required: Memory in MiB (128-32768)
-      memory = number
+      # CPU/memory limits plus the two CPU-allocation levers.
+      resources = optional(object({
+        cpu               = optional(string, "")
+        memory            = optional(string, "")
+        cpu_idle          = optional(bool, null)
+        startup_cpu_boost = optional(bool, false)
+      }), null)
 
-      # Required: Min and max container instances
-      replicas = object({
-        min = number # Minimum instances (can be 0 for scale-to-zero)
-        max = number # Maximum instances
-      })
-    })
+      volume_mounts = optional(list(object({
+        name       = string
+        mount_path = string
+      })), [])
 
-    # Optional: Maximum concurrent requests per instance (1-1000, default 80)
-    max_concurrency = optional(number, 80)
+      working_dir = optional(string, "")
 
-    # Optional: Request timeout in seconds (1-3600, default 300)
-    timeout_seconds = optional(number, 300)
+      # Startup probe gates instance start; liveness probe restarts
+      # unhealthy containers. Each carries exactly one handler arm
+      # (http_get / tcp_socket / grpc) — the proto oneof guarantees it.
+      startup_probe = optional(object({
+        initial_delay_seconds = optional(number, null)
+        timeout_seconds       = optional(number, null)
+        period_seconds        = optional(number, null)
+        failure_threshold     = optional(number, null)
+        http_get = optional(object({
+          path = optional(string, "")
+          port = optional(number, null)
+          http_headers = optional(list(object({
+            name  = string
+            value = optional(string, "")
+          })), [])
+        }), null)
+        tcp_socket = optional(object({
+          port = optional(number, null)
+        }), null)
+        grpc = optional(object({
+          port    = optional(number, null)
+          service = optional(string, "")
+        }), null)
+      }), null)
 
-    # Optional: Ingress settings (default "INGRESS_TRAFFIC_ALL")
-    # Valid values: "INGRESS_TRAFFIC_ALL", "INGRESS_TRAFFIC_INTERNAL_ONLY", "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
-    ingress = optional(string, "INGRESS_TRAFFIC_ALL")
+      liveness_probe = optional(object({
+        initial_delay_seconds = optional(number, null)
+        timeout_seconds       = optional(number, null)
+        period_seconds        = optional(number, null)
+        failure_threshold     = optional(number, null)
+        http_get = optional(object({
+          path = optional(string, "")
+          port = optional(number, null)
+          http_headers = optional(list(object({
+            name  = string
+            value = optional(string, "")
+          })), [])
+        }), null)
+        grpc = optional(object({
+          port    = optional(number, null)
+          service = optional(string, "")
+        }), null)
+      }), null)
 
-    # Optional: Allow unauthenticated access (default true)
-    allow_unauthenticated = optional(bool, true)
+      # Names of containers this one waits for (startup ordering).
+      depends_on = optional(list(string), [])
+    }))
 
-    # Optional: VPC access configuration for private resource access
+    # Named volumes; each carries exactly one source arm (proto oneof).
+    volumes = optional(list(object({
+      name = string
+      cloud_sql_instance = optional(object({
+        # Connection names (project:region:instance) — plain strings after
+        # ref resolution.
+        instances = list(string)
+      }), null)
+      secret = optional(object({
+        secret       = string
+        default_mode = optional(number, null)
+        items = optional(list(object({
+          path    = string
+          version = optional(string, "")
+          mode    = optional(number, null)
+        })), [])
+      }), null)
+      empty_dir = optional(object({
+        medium     = optional(string, "")
+        size_limit = optional(string, "")
+      }), null)
+      gcs = optional(object({
+        # Bucket name — plain string after ref resolution.
+        bucket    = string
+        read_only = optional(bool, false)
+      }), null)
+      nfs = optional(object({
+        server    = string
+        path      = string
+        read_only = optional(bool, false)
+      }), null)
+    })), [])
+
+    # Runtime identity email (plain string after ref resolution). Empty
+    # uses the project's Compute Engine default service account.
+    service_account = optional(string, "")
+
+    # Per-revision instance bounds.
+    scaling = optional(object({
+      min_instance_count = optional(number, null)
+      max_instance_count = optional(number, null)
+    }), null)
+
+    # Service-wide scaling posture across all revisions.
+    service_scaling = optional(object({
+      scaling_mode          = optional(string, "")
+      manual_instance_count = optional(number, null)
+      min_instance_count    = optional(number, null)
+    }), null)
+
+    # Per-instance request concurrency (1-1000); null lets GCP default.
+    max_instance_request_concurrency = optional(number, null)
+
+    # Request timeout in seconds (1-3600); null lets GCP default to 300.
+    timeout_seconds = optional(number, null)
+
+    # Sandbox generation — the proto enum NAME arrives as a string
+    # ("EXECUTION_ENVIRONMENT_GEN2"); the provider takes the same values.
+    execution_environment = optional(string, "")
+
+    # Best-effort session affinity cookie.
+    session_affinity = optional(bool, false)
+
+    # CMEK crypto key ID (plain string after ref resolution).
+    encryption_key = optional(string, "")
+
+    # Explicit next-revision name; empty lets Cloud Run generate names.
+    revision = optional(string, "")
+
+    # Outbound VPC networking: a connector XOR direct-VPC
+    # network_interfaces (the proto CEL guarantees exactly one mechanism).
     vpc_access = optional(object({
-      # VPC network name - can be a direct value or a reference to a GcpVpcNetwork resource
-      network = optional(object({
-        value = string
-      }))
-      # VPC subnet name - can be a direct value or a reference to a GcpSubnetwork resource
-      subnet = optional(object({
-        value = string
-      }))
-      egress = optional(string) # "ALL_TRAFFIC" or "PRIVATE_RANGES_ONLY"
-    }))
+      connector = optional(string, "")
+      network_interfaces = optional(list(object({
+        network    = optional(string, "")
+        subnetwork = optional(string, "")
+        tags       = optional(list(string), [])
+      })), [])
+      egress = optional(string, "")
+    }), null)
 
-    # Optional: Execution environment (default "EXECUTION_ENVIRONMENT_GEN2")
-    # Valid values: "EXECUTION_ENVIRONMENT_GEN1", "EXECUTION_ENVIRONMENT_GEN2"
-    execution_environment = optional(string, "EXECUTION_ENVIRONMENT_GEN2")
+    # GPU hardware requirement.
+    node_selector = optional(object({
+      accelerator = string
+    }), null)
 
-    # Optional: Custom DNS mapping
-    dns = optional(object({
-      enabled   = bool         # Enable custom domain mapping
-      hostnames = list(string) # List of custom hostnames
-      # Cloud DNS managed zone for verification. StringValueOrRef: the platform
-      # resolves any reference to a literal before apply, so only `value` arrives.
-      managed_zone = object({
-        value = string
-      })
-    }))
+    # Single-zone GPU serving opt-in (cheaper GPU capacity).
+    gpu_zonal_redundancy_disabled = optional(bool, false)
 
-    # Optional: Deletion protection to prevent accidental deletion (default false)
-    delete_protection = optional(bool, false)
+    # Ingress posture — the proto enum NAME arrives as a string
+    # ("INGRESS_TRAFFIC_ALL"); the provider takes the same values.
+    ingress = optional(string, "")
+
+    # Grants roles/run.invoker to allUsers when true.
+    allow_unauthenticated = optional(bool, false)
+
+    # Switches the IAM invoker check off entirely (org-policy alternative
+    # to the allUsers grant — never combined with it).
+    invoker_iam_disabled = optional(bool, false)
+
+    # Extra accepted token audiences for authenticated callers.
+    custom_audiences = optional(list(string), [])
+
+    # Traffic split across revisions; empty routes 100% to latest ready.
+    traffic = optional(list(object({
+      type     = string
+      revision = optional(string, "")
+      percent  = optional(number, null)
+      tag      = optional(string, "")
+    })), [])
+
+    # Launch-stage declaration for preview features ("", ALPHA, BETA, GA).
+    launch_stage = optional(string, "")
+
+    # Binary Authorization deploy gate.
+    binary_authorization = optional(object({
+      use_default              = optional(bool, false)
+      policy                   = optional(string, "")
+      breakglass_justification = optional(string, "")
+    }), null)
+
+    # Deletion guard; defaults to true (a destroy fails until disabled).
+    deletion_protection = optional(bool, true)
   })
 }

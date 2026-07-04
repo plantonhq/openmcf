@@ -39,7 +39,6 @@ gaps:
   - AwsEcsService:spec.container.env.secrets
   - DigitalOceanFunction:spec.secret_environment_variables
   - GcpCloudFunction:spec.service_config.secret_environment_variables
-  - GcpCloudRun:spec.container.env.secrets
   # (D) secret-holder kinds
   - KubernetesSecret:spec.basic_auth.password
   - KubernetesSecret:spec.docker_config_json.password

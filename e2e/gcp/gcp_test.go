@@ -319,6 +319,18 @@ func TestGcpGkeNodePool_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpgkenodepool", "terraform")
 }
 
+// GcpCloudRun scenarios. The minimal scenario is a public hello-service leaf
+// (~3-5 minutes). Direct VPC egress has no live scenario: GCP holds a
+// serverless address reservation in the subnetwork for 1-2 hours after the
+// service is destroyed, which no ephemeral teardown can wait out (recorded
+// exclusion in the component's e2e/profile.yaml).
+func TestGcpCloudRun_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudrun", "pulumi")
+}
+func TestGcpCloudRun_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudrun", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

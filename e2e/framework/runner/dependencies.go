@@ -226,6 +226,13 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 // producer-side connection record that poisons the NEXT scenario's
 // same-named prerequisite chain (its connection create silently attaches to
 // the stale record and no peering ever materializes).
+//
+// The budget is deliberately bounded at ~6 minutes: async releases that GCP
+// documents in HOURS (e.g. the serverless address reservation a direct-VPC
+// Cloud Run service leaves in its subnetwork for 1-2 hours after deletion)
+// can never be covered by retrying, and scenarios whose teardown depends on
+// such a release must be excluded from live E2E instead (see the E2E
+// coverage policy).
 const (
 	dependencyDestroyAttempts = 6
 	dependencyDestroyBackoff  = 60 * time.Second

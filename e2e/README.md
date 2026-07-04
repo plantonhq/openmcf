@@ -131,6 +131,20 @@ service-networking-connection verifier: the peering is created via the
 Service Networking API but read back through the Compute API, and that
 cross-API view is eventually consistent).
 
+**Retries cannot cover releases the cloud documents in HOURS.** The retry
+budget is bounded (~6 minutes) on purpose: some cloud-side holds outlive any
+reasonable wait — a direct-VPC Cloud Run service leaves a serverless address
+reservation (`serverless-ipv4-*`) in its subnetwork for **1-2 hours** after
+the service is destroyed, and until GCP garbage-collects it the subnetwork
+destroy fails with `resourceInUseByAnotherResource` (the reservation itself
+cannot be deleted — it is held by the serverless service agent). A scenario
+whose prerequisite teardown depends on such a release must NOT run live:
+record it as an E2E exclusion in the component's `e2e/profile.yaml` with the
+specific reason, and prove the surface offline instead. Fixed prerequisite
+names make this worse (a stranded subnet collides with the next run), so any
+scenario in an async-release blast radius should carry `${E2E_RUN_ID}` in its
+prerequisites' cloud-side names.
+
 ### Resolving `valueFrom` references in composed scenarios
 
 Before a scenario (or a prerequisite manifest) is applied, the runner resolves

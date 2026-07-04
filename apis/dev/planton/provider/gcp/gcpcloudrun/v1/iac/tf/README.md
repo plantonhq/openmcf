@@ -1,257 +1,51 @@
-# Terraform Module for GCP Cloud Run
+# GcpCloudRun - Terraform Module
 
-This Terraform module deploys a Google Cloud Run service with support for:
+This Terraform module provisions a Cloud Run service (`google_cloud_run_v2_service`). It is the Terraform-side implementation of the Planton `GcpCloudRun` resource kind and has feature parity with the Pulumi module.
 
-- Container deployment with configurable CPU and memory
-- Environment variables and Secret Manager integration
-- Custom DNS domain mapping
-- VPC access for private resources
-- Auto-scaling configuration
-- IAM policy management for public/private access
-- Multiple ingress options
-- Service account configuration
+## Overview
 
-## Prerequisites
+The module enables the Cloud Run Admin API (`run.googleapis.com`) so a fresh project works first try, then creates the service with the full released-provider surface: multiple containers (the serving container plus sidecars with `depends_on` startup ordering), literal and Secret Manager environment variables, startup and liveness probes (HTTP/TCP/gRPC), all five volume types (Cloud SQL sockets, Secret Manager files, in-memory or disk scratch, GCS FUSE, NFS), per-revision and service-level scaling (including MANUAL mode), revision traffic splitting with tags, direct VPC egress or a Serverless VPC Access connector, GPU node selection, CMEK image encryption, Binary Authorization, session affinity, and custom audiences.
 
-- Terraform >= 1.0
-- Google Cloud provider >= 6.19.0
-- GCP project with Cloud Run API enabled
-- Appropriate IAM permissions
+Public access is the additive-IAM path: when `allow_unauthenticated` is true a `google_cloud_run_v2_service_iam_member` grants `roles/run.invoker` to `allUsers`; `invoker_iam_disabled` is the org-policy alternative that switches the IAM check off instead (the spec rejects setting both). `deletion_protection` defaults to true — a destroy fails until the manifest opts out.
 
-## Usage
+An empty `project_id` falls back to the provider's default project; empty optional strings become null so the provider omits them from the API payload. Enum values arrive from the spec as the API's own names and pass through untranslated. The module runs on the plain `google` provider — every modeled field is GA on the released 6.x line.
 
-### Basic Example
-
-```hcl
-module "cloudrun" {
-  source = "./iac/tf"
-
-  metadata = {
-    name = "my-service"
-    env  = "production"
-  }
-
-  spec = {
-    project_id = "my-gcp-project"
-    region     = "us-central1"
-
-    container = {
-      image = {
-        repo = "gcr.io/my-project/my-app"
-        tag  = "v1.0.0"
-      }
-      cpu    = 1
-      memory = 512
-      replicas = {
-        min = 0
-        max = 10
-      }
-    }
-  }
-}
-```
-
-### With Custom DNS
-
-```hcl
-module "cloudrun_with_dns" {
-  source = "./iac/tf"
-
-  metadata = {
-    name = "api-service"
-  }
-
-  spec = {
-    project_id = "my-gcp-project"
-    region     = "us-central1"
-
-    container = {
-      image = {
-        repo = "gcr.io/my-project/api"
-        tag  = "v2.0.0"
-      }
-      cpu    = 2
-      memory = 1024
-      replicas = {
-        min = 1
-        max = 50
-      }
-    }
-
-    dns = {
-      enabled      = true
-      hostnames    = ["api.example.com"]
-      managed_zone = { value = "example-com-zone" }
-    }
-  }
-}
-```
-
-## Deployment Commands
-
-### Using Planton CLI
+## Usage with Planton CLI
 
 ```shell
-# Initialize Terraform with remote state backend
-planton tofu init --manifest hack/manifest.yaml --backend-type s3 \
-  --backend-config="bucket=planton-tf-state-backend" \
-  --backend-config="dynamodb_table=planton-tf-state-backend-lock" \
-  --backend-config="region=ap-south-2" \
-  --backend-config="key=planton/gcp-stacks/gcp-cloud-run.tfstate"
-
-# Plan deployment
-planton tofu plan --manifest hack/manifest.yaml
-
-# Apply deployment
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
-
-# Destroy resources
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
+planton tofu init --manifest ../hack/manifest.yaml
+planton tofu plan --manifest ../hack/manifest.yaml
+planton tofu apply --manifest ../hack/manifest.yaml --auto-approve
+planton tofu destroy --manifest ../hack/manifest.yaml --auto-approve
 ```
 
-### Using Standard Terraform
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
 
-```shell
-# Initialize
+## Direct Terraform Usage
+
+```bash
+cd apis/dev/planton/provider/gcp/gcpcloudrun/v1/iac/tf
 terraform init
-
-# Validate configuration
-terraform validate
-
-# Plan changes
-terraform plan
-
-# Apply changes
-terraform apply
-
-# Destroy resources
-terraform destroy
+terraform plan -var-file=terraform.tfvars.json
+terraform apply -var-file=terraform.tfvars.json
 ```
 
-## Inputs
+## Variables
 
-See [variables.tf](./variables.tf) for complete input specification.
+| Name | Description | Default |
+|------|-------------|---------|
+| `metadata` | Resource metadata (name, labels, etc.) | — |
+| `spec` | GcpCloudRun spec | — |
 
-### Required Inputs
-
-| Name | Type | Description |
-|------|------|-------------|
-| metadata | object | Resource metadata including name, org, env |
-| spec.project_id | string | GCP project ID |
-| spec.region | string | GCP region (e.g., "us-central1") |
-| spec.container.image | object | Container image repo and tag |
-| spec.container.cpu | number | CPU units (1, 2, or 4) |
-| spec.container.memory | number | Memory in MiB (128-32768) |
-| spec.container.replicas | object | Min and max instance counts |
-
-### Optional Inputs
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| spec.service_name | string | metadata.name | Custom service name |
-| spec.service_account | string | null | Service account email |
-| spec.max_concurrency | number | 80 | Max concurrent requests per instance |
-| spec.timeout_seconds | number | 300 | Request timeout in seconds |
-| spec.ingress | string | "INGRESS_TRAFFIC_ALL" | Ingress traffic source |
-| spec.allow_unauthenticated | bool | true | Allow public access |
-| spec.execution_environment | string | "EXECUTION_ENVIRONMENT_GEN2" | Execution environment |
-| spec.vpc_access | object | null | VPC network access configuration |
-| spec.dns | object | null | Custom DNS domain mapping |
+The `spec` object includes: `region` (required), `containers` (required; image, command/args, env with Secret Manager references, single serving port with `h2c` support, cpu/memory limits + `cpu_idle`/`startup_cpu_boost`, volume mounts, startup/liveness probes, `depends_on`), `volumes` (cloud_sql_instance / secret / empty_dir / gcs / nfs — exactly one source each), `service_account` (empty = Compute Engine default), `scaling` + `service_scaling`, `max_instance_request_concurrency`, `timeout_seconds`, `execution_environment`, `session_affinity`, `encryption_key`, `revision`, `vpc_access` (connector XOR network_interfaces + egress), `node_selector`/`gpu_zonal_redundancy_disabled`, `ingress`, `allow_unauthenticated` XOR `invoker_iam_disabled`, `custom_audiences`, `traffic`, `launch_stage`, `binary_authorization`, `deletion_protection` (default true), and `project_id` (empty falls back to the provider default project).
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| url | Cloud Run service URL |
-| service_name | Service name |
-| revision | Latest revision name |
-
-## Features
-
-### Container Configuration
-
-- Configurable CPU (1, 2, or 4 vCPU)
-- Memory allocation (128 MiB to 32 GB)
-- Custom container port
-- Environment variables
-- Secret Manager integration
-
-### Scaling
-
-- Minimum instances (including scale-to-zero)
-- Maximum instance count
-- Concurrent request handling
-
-### Networking
-
-- Public or private ingress
-- VPC access for private resources
-- Custom DNS domain mapping
-- Automatic SSL certificate provisioning
-
-### Security
-
-- IAM-based access control
-- Service account configuration
-- Secret Manager for sensitive data
-- Network isolation options
-
-## Examples
-
-For comprehensive examples, see [examples.md](./examples.md):
-
-- Minimal configuration
-- Production service with secrets
-- Custom DNS domain mapping
-- Private VPC service
-- High-traffic configuration
-- Multi-region deployment
-
-## Troubleshooting
-
-### Service fails to deploy
-
-1. Verify Cloud Run API is enabled in your GCP project
-2. Check IAM permissions for the service account
-3. Ensure container image is accessible
-4. Review Cloud Run logs in GCP Console
-
-### Domain mapping issues
-
-1. Verify DNS managed zone exists
-2. Check domain ownership verification
-3. Ensure TXT record is created
-4. Allow time for DNS propagation (up to 48 hours)
-
-### VPC access problems
-
-1. Verify VPC network and subnet exist
-2. Check VPC connector or Direct VPC Egress configuration
-3. Review firewall rules
-4. Ensure service account has necessary permissions
-
-## Resources Created
-
-This module creates the following resources:
-
-- `google_cloud_run_v2_service` - Cloud Run service
-- `google_cloud_run_v2_service_iam_member` - IAM policy (if allow_unauthenticated is true)
-- `google_cloud_run_domain_mapping` - Domain mapping (if DNS is enabled)
-- `google_dns_record_set` - TXT verification record (if DNS is enabled)
-
-## Additional Resources
-
-- [GCP Cloud Run Documentation](https://cloud.google.com/run/docs)
-- [Terraform Google Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
-- [Cloud Run Pricing](https://cloud.google.com/run/pricing)
-- [Cloud Run Best Practices](https://cloud.google.com/run/docs/tips)
-
-## Version Compatibility
-
-- Terraform: >= 1.0
-- Google Provider: 6.19.0
-- Cloud Run API: v2
-
-## License
-
-Part of the Planton platform.
+| `url` | Canonical serving URL of the service |
+| `service_name` | Name of the service as created in GCP (the serverless-NEG handle) |
+| `revision` | Latest ready revision name |
+| `location` | Region the service is deployed in |
+| `uid` | Server-assigned unique identifier |
+| `urls` | Every URL serving this service |
