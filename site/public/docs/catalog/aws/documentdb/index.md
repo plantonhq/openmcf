@@ -8,295 +8,149 @@ componentName: "awsdocumentdb"
 
 # AWS DocumentDB
 
-Deploys an AWS DocumentDB cluster (MongoDB-compatible) with automatic subnet group creation, managed security group configuration, configurable cluster instances, and optional parameter group customization. The component provisions both the cluster and its instances in a single resource definition.
+Deploys an Amazon DocumentDB cluster -- a managed MongoDB-compatible
+document database, provisioned or Serverless -- with its writer and
+reader instances folded into the same spec, an AWS-managed master
+password in Secrets Manager, and every attachment (subnets, security
+groups, KMS keys) composed by reference.
 
 ## What Gets Created
 
 When you deploy an AwsDocumentDb resource, Planton provisions:
 
-- **DocumentDB Cluster** — a `docdb.Cluster` with the `docdb` engine at the specified version, encryption settings, backup configuration, and CloudWatch log exports
-- **Cluster Instances** — one `docdb.ClusterInstance` per `instanceCount` (default 1), each using the specified `instanceClass` with auto minor version upgrade support
-- **DB Subnet Group** — a `docdb.SubnetGroup` created automatically when `subnets` are provided and `dbSubnetGroup` is not set, placing the cluster across the specified subnets
-- **Security Group** — an `ec2.SecurityGroup` created when `securityGroups` or `allowedCidrs` are provided, with ingress rules on the cluster port from the specified sources and unrestricted egress
-- **Security Group Ingress Rules** — one `ec2.SecurityGroupRule` per source security group and one for CIDR blocks, scoped to the configured `port` (default 27017)
-- **Security Group Egress Rule** — an `ec2.SecurityGroupRule` allowing all outbound traffic
-- **Cluster Parameter Group** — a `docdb.ClusterParameterGroup` created when `clusterParameters` are provided, with the family auto-derived from the engine version (e.g., `docdb5.0`)
+- **DocumentDB cluster** — an `aws_docdb_cluster` / `docdb.Cluster` with
+  the chosen shape: provisioned instances or DocumentDB Serverless DCU
+  bounds
+- **Cluster instances** — one `aws_docdb_cluster_instance` /
+  `docdb.ClusterInstance` per `instances` entry, keyed by name so adding
+  or removing a reader is an in-place update; the lowest promotion tier
+  becomes the writer
+- **DB subnet group** — managed automatically from `subnetIds` (pure
+  glue: a named list of subnets), or an existing group by name
+- **Cluster parameter group** — managed automatically when inline
+  `parameters` are provided, with the family derived from the pinned
+  engine version
+
+The cluster never modifies a resource it merely references: security
+groups carry their own ingress rules and KMS keys govern their own
+rotation.
 
 ## Prerequisites
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least two subnets** in different Availability Zones, or an existing DB subnet group name
-- **A master password** for the cluster administrator
-- **A VPC ID** if creating a managed security group with `securityGroups` or `allowedCidrs`
-- **A KMS key ARN** if using a customer-managed key for storage encryption
+- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
+- **Two subnets in distinct AZs** (`AwsSubnet`) or an existing DB subnet group.
+- **A security group** (`AwsSecurityGroup`) allowing port 27017 from your application tier -- or omit to use the VPC default group.
+- **A KMS key** (`AwsKmsKey`) only when replacing the AWS-managed keys for storage or Performance Insights.
 
 ## Quick Start
-
-Create a file `documentdb.yaml`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsDocumentDb
 metadata:
-  name: my-docdb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsDocumentDb.my-docdb
+  name: orders-docdb
 spec:
-  region: us-east-1
-  subnets:
-    - subnet-0a1b2c3d4e5f00001
-    - subnet-0a1b2c3d4e5f00002
-  masterPassword: "change-me-before-deploy"
+  region: us-west-2
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: platform-private-1
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: platform-private-2
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: database-sg
+        fieldPath: status.outputs.security_group_id
+  masterUsername: docadmin
+  manageMasterUserPassword: true
+  storageEncrypted: true
   skipFinalSnapshot: true
+  instances:
+    - name: writer
+      instanceClass: db.r6g.large
 ```
-
-Deploy:
 
 ```shell
-planton apply -f documentdb.yaml
+planton apply -f docdb.yaml
 ```
 
-This creates a single-instance DocumentDB 5.0 cluster with encrypted storage, a `docdbadmin` master user, and a `db.r6g.large` instance in the specified subnets.
+This creates a DocumentDB 5.0 cluster (the current AWS default version)
+with one writer instance and its master password kept in Secrets
+Manager.
 
 ## Configuration Reference
 
 ### Required Fields
 
 | Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the resource will be created. | Must be set. |
-| `masterPassword` | `string` | Master user password for the cluster. | Must be set. |
-| `subnets` | `StringValueOrRef[]` | Subnet IDs for the DB subnet group. Provide at least two in distinct AZs. | Minimum 2 items unless `dbSubnetGroup` is set. Can reference AwsVpc resource via `valueFrom`. |
-| `finalSnapshotIdentifier` | `string` | Identifier for the final snapshot on deletion. | Required when `skipFinalSnapshot` is `false` (the default). |
+| --- | --- | --- | --- |
+| `region` | `string` | AWS region; must match the referenced subnets/SGs/keys. | Required; non-empty |
+| networking | — | At least two `subnetIds` (distinct AZs) or an existing `dbSubnetGroupName`. | Enforced |
+| `instances` | `list` | The writer/reader instances. Required unless the cluster starts headless (a restore or a global-cluster member). | Enforced |
+| `masterUsername` | `string` | Required for a new cluster (AWS has no default); create-only. Restores and global-cluster members inherit it. | Enforced |
 
-### Optional Fields
+### Cluster Shape Fields
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `dbSubnetGroup` | `StringValueOrRef` | — | Name of an existing DB subnet group. When set, `subnets` is not required. |
-| `securityGroups` | `StringValueOrRef[]` | `[]` | Security group IDs used to create ingress rules on the managed security group. Can reference AwsSecurityGroup resources via `valueFrom`. |
-| `allowedCidrs` | `string[]` | `[]` | IPv4 CIDRs to allow ingress to the managed security group. Must be unique, valid CIDR notation. |
-| `vpc` | `StringValueOrRef` | — | VPC ID for the managed security group. Can reference AwsVpc resource via `valueFrom`. |
-| `engineVersion` | `string` | `"5.0.0"` | DocumentDB engine version. Examples: `4.0.0`, `5.0.0`. |
-| `port` | `int32` | `27017` | TCP port on which the cluster accepts connections. Valid range: 1-65535. |
-| `masterUsername` | `string` | `"docdbadmin"` | Master user name for the cluster. |
-| `instanceCount` | `int32` | `1` | Number of instances to create in the cluster. Minimum: 1. |
-| `instanceClass` | `string` | `"db.r6g.large"` | Compute and memory capacity of each instance. Examples: `db.r5.large`, `db.r5.xlarge`, `db.r6g.large`. |
-| `storageEncrypted` | `bool` | `true` | Encrypts cluster storage at rest. |
-| `kmsKey` | `StringValueOrRef` | — | KMS key ARN for storage encryption. Can reference AwsKmsKey resource via `valueFrom`. |
-| `backupRetentionPeriod` | `int32` | `7` | Number of days to retain automated backups. Valid range: 1-35. |
-| `preferredBackupWindow` | `string` | — | Daily backup window in UTC. Format: `hh24:mi-hh24:mi` (e.g., `03:00-04:00`). |
-| `preferredMaintenanceWindow` | `string` | — | Weekly maintenance window in UTC. Format: `ddd:hh24:mi-ddd:hh24:mi` (e.g., `sun:05:00-sun:06:00`). |
-| `deletionProtection` | `bool` | `false` | Prevents accidental cluster deletion when enabled. |
-| `skipFinalSnapshot` | `bool` | `false` | When `true`, no final snapshot is created on cluster deletion. When `false`, `finalSnapshotIdentifier` is required. |
-| `enabledCloudwatchLogsExports` | `string[]` | `[]` | Log types to export to CloudWatch. Valid values: `audit`, `profiler`. |
-| `applyImmediately` | `bool` | `false` | When `true`, modifications are applied immediately instead of during the next maintenance window. |
-| `autoMinorVersionUpgrade` | `bool` | `true` | Enables automatic minor engine version upgrades for instances. |
-| `clusterParameterGroupName` | `string` | — | Name of an existing cluster parameter group. |
-| `clusterParameters` | `AwsDocumentDbParameter[]` | `[]` | Custom cluster parameters. Each entry has `name`, `value`, and optional `applyMethod` (`immediate` or `pending-reboot`). |
+| --- | --- | --- | --- |
+| `instances` | `list` | `[]` | Per-name instances (name, instanceClass incl. `db.serverless`, promotionTier, AZ pin, maintenance window, Performance Insights, CA cert). |
+| `serverlessV2Scaling` | `object` | — | DCU bounds for `db.serverless` instances (0.5-256, half-steps). Removing the block from a live cluster replaces it. |
+| `engineVersion` | `string` | AWS default | Pin for deliberate upgrades; empty never goes stale. |
+| `storageType` | `string` | `standard` | `iopt1` enables I/O-Optimized storage for I/O-heavy workloads. |
+| `port` | `int` | 27017 | 1150-65535; create-only. |
+| `networkType` | `string` | `IPV4` | `DUAL` for dual-stack IPv4+IPv6 (needs IPv6 subnets). |
 
-## Examples
+### Credentials and Encryption
 
-### Single-Instance Development Cluster
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `manageMasterUserPassword` | `bool` | recommended `true` | AWS generates, stores, and rotates the master password in Secrets Manager; ARN exported as `master_user_secret_arn`. |
+| `masterPassword` | `string` (sensitive) | — | Direct password; mutually exclusive with the managed strategy. |
+| `storageEncrypted` | `bool` | recommended `true` | Create-time one-way door. |
+| `kmsKeyId` | `string \| valueFrom` | AWS-managed key | Reference an `AwsKmsKey` `key_arn` output. |
 
-A minimal DocumentDB cluster for development with final snapshot skipped:
+### Data Protection
 
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsDocumentDb
-metadata:
-  name: dev-docdb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsDocumentDb.dev-docdb
-spec:
-  region: us-east-1
-  subnets:
-    - subnet-private-az1
-    - subnet-private-az2
-  masterPassword: "dev-password-123"
-  skipFinalSnapshot: true
-  applyImmediately: true
-```
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `backupRetentionPeriod` | `int` | 1 | Days of continuous backup (1-35) -- bounds point-in-time recovery. |
+| `skipFinalSnapshot` / `finalSnapshotIdentifier` | — | safe | A final-snapshot name is required unless skipping is explicit. |
+| `deletionProtection` | `bool` | `false` | Deleting becomes a deliberate two-step. |
+| `snapshotIdentifier` / `restoreToPointInTime` | — | — | Create the cluster from a snapshot or another cluster's continuous backup (incl. copy-on-write fast clones). |
+| `globalClusterIdentifier` | `string` | — | Join a DocumentDB global cluster. |
 
-### Multi-Instance Production Cluster
+### Observability and Parameters
 
-A three-instance cluster with encryption, backup retention, deletion protection, and audit logging:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsDocumentDb
-metadata:
-  name: prod-docdb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsDocumentDb.prod-docdb
-spec:
-  region: us-east-1
-  subnets:
-    - subnet-private-az1
-    - subnet-private-az2
-    - subnet-private-az3
-  masterUsername: prodadmin
-  masterPassword: "prod-secure-password"
-  instanceCount: 3
-  instanceClass: db.r6g.xlarge
-  storageEncrypted: true
-  kmsKey: arn:aws:kms:us-east-1:123456789012:key/abc-12345
-  deletionProtection: true
-  backupRetentionPeriod: 14
-  preferredBackupWindow: "03:00-04:00"
-  preferredMaintenanceWindow: "sun:05:00-sun:06:00"
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: prod-docdb-final
-  enabledCloudwatchLogsExports:
-    - audit
-    - profiler
-```
-
-### Cluster with Security Group and CIDR Access
-
-A cluster with a managed security group allowing access from a VPC CIDR and specific application security groups:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsDocumentDb
-metadata:
-  name: secured-docdb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsDocumentDb.secured-docdb
-spec:
-  region: us-east-1
-  subnets:
-    - subnet-private-az1
-    - subnet-private-az2
-  vpc: vpc-0a1b2c3d4e5f00001
-  securityGroups:
-    - sg-app-servers
-  allowedCidrs:
-    - "10.0.0.0/16"
-  masterPassword: "secure-password-456"
-  instanceCount: 2
-  storageEncrypted: true
-  deletionProtection: true
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: secured-docdb-final
-```
-
-### Cluster with Custom Parameters
-
-A cluster using DocumentDB 5.0 with custom parameter group settings for profiler and TLS:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsDocumentDb
-metadata:
-  name: custom-docdb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AwsDocumentDb.custom-docdb
-spec:
-  region: us-east-1
-  subnets:
-    - subnet-private-az1
-    - subnet-private-az2
-  masterPassword: "custom-password-789"
-  engineVersion: "5.0.0"
-  instanceCount: 2
-  instanceClass: db.r5.large
-  clusterParameters:
-    - name: profiler
-      value: enabled
-      applyMethod: immediate
-    - name: profiler_threshold_ms
-      value: "100"
-      applyMethod: immediate
-    - name: tls
-      value: enabled
-      applyMethod: pending-reboot
-  enabledCloudwatchLogsExports:
-    - profiler
-  skipFinalSnapshot: true
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsDocumentDb
-metadata:
-  name: ref-docdb
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsDocumentDb.ref-docdb
-spec:
-  region: us-east-1
-  subnets:
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-a
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: my-private-subnet-b
-        fieldPath: status.outputs.subnet_id
-  vpc:
-    valueFrom:
-      kind: AwsVpc
-      name: my-vpc
-      field: status.outputs.vpc_id
-  securityGroups:
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: docdb-sg
-        field: status.outputs.security_group_id
-  kmsKey:
-    valueFrom:
-      kind: AwsKmsKey
-      name: docdb-key
-      field: status.outputs.key_arn
-  masterPassword: "ref-password-000"
-  instanceCount: 2
-  storageEncrypted: true
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: ref-docdb-final
-```
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabledCloudwatchLogsExports` | `list` | `[]` | `audit` and/or `profiler` -- each also needs its matching cluster parameter before DocumentDB emits anything. |
+| per-instance `performanceInsightsEnabled` + KMS | — | off | Per-query telemetry; instance-scoped on DocumentDB. |
+| `parameters` / `dbClusterParameterGroupName` | — | engine default | Inline parameters (module-managed group) or an existing group. |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+| --- | --- |
+| `cluster_identifier` | The cluster identifier. |
+| `arn` | The cluster ARN. |
+| `cluster_resource_id` | The immutable resource ID -- survives renames; keys PITR and CloudWatch. |
+| `endpoint` | The writer endpoint. |
+| `reader_endpoint` | Load-balances across reader instances. |
+| `port` | The listening port. |
+| `hosted_zone_id` | For Route53 alias records to the endpoints. |
+| `engine_version_actual` | The resolved running version. |
+| `master_user_secret_arn` | The Secrets Manager ARN of the managed master password (managed strategy only). |
+| `db_subnet_group_name` | The subnet group in use. |
+| `db_cluster_parameter_group_name` | The parameter group in use. |
+| `instance_endpoints` | Per-instance endpoints of the folded instances, in spec order. |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_endpoint` | `string` | The primary writer endpoint for connecting to the DocumentDB cluster |
-| `cluster_reader_endpoint` | `string` | The reader endpoint for load-balanced read traffic across replica instances |
-| `cluster_id` | `string` | The AWS identifier of the DocumentDB cluster |
-| `cluster_arn` | `string` | The Amazon Resource Name (ARN) of the DocumentDB cluster |
-| `cluster_port` | `int32` | The port on which the DocumentDB cluster accepts connections |
-| `cluster_resource_id` | `string` | The internal AWS resource identifier for the cluster |
-| `connection_string` | `string` | A MongoDB-compatible connection string in the format `mongodb://user:<password>@endpoint:port/?tls=true&replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false` |
-| `db_subnet_group_name` | `string` | The name of the DB subnet group associated with the cluster (only when created by the module) |
-| `security_group_id` | `string` | The security group ID associated with the cluster (only when created by the module) |
-| `cluster_parameter_group_name` | `string` | The cluster parameter group name in use (only when created by the module) |
+## Related Resources
 
-## Related Components
-
-- [AwsVpc](/docs/catalog/aws/vpc) — provides subnets and VPC ID for cluster placement
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls network access to the cluster
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides KMS keys for storage encryption
+- [AwsSubnet](/docs/catalog/aws/subnet) — the private subnets the cluster spans
+- [AwsSecurityGroup](/docs/catalog/aws/security-group) — database ingress rules live here
+- [AwsKmsKey](/docs/catalog/aws/kms-key) — customer-managed encryption keys
+- [AwsRdsCluster](/docs/catalog/aws/rds-cluster) — the relational sibling with the same cluster anatomy

@@ -400,6 +400,16 @@ therefore guarantees zero orphaned prerequisites. When that phase is red,
 real cloud resources may still exist: sweep the account for the scenario's
 `planton-e2e`-tagged resources before re-running.
 
+**A service's FIRST-ever use in an account can fail on its service-linked
+role.** AWS services that operate through a service-linked role (SLR) —
+Redshift's `AWSServiceRoleForRedshift` is one — auto-create that role on the
+account's first create call, and the very first call can fail with
+`InvalidParameterValue: Unable to assume the SLR on the customer account`
+while the role propagates. The SLR then exists (verify with `aws iam
+get-role --role-name <SLR>`), and the retry succeeds. Treat this error class
+as a first-use transient, not a module bug: confirm the SLR now exists and
+re-run the lane before touching any code.
+
 **Reference field paths must be output-backed.** The E2E resolver (like the
 production flattening it mirrors) resolves `valueFrom` references against the
 referenced instance's captured STACK OUTPUTS — a `field_path` under

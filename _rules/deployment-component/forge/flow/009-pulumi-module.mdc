@@ -44,6 +44,18 @@ SUCCESS CRITERIA
 NOTES
 - Rule 010 handles entrypoint `iac/pulumi/main.go`, `Pulumi.yaml`, `Makefile`, and binary BUILD.
 - Use in-repo patterns (e.g., `awsalb`, `awsrdsinstance`) as guidance; always derive names/types/outputs from the proto files you read.
+
+EXPORTING OUTPUTS -- APPLYT TYPING IS A DEPLOY-TIME TRAP
+- Prefer exporting resource outputs DIRECTLY (`ctx.Export(OpX, created.X)`). Most SDK
+  string attributes are `pulumi.StringOutput` and already resolve to `""` when the
+  underlying value is absent -- no nil-normalizing transform is needed.
+- When a real transform IS needed, the `ApplyT` applier's input parameter must match
+  the output's element type EXACTLY: `StringOutput` takes `func(string) T`,
+  `StringPtrOutput` takes `func(*string) T`. A `func(*string)` applier on a
+  `StringOutput` compiles cleanly and panics only at live deploy
+  ("applier's first input parameter must be assignable from string, got *string") --
+  no offline gate catches it. `go doc` the SDK type to confirm Output vs PtrOutput
+  before writing the applier.
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` (pointer types in Go)
 - ALWAYS use getter methods: `spec.GetFieldName()` instead of `spec.FieldName`
