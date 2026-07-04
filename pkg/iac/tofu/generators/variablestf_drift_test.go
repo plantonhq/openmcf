@@ -81,6 +81,10 @@ var migratedKinds = []string{
 	"AwsOpenSearchDomain",
 	// EC2 instance, migrated off its legacy hand-written contract.
 	"AwsEc2Instance",
+	// MWAA, migrated off its legacy hand-written contract.
+	"AwsMwaaEnvironment",
+	// MSK Serverless, generator-owned from the day it was forged.
+	"AwsMskServerlessCluster",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

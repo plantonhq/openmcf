@@ -23,6 +23,7 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awssecuritygroupv1.AwsSec
 
 	locals.AwsSecurityGroup = stackInput.Target
 
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
 		awstagkeys.Name:         locals.AwsSecurityGroup.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),

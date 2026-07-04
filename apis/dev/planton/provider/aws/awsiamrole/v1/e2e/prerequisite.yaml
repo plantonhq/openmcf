@@ -156,3 +156,41 @@ spec:
         Principal:
           Service: eks-fargate-pods.amazonaws.com
         Action: sts:AssumeRole
+---
+# MWAA execution role: trusts airflow.amazonaws.com AND
+# airflow-env.amazonaws.com (MWAA assumes it through both service
+# principals). AWS publishes no managed policy for MWAA execution roles,
+# so the fixture carries broad read/write managed policies over the
+# services MWAA touches (S3 DAG source, CloudWatch Logs, SQS Celery
+# backend) -- acceptable breadth for an ephemeral test account, and the
+# environment module never modifies the role it references.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-mwaa-execution-role
+  id: planton-oss-e2e-mwaa-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for MWAA environment execution
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+    - value: arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+    - value: arn:aws:iam::aws:policy/AmazonSQSFullAccess
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service:
+            - airflow.amazonaws.com
+            - airflow-env.amazonaws.com
+        Action: sts:AssumeRole

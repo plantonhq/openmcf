@@ -108,6 +108,7 @@ import (
 	awsmemcachedelasticachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemcachedelasticache/v1"
 	awsmemorydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbcluster/v1"
 	awsmskclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskcluster/v1"
+	awsmskserverlessclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskserverlesscluster/v1"
 	awsmwaaenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmwaaenvironment/v1"
 	awsnatgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnatgateway/v1"
 	awsneptuneclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsneptunecluster/v1"
@@ -559,6 +560,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache:          &awsmemcachedelasticachev1.AwsMemcachedElasticache{},
 	cloudresourcekind.CloudResourceKind_AwsMemorydbCluster:               &awsmemorydbclusterv1.AwsMemorydbCluster{},
 	cloudresourcekind.CloudResourceKind_AwsMskCluster:                    &awsmskclusterv1.AwsMskCluster{},
+	cloudresourcekind.CloudResourceKind_AwsMskServerlessCluster:          &awsmskserverlessclusterv1.AwsMskServerlessCluster{},
 	cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment:               &awsmwaaenvironmentv1.AwsMwaaEnvironment{},
 	cloudresourcekind.CloudResourceKind_AwsNatGateway:                    &awsnatgatewayv1.AwsNatGateway{},
 	cloudresourcekind.CloudResourceKind_AwsNeptuneCluster:                &awsneptuneclusterv1.AwsNeptuneCluster{},

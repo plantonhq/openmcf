@@ -291,6 +291,9 @@ func toPascalCase(name string) string {
 		{"kubernetestemporal", "KubernetesTemporal"},
 		{"kubernetesharbor", "KubernetesHarbor"},
 		{"kubernetessignoz", "KubernetesSigNoz"},
+		{"awssecuritygroup", "AwsSecurityGroup"},
+		{"awsmwaaenvironment", "AwsMwaaEnvironment"},
+		{"awsmskserverlesscluster", "AwsMskServerlessCluster"},
 	}
 
 	for _, kp := range knownPrefixes {

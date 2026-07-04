@@ -120,26 +120,9 @@ When `endpointManagement` is `SERVICE` (default), AWS creates these VPC endpoint
 
 ### Security Groups
 
-The Planton component supports three security group patterns:
+Network ingress is composed, never embedded: the environment attaches the referenced `securityGroupIds` (at least one is required by AWS) directly to its network configuration, and the rules MWAA needs live on those first-class `AwsSecurityGroup` nodes — where they can be shared, audited, and evolved independently of the environment. Unlike subnets (which are create-time), the attached security groups can be changed in place.
 
-**1. Managed security group from source SGs (`securityGroupIds`)**
-
-Creates an EC2 security group in the specified VPC with:
-- Self-referencing inbound rule (all traffic, all ports, protocol `-1`) — **required** for MWAA. The scheduler, workers, webserver, and metadata DB communicate through this self-referencing rule.
-- HTTPS (port 443) ingress from each source security group — allows Airflow UI access.
-- Full egress (all traffic) for outbound connectivity.
-
-Requires `vpcId` to be set.
-
-**2. Managed security group from CIDRs (`allowedCidrBlocks`)**
-
-Same as above, but with HTTPS ingress rules based on IPv4 CIDR blocks instead of source security groups. Can be combined with `securityGroupIds`.
-
-**3. Direct attachment (`associateSecurityGroupIds`)**
-
-Existing security groups attached directly to the MWAA environment's network configuration. No managed SG creation. Use this when you already have a security group configured with the self-referencing pattern.
-
-All three patterns can be combined. The managed SG (if created) is included alongside any `associateSecurityGroupIds`.
+The referenced group must carry the MWAA ingress pattern described below; model it as an `AwsSecurityGroup` with a self-referencing all-traffic rule, HTTPS (443) ingress from whatever should reach the Airflow UI (CIDRs, other groups, or prefix lists), and egress for outbound connectivity.
 
 ### Self-Referencing Security Group Pattern
 

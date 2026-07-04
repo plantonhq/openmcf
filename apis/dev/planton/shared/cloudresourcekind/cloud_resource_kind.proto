@@ -688,10 +688,17 @@ enum CloudResourceKind {
   }];
 
   // Workflow / Orchestration
+  // AwsSubnet and AwsSecurityGroup are prerequisites because the environment's
+  // network interfaces are placed in referenced private subnets and AWS
+  // requires at least one attached security group at creation.
   AwsMwaaEnvironment = 340 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsmwaa"
+    prerequisites: [
+      AwsSubnet,
+      AwsSecurityGroup
+    ]
   }];
 
   // Graph Database
@@ -721,6 +728,16 @@ enum CloudResourceKind {
       AwsSubnet,
       AwsSecurityGroup
     ]
+  }];
+
+  // AwsSubnet is a prerequisite because the serverless cluster's network
+  // interfaces are placed in referenced subnets (security groups are optional
+  // -- AWS attaches the VPC default group when none are referenced).
+  AwsMskServerlessCluster = 351 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsmsksl"
+    prerequisites: [AwsSubnet]
   }];
 
   // 400–599: Azure resources

@@ -1,17 +1,16 @@
 locals {
-  tags = {
-    "planton.org/resource"      = "true"
-    "planton.org/organization"  = var.metadata.org
-    "planton.org/environment"   = var.metadata.env
-    "planton.org/resource-kind" = "AwsMwaaEnvironment"
-    "planton.org/resource-id"   = var.metadata.id
+  # The environment name is metadata.name -- create-only in AWS (ForceNew),
+  # and the basis both engines share so a manifest deploys identically on
+  # either.
+  environment_name = var.metadata.name
+
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsMwaaEnvironment"
+    "planton.ai/resource-id"   = var.metadata.id
   }
-
-  has_ingress_refs = length(var.spec.security_group_ids) > 0 || length(var.spec.allowed_cidr_blocks) > 0
-
-  # Combine managed SG (if created) with associate_security_group_ids
-  effective_security_group_ids = concat(
-    var.spec.associate_security_group_ids,
-    local.has_ingress_refs ? [aws_security_group.environment[0].id] : []
-  )
 }

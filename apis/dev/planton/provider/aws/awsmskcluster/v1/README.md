@@ -254,7 +254,7 @@ The following MSK features are **not** covered by this v1 API. They may be added
 
 | Feature | Reason |
 |---|---|
-| MSK Serverless | Different provisioning model; a separate resource kind. |
+| MSK Serverless | Different provisioning model; modeled as its own kind, `AwsMskServerlessCluster`. |
 | Consumer-side VPC connections | The provider VPC-connectivity schemes are covered by `vpcConnectivity`; the consumer-side `aws_msk_vpc_connection` lives in the client VPC and is a separate concern. |
 | MSK Replicator | Cross-region/cross-cluster replication is a separate resource. |
 

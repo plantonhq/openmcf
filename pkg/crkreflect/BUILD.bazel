@@ -124,6 +124,7 @@ go_library(
         "//apis/dev/planton/provider/aws/awsmemcachedelasticache/v1:awsmemcachedelasticache",
         "//apis/dev/planton/provider/aws/awsmemorydbcluster/v1:awsmemorydbcluster",
         "//apis/dev/planton/provider/aws/awsmskcluster/v1:awsmskcluster",
+        "//apis/dev/planton/provider/aws/awsmskserverlesscluster/v1:awsmskserverlesscluster",
         "//apis/dev/planton/provider/aws/awsmwaaenvironment/v1:awsmwaaenvironment",
         "//apis/dev/planton/provider/aws/awsnatgateway/v1:awsnatgateway",
         "//apis/dev/planton/provider/aws/awsneptunecluster/v1:awsneptunecluster",

@@ -235,6 +235,9 @@ const (
 	CloudResourceKind_AwsCodeBuildProject CloudResourceKind = 330
 	CloudResourceKind_AwsCodePipeline     CloudResourceKind = 331
 	// Workflow / Orchestration
+	// AwsSubnet and AwsSecurityGroup are prerequisites because the environment's
+	// network interfaces are placed in referenced private subnets and AWS
+	// requires at least one attached security group at creation.
 	CloudResourceKind_AwsMwaaEnvironment CloudResourceKind = 340
 	// Graph Database
 	CloudResourceKind_AwsNeptuneCluster CloudResourceKind = 341
@@ -245,6 +248,10 @@ const (
 	// placed in referenced subnets and AWS requires at least one attached
 	// security group at creation.
 	CloudResourceKind_AwsMskCluster CloudResourceKind = 350
+	// AwsSubnet is a prerequisite because the serverless cluster's network
+	// interfaces are placed in referenced subnets (security groups are optional
+	// -- AWS attaches the VPC default group when none are referenced).
+	CloudResourceKind_AwsMskServerlessCluster CloudResourceKind = 351
 	// 400–599: Azure resources
 	CloudResourceKind_AzureResourceGroup            CloudResourceKind = 400
 	CloudResourceKind_AzureAksCluster               CloudResourceKind = 401
@@ -689,6 +696,7 @@ var (
 		341:  "AwsNeptuneCluster",
 		342:  "AwsMemorydbCluster",
 		350:  "AwsMskCluster",
+		351:  "AwsMskServerlessCluster",
 		400:  "AzureResourceGroup",
 		401:  "AzureAksCluster",
 		402:  "AzureAksNodePool",
@@ -1116,6 +1124,7 @@ var (
 		"AwsNeptuneCluster":                       341,
 		"AwsMemorydbCluster":                      342,
 		"AwsMskCluster":                           350,
+		"AwsMskServerlessCluster":                 351,
 		"AzureResourceGroup":                      400,
 		"AzureAksCluster":                         401,
 		"AzureAksNodePool":                        402,
@@ -1702,7 +1711,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xb8\x97\x01\n" +
+	"\x02v1\x10\x01*\xf4\x97\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1798,11 +1807,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x121\n" +
 	"\x1aAwsBatchComputeEnvironment\x10\xc1\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsbat\x12)\n" +
 	"\x13AwsCodeBuildProject\x10\xca\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscb\x12%\n" +
-	"\x0fAwsCodePipeline\x10\xcb\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscp\x12*\n" +
-	"\x12AwsMwaaEnvironment\x10\xd4\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsmwaa\x12,\n" +
+	"\x0fAwsCodePipeline\x10\xcb\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscp\x120\n" +
+	"\x12AwsMwaaEnvironment\x10\xd4\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawsmwaa:\x04\x9c\x02\xd7\x01\x12,\n" +
 	"\x11AwsNeptuneCluster\x10\xd5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnep:\x02\x9c\x02\x12)\n" +
 	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsmdb\x12*\n" +
-	"\rAwsMskCluster\x10\xde\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsmsk:\x04\x9c\x02\xd7\x01\x12)\n" +
+	"\rAwsMskCluster\x10\xde\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsmsk:\x04\x9c\x02\xd7\x01\x124\n" +
+	"\x17AwsMskServerlessCluster\x10\xdf\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsmsksl:\x02\x9c\x02\x12)\n" +
 	"\x12AzureResourceGroup\x10\x90\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x04azrg0\x01\x12%\n" +
 	"\x0fAzureAksCluster\x10\x91\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x03aks0\x01\x12&\n" +
 	"\x10AzureAksNodePool\x10\x92\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aksnp\x12*\n" +

@@ -79,3 +79,51 @@ spec:
       ipv4Cidrs:
         - 0.0.0.0/0
       description: All outbound (SSM, package mirrors)
+---
+# Document 3 -- MWAA environment group (AwsMwaaEnvironment): the
+# AWS-recommended MWAA pattern -- a self-referencing all-traffic ingress
+# rule (the scheduler, workers, webserver, and metadata DB communicate
+# through it; without it the environment never reaches AVAILABLE), HTTPS
+# (443) from the VPC for Airflow UI access, and full egress. Consumers
+# select this instance by name.
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: planton-oss-e2e-awssg-mwaa-prereq
+  id: planton-oss-e2e-awssg-mwaa-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssecuritygroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  description: Planton E2E MWAA prerequisite group; self-referencing + HTTPS from the VPC
+  ingress:
+    - protocol: "-1"
+      fromPort: 0
+      toPort: 0
+      selfReference: true
+      description: MWAA component intercommunication (self-referencing, all traffic)
+    - protocol: tcp
+      fromPort: 443
+      toPort: 443
+      ipv4Cidrs:
+        - 10.0.0.0/16
+      description: Airflow UI access from the E2E VPC
+  egress:
+    - protocol: "-1"
+      fromPort: 0
+      toPort: 0
+      ipv4Cidrs:
+        - 0.0.0.0/0
+      description: All outbound (AWS APIs, package installs)

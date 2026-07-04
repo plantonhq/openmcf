@@ -19,6 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.55.6
 	github.com/aws/aws-sdk-go-v2/service/iam v1.54.7
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.54.2
+	github.com/aws/aws-sdk-go-v2/service/mwaa v1.41.7
 	github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/opensearch v1.73.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.119.5

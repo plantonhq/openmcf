@@ -727,6 +727,66 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsMskServerlessCluster: cluster_arn keys the E2E verifier and
+			// the kafka-cluster:* IAM policies clients need;
+			// bootstrap_brokers_sasl_iam is the only connection string
+			// serverless MSK exposes (SASL/IAM is its sole auth scheme).
+			name: "AwsMskServerlessCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsMskServerlessCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_arn":                "arn:aws:kafka:us-west-2:123456789012:cluster/events-kafka/abc12345-6789-0abc-def1-234567890abc-s1",
+				"cluster_name":               "events-kafka",
+				"cluster_uuid":               "abc12345-6789-0abc-def1-234567890abc-s1",
+				"bootstrap_brokers_sasl_iam": "boot-abc123.c1.kafka-serverless.us-west-2.amazonaws.com:9098",
+			},
+			mustPopulate: []string{
+				"cluster_arn", "cluster_name", "cluster_uuid",
+				"bootstrap_brokers_sasl_iam",
+			},
+		},
+		{
+			// AwsSecurityGroup: security_group_id is the join key every
+			// attach-shaped kind references; security_group_arn is the form
+			// IAM policy conditions expect; owner_id enables cross-account
+			// rule references (<owner_id>/<group_id>).
+			name: "AwsSecurityGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsSecurityGroup,
+			rawOutputs: map[string]interface{}{
+				"security_group_id":  "sg-0123456789abcdef0",
+				"security_group_arn": "arn:aws:ec2:us-west-2:123456789012:security-group/sg-0123456789abcdef0",
+				"owner_id":           "123456789012",
+			},
+			mustPopulate: []string{
+				"security_group_id", "security_group_arn", "owner_id",
+			},
+		},
+		{
+			// AwsMwaaEnvironment: environment_name keys the E2E verifier;
+			// webserver_url is the operator's handle on the Airflow UI; the
+			// two *_vpc_endpoint_service outputs are what CUSTOMER endpoint
+			// management composes AwsVpcEndpoint nodes against.
+			name: "AwsMwaaEnvironment",
+			kind: cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment,
+			rawOutputs: map[string]interface{}{
+				"environment_arn":                "arn:aws:airflow:us-west-2:123456789012:environment/prod-airflow",
+				"environment_name":               "prod-airflow",
+				"webserver_url":                  "abc123de-f456-7890-abcd-ef1234567890.c2.us-west-2.airflow.amazonaws.com",
+				"airflow_version":                "2.10.1",
+				"service_role_arn":               "arn:aws:iam::123456789012:role/aws-service-role/airflow.amazonaws.com/AWSServiceRoleForAmazonMWAA",
+				"environment_class":              "mw1.medium",
+				"status":                         "AVAILABLE",
+				"created_at":                     "2026-07-04T12:00:00Z",
+				"database_vpc_endpoint_service":  "com.amazonaws.vpce.us-west-2.vpce-svc-0123456789abcdef0",
+				"webserver_vpc_endpoint_service": "com.amazonaws.vpce.us-west-2.vpce-svc-0fedcba9876543210",
+			},
+			mustPopulate: []string{
+				"environment_arn", "environment_name", "webserver_url",
+				"airflow_version", "service_role_arn", "environment_class",
+				"status", "created_at", "database_vpc_endpoint_service",
+				"webserver_vpc_endpoint_service",
+			},
+		},
+		{
 			// AwsOpenSearchDomain: domain_name keys the E2E verifier;
 			// endpoint + dashboard_endpoint are the connection handles
 			// downstream references consume; the *_v2 trio carries the

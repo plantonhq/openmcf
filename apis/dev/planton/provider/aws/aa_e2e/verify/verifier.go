@@ -70,6 +70,8 @@ var verifiers = map[string]Verifier{
 	"awsserverlesselasticache":       &elasticacheServerlessCacheVerifier{},
 	"awssecuritygroup":               &securityGroupVerifier{},
 	"awsmskcluster":                  &mskClusterVerifier{},
+	"awsmskserverlesscluster":        &mskServerlessClusterVerifier{},
+	"awsmwaaenvironment":             &mwaaEnvironmentVerifier{},
 	"awsopensearchdomain":            &opensearchDomainVerifier{},
 	"awsec2instance":                 &ec2InstanceVerifier{},
 }

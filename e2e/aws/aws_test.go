@@ -331,6 +331,24 @@ func TestAwsMskCluster_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsmskcluster", "terraform")
 }
 
+// --- AWS MSK Serverless Cluster (capacity-managed Kafka, SASL/IAM only; subnet prerequisite chain) ---
+
+func TestAwsMskServerlessCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmskserverlesscluster", "pulumi")
+}
+func TestAwsMskServerlessCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmskserverlesscluster", "terraform")
+}
+
+// --- AWS MWAA Environment (managed Airflow; S3 + IAM-role fixtures via the scenario's e2e-prerequisites annotation) ---
+
+func TestAwsMwaaEnvironment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmwaaenvironment", "pulumi")
+}
+func TestAwsMwaaEnvironment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmwaaenvironment", "terraform")
+}
+
 // --- AWS OpenSearch Domain (true leaf; public single-node t3.small.search domain) ---
 
 func TestAwsOpenSearchDomain_Pulumi(t *testing.T) {
@@ -419,6 +437,15 @@ func TestAwsEc2Instance_Pulumi(t *testing.T) {
 }
 func TestAwsEc2Instance_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsec2instance", "terraform")
+}
+
+// --- AWS Security Group (rules-rich group on the VPC prerequisite; prefix lists, self-reference, SG-to-SG refs) ---
+
+func TestAwsSecurityGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssecuritygroup", "pulumi")
+}
+func TestAwsSecurityGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssecuritygroup", "terraform")
 }
 
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.

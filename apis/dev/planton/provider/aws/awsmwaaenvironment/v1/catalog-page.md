@@ -1,14 +1,12 @@
 # AWS MWAA Environment
 
-Deploys an Amazon Managed Workflows for Apache Airflow environment with DAGs sourced from S3, VPC-based networking across two Availability Zones, and optional managed security group creation. The component handles environment sizing, per-module CloudWatch logging, KMS encryption, and worker auto-scaling configuration.
+Deploys an Amazon Managed Workflows for Apache Airflow environment with DAGs sourced from S3 and VPC-based networking across two Availability Zones. The component handles environment sizing, per-module CloudWatch logging, KMS encryption, and worker auto-scaling configuration. Network ingress is composed: the environment attaches referenced `AwsSecurityGroup` nodes, which own the rules MWAA needs.
 
 ## What Gets Created
 
 When you deploy an AwsMwaaEnvironment resource, Planton provisions:
 
-- **MWAA Environment** — an `aws_mwaa_environment` with DAGs loaded from an S3 bucket, an execution role for AWS service access, and VPC endpoints in private subnets across two Availability Zones
-- **Managed Security Group** — created only when `vpcId` is provided together with `securityGroupIds` or `allowedCidrBlocks`. Includes a self-referencing inbound rule (all traffic) for MWAA component intercommunication, HTTPS (port 443) ingress from each specified source security group and CIDR block, and full egress
-- **Security Group Rules** — one ingress rule per source security group and one per CIDR block, all on port 443
+- **MWAA Environment** — an `aws_mwaa_environment` with DAGs loaded from an S3 bucket, an execution role for AWS service access, VPC endpoints in private subnets across two Availability Zones, and the referenced security groups attached to its network configuration
 
 ## Prerequisites
 
@@ -16,7 +14,7 @@ When you deploy an AwsMwaaEnvironment resource, Planton provisions:
 - **An S3 bucket** with versioning enabled, containing your DAG files (and optionally plugins.zip, requirements.txt, startup script)
 - **An IAM execution role** with permissions for S3, CloudWatch Logs, SQS, and any AWS services your DAGs interact with
 - **Two private subnets** in different Availability Zones (no direct route to an internet gateway)
-- **A VPC ID** if using managed security group creation, or existing security groups via `associateSecurityGroupIds`
+- **A security group** (an `AwsSecurityGroup`) carrying a self-referencing all-traffic ingress rule, HTTPS (443) ingress for UI access, and egress for outbound connectivity
 - **A KMS key ARN** if enabling customer-managed encryption
 
 ## Quick Start
@@ -43,7 +41,7 @@ spec:
   subnetIds:
     - value: subnet-0a1b2c3d4e5f00001
     - value: subnet-0a1b2c3d4e5f00002
-  associateSecurityGroupIds:
+  securityGroupIds:
     - value: sg-0a1b2c3d4e5f00001
 ```
 
@@ -53,7 +51,7 @@ Deploy:
 planton apply -f mwaa.yaml
 ```
 
-This creates a private Airflow environment with the default `mw1.small` instance class, DAGs loaded from S3, and an existing security group attached directly.
+This creates a private Airflow environment with the default `mw1.small` instance class, DAGs loaded from S3, and the referenced security group attached to its VPC endpoints.
 
 ## Configuration Reference
 
@@ -72,8 +70,9 @@ This creates a private Airflow environment with the default `mw1.small` instance
 | `subnetIds` | `StringValueOrRef[]` | Private subnets where MWAA creates network interfaces. Must be in different Availability Zones. Changing subnets forces replacement. | Minimum 2 items |
 | `subnetIds[].value` | `string` | Direct subnet ID value | — |
 | `subnetIds[].valueFrom` | `object` | Foreign key reference to an AwsSubnet resource | Default field: `status.outputs.subnet_id` |
-
-At least one of `vpcId` (for managed SG) or `associateSecurityGroupIds` must be provided for VPC endpoint security.
+| `securityGroupIds` | `StringValueOrRef[]` | Security groups attached to the MWAA VPC endpoints. The self-referencing, HTTPS-ingress, and egress rules live on the referenced AwsSecurityGroup nodes. Updatable in place. | Minimum 1 item |
+| `securityGroupIds[].value` | `string` | Direct security group ID value | — |
+| `securityGroupIds[].valueFrom` | `object` | Foreign key reference to an AwsSecurityGroup resource | Default field: `status.outputs.security_group_id` |
 
 ### Optional Fields
 
@@ -88,11 +87,7 @@ At least one of `vpcId` (for managed SG) or `associateSecurityGroupIds` must be 
 | `maxWebservers` | `int` | `2` | Maximum webserver instances. Range: 1-5. Must be >= `minWebservers`. |
 | `schedulers` | `int` | `2` | Number of Airflow schedulers. Range: 2-5. More schedulers improve DAG parsing throughput. |
 | `webserverAccessMode` | `string` | `PRIVATE_ONLY` | `PRIVATE_ONLY`: VPC-only access. `PUBLIC_ONLY`: internet-accessible with IAM login. |
-| `endpointManagement` | `string` | `SERVICE` | `SERVICE`: AWS manages VPC endpoints. `CUSTOMER`: you manage endpoints. Changing forces replacement. |
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Source security groups allowed to reach MWAA endpoints on port 443. Requires `vpcId`. Triggers managed SG creation. |
-| `allowedCidrBlocks` | `string[]` | `[]` | IPv4 CIDR ranges allowed to reach MWAA endpoints on port 443. Requires `vpcId`. Triggers managed SG creation. Must be unique, valid CIDR notation. |
-| `associateSecurityGroupIds` | `StringValueOrRef[]` | `[]` | Existing security groups attached directly to the MWAA environment. Use when you manage your own SG with self-referencing rules. |
-| `vpcId` | `StringValueOrRef` | — | VPC in which to create the managed security group. Required when `securityGroupIds` or `allowedCidrBlocks` are provided. |
+| `endpointManagement` | `string` | `SERVICE` | `SERVICE`: AWS manages VPC endpoints. `CUSTOMER`: you manage endpoints against the exported endpoint service names. Changing forces replacement. |
 | `kmsKeyArn` | `StringValueOrRef` | AWS-managed key | KMS key ARN for encrypting environment data at rest. Changing forces replacement. |
 | `pluginsS3Path` | `string` | — | Relative path in the S3 bucket to a `plugins.zip` file containing custom operators, hooks, and sensors. |
 | `pluginsS3ObjectVersion` | `string` | Latest | S3 object version for `plugins.zip`. Pins to a specific version for deterministic deployments. |
@@ -118,7 +113,7 @@ At least one of `vpcId` (for managed SG) or `associateSecurityGroupIds` must be 
 
 ### Basic Private Airflow
 
-A minimal environment using an existing security group attached directly. No managed SG is created:
+A minimal environment with a referenced security group attached:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
@@ -140,7 +135,7 @@ spec:
   subnetIds:
     - value: subnet-private-az1
     - value: subnet-private-az2
-  associateSecurityGroupIds:
+  securityGroupIds:
     - value: sg-mwaa-existing
 ```
 
@@ -173,7 +168,7 @@ spec:
   subnetIds:
     - value: subnet-prod-az1
     - value: subnet-prod-az2
-  associateSecurityGroupIds:
+  securityGroupIds:
     - value: sg-prod-mwaa
   kmsKeyArn:
     value: arn:aws:kms:us-east-1:123456789012:key/prod-mwaa-key
@@ -206,9 +201,9 @@ spec:
       logLevel: INFO
 ```
 
-### Managed Security Group with VPC
+### Fully Composed with References
 
-Creates a managed security group with source SGs and CIDR-based ingress. Use this pattern when MWAA endpoints need to accept connections from multiple known sources:
+Every cross-resource input resolved from Planton-managed resources — the security group node owns the MWAA ingress pattern (self-referencing all-traffic + HTTPS 443 + egress):
 
 ```yaml
 apiVersion: aws.planton.dev/v1
@@ -242,23 +237,11 @@ spec:
         kind: AwsSubnet
         name: main-private-subnet-b
         fieldPath: status.outputs.subnet_id
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: main-vpc
-      field: status.outputs.vpc_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
-        name: bastion-sg
+        name: mwaa-environment-sg
         field: status.outputs.security_group_id
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: cicd-sg
-        field: status.outputs.security_group_id
-  allowedCidrBlocks:
-    - "10.0.0.0/16"
-    - "172.16.0.0/12"
   environmentClass: mw1.medium
   minWorkers: 1
   maxWorkers: 10
@@ -283,12 +266,14 @@ After deployment, the following outputs are available in `status.outputs`:
 | `service_role_arn` | `string` | ARN of the AWS service role MWAA created for managing infrastructure |
 | `environment_class` | `string` | Effective environment class (compute capacity) |
 | `status` | `string` | Current environment status (e.g., `AVAILABLE`, `CREATING`, `UPDATING`) |
-| `security_group_id` | `string` | ID of the managed security group. Only populated when `securityGroupIds` or `allowedCidrBlocks` triggered managed SG creation. |
+| `created_at` | `string` | Timestamp when the environment was created |
+| `database_vpc_endpoint_service` | `string` | VPC endpoint service name for the metadata database (used with `endpointManagement: CUSTOMER`) |
+| `webserver_vpc_endpoint_service` | `string` | VPC endpoint service name for the webserver (used with `endpointManagement: CUSTOMER`; empty when `PUBLIC_ONLY`) |
 
 ## Related Components
 
 - [AwsS3Bucket](/docs/catalog/aws/awss3bucket) — hosts the DAG files, plugins, requirements, and startup scripts
 - [AwsIamRole](/docs/catalog/aws/awsiamrole) — provides the execution role for MWAA service access
-- [AwsVpc](/docs/catalog/aws/awsvpc) — provides private subnets and VPC ID for networking and managed security group creation
-- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — controls traffic to MWAA VPC endpoints, used as source SGs or directly associated
+- [AwsVpc](/docs/catalog/aws/awsvpc) — provides private subnets for MWAA network interfaces
+- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — attached to the MWAA VPC endpoints; owns the self-referencing, HTTPS-ingress, and egress rules
 - [AwsKmsKey](/docs/catalog/aws/awskmskey) — provides the encryption key for environment data at rest
