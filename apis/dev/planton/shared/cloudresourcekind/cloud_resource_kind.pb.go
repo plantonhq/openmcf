@@ -252,6 +252,11 @@ const (
 	// interfaces are placed in referenced subnets (security groups are optional
 	// -- AWS attaches the VPC default group when none are referenced).
 	CloudResourceKind_AwsMskServerlessCluster CloudResourceKind = 351
+	// AwsLambda is a prerequisite because a mapping cannot exist without the
+	// function it invokes (a required reference). Event sources (SQS, Kinesis,
+	// DynamoDB, MSK) are optional composition -- scenarios declare them via the
+	// e2e-prerequisites annotation rather than taxing every consumer's chain.
+	CloudResourceKind_AwsLambdaEventSourceMapping CloudResourceKind = 352
 	// 400–599: Azure resources
 	CloudResourceKind_AzureResourceGroup            CloudResourceKind = 400
 	CloudResourceKind_AzureAksCluster               CloudResourceKind = 401
@@ -697,6 +702,7 @@ var (
 		342:  "AwsMemorydbCluster",
 		350:  "AwsMskCluster",
 		351:  "AwsMskServerlessCluster",
+		352:  "AwsLambdaEventSourceMapping",
 		400:  "AzureResourceGroup",
 		401:  "AzureAksCluster",
 		402:  "AzureAksNodePool",
@@ -1125,6 +1131,7 @@ var (
 		"AwsMemorydbCluster":                      342,
 		"AwsMskCluster":                           350,
 		"AwsMskServerlessCluster":                 351,
+		"AwsLambdaEventSourceMapping":             352,
 		"AzureResourceGroup":                      400,
 		"AzureAksCluster":                         401,
 		"AzureAksNodePool":                        402,
@@ -1711,7 +1718,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf4\x97\x01\n" +
+	"\x02v1\x10\x01*\xb3\x98\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1731,8 +1738,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\rAwsEcsService\x10\xce\x01\x1a\x18\xa2\xf7\x04\x14\b\f\x10\x01\"\x06ecssvc:\x06\xcd\x01\xef\x01\x9c\x02\x12)\n" +
 	"\rAwsEksCluster\x10\xcf\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x03eks0\x01:\x04\x9c\x02\xd0\x01\x12\x1e\n" +
 	"\n" +
-	"AwsIamRole\x10\xd0\x01\x1a\r\xa2\xf7\x04\t\b\f\x10\x01\"\x03air\x12 \n" +
-	"\tAwsLambda\x10\xd1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06lambda\x12(\n" +
+	"AwsIamRole\x10\xd0\x01\x1a\r\xa2\xf7\x04\t\b\f\x10\x01\"\x03air\x12$\n" +
+	"\tAwsLambda\x10\xd1\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06lambda:\x02\xd0\x01\x12(\n" +
 	"\rAwsRdsCluster\x10\xd2\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06rdsclu:\x02\x9c\x02\x12)\n" +
 	"\x0eAwsRdsInstance\x10\xd3\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06rdsins:\x02\x9c\x02\x12#\n" +
 	"\x0eAwsRoute53Zone\x10\xd4\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1812,7 +1819,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x11AwsNeptuneCluster\x10\xd5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnep:\x02\x9c\x02\x12)\n" +
 	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsmdb\x12*\n" +
 	"\rAwsMskCluster\x10\xde\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsmsk:\x04\x9c\x02\xd7\x01\x124\n" +
-	"\x17AwsMskServerlessCluster\x10\xdf\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsmsksl:\x02\x9c\x02\x12)\n" +
+	"\x17AwsMskServerlessCluster\x10\xdf\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsmsksl:\x02\x9c\x02\x129\n" +
+	"\x1bAwsLambdaEventSourceMapping\x10\xe0\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tlambdaesm:\x02\xd1\x01\x12)\n" +
 	"\x12AzureResourceGroup\x10\x90\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x04azrg0\x01\x12%\n" +
 	"\x0fAzureAksCluster\x10\x91\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x03aks0\x01\x12&\n" +
 	"\x10AzureAksNodePool\x10\x92\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aksnp\x12*\n" +

@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsLambdaEventSourceMapping
+metadata:
+  name: analytics-consumer
+spec:
+  region: us-west-2
+  function_arn:
+    valueFrom:
+      kind: AwsLambda
+      name: stream-processor
+      fieldPath: status.outputs.function_arn
+  event_source_arn:
+    valueFrom:
+      kind: AwsKinesisStream
+      name: clickstream
+      fieldPath: status.outputs.stream_arn
+  starting_position: TRIM_HORIZON
+  function_response_types:
+    - ReportBatchItemFailures
+  parallelization_factor: 2

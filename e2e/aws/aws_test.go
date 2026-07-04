@@ -448,6 +448,33 @@ func TestAwsSecurityGroup_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awssecuritygroup", "terraform")
 }
 
+// --- AWS KMS Key (symmetric key with one alias; true leaf) ---
+
+func TestAwsKmsKey_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awskmskey", "pulumi")
+}
+func TestAwsKmsKey_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awskmskey", "terraform")
+}
+
+// --- AWS Lambda (zip-backed function; S3 bucket + object-set + execution-role chain) ---
+
+func TestAwsLambda_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awslambda", "pulumi")
+}
+func TestAwsLambda_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awslambda", "terraform")
+}
+
+// --- AWS Lambda Event Source Mapping (SQS queue -> mapping -> function chain) ---
+
+func TestAwsLambdaEventSourceMapping_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awslambdaeventsourcemapping", "pulumi")
+}
+func TestAwsLambdaEventSourceMapping_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awslambdaeventsourcemapping", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

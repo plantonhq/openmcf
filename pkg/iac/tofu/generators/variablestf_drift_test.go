@@ -85,6 +85,12 @@ var migratedKinds = []string{
 	"AwsMwaaEnvironment",
 	// MSK Serverless, generator-owned from the day it was forged.
 	"AwsMskServerlessCluster",
+	// Lambda + KMS depth pass: both migrated off legacy hand-written
+	// contracts; the event source mapping generator-owned from the day
+	// it was forged.
+	"AwsLambda",
+	"AwsKmsKey",
+	"AwsLambdaEventSourceMapping",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

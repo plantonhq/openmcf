@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	providerv1 "github.com/plantonhq/planton/apis/dev/planton/qa/providere2eprofile/v1"
 	sharedpb "github.com/plantonhq/planton/apis/dev/planton/shared"
 )
@@ -213,14 +215,22 @@ func buildRunRegex(components []string, engine string) string {
 	return fmt.Sprintf("Test(%s)_%s", strings.Join(parts, "|"), engineSuffix)
 }
 
-// toPascalCase converts a lowercase component name to PascalCase for Go test
-// function matching. Handles the "kubernetes" prefix and known component name patterns.
+// toPascalCase converts a lowercase component directory name to PascalCase for
+// Go test -run regex matching (e.g. "awslambda" -> "AwsLambda").
 func toPascalCase(name string) string {
 	if name == "" {
 		return ""
 	}
 
-	// Known prefixes that should be capitalized as a single word
+	kind := crkreflect.KindFromString(name)
+	if kind != cloudresourcekind.CloudResourceKind_unspecified {
+		if pascal := crkreflect.ExtractKindNameByKind(kind); pascal != "" {
+			return pascal
+		}
+	}
+
+	// Kubernetes components: registry lookup covers most kinds, but the table
+	// below remains as a fallback for any slug the registry does not resolve.
 	knownPrefixes := []struct {
 		lower  string
 		pascal string
@@ -291,9 +301,6 @@ func toPascalCase(name string) string {
 		{"kubernetestemporal", "KubernetesTemporal"},
 		{"kubernetesharbor", "KubernetesHarbor"},
 		{"kubernetessignoz", "KubernetesSigNoz"},
-		{"awssecuritygroup", "AwsSecurityGroup"},
-		{"awsmwaaenvironment", "AwsMwaaEnvironment"},
-		{"awsmskserverlesscluster", "AwsMskServerlessCluster"},
 	}
 
 	for _, kp := range knownPrefixes {

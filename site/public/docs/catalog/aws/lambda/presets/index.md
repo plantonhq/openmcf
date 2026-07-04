@@ -11,11 +11,11 @@ presets:
   - slug: "01-zip-basic"
     rank: "01"
     title: "Zip-Based Lambda Function"
-    excerpt: "This preset creates a Lambda function deployed from a zip archive stored in S3. It uses the Node.js 18.x runtime with 256 MB memory and a 30-second timeout. This is the most common Lambda deployment..."
+    excerpt: "Zip-backed Lambda with Node.js 22.x, composed AwsIamRole reference, and S3 deployment package — function name from metadata.name."
   - slug: "02-container-basic"
     rank: "02"
     title: "Container-Based Lambda Function"
-    excerpt: "This preset creates a Lambda function deployed from a container image in ECR. The runtime and handler are defined by the image's CMD/ENTRYPOINT, not by Lambda configuration. This is ideal for..."
+    excerpt: "ECR container image deployment with ARM64 architecture — no runtime or handler fields; image defines the entrypoint."
 ---
 
 # Lambda Presets

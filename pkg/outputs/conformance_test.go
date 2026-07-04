@@ -761,6 +761,57 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsLambda: function_name keys the E2E verifier; function_arn is
+			// the join key for event-source mappings and IAM policies; invoke_arn
+			// is what API Gateway integrations consume.
+			name: "AwsLambda",
+			kind: cloudresourcekind.CloudResourceKind_AwsLambda,
+			rawOutputs: map[string]interface{}{
+				"function_arn":  "arn:aws:lambda:us-west-2:123456789012:function:planton-oss-e2e-lambda-smoke",
+				"function_name": "planton-oss-e2e-lambda-smoke",
+				"invoke_arn":    "arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:123456789012:function:planton-oss-e2e-lambda-smoke/invocations",
+				"qualified_arn": "",
+				"version":       "",
+				"function_url":  "",
+				"alias_arns":    map[string]interface{}{},
+				"log_group_name": "/aws/lambda/planton-oss-e2e-lambda-smoke",
+			},
+			mustPopulate: []string{
+				"function_arn", "function_name", "invoke_arn", "log_group_name",
+			},
+		},
+		{
+			// AwsKmsKey: key_id keys the E2E verifier; key_arn is the join key
+			// encryption-at-rest fields reference; alias_names carries the human-
+			// friendly addresses SDK callers may use instead of the key ID.
+			name: "AwsKmsKey",
+			kind: cloudresourcekind.CloudResourceKind_AwsKmsKey,
+			rawOutputs: map[string]interface{}{
+				"key_id":       "12345678-1234-1234-1234-123456789012",
+				"key_arn":      "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+				"alias_names":  []interface{}{"alias/planton-oss-e2e-kms-smoke"},
+			},
+			mustPopulate: []string{
+				"key_id", "key_arn", "alias_names",
+			},
+		},
+		{
+			// AwsLambdaEventSourceMapping: uuid keys the E2E verifier;
+			// mapping_arn and function_arn are the join keys downstream
+			// automation consumes; state surfaces the last observed lifecycle.
+			name: "AwsLambdaEventSourceMapping",
+			kind: cloudresourcekind.CloudResourceKind_AwsLambdaEventSourceMapping,
+			rawOutputs: map[string]interface{}{
+				"uuid":          "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+				"mapping_arn":   "arn:aws:lambda:us-west-2:123456789012:event-source-mapping:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+				"function_arn":  "arn:aws:lambda:us-west-2:123456789012:function:planton-oss-e2e-lambda-smoke",
+				"state":         "Enabled",
+			},
+			mustPopulate: []string{
+				"uuid", "mapping_arn", "function_arn", "state",
+			},
+		},
+		{
 			// AwsMwaaEnvironment: environment_name keys the E2E verifier;
 			// webserver_url is the operator's handle on the Airflow UI; the
 			// two *_vpc_endpoint_service outputs are what CUSTOMER endpoint

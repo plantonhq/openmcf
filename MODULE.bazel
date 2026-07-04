@@ -41,6 +41,8 @@ use_repo(
     "com_github_aws_aws_sdk_go_v2_service_elasticloadbalancingv2",
     "com_github_aws_aws_sdk_go_v2_service_iam",
     "com_github_aws_aws_sdk_go_v2_service_kafka",
+    "com_github_aws_aws_sdk_go_v2_service_kms",
+    "com_github_aws_aws_sdk_go_v2_service_lambda",
     "com_github_aws_aws_sdk_go_v2_service_neptune",
     "com_github_aws_aws_sdk_go_v2_service_opensearch",
     "com_github_aws_aws_sdk_go_v2_service_rds",

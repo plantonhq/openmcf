@@ -178,6 +178,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "lambda"
+    prerequisites: [AwsIamRole]
   }];
   AwsRdsCluster = 210 [(kind_meta) = {
     provider: aws
@@ -738,6 +739,17 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsmsksl"
     prerequisites: [AwsSubnet]
+  }];
+
+  // AwsLambda is a prerequisite because a mapping cannot exist without the
+  // function it invokes (a required reference). Event sources (SQS, Kinesis,
+  // DynamoDB, MSK) are optional composition -- scenarios declare them via the
+  // e2e-prerequisites annotation rather than taxing every consumer's chain.
+  AwsLambdaEventSourceMapping = 352 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lambdaesm"
+    prerequisites: [AwsLambda]
   }];
 
   // 400–599: Azure resources

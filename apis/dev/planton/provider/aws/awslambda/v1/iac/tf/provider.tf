@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a pin: 6.0 carries the full surface this module
+      # renders (logging_config, snap_start, ipv6_allowed_for_dual_stack,
+      # source_kms_key_arn, the recursion and runtime-management
+      # resources all predate the v6 line).
+      version = ">= 6.0.0"
     }
   }
 }
@@ -14,5 +18,3 @@ provider "aws" {
   # connections the runtime performs the STS web-identity exchange and injects the resulting
   # short-lived credentials. Keep this block empty -- do not wire region or static keys here.
 }
-
-

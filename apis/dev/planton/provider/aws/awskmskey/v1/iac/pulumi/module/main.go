@@ -17,17 +17,14 @@ func Resources(ctx *pulumi.Context, stackInput *awskmskeyv1.AwsKmsKeyStackInput)
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	// Create KMS key and optional alias
 	result, err := kmsKey(ctx, locals, provider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create kms key")
 	}
 
-	// Export outputs
 	ctx.Export(OpKeyId, result.KeyId)
 	ctx.Export(OpKeyArn, result.KeyArn)
-	ctx.Export(OpAliasName, result.AliasName)
-	ctx.Export(OpRotationEnabled, result.RotationEnabled)
+	ctx.Export(OpAliasNames, result.AliasNames)
 
 	return nil
 }

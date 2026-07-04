@@ -4,10 +4,12 @@ metadata:
   name: my-container-lambda
 spec:
   region: <aws-region>
-  functionName: <function-name>
-  roleArn:
-    value: "<lambda-execution-role-arn>"
-  memoryMb: 512
-  timeoutSeconds: 60
-  codeSourceType: CODE_SOURCE_TYPE_IMAGE
-  imageUri: <ecr-image-uri>
+  role_arn:
+    valueFrom:
+      kind: AwsIamRole
+      name: <execution-role-name>
+      fieldPath: status.outputs.role_arn
+  image_uri: <ecr-image-uri>
+  memory_size_mb: 512
+  timeout_seconds: 60
+  architecture: arm64

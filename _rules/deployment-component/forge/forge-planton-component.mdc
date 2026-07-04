@@ -314,6 +314,13 @@ A new kind is only exercised once it is registered in the provider harness:
   keyed on the API's own identifier for the resource and treating the provider's
   typed not-found error as the absent signal.
 - `e2e/<provider>/<provider>_test.go` — add `Test<Kind>_Pulumi` / `Test<Kind>_Terraform` entrypoints. Scenarios are auto-discovered; the entry funcs are not.
+- **Test-name discovery is registry-driven.** The GitHub Actions matrix builder in
+  `pkg/e2e/profile/discover.go` maps component directory names (e.g. `awslambda`) to
+  Go test `-run` regexes via `crkreflect.KindFromString` +
+  `ExtractKindNameByKind` — **do not** add hand-maintained PascalCase entries per
+  kind. Kubernetes components still fall back to the legacy prefix table until the
+  registry covers them. Add a unit test in `discover_test.go` when forging a kind
+  whose directory name would naive-fallback incorrectly.
 
 **Composed scenarios are registry-driven, with a scenario-level extension for
 optional composition.** The harness resolves a component's E2E dependencies

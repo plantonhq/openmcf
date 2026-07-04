@@ -1,8 +1,10 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+      source = "hashicorp/aws"
+      # Floor, not a pin: aws_kms_key rotation_period_in_days and multi_region
+      # are stable across the v6 line.
+      version = ">= 6.0.0"
     }
   }
 }
@@ -14,6 +16,3 @@ provider "aws" {
   # connections the runtime performs the STS web-identity exchange and injects the resulting
   # short-lived credentials. Keep this block empty -- do not wire region or static keys here.
 }
-
-
-

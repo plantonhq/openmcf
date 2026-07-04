@@ -194,3 +194,34 @@ spec:
             - airflow.amazonaws.com
             - airflow-env.amazonaws.com
         Action: sts:AssumeRole
+---
+# Lambda execution role: trusts lambda.amazonaws.com and carries
+# AWSLambdaBasicExecutionRole itself -- zip and container functions
+# require CloudWatch Logs write access at creation time, and the
+# Lambda module never modifies the role it references.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-lambda-execution-role
+  id: planton-oss-e2e-lambda-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for Lambda function execution
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: lambda.amazonaws.com
+        Action: sts:AssumeRole

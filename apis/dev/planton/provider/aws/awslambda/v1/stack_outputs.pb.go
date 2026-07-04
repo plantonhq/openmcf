@@ -21,19 +21,43 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsLambdaStackOutputs captures observable identifiers produced after provisioning an AWS Lambda function.
+// AwsLambdaStackOutputs captures the observable identifiers of a
+// deployed Lambda function -- the join keys other resources and
+// clients use to compose with it:
+// - API integrations (HTTP API Gateway) take `invoke_arn`
+// - event-source mappings and trigger configs take `function_arn`
+// - SDK calls and IAM policies take `function_name` or `function_arn`
+// - alias-routed clients take the alias ARN from `alias_arns`
 type AwsLambdaStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// function_arn is the full ARN of the Lambda function.
+	// The function ARN -- the join key for event-source mappings,
+	// trigger configurations (Cognito, Firehose), resource policies,
+	// and IAM policy resources.
 	FunctionArn string `protobuf:"bytes,1,opt,name=function_arn,json=functionArn,proto3" json:"function_arn,omitempty"`
-	// function_name is the final name of the Lambda function.
+	// The function name -- what SDK invoke calls and CLI commands
+	// reference.
 	FunctionName string `protobuf:"bytes,2,opt,name=function_name,json=functionName,proto3" json:"function_name,omitempty"`
-	// log_group_name is the CloudWatch Logs log group created for the function (e.g., "/aws/lambda/<function_name>").
-	LogGroupName string `protobuf:"bytes,3,opt,name=log_group_name,json=logGroupName,proto3" json:"log_group_name,omitempty"`
-	// role_arn is the execution role ARN that the function assumes.
-	RoleArn string `protobuf:"bytes,4,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
-	// layer_arns is the set of layer ARNs attached to the function (if any).
-	LayerArns     []string `protobuf:"bytes,5,rep,name=layer_arns,json=layerArns,proto3" json:"layer_arns,omitempty"`
+	// The ARN AWS service integrations invoke through (the
+	// apigateway-shaped invocation ARN) -- what API Gateway integrations
+	// reference.
+	InvokeArn string `protobuf:"bytes,3,opt,name=invoke_arn,json=invokeArn,proto3" json:"invoke_arn,omitempty"`
+	// The qualified ARN of the most recently published version (empty
+	// when publish is disabled).
+	QualifiedArn string `protobuf:"bytes,4,opt,name=qualified_arn,json=qualifiedArn,proto3" json:"qualified_arn,omitempty"`
+	// The most recently published version number (empty when publish is
+	// disabled).
+	Version string `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
+	// The HTTPS endpoint of the function URL (empty when no function
+	// URL is configured).
+	FunctionUrl string `protobuf:"bytes,6,opt,name=function_url,json=functionUrl,proto3" json:"function_url,omitempty"`
+	// ARNs of the function's aliases, keyed by alias name -- the stable
+	// invocation targets clients reference for traffic-shifted rollouts.
+	// Example valueFrom: status.outputs.alias_arns.live
+	AliasArns map[string]string `protobuf:"bytes,7,rep,name=alias_arns,json=aliasArns,proto3" json:"alias_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The CloudWatch log group receiving the function's logs -- the
+	// AWS-default "/aws/lambda/<function-name>" or the custom group from
+	// logging_config.log_group.
+	LogGroupName  string `protobuf:"bytes,8,opt,name=log_group_name,json=logGroupName,proto3" json:"log_group_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -82,6 +106,41 @@ func (x *AwsLambdaStackOutputs) GetFunctionName() string {
 	return ""
 }
 
+func (x *AwsLambdaStackOutputs) GetInvokeArn() string {
+	if x != nil {
+		return x.InvokeArn
+	}
+	return ""
+}
+
+func (x *AwsLambdaStackOutputs) GetQualifiedArn() string {
+	if x != nil {
+		return x.QualifiedArn
+	}
+	return ""
+}
+
+func (x *AwsLambdaStackOutputs) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *AwsLambdaStackOutputs) GetFunctionUrl() string {
+	if x != nil {
+		return x.FunctionUrl
+	}
+	return ""
+}
+
+func (x *AwsLambdaStackOutputs) GetAliasArns() map[string]string {
+	if x != nil {
+		return x.AliasArns
+	}
+	return nil
+}
+
 func (x *AwsLambdaStackOutputs) GetLogGroupName() string {
 	if x != nil {
 		return x.LogGroupName
@@ -89,32 +148,25 @@ func (x *AwsLambdaStackOutputs) GetLogGroupName() string {
 	return ""
 }
 
-func (x *AwsLambdaStackOutputs) GetRoleArn() string {
-	if x != nil {
-		return x.RoleArn
-	}
-	return ""
-}
-
-func (x *AwsLambdaStackOutputs) GetLayerArns() []string {
-	if x != nil {
-		return x.LayerArns
-	}
-	return nil
-}
-
 var File_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/aws/awslambda/v1/stack_outputs.proto\x12%dev.planton.provider.aws.awslambda.v1\"\xbf\x01\n" +
+	"9dev/planton/provider/aws/awslambda/v1/stack_outputs.proto\x12%dev.planton.provider.aws.awslambda.v1\"\xb0\x03\n" +
 	"\x15AwsLambdaStackOutputs\x12!\n" +
 	"\ffunction_arn\x18\x01 \x01(\tR\vfunctionArn\x12#\n" +
-	"\rfunction_name\x18\x02 \x01(\tR\ffunctionName\x12$\n" +
-	"\x0elog_group_name\x18\x03 \x01(\tR\flogGroupName\x12\x19\n" +
-	"\brole_arn\x18\x04 \x01(\tR\aroleArn\x12\x1d\n" +
+	"\rfunction_name\x18\x02 \x01(\tR\ffunctionName\x12\x1d\n" +
 	"\n" +
-	"layer_arns\x18\x05 \x03(\tR\tlayerArnsB\xce\x02\n" +
+	"invoke_arn\x18\x03 \x01(\tR\tinvokeArn\x12#\n" +
+	"\rqualified_arn\x18\x04 \x01(\tR\fqualifiedArn\x12\x18\n" +
+	"\aversion\x18\x05 \x01(\tR\aversion\x12!\n" +
+	"\ffunction_url\x18\x06 \x01(\tR\vfunctionUrl\x12j\n" +
+	"\n" +
+	"alias_arns\x18\a \x03(\v2K.dev.planton.provider.aws.awslambda.v1.AwsLambdaStackOutputs.AliasArnsEntryR\taliasArns\x12$\n" +
+	"\x0elog_group_name\x18\b \x01(\tR\flogGroupName\x1a<\n" +
+	"\x0eAliasArnsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xce\x02\n" +
 	")com.dev.planton.provider.aws.awslambda.v1B\x11StackOutputsProtoP\x01ZSgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awslambda/v1;awslambdav1\xa2\x02\x05DPPAA\xaa\x02%Dev.Planton.Provider.Aws.Awslambda.V1\xca\x02%Dev\\Planton\\Provider\\Aws\\Awslambda\\V1\xe2\x021Dev\\Planton\\Provider\\Aws\\Awslambda\\V1\\GPBMetadata\xea\x02*Dev::Planton::Provider::Aws::Awslambda::V1b\x06proto3"
 
 var (
@@ -129,16 +181,18 @@ func file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_rawDescGZIP(
 	return file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_goTypes = []any{
 	(*AwsLambdaStackOutputs)(nil), // 0: dev.planton.provider.aws.awslambda.v1.AwsLambdaStackOutputs
+	nil,                           // 1: dev.planton.provider.aws.awslambda.v1.AwsLambdaStackOutputs.AliasArnsEntry
 }
 var file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.aws.awslambda.v1.AwsLambdaStackOutputs.alias_arns:type_name -> dev.planton.provider.aws.awslambda.v1.AwsLambdaStackOutputs.AliasArnsEntry
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_init() }
@@ -152,7 +206,7 @@ func file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_aws_awslambda_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
