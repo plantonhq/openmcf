@@ -403,6 +403,24 @@ func TestAwsEcsService_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsecsservice", "terraform")
 }
 
+// --- AWS ECS Cluster (Fargate leaf + the EC2-capacity chain via the scenario's e2e-prerequisites annotation) ---
+
+func TestAwsEcsCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecscluster", "pulumi")
+}
+func TestAwsEcsCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecscluster", "terraform")
+}
+
+// --- AWS EC2 Instance (one t3.micro; subnet + security-group fixtures via the scenario's e2e-prerequisites annotation) ---
+
+func TestAwsEc2Instance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsec2instance", "pulumi")
+}
+func TestAwsEc2Instance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsec2instance", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

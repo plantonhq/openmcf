@@ -1,0 +1,48 @@
+# EC2-capacity ECS cluster scenario: the folded capacity provider wraps
+# the zero-capacity auto-scaling group fixture, so the whole
+# VPC -> subnets -> launch template -> group -> cluster -> capacity
+# provider chain deploys with no instance ever launched -- proving the
+# per-name materialization (a real aws_ecs_capacity_provider resource)
+# and the single association PUT that unions it with the FARGATE
+# built-in. Managed scaling runs at 80% target capacity so the block
+# itself is exercised, not just defaults. Full metadata is supplied for
+# tagging/orphan cleanup.
+#
+# The e2e-prerequisites annotation composes the auto-scaling group for
+# this scenario (its own registry graph pulls the VPC, subnets, and
+# launch template) without making it a registry prerequisite -- a
+# Fargate cluster honestly requires nothing.
+apiVersion: aws.planton.dev/v1
+kind: AwsEcsCluster
+metadata:
+  name: planton-oss-e2e-ecs-ec2cap-smoke
+  id: planton-oss-e2e-ecs-ec2cap-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsecscluster
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsAutoScalingGroup"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  containerInsights: enabled
+  capacityProviders:
+    - FARGATE
+  ec2CapacityProviders:
+    - name: planton-oss-e2e-general
+      autoScalingGroupArn:
+        valueFrom:
+          kind: AwsAutoScalingGroup
+          name: planton-oss-e2e-asg-smoke
+          fieldPath: status.outputs.autoscaling_group_arn
+      managedScaling:
+        status: ENABLED
+        targetCapacity: 80
+      managedDraining: ENABLED
+  defaultCapacityProviderStrategy:
+    - capacityProvider: planton-oss-e2e-general
+      weight: 1

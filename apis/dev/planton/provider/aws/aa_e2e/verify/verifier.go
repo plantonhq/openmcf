@@ -71,6 +71,7 @@ var verifiers = map[string]Verifier{
 	"awssecuritygroup":               &securityGroupVerifier{},
 	"awsmskcluster":                  &mskClusterVerifier{},
 	"awsopensearchdomain":            &opensearchDomainVerifier{},
+	"awsec2instance":                 &ec2InstanceVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

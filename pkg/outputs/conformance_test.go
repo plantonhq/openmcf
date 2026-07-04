@@ -750,6 +750,48 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsEc2Instance: instance_id is the join key target groups
+			// register; the address quartet carries the connection surface
+			// (public values empty for private-only instances -- both
+			// engines emit them regardless).
+			name: "AwsEc2Instance",
+			kind: cloudresourcekind.CloudResourceKind_AwsEc2Instance,
+			rawOutputs: map[string]interface{}{
+				"instance_id":                  "i-0123456789abcdef0",
+				"arn":                          "arn:aws:ec2:us-west-2:123456789012:instance/i-0123456789abcdef0",
+				"instance_state":               "running",
+				"availability_zone":            "us-west-2a",
+				"private_ip":                   "10.0.1.15",
+				"private_dns":                  "ip-10-0-1-15.us-west-2.compute.internal",
+				"public_ip":                    "",
+				"public_dns":                   "",
+				"primary_network_interface_id": "eni-0123456789abcdef0",
+			},
+			mustPopulate: []string{
+				"instance_id", "arn", "instance_state", "availability_zone",
+				"private_ip", "private_dns", "primary_network_interface_id",
+			},
+		},
+		{
+			// AwsEcsCluster: cluster_arn is the join key AwsEcsService
+			// references; capacity_provider_names is the strategy
+			// vocabulary (built-ins plus folded EC2 providers) and
+			// capacity_provider_arns the folded providers' identities --
+			// both list outputs, guarding list flattening.
+			name: "AwsEcsCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsEcsCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_name":            "prod-apps",
+				"cluster_arn":             "arn:aws:ecs:us-west-2:123456789012:cluster/prod-apps",
+				"capacity_provider_names": []interface{}{"FARGATE", "FARGATE_SPOT", "general-purpose"},
+				"capacity_provider_arns":  []interface{}{"arn:aws:ecs:us-west-2:123456789012:capacity-provider/general-purpose"},
+			},
+			mustPopulate: []string{
+				"cluster_name", "cluster_arn", "capacity_provider_names",
+				"capacity_provider_arns",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

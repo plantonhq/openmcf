@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsec2instance
+spec:
+  # An EC2 instance under live E2E: the harness deploys the VPC, subnet,
+  # and security-group prerequisites (declared by the scenario's
+  # e2e-prerequisites annotation -- the kind itself honestly requires
+  # nothing, since unset networking falls back to the default VPC), then
+  # runs deploy -> DescribeInstances verify -> destroy ->
+  # verify-destroyed on both provisioners. The scenario launches one
+  # t3.micro with IMDSv2 required, an encrypted gp3 root volume, and a
+  # template-introducer-bearing user-data script, so a full lane runs in
+  # minutes at nano-instance cost. Deliberately not in the live
+  # scenario: launch-template composition (proven by the auto-scaling
+  # group's live chain), Spot/placement/dedicated-host arms (account-
+  # capacity-dependent), and secondary network interfaces (need
+  # multi-card instance types) -- all proven by CEL spec tests and the
+  # offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

@@ -79,6 +79,8 @@ var migratedKinds = []string{
 	// contract, OpenSearch off its legacy type = any contract.
 	"AwsMskCluster",
 	"AwsOpenSearchDomain",
+	// EC2 instance, migrated off its legacy hand-written contract.
+	"AwsEc2Instance",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

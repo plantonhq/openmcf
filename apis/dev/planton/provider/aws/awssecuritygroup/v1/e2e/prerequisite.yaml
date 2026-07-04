@@ -1,5 +1,8 @@
 # AwsSecurityGroup install profile used as a prerequisite by composed
-# components. The first consumer is AwsMskCluster: brokers must attach at
+# components. Publishes one named document per consumer-specific fixture
+# shape; consumers select the instance they need by name.
+#
+# Document 1 -- Kafka broker group (AwsMskCluster): brokers must attach at
 # least one security group at creation (the embedded shadow-group shape was
 # retired, so ingress lives here on the first-class node). The group opens
 # the Kafka listener ports (9092 plaintext, 9094 TLS, 9096 SASL/SCRAM, 9098
@@ -41,3 +44,38 @@ spec:
       ipv4Cidrs:
         - 10.0.0.0/16
       description: ZooKeeper from the E2E VPC
+---
+# Document 2 -- generic instance group (AwsEc2Instance and similar
+# compute consumers): no ingress at all (deny all inbound) and an
+# egress-only posture wide enough for SSM/package traffic -- the locked-
+# down default an instance fixture should carry. Consumers that need
+# inbound reach add their own group beside it.
+apiVersion: aws.planton.dev/v1
+kind: AwsSecurityGroup
+metadata:
+  name: planton-oss-e2e-awssg-instance-prereq
+  id: planton-oss-e2e-awssg-instance-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssecuritygroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  description: Planton E2E instance prerequisite group; no inbound, all outbound
+  egress:
+    - protocol: "-1"
+      fromPort: 0
+      toPort: 0
+      ipv4Cidrs:
+        - 0.0.0.0/0
+      description: All outbound (SSM, package mirrors)
