@@ -1,9 +1,14 @@
 # Terraform Module to Deploy AwsEc2Instance
 
-This module provisions a single AWS EC2 virtual machine instance with networking, IAM, and access configuration.
-It supports multiple connection methods including SSM, SSH via bastion, and EC2 Instance Connect.
+This module provisions exactly one AWS EC2 virtual machine: launch source
+(inline AMI/type or a referenced launch template with per-instance
+overrides), networking, storage, IMDSv2 posture, purchase options, and
+lifecycle protections. Everything the instance composes with -- subnet,
+security groups, IAM instance profile (by NAME), launch template, KMS
+keys -- attaches by reference; the module creates no side resources.
 
-Generated `variables.tf` reflects the proto schema for `AwsEc2Instance`.
+Generated `variables.tf` reflects the proto schema for `AwsEc2Instance`
+(generator-owned; never hand-edit).
 
 ## Usage
 

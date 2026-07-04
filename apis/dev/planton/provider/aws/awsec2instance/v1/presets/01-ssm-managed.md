@@ -1,6 +1,6 @@
-# SSM-Managed Instance
+# SSM-Managed Hardened Instance
 
-This preset creates an EC2 instance accessible via AWS Systems Manager Session Manager. SSM eliminates the need for SSH keys, bastion hosts, or open inbound ports -- connections are brokered through the AWS control plane. This is the modern best practice for EC2 instance access.
+This preset creates an EC2 instance accessible via AWS Systems Manager Session Manager, hardened to the modern baseline: IMDSv2 enforced, an encrypted gp3 root volume, and termination protection. SSM eliminates SSH keys, bastion hosts, and open inbound ports -- connections are brokered through the AWS control plane and fully audited.
 
 ## When to Use
 
@@ -10,23 +10,23 @@ This preset creates an EC2 instance accessible via AWS Systems Manager Session M
 
 ## Key Configuration Choices
 
-- **SSM connection** (`connectionMethod: SSM`) -- Access via `aws ssm start-session`; no SSH key or inbound port 22 needed
-- **IAM instance profile required** (`iamInstanceProfileArn`) -- The instance profile must include `AmazonSSMManagedInstanceCore` policy
+- **Instance profile by reference** (`instanceProfile`) -- The instance's AWS identity; the profile's role must carry `AmazonSSMManagedInstanceCore`. Reference an `AwsIamInstanceProfile`'s `instance_profile_name` output (the EC2 API takes the profile by name)
+- **IMDSv2 enforced** (`metadataOptions.httpTokens: required`) -- The single most effective hardening against credential-stealing SSRF; hop limit 2 keeps containerized workloads working
+- **Encrypted gp3 root** (`rootBlockDevice`) -- The current-generation volume type with encryption at rest
 - **Termination protection** (`disableApiTermination: true`) -- Prevents accidental instance termination
-- **t3.small** (`instanceType`) -- 2 vCPUs, 2 GiB RAM; suitable for most general-purpose workloads
-- **30 GiB root volume** (`rootVolumeSizeGb: 30`) -- Default size; increase for data-intensive applications
+- **t4g.small** (`instanceType`) -- Graviton price-performance; pair with an arm64 AMI
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<aws-region>` | AWS region where the instance will be created (e.g., `us-west-2`) | AWS region list |
-| `<instance-name>` | Name tag for the EC2 instance (e.g., `web-server-01`) | Your naming convention |
-| `<ami-id>` | Amazon Machine Image ID (e.g., `ami-0abcdef1234567890` for Amazon Linux 2023) | AWS EC2 AMI catalog or `aws ec2 describe-images` |
-| `<private-subnet-id>` | Private subnet ID where the instance will launch | AWS VPC console or `AwsVpc` status outputs |
-| `<security-group-id>` | Security group ID controlling instance traffic | AWS EC2 console or `AwsSecurityGroup` status outputs |
-| `<ssm-instance-profile-arn>` | ARN of IAM instance profile with SSM permissions | AWS IAM console or `AwsIamRole` status outputs |
+| `<ami-id>` | Amazon Machine Image ID matching the instance type's architecture | AWS EC2 AMI catalog or `aws ec2 describe-images` |
+| `<private-subnet-id>` | Private subnet ID where the instance will launch | `AwsSubnet` status outputs |
+| `<security-group-id>` | Security group ID controlling instance traffic | `AwsSecurityGroup` status outputs |
+| `<instance-profile-name>` | NAME of the IAM instance profile with SSM permissions | `AwsIamInstanceProfile` status outputs |
 
 ## Related Presets
 
-- **02-ssh-accessible** -- Use instead when SSH key-based access is required (e.g., for legacy tooling or bastion workflows)
+- **02-launch-template** -- Launch from an org-wide golden template instead of inline configuration
+- **03-spot-worker** -- Interruption-tolerant Spot capacity for batch and CI workloads

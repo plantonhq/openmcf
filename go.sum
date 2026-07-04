@@ -403,8 +403,6 @@ github.com/pulumi/pulumi-snowflake/sdk/v2 v2.9.1 h1:P7AMe/gIaZ7ExukxaunrlsZTZ7Gl
 github.com/pulumi/pulumi-snowflake/sdk/v2 v2.9.1/go.mod h1:qv6pt1dFy4cm6zZW+GC3wnaAX1jpYpvD96P0nK1mDo8=
 github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1 h1:tXemWrzeVTqG8zq6hBdv1TdPFXjgZ+dob63a/6GlF1o=
 github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1/go.mod h1:hODo3iEmmXDFOXqPK+V+vwI0a3Ww7BLjs5Tgamp86Ng=
-github.com/pulumi/pulumi-tls/sdk/v5 v5.2.1 h1:aCGQS3XM39kJDzdukzpcrPTX5YAOIjqqaIUrgR0EGNU=
-github.com/pulumi/pulumi-tls/sdk/v5 v5.2.1/go.mod h1:5EqVUb6gBc/8Qx5cY1OdXKnU/T6jv470ZJBAn5F+8W4=
 github.com/pulumi/pulumi/sdk/v3 v3.246.0 h1:n7aigZmbyzVNz6mWpcA8f+0SMHRcBWZn/OlYWylRNvY=
 github.com/pulumi/pulumi/sdk/v3 v3.246.0/go.mod h1:BPWWuYPXcPH5YbXGoyy9Rrfa+evrh6IdM51AjDhcDpM=
 github.com/pulumiverse/pulumi-scaleway/sdk v1.43.0 h1:N5b1IBItbLputXjPcWkMrYK74c8lET0c00uJ/asFnDg=

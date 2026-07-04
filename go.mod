@@ -64,7 +64,6 @@ require (
 	github.com/pulumi/pulumi-random/sdk/v4 v4.16.7
 	github.com/pulumi/pulumi-snowflake/sdk/v2 v2.9.1
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1
-	github.com/pulumi/pulumi-tls/sdk/v5 v5.2.1
 	github.com/pulumi/pulumi/sdk/v3 v3.246.0
 	github.com/pulumiverse/pulumi-scaleway/sdk v1.43.0
 	github.com/sirupsen/logrus v1.9.3

@@ -3,19 +3,16 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
+      source = "hashicorp/aws"
+      # Floor, not a ceiling: cpu_options.nested_virtualization (6.33) is
+      # the newest argument this module uses; secondary_network_interface
+      # landed in 6.32 and primary_network_interface in 6.10. `init`
+      # resolves the latest release at or above the floor.
+      version = ">= 6.33.0"
     }
   }
 }
 
-# Provider configuration is expected to be passed from the root module.
 provider "aws" {
-  # Region and credentials are injected by the runtime as environment variables
-  # (AWS_REGION + AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN), resolved
-  # from the stack input's provider_config. For keyless (oidc / cross_account_trust)
-  # connections the runtime performs the STS web-identity exchange and injects the resulting
-  # short-lived credentials. Keep this block empty -- do not wire region or static keys here.
+  region = var.spec.region
 }
-
-
