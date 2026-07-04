@@ -1,0 +1,145 @@
+package module
+
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+	azurenetworkinterfacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenetworkinterface/v1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
+	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/network"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func Resources(ctx *pulumi.Context, stackInput *azurenetworkinterfacev1.AzureNetworkInterfaceStackInput) error {
+	locals := initializeLocals(ctx, stackInput)
+
+	// Build the Azure provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
+	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
+	if err != nil {
+		return errors.Wrap(err, "failed to create azure provider")
+	}
+
+	spec := locals.AzureNetworkInterface.Spec
+
+	// Lifecycle notes worth knowing before operating this resource:
+	// - Name, region, and edge zone are the NIC's identity -- changing
+	//   any of them replaces the NIC, detaching it from its VM.
+	//   Everything else (configurations, DNS, acceleration, forwarding,
+	//   associations, tags) updates in place.
+	// - The MAC address is assigned when the NIC attaches to a running
+	//   VM, not at creation.
+	// - NSG and ASG memberships are separate ARM operations, realized
+	//   below as association resources (Azure's own model) rather than
+	//   inline NIC properties -- detaching is just removing the spec
+	//   field.
+	ipConfigurations := network.NetworkInterfaceIpConfigurationArray{}
+	for _, config := range spec.IpConfigurations {
+		// Unset enums apply Azure's defaults (Dynamic allocation, IPv4),
+		// so an unspecified spec and Azure's default deploy identically
+		// on both engines.
+		allocation := "Dynamic"
+		if config.PrivateIpAllocation == azurenetworkinterfacev1.AzureNetworkInterfacePrivateIpAllocation_STATIC {
+			allocation = "Static"
+		}
+		version := "IPv4"
+		if config.PrivateIpVersion == azurenetworkinterfacev1.AzureNetworkInterfacePrivateIpVersion_IPV6 {
+			version = "IPv6"
+		}
+
+		configArgs := network.NetworkInterfaceIpConfigurationArgs{
+			Name:                       pulumi.String(config.Name),
+			PrivateIpAddressAllocation: pulumi.String(allocation),
+			PrivateIpAddressVersion:    pulumi.String(version),
+			Primary:                    pulumi.Bool(config.Primary),
+		}
+		if config.SubnetId.GetValue() != "" {
+			configArgs.SubnetId = pulumi.String(config.SubnetId.GetValue())
+		}
+		if config.PrivateIpAddress != "" {
+			configArgs.PrivateIpAddress = pulumi.String(config.PrivateIpAddress)
+		}
+		if config.PublicIpAddressId.GetValue() != "" {
+			configArgs.PublicIpAddressId = pulumi.String(config.PublicIpAddressId.GetValue())
+		}
+		if config.GatewayLoadBalancerFrontendIpConfigurationId != "" {
+			configArgs.GatewayLoadBalancerFrontendIpConfigurationId = pulumi.String(config.GatewayLoadBalancerFrontendIpConfigurationId)
+		}
+		ipConfigurations = append(ipConfigurations, configArgs)
+	}
+
+	networkInterfaceArgs := &network.NetworkInterfaceArgs{
+		Name:                         pulumi.String(spec.Name),
+		Location:                     pulumi.String(spec.Region),
+		ResourceGroupName:            pulumi.String(locals.ResourceGroupName),
+		IpConfigurations:             ipConfigurations,
+		AcceleratedNetworkingEnabled: pulumi.Bool(spec.AcceleratedNetworkingEnabled),
+		IpForwardingEnabled:          pulumi.Bool(spec.IpForwardingEnabled),
+		Tags:                         pulumi.ToStringMap(locals.AzureTags),
+	}
+
+	if len(spec.DnsServers) > 0 {
+		networkInterfaceArgs.DnsServers = pulumi.ToStringArray(spec.DnsServers)
+	}
+	if spec.InternalDnsNameLabel != "" {
+		networkInterfaceArgs.InternalDnsNameLabel = pulumi.String(spec.InternalDnsNameLabel)
+	}
+	// NVA acceleration (preview; subscription must be enrolled). Nothing
+	// is sent when unspecified -- the correct shape for every
+	// non-appliance NIC.
+	if locals.AuxiliaryMode != "" {
+		networkInterfaceArgs.AuxiliaryMode = pulumi.String(locals.AuxiliaryMode)
+	}
+	if locals.AuxiliarySku != "" {
+		networkInterfaceArgs.AuxiliarySku = pulumi.String(locals.AuxiliarySku)
+	}
+	if spec.EdgeZone != "" {
+		networkInterfaceArgs.EdgeZone = pulumi.String(spec.EdgeZone)
+	}
+
+	createdNetworkInterface, err := network.NewNetworkInterface(ctx,
+		spec.Name,
+		networkInterfaceArgs,
+		pulumi.Provider(azureProvider))
+	if err != nil {
+		return errors.Wrapf(err, "failed to create network interface %s", spec.Name)
+	}
+
+	// Attach the NIC-level network security group. Its own ARM operation
+	// (Azure's model), so filtering can change without touching the NIC.
+	if locals.NetworkSecurityGroupId != "" {
+		if _, err := network.NewNetworkInterfaceSecurityGroupAssociation(ctx,
+			fmt.Sprintf("%s-nsg", spec.Name),
+			&network.NetworkInterfaceSecurityGroupAssociationArgs{
+				NetworkInterfaceId:     createdNetworkInterface.ID(),
+				NetworkSecurityGroupId: pulumi.String(locals.NetworkSecurityGroupId),
+			},
+			pulumi.Provider(azureProvider)); err != nil {
+			return errors.Wrapf(err, "failed to associate network security group with network interface %s", spec.Name)
+		}
+	}
+
+	// Join the NIC to its application security groups so NSG rules can
+	// target workload groups instead of IP ranges.
+	for i, asgId := range spec.ApplicationSecurityGroupIds {
+		if _, err := network.NewNetworkInterfaceApplicationSecurityGroupAssociation(ctx,
+			fmt.Sprintf("%s-asg-%d", spec.Name, i),
+			&network.NetworkInterfaceApplicationSecurityGroupAssociationArgs{
+				NetworkInterfaceId:         createdNetworkInterface.ID(),
+				ApplicationSecurityGroupId: pulumi.String(asgId),
+			},
+			pulumi.Provider(azureProvider)); err != nil {
+			return errors.Wrapf(err, "failed to associate application security group %d with network interface %s", i, spec.Name)
+		}
+	}
+
+	// Export stack outputs from the created resource.
+	ctx.Export(OpNetworkInterfaceId, createdNetworkInterface.ID())
+	ctx.Export(OpNetworkInterfaceName, createdNetworkInterface.Name)
+	ctx.Export(OpPrivateIpAddress, createdNetworkInterface.PrivateIpAddress)
+	ctx.Export(OpPrivateIpAddresses, createdNetworkInterface.PrivateIpAddresses)
+	ctx.Export(OpMacAddress, createdNetworkInterface.MacAddress)
+	ctx.Export(OpInternalDomainNameSuffix, createdNetworkInterface.InternalDomainNameSuffix)
+
+	return nil
+}

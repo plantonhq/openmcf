@@ -1016,6 +1016,88 @@ func TestStackOutputsConformance(t *testing.T) {
 				"node_pool_id", "node_pool_name", "node_image_version",
 			},
 		},
+		{
+			// AzureContainerRegistry: the registry's ARM id is the seam AKS
+			// clusters and AcrPull/AcrPush role assignments scope to;
+			// login_server is what images are tagged with; the admin
+			// credentials and data-endpoint hostnames are feature-gated
+			// outputs (empty/absent when their features are off).
+			name: "AzureContainerRegistry",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerRegistry,
+			rawOutputs: map[string]interface{}{
+				"container_registry_id":                 "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.ContainerRegistry/registries/prodimages",
+				"container_registry_name":               "prodimages",
+				"login_server":                          "prodimages.azurecr.io",
+				"admin_username":                        "prodimages",
+				"admin_password":                        "s3cr3t-rotatable",
+				"system_assigned_identity_principal_id": "44444444-4444-4444-4444-444444444444",
+				"data_endpoint_host_names":              []interface{}{"prodimages.eastus.data.azurecr.io"},
+			},
+			mustPopulate: []string{
+				"container_registry_id", "container_registry_name",
+				"login_server", "admin_username", "admin_password",
+				"system_assigned_identity_principal_id",
+				"data_endpoint_host_names",
+			},
+		},
+		{
+			// AzureNetworkInterface: the NIC's ARM id is the seam
+			// AzureVirtualMachine.network_interface_ids consumes; the
+			// private address is what backends and DNS records key on; the
+			// MAC populates only once attached to a running VM.
+			name: "AzureNetworkInterface",
+			kind: cloudresourcekind.CloudResourceKind_AzureNetworkInterface,
+			rawOutputs: map[string]interface{}{
+				"network_interface_id":        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/networkInterfaces/app-nic",
+				"network_interface_name":      "app-nic",
+				"private_ip_address":          "10.0.1.4",
+				"private_ip_addresses":        []interface{}{"10.0.1.4"},
+				"mac_address":                 "00-0D-3A-1B-2C-3D",
+				"internal_domain_name_suffix": "abc123.bx.internal.cloudapp.net",
+			},
+			mustPopulate: []string{
+				"network_interface_id", "network_interface_name",
+				"private_ip_address", "private_ip_addresses",
+				"mac_address", "internal_domain_name_suffix",
+			},
+		},
+		{
+			// AzureManagedDisk: the disk's ARM id is the seam
+			// AzureVirtualMachine.data_disk_attachments consumes; the
+			// actual size matters for COPY/FROM_IMAGE disks that inherited
+			// the source's size.
+			name: "AzureManagedDisk",
+			kind: cloudresourcekind.CloudResourceKind_AzureManagedDisk,
+			rawOutputs: map[string]interface{}{
+				"disk_id":      "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Compute/disks/orders-db-data",
+				"disk_name":    "orders-db-data",
+				"disk_size_gb": 256,
+			},
+			mustPopulate: []string{
+				"disk_id", "disk_name", "disk_size_gb",
+			},
+		},
+		{
+			// AzureVirtualMachine: vm_id is what grants and policies scope
+			// to; the identity principal is the AzureRoleAssignment seam;
+			// the IP conveniences aggregate from the referenced NICs.
+			name: "AzureVirtualMachine",
+			kind: cloudresourcekind.CloudResourceKind_AzureVirtualMachine,
+			rawOutputs: map[string]interface{}{
+				"vm_id":                                 "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Compute/virtualMachines/app-vm",
+				"vm_name":                               "app-vm",
+				"virtual_machine_guid":                  "66666666-6666-6666-6666-666666666666",
+				"private_ip_address":                    "10.0.1.4",
+				"public_ip_address":                     "",
+				"computer_name":                         "app-vm",
+				"system_assigned_identity_principal_id": "77777777-7777-7777-7777-777777777777",
+			},
+			mustPopulate: []string{
+				"vm_id", "vm_name", "virtual_machine_guid",
+				"private_ip_address", "computer_name",
+				"system_assigned_identity_principal_id",
+			},
+		},
 	}
 
 	for _, tc := range cases {

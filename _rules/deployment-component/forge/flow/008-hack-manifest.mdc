@@ -41,10 +41,21 @@ cryptic protoyaml syntax error (`proto: syntax error ... unexpected token`), and
 catches it earlier -- the YAML is well-formed and only the proto unmarshal rejects it.
 Identify the `StringValueOrRef` fields by reading `spec.proto` before drafting.
 
+EXERCISE CONDITIONAL ENUM SEAMS (a plan only proves the fields it carries)
+The plan-time validation below can only catch translation bugs in fields the manifest
+actually sets. Enum fields behind a conditional mapping (a `locals.tf` ternary or
+lookup map) are the highest-risk seam: a map keyed on the wrong string silently
+resolves null and the feature is dropped with a green plan. When the spec carries
+enums whose value names are prefixed for in-file disambiguation (per-OS or per-mode
+vocabularies), include at least one such field in the manifest so the plan proves
+the mapping end to end.
+
 SUCCESS CRITERIA
 - Manifest exists at `.../v1/iac/hack/manifest.yaml`.
 - Minimal, valid spec with safe defaults; no credentials.
 - Every `StringValueOrRef` field uses the `value:`/`valueFrom:` wrapper form.
+- Conditionally-mapped enum fields (especially prefix-disambiguated values) are
+  represented so the plan exercises their `locals.tf` translation.
 - The manifest survives `planton tofu plan --manifest <path> --module-dir .../iac/tf`
   (the plan run is the validation step that catches wrapper-form mistakes).
 

@@ -221,6 +221,42 @@ func TestAzureAksNodePool_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureaksnodepool", "terraform")
 }
 
+// --- Azure Managed Disk (fixture RG -> empty zonal Standard SSD data disk) ---
+
+func TestAzureManagedDisk_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremanageddisk", "pulumi")
+}
+func TestAzureManagedDisk_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremanageddisk", "terraform")
+}
+
+// --- Azure Network Interface (composed: fixture RG -> VNet -> subnet -> NIC with an extra-fixture NSG attached) ---
+
+func TestAzureNetworkInterface_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenetworkinterface", "pulumi")
+}
+func TestAzureNetworkInterface_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenetworkinterface", "terraform")
+}
+
+// --- Azure Virtual Machine (composed: fixture RG -> VNet -> subnet -> NIC -> Linux VM with an extra-fixture disk at LUN 0) ---
+
+func TestAzureVirtualMachine_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualmachine", "pulumi")
+}
+func TestAzureVirtualMachine_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualmachine", "terraform")
+}
+
+// --- Azure Container Registry (fixture RG -> Standard registry with the admin account on) ---
+
+func TestAzureContainerRegistry_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerregistry", "pulumi")
+}
+func TestAzureContainerRegistry_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerregistry", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

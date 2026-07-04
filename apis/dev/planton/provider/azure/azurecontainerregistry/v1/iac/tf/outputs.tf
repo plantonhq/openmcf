@@ -1,36 +1,35 @@
-# Outputs aligned to AzureContainerRegistryStackOutputs proto
-
-output "registry_login_server" {
-  description = "The registry's login server URL (hostname for pulling/pushing images)"
-  value       = azurerm_container_registry.acr.login_server
+output "container_registry_id" {
+  description = "The Azure Resource Manager ID of the registry"
+  value       = azurerm_container_registry.main.id
 }
 
-output "registry_resource_id" {
-  description = "The Azure Resource Manager ID of the container registry"
-  value       = azurerm_container_registry.acr.id
+output "container_registry_name" {
+  description = "The name of the registry"
+  value       = azurerm_container_registry.main.name
 }
 
-# Additional helpful outputs
-
-output "resource_group_name" {
-  description = "Name of the resource group containing the container registry"
-  value       = local.resource_group_name
-}
-
-output "registry_name" {
-  description = "Name of the container registry"
-  value       = azurerm_container_registry.acr.name
+output "login_server" {
+  description = "The registry's login server hostname, e.g. myregistry.azurecr.io"
+  value       = azurerm_container_registry.main.login_server
 }
 
 output "admin_username" {
-  description = "Admin username for the registry (if admin user is enabled)"
-  value       = var.spec.admin_user_enabled ? azurerm_container_registry.acr.admin_username : null
-  sensitive   = true
+  description = "The admin account's username (populated only when admin_user_enabled is true)"
+  value       = azurerm_container_registry.main.admin_username
 }
 
 output "admin_password" {
-  description = "Admin password for the registry (if admin user is enabled)"
-  value       = var.spec.admin_user_enabled ? azurerm_container_registry.acr.admin_password : null
+  description = "One of the admin account's two rotatable passwords (populated only when admin_user_enabled is true)"
+  value       = azurerm_container_registry.main.admin_password
   sensitive   = true
 }
 
+output "system_assigned_identity_principal_id" {
+  description = "The principal ID of the registry's system-assigned identity (populated only when the identity type includes SYSTEM_ASSIGNED)"
+  value       = try(azurerm_container_registry.main.identity[0].principal_id, "")
+}
+
+output "data_endpoint_host_names" {
+  description = "The dedicated regional data-endpoint hostnames (populated only when data_endpoint_enabled is true)"
+  value       = azurerm_container_registry.main.data_endpoint_host_names
+}

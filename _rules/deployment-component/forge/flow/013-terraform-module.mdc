@@ -123,6 +123,17 @@ NOTES
   `terraform validate` fails with "Unsupported argument" on fields the current
   provider genuinely has. Keep sibling modules of one provider on the same
   resolved major so behavior never varies per kind.
+- **Enum values arrive as the FULL proto enum value name -- match them
+  exactly.** The tfvars pipeline serializes enum fields as the proto value's
+  declared name (e.g. `LINUX_AUTOMATIC_BY_PLATFORM`, `ASSESSMENT_IMAGE_DEFAULT`),
+  including any disambiguation prefix the spec added because sibling enums in
+  one file cannot share value names. A `locals.tf` comparison against a
+  shortened form (`"AUTOMATIC_BY_PLATFORM"`) can never match: the ternary
+  silently resolves null, the feature is silently dropped, and `terraform
+  validate` passes. When writing enum maps, copy each value name verbatim from
+  `spec.proto` -- and prove every conditional enum seam with a `planton tofu
+  plan` whose manifest actually carries those fields (see the hack-manifest
+  rule): a plan only proves the fields it exercises.
 - **The variable contract is only proven by a live run, never by `terraform
   validate`.** `validate` checks the module against itself; it cannot detect a
   `variables.tf` whose types the tfvars pipeline can never satisfy (e.g. labels/

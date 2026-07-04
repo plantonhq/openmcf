@@ -143,9 +143,11 @@ import (
 	azurelinuxwebappv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurelinuxwebapp/v1"
 	azureloadbalancerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloadbalancer/v1"
 	azureloganalyticsworkspacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloganalyticsworkspace/v1"
+	azuremanageddiskv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanageddisk/v1"
 	azuremssqlserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqlserver/v1"
 	azuremysqlflexibleserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremysqlflexibleserver/v1"
 	azurenatgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenatgateway/v1"
+	azurenetworkinterfacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenetworkinterface/v1"
 	azurenetworksecuritygroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenetworksecuritygroup/v1"
 	azurepostgresqlflexibleserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepostgresqlflexibleserver/v1"
 	azureprivatednszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureprivatednszone/v1"
@@ -595,9 +597,11 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureLinuxWebApp:                      &azurelinuxwebappv1.AzureLinuxWebApp{},
 	cloudresourcekind.CloudResourceKind_AzureLoadBalancer:                     &azureloadbalancerv1.AzureLoadBalancer{},
 	cloudresourcekind.CloudResourceKind_AzureLogAnalyticsWorkspace:            &azureloganalyticsworkspacev1.AzureLogAnalyticsWorkspace{},
+	cloudresourcekind.CloudResourceKind_AzureManagedDisk:                      &azuremanageddiskv1.AzureManagedDisk{},
 	cloudresourcekind.CloudResourceKind_AzureMssqlServer:                      &azuremssqlserverv1.AzureMssqlServer{},
 	cloudresourcekind.CloudResourceKind_AzureMysqlFlexibleServer:              &azuremysqlflexibleserverv1.AzureMysqlFlexibleServer{},
 	cloudresourcekind.CloudResourceKind_AzureNatGateway:                       &azurenatgatewayv1.AzureNatGateway{},
+	cloudresourcekind.CloudResourceKind_AzureNetworkInterface:                 &azurenetworkinterfacev1.AzureNetworkInterface{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkSecurityGroup:             &azurenetworksecuritygroupv1.AzureNetworkSecurityGroup{},
 	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:         &azurepostgresqlflexibleserverv1.AzurePostgresqlFlexibleServer{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZone:                   &azureprivatednszonev1.AzurePrivateDnsZone{},

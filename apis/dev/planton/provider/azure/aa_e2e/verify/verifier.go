@@ -31,8 +31,11 @@ type Verifier interface {
 var verifiers = map[string]Verifier{
 	"azureakscluster":                       &aksClusterVerifier{},
 	"azureaksnodepool":                      &aksNodePoolVerifier{},
+	"azurecontainerregistry":                &containerRegistryVerifier{},
 	"azurefederatedidentitycredential":      &federatedIdentityCredentialVerifier{},
+	"azuremanageddisk":                      &managedDiskVerifier{},
 	"azurenatgateway":                       &natGatewayVerifier{},
+	"azurenetworkinterface":                 &networkInterfaceVerifier{},
 	"azurenetworksecuritygroup":             &networkSecurityGroupVerifier{},
 	"azureprivatednszone":                   &privateDnsZoneVerifier{},
 	"azureprivatednszonevirtualnetworklink": &privateDnsZoneVirtualNetworkLinkVerifier{},
@@ -44,6 +47,7 @@ var verifiers = map[string]Verifier{
 	"azureroutetable":                       &routeTableVerifier{},
 	"azuresubnet":                           &subnetVerifier{},
 	"azureuserassignedidentity":             &userAssignedIdentityVerifier{},
+	"azurevirtualmachine":                   &virtualMachineVerifier{},
 	"azurevirtualnetwork":                   &virtualNetworkVerifier{},
 	"azurevirtualnetworkpeering":            &virtualNetworkPeeringVerifier{},
 }

@@ -628,10 +628,13 @@ enum CloudResourceKind {
     id_prefix: "aksnp"
     prerequisites: [AzureAksCluster]
   }];
+  // AzureResourceGroup is a prerequisite because a container registry is
+  // created inside a resource group.
   AzureContainerRegistry = 403 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "acr"
+    prerequisites: [AzureResourceGroup]
   }];
   AzureDnsZone = 404 [(kind_meta) = {
     provider: azure
@@ -660,10 +663,14 @@ enum CloudResourceKind {
     id_prefix: "aznat"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureNetworkInterface is a prerequisite because a virtual machine
+  // attaches at least one NIC (the subnet, network, and resource group
+  // chain transitively through the NIC's own prerequisites).
   AzureVirtualMachine = 408 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azvm"
+    prerequisites: [AzureNetworkInterface]
   }];
   AzureStorageAccount = 409 [(kind_meta) = {
     provider: azure
@@ -763,6 +770,23 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azpippfx"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureSubnet is a prerequisite because a network interface's IP
+  // configurations deploy into a subnet (the virtual network and resource
+  // group chain transitively through the subnet's own prerequisite).
+  AzureNetworkInterface = 422 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "aznic"
+    prerequisites: [AzureSubnet]
+  }];
+  // AzureResourceGroup is a prerequisite because a managed disk is created
+  // inside a resource group.
+  AzureManagedDisk = 423 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azdisk"
     prerequisites: [AzureResourceGroup]
   }];
   AzurePostgresqlFlexibleServer = 430 [(kind_meta) = {

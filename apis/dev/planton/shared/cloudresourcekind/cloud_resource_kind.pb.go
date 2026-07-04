@@ -207,7 +207,9 @@ const (
 	CloudResourceKind_AzureAksCluster CloudResourceKind = 401
 	// AzureAksCluster is a prerequisite because a node pool attaches to an
 	// existing cluster by ARM ID; the resource group chains transitively.
-	CloudResourceKind_AzureAksNodePool       CloudResourceKind = 402
+	CloudResourceKind_AzureAksNodePool CloudResourceKind = 402
+	// AzureResourceGroup is a prerequisite because a container registry is
+	// created inside a resource group.
 	CloudResourceKind_AzureContainerRegistry CloudResourceKind = 403
 	CloudResourceKind_AzureDnsZone           CloudResourceKind = 404
 	CloudResourceKind_AzureKeyVault          CloudResourceKind = 405
@@ -216,7 +218,10 @@ const (
 	CloudResourceKind_AzureVirtualNetwork CloudResourceKind = 406
 	// AzureResourceGroup is a prerequisite because a NAT gateway is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzureNatGateway     CloudResourceKind = 407
+	CloudResourceKind_AzureNatGateway CloudResourceKind = 407
+	// AzureNetworkInterface is a prerequisite because a virtual machine
+	// attaches at least one NIC (the subnet, network, and resource group
+	// chain transitively through the NIC's own prerequisites).
 	CloudResourceKind_AzureVirtualMachine CloudResourceKind = 408
 	CloudResourceKind_AzureStorageAccount CloudResourceKind = 409
 	CloudResourceKind_AzureDnsRecord      CloudResourceKind = 410
@@ -254,7 +259,14 @@ const (
 	CloudResourceKind_AzureVirtualNetworkPeering CloudResourceKind = 420
 	// AzureResourceGroup is a prerequisite because a public IP prefix is
 	// created inside a referenced resource group in composed environments.
-	CloudResourceKind_AzurePublicIpPrefix           CloudResourceKind = 421
+	CloudResourceKind_AzurePublicIpPrefix CloudResourceKind = 421
+	// AzureSubnet is a prerequisite because a network interface's IP
+	// configurations deploy into a subnet (the virtual network and resource
+	// group chain transitively through the subnet's own prerequisite).
+	CloudResourceKind_AzureNetworkInterface CloudResourceKind = 422
+	// AzureResourceGroup is a prerequisite because a managed disk is created
+	// inside a resource group.
+	CloudResourceKind_AzureManagedDisk              CloudResourceKind = 423
 	CloudResourceKind_AzurePostgresqlFlexibleServer CloudResourceKind = 430
 	CloudResourceKind_AzureRedisCache               CloudResourceKind = 431
 	CloudResourceKind_AzureCosmosdbAccount          CloudResourceKind = 432
@@ -710,6 +722,8 @@ var (
 		419:  "AzurePrivateDnsZoneVirtualNetworkLink",
 		420:  "AzureVirtualNetworkPeering",
 		421:  "AzurePublicIpPrefix",
+		422:  "AzureNetworkInterface",
+		423:  "AzureManagedDisk",
 		430:  "AzurePostgresqlFlexibleServer",
 		431:  "AzureRedisCache",
 		432:  "AzureCosmosdbAccount",
@@ -1135,6 +1149,8 @@ var (
 		"AzurePrivateDnsZoneVirtualNetworkLink":   419,
 		"AzureVirtualNetworkPeering":              420,
 		"AzurePublicIpPrefix":                     421,
+		"AzureNetworkInterface":                   422,
+		"AzureManagedDisk":                        423,
 		"AzurePostgresqlFlexibleServer":           430,
 		"AzureRedisCache":                         431,
 		"AzureCosmosdbAccount":                    432,
@@ -1706,7 +1722,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf6\x96\x01\n" +
+	"\x02v1\x10\x01*ܗ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1799,15 +1815,14 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\rAwsMskCluster\x10\xde\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsmsk\x12)\n" +
 	"\x12AzureResourceGroup\x10\x90\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x04azrg0\x01\x12)\n" +
 	"\x0fAzureAksCluster\x10\x91\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x03aks0\x01:\x02\x90\x03\x12*\n" +
-	"\x10AzureAksNodePool\x10\x92\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aksnp:\x02\x91\x03\x12*\n" +
-	"\x16AzureContainerRegistry\x10\x93\x03\x1a\r\xa2\xf7\x04\t\b\r\x10\x01\"\x03acr\x12\"\n" +
+	"\x10AzureAksNodePool\x10\x92\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aksnp:\x02\x91\x03\x12.\n" +
+	"\x16AzureContainerRegistry\x10\x93\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\x03acr:\x02\x90\x03\x12\"\n" +
 	"\fAzureDnsZone\x10\x94\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azdns\x12\"\n" +
 	"\rAzureKeyVault\x10\x95\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azkv\x120\n" +
 	"\x13AzureVirtualNetwork\x10\x96\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\x06azvnet0\x01:\x02\x90\x03\x12)\n" +
-	"\x0fAzureNatGateway\x10\x97\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznat:\x02\x90\x03\x12(\n" +
-	"\x13AzureVirtualMachine\x10\x98\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azvm\x12(\n" +
+	"\x0fAzureNatGateway\x10\x97\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznat:\x02\x90\x03\x12,\n" +
+	"\x13AzureVirtualMachine\x10\x98\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azvm:\x02\xa6\x03\x12(\n" +
 	"\x13AzureStorageAccount\x10\x99\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azsa\x12%\n" +
 	"\x0eAzureDnsRecord\x10\x9a\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azdrec\x12%\n" +
@@ -1824,7 +1839,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"%AzurePrivateDnsZoneVirtualNetworkLink\x10\xa3\x03\x1a\x1a\xa2\xf7\x04\x16\b\r\x10\x01\"\n" +
 	"azpdnslink:\x04\x9f\x03\x96\x03\x125\n" +
 	"\x1aAzureVirtualNetworkPeering\x10\xa4\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azpeer:\x02\x96\x03\x120\n" +
-	"\x13AzurePublicIpPrefix\x10\xa5\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazpippfx:\x02\x90\x03\x122\n" +
+	"\x13AzurePublicIpPrefix\x10\xa5\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazpippfx:\x02\x90\x03\x12/\n" +
+	"\x15AzureNetworkInterface\x10\xa6\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznic:\x02\x9b\x03\x12+\n" +
+	"\x10AzureManagedDisk\x10\xa7\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azdisk:\x02\x90\x03\x122\n" +
 	"\x1dAzurePostgresqlFlexibleServer\x10\xae\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azpg\x12%\n" +
 	"\x0fAzureRedisCache\x10\xaf\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azred\x12*\n" +

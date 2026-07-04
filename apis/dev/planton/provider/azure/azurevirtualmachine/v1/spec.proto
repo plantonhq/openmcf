@@ -6,80 +6,594 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// AzureVirtualMachineSpec defines the configuration for deploying an Azure Virtual Machine (VM).
-// This message specifies the parameters to create and manage VM instances in an Azure subscription,
-// including machine size, OS image, network configuration, and optional features like
-// managed identities, boot diagnostics, and availability zones.
-// Follows the 80/20 principle: exposes the 20% of configurations that 80% of users need.
+// **AzureVirtualMachineSpec** defines the configuration for creating an
+// Azure Virtual Machine: the compute instance itself -- its size, image,
+// OS profile, disks, identity, placement, and security posture.
+//
+// The VM is deliberately just the machine. Everything it composes with is
+// referenced, never created here -- matching Azure's own model, where a
+// VM is a compute shell wired to first-class resources:
+// - Its network presence is one or more referenced AzureNetworkInterface
+//   resources (network_interface_ids; a VM can carry several -- management
+//   + data planes, appliance arms). Public IPs, NSG filtering, and subnet
+//   placement all live on the NIC.
+// - Its data volumes are referenced AzureManagedDisk resources attached
+//   with a LUN and caching mode (data_disk_attachments) -- the data
+//   outlives the machine, and a shared disk can attach to several VMs.
+// - Its identities are referenced AzureUserAssignedIdentity resources;
+//   grants are composed with AzureRoleAssignment against the identity or
+//   the VM's own system-assigned principal.
+// Only the OS disk is inline (os_disk): it is born and dies with the VM
+// by definition -- unless the VM boots from an EXISTING referenced OS
+// disk (os_managed_disk_id), the disk-swap/golden-disk recovery path.
+//
+// The OS choice is explicit: os_profile carries exactly one of `linux` or
+// `windows`, each with its own authentication contract (SSH-first for
+// Linux, password + WinRM/unattend for Windows) and its own patch-mode
+// vocabulary -- mirroring ARM's own per-OS surfaces.
 message AzureVirtualMachineSpec {
-  // Azure region where the Virtual Machine will be deployed (e.g., "eastus", "westus2", "westeurope").
-  // This is required as VMs are regional resources.
+  // The Azure region the VM runs in, e.g. "eastus". Must match the region
+  // of every referenced NIC and disk. Changing the region replaces the
+  // VM.
   string region = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The Azure Resource Group where the Virtual Machine will be created.
-  // Can be a literal string or a reference to an AzureResourceGroup output.
+  // The Azure resource group the VM will be created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output.
   dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The Azure VM size determining vCPU count, memory, and capabilities.
-  // Examples: "Standard_D2s_v3" (2 vCPUs, 8 GiB RAM), "Standard_D4s_v5" (4 vCPUs, 16 GiB RAM).
-  optional string vm_size = 3 [
-    (dev.planton.shared.options.recommended_default) = "Standard_D2s_v3",
-    (buf.validate.field).string.min_len = 1
-  ];
-
-  // The Azure resource ID of the subnet where this VM will be attached.
-  // This should reference a subnet within an existing Virtual Network (VNet).
-  // Can be a literal value or a reference to an AzureSubnet's subnet_id output.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 4 [
+  // The name of the VM, unique within the resource group. 1-64 characters
+  // for Linux, 1-15 for Windows (ARM's limits; the OS's computer name
+  // defaults to this, which is where the Windows limit bites). Changing
+  // the name replaces the VM.
+  string name = 3 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
-  ];
-
-  // Operating system image configuration for the VM.
-  AzureVirtualMachineImage image = 5 [(buf.validate.field).required = true];
-
-  // OS disk configuration for the VM.
-  AzureVirtualMachineOsDisk os_disk = 6;
-
-  // Additional data disks to attach to the VM.
-  repeated AzureVirtualMachineDataDisk data_disks = 7;
-
-  // Admin username for the VM (Linux: SSH user, Windows: Administrator name).
-  // Must be a valid username according to Azure requirements.
-  optional string admin_username = 8 [
-    (dev.planton.shared.options.default) = "azureuser",
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 64
   ];
 
-  // SSH public key for Linux VMs. Required for Linux VMs when password authentication is disabled.
-  // Format: "ssh-rsa AAAAB3NzaC1yc2E... user@host"
-  string ssh_public_key = 9;
-
-  // Admin password for Windows VMs or Linux VMs with password authentication enabled.
-  // For production, prefer SSH keys for Linux VMs.
-  // Can be a literal value or a reference to an AzureKeyVault secret.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef admin_password = 10 [
-    (dev.planton.shared.options.sensitive) = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_uri"
+  // The VM size (SKU), e.g. "Standard_D2s_v3", "Standard_B2s". The size
+  // determines vCPUs, memory, temp-disk, accelerated-networking and
+  // ultra-disk support, and hourly cost. Resizing updates in place but
+  // reboots the VM (and may deallocate it when moving size families).
+  string size = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
   ];
 
-  // Network interface configuration for the VM.
-  AzureVirtualMachineNetworkConfig network = 11;
+  // The network interfaces attached to the VM, by ARM ID -- at least one;
+  // the FIRST is the primary. References first-class
+  // AzureNetworkInterface resources: subnet placement, public IPs, NSG
+  // filtering, and (in Azure's model) load-balancer pool membership all
+  // live NIC-side. Multiple NICs serve appliances and split
+  // management/data planes; the VM size caps how many.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef network_interface_ids = 5 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureNetworkInterface,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_interface_id"
+  ];
 
-  // Availability zone for the VM (e.g., "1", "2", "3").
-  // Leave empty for no zone (regional placement).
-  // For production workloads, deploy VMs across multiple zones.
-  string availability_zone = 12 [(buf.validate.field).string = {
+  // The operating-system profile: exactly one of `linux` or `windows`,
+  // carrying the OS's authentication and OS-specific management surface.
+  // When the VM boots from an existing OS disk (os_managed_disk_id), the
+  // chosen profile still selects the OS but must carry NO authentication
+  // fields -- the disk already contains its users.
+  AzureVirtualMachineOsProfile os_profile = 6 [(buf.validate.field).required = true];
+
+  // The OS disk created with the VM. Always required: it describes the
+  // disk's caching and storage even when the VM boots from an existing
+  // disk. The OS disk is the one deliberately inline disk -- data volumes
+  // are first-class AzureManagedDisk resources (data_disk_attachments).
+  AzureVirtualMachineOsDisk os_disk = 7 [(buf.validate.field).required = true];
+
+  // Marketplace/platform image to boot from, by its four coordinates
+  // (publisher/offer/sku/version). Exactly one image source: this,
+  // source_image_id, or os_managed_disk_id.
+  AzureVirtualMachineSourceImageReference source_image_reference = 8;
+
+  // A custom or gallery image to boot from, by ARM ID (a managed image,
+  // or a Shared Image Gallery image/version -- community and direct
+  // shared gallery IDs included). Exactly one image source. Fixed at
+  // creation.
+  string source_image_id = 9;
+
+  // An EXISTING OS disk to boot from, by ARM ID -- the disk-swap /
+  // golden-disk path. References a first-class AzureManagedDisk that
+  // already carries an operating system. The os_profile must then carry
+  // no authentication fields (the disk has its users), and patching stays
+  // at the image default. Exactly one image source. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef os_managed_disk_id = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureManagedDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_id"
+  ];
+
+  // Data disks attached to the VM. Each entry references a first-class
+  // AzureManagedDisk by ARM ID and mounts it at a LUN with a caching
+  // mode -- realized as attachment resources on both engines, so the
+  // disk (and its data) outlives the VM. Disks can be attached and
+  // detached in place.
+  repeated AzureVirtualMachineDataDiskAttachment data_disk_attachments = 11;
+
+  // The VM's managed identity: how the workload authenticates to Azure
+  // services without stored credentials. Grants are composed with
+  // AzureRoleAssignment against the system-assigned principal (surfaced
+  // in the outputs) or the referenced user-assigned identities.
+  AzureVirtualMachineIdentity identity = 12;
+
+  // Run the VM on spot capacity: deeply discounted, evictable when Azure
+  // needs the capacity back. Presence makes the VM a spot instance;
+  // absence is a regular on-demand VM. For interruption-tolerant
+  // workloads only. Fixed at creation.
+  AzureVirtualMachineSpot spot = 13;
+
+  // Where the VM runs relative to Azure's fault machinery: availability
+  // zone, availability set, proximity placement, dedicated hosts,
+  // capacity reservations, or a Flexible scale set. Leave unset for
+  // regional placement with no constraints.
+  AzureVirtualMachineAvailability availability = 14;
+
+  // The trusted-launch / encryption security posture. Leave unset for a
+  // standard VM; production fleets on Gen2 images should enable secure
+  // boot + vTPM (trusted launch).
+  AzureVirtualMachineSecurity security = 15;
+
+  // OS patch orchestration shared across both OSes (the per-OS patch
+  // MODE lives in the linux/windows profile, because ARM's mode
+  // vocabularies differ per OS).
+  AzureVirtualMachinePatching patching = 16;
+
+  // Boot diagnostics: serial console output and boot screenshots, the
+  // first tool for debugging a VM that will not boot. Presence enables
+  // it; an empty message uses Azure's managed storage (the right
+  // default), or point storage_account_uri at your own storage account.
+  AzureVirtualMachineBootDiagnostics boot_diagnostics = 17;
+
+  // VM Applications (gallery applications) installed onto the VM at
+  // deployment -- versioned application packages from an Azure Compute
+  // Gallery, ordered by `order`. Up to 100.
+  repeated AzureVirtualMachineGalleryApplication gallery_applications = 18 [(buf.validate.field).repeated.max_items = 100];
+
+  // Emits a scheduled event before the VM is terminated, giving the
+  // workload up to 15 minutes to drain. Presence enables it.
+  AzureVirtualMachineTerminationNotification termination_notification = 19;
+
+  // Emits a scheduled event before a platform-initiated OS image
+  // upgrade. Presence enables it.
+  AzureVirtualMachineOsImageNotification os_image_notification = 20;
+
+  // The marketplace plan for images that require purchase-plan
+  // acceptance (third-party marketplace images). Leave unset for
+  // platform and custom images. Fixed at creation.
+  AzureVirtualMachinePlan plan = 21;
+
+  // Cloud-init / provisioning data, base64-encoded, delivered once at
+  // first boot. May embed bootstrap secrets, so it is treated as secret
+  // material. Fixed at creation (changing it replaces the VM).
+  string custom_data = 22 [
+    (buf.validate.field).string.max_bytes = 65536,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Arbitrary machine-readable data, base64-encoded, retrievable from
+  // inside the VM via the Instance Metadata Service at any time --
+  // unlike custom_data it is UPDATABLE in place and readable back, so
+  // never put secrets here.
+  string user_data = 23 [(buf.validate.field).string.max_bytes = 65536];
+
+  // How long ALL extensions on the VM may collectively take to provision,
+  // as an ISO 8601 duration between PT15M and PT2H. Unset applies Azure's
+  // default (PT1H30M).
+  string extensions_time_budget = 24;
+
+  // Whether the Azure VM agent is provisioned. Azure's default is true;
+  // false is for appliance images that ship without an agent -- it
+  // disables extensions and most platform management, and is fixed at
+  // creation.
+  optional bool provision_vm_agent = 25 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether extension operations are allowed on the VM. Azure's default
+  // is true; false hard-locks the VM against any extension install.
+  optional bool allow_extension_operations = 26 [(dev.planton.shared.options.default) = "true"];
+
+  // The disk controller the VM presents to the OS. Unspecified applies
+  // Azure's default for the size/image (SCSI today). NVME requires a
+  // supported size + Gen2 image and delivers higher disk throughput.
+  AzureVirtualMachineDiskControllerType disk_controller_type = 27;
+
+  // Niche capability toggles: Ultra SSD attachability and hibernation
+  // support.
+  AzureVirtualMachineAdditionalCapabilities additional_capabilities = 28;
+
+  // Certificates from Key Vault installed onto the VM at provisioning
+  // time. Each entry names a vault and the certificate secret URLs to
+  // install (Windows VMs also name the certificate store).
+  repeated AzureVirtualMachineSecret secrets = 29;
+
+  // The Azure Edge Zone the VM is deployed in, for edge-computing
+  // workloads. Leave unset for regular regional deployment. Fixed at
+  // creation.
+  string edge_zone = 30;
+
+  // Free-form tags applied to the VM, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins. Tags are Azure's governance surface -- Azure
+  // Policy enforces them and Microsoft Cost Management groups by them.
+  // Updatable in place.
+  map<string, string> tags = 31;
+
+  option (buf.validate.message).cel = {
+    id: "vm_image_source_exactly_one"
+    message: "set exactly one image source: source_image_reference (marketplace/platform), source_image_id (custom/gallery), or os_managed_disk_id (boot from an existing OS disk)"
+    expression: "(has(this.source_image_reference) ? 1 : 0) + (this.source_image_id != '' ? 1 : 0) + (has(this.os_managed_disk_id) ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vm_linux_auth_required"
+    message: "a Linux VM booting from an image requires admin_username and at least one credential -- SSH keys when password authentication is disabled (the default), admin_password when it is enabled"
+    expression: "has(this.os_managed_disk_id) || !has(this.os_profile) || !has(this.os_profile.linux) || (this.os_profile.linux.admin_username != '' && ((!has(this.os_profile.linux.disable_password_authentication) || this.os_profile.linux.disable_password_authentication) ? this.os_profile.linux.ssh_public_keys.size() > 0 : has(this.os_profile.linux.admin_password)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vm_windows_auth_required"
+    message: "a Windows VM booting from an image requires admin_username and admin_password"
+    expression: "has(this.os_managed_disk_id) || !has(this.os_profile) || !has(this.os_profile.windows) || (this.os_profile.windows.admin_username != '' && has(this.os_profile.windows.admin_password))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vm_boot_from_disk_forbids_auth"
+    message: "a VM booting from an existing OS disk (os_managed_disk_id) must carry no authentication fields -- the disk already contains its users"
+    expression: "!has(this.os_managed_disk_id) || ((!has(this.os_profile) || !has(this.os_profile.linux) || (this.os_profile.linux.admin_username == '' && !has(this.os_profile.linux.admin_password) && this.os_profile.linux.ssh_public_keys.size() == 0)) && (!has(this.os_profile) || !has(this.os_profile.windows) || (this.os_profile.windows.admin_username == '' && !has(this.os_profile.windows.admin_password))))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vm_reboot_setting_needs_platform_patching"
+    message: "patching.reboot_setting requires the OS profile's patch_mode to be AUTOMATIC_BY_PLATFORM"
+    expression: "!has(this.patching) || this.patching.reboot_setting == 0 || (has(this.os_profile) && ((has(this.os_profile.linux) && this.os_profile.linux.patch_mode == 2) || (has(this.os_profile.windows) && this.os_profile.windows.patch_mode == 3)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vm_bypass_safety_checks_needs_platform_patching"
+    message: "patching.bypass_platform_safety_checks_on_user_schedule_enabled requires the OS profile's patch_mode to be AUTOMATIC_BY_PLATFORM"
+    expression: "!has(this.patching) || !this.patching.bypass_platform_safety_checks_on_user_schedule_enabled || (has(this.os_profile) && ((has(this.os_profile.linux) && this.os_profile.linux.patch_mode == 2) || (has(this.os_profile.windows) && this.os_profile.windows.patch_mode == 3)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vm_guest_state_encryption_needs_secure_boot_and_vtpm"
+    message: "os_disk.security_encryption_type requires security.vtpm_enabled (and DISK_WITH_VM_GUEST_STATE additionally requires security.secure_boot_enabled)"
+    expression: "!has(this.os_disk) || this.os_disk.security_encryption_type == 0 || (has(this.security) && this.security.vtpm_enabled && (this.os_disk.security_encryption_type != 2 || this.security.secure_boot_enabled))"
+  };
+}
+
+// The operating-system profile: exactly one OS, its authentication, and
+// its OS-specific management surface.
+message AzureVirtualMachineOsProfile {
+  // The OS hostname (computer name). Unset defaults to the VM's name --
+  // set it only when the hostname must differ (e.g. a VM name longer
+  // than Windows' 15-character computer-name limit). Fixed at creation.
+  string computer_name = 1;
+
+  // Linux configuration. Exactly one of linux/windows.
+  AzureVirtualMachineLinuxProfile linux = 2;
+
+  // Windows configuration. Exactly one of linux/windows.
+  AzureVirtualMachineWindowsProfile windows = 3;
+
+  option (buf.validate.message).cel = {
+    id: "vm_os_exactly_one"
+    message: "set exactly one OS profile: linux or windows"
+    expression: "has(this.linux) != has(this.windows)"
+  };
+}
+
+// Linux authentication and management: SSH-first, password optional.
+message AzureVirtualMachineLinuxProfile {
+  // The admin account's username. Required when booting from an image;
+  // must stay empty when booting from an existing OS disk. Fixed at
+  // creation.
+  string admin_username = 1 [(buf.validate.field).string.max_len = 64];
+
+  // SSH public keys installed for the admin account -- the production
+  // authentication path. Each key's username defaults to admin_username.
+  repeated AzureVirtualMachineSshPublicKey ssh_public_keys = 2;
+
+  // The admin account's password. Only meaningful when
+  // disable_password_authentication is explicitly false; SSH keys are
+  // the production path. Can be a literal or a reference to a secret
+  // (e.g. a Config Manager entry). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef admin_password = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // Whether SSH password authentication is disabled. Azure's default is
+  // true (keys only) -- the right posture; setting false requires
+  // admin_password. Fixed at creation.
+  optional bool disable_password_authentication = 4 [(dev.planton.shared.options.default) = "true"];
+
+  // How the OS is patched. Unspecified applies Azure's default
+  // (IMAGE_DEFAULT: whatever the image's own update configuration does).
+  // AUTOMATIC_BY_PLATFORM hands patch orchestration to Azure Update
+  // Manager and unlocks patching.reboot_setting and safe scheduled
+  // patching.
+  AzureVirtualMachineLinuxPatchMode patch_mode = 5;
+
+  // Bring-your-own-subscription licensing for commercial distros (Red
+  // Hat, SUSE, Ubuntu Pro). Leave unspecified for regular pay-as-you-go
+  // images.
+  AzureVirtualMachineLinuxLicenseType license_type = 6;
+}
+
+// One SSH public key installed onto a Linux VM.
+message AzureVirtualMachineSshPublicKey {
+  // The OpenSSH-format public key (at least 2048-bit RSA or an Ed25519
+  // key), e.g. "ssh-ed25519 AAAA...". Public material -- not a secret.
+  string public_key = 1 [(buf.validate.field).required = true];
+
+  // The account the key is installed for. Unset defaults to the
+  // profile's admin_username -- the common case.
+  string username = 2;
+}
+
+// Windows authentication and management.
+message AzureVirtualMachineWindowsProfile {
+  // The admin account's username. Required when booting from an image;
+  // must stay empty when booting from an existing OS disk. Fixed at
+  // creation.
+  string admin_username = 1 [(buf.validate.field).string.max_len = 20];
+
+  // The admin account's password (8-123 characters, 3 of 4 complexity
+  // classes -- ARM enforces). Can be a literal or a reference to a
+  // secret (e.g. a Config Manager entry). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef admin_password = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  // How the OS is patched. Unspecified applies Azure's default
+  // (AUTOMATIC_BY_OS: Windows Update as configured in the image).
+  // AUTOMATIC_BY_PLATFORM hands orchestration to Azure Update Manager
+  // and is a prerequisite for hotpatching and patching.reboot_setting.
+  AzureVirtualMachineWindowsPatchMode patch_mode = 3;
+
+  // Whether Windows Update's automatic updates are enabled. Azure's
+  // default is true. Fixed at creation.
+  optional bool automatic_updates_enabled = 4 [(dev.planton.shared.options.default) = "true"];
+
+  // Hotpatching: security updates applied without reboots, on supported
+  // Windows Server Azure Edition images only. Requires patch_mode
+  // AUTOMATIC_BY_PLATFORM.
+  bool hotpatching_enabled = 5;
+
+  // The Windows time zone, e.g. "Pacific Standard Time". Unset uses
+  // UTC. Fixed at creation.
+  string timezone = 6;
+
+  // WinRM remote-management listeners. HTTPS listeners reference the
+  // certificate by its Key Vault secret URL.
+  repeated AzureVirtualMachineWinrmListener winrm_listeners = 7;
+
+  // Raw unattend.xml fragments injected into Windows setup (AutoLogon /
+  // FirstLogonCommands) for pre-agent bootstrap. The content may embed
+  // credentials, so it is treated as secret material. Fixed at creation.
+  repeated AzureVirtualMachineAdditionalUnattendContent additional_unattend_contents = 8;
+
+  // Azure Hybrid Benefit: bring an existing Windows license instead of
+  // paying the image's Windows price. Unspecified means no benefit
+  // (regular pay-as-you-go). Updatable in place.
+  AzureVirtualMachineWindowsLicenseType license_type = 9;
+
+  option (buf.validate.message).cel = {
+    id: "vm_hotpatching_needs_platform_patching"
+    message: "hotpatching_enabled requires patch_mode AUTOMATIC_BY_PLATFORM"
+    expression: "!this.hotpatching_enabled || this.patch_mode == 3"
+  };
+}
+
+// One WinRM listener.
+message AzureVirtualMachineWinrmListener {
+  // The listener protocol. HTTPS requires certificate_url.
+  AzureVirtualMachineWinrmProtocol protocol = 1 [(buf.validate.field).required = true];
+
+  // For HTTPS: the Key Vault secret URL of the listener's certificate,
+  // e.g. "https://{vault}.vault.azure.net/secrets/{name}/{version}". The
+  // vault must be enabled for deployment.
+  string certificate_url = 2;
+
+  option (buf.validate.message).cel = {
+    id: "vm_winrm_https_needs_certificate"
+    message: "an HTTPS WinRM listener requires certificate_url (and HTTP forbids it)"
+    expression: "(this.protocol == 2) == (this.certificate_url != '')"
+  };
+}
+
+// One unattend.xml fragment for Windows setup.
+message AzureVirtualMachineAdditionalUnattendContent {
+  // Which setup pass the fragment configures.
+  AzureVirtualMachineUnattendSetting setting = 1 [(buf.validate.field).required = true];
+
+  // The raw XML fragment. May embed credentials (AutoLogon carries the
+  // admin password), so it is treated as secret material.
+  string content = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// The OS disk created (or described) with the VM.
+message AzureVirtualMachineOsDisk {
+  // The host-caching mode. READ_WRITE is right for general OS disks;
+  // READ_ONLY suits high-IOPS workloads that re-read hot data; NONE for
+  // write-heavy disks where caching only adds latency.
+  AzureVirtualMachineDiskCaching caching = 1 [(buf.validate.field).required = true];
+
+  // The disk's storage SKU. PREMIUM_LRS is the production default (and
+  // required for single-VM SLAs); the ZRS variants survive a zone outage
+  // but forbid zone-pinning the VM. OS disks cannot use PremiumV2/Ultra.
+  // Changing it replaces the disk.
+  AzureVirtualMachineOsDiskStorageAccountType storage_account_type = 2 [(buf.validate.field).required = true];
+
+  // The OS disk's size in GiB (up to 4095 for OS disks). Unset inherits
+  // the image's size -- correct for almost everything; grow it only when
+  // the OS volume itself (not data -- use data disks) needs room. Can
+  // only increase.
+  optional int32 disk_size_gb = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 4095
+  }];
+
+  // An explicit name for the OS disk resource. Unset lets Azure derive
+  // one from the VM name. Changing it replaces the disk.
+  string name = 4;
+
+  // Ephemeral OS disk: the OS disk lives on the VM's local cache/temp/
+  // NVMe storage instead of remote storage -- free, fast, and WIPED on
+  // every stop/deallocate. For stateless, image-driven fleets only.
+  // Presence makes the OS disk ephemeral. Fixed at creation.
+  AzureVirtualMachineDiffDiskSettings diff_disk_settings = 5;
+
+  // Customer-managed-key encryption: the disk encryption set encrypting
+  // the OS disk, by ARM ID. Plain ARM ID: disk encryption sets are not
+  // modeled as a Planton kind yet. Conflicts with
+  // secure_vm_disk_encryption_set_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 6;
+
+  // For confidential VMs with customer-key guest-state encryption: the
+  // disk encryption set for the VMGuestState blob, by ARM ID. Requires
+  // security_encryption_type; conflicts with disk_encryption_set_id.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secure_vm_disk_encryption_set_id = 7;
+
+  // Confidential-VM encryption of the VM guest state: VM_GUEST_STATE_ONLY
+  // encrypts just the guest-state blob; DISK_WITH_VM_GUEST_STATE also
+  // encrypts the OS disk (and requires security.secure_boot_enabled).
+  // Both require security.vtpm_enabled and a confidential-capable size.
+  // Fixed at creation.
+  AzureVirtualMachineSecurityEncryptionType security_encryption_type = 8;
+
+  // Write Accelerator for M-series VMs with Premium disks and caching
+  // NONE -- sub-millisecond write latency for database logs.
+  bool write_accelerator_enabled = 9;
+
+  option (buf.validate.message).cel = {
+    id: "vm_os_disk_encryption_sets_conflict"
+    message: "disk_encryption_set_id and secure_vm_disk_encryption_set_id are mutually exclusive"
+    expression: "!(has(this.disk_encryption_set_id) && has(this.secure_vm_disk_encryption_set_id))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vm_os_disk_secure_set_needs_encryption_type"
+    message: "secure_vm_disk_encryption_set_id requires security_encryption_type"
+    expression: "!has(this.secure_vm_disk_encryption_set_id) || this.security_encryption_type != 0"
+  };
+}
+
+// Ephemeral OS disk placement.
+message AzureVirtualMachineDiffDiskSettings {
+  // Which local storage hosts the ephemeral OS disk. Unspecified applies
+  // Azure's default (CACHE_DISK when the size's cache is big enough).
+  AzureVirtualMachineDiffDiskPlacement placement = 1;
+}
+
+// Marketplace/platform image coordinates.
+message AzureVirtualMachineSourceImageReference {
+  // The image publisher, e.g. "Canonical". Fixed at creation.
+  string publisher = 1 [(buf.validate.field).required = true];
+
+  // The image offer, e.g. "ubuntu-24_04-lts". Fixed at creation.
+  string offer = 2 [(buf.validate.field).required = true];
+
+  // The image SKU, e.g. "server". Fixed at creation.
+  string sku = 3 [(buf.validate.field).required = true];
+
+  // The image version, e.g. "latest" or a pinned "24.04.202506100".
+  // "latest" resolves at CREATION only -- the VM does not follow new
+  // image releases afterward. Fixed at creation.
+  string version = 4 [(buf.validate.field).required = true];
+}
+
+// One data-disk attachment: a referenced first-class disk mounted at a
+// LUN.
+message AzureVirtualMachineDataDiskAttachment {
+  // The managed disk to attach, by ARM ID. References a first-class
+  // AzureManagedDisk so the data outlives the VM.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef managed_disk_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureManagedDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_id"
+  ];
+
+  // The logical unit number the disk mounts at (0-63), unique per VM --
+  // the stable identity the OS addresses the disk by (
+  // /dev/disk/azure/scsi1/lun{n}). Keep LUNs stable across changes.
+  // Explicit presence (optional + required) so LUN 0 -- the most common
+  // -- survives proto-JSON serialization, which drops plain zero values.
+  optional int32 lun = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 63
+    }
+  ];
+
+  // The host-caching mode. READ_ONLY suits read-heavy data; NONE is
+  // required for disks larger than 4 TiB and right for write-heavy
+  // volumes (database logs).
+  AzureVirtualMachineDiskCaching caching = 3 [(buf.validate.field).required = true];
+
+  // Write Accelerator for this attachment (M-series + Premium + caching
+  // NONE).
+  bool write_accelerator_enabled = 4;
+}
+
+// The VM's managed identity.
+message AzureVirtualMachineIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the VM (its principal surfaces in the outputs for
+  // AzureRoleAssignment grants); USER_ASSIGNED brings identities you
+  // manage and share across resources; SYSTEM_AND_USER_ASSIGNED carries
+  // both.
+  AzureVirtualMachineIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the VM, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so grants can be composed before
+  // the VM exists.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "vm_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// Spot (evictable, discounted) capacity settings. Presence makes the VM
+// a spot instance.
+message AzureVirtualMachineSpot {
+  // What happens when Azure evicts the VM: DEALLOCATE stops it (compute
+  // billing stops, disks persist, it can restart later); DELETE removes
+  // it and its disks. Fixed at creation.
+  AzureVirtualMachineEvictionPolicy eviction_policy = 1 [(buf.validate.field).required = true];
+
+  // The maximum hourly price in US dollars, or -1 (the default) to pay
+  // up to the on-demand price and never be evicted on price. Set a cap
+  // only when cost predictability beats availability.
+  optional double max_bid_price = 2 [(buf.validate.field).double.gte = -1];
+}
+
+// Placement relative to Azure's fault machinery. At most one placement
+// strategy: a zone, an availability set, or a Flexible scale set.
+message AzureVirtualMachineAvailability {
+  // The availability zone to pin the VM to ("1", "2", or "3"). Zonal
+  // placement is the modern resilience unit -- NICs' public IPs and
+  // zonal disks must match the zone. Conflicts with availability_set_id.
+  // Fixed at creation.
+  string zone = 1 [(buf.validate.field).string = {
     in: [
       "",
       "1",
@@ -88,236 +602,432 @@ message AzureVirtualMachineSpec {
     ]
   }];
 
-  // Enable boot diagnostics for the VM.
-  // Boot diagnostics captures serial console output and screenshots to help diagnose boot issues.
-  optional bool enable_boot_diagnostics = 13 [(dev.planton.shared.options.default) = "true"];
+  // The classic pre-zones fault/update-domain grouping, by ARM ID.
+  // Prefer zones in zoned regions. Plain ARM ID: availability sets are
+  // not modeled as a Planton kind. Conflicts with zone and
+  // capacity_reservation_group_id. Fixed at creation.
+  string availability_set_id = 2;
 
-  // Enable system-assigned managed identity for the VM.
-  // Managed identities allow the VM to authenticate to Azure services without storing credentials.
-  bool enable_system_assigned_identity = 14;
+  // Co-locates the VM with its group for minimal inter-VM latency
+  // (HPC/low-latency clusters), by ARM ID. Plain ARM ID.
+  string proximity_placement_group_id = 3;
 
-  // User-assigned managed identity resource IDs to attach to the VM.
-  // These are pre-created managed identities that can be shared across multiple resources.
-  repeated string user_assigned_identity_ids = 15;
+  // Consumes reserved capacity from a capacity reservation group, by ARM
+  // ID -- guaranteed capacity for burst/DR events. Conflicts with
+  // availability_set_id and proximity_placement_group_id.
+  string capacity_reservation_group_id = 4;
 
-  // Custom data (cloud-init) script to execute on first boot.
-  // For Linux VMs, this is typically a cloud-init script.
-  // For Windows VMs, this can be a PowerShell script.
-  // Maximum size: 64 KB (base64 encoded).
-  string custom_data = 16 [(buf.validate.field).string.max_bytes = 65536];
+  // Pins the VM to a specific dedicated host, by ARM ID (single-tenant
+  // physical isolation). Conflicts with dedicated_host_group_id.
+  string dedicated_host_id = 5;
 
-  // Tags to apply to the VM and related resources.
-  // Tags are key-value pairs for Azure resource organization and cost tracking.
-  map<string, string> tags = 17;
+  // Lets Azure pick a host within a dedicated host group, by ARM ID.
+  // Conflicts with dedicated_host_id.
+  string dedicated_host_group_id = 6;
 
-  // Enable spot pricing for the VM (significantly reduced cost, can be evicted).
-  // Spot VMs are suitable for fault-tolerant, interruptible workloads.
-  bool is_spot_instance = 18;
+  // Attaches the VM to a FLEXIBLE-orchestration scale set, by ARM ID --
+  // scale-set-managed fault spreading for an individually-managed VM.
+  // Plain ARM ID today. Fixed at creation.
+  string virtual_machine_scale_set_id = 7;
 
-  // Maximum price per hour for Spot VMs (in USD).
-  // Set to -1 to use the on-demand price as the maximum.
-  // Only applicable when is_spot_instance is true.
-  double spot_max_price = 19 [(buf.validate.field).double.gte = -1];
+  // The fault domain to pin the VM to within virtual_machine_scale_set_id
+  // (requires it). Unset lets Azure choose. Fixed at creation.
+  optional int32 platform_fault_domain = 8 [(buf.validate.field).int32.gte = 0];
 
-  // Validation: Either ssh_public_key or admin_password must be provided for authentication.
   option (buf.validate.message).cel = {
-    id: "auth_required"
-    message: "Either ssh_public_key or admin_password must be provided for VM authentication"
-    expression: "this.ssh_public_key != '' || (has(this.admin_password.value) && this.admin_password.value != '') || has(this.admin_password.value_from)"
+    id: "vm_zone_conflicts_availability_set"
+    message: "zone and availability_set_id are mutually exclusive placement strategies"
+    expression: "this.zone == '' || this.availability_set_id == ''"
   };
 
-  // Validation: spot_max_price should only be set when is_spot_instance is true.
   option (buf.validate.message).cel = {
-    id: "spot_price_requires_spot_instance"
-    message: "spot_max_price should only be set when is_spot_instance is true"
-    expression: "this.spot_max_price == 0.0 || this.is_spot_instance"
+    id: "vm_dedicated_host_exclusive"
+    message: "dedicated_host_id and dedicated_host_group_id are mutually exclusive (pin a host or let Azure pick within the group)"
+    expression: "this.dedicated_host_id == '' || this.dedicated_host_group_id == ''"
   };
-}
 
-// AzureVirtualMachineImage defines the OS image configuration for the VM.
-message AzureVirtualMachineImage {
-  // Image publisher (e.g., "Canonical", "MicrosoftWindowsServer", "RedHat").
-  // Required when using marketplace images, not needed for custom images.
-  string publisher = 1;
-
-  // Image offer (e.g., "0001-com-ubuntu-server-jammy", "WindowsServer", "RHEL").
-  // Required when using marketplace images, not needed for custom images.
-  string offer = 2;
-
-  // Image SKU (e.g., "22_04-lts-gen2", "2022-datacenter-g2", "8-lvm-gen2").
-  // Required when using marketplace images, not needed for custom images.
-  string sku = 3;
-
-  // Image version (e.g., "latest", "22.04.202301100").
-  // Use "latest" for auto-updates or a specific version for stability.
-  optional string version = 4 [
-    (dev.planton.shared.options.default) = "latest",
-    (buf.validate.field).string.min_len = 1
-  ];
-
-  // Custom image ID (Azure resource ID of a custom or shared image).
-  // If specified, publisher/offer/sku/version are ignored.
-  string custom_image_id = 5;
-
-  // Validation: Either marketplace image (publisher/offer/sku) or custom_image_id must be provided.
   option (buf.validate.message).cel = {
-    id: "image_source_required"
-    message: "Either marketplace image (publisher, offer, sku) or custom_image_id must be provided"
-    expression: "(this.publisher != '' && this.offer != '' && this.sku != '') || this.custom_image_id != ''"
+    id: "vm_capacity_reservation_conflicts"
+    message: "capacity_reservation_group_id cannot be combined with availability_set_id or proximity_placement_group_id"
+    expression: "this.capacity_reservation_group_id == '' || (this.availability_set_id == '' && this.proximity_placement_group_id == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vm_fault_domain_needs_scale_set"
+    message: "platform_fault_domain requires virtual_machine_scale_set_id"
+    expression: "!has(this.platform_fault_domain) || this.virtual_machine_scale_set_id != ''"
   };
 }
 
-// AzureVirtualMachineOsDisk defines the OS disk configuration.
-message AzureVirtualMachineOsDisk {
-  // Caching mode for the OS disk.
-  enum DiskCaching {
-    disk_caching_unspecified = 0;
-    none = 1;
-    read_only = 2;
-    read_write = 3;
-  }
+// Trusted-launch / encryption posture.
+message AzureVirtualMachineSecurity {
+  // UEFI secure boot: only signed boot components load. With
+  // vtpm_enabled this is "trusted launch" -- the right posture for
+  // production Gen2 images. Fixed at creation.
+  bool secure_boot_enabled = 1;
 
-  // Storage account type for the OS disk.
-  enum DiskStorageType {
-    disk_storage_type_unspecified = 0;
-    standard_lrs = 1; // Standard HDD
-    standard_ssd_lrs = 2; // Standard SSD
-    premium_lrs = 3; // Premium SSD
-    premium_zrs = 4; // Premium SSD with zone-redundant storage
-  }
+  // Virtual TPM: measured boot and attestation; required for
+  // confidential-VM guest-state encryption. Fixed at creation.
+  bool vtpm_enabled = 2;
 
-  // Size of the OS disk in GB.
-  // If not specified, uses the default size from the image.
-  int32 size_gb = 1 [
-    (buf.validate.field).int32.gte = 0,
-    (buf.validate.field).int32.lte = 32767
-  ];
+  // Encryption at host: data is encrypted on the compute host itself, so
+  // temp disks and disk caches are covered too (the gap platform
+  // encryption leaves). The subscription must have the EncryptionAtHost
+  // feature registered.
+  bool encryption_at_host_enabled = 3;
+}
 
-  // Storage account type for the OS disk.
-  optional DiskStorageType storage_type = 2 [
-    (dev.planton.shared.options.default) = "premium_lrs",
-    (buf.validate.field).enum.defined_only = true
-  ];
+// OS patch orchestration shared across both OSes (the per-OS patch MODE
+// lives in the linux/windows profile).
+message AzureVirtualMachinePatching {
+  // How patch assessment runs. Unspecified applies Azure's default
+  // (IMAGE_DEFAULT); AUTOMATIC_BY_PLATFORM has Azure assess pending
+  // patches daily.
+  AzureVirtualMachinePatchAssessmentMode assessment_mode = 1;
 
-  // Caching mode for the OS disk.
-  optional DiskCaching caching = 3 [
-    (dev.planton.shared.options.default) = "read_write",
-    (buf.validate.field).enum.defined_only = true
-  ];
+  // When platform patching may reboot the VM. Requires the OS profile's
+  // patch_mode to be AUTOMATIC_BY_PLATFORM.
+  AzureVirtualMachineRebootSetting reboot_setting = 2;
 
-  // Whether to delete the OS disk when the VM is deleted.
-  optional bool delete_with_vm = 4 [(dev.planton.shared.options.default) = "true"];
+  // Allows customer-scheduled platform patching to bypass certain
+  // platform safety checks. Requires patch_mode AUTOMATIC_BY_PLATFORM.
+  bool bypass_platform_safety_checks_on_user_schedule_enabled = 3;
+}
 
-  // Azure Key Vault disk encryption set ID for customer-managed key encryption.
-  // Can be a literal value or a reference to an AzureKeyVault resource.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 5 [
+// Boot diagnostics. Presence enables it.
+message AzureVirtualMachineBootDiagnostics {
+  // The storage account to write console logs/screenshots to, by blob
+  // endpoint URI. Empty uses Azure's MANAGED storage -- the right
+  // default (no storage account to operate).
+  string storage_account_uri = 1;
+}
+
+// One VM Application (gallery application) installed at deployment.
+message AzureVirtualMachineGalleryApplication {
+  // The gallery application VERSION's ARM ID.
+  // Format: .../galleries/{g}/applications/{app}/versions/{v}
+  string version_id = 1 [(buf.validate.field).required = true];
+
+  // Installation order across the VM's applications (lower installs
+  // first); 0 leaves ordering to Azure.
+  optional int32 order = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 2147483647
+  }];
+
+  // A free-form tag passed to the application's install script.
+  string tag = 3;
+
+  // A per-VM configuration blob overriding the version's default
+  // configuration, by URI.
+  string configuration_blob_uri = 4;
+
+  // Whether the VM automatically picks up new versions of the
+  // application.
+  bool automatic_upgrade_enabled = 5;
+
+  // Whether a failed application deployment fails the whole VM
+  // deployment (Azure's default treats it as best-effort).
+  bool treat_failure_as_deployment_failure_enabled = 6;
+}
+
+// Pre-termination scheduled event. Presence enables it.
+message AzureVirtualMachineTerminationNotification {
+  // How long before termination the event fires, as an ISO 8601
+  // duration between PT5M and PT15M. Empty applies Azure's default
+  // (PT5M).
+  string timeout = 1;
+}
+
+// Pre-OS-image-upgrade scheduled event. Presence enables it.
+message AzureVirtualMachineOsImageNotification {
+  // How long before the upgrade the event fires. Azure only supports
+  // PT15M; empty applies it.
+  string timeout = 1;
+}
+
+// A marketplace purchase plan (third-party images only).
+message AzureVirtualMachinePlan {
+  // The plan name (the image SKU's plan id). Fixed at creation.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The product (offer id). Fixed at creation.
+  string product = 2 [(buf.validate.field).required = true];
+
+  // The publisher id. Fixed at creation.
+  string publisher = 3 [(buf.validate.field).required = true];
+}
+
+// Niche capability toggles.
+message AzureVirtualMachineAdditionalCapabilities {
+  // Whether Ultra SSD data disks can attach to this VM (requires zonal
+  // placement and a supported size).
+  bool ultra_ssd_enabled = 1;
+
+  // Whether the VM supports hibernation (suspend-to-disk; the OS state
+  // persists across deallocation).
+  bool hibernation_enabled = 2;
+}
+
+// Certificates from a Key Vault installed at provisioning time.
+message AzureVirtualMachineSecret {
+  // The vault holding the certificates, by ARM ID. Can be a literal or a
+  // reference to an AzureKeyVault's id output. The vault must be enabled
+  // for deployment.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
+    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_id"
   ];
+
+  // The certificates to install from the vault.
+  repeated AzureVirtualMachineSecretCertificate certificates = 2 [(buf.validate.field).repeated.min_items = 1];
 }
 
-// AzureVirtualMachineDataDisk defines an additional data disk configuration.
-message AzureVirtualMachineDataDisk {
-  // Name of the data disk.
-  string name = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 80
-  ];
+// One certificate installed from a Key Vault.
+message AzureVirtualMachineSecretCertificate {
+  // The certificate's Key Vault secret URL (versioned), e.g.
+  // "https://{vault}.vault.azure.net/secrets/{name}/{version}".
+  string url = 1 [(buf.validate.field).required = true];
 
-  // Size of the data disk in GB.
-  int32 size_gb = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).int32.gte = 1,
-    (buf.validate.field).int32.lte = 32767
-  ];
-
-  // Storage account type for the data disk.
-  optional AzureVirtualMachineOsDisk.DiskStorageType storage_type = 3 [
-    (dev.planton.shared.options.default) = "premium_lrs",
-    (buf.validate.field).enum.defined_only = true
-  ];
-
-  // Caching mode for the data disk.
-  optional AzureVirtualMachineOsDisk.DiskCaching caching = 4 [
-    (dev.planton.shared.options.default) = "read_only",
-    (buf.validate.field).enum.defined_only = true
-  ];
-
-  // Logical Unit Number (LUN) for the data disk.
-  // Each data disk must have a unique LUN (0-63).
-  int32 lun = 5 [
-    (buf.validate.field).int32.gte = 0,
-    (buf.validate.field).int32.lte = 63
-  ];
-
-  // Whether to delete the data disk when the VM is deleted.
-  optional bool delete_with_vm = 6 [(dev.planton.shared.options.default) = "true"];
+  // For WINDOWS VMs: the certificate store to install into (e.g. "My").
+  // Must stay empty on Linux, where certificates land under
+  // /var/lib/waagent.
+  string store = 2;
 }
 
-// AzureVirtualMachineNetworkConfig defines network-related settings.
-message AzureVirtualMachineNetworkConfig {
-  // Enable a public IP address for the VM.
-  // Set to true for VMs that need direct internet access.
-  // For production, prefer private IPs with NAT Gateway or Azure Bastion.
-  bool enable_public_ip = 1;
+// Host-caching modes for a disk.
+enum AzureVirtualMachineDiskCaching {
+  // Not specified -- invalid; caching is an explicit choice per disk.
+  azure_virtual_machine_disk_caching_unspecified = 0;
 
-  // Public IP SKU (Basic or Standard).
-  enum PublicIpSku {
-    public_ip_sku_unspecified = 0;
-    basic = 1;
-    standard = 2;
-  }
+  // No host caching: right for write-heavy disks and required for
+  // disks larger than 4 TiB.
+  NONE = 1;
 
-  // SKU for the public IP (if enabled).
-  // Standard is required for availability zones.
-  optional PublicIpSku public_ip_sku = 2 [
-    (dev.planton.shared.options.default) = "standard",
-    (buf.validate.field).enum.defined_only = true
-  ];
+  // Read caching only: high-IOPS workloads re-reading hot data.
+  READ_ONLY = 2;
 
-  // Static or dynamic allocation for public IP.
-  enum PublicIpAllocation {
-    public_ip_allocation_unspecified = 0;
-    public_dynamic = 1;
-    public_static = 2;
-  }
+  // Read/write caching: the general-purpose OS-disk mode.
+  READ_WRITE = 3;
+}
 
-  // Allocation method for the public IP.
-  optional PublicIpAllocation public_ip_allocation = 3 [
-    (dev.planton.shared.options.default) = "public_static",
-    (buf.validate.field).enum.defined_only = true
-  ];
+// Storage SKUs valid for OS disks (PremiumV2/Ultra are data-disk-only).
+enum AzureVirtualMachineOsDiskStorageAccountType {
+  // Not specified -- invalid; the SKU is an explicit choice.
+  azure_virtual_machine_os_disk_storage_account_type_unspecified = 0;
 
-  // Network Security Group (NSG) ID to associate with the VM's network interface.
-  // Can be a literal Azure resource ID or a reference to another resource.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef network_security_group_id = 4;
+  // HDD -- dev/test only.
+  STANDARD_LRS = 1;
 
-  // Enable accelerated networking for improved network performance.
-  // Requires a compatible VM size (most D-series and above support this).
-  optional bool enable_accelerated_networking = 5 [(dev.planton.shared.options.default) = "true"];
+  // Standard SSD, locally redundant.
+  STANDARD_SSD_LRS = 2;
 
-  // Private IP address allocation method.
-  enum PrivateIpAllocation {
-    private_ip_allocation_unspecified = 0;
-    private_dynamic = 1;
-    private_static = 2;
-  }
+  // Premium SSD, locally redundant -- the production default.
+  PREMIUM_LRS = 3;
 
-  // Allocation method for the private IP.
-  optional PrivateIpAllocation private_ip_allocation = 6 [
-    (dev.planton.shared.options.default) = "private_dynamic",
-    (buf.validate.field).enum.defined_only = true
-  ];
+  // Standard SSD, zone redundant (conflicts with zone-pinning the VM).
+  STANDARD_SSD_ZRS = 4;
 
-  // Static private IP address (required when private_ip_allocation is static).
-  // Must be within the subnet's address range.
-  string private_ip_address = 7;
+  // Premium SSD, zone redundant (conflicts with zone-pinning the VM).
+  PREMIUM_ZRS = 5;
+}
 
-  // Validation: private_ip_address must be set when private_ip_allocation is static.
-  option (buf.validate.message).cel = {
-    id: "static_ip_requires_address"
-    message: "private_ip_address must be set when private_ip_allocation is private_static"
-    expression: "!has(this.private_ip_allocation) || this.private_ip_allocation != 2 || this.private_ip_address != ''"
-  };
+// Ephemeral OS disk placement targets.
+enum AzureVirtualMachineDiffDiskPlacement {
+  // Not specified: Azure's default (the cache disk when big enough).
+  azure_virtual_machine_diff_disk_placement_unspecified = 0;
+
+  // The VM size's cache disk.
+  CACHE_DISK = 1;
+
+  // The VM size's temp/resource disk.
+  RESOURCE_DISK = 2;
+
+  // The VM size's local NVMe disks.
+  NVME_DISK = 3;
+}
+
+// Confidential-VM guest-state encryption modes.
+enum AzureVirtualMachineSecurityEncryptionType {
+  // Not specified: not a confidential VM.
+  azure_virtual_machine_security_encryption_type_unspecified = 0;
+
+  // Only the VM guest state is encrypted.
+  VM_GUEST_STATE_ONLY = 1;
+
+  // The OS disk and guest state are encrypted (requires secure boot).
+  DISK_WITH_VM_GUEST_STATE = 2;
+}
+
+// The VM's managed-identity flavor.
+enum AzureVirtualMachineIdentityType {
+  // Not specified: the VM has no managed identity.
+  azure_virtual_machine_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the VM.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring-your-own user-assigned identities (set identity_ids).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned identity and the listed user-assigned ones.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// What happens when Azure evicts a spot VM.
+enum AzureVirtualMachineEvictionPolicy {
+  // Not specified -- invalid; eviction behavior is an explicit choice.
+  azure_virtual_machine_eviction_policy_unspecified = 0;
+
+  // Stop the VM (billing stops, disks persist, restartable later).
+  DEALLOCATE = 1;
+
+  // Delete the VM and its disks.
+  DELETE = 2;
+}
+
+// Linux patch modes (ARM's Linux vocabulary).
+enum AzureVirtualMachineLinuxPatchMode {
+  // Not specified: Azure's default (ImageDefault).
+  azure_virtual_machine_linux_patch_mode_unspecified = 0;
+
+  // The image's own update configuration governs patching.
+  LINUX_IMAGE_DEFAULT = 1;
+
+  // Azure Update Manager orchestrates patching.
+  LINUX_AUTOMATIC_BY_PLATFORM = 2;
+}
+
+// Windows patch modes (ARM's Windows vocabulary).
+enum AzureVirtualMachineWindowsPatchMode {
+  // Not specified: Azure's default (AutomaticByOS).
+  azure_virtual_machine_windows_patch_mode_unspecified = 0;
+
+  // Windows Update is fully manual.
+  MANUAL = 1;
+
+  // Windows Update as configured in the image (Azure's default).
+  AUTOMATIC_BY_OS = 2;
+
+  // Azure Update Manager orchestrates patching (prerequisite for
+  // hotpatching and reboot control).
+  WINDOWS_AUTOMATIC_BY_PLATFORM = 3;
+}
+
+// Patch assessment modes.
+enum AzureVirtualMachinePatchAssessmentMode {
+  // Not specified: Azure's default (ImageDefault).
+  azure_virtual_machine_patch_assessment_mode_unspecified = 0;
+
+  // The image's own assessment behavior.
+  ASSESSMENT_IMAGE_DEFAULT = 1;
+
+  // Azure assesses pending patches daily.
+  ASSESSMENT_AUTOMATIC_BY_PLATFORM = 2;
+}
+
+// When platform patching may reboot the VM.
+enum AzureVirtualMachineRebootSetting {
+  // Not specified: no reboot preference expressed.
+  azure_virtual_machine_reboot_setting_unspecified = 0;
+
+  // Always reboot after patching.
+  ALWAYS = 1;
+
+  // Reboot only when a patch requires it.
+  IF_REQUIRED = 2;
+
+  // Never reboot (patches needing one wait for a manual reboot).
+  NEVER = 3;
+}
+
+// Bring-your-own-subscription licensing for commercial Linux distros.
+enum AzureVirtualMachineLinuxLicenseType {
+  // Not specified: regular pay-as-you-go image billing.
+  azure_virtual_machine_linux_license_type_unspecified = 0;
+
+  // Red Hat bring-your-own-subscription.
+  RHEL_BYOS = 1;
+
+  // Red Hat base pay-as-you-go conversion.
+  RHEL_BASE = 2;
+
+  // Red Hat Extended Update Support.
+  RHEL_EUS = 3;
+
+  // Red Hat for SAP Applications.
+  RHEL_SAPAPPS = 4;
+
+  // Red Hat for SAP with High Availability.
+  RHEL_SAPHA = 5;
+
+  // Red Hat base for SAP Applications.
+  RHEL_BASESAPAPPS = 6;
+
+  // Red Hat base for SAP with HA.
+  RHEL_BASESAPHA = 7;
+
+  // SUSE bring-your-own-subscription.
+  SLES_BYOS = 8;
+
+  // SUSE for SAP.
+  SLES_SAP = 9;
+
+  // SUSE for HPC.
+  SLES_HPC = 10;
+
+  // Ubuntu Pro attach.
+  UBUNTU_PRO = 11;
+}
+
+// Azure Hybrid Benefit licensing for Windows.
+enum AzureVirtualMachineWindowsLicenseType {
+  // Not specified: regular pay-as-you-go image billing.
+  azure_virtual_machine_windows_license_type_unspecified = 0;
+
+  // Explicitly no benefit (ARM's literal None).
+  WINDOWS_LICENSE_NONE = 1;
+
+  // Bring a Windows Client license.
+  WINDOWS_CLIENT = 2;
+
+  // Bring a Windows Server license.
+  WINDOWS_SERVER = 3;
+}
+
+// WinRM listener protocols.
+enum AzureVirtualMachineWinrmProtocol {
+  // Not specified -- invalid; the protocol is an explicit choice.
+  azure_virtual_machine_winrm_protocol_unspecified = 0;
+
+  // Unencrypted HTTP (port 5985) -- VNet-internal management only.
+  HTTP = 1;
+
+  // TLS (port 5986); requires certificate_url.
+  HTTPS = 2;
+}
+
+// Windows unattend.xml setup passes.
+enum AzureVirtualMachineUnattendSetting {
+  // Not specified -- invalid; the pass is an explicit choice.
+  azure_virtual_machine_unattend_setting_unspecified = 0;
+
+  // Automatic logon configuration (carries credentials).
+  AUTO_LOGON = 1;
+
+  // Commands run at first logon.
+  FIRST_LOGON_COMMANDS = 2;
+}
+
+// The disk controller presented to the OS.
+enum AzureVirtualMachineDiskControllerType {
+  // Not specified: Azure's default for the size/image (SCSI today).
+  azure_virtual_machine_disk_controller_type_unspecified = 0;
+
+  // The default, universally supported controller.
+  SCSI = 1;
+
+  // Higher disk throughput; needs a supported size and a Gen2 image.
+  NVME = 2;
 }

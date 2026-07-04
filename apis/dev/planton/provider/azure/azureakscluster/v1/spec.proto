@@ -2300,7 +2300,7 @@ message AzureAksClusterBootstrapProfile {
   // MCR) nodes pull through.
   dev.planton.shared.foreignkey.v1.StringValueOrRef container_registry_id = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerRegistry,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.registry_resource_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.container_registry_id"
   ];
 
   option (buf.validate.message).cel = {

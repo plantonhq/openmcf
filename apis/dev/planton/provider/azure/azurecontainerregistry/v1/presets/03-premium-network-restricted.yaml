@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerRegistry
+metadata:
+  name: my-container-registry
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  registryName: yourregistry123  # REPLACE: globally unique, 5-50 lowercase alphanumerics
+  sku: PREMIUM
+  adminUserEnabled: false
+  dataEndpointEnabled: true  # dedicated hostnames so egress firewalls can allowlist exactly
+  networkRuleSet:
+    defaultAction: DENY
+    ipRules:
+      - ipRange: <office-egress-cidr>
+      - ipRange: <ci-runner-cidr>

@@ -6901,10 +6901,10 @@ const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = ""
 	"dns_server\x18\x01 \x01(\tR\tdnsServer\x12\x1f\n" +
 	"\vroot_domain\x18\x02 \x01(\tR\n" +
 	"rootDomain:\xba\x01\xbaH\xb6\x01\x1a\xb3\x01\n" +
-	"\x18aks_gmsa_fields_together\x12bSet dns_server and root_domain together, or leave both empty to inherit the VNet DNS configuration\x1a3(this.dns_server == '') == (this.root_domain == '')\"\x98\x04\n" +
+	"\x18aks_gmsa_fields_together\x12bSet dns_server and root_domain together, or leave both empty to inherit the VNet DNS configuration\x1a3(this.dns_server == '') == (this.root_domain == '')\"\x99\x04\n" +
 	"\x1fAzureAksClusterBootstrapProfile\x12~\n" +
-	"\x0fartifact_source\x18\x01 \x01(\x0e2U.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSourceR\x0eartifactSource\x12\x94\x01\n" +
-	"\x15container_registry_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\x93\x03\x92\xd4a#status.outputs.registry_resource_idR\x13containerRegistryId:\xdd\x01\xbaH\xd9\x01\x1a\xd6\x01\n" +
+	"\x0fartifact_source\x18\x01 \x01(\x0e2U.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSourceR\x0eartifactSource\x12\x95\x01\n" +
+	"\x15container_registry_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\x93\x03\x92\xd4a$status.outputs.container_registry_idR\x13containerRegistryId:\xdd\x01\xbaH\xd9\x01\x1a\xd6\x01\n" +
 	"%aks_bootstrap_cache_requires_registry\x12oartifact_source CACHE requires container_registry_id (the ACR that caches Microsoft Container Registry content)\x1a<this.artifact_source != 2 || has(this.container_registry_id)\"\x9b\x02\n" +
 	"&AzureAksClusterNodeProvisioningProfile\x12f\n" +
 	"\x04mode\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningModeR\x04mode\x12\x88\x01\n" +

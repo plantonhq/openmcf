@@ -1,124 +1,82 @@
-# Azure Container Registry - Pulumi Module
-
-This Pulumi module deploys an Azure Container Registry (ACR) instance using the Azure Native provider.
+# AzureContainerRegistry Pulumi Module
 
 ## Overview
 
-The module creates:
-- **Resource Group**: Dedicated resource group for the container registry
-- **Container Registry**: ACR instance with configurable SKU (Basic, Standard, Premium)
-- **Geo-Replications**: Optional multi-region replicas for Premium SKU
+This Pulumi module provisions an Azure Container Registry using the Azure
+Classic provider (`pulumi-azure` v6). It creates a
+`containerservice.Registry` -- the managed, private OCI registry the
+platform's workloads pull their images from -- covering the full surface:
+SKU, admin account, network posture (public access, IP rule set, bypass
+option, data endpoints), policies (quarantine, retention, content trust,
+export), geo-replications, managed identity, and customer-managed-key
+encryption. The module behaves identically to the Terraform module: same
+inputs, same defaults, same outputs.
 
-## Features
+The SKU is the registry's feature gate; the Premium-only fields
+(geo-replication, zone redundancy, network rules, policies, CMK) are
+enforced at spec validation, mirroring ARM's own gates, so the module
+receives only deployable shapes. An unset `sku` deploys the STANDARD
+baseline, and the true-default optional bools (`public_network_access_enabled`,
+`export_policy_enabled`) are presence-guarded so stack-input paths that
+bypass the manifest loader deploy identically on both engines.
 
-- **Multiple SKU Support**: Basic, Standard, and Premium tiers
-- **Geo-Replication**: Automatic setup of regional replicas for Premium
-- **Secure by Default**: Admin user disabled unless explicitly enabled
-- **Azure AD Integration**: Native support for managed identities and service principals
-- **Network Security**: Configurable network rules (handled via Azure-native settings)
+Lifecycle notes worth knowing before operating this resource: name and
+region are the registry's identity -- changing either replaces it and its
+CONTENTS DO NOT MIGRATE; every image would need re-pushing. Zone
+redundancy (home replica) and CMK encryption are likewise fixed at
+creation. The SKU changes in place, but downgrading requires every
+Premium-only feature to be unset first. Geo-replications add/remove in
+place; the provider expects them in alphabetical location order, and the
+module sorts them internally, keeping manifests order-insensitive.
 
-## Usage
+Grants are composed, never bundled: AcrPull/AcrPush role assignments are
+standalone `AzureRoleAssignment` resources scoped to the registry's ARM
+ID, and the identity that unwraps a CMK key is a referenced first-class
+`AzureUserAssignedIdentity` that must hold get/wrapKey/unwrapKey on the
+key's vault before the registry is created.
 
-This module is typically invoked through Planton's orchestration layer. For standalone usage:
+## Resources Created
 
-```go
-import (
-    azurecontainerregistryv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerregistry/v1"
-    "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerregistry/v1/iac/pulumi/module"
-)
-
-func main() {
-    pulumi.Run(func(ctx *pulumi.Context) error {
-        stackInput := &azurecontainerregistryv1.AzureContainerRegistryStackInput{
-            Target: &azurecontainerregistryv1.AzureContainerRegistry{
-                Metadata: &shared.CloudResourceMetadata{
-                    Name: "my-acr",
-                },
-                Spec: &azurecontainerregistryv1.AzureContainerRegistrySpec{
-                    Region:           "eastus",
-                    RegistryName:     "mycompanyacr",
-                    Sku:              azurecontainerregistryv1.AzureContainerRegistrySku_STANDARD,
-                    AdminUserEnabled: false,
-                },
-            },
-            ProviderConfig: &azureproviderv1.AzureProviderConfig{
-                // Provider credentials
-            },
-        }
-        return module.Resources(ctx, stackInput)
-    })
-}
-```
+- `containerservice.Registry` -- the registry, including inline
+  geo-replications, network rule set, identity, and encryption blocks
 
 ## Inputs
 
-See `spec.proto` for the complete specification. Key fields:
+The module receives an `AzureContainerRegistryStackInput` containing:
 
-- **region** (required): Azure region (e.g., "eastus")
-- **registry_name** (required): Globally unique registry name (5-50 lowercase alphanumeric)
-- **sku**: SKU tier (BASIC, STANDARD, PREMIUM)
-- **admin_user_enabled**: Enable admin user (default: false)
-- **geo_replication_regions**: List of regions for Premium geo-replication
+- `target.spec.region` / `target.spec.resource_group` / `target.spec.registry_name` -- the registry's ARM identity (references resolved to literals by the platform; the name becomes `{name}.azurecr.io`)
+- `target.spec.sku` -- BASIC / STANDARD / PREMIUM; unset applies the STANDARD baseline
+- `target.spec.admin_user_enabled` -- the built-in admin account (default false; Entra auth is the production path)
+- `target.spec.public_network_access_enabled` -- default true; false means private-endpoints-only (Premium)
+- `target.spec.zone_redundancy_enabled` -- home replica across availability zones (Premium; fixed at creation)
+- `target.spec.anonymous_pull_enabled` -- unauthenticated pulls (Standard/Premium)
+- `target.spec.data_endpoint_enabled` -- dedicated regional data endpoints for exact firewall allowlisting (Premium)
+- `target.spec.quarantine_policy_enabled` / `target.spec.retention_policy_in_days` / `target.spec.trust_policy_enabled` -- the quarantine, untagged-manifest retention, and content-trust policies (all Premium)
+- `target.spec.export_policy_enabled` -- default true; disabling requires Premium + public access off
+- `target.spec.network_rule_bypass_option` -- AZURE_SERVICES (Azure's default) or NONE; only an explicit choice is sent
+- `target.spec.network_rule_set` -- default action plus IPv4 CIDR allowlist (Premium)
+- `target.spec.georeplications` -- additional regions with per-replica zone redundancy, regional endpoint, and tags (Premium; must not contain the home region)
+- `target.spec.identity` -- SYSTEM_ASSIGNED / USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED plus resolved user-assigned-identity ARM IDs
+- `target.spec.encryption` -- CMK: the unwrapping identity's client id and the Key Vault key ID (Premium; fixed at creation)
+- `target.spec.tags` -- user tags, merged over the metadata-derived tags (user wins)
+- `provider_config` -- Azure credentials (static client secret, keyless web identity, or ambient chain)
 
 ## Outputs
 
-- **registry_login_server**: Login server URL (e.g., "myacr.azurecr.io")
-- **registry_resource_id**: Azure Resource Manager ID
+| Output | Description |
+|--------|-------------|
+| `container_registry_id` | Full ARM ID of the registry -- the join key AKS clusters and AcrPull/AcrPush role assignments reference |
+| `container_registry_name` | The registry's name as deployed |
+| `login_server` | The hostname images are tagged with and pulled from, e.g. `myregistry.azurecr.io` |
+| `admin_username` | Admin account username (empty unless `admin_user_enabled`) |
+| `admin_password` | One of the admin account's two rotatable passwords (empty unless enabled) |
+| `system_assigned_identity_principal_id` | Principal ID of the system-assigned identity (empty unless the identity type includes it) |
+| `data_endpoint_host_names` | Dedicated regional data-endpoint hostnames (empty unless `data_endpoint_enabled`) |
 
-## SKU Selection
+## Local Development
 
-- **Basic**: Dev/test only (~$5/month, 10 GB)
-- **Standard**: Production default (~$20/month, 100 GB)
-- **Premium**: Enterprise with geo-replication (~$20/month + $50/replica)
-
-## Geo-Replication
-
-Only available with Premium SKU. Specify additional regions to replicate:
-
-```yaml
-sku: PREMIUM
-geoReplicationRegions:
-  - westeurope
-  - southeastasia
+```bash
+make build       # Build the module
+make deps        # Download and tidy dependencies
+make update-deps # Update to latest planton
 ```
-
-Azure automatically routes pulls to the nearest replica.
-
-## Authentication
-
-### From Azure CLI
-```shell
-az acr login --name mycompanyacr
-```
-
-### From AKS (Managed Identity)
-```shell
-az aks update \
-  --name my-cluster \
-  --resource-group rg-my-cluster \
-  --attach-acr mycompanyacr
-```
-
-### From CI/CD
-Use Azure service principal or GitHub OIDC with AcrPush/AcrPull roles.
-
-## Debugging
-
-Use the provided debug script:
-
-```shell
-cd iac/pulumi
-./debug.sh
-```
-
-## Module Structure
-
-- `main.go`: Core resource provisioning logic
-- `outputs.go`: Output constants matching stack_outputs.proto
-- `locals.go`: (Optional) Computed values and transformations
-
-## References
-
-- [Azure Container Registry Documentation](https://docs.microsoft.com/en-us/azure/container-registry/)
-- [Pulumi Azure Native Provider](https://www.pulumi.com/registry/packages/azure-native/)
-- [Research Documentation](../../docs/README.md)
