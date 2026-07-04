@@ -25,13 +25,19 @@ const (
 
 // GcpRedisInstanceMaintenanceWindow defines a weekly maintenance window for
 // the Redis instance. GCP uses this to schedule updates and patches.
-// The maintenance window is fixed at 1 hour duration.
+// The maintenance window is fixed at 1 hour duration starting at the given
+// day/hour/minute (UTC).
 type GcpRedisInstanceMaintenanceWindow struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Day of the week for the maintenance window.
 	Day string `protobuf:"bytes,1,opt,name=day,proto3" json:"day,omitempty"`
 	// Hour of day (0-23, UTC) when the maintenance window starts.
-	Hour          int32 `protobuf:"varint,2,opt,name=hour,proto3" json:"hour,omitempty"`
+	Hour int32 `protobuf:"varint,2,opt,name=hour,proto3" json:"hour,omitempty"`
+	// Minute of the hour (0-59, UTC) when the maintenance window starts.
+	// Combined with hour, this pins the window start to the exact minute —
+	// useful for coordinating with maintenance windows of dependent systems
+	// (e.g. start Redis maintenance 30 minutes after the database's window).
+	Minute        int32 `protobuf:"varint,3,opt,name=minute,proto3" json:"minute,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -80,6 +86,13 @@ func (x *GcpRedisInstanceMaintenanceWindow) GetHour() int32 {
 	return 0
 }
 
+func (x *GcpRedisInstanceMaintenanceWindow) GetMinute() int32 {
+	if x != nil {
+		return x.Minute
+	}
+	return 0
+}
+
 // GcpRedisInstancePersistenceConfig controls RDB snapshot persistence for
 // the Redis instance. When enabled, data is periodically written to disk,
 // providing durability across restarts and failovers.
@@ -92,8 +105,14 @@ type GcpRedisInstancePersistenceConfig struct {
 	PersistenceMode string `protobuf:"bytes,1,opt,name=persistence_mode,json=persistenceMode,proto3" json:"persistence_mode,omitempty"`
 	// How often RDB snapshots are taken. Required when persistence_mode is RDB.
 	RdbSnapshotPeriod string `protobuf:"bytes,2,opt,name=rdb_snapshot_period,json=rdbSnapshotPeriod,proto3" json:"rdb_snapshot_period,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Date and time the first snapshot was/will be attempted, to which all
+	// future snapshots align. RFC3339 UTC "Zulu" format (e.g.
+	// "2014-10-02T15:01:23Z"). Anchoring the schedule lets you place snapshot
+	// I/O in a low-traffic window instead of wherever instance creation time
+	// happened to fall. If not provided, GCP uses the creation time.
+	RdbSnapshotStartTime string `protobuf:"bytes,3,opt,name=rdb_snapshot_start_time,json=rdbSnapshotStartTime,proto3" json:"rdb_snapshot_start_time,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *GcpRedisInstancePersistenceConfig) Reset() {
@@ -140,6 +159,13 @@ func (x *GcpRedisInstancePersistenceConfig) GetRdbSnapshotPeriod() string {
 	return ""
 }
 
+func (x *GcpRedisInstancePersistenceConfig) GetRdbSnapshotStartTime() string {
+	if x != nil {
+		return x.RdbSnapshotStartTime
+	}
+	return ""
+}
+
 // GcpRedisInstanceSpec defines the configuration for a Google Cloud Memorystore
 // for Redis instance.
 //
@@ -155,17 +181,23 @@ func (x *GcpRedisInstancePersistenceConfig) GetRdbSnapshotPeriod() string {
 // Important behavioral notes:
 //
 //   - The instance_name, tier, connect_mode, transit_encryption_mode,
-//     authorized_network, reserved_ip_range, and customer_managed_key fields
-//     are immutable after creation. Changing them requires replacing the instance.
+//     authorized_network, reserved_ip_range, location_id,
+//     alternative_location_id, and customer_managed_key fields are immutable
+//     after creation. Changing them requires replacing the instance.
 //
 //   - When auth_enabled is true, GCP generates a random AUTH string that is
 //     rotated automatically. The current AUTH string is exported in stack outputs.
 //
 //   - Read replicas are only available with STANDARD_HA tier and require
 //     read_replicas_mode to be set to READ_REPLICAS_ENABLED.
+//
+//   - With connect_mode PRIVATE_SERVICE_ACCESS, the VPC must already carry a
+//     private services access connection (GcpServiceNetworkingConnection with
+//     a reserved GcpGlobalAddress range) before the instance is created.
 type GcpRedisInstanceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the Redis instance will be created.
+	// If not specified, the provider's default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the Redis instance. This becomes the GCP resource name.
 	// Must start with a lowercase letter, contain only lowercase letters, numbers,
@@ -177,69 +209,95 @@ type GcpRedisInstanceSpec struct {
 	// Service tier controlling availability and replication.
 	// BASIC: standalone instance, no replication, no SLA.
 	// STANDARD_HA: primary + replica with automatic failover, 99.9% SLA.
+	// Immutable after creation.
 	Tier string `protobuf:"bytes,4,opt,name=tier,proto3" json:"tier,omitempty"`
 	// Memory size in GiB for the Redis instance. This is the total memory
-	// available for storing data. Minimum 1 GiB.
+	// available for storing data. Minimum 1 GiB for BASIC; the GCP API requires
+	// at least 5 GiB for STANDARD_HA and for enabling read replicas.
 	MemorySizeGb int32 `protobuf:"varint,5,opt,name=memory_size_gb,json=memorySizeGb,proto3" json:"memory_size_gb,omitempty"`
 	// Redis engine version (e.g., "REDIS_7_0", "REDIS_7_2", "REDIS_6_X").
-	// If not specified, the latest supported version is used.
+	// If not specified, the latest supported version is used. Upgrades apply
+	// in place; a version downgrade replaces the instance.
 	RedisVersion string `protobuf:"bytes,6,opt,name=redis_version,json=redisVersion,proto3" json:"redis_version,omitempty"`
 	// Human-readable display name for the instance.
 	DisplayName string `protobuf:"bytes,7,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	// Zone within the region where the instance will be placed.
 	// For STANDARD_HA, this is the primary zone. GCP automatically selects
-	// a different zone for the replica. If not specified, GCP picks a zone.
+	// a different zone for the replica unless alternative_location_id pins it.
+	// If not specified, GCP picks a zone. Immutable after creation.
 	LocationId string `protobuf:"bytes,8,opt,name=location_id,json=locationId,proto3" json:"location_id,omitempty"`
+	// Zone for the STANDARD_HA replica. Only applicable to STANDARD_HA tier;
+	// must differ from location_id. Pinning both zones matters when co-locating
+	// the cache with zonal workloads (e.g. keeping the replica in the same zone
+	// as a standby application stack to bound cross-zone latency after
+	// failover). If not specified, GCP picks a different zone automatically.
+	// Immutable after creation.
+	AlternativeLocationId string `protobuf:"bytes,9,opt,name=alternative_location_id,json=alternativeLocationId,proto3" json:"alternative_location_id,omitempty"`
 	// VPC network to which the instance is connected.
 	// If not specified, the default network is used.
 	// Immutable after creation.
-	AuthorizedNetwork *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=authorized_network,json=authorizedNetwork,proto3" json:"authorized_network,omitempty"`
+	AuthorizedNetwork *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=authorized_network,json=authorizedNetwork,proto3" json:"authorized_network,omitempty"`
 	// How the instance connects to the VPC network.
 	// DIRECT_PEERING: VPC peering (default). Simpler setup.
-	// PRIVATE_SERVICE_ACCESS: uses a private services connection. Required for
-	// Shared VPC and some network configurations.
+	// PRIVATE_SERVICE_ACCESS: uses the network's private services access
+	// connection. Required for Shared VPC and lets the instance consume an
+	// address range you allocated (compose GcpGlobalAddress +
+	// GcpServiceNetworkingConnection on the network first).
 	// Immutable after creation.
-	ConnectMode string `protobuf:"bytes,10,opt,name=connect_mode,json=connectMode,proto3" json:"connect_mode,omitempty"`
-	// CIDR range of internal addresses reserved for this instance (e.g., "10.0.0.0/29").
-	// Must be a /29 block, unique and non-overlapping with existing subnets.
-	// If not specified, GCP automatically selects an unused /29 block.
+	ConnectMode string `protobuf:"bytes,11,opt,name=connect_mode,json=connectMode,proto3" json:"connect_mode,omitempty"`
+	// CIDR range of internal addresses reserved for this instance.
+	// For DIRECT_PEERING: a /29 block (e.g., "10.0.0.0/29"), unique and
+	// non-overlapping with existing subnets; if not specified, GCP selects an
+	// unused /29 automatically. For PRIVATE_SERVICE_ACCESS: the NAME of an
+	// allocated address range on the private services access connection
+	// (a GcpGlobalAddress with purpose VPC_PEERING).
 	// Immutable after creation.
-	ReservedIpRange string `protobuf:"bytes,11,opt,name=reserved_ip_range,json=reservedIpRange,proto3" json:"reserved_ip_range,omitempty"`
+	ReservedIpRange string `protobuf:"bytes,12,opt,name=reserved_ip_range,json=reservedIpRange,proto3" json:"reserved_ip_range,omitempty"`
+	// Additional IP range for node placement. Required when enabling read
+	// replicas on an EXISTING instance (the original /29 has no room for the
+	// extra nodes). For DIRECT_PEERING: a /28 CIDR or "auto". For
+	// PRIVATE_SERVICE_ACCESS: the name of an allocated address range on the
+	// private services access connection, or "auto". Mutable — this is the
+	// field you set when scaling an in-place instance out to read replicas.
+	SecondaryIpRange string `protobuf:"bytes,13,opt,name=secondary_ip_range,json=secondaryIpRange,proto3" json:"secondary_ip_range,omitempty"`
 	// Whether Redis AUTH is enabled. When true, clients must provide
 	// the AUTH string (exported in stack outputs) to connect.
 	// AUTH provides an additional layer of security beyond network controls.
-	AuthEnabled bool `protobuf:"varint,12,opt,name=auth_enabled,json=authEnabled,proto3" json:"auth_enabled,omitempty"`
+	AuthEnabled bool `protobuf:"varint,14,opt,name=auth_enabled,json=authEnabled,proto3" json:"auth_enabled,omitempty"`
 	// TLS encryption mode for client-to-server traffic.
 	// DISABLED: no encryption (default).
-	// SERVER_AUTHENTICATION: clients verify the server's identity via TLS.
+	// SERVER_AUTHENTICATION: clients verify the server's identity via TLS;
+	// pair with the server_ca_certs stack output, which carries the CA
+	// certificates clients must trust.
 	// Immutable after creation.
-	TransitEncryptionMode string `protobuf:"bytes,13,opt,name=transit_encryption_mode,json=transitEncryptionMode,proto3" json:"transit_encryption_mode,omitempty"`
+	TransitEncryptionMode string `protobuf:"bytes,15,opt,name=transit_encryption_mode,json=transitEncryptionMode,proto3" json:"transit_encryption_mode,omitempty"`
 	// Redis configuration parameters as key-value pairs.
 	// See https://cloud.google.com/memorystore/docs/redis/reference/rest/v1/projects.locations.instances#Instance.FIELDS.redis_configs
 	// for the list of supported parameters (e.g., "maxmemory-policy", "notify-keyspace-events").
-	RedisConfigs map[string]string `protobuf:"bytes,14,rep,name=redis_configs,json=redisConfigs,proto3" json:"redis_configs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	RedisConfigs map[string]string `protobuf:"bytes,16,rep,name=redis_configs,json=redisConfigs,proto3" json:"redis_configs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Weekly maintenance window. If not specified, GCP schedules maintenance
 	// at its discretion.
-	MaintenanceWindow *GcpRedisInstanceMaintenanceWindow `protobuf:"bytes,15,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
+	MaintenanceWindow *GcpRedisInstanceMaintenanceWindow `protobuf:"bytes,17,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
+	// Self-service maintenance version. Setting this to a newer available
+	// version triggers the maintenance update on your schedule instead of
+	// waiting for GCP's rollout — the lever for applying a security patch
+	// immediately. Leave unset to follow GCP's automatic rollout.
+	MaintenanceVersion string `protobuf:"bytes,18,opt,name=maintenance_version,json=maintenanceVersion,proto3" json:"maintenance_version,omitempty"`
 	// Read replica mode. Can only be set at creation time.
 	// READ_REPLICAS_DISABLED (default): no read endpoint, no scaling.
 	// READ_REPLICAS_ENABLED: read endpoint provided, instance can scale replicas.
 	// Only available with STANDARD_HA tier.
-	ReadReplicasMode string `protobuf:"bytes,16,opt,name=read_replicas_mode,json=readReplicasMode,proto3" json:"read_replicas_mode,omitempty"`
+	ReadReplicasMode string `protobuf:"bytes,19,opt,name=read_replicas_mode,json=readReplicasMode,proto3" json:"read_replicas_mode,omitempty"`
 	// Number of read replicas. Valid range is 1-5 when read_replicas_mode is
 	// READ_REPLICAS_ENABLED and tier is STANDARD_HA.
-	ReplicaCount int32 `protobuf:"varint,17,opt,name=replica_count,json=replicaCount,proto3" json:"replica_count,omitempty"`
+	ReplicaCount int32 `protobuf:"varint,20,opt,name=replica_count,json=replicaCount,proto3" json:"replica_count,omitempty"`
 	// Persistence configuration for RDB snapshots.
-	PersistenceConfig *GcpRedisInstancePersistenceConfig `protobuf:"bytes,18,opt,name=persistence_config,json=persistenceConfig,proto3" json:"persistence_config,omitempty"`
+	PersistenceConfig *GcpRedisInstancePersistenceConfig `protobuf:"bytes,21,opt,name=persistence_config,json=persistenceConfig,proto3" json:"persistence_config,omitempty"`
 	// Cloud KMS key for customer-managed encryption at rest (CMEK).
 	// Format: projects/{project}/locations/{location}/keyRings/{keyRing}/cryptoKeys/{key}
 	// If not specified, data is encrypted with Google-managed keys.
 	// Immutable after creation.
-	CustomerManagedKey *v1.StringValueOrRef `protobuf:"bytes,19,opt,name=customer_managed_key,json=customerManagedKey,proto3" json:"customer_managed_key,omitempty"`
-	// Whether Terraform/Pulumi deletion protection is enabled.
-	// When true, the instance cannot be destroyed without first disabling
-	// this flag. Recommended for production instances.
-	DeletionProtection bool `protobuf:"varint,20,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
+	CustomerManagedKey *v1.StringValueOrRef `protobuf:"bytes,22,opt,name=customer_managed_key,json=customerManagedKey,proto3" json:"customer_managed_key,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -330,6 +388,13 @@ func (x *GcpRedisInstanceSpec) GetLocationId() string {
 	return ""
 }
 
+func (x *GcpRedisInstanceSpec) GetAlternativeLocationId() string {
+	if x != nil {
+		return x.AlternativeLocationId
+	}
+	return ""
+}
+
 func (x *GcpRedisInstanceSpec) GetAuthorizedNetwork() *v1.StringValueOrRef {
 	if x != nil {
 		return x.AuthorizedNetwork
@@ -347,6 +412,13 @@ func (x *GcpRedisInstanceSpec) GetConnectMode() string {
 func (x *GcpRedisInstanceSpec) GetReservedIpRange() string {
 	if x != nil {
 		return x.ReservedIpRange
+	}
+	return ""
+}
+
+func (x *GcpRedisInstanceSpec) GetSecondaryIpRange() string {
+	if x != nil {
+		return x.SecondaryIpRange
 	}
 	return ""
 }
@@ -379,6 +451,13 @@ func (x *GcpRedisInstanceSpec) GetMaintenanceWindow() *GcpRedisInstanceMaintenan
 	return nil
 }
 
+func (x *GcpRedisInstanceSpec) GetMaintenanceVersion() string {
+	if x != nil {
+		return x.MaintenanceVersion
+	}
+	return ""
+}
+
 func (x *GcpRedisInstanceSpec) GetReadReplicasMode() string {
 	if x != nil {
 		return x.ReadReplicasMode
@@ -407,29 +486,26 @@ func (x *GcpRedisInstanceSpec) GetCustomerManagedKey() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *GcpRedisInstanceSpec) GetDeletionProtection() bool {
-	if x != nil {
-		return x.DeletionProtection
-	}
-	return false
-}
-
 var File_dev_planton_provider_gcp_gcpredisinstance_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpredisinstance_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/gcp/gcpredisinstance/v1/spec.proto\x12,dev.planton.provider.gcp.gcpredisinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9e\x01\n" +
+	"7dev/planton/provider/gcp/gcpredisinstance/v1/spec.proto\x12,dev.planton.provider.gcp.gcpredisinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc1\x01\n" +
 	"!GcpRedisInstanceMaintenanceWindow\x12Z\n" +
 	"\x03day\x18\x01 \x01(\tBH\xbaHE\xc8\x01\x01r@R\x06MONDAYR\aTUESDAYR\tWEDNESDAYR\bTHURSDAYR\x06FRIDAYR\bSATURDAYR\x06SUNDAYR\x03day\x12\x1d\n" +
-	"\x04hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\x04hour\"\xa4\x04\n" +
+	"\x04hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\x04hour\x12!\n" +
+	"\x06minute\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18;(\x00R\x06minute\"\xfd\a\n" +
 	"!GcpRedisInstancePersistenceConfig\x12B\n" +
 	"\x10persistence_mode\x18\x01 \x01(\tB\x17\xbaH\x14\xc8\x01\x01r\x0fR\bDISABLEDR\x03RDBR\x0fpersistenceMode\x12\x85\x02\n" +
 	"\x13rdb_snapshot_period\x18\x02 \x01(\tB\xd4\x01\xbaH\xd0\x01\xba\x01\xcc\x01\n" +
-	"\x1frdb_snapshot_period_valid_value\x12Srdb_snapshot_period must be ONE_HOUR, SIX_HOURS, TWELVE_HOURS, or TWENTY_FOUR_HOURS\x1aTthis == '' || this in ['ONE_HOUR', 'SIX_HOURS', 'TWELVE_HOURS', 'TWENTY_FOUR_HOURS']R\x11rdbSnapshotPeriod:\xb2\x01\xbaH\xae\x01\x1a\xab\x01\n" +
-	"%rdb_snapshot_period_requires_rdb_mode\x12<rdb_snapshot_period is required when persistence_mode is RDB\x1aDthis.persistence_mode != 'RDB' || size(this.rdb_snapshot_period) > 0\"\xe3\x13\n" +
-	"\x14GcpRedisInstanceSpec\x12{\n" +
+	"\x1frdb_snapshot_period_valid_value\x12Srdb_snapshot_period must be ONE_HOUR, SIX_HOURS, TWELVE_HOURS, or TWENTY_FOUR_HOURS\x1aTthis == '' || this in ['ONE_HOUR', 'SIX_HOURS', 'TWELVE_HOURS', 'TWENTY_FOUR_HOURS']R\x11rdbSnapshotPeriod\x12\x99\x02\n" +
+	"\x17rdb_snapshot_start_time\x18\x03 \x01(\tB\xe1\x01\xbaH\xdd\x01\xba\x01\xd9\x01\n" +
+	"\x1frdb_snapshot_start_time_rfc3339\x12Rrdb_snapshot_start_time must be an RFC3339 UTC timestamp like 2014-10-02T15:01:23Z\x1abthis == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?Z$')R\x14rdbSnapshotStartTime:\xef\x02\xbaH\xeb\x02\x1a\xab\x01\n" +
+	"%rdb_snapshot_period_requires_rdb_mode\x12<rdb_snapshot_period is required when persistence_mode is RDB\x1aDthis.persistence_mode != 'RDB' || size(this.rdb_snapshot_period) > 0\x1a\xba\x01\n" +
+	")rdb_snapshot_start_time_requires_rdb_mode\x12Grdb_snapshot_start_time is only meaningful when persistence_mode is RDB\x1aDthis.rdb_snapshot_start_time == '' || this.persistence_mode == 'RDB'\"\xaf\x17\n" +
+	"\x14GcpRedisInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
 	"\rinstance_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x02\x18(2\x1e^[a-z][a-z0-9-]{0,38}[a-z0-9]$R\finstanceName\x12\x1e\n" +
 	"\x06region\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x120\n" +
 	"\x04tier\x18\x04 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14R\x05BASICR\vSTANDARD_HAR\x04tier\x120\n" +
@@ -438,28 +514,32 @@ const file_dev_planton_provider_gcp_gcpredisinstance_v1_spec_proto_rawDesc = "" 
 	"\rredis_version\x18\x06 \x01(\tR\fredisVersion\x12!\n" +
 	"\fdisplay_name\x18\a \x01(\tR\vdisplayName\x12\x1f\n" +
 	"\vlocation_id\x18\b \x01(\tR\n" +
-	"locationId\x12\x8c\x01\n" +
-	"\x12authorized_network\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\x11authorizedNetwork\x12\xc9\x01\n" +
-	"\fconnect_mode\x18\n" +
-	" \x01(\tB\xa5\x01\xbaH\xa1\x01\xba\x01\x9d\x01\n" +
+	"locationId\x126\n" +
+	"\x17alternative_location_id\x18\t \x01(\tR\x15alternativeLocationId\x12\x8c\x01\n" +
+	"\x12authorized_network\x18\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\x11authorizedNetwork\x12\xc9\x01\n" +
+	"\fconnect_mode\x18\v \x01(\tB\xa5\x01\xbaH\xa1\x01\xba\x01\x9d\x01\n" +
 	"\x18connect_mode_valid_value\x12=connect_mode must be DIRECT_PEERING or PRIVATE_SERVICE_ACCESS\x1aBthis == '' || this in ['DIRECT_PEERING', 'PRIVATE_SERVICE_ACCESS']R\vconnectMode\x12*\n" +
-	"\x11reserved_ip_range\x18\v \x01(\tR\x0freservedIpRange\x12!\n" +
-	"\fauth_enabled\x18\f \x01(\bR\vauthEnabled\x12\xe6\x01\n" +
-	"\x17transit_encryption_mode\x18\r \x01(\tB\xad\x01\xbaH\xa9\x01\xba\x01\xa5\x01\n" +
+	"\x11reserved_ip_range\x18\f \x01(\tR\x0freservedIpRange\x12,\n" +
+	"\x12secondary_ip_range\x18\r \x01(\tR\x10secondaryIpRange\x12!\n" +
+	"\fauth_enabled\x18\x0e \x01(\bR\vauthEnabled\x12\xe6\x01\n" +
+	"\x17transit_encryption_mode\x18\x0f \x01(\tB\xad\x01\xbaH\xa9\x01\xba\x01\xa5\x01\n" +
 	"#transit_encryption_mode_valid_value\x12Atransit_encryption_mode must be DISABLED or SERVER_AUTHENTICATION\x1a;this == '' || this in ['DISABLED', 'SERVER_AUTHENTICATION']R\x15transitEncryptionMode\x12y\n" +
-	"\rredis_configs\x18\x0e \x03(\v2T.dev.planton.provider.gcp.gcpredisinstance.v1.GcpRedisInstanceSpec.RedisConfigsEntryR\fredisConfigs\x12~\n" +
-	"\x12maintenance_window\x18\x0f \x01(\v2O.dev.planton.provider.gcp.gcpredisinstance.v1.GcpRedisInstanceMaintenanceWindowR\x11maintenanceWindow\x12\xee\x01\n" +
-	"\x12read_replicas_mode\x18\x10 \x01(\tB\xbf\x01\xbaH\xbb\x01\xba\x01\xb7\x01\n" +
+	"\rredis_configs\x18\x10 \x03(\v2T.dev.planton.provider.gcp.gcpredisinstance.v1.GcpRedisInstanceSpec.RedisConfigsEntryR\fredisConfigs\x12~\n" +
+	"\x12maintenance_window\x18\x11 \x01(\v2O.dev.planton.provider.gcp.gcpredisinstance.v1.GcpRedisInstanceMaintenanceWindowR\x11maintenanceWindow\x12/\n" +
+	"\x13maintenance_version\x18\x12 \x01(\tR\x12maintenanceVersion\x12\xee\x01\n" +
+	"\x12read_replicas_mode\x18\x13 \x01(\tB\xbf\x01\xbaH\xbb\x01\xba\x01\xb7\x01\n" +
 	"\x1eread_replicas_mode_valid_value\x12Jread_replicas_mode must be READ_REPLICAS_DISABLED or READ_REPLICAS_ENABLED\x1aIthis == '' || this in ['READ_REPLICAS_DISABLED', 'READ_REPLICAS_ENABLED']R\x10readReplicasMode\x12#\n" +
-	"\rreplica_count\x18\x11 \x01(\x05R\freplicaCount\x12~\n" +
-	"\x12persistence_config\x18\x12 \x01(\v2O.dev.planton.provider.gcp.gcpredisinstance.v1.GcpRedisInstancePersistenceConfigR\x11persistenceConfig\x12\x84\x01\n" +
-	"\x14customer_managed_key\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x12customerManagedKey\x12/\n" +
-	"\x13deletion_protection\x18\x14 \x01(\bR\x12deletionProtection\x1a?\n" +
+	"\rreplica_count\x18\x14 \x01(\x05R\freplicaCount\x12~\n" +
+	"\x12persistence_config\x18\x15 \x01(\v2O.dev.planton.provider.gcp.gcpredisinstance.v1.GcpRedisInstancePersistenceConfigR\x11persistenceConfig\x12\x84\x01\n" +
+	"\x14customer_managed_key\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x12customerManagedKey\x1a?\n" +
 	"\x11RedisConfigsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf0\x03\xbaH\xec\x03\x1a\xb5\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdc\x06\xbaH\xd8\x06\x1a\xb5\x01\n" +
 	"\x1dread_replicas_require_ha_tier\x12Bread_replicas_mode READ_REPLICAS_ENABLED requires tier STANDARD_HA\x1aPthis.read_replicas_mode != 'READ_REPLICAS_ENABLED' || this.tier == 'STANDARD_HA'\x1a\xb1\x02\n" +
-	",replica_count_requires_ha_with_read_replicas\x12[replica_count (1-5) requires tier STANDARD_HA with read_replicas_mode READ_REPLICAS_ENABLED\x1a\xa3\x01this.replica_count == 0 || (this.tier == 'STANDARD_HA' && this.read_replicas_mode == 'READ_REPLICAS_ENABLED' && this.replica_count >= 1 && this.replica_count <= 5)B\xf7\x02\n" +
+	",replica_count_requires_ha_with_read_replicas\x12[replica_count (1-5) requires tier STANDARD_HA with read_replicas_mode READ_REPLICAS_ENABLED\x1a\xa3\x01this.replica_count == 0 || (this.tier == 'STANDARD_HA' && this.read_replicas_mode == 'READ_REPLICAS_ENABLED' && this.replica_count >= 1 && this.replica_count <= 5)\x1a\xa9\x01\n" +
+	"%alternative_location_requires_ha_tier\x12>alternative_location_id is only applicable to STANDARD_HA tier\x1a@this.alternative_location_id == '' || this.tier == 'STANDARD_HA'\x1a\xbd\x01\n" +
+	" alternative_location_must_differ\x12Aalternative_location_id must be a different zone from location_id\x1aVthis.alternative_location_id == '' || this.alternative_location_id != this.location_idB\xf7\x02\n" +
 	"0com.dev.planton.provider.gcp.gcpredisinstance.v1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpredisinstance/v1;gcpredisinstancev1\xa2\x02\x05DPPGG\xaa\x02,Dev.Planton.Provider.Gcp.Gcpredisinstance.V1\xca\x02,Dev\\Planton\\Provider\\Gcp\\Gcpredisinstance\\V1\xe2\x028Dev\\Planton\\Provider\\Gcp\\Gcpredisinstance\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Gcp::Gcpredisinstance::V1b\x06proto3"
 
 var (

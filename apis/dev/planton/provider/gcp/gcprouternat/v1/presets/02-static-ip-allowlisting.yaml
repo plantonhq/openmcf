@@ -1,0 +1,37 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpRouterNat
+metadata:
+  name: my-static-nat
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  routerName: egress-router
+  natName: allowlisted-nat
+  region: us-central1
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpc
+      name: my-prod-vpc # replace with your GcpVpc resource name
+      fieldPath: status.outputs.network_self_link
+  # Manual allocation: each entry references a GcpAddress reservation, so the
+  # egress IPs are stable and third parties can allowlist them. The literal
+  # IPs are the GcpAddress nodes' `address` outputs.
+  natIps:
+    - valueFrom:
+        kind: GcpAddress
+        name: egress-ip-a # replace with your GcpAddress resource name
+        fieldPath: status.outputs.self_link
+    - valueFrom:
+        kind: GcpAddress
+        name: egress-ip-b # replace with your GcpAddress resource name
+        fieldPath: status.outputs.self_link
+  # Scope NAT to the workload subnetwork only, and raise the per-VM port
+  # floor for connection-heavy services.
+  subnetworks:
+    - subnetwork:
+        valueFrom:
+          kind: GcpSubnetwork
+          name: my-workload-subnet # replace with your GcpSubnetwork resource name
+          fieldPath: status.outputs.subnetwork_self_link
+  minPortsPerVm: 128
+  logFilter: ERRORS_ONLY

@@ -777,6 +777,10 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcprnat"
+    prerequisites: [
+      GcpVpc,
+      GcpAddress
+    ]
   }];
   GcpGkeNodePool = 613 [(kind_meta) = {
     provider: gcp
@@ -883,6 +887,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpred"
+    prerequisites: [GcpServiceNetworkingConnection]
   }];
   GcpFirestoreDatabase = 632 [(kind_meta) = {
     provider: gcp

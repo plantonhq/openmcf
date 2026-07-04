@@ -28,3 +28,28 @@ output "auth_string" {
   value       = google_redis_instance.this.auth_string
   sensitive   = true
 }
+
+output "server_ca_certs" {
+  description = "PEM-encoded CA certificates clients must trust when transit encryption is enabled"
+  value       = [for cert in google_redis_instance.this.server_ca_certs : cert.cert]
+}
+
+output "persistence_iam_identity" {
+  description = "Cloud IAM identity (serviceAccount:<email>) used by import/export operations"
+  value       = google_redis_instance.this.persistence_iam_identity
+}
+
+output "effective_reserved_ip_range" {
+  description = "The CIDR range actually in use by the instance (explicit or auto-selected)"
+  value       = google_redis_instance.this.effective_reserved_ip_range
+}
+
+output "instance_name" {
+  description = "Name of the Redis instance in GCP"
+  value       = google_redis_instance.this.name
+}
+
+output "region" {
+  description = "Region hosting the instance (plain region name)"
+  value       = var.spec.region
+}

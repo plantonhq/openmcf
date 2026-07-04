@@ -1,0 +1,33 @@
+# PRIVATE_SERVICE_ACCESS flagship: the instance consumes the run-scoped
+# VPC_PEERING range on the prerequisite service networking connection —
+# reservedIpRange names the allocated range (a plain string per the API
+# contract, aligned with the prerequisite's addressName via the shared
+# ${E2E_RUN_ID} token). AUTH is enabled to exercise the secret output.
+apiVersion: gcp.planton.dev/v1
+kind: GcpRedisInstance
+metadata:
+  name: planton-oss-e2e-gcpred-psa
+  id: planton-oss-e2e-gcpred-psa
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpredisinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: planton-oss-e2e-red-psa-${E2E_RUN_ID}
+  region: us-central1
+  tier: BASIC
+  memorySizeGb: 1
+  redisVersion: REDIS_7_2
+  connectMode: PRIVATE_SERVICE_ACCESS
+  reservedIpRange: planton-oss-e2e-redis-gcpgip-${E2E_RUN_ID}
+  authEnabled: true
+  authorizedNetwork:
+    valueFrom:
+      kind: GcpVpc
+      name: planton-oss-e2e-gcpvpc-prereq
+      fieldPath: status.outputs.network_self_link

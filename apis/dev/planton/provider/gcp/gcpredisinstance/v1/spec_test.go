@@ -91,6 +91,7 @@ var _ = ginkgo.Describe("GcpRedisInstanceSpec", func() {
 		msg.Spec.RedisVersion = "REDIS_7_0"
 		msg.Spec.DisplayName = "Production Cache"
 		msg.Spec.LocationId = "us-central1-a"
+		msg.Spec.AlternativeLocationId = "us-central1-b"
 		msg.Spec.AuthorizedNetwork = &foreignkeyv1.StringValueOrRef{
 			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 				Value: "projects/my-project/global/networks/my-vpc",
@@ -98,27 +99,30 @@ var _ = ginkgo.Describe("GcpRedisInstanceSpec", func() {
 		}
 		msg.Spec.ConnectMode = "DIRECT_PEERING"
 		msg.Spec.ReservedIpRange = "10.0.0.0/29"
+		msg.Spec.SecondaryIpRange = "auto"
 		msg.Spec.AuthEnabled = true
 		msg.Spec.TransitEncryptionMode = "SERVER_AUTHENTICATION"
 		msg.Spec.RedisConfigs = map[string]string{
 			"maxmemory-policy": "allkeys-lru",
 		}
 		msg.Spec.MaintenanceWindow = &GcpRedisInstanceMaintenanceWindow{
-			Day:  "SUNDAY",
-			Hour: 3,
+			Day:    "SUNDAY",
+			Hour:   3,
+			Minute: 30,
 		}
+		msg.Spec.MaintenanceVersion = "20260315_00_00"
 		msg.Spec.ReadReplicasMode = "READ_REPLICAS_ENABLED"
 		msg.Spec.ReplicaCount = 3
 		msg.Spec.PersistenceConfig = &GcpRedisInstancePersistenceConfig{
-			PersistenceMode:   "RDB",
-			RdbSnapshotPeriod: "TWELVE_HOURS",
+			PersistenceMode:      "RDB",
+			RdbSnapshotPeriod:    "TWELVE_HOURS",
+			RdbSnapshotStartTime: "2026-01-01T03:00:00Z",
 		}
 		msg.Spec.CustomerManagedKey = &foreignkeyv1.StringValueOrRef{
 			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 				Value: "projects/p/locations/us-central1/keyRings/kr/cryptoKeys/k",
 			},
 		}
-		msg.Spec.DeletionProtection = true
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -220,14 +224,46 @@ var _ = ginkgo.Describe("GcpRedisInstanceSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Negative Cases ────────────────
-
-	ginkgo.It("should reject when project_id is missing", func() {
+	ginkgo.It("should accept omitted project_id (ambient provider project)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept alternative_location_id with STANDARD_HA tier", func() {
+		msg := minimal()
+		msg.Spec.Tier = "STANDARD_HA"
+		msg.Spec.MemorySizeGb = 5
+		msg.Spec.LocationId = "us-central1-a"
+		msg.Spec.AlternativeLocationId = "us-central1-f"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept maintenance_window minute at boundary (59)", func() {
+		msg := minimal()
+		msg.Spec.MaintenanceWindow = &GcpRedisInstanceMaintenanceWindow{
+			Day:    "MONDAY",
+			Hour:   5,
+			Minute: 59,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept rdb_snapshot_start_time with fractional seconds", func() {
+		msg := minimal()
+		msg.Spec.PersistenceConfig = &GcpRedisInstancePersistenceConfig{
+			PersistenceMode:      "RDB",
+			RdbSnapshotPeriod:    "SIX_HOURS",
+			RdbSnapshotStartTime: "2026-10-02T15:01:23.045123456Z",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Negative Cases ────────────────
 
 	ginkgo.It("should reject when instance_name is empty", func() {
 		msg := minimal()
@@ -404,6 +440,56 @@ var _ = ginkgo.Describe("GcpRedisInstanceSpec", func() {
 		msg.Spec.MaintenanceWindow = &GcpRedisInstanceMaintenanceWindow{
 			Day:  "MONDAY",
 			Hour: 24,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject maintenance_window minute > 59", func() {
+		msg := minimal()
+		msg.Spec.MaintenanceWindow = &GcpRedisInstanceMaintenanceWindow{
+			Day:    "MONDAY",
+			Hour:   5,
+			Minute: 60,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject alternative_location_id with BASIC tier", func() {
+		msg := minimal()
+		msg.Spec.Tier = "BASIC"
+		msg.Spec.AlternativeLocationId = "us-central1-b"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject alternative_location_id equal to location_id", func() {
+		msg := minimal()
+		msg.Spec.Tier = "STANDARD_HA"
+		msg.Spec.MemorySizeGb = 5
+		msg.Spec.LocationId = "us-central1-a"
+		msg.Spec.AlternativeLocationId = "us-central1-a"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject rdb_snapshot_start_time that is not RFC3339 UTC", func() {
+		msg := minimal()
+		msg.Spec.PersistenceConfig = &GcpRedisInstancePersistenceConfig{
+			PersistenceMode:      "RDB",
+			RdbSnapshotPeriod:    "SIX_HOURS",
+			RdbSnapshotStartTime: "03:00",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject rdb_snapshot_start_time when persistence is DISABLED", func() {
+		msg := minimal()
+		msg.Spec.PersistenceConfig = &GcpRedisInstancePersistenceConfig{
+			PersistenceMode:      "DISABLED",
+			RdbSnapshotStartTime: "2026-01-01T03:00:00Z",
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())

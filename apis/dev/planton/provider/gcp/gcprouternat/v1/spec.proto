@@ -14,49 +14,142 @@ enum GcpRouterNatLogFilter {
   ERRORS_ONLY = 1;
   // Log all translations (use for security auditing or troubleshooting)
   ALL = 2;
+  // Log successful translations only (connection-level audit trail without
+  // the error noise)
+  TRANSLATIONS_ONLY = 3;
 }
 
-// GcpRouterNatSpec defines configuration for a Cloud Router with a NAT gateway.
+// GcpRouterNatSubnetwork scopes NAT to a specific subnetwork and, within it,
+// to specific IP ranges. Only meaningful when
+// source_subnetwork_ip_ranges_to_nat is LIST_OF_SUBNETWORKS.
+message GcpRouterNatSubnetwork {
+  // The subnetwork to NAT. Accepts a subnetwork self link.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Which IP ranges of the subnetwork are NATed.
+  // ALL_IP_RANGES: primary and all secondary ranges (the default when empty).
+  // PRIMARY_IP_RANGE: only the primary range.
+  // LIST_OF_SECONDARY_IP_RANGES: only the secondary ranges named in
+  // secondary_ip_range_names — the shape for NATing GKE pod ranges without
+  // exposing the node range, or vice versa.
+  repeated string source_ip_ranges_to_nat = 2 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "ALL_IP_RANGES",
+      "PRIMARY_IP_RANGE",
+      "LIST_OF_SECONDARY_IP_RANGES"
+    ]
+  }];
+
+  // Names of the secondary ranges to NAT. Required when
+  // source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES.
+  repeated string secondary_ip_range_names = 3;
+
+  option (buf.validate.message).cel = {
+    id: "secondary_names_require_secondary_mode"
+    expression: "!('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat) || this.secondary_ip_range_names.size() > 0"
+    message: "secondary_ip_range_names is required when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "secondary_names_only_with_secondary_mode"
+    expression: "this.secondary_ip_range_names.size() == 0 || ('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat)"
+    message: "secondary_ip_range_names is only meaningful when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES"
+  };
+}
+
+// GcpRouterNatRuleAction defines the NAT IPs or ranges a rule uses for
+// connections matching its expression.
+message GcpRouterNatRuleAction {
+  // Static external IPs to NAT matching traffic through (public NAT only).
+  // Each entry references a GcpAddress reservation by self link.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_nat_active_ips = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // IPs being drained out of this rule (public NAT only): existing
+  // connections continue, no new connections are established. An IP must
+  // already be in source_nat_active_ips before it can be drained.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_nat_drain_ips = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // Subnetworks whose primary ranges provide the NAT addresses for matching
+  // traffic (private NAT only).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_nat_active_ranges = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Subnetwork ranges being drained (private NAT only).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_nat_drain_ranges = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+}
+
+// GcpRouterNatRule routes matching egress connections through dedicated NAT
+// IPs — e.g. give traffic to a partner's API a stable, separately
+// allowlistable source IP while everything else uses the shared pool.
+message GcpRouterNatRule {
+  // Rule priority (0-65000). Lower numbers win when multiple rules match.
+  uint32 rule_number = 1 [(buf.validate.field).uint32 = {lte: 65000}];
+
+  // CEL expression selecting the traffic this rule applies to, evaluated
+  // against destination attributes. Example:
+  // "destination.ip == '203.0.113.10' || destination.ip == '203.0.113.11'"
+  string match = 2 [(buf.validate.field).required = true];
+
+  // Human-readable description of the rule's intent.
+  string description = 3;
+
+  // The NAT IPs or ranges used for matching traffic.
+  GcpRouterNatRuleAction action = 4;
+}
+
+// GcpRouterNatSpec defines a Cloud Router with a NAT gateway — the managed
+// egress path that lets instances without external IPs reach the internet
+// (public NAT) or other private networks (private NAT).
+//
+// The router and the NAT are provisioned together as one node: the 90% case
+// is exactly one NAT per router, and a router without NAT (dedicated BGP for
+// Interconnect/VPN) is a different concern. The router's BGP surface here is
+// limited to the ASN and keepalive; interface- and peer-level BGP belongs to
+// dedicated interconnect tooling.
+//
+// Important behavioral notes:
+//
+//   - router_name, nat_name, region, the network, endpoint_types, and type
+//     are immutable — changing them replaces the resource. Everything else
+//     (IP allocation, subnetwork scoping, port tuning, timeouts, logging,
+//     rules) updates in place, which is what makes NAT IP rotation and
+//     fleet-wide egress tuning zero-downtime operations.
+//   - With no nat_ips, GCP auto-allocates external IPs (AUTO_ONLY) and may
+//     change them as capacity scales. Reference GcpAddress reservations in
+//     nat_ips (MANUAL_ONLY) when third parties allowlist your egress IPs;
+//     the literal IPs live on those address nodes' outputs.
+//   - drain_nat_ips is an update-time lever: move an IP from nat_ips to
+//     drain_nat_ips to bleed connections off it before releasing it. The
+//     API rejects drain entries on a brand-new NAT and entries that were
+//     never in nat_ips.
 message GcpRouterNatSpec {
   // GCP project ID where the Cloud Router and NAT will be created.
-  // Example: "my-gcp-project-123"
+  // If not specified, the provider's default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 
-  // Reference to the target VPC network (self-link or name of an existing GCP VPC).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_self_link = 2 [
-    (buf.validate.field).required = true,
-    // Default to referencing a GcpVpc resource's network self-link output
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
-  ];
-
-  // GCP region for the Cloud Router and NAT.
-  string region = 3 [(buf.validate.field).required = true /* (Optional: could add pattern validation for region format) */];
-
-  // Optional specific subnets to enable NAT on (if empty or not set, NAT covers all subnets in the region).
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork_self_links = 4;
-
-  // Optional static external IP addresses to use for NAT (if empty, NAT will auto-allocate IPs).
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef nat_ip_names = 5 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
-  ];
-
-  // Log filter for NAT translation logging.
-  // **Default:** ERRORS_ONLY (recommended for production to detect port exhaustion and connection failures).
-  // Use DISABLED for non-production environments to reduce costs.
-  // Use ALL for security auditing or detailed troubleshooting (generates significant log volume).
-  optional GcpRouterNatLogFilter log_filter = 6 [(dev.planton.shared.options.default) = "ERRORS_ONLY"];
-
   // Name of the Cloud Router to create in GCP.
   // Must be 1-63 characters, lowercase letters, numbers, or hyphens.
   // Must start with a lowercase letter and end with a lowercase letter or number.
-  // Example: "my-router", "prod-uswest1-router"
-  string router_name = 7 [
+  // Immutable after creation.
+  string router_name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
   ];
@@ -64,9 +157,220 @@ message GcpRouterNatSpec {
   // Name of the NAT configuration on the Cloud Router.
   // Must be 1-63 characters, lowercase letters, numbers, or hyphens.
   // Must start with a lowercase letter and end with a lowercase letter or number.
-  // Example: "my-nat", "prod-nat-config"
-  string nat_name = 8 [
+  // Immutable after creation.
+  string nat_name = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
   ];
+
+  // GCP region for the Cloud Router and NAT (e.g., "us-central1").
+  // Immutable after creation.
+  string region = 4 [(buf.validate.field).required = true];
+
+  // The VPC network the router attaches to. Accepts a network self link.
+  // Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_self_link = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // BGP autonomous system number for the router. Only needed when the
+  // router will also serve BGP sessions (Interconnect/VPN); NAT-only
+  // routers can leave this unset and GCP assigns one. Must be a private
+  // ASN (64512-65534 or 4200000000-4294967294).
+  uint32 router_asn = 6;
+
+  // BGP keepalive interval in seconds (20-60, default 20). The hold time —
+  // three times this value — is how long a BGP peer waits before declaring
+  // the session dead.
+  int32 router_keepalive_interval = 7 [(buf.validate.field).cel = {
+    id: "router_keepalive_interval_range"
+    expression: "this == 0 || (this >= 20 && this <= 60)"
+    message: "router_keepalive_interval must be between 20 and 60 seconds"
+  }];
+
+  // NAT gateway type. PUBLIC (default): NAT to the internet using external
+  // IPs. PRIVATE: NAT between VPC networks (Network Connectivity Center
+  // spokes) using subnetwork ranges — no external IPs involved.
+  // Immutable after creation.
+  string type = 8 [(buf.validate.field).cel = {
+    id: "type_valid_value"
+    expression: "this == '' || this in ['PUBLIC', 'PRIVATE']"
+    message: "type must be PUBLIC or PRIVATE"
+  }];
+
+  // Which subnetworks (and which of their IP ranges) get NAT.
+  // ALL_SUBNETWORKS_ALL_IP_RANGES (default when empty and subnetworks is
+  // empty): every subnetwork in the region, primary + secondary ranges.
+  // ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES: every subnetwork, primary only.
+  // LIST_OF_SUBNETWORKS (implied when subnetworks is non-empty): only the
+  // subnetworks listed below.
+  string source_subnetwork_ip_ranges_to_nat = 9 [(buf.validate.field).cel = {
+    id: "source_subnetwork_ip_ranges_valid_value"
+    expression: "this == '' || this in ['ALL_SUBNETWORKS_ALL_IP_RANGES', 'ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES', 'LIST_OF_SUBNETWORKS']"
+    message: "source_subnetwork_ip_ranges_to_nat must be ALL_SUBNETWORKS_ALL_IP_RANGES, ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES, or LIST_OF_SUBNETWORKS"
+  }];
+
+  // Per-subnetwork NAT scoping. Listing any subnetwork here selects
+  // LIST_OF_SUBNETWORKS mode: only the listed subnetworks are NATed.
+  repeated GcpRouterNatSubnetwork subnetworks = 10;
+
+  // Static external IPs the NAT translates through, each referencing a
+  // GcpAddress reservation (EXTERNAL, in this region) by self link.
+  // Non-empty selects MANUAL_ONLY allocation — the shape for stable,
+  // allowlistable egress IPs. Empty selects AUTO_ONLY (GCP manages the
+  // pool). Public NAT only.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef nat_ips = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // IPs being drained: existing connections continue, new connections stop.
+  // Each entry must already be present in nat_ips (the API enforces this and
+  // rejects drain entries on a brand-new NAT). Public NAT only.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef drain_nat_ips = 12 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // Network tier for auto-allocated NAT IPs: PREMIUM (default) or STANDARD.
+  // Only meaningful for public NAT with auto-allocation.
+  string auto_network_tier = 13 [(buf.validate.field).cel = {
+    id: "auto_network_tier_valid_value"
+    expression: "this == '' || this in ['PREMIUM', 'STANDARD']"
+    message: "auto_network_tier must be PREMIUM or STANDARD"
+  }];
+
+  // Minimum ports reserved per VM (default: 64 static, 32 dynamic). Raise
+  // when instances open many concurrent connections to the same
+  // destination; must be a power of two when dynamic port allocation is
+  // enabled.
+  int32 min_ports_per_vm = 14 [(buf.validate.field).int32 = {gte: 0}];
+
+  // Maximum ports per VM. Only valid with dynamic port allocation, where it
+  // caps how far a busy VM's allocation can grow; must be a power of two.
+  int32 max_ports_per_vm = 15 [(buf.validate.field).int32 = {gte: 0}];
+
+  // Dynamic port allocation: VMs start at min_ports_per_vm and grow toward
+  // max_ports_per_vm on demand — better pool utilization for mixed
+  // workloads. Mutually exclusive with endpoint-independent mapping.
+  bool enable_dynamic_port_allocation = 16;
+
+  // Endpoint-independent mapping: the same internal ip:port maps to the
+  // same NAT ip:port regardless of destination (RFC 5128) — required by
+  // some peer-to-peer and SIP workloads. Mutually exclusive with dynamic
+  // port allocation.
+  bool enable_endpoint_independent_mapping = 17;
+
+  // Which resource types this NAT serves: ENDPOINT_TYPE_VM (default),
+  // ENDPOINT_TYPE_SWG (Secure Web Gateway), or ENDPOINT_TYPE_MANAGED_PROXY_LB
+  // (regional load balancer proxies). A NAT serves exactly one endpoint
+  // type. Immutable after creation.
+  repeated string endpoint_types = 18 [
+    (buf.validate.field).repeated.max_items = 1,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "ENDPOINT_TYPE_VM",
+        "ENDPOINT_TYPE_SWG",
+        "ENDPOINT_TYPE_MANAGED_PROXY_LB"
+      ]
+    }
+  ];
+
+  // Idle timeout for UDP connections, in seconds (default 30).
+  int32 udp_idle_timeout_sec = 19 [(buf.validate.field).int32 = {gte: 0}];
+
+  // Idle timeout for ICMP connections, in seconds (default 30).
+  int32 icmp_idle_timeout_sec = 20 [(buf.validate.field).int32 = {gte: 0}];
+
+  // Idle timeout for established TCP connections, in seconds (default 1200).
+  int32 tcp_established_idle_timeout_sec = 21 [(buf.validate.field).int32 = {gte: 0}];
+
+  // Idle timeout for transitory (half-open) TCP connections, in seconds
+  // (default 30).
+  int32 tcp_transitory_idle_timeout_sec = 22 [(buf.validate.field).int32 = {gte: 0}];
+
+  // How long a TCP connection lingers in TIME_WAIT before its NAT port is
+  // reusable, in seconds (default 120). Lowering this frees ports faster
+  // for high-churn workloads at the cost of stricter RFC conformance.
+  int32 tcp_time_wait_timeout_sec = 23 [(buf.validate.field).int32 = {gte: 0}];
+
+  // NAT rules: route matching egress connections through dedicated NAT IPs
+  // or ranges (e.g. a stable source IP for one partner's API).
+  repeated GcpRouterNatRule rules = 24;
+
+  // Log filter for NAT translation logging.
+  // **Default:** ERRORS_ONLY (recommended for production to detect port exhaustion and connection failures).
+  // Use DISABLED for non-production environments to reduce costs.
+  // Use ALL for security auditing or detailed troubleshooting (generates significant log volume).
+  optional GcpRouterNatLogFilter log_filter = 25 [(dev.planton.shared.options.default) = "ERRORS_ONLY"];
+
+  // -- Cross-field validations --
+
+  option (buf.validate.message).cel = {
+    id: "dynamic_ports_conflicts_with_eim"
+    expression: "!(this.enable_dynamic_port_allocation && this.enable_endpoint_independent_mapping)"
+    message: "enable_dynamic_port_allocation and enable_endpoint_independent_mapping are mutually exclusive"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_ports_requires_dynamic_allocation"
+    expression: "this.max_ports_per_vm == 0 || this.enable_dynamic_port_allocation"
+    message: "max_ports_per_vm is only valid when enable_dynamic_port_allocation is true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_ports_gte_min_ports"
+    expression: "this.max_ports_per_vm == 0 || this.min_ports_per_vm == 0 || this.max_ports_per_vm >= this.min_ports_per_vm"
+    message: "max_ports_per_vm must be greater than or equal to min_ports_per_vm"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "dynamic_ports_must_be_powers_of_two"
+    expression: "!this.enable_dynamic_port_allocation || ((this.min_ports_per_vm == 0 || this.min_ports_per_vm in [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]) && (this.max_ports_per_vm == 0 || this.max_ports_per_vm in [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]))"
+    message: "min_ports_per_vm and max_ports_per_vm must be powers of two when dynamic port allocation is enabled"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "list_mode_requires_subnetworks"
+    expression: "this.source_subnetwork_ip_ranges_to_nat != 'LIST_OF_SUBNETWORKS' || this.subnetworks.size() > 0"
+    message: "subnetworks must be listed when source_subnetwork_ip_ranges_to_nat is LIST_OF_SUBNETWORKS"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "subnetworks_require_list_mode"
+    expression: "this.subnetworks.size() == 0 || this.source_subnetwork_ip_ranges_to_nat == '' || this.source_subnetwork_ip_ranges_to_nat == 'LIST_OF_SUBNETWORKS'"
+    message: "listing subnetworks requires source_subnetwork_ip_ranges_to_nat LIST_OF_SUBNETWORKS (or leave it empty to imply it)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "private_nat_has_no_external_ips"
+    expression: "this.type != 'PRIVATE' || (this.nat_ips.size() == 0 && this.drain_nat_ips.size() == 0 && this.auto_network_tier == '')"
+    message: "private NAT uses subnetwork ranges, not external IPs — nat_ips, drain_nat_ips, and auto_network_tier must be empty"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "drain_requires_manual_nat_ips"
+    expression: "this.drain_nat_ips.size() == 0 || this.nat_ips.size() > 0"
+    message: "drain_nat_ips requires nat_ips (an IP must be in the manual set before it can be drained)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "rule_ips_only_for_public_nat"
+    expression: "this.type != 'PRIVATE' || this.rules.all(r, !has(r.action) || (r.action.source_nat_active_ips.size() == 0 && r.action.source_nat_drain_ips.size() == 0))"
+    message: "private NAT rules use source_nat_active_ranges/source_nat_drain_ranges, not IPs"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "rule_ranges_only_for_private_nat"
+    expression: "this.type == 'PRIVATE' || this.rules.all(r, !has(r.action) || (r.action.source_nat_active_ranges.size() == 0 && r.action.source_nat_drain_ranges.size() == 0))"
+    message: "public NAT rules use source_nat_active_ips/source_nat_drain_ips, not subnetwork ranges"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "router_asn_must_be_private"
+    expression: "this.router_asn == 0u || (this.router_asn >= 64512u && this.router_asn <= 65534u) || this.router_asn >= 4200000000u"
+    message: "router_asn must be a private ASN (64512-65534 or 4200000000-4294967294)"
+  };
 }

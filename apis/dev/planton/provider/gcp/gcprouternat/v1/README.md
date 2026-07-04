@@ -1,254 +1,150 @@
-# Overview
+# GCP Router NAT
 
-The GCP Cloud Router NAT API resource provides a streamlined, declarative interface for deploying Google Cloud Router with Cloud NAT (Network Address Translation) within Google Cloud Platform. By abstracting the complexity of NAT gateway configuration, this resource enables you to provision secure, scalable egress connectivity for private GCP resources without managing individual public IPs or NAT appliances.
+Deploys a GCP Cloud Router with a Cloud NAT gateway (`google_compute_router` + `google_compute_router_nat`) — the managed egress path that lets instances without external IPs reach the internet (public NAT) or other private networks (private NAT). Covers IP allocation (auto or referenced static reservations, with connection draining), per-subnetwork scoping, port tuning, connection timeouts, NAT rules, and translation logging.
 
-## Why We Created This API Resource
+## What Gets Created
 
-Managing internet egress for private cloud infrastructure can be challenging. Traditional approaches—assigning public IPs to every VM, maintaining NAT appliances, or dealing with port exhaustion—introduce security risks, operational overhead, and scalability concerns. To address these challenges and promote a standardized approach, we developed this API resource. It enables you to:
+When you deploy a GcpRouterNat resource, Planton provisions:
 
-- **Simplify NAT Deployment**: Provision Cloud Router and NAT gateway with minimal configuration, abstracting low-level GCP networking details.
-- **Enhance Security**: Consolidate egress through controlled NAT IPs instead of exposing individual VMs with public addresses.
-- **Ensure Consistency**: Maintain uniform NAT configurations across environments and regions.
-- **Enable Private GKE Access**: Allow private GKE clusters and other private resources to reach the internet for package downloads, API calls, and external integrations.
-- **Support IP Allowlisting**: Optionally provision static NAT IPs for partner integrations requiring allowlisted egress addresses.
-- **Improve Operational Efficiency**: Eliminate the need to manage NAT VMs, routing tables, or port allocation manually—Cloud NAT handles this at Google's infrastructure layer.
+- **Compute Engine API enablement** — a `google_project_service` resource that activates `compute.googleapis.com` on the target project
+- **Cloud Router** — a regional `google_compute_router` attached to the specified VPC network, optionally with a BGP ASN and keepalive interval
+- **Cloud NAT Gateway** — a `google_compute_router_nat` on the router, configured with the chosen allocation strategy, subnetwork coverage, port/timeout tuning, rules, and log settings
 
-## Key Features
+Static NAT IPs are **referenced, never created**: each `natIps` entry points at a [GcpAddress](/docs/catalog/gcp/gcpaddress) reservation, which is its own composable node with its own lifecycle. The literal IP of each entry is that address node's `address` output.
 
-### Environment Integration
+## Prerequisites
 
-- **Environment Info**: Seamlessly integrates with Planton's environment management system to deploy NAT gateways within specific environments.
-- **Stack Job Settings**: Supports custom stack-update settings for infrastructure-as-code deployments using Pulumi or Terraform.
+- **GCP credentials** configured via environment variables or Planton provider config
+- **A GCP project** — referenced via `projectId` (or the provider's default project)
+- **An existing VPC network** — referenced via `vpcSelfLink` (typically a GcpVpc resource)
+- **GcpAddress reservations** (EXTERNAL, same region) if you need stable, allowlistable egress IPs — omit `natIps` entirely for auto-allocation
+- **GcpSubnetwork references** if you want to restrict NAT to specific subnetworks — omit for region-wide coverage
 
-### GCP Credential Management
+## Quick Start
 
-- **GCP Credential ID**: Uses specified GCP credentials to ensure secure and authorized operations.
-- **Project ID**: Required field specifying the GCP project ID where the Cloud Router and NAT will be created. Can be specified as a literal value or reference to a `GcpProject` resource.
-
-### Simplified NAT Configuration
-
-- **VPC Network Reference**: Specify the target VPC network using self-link or reference to an existing `GcpVpc` resource.
-- **Regional Deployment**: Cloud Router and NAT are regional resources—specify the region where your private resources reside.
-- **Automatic IP Allocation**: By default, Cloud NAT automatically allocates and scales external IPs as needed (auto-allocation mode).
-- **Manual IP Allocation**: Optionally specify static external IP names for deterministic egress IPs (manual allocation mode)—useful for external partner allowlisting.
-- **Flexible Subnet Coverage**:
-  - **All Subnets (Default)**: NAT automatically covers all subnets in the region, including future subnets.
-  - **Specific Subnets**: Optionally specify which subnets should use NAT for fine-grained control.
-- **Production-Ready Logging**: Configurable logging with sensible defaults (`ERRORS_ONLY` for production) to detect port exhaustion and connection failures without excessive log volume.
-
-### Proxy-less Architecture
-
-Unlike traditional NAT appliances, Cloud NAT operates at Google's software-defined networking layer (Andromeda), distributing translation across infrastructure:
-
-- **No Bottlenecks**: Traffic doesn't funnel through a single appliance—each VM's traffic is translated at the host level.
-- **High Availability**: Inherently highly available within a region with no single point of failure.
-- **Full Bandwidth**: Maintains full VM bandwidth and minimal latency—no NAT throughput ceiling.
-- **Zero Management**: No VMs to patch, scale, or monitor—Google handles all operations.
-
-### Validation and Compliance
-
-- **Input Validation**: Enforces validation rules to ensure correct configuration.
-  - **Required Fields**: Project ID, VPC self-link, region, router name, and NAT name are mandatory.
-  - **Optional Fields**: Subnet coverage and NAT IPs are validated when provided.
-  - **Naming Validation**: Router and NAT names must be 1-63 lowercase characters, starting with a letter.
-
-## Benefits
-
-- **Simplified Deployment**: Abstracts the complexities of Cloud Router and NAT configuration into an easy-to-use declarative API.
-- **Consistency**: Ensures all NAT deployments adhere to organizational standards and best practices.
-- **Scalability**: Cloud NAT scales automatically to handle traffic from thousands of VMs without manual intervention.
-- **Security**: Private resources reach the internet without inbound exposure. Controlled egress IPs enable partner integration and allowlisting.
-- **Cost Efficiency**: Auto-allocation mode avoids paying for unused static IPs. Private Google Access keeps Google API traffic internal (no egress costs).
-- **Operational Simplicity**: No NAT VMs to manage, no routing complexity, no port allocation tuning—just declare your desired state.
-- **Compliance**: Helps maintain compliance with security policies by reducing attack surface and enabling egress logging.
-
-## Use Cases
-
-### Private GKE Clusters
-
-Cloud NAT is essential for private GKE clusters where nodes lack external IPs:
-
-- **Container Image Pulls**: Nodes can pull images from Docker Hub, GCR, or other registries.
-- **Package Management**: Nodes can reach package repositories for system updates.
-- **External API Access**: Applications can call external APIs and services.
-- **Integration**: Works seamlessly with Private Google Access for efficient Google API access.
-
-### Cloud SQL Private IP
-
-When Cloud SQL instances use private IP only (no public endpoint), they need Cloud NAT to:
-
-- **Import Data**: Import data from external URLs.
-- **Replicate**: Replicate from external MySQL or PostgreSQL servers.
-- **External Integrations**: Reach external services for backups or monitoring.
-
-### Multi-Region High Availability
-
-Cloud NAT is regional, so multi-region architectures deploy one NAT gateway per region:
-
-- **Active-Active Deployments**: Each region has its own NAT gateway for local egress.
-- **Active-Passive Failover**: Standby regions have NAT configured for seamless failover.
-- **Partner Allowlisting**: Provide NAT IPs from all active regions for partner firewall rules.
-
-### Hybrid Cloud and Migration
-
-During cloud migrations or hybrid deployments:
-
-- **On-Premises Access**: Private GCP resources can reach on-premises services via VPN or Interconnect.
-- **Legacy System Integration**: Call legacy APIs and services without exposing GCP workloads.
-- **Gradual Migration**: Migrate workloads incrementally while maintaining connectivity.
-
-## Configuration Examples
-
-For comprehensive configuration examples, see [examples.md](examples.md).
-
-## Architecture
-
-Cloud Router NAT operates at Google's infrastructure layer, providing distributed, proxy-less NAT translation:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         GCP Region                              │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │                      VPC Network                        │  │
-│  │                                                         │  │
-│  │  ┌──────────────┐        ┌──────────────┐            │  │
-│  │  │  Subnet A    │        │  Subnet B    │            │  │
-│  │  │              │        │              │            │  │
-│  │  │ ┌──────┐    │        │ ┌──────┐    │            │  │
-│  │  │ │ VM 1 │────┼────────┼─│ VM 2 │────┼────┐       │  │
-│  │  │ └──────┘    │        │ └──────┘    │    │       │  │
-│  │  │  (no pub IP)│        │  (no pub IP)│    │       │  │
-│  │  └──────────────┘        └──────────────┘    │       │  │
-│  │                                               │       │  │
-│  │       ┌───────────────────────────────────────┘       │  │
-│  │       │                                               │  │
-│  │       ▼                                               │  │
-│  │  ┌─────────────────────────────────────────────┐     │  │
-│  │  │          Cloud Router + NAT                 │     │  │
-│  │  │  • Distributed translation (no bottleneck)  │     │  │
-│  │  │  • Auto or Manual IP allocation             │     │  │
-│  │  │  • Logging (ERRORS_ONLY default)            │     │  │
-│  │  └─────────────────────────────────────────────┘     │  │
-│  │                      │                                │  │
-│  └──────────────────────┼────────────────────────────────┘  │
-│                         │                                   │
-└─────────────────────────┼───────────────────────────────────┘
-                          │
-                          ▼
-                    Internet
-             (via NAT IP: 203.0.113.10)
-```
-
-**Key Architectural Points:**
-
-- **Regional Scope**: Cloud Router and NAT are regional—deploy one per region where private resources need internet access.
-- **Distributed Translation**: No central NAT appliance—translation happens at each VM's host for full bandwidth and HA.
-- **Auto Scaling**: Cloud NAT automatically scales IP and port allocation based on VM count and traffic patterns.
-- **No Configuration on VMs**: Private VMs require zero configuration—NAT is transparent to workloads.
-
-## Best Practices
-
-### 1. Use Auto-Allocation for Most Cases
+Create a file `router-nat.yaml`:
 
 ```yaml
-nat_ip_names: []  # Empty = auto-allocation (recommended default)
+apiVersion: gcp.planton.dev/v1
+kind: GcpRouterNat
+metadata:
+  name: my-nat
+spec:
+  projectId:
+    value: my-gcp-project-123
+  routerName: egress-router
+  natName: egress-nat
+  region: us-central1
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpc
+      name: my-vpc
+      fieldPath: status.outputs.network_self_link
 ```
 
-**Why:** Simplifies management, scales automatically, avoids paying for unused static IPs.
+Deploy:
 
-**When to use manual allocation:** External partners require allowlisting specific egress IPs.
-
-### 2. Cover All Subnets by Default
-
-```yaml
-subnetwork_self_links: []  # Empty = all subnets (recommended)
+```shell
+planton apply -f router-nat.yaml
 ```
 
-**Why:** Future-proof—new subnets automatically get NAT coverage without config updates.
+This creates a Cloud Router and NAT gateway covering all subnetworks in `us-central1` with auto-allocated IPs and `ERRORS_ONLY` logging.
 
-**When to restrict:** Security requirement to exclude certain subnets from internet access.
+## Configuration Reference
 
-### 3. Enable Logging in Production
+### Required Fields
 
-```yaml
-log_filter: ERRORS_ONLY  # Default (recommended for production)
-```
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `routerName` | `string` | Name of the Cloud Router to create. | RFC 1035, 1-63 chars. Immutable. |
+| `natName` | `string` | Name of the NAT configuration on the router. | RFC 1035, 1-63 chars. Immutable. |
+| `region` | `string` | GCP region for the router and NAT. | Required. Immutable. |
+| `vpcSelfLink` | `StringValueOrRef` | The VPC network the router attaches to. | Required. Can reference a GcpVpc. Immutable. |
 
-**Why:** Detect port exhaustion, connection failures, and NAT issues without excessive log volume.
+### Optional Fields
 
-- Use `DISABLED` for non-production to reduce costs.
-- Use `ALL` only for security auditing or troubleshooting (generates significant log volume).
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `projectId` | `StringValueOrRef` | provider default project | GCP project. Can reference a GcpProject. |
+| `type` | `string` | `PUBLIC` | `PUBLIC` (internet egress) or `PRIVATE` (NAT between NCC spokes, no external IPs). Immutable. |
+| `natIps` | `StringValueOrRef[]` | `[]` (auto-allocate) | GcpAddress reservations (by self link) the NAT translates through. Non-empty selects manual allocation — the shape for stable, allowlistable egress IPs. |
+| `drainNatIps` | `StringValueOrRef[]` | `[]` | IPs being drained: existing connections continue, new connections stop. Each entry must already be in `natIps`. |
+| `autoNetworkTier` | `string` | `PREMIUM` | Network tier for auto-allocated IPs: `PREMIUM` or `STANDARD`. |
+| `sourceSubnetworkIpRangesToNat` | `string` | all subnetworks, all ranges | `ALL_SUBNETWORKS_ALL_IP_RANGES`, `ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES`, or `LIST_OF_SUBNETWORKS` (implied by listing `subnetworks`). |
+| `subnetworks` | `object[]` | `[]` | Per-subnetwork scoping: subnetwork ref + which ranges to NAT (`ALL_IP_RANGES`, `PRIMARY_IP_RANGE`, `LIST_OF_SECONDARY_IP_RANGES` + names). |
+| `minPortsPerVm` | `int32` | 64 static / 32 dynamic | Minimum ports reserved per VM. Power of two when dynamic allocation is on. |
+| `maxPortsPerVm` | `int32` | — | Port ceiling per VM; only with dynamic allocation. Power of two. |
+| `enableDynamicPortAllocation` | `bool` | `false` | Grow a busy VM's ports from min toward max on demand. Mutually exclusive with endpoint-independent mapping. |
+| `enableEndpointIndependentMapping` | `bool` | `false` | Same internal ip:port maps to the same NAT ip:port regardless of destination (RFC 5128). |
+| `endpointTypes` | `string[]` | `ENDPOINT_TYPE_VM` | Which resource class this NAT serves: `ENDPOINT_TYPE_VM`, `ENDPOINT_TYPE_SWG`, or `ENDPOINT_TYPE_MANAGED_PROXY_LB` (exactly one). Immutable. |
+| `udpIdleTimeoutSec` | `int32` | 30 | UDP idle timeout. |
+| `icmpIdleTimeoutSec` | `int32` | 30 | ICMP idle timeout. |
+| `tcpEstablishedIdleTimeoutSec` | `int32` | 1200 | Established-TCP idle timeout. |
+| `tcpTransitoryIdleTimeoutSec` | `int32` | 30 | Half-open TCP idle timeout. |
+| `tcpTimeWaitTimeoutSec` | `int32` | 120 | TIME_WAIT linger before a NAT port is reusable. |
+| `rules` | `object[]` | `[]` | NAT rules: route matching egress (CEL `match` on destination) through dedicated IPs (public) or subnetwork ranges (private). Lower `ruleNumber` wins. |
+| `logFilter` | `enum` | `ERRORS_ONLY` | `DISABLED`, `ERRORS_ONLY`, `TRANSLATIONS_ONLY`, or `ALL`. |
+| `routerAsn` | `uint32` | GCP-assigned | Private BGP ASN (64512-65534 or 4200000000+); only needed when the router also serves BGP sessions. |
+| `routerKeepaliveInterval` | `int32` | 20 | BGP keepalive in seconds (20-60). |
 
-### 4. Combine with Private Google Access
+### Validation Rules
 
-Enable Private Google Access on your subnets so traffic to Google APIs (GCS, GCR, Cloud SQL Admin API) stays internal:
+- **Dynamic port allocation and endpoint-independent mapping are mutually exclusive** — the API rejects the combination; the spec rejects it pre-deploy.
+- **`maxPortsPerVm` requires dynamic allocation**, must be ≥ `minPortsPerVm`, and both must be powers of two when dynamic allocation is on.
+- **Private NAT carries no external IPs** — `natIps`, `drainNatIps`, and `autoNetworkTier` must be empty when `type` is `PRIVATE`; private rules use subnetwork ranges, public rules use IPs.
+- **`drainNatIps` requires `natIps`** — an IP must be in the manual set before it can be drained (and the API rejects drain entries on a brand-new NAT).
+- **`LIST_OF_SUBNETWORKS` and the `subnetworks` list imply each other.**
 
-- **No Egress Costs**: Traffic to Google services doesn't traverse NAT or the internet.
-- **Lower Latency**: Internal routing is faster than internet paths.
-- **Simplified Allowlisting**: NAT only handles true external traffic.
+## Zero-Downtime Operations
 
-### 5. Plan Static IPs for Partner Integration
+Everything except names, region, network, `endpointTypes`, and `type` updates in place:
 
-If external partners need to allowlist your egress IPs:
+- **NAT IP rotation**: add the new GcpAddress ref to `natIps`, move the old one to `drainNatIps`, wait for connections to bleed off, then remove it.
+- **Fleet-wide egress tuning**: port floors/ceilings, timeouts, rules, and logging all apply to a live gateway without disturbing traffic.
 
-1. Create static external IP addresses: `gcloud compute addresses create nat-ip-1 --region=us-central1`
-2. Reference them in `nat_ip_names`: `["nat-ip-1", "nat-ip-2"]`
-3. Provide the IP addresses to partners for firewall rules.
-4. Note: Switching from auto to manual allocation briefly disrupts existing connections—plan during maintenance window.
+## Stack Outputs
 
-### 6. Deploy One NAT per Region
+| Output | Type | Description |
+|--------|------|-------------|
+| `name` | `string` | Name of the Cloud NAT gateway as created in GCP |
+| `router_self_link` | `string` | Self-link URL of the Cloud Router carrying this NAT |
+| `nat_ips` | `string[]` | Self links of the static IPs the NAT translates through (manual allocation only; empty for auto-allocation, where GCP manages an unlisted pool) |
 
-Cloud NAT is regional—deploy a separate NAT gateway in each region where you have private resources:
+## Deployment Methods
 
-```yaml
-# us-central1
-region: us-central1
+### Pulumi (Go)
 
-# europe-west1 (separate NAT deployment)
-region: europe-west1
-```
+See [`iac/pulumi/README.md`](iac/pulumi/README.md).
 
-### 7. Monitor NAT Metrics
+### Terraform
 
-Cloud NAT exports metrics to Cloud Monitoring:
+See [`iac/tf/README.md`](iac/tf/README.md).
 
-- **Port Allocation**: Monitor port usage to detect exhaustion before it impacts applications.
-- **Dropped Connections**: Alert on dropped connections due to resource limits.
-- **NAT IP Count**: Track IP allocation in manual mode.
+## Important Notes
 
-## Integration with Planton
+- **One node, two resources**: the router and the NAT are provisioned together — the 90% case is exactly one NAT per router. A router without NAT (dedicated BGP for Interconnect/VPN, with interfaces and peers) is a different concern and is not modeled here.
+- **Auto-allocated IPs can change** as GCP scales the pool. When third parties allowlist your egress IPs, use `natIps` with GcpAddress reservations — the literal IPs live on those nodes' outputs and survive NAT reconfiguration.
+- **Pair with Private Google Access** on your subnetworks so traffic to Google APIs stays internal and never consumes NAT ports.
 
-This resource integrates seamlessly with other Planton components:
+### Deliberately not modeled (recorded reasons)
 
-- **GcpVpc**: Reference VPC network output using `status.outputs.network_self_link`.
-- **GcpGkeCluster**: Private GKE clusters automatically use NAT configured in their VPC and region.
-- **GcpCloudSql**: Private Cloud SQL instances use NAT for external access if needed.
-- **GcpServiceAccount**: Use workload identity for secure credential management.
+| Excluded Feature | Why |
+|---|---|
+| Router interfaces / BGP peers / MD5 auth keys | Interconnect/VPN BGP surface belongs to a dedicated router kind if demand appears; NAT-only routers never need it. |
+| `initial_nat_ips` + `google_compute_router_nat_address` | An alternative address-attachment workflow for incremental IP management; the `natIps`/`drainNatIps` in-place update path covers rotation without a second resource pattern. |
+| NAT64 (`source_subnetwork_ip_ranges_to_nat64`, `nat64_subnetwork`) | IPv6-to-IPv4 translation for IPv6-only subnets is a niche topology; defer until a concrete consumer need appears. |
+| Router `params.resource_manager_tags` | Absent from the released provider line the modules pin. |
+| `deletion_policy` | Client-side lever that conflicts with Planton-managed destroy. |
 
-## Production Readiness
+## Related Components
 
-This API resource is production-ready and provides:
+- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network the router attaches to
+- [GcpAddress](/docs/catalog/gcp/gcpaddress) — EXTERNAL reservations referenced as stable NAT IPs
+- [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — subnetworks scoped for NAT coverage
+- [GcpProject](/docs/catalog/gcp/gcpproject) — the GCP project where the router and NAT are created
+- [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — private GKE clusters that depend on Cloud NAT for outbound internet access
 
-- ✅ **Declarative Configuration**: Define desired state, let the system handle provisioning.
-- ✅ **Validation**: Input validation ensures correct configuration before deployment.
-- ✅ **Sensible Defaults**: Auto-allocation, all-subnets coverage, ERRORS_ONLY logging—production-ready out of the box.
-- ✅ **IaC Support**: Full Pulumi and Terraform module implementations.
-- ✅ **Logging**: Configurable NAT translation logging for troubleshooting and auditing.
-- ✅ **High Availability**: Cloud NAT is inherently highly available within a region.
-- ✅ **Zero Operational Overhead**: No VMs to manage, patch, or scale.
+## Additional Resources
 
-## Related Resources
-
-- **GcpVpc**: Create custom VPC networks with subnets.
-- **GcpGkeCluster**: Deploy private GKE clusters that use Cloud NAT.
-- **GcpStaticIp**: Create static external IPs for manual NAT IP allocation.
-- **GcpFirewall**: Define firewall rules for egress control.
-
-## Additional Documentation
-
-- **Examples**: See [examples.md](examples.md) for comprehensive configuration examples.
-- **Research**: See [docs/README.md](docs/README.md) for deep-dive into Cloud NAT architecture and deployment methods.
-- **Pulumi Module**: See [iac/pulumi/README.md](iac/pulumi/README.md) for Pulumi usage.
-- **Terraform Module**: See [iac/tf/README.md](iac/tf/README.md) for Terraform usage.
-
+- [Cloud NAT overview](https://cloud.google.com/nat/docs/overview)
+- [Routers API Reference](https://cloud.google.com/compute/docs/reference/rest/v1/routers)

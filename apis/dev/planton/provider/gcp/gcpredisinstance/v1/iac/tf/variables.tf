@@ -1,51 +1,109 @@
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = {}
-}
-
 variable "metadata" {
-  description = "Resource metadata"
+  description = "Metadata for the resource, including name and labels"
   type = object({
-    name = string
-    id   = optional(string, "")
-    org  = optional(string, "")
-    env  = optional(string, "")
+    name    = string,
+    id      = optional(string),
+    org     = optional(string),
+    env     = optional(string),
+    labels  = optional(map(string)),
+    tags    = optional(list(string)),
+    version = optional(object({ id = string, message = string }))
   })
 }
 
 variable "spec" {
-  description = "GcpRedisInstance specification"
+  description = "Specification for the GCP Memorystore for Redis instance"
   type = object({
-    project_id = object({
-      value = string
-    })
-    instance_name           = string
-    region                  = string
-    tier                    = string
-    memory_size_gb          = number
-    redis_version           = optional(string, "")
-    display_name            = optional(string, "")
-    location_id             = optional(string, "")
-    authorized_network      = optional(object({ value = string }), null)
-    connect_mode            = optional(string, "")
-    reserved_ip_range       = optional(string, "")
-    auth_enabled            = optional(bool, false)
+    # The GCP project that owns the instance. The CLI's tfvars converter
+    # resolves StringValueOrRef fields to their literal string before the
+    # module runs, so this arrives as a plain string.
+    # If empty, the provider's default project is used (see locals.tf).
+    project_id = optional(string, "")
+
+    # Name of the Redis instance in GCP. Immutable.
+    instance_name = string
+
+    # Region hosting the instance (e.g. us-central1). Immutable.
+    region = string
+
+    # BASIC (standalone, no SLA) or STANDARD_HA (primary + failover replica,
+    # 99.9% SLA). Immutable.
+    tier = string
+
+    # Memory in GiB. Mutable (in-place resize); STANDARD_HA and read
+    # replicas require at least 5.
+    memory_size_gb = number
+
+    # Engine version, e.g. REDIS_7_2. Upgrades apply in place; a downgrade
+    # replaces the instance.
+    redis_version = optional(string, "")
+
+    # Human-readable display name.
+    display_name = optional(string, "")
+
+    # Primary zone within the region. Immutable.
+    location_id = optional(string, "")
+
+    # Replica zone (STANDARD_HA only); must differ from location_id.
+    # Immutable.
+    alternative_location_id = optional(string, "")
+
+    # VPC self link; arrives as a plain string after ref resolution.
+    # Empty means the project's default network. Immutable.
+    authorized_network = optional(string, "")
+
+    # DIRECT_PEERING (default) or PRIVATE_SERVICE_ACCESS (requires the VPC
+    # to already carry a service networking connection). Immutable.
+    connect_mode = optional(string, "")
+
+    # DIRECT_PEERING: /29 CIDR (or empty for auto). PRIVATE_SERVICE_ACCESS:
+    # the NAME of an allocated address range on the PSA connection.
+    # Immutable.
+    reserved_ip_range = optional(string, "")
+
+    # Additional range for node placement — required when enabling read
+    # replicas on an existing instance. /28 CIDR, range name, or "auto".
+    # Mutable.
+    secondary_ip_range = optional(string, "")
+
+    # Redis AUTH: when true GCP generates and rotates the AUTH string
+    # (exported as a sensitive output).
+    auth_enabled = optional(bool, false)
+
+    # DISABLED or SERVER_AUTHENTICATION (TLS; pair with the server_ca_certs
+    # output). Immutable.
     transit_encryption_mode = optional(string, "")
-    redis_configs           = optional(map(string), {})
+
+    # Redis configuration parameters (e.g. maxmemory-policy).
+    redis_configs = optional(map(string), {})
+
+    # Weekly maintenance window start (UTC). Fixed 1-hour duration.
     maintenance_window = optional(object({
-      day  = string
-      hour = number
+      day    = string
+      hour   = optional(number, 0)
+      minute = optional(number, 0)
     }), null)
+
+    # Self-service maintenance version — set to a newer available version
+    # to apply maintenance on your schedule instead of GCP's rollout.
+    maintenance_version = optional(string, "")
+
+    # READ_REPLICAS_DISABLED or READ_REPLICAS_ENABLED (STANDARD_HA only).
+    # Set at creation time.
     read_replicas_mode = optional(string, "")
-    replica_count      = optional(number, 0)
+
+    # Read replica count (1-5) when read replicas are enabled.
+    replica_count = optional(number, 0)
+
+    # RDB snapshot persistence.
     persistence_config = optional(object({
-      persistence_mode    = string
-      rdb_snapshot_period = optional(string, "")
+      persistence_mode        = string
+      rdb_snapshot_period     = optional(string, "")
+      rdb_snapshot_start_time = optional(string, "")
     }), null)
-    customer_managed_key = optional(object({ value = string }), null)
-    deletion_protection  = optional(bool, false)
+
+    # CMEK key resource id; arrives as a plain string after ref resolution.
+    # Immutable.
+    customer_managed_key = optional(string, "")
   })
 }

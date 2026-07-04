@@ -1,0 +1,32 @@
+# Auto-allocation egress gateway: the recommended default shape — GCP owns
+# the external IP pool and every subnetwork in the region is NATed. Port
+# tuning and full translation logging exercise the in-place update surface.
+# Router/NAT names are project-scoped with no soft-delete reservation, so
+# fixed names are safe across runs. project_id is omitted and rides the
+# harness-exported GOOGLE_PROJECT (the ambient-project contract).
+apiVersion: gcp.planton.dev/v1
+kind: GcpRouterNat
+metadata:
+  name: planton-oss-e2e-gcprnat-auto
+  id: planton-oss-e2e-gcprnat-auto
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcprouternat
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  routerName: planton-oss-e2e-router-auto
+  natName: planton-oss-e2e-nat-auto
+  region: us-central1
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpc
+      name: planton-oss-e2e-gcpvpc-prereq
+      fieldPath: status.outputs.network_self_link
+  minPortsPerVm: 128
+  tcpEstablishedIdleTimeoutSec: 1200
+  logFilter: ALL

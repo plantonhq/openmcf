@@ -109,7 +109,6 @@ resource "google_redis_instance" "cache" {
   connect_mode            = "DIRECT_PEERING"
   auth_enabled            = true
   transit_encryption_mode = "SERVER_AUTHENTICATION"
-  deletion_protection     = true
 
   maintenance_policy {
     weekly_maintenance_window {
@@ -264,10 +263,10 @@ spec:
   connectMode: DIRECT_PEERING
   authEnabled: true
   transitEncryptionMode: SERVER_AUTHENTICATION
-  deletionProtection: true
   maintenanceWindow:
     day: SUNDAY
     hour: 3
+    minute: 30
   persistenceConfig:
     persistenceMode: RDB
     rdbSnapshotPeriod: TWENTY_FOUR_HOURS
@@ -280,7 +279,7 @@ spec:
 - Cloud-agnostic abstraction; same pattern across GCP, AWS, Azure
 - Cross-resource references via `valueFrom` (project, VPC, KMS)
 - Provisioner-agnostic (Terraform or Pulumi backend)
-- Minimal surface area; 80/20 coverage of common use cases
+- Full released-provider surface with pre-deploy validation of cross-field rules
 
 **Cons**:
 - Abstraction layer; advanced provider features may require extension
@@ -312,36 +311,35 @@ spec:
 
 ### How the Abstraction Works
 
-Planton defines a **GcpRedisInstance** as a custom resource with a spec that maps to the underlying `google_redis_instance` (Terraform) or `redis.Instance` (Pulumi). The spec is designed around the 80/20 principle: cover the majority of production use cases with a minimal, consistent API while avoiding provider-specific quirks.
+Planton defines a **GcpRedisInstance** as a custom resource with a spec that maps to the underlying `google_redis_instance` (Terraform) or `redis.Instance` (Pulumi). The spec models the full released-provider surface — everything an advanced organization can reach on the resource — while keeping the common case a five-field manifest.
 
 **Key design choices**:
 
 1. **StringValueOrRef**: Fields like `projectId`, `authorizedNetwork`, and `customerManagedKey` accept either a literal value or a reference to another Planton resource (`valueFrom`). This enables infra chart composition without hardcoding IDs.
 
-2. **Sensible defaults**: Omitted optional fields use provider defaults. Required fields (projectId, instanceName, region, tier, memorySizeGb) are explicitly validated.
+2. **Sensible defaults**: Omitted optional fields use provider defaults. Required fields (instanceName, region, tier, memorySizeGb) are explicitly validated; an empty projectId falls back to the provider's default project.
 
-3. **Immutable field awareness**: The spec documents which fields are immutable (instanceName, tier, connectMode, transitEncryptionMode, authorizedNetwork, reservedIpRange, customerManagedKey). Changing them triggers replacement, not in-place update.
+3. **Immutable field awareness**: The spec documents which fields are immutable (instanceName, tier, connectMode, transitEncryptionMode, authorizedNetwork, reservedIpRange, locationId, alternativeLocationId, customerManagedKey). Changing them triggers replacement, not in-place update. Cross-field rules (read replicas require STANDARD_HA, replica counts, zone pairing, persistence coherence) are validated before anything reaches GCP.
 
-4. **Output contract**: All provisioners export `host`, `port`, `readEndpoint`, `readEndpointPort`, `currentLocationId`, and `authString` (when auth is enabled). Downstream resources consume these via `valueFrom`.
+4. **Output contract**: Both provisioners export the connection surface (`host`, `port`, `read_endpoint`, `read_endpoint_port`), the placement/identity surface (`current_location_id`, `instance_name`, `region`, `effective_reserved_ip_range`), and the security surface (`auth_string` as a secret, `server_ca_certs` for TLS trust, `persistence_iam_identity` for import/export grants). Downstream resources consume these via `valueFrom`.
 
-### 80/20 Principle
+### Modeled Surface
 
-**Included (covers ~80% of deployments)**:
-- Tier selection (BASIC, STANDARD_HA)
-- Memory sizing (1–300 GiB)
-- Redis version (REDIS_6_X, REDIS_7_0, REDIS_7_2)
-- VPC networking (authorized_network, connect_mode, reserved_ip_range)
-- Auth and TLS (auth_enabled, transit_encryption_mode)
-- Persistence (RDB snapshots with configurable period)
+- Tier selection (BASIC, STANDARD_HA) and memory sizing (1–300 GiB)
+- Redis version (REDIS_6_X, REDIS_7_0, REDIS_7_2) and `maintenance_version` for self-service patching
+- Zone placement (`location_id` + `alternative_location_id` for HA replica pinning)
+- VPC networking (authorized_network, connect_mode, reserved_ip_range, secondary_ip_range for in-place replica scale-out)
+- Auth and TLS (auth_enabled, transit_encryption_mode + the CA-cert output)
+- Persistence (RDB snapshots with configurable period and RFC3339 schedule anchor)
 - Read replicas (1–5 for STANDARD_HA)
-- Maintenance windows (day + hour)
+- Maintenance windows (day + hour + minute, UTC)
 - CMEK (customer_managed_key)
-- Deletion protection
 - Redis configs (key-value overrides)
 
-**Excluded (deferred to v2 or out of scope)**:
-- Redis Cluster mode (sharding) — different topology model
-- Cross-region replication — niche, complex
+**Deliberately not modeled (recorded reasons)**:
+- `deletion_protection` — exists only on provider lines newer than the released major the GCP Terraform modules pin, so it would guard on one engine and silently do nothing on the other; returns when the GCP modules adopt the next provider major
+- Redis Cluster mode (sharding) — a structurally different, PSC-based resource (`google_redis_cluster`); a separate kind if demand appears
+- Cross-region replication — not part of this resource's API
 - Automated backup/restore workflows — often handled by external tooling
 - Metrics/alerting presets — typically configured in monitoring stack
 
@@ -354,9 +352,10 @@ Planton defines a **GcpRedisInstance** as a custom resource with a spec that map
 The Planton GcpRedisInstance Pulumi module lives at `apis/dev/planton/provider/gcp/gcpredisinstance/v1/iac/pulumi/`. The main program:
 
 1. Loads the GcpRedisInstance spec from the Planton manifest (or stack input)
-2. Maps spec fields to `redis.InstanceArgs`
-3. Creates the instance via `redis.NewInstance`
-4. Exports host, port, readEndpoint, readEndpointPort, currentLocationId, authString
+2. Enables the Memorystore API (`redis.googleapis.com`) so a fresh project works first try
+3. Maps spec fields to `redis.InstanceArgs`
+4. Creates the instance via `redis.NewInstance`
+5. Exports the full output contract (connection endpoints, placement/identity, and the secret AUTH string + TLS CA certs)
 
 **Resource**: `github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/redis.Instance`
 
@@ -373,17 +372,19 @@ The Planton GcpRedisInstance Pulumi module lives at `apis/dev/planton/provider/g
 | maintenanceWindow | MaintenancePolicy |
 | persistenceConfig | PersistenceConfig |
 | readReplicasMode, replicaCount | ReadReplicasMode, ReplicaCount |
+| locationId, alternativeLocationId | LocationId, AlternativeLocationId |
+| reservedIpRange, secondaryIpRange | ReservedIpRange, SecondaryIpRange |
+| maintenanceVersion | MaintenanceVersion |
 | customerManagedKey | CustomerManagedKey |
-| deletionProtection | DeletionProtection |
 
 ### Terraform Module Architecture
 
 The Terraform module lives at `apis/dev/planton/provider/gcp/gcpredisinstance/v1/iac/tf/`. It:
 
 1. Accepts `spec` as a variable (object matching the GcpRedisInstance spec)
-2. Uses `locals` to derive values (with defaults for optional fields)
-3. Creates a `google_redis_instance` resource
-4. Outputs host, port, read_endpoint, read_endpoint_port, current_location_id, auth_string
+2. Uses `locals` to derive values (empty optionals become null so the provider omits them; an empty project falls back to the provider default)
+3. Enables the Memorystore API (`redis.googleapis.com`) and creates a `google_redis_instance` resource
+4. Outputs the full output contract (connection endpoints, placement/identity, and the sensitive auth_string + server_ca_certs)
 
 **Resource**: `google_redis_instance` (Hashicorp Google provider)
 
@@ -400,8 +401,10 @@ The Terraform module lives at `apis/dev/planton/provider/gcp/gcpredisinstance/v1
 | maintenanceWindow | maintenance_policy |
 | persistenceConfig | persistence_config |
 | readReplicasMode, replicaCount | read_replicas_mode, replica_count |
+| locationId, alternativeLocationId | location_id, alternative_location_id |
+| reservedIpRange, secondaryIpRange | reserved_ip_range, secondary_ip_range |
+| maintenanceVersion | maintenance_version |
 | customerManagedKey | customer_managed_key |
-| deletionProtection | deletion_protection |
 
 ---
 
@@ -457,9 +460,9 @@ The Terraform module lives at `apis/dev/planton/provider/gcp/gcpredisinstance/v1
 
 6. **Private Service Access setup**: PRIVATE_SERVICE_ACCESS requires a private connection and allocated IP range. Ensure the necessary APIs and peering are configured before creating the instance.
 
-7. **Region and zone placement**: Instance creation can fail if the region has no capacity. Use `location_id` to pin to a specific zone when needed; otherwise let GCP choose.
+7. **Region and zone placement**: Instance creation can fail if the region has no capacity. Use `location_id` (and `alternative_location_id` for the HA replica) to pin zones when needed; otherwise let GCP choose.
 
-8. **Deletion protection**: Enable `deletion_protection: true` for production. Disable it explicitly before destroying the instance, or Terraform/Pulumi will error.
+8. **Enabling read replicas on an existing instance**: the original /29 has no room for the extra nodes — set `secondary_ip_range` (a /28 or `"auto"`) when flipping `read_replicas_mode` on a live instance, or the update fails.
 
 ---
 

@@ -30,4 +30,29 @@ message GcpRedisInstanceStackOutputs {
   // This value is generated and rotated by GCP automatically.
   // Treat as a secret -- do not log or expose in UIs.
   string auth_string = 6;
+
+  // PEM-encoded CA certificates protecting the server endpoint.
+  // Only populated when transit_encryption_mode is SERVER_AUTHENTICATION.
+  // Clients must install these as trust anchors to complete the TLS
+  // handshake — this is the material every TLS-enabled consumer needs.
+  repeated string server_ca_certs = 7;
+
+  // Cloud IAM identity (format "serviceAccount:<email>") used by import and
+  // export operations. Grant this identity access to Cloud Storage buckets
+  // used for RDB import/export. May change on CMEK rotation.
+  string persistence_iam_identity = 8;
+
+  // The CIDR range actually in use by the instance. Populated whether
+  // reserved_ip_range was set explicitly or auto-selected by GCP — the
+  // value to consult when planning non-overlapping address space.
+  string effective_reserved_ip_range = 9;
+
+  // Name of the Redis instance in GCP — the identity handle API callers and
+  // automation use to address the instance.
+  string instance_name = 10;
+
+  // Region hosting the instance (plain region name, e.g. "us-central1") —
+  // regional kinds export it so API callers can construct the instance's
+  // locations path without re-deriving it from a zone.
+  string region = 11;
 }

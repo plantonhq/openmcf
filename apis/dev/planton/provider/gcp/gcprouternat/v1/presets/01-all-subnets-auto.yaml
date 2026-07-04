@@ -4,10 +4,15 @@ metadata:
   name: my-router-nat
 spec:
   projectId:
-    value: "<gcp-project-id>"
+    value: my-gcp-project-123 # replace with your project ID
+  routerName: egress-router
+  natName: egress-nat
+  region: us-central1
   vpcSelfLink:
-    value: "<vpc-network-self-link>"
-  region: <gcp-region>
-  routerName: <your-router-name>
-  natName: <your-nat-name>
-  logFilter: ERRORS_ONLY  # default from spec; logs translation errors for troubleshooting
+    valueFrom:
+      kind: GcpVpc
+      name: my-app-vpc # replace with your GcpVpc resource name
+      fieldPath: status.outputs.network_self_link
+  # No natIps: GCP auto-allocates and scales the external IP pool.
+  # No subnetworks: every subnetwork in the region gets NAT, all ranges.
+  logFilter: ERRORS_ONLY # detects port exhaustion and connection failures

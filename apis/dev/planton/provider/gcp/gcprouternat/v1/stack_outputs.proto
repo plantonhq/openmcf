@@ -6,8 +6,15 @@ package dev.planton.provider.gcp.gcprouternat.v1;
 message GcpRouterNatStackOutputs {
   // Name of the Cloud NAT gateway (as created in GCP).
   string name = 1;
-  // Self-link URL of the Cloud Router that was created (or used) for this NAT.
+
+  // Self-link URL of the Cloud Router carrying this NAT.
   string router_self_link = 2;
-  // List of external IP addresses utilized by this NAT (e.g. auto-allocated or static IPs provided).
-  repeated string nat_ip_addresses = 3;
+
+  // Self links of the static external IPs the NAT translates through.
+  // Populated only for manual allocation (nat_ips set in the spec); the
+  // literal IP of each entry is the referenced GcpAddress node's `address`
+  // output. Empty for auto-allocation, where GCP manages an unlisted pool
+  // that can change as capacity scales — use manual allocation when the
+  // egress IPs must be stable and allowlistable.
+  repeated string nat_ips = 3;
 }

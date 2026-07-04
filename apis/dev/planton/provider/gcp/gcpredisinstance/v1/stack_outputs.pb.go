@@ -44,7 +44,27 @@ type GcpRedisInstanceStackOutputs struct {
 	// Only populated when auth_enabled is true.
 	// This value is generated and rotated by GCP automatically.
 	// Treat as a secret -- do not log or expose in UIs.
-	AuthString    string `protobuf:"bytes,6,opt,name=auth_string,json=authString,proto3" json:"auth_string,omitempty"`
+	AuthString string `protobuf:"bytes,6,opt,name=auth_string,json=authString,proto3" json:"auth_string,omitempty"`
+	// PEM-encoded CA certificates protecting the server endpoint.
+	// Only populated when transit_encryption_mode is SERVER_AUTHENTICATION.
+	// Clients must install these as trust anchors to complete the TLS
+	// handshake — this is the material every TLS-enabled consumer needs.
+	ServerCaCerts []string `protobuf:"bytes,7,rep,name=server_ca_certs,json=serverCaCerts,proto3" json:"server_ca_certs,omitempty"`
+	// Cloud IAM identity (format "serviceAccount:<email>") used by import and
+	// export operations. Grant this identity access to Cloud Storage buckets
+	// used for RDB import/export. May change on CMEK rotation.
+	PersistenceIamIdentity string `protobuf:"bytes,8,opt,name=persistence_iam_identity,json=persistenceIamIdentity,proto3" json:"persistence_iam_identity,omitempty"`
+	// The CIDR range actually in use by the instance. Populated whether
+	// reserved_ip_range was set explicitly or auto-selected by GCP — the
+	// value to consult when planning non-overlapping address space.
+	EffectiveReservedIpRange string `protobuf:"bytes,9,opt,name=effective_reserved_ip_range,json=effectiveReservedIpRange,proto3" json:"effective_reserved_ip_range,omitempty"`
+	// Name of the Redis instance in GCP — the identity handle API callers and
+	// automation use to address the instance.
+	InstanceName string `protobuf:"bytes,10,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
+	// Region hosting the instance (plain region name, e.g. "us-central1") —
+	// regional kinds export it so API callers can construct the instance's
+	// locations path without re-deriving it from a zone.
+	Region        string `protobuf:"bytes,11,opt,name=region,proto3" json:"region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -121,11 +141,46 @@ func (x *GcpRedisInstanceStackOutputs) GetAuthString() string {
 	return ""
 }
 
+func (x *GcpRedisInstanceStackOutputs) GetServerCaCerts() []string {
+	if x != nil {
+		return x.ServerCaCerts
+	}
+	return nil
+}
+
+func (x *GcpRedisInstanceStackOutputs) GetPersistenceIamIdentity() string {
+	if x != nil {
+		return x.PersistenceIamIdentity
+	}
+	return ""
+}
+
+func (x *GcpRedisInstanceStackOutputs) GetEffectiveReservedIpRange() string {
+	if x != nil {
+		return x.EffectiveReservedIpRange
+	}
+	return ""
+}
+
+func (x *GcpRedisInstanceStackOutputs) GetInstanceName() string {
+	if x != nil {
+		return x.InstanceName
+	}
+	return ""
+}
+
+func (x *GcpRedisInstanceStackOutputs) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpredisinstance_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpredisinstance_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/gcp/gcpredisinstance/v1/stack_outputs.proto\x12,dev.planton.provider.gcp.gcpredisinstance.v1\"\xea\x01\n" +
+	"@dev/planton/provider/gcp/gcpredisinstance/v1/stack_outputs.proto\x12,dev.planton.provider.gcp.gcpredisinstance.v1\"\xc8\x03\n" +
 	"\x1cGcpRedisInstanceStackOutputs\x12\x12\n" +
 	"\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x02 \x01(\x05R\x04port\x12#\n" +
@@ -133,7 +188,13 @@ const file_dev_planton_provider_gcp_gcpredisinstance_v1_stack_outputs_proto_rawD
 	"\x12read_endpoint_port\x18\x04 \x01(\x05R\x10readEndpointPort\x12.\n" +
 	"\x13current_location_id\x18\x05 \x01(\tR\x11currentLocationId\x12\x1f\n" +
 	"\vauth_string\x18\x06 \x01(\tR\n" +
-	"authStringB\xff\x02\n" +
+	"authString\x12&\n" +
+	"\x0fserver_ca_certs\x18\a \x03(\tR\rserverCaCerts\x128\n" +
+	"\x18persistence_iam_identity\x18\b \x01(\tR\x16persistenceIamIdentity\x12=\n" +
+	"\x1beffective_reserved_ip_range\x18\t \x01(\tR\x18effectiveReservedIpRange\x12#\n" +
+	"\rinstance_name\x18\n" +
+	" \x01(\tR\finstanceName\x12\x16\n" +
+	"\x06region\x18\v \x01(\tR\x06regionB\xff\x02\n" +
 	"0com.dev.planton.provider.gcp.gcpredisinstance.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpredisinstance/v1;gcpredisinstancev1\xa2\x02\x05DPPGG\xaa\x02,Dev.Planton.Provider.Gcp.Gcpredisinstance.V1\xca\x02,Dev\\Planton\\Provider\\Gcp\\Gcpredisinstance\\V1\xe2\x028Dev\\Planton\\Provider\\Gcp\\Gcpredisinstance\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Gcp::Gcpredisinstance::V1b\x06proto3"
 
 var (

@@ -7,21 +7,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the Pulumi program entry‑point invoked by the Planton
-func Resources(
-	ctx *pulumi.Context,
-	stackInput *gcprouternatv1.GcpRouterNatStackInput,
-) error {
-	// gather locals (Terraform‑style “locals”)
-	locals := initializeLocals(ctx, stackInput)
+// Resources is the Pulumi program entry-point for the GcpRouterNat component.
+func Resources(ctx *pulumi.Context, stackInput *gcprouternatv1.GcpRouterNatStackInput) error {
+	locals := initializeLocals(stackInput)
 
-	// configure a GCP provider from the given credential
 	gcpProvider, err := pulumigoogleprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup google provider")
 	}
 
-	// build router+nat
 	if _, err = routerNat(ctx, locals, gcpProvider); err != nil {
 		return errors.Wrap(err, "failed to create router nat resources")
 	}

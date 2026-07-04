@@ -30,6 +30,7 @@ import (
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/redis/v1"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 )
@@ -93,6 +94,10 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create sqladmin client")
 	}
+	redisService, err := redis.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create redis client")
+	}
 
 	gotProject, err := crmService.Projects.Get(project).Context(ctx).Do()
 	if err != nil {
@@ -109,6 +114,7 @@ func (h *Harness) Setup(ctx context.Context) error {
 		Compute:  computeService,
 		Storage:  storageService,
 		SqlAdmin: sqlAdminService,
+		Redis:    redisService,
 	}
 	return nil
 }

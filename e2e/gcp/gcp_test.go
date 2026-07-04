@@ -277,6 +277,24 @@ func TestGcpCloudSqlUser_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpcloudsqluser", "terraform")
 }
 
+// GcpRedisInstance scenarios (Memorystore for Redis; the PSA scenario rides
+// the same service networking chain Cloud SQL private IP uses).
+func TestGcpRedisInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpredisinstance", "pulumi")
+}
+func TestGcpRedisInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpredisinstance", "terraform")
+}
+
+// GcpRouterNat scenarios (Cloud Router + NAT gateway; the manual scenario
+// proves NAT IPs referencing GcpAddress reservations).
+func TestGcpRouterNat_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcprouternat", "pulumi")
+}
+func TestGcpRouterNat_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcprouternat", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

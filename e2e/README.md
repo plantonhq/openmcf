@@ -260,6 +260,22 @@ schedule:
 
 To trigger manually: Actions > e2e-kubernetes > Run workflow > select branch.
 
+## GCP E2E
+
+GCP tests live under `e2e/gcp/` and use the shared `aa_e2e` harness with
+real GCP API verification. Set `E2E_GCP_PROJECT` to a dedicated test project
+with Application Default Credentials.
+
+```bash
+E2E_GCP_PROJECT=planton-e2e go test -tags=e2e -timeout=120m -v ./e2e/gcp/...
+```
+
+**Timeout guidance:** scenarios with private services access prerequisite chains
+(VPC → global address → service networking connection) or Memorystore
+create/destroy need substantial headroom. Budget **≥35m per PSA-backed scenario**
+and **≥90m** when batching multiple PSA or Memorystore scenarios in one `go test`
+run — Redis instance destroy alone can exceed 15 minutes.
+
 ## Build Tag Isolation
 
 All E2E test files use `//go:build e2e`. This means:

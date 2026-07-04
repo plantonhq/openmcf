@@ -447,6 +447,44 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"user_name", "instance_name"},
 		},
 		{
+			// GcpRedisInstance: endpoint scalars, the secret AUTH string, the
+			// repeated CA-cert PEMs (populated when TLS is on), the import/export
+			// IAM identity, and the effective reserved range.
+			name: "GcpRedisInstance",
+			kind: cloudresourcekind.CloudResourceKind_GcpRedisInstance,
+			rawOutputs: map[string]interface{}{
+				"host":                        "10.118.0.4",
+				"port":                        "6379",
+				"read_endpoint":               "10.118.0.5",
+				"read_endpoint_port":          "6379",
+				"current_location_id":         "us-central1-a",
+				"auth_string":                 "d1f0e2c3-4b5a-6789-abcd-ef0123456789",
+				"server_ca_certs":             []interface{}{"-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"},
+				"persistence_iam_identity":    "serviceAccount:service-1234@gcp-sa-redis.iam.gserviceaccount.com",
+				"effective_reserved_ip_range": "10.118.0.0/29",
+				"instance_name":               "session-store-prod",
+				"region":                      "us-central1",
+			},
+			mustPopulate: []string{
+				"host", "port", "read_endpoint", "read_endpoint_port",
+				"current_location_id", "auth_string", "server_ca_certs",
+				"persistence_iam_identity", "effective_reserved_ip_range",
+				"instance_name", "region",
+			},
+		},
+		{
+			// GcpRouterNat: NAT name, router self link, and the manual NAT IP
+			// self links (empty for auto-allocation).
+			name: "GcpRouterNat",
+			kind: cloudresourcekind.CloudResourceKind_GcpRouterNat,
+			rawOutputs: map[string]interface{}{
+				"name":             "prod-nat",
+				"router_self_link": "https://www.googleapis.com/compute/v1/projects/my-project/regions/us-central1/routers/prod-router",
+				"nat_ips":          []interface{}{"https://www.googleapis.com/compute/v1/projects/my-project/regions/us-central1/addresses/egress-ip-a"},
+			},
+			mustPopulate: []string{"name", "router_self_link", "nat_ips"},
+		},
+		{
 			// GcpVpc: deep-rebuilt outputs — PSA fields removed, gateway + ULA added.
 			name: "GcpVpc",
 			kind: cloudresourcekind.CloudResourceKind_GcpVpc,

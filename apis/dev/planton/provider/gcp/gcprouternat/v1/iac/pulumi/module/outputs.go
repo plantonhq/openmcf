@@ -5,5 +5,5 @@ package module
 const (
 	OpName           = "name"
 	OpRouterSelfLink = "router_self_link"
-	OpNatIpAddresses = "nat_ip_addresses"
+	OpNatIps         = "nat_ips"
 )

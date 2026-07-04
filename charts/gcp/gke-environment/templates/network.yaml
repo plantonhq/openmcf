@@ -4,6 +4,7 @@ kind: GcpVpc
 metadata:
   name: "{{ values.env }}-{{ values.vpc_name }}"
 spec:
+  networkName: "{{ values.env }}-{{ values.vpc_name }}"
   projectId:
   {% if values.create_project | bool %}
     valueFrom:
@@ -21,6 +22,7 @@ kind: GcpSubnetwork
 metadata:
   name: "{{ values.env }}-{{ values.subnet_name }}"
 spec:
+  subnetworkName: "{{ values.env }}-{{ values.subnet_name }}"
   projectId:
     value: "{{ values.project_id }}"
   vpcSelfLink:
@@ -42,6 +44,10 @@ kind: GcpRouterNat
 metadata:
   name: "{{ values.router_nat_name }}"
 spec:
+  projectId:
+    value: "{{ values.project_id }}"
+  routerName: "{{ values.router_nat_name }}-router"
+  natName: "{{ values.router_nat_name }}"
   vpcSelfLink:
     valueFrom:
       kind: GcpVpc
