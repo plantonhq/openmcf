@@ -68,6 +68,8 @@ var migratedKinds = []string{
 	// hand-written contracts together.
 	"AwsDocumentDb",
 	"AwsNeptuneCluster",
+	// Redshift, migrated off the legacy hand-written contract.
+	"AwsRedshiftCluster",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

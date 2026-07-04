@@ -54,6 +54,7 @@ var verifiers = map[string]Verifier{
 	"awsrdsinstance":               &rdsInstanceVerifier{},
 	"awsdocumentdb":                &docdbClusterVerifier{},
 	"awsneptunecluster":            &neptuneClusterVerifier{},
+	"awsredshiftcluster":           &redshiftClusterVerifier{},
 	"awsekscluster":                &eksClusterVerifier{},
 	"awseksnodegroup":              &eksNodeGroupVerifier{},
 	"awseksaddon":                  &eksAddonVerifier{},

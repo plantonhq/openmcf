@@ -605,6 +605,32 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsRedshiftCluster: the identifier keys the E2E verifier; endpoint +
+			// dns_name are the connection handles downstream references consume;
+			// cluster_namespace_arn is the data-sharing/Data-API handle; and
+			// master_password_secret_arn carries the AWS-managed credential handle.
+			name: "AwsRedshiftCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsRedshiftCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_identifier":         "analytics-warehouse",
+				"cluster_arn":                "arn:aws:redshift:us-west-2:123456789012:cluster:analytics-warehouse",
+				"cluster_namespace_arn":      "arn:aws:redshift:us-west-2:123456789012:namespace:abc12345-6789-0abc-def1-234567890abc",
+				"endpoint":                   "analytics-warehouse.abc123.us-west-2.redshift.amazonaws.com:5439",
+				"dns_name":                   "analytics-warehouse.abc123.us-west-2.redshift.amazonaws.com",
+				"database_name":              "analytics",
+				"port":                       5439,
+				"subnet_group_name":          "analytics-warehouse",
+				"parameter_group_name":       "analytics-warehouse",
+				"master_password_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:redshift!analytics-abc",
+			},
+			mustPopulate: []string{
+				"cluster_identifier", "cluster_arn", "cluster_namespace_arn",
+				"endpoint", "dns_name", "database_name", "port",
+				"subnet_group_name", "parameter_group_name",
+				"master_password_secret_arn",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

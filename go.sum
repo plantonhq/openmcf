@@ -81,6 +81,8 @@ github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2 h1:4yml3fO1g1DvPMn4N9JMLMDo
 github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2/go.mod h1:6CVudUF7F1bPxbZ8aeMBAAJRefkMwVdNDyzWqy4fsfs=
 github.com/aws/aws-sdk-go-v2/service/rds v1.119.5 h1:1/qGMaWmjbeOTaufLLqjLnrjhemH1eM74iVWVWWg+Zc=
 github.com/aws/aws-sdk-go-v2/service/rds v1.119.5/go.mod h1:Ve7qHa8jBmStKNz/oaxs2yBuFnwyvN0k/8PpPZVxkEY=
+github.com/aws/aws-sdk-go-v2/service/redshift v1.63.5 h1:zKvbCHX90D7GOB5HR3GzALT31M9D/gDlB1ed5310LmE=
+github.com/aws/aws-sdk-go-v2/service/redshift v1.63.5/go.mod h1:AlZ/mczGeCw1ZQ/A/aRF7uDCOkXypCjtP29Ckoy+KnU=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0 h1:ta8csKy5vN91F3i5gGR85lFV0srBqySEji7Jroes6rE=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0/go.mod h1:77ZAgynvx1txMvDG8gGWoWkO1augYDxkp9JElWFgjQU=
 github.com/aws/aws-sdk-go-v2/service/signin v1.2.0 h1:3nXpRcFwRCW8n7HgO2QGy0Dc20eQNfBuUemGQhpF8m8=

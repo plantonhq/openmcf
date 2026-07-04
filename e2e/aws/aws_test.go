@@ -241,6 +241,15 @@ func TestAwsNeptuneCluster_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsneptunecluster", "terraform")
 }
 
+// --- AWS Redshift Cluster (single ra3.large node; managed admin password) ---
+
+func TestAwsRedshiftCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsredshiftcluster", "pulumi")
+}
+func TestAwsRedshiftCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsredshiftcluster", "terraform")
+}
+
 // --- AWS ElastiCache RBAC (account-level; no VPC prerequisite) ---
 
 func TestAwsElasticacheUser_Pulumi(t *testing.T) {
