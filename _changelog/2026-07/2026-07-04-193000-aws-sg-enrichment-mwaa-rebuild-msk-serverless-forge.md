@@ -59,7 +59,7 @@ Three kinds in one session (owner-approved override of the one-per-session rhyth
 - `planton validate-refs --check`, `validate-outputs`, `secret-coverage --check` green.
 - `tofu validate` green on all three TF modules; Pulumi `go build` green on all three entrypoints.
 - E2E test package compiles with `-tags=e2e`.
-- **NOT run**: live SG dual-engine E2E — ambient AWS creds invalid (`InvalidClientTokenId` on `sts get-caller-identity`); SG profile marked `deferred`.
+- **Live SG dual-engine E2E green** (run once credentials became available): deploy → verify → destroy → verify-clean on both provisioners against the rules-rich scenario (Pulumi 4m06s, Terraform 1m33s, incl. the AwsVpc prerequisite chain); zero-orphan sweep clean; profile flipped to `green`.
 - **NOT run**: live MWAA / MSK Serverless — deferred by session decision; profiles `deferred`, artifacts live-ready.
 
 ## Breaking Changes
