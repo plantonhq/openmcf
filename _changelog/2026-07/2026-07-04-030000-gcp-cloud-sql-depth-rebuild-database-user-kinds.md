@@ -51,12 +51,14 @@ Parity audits: `GcpCloudSql` **100% Fully Complete — PARITY ✅**; database an
 
 Live E2E (project `planton-e2e`):
 
-| Scenario | Engine | Duration | Result |
-|---|---|---|---|
-| `gcpcloudsqldatabase/minimal` (full PSA chain → instance → database) | Pulumi | 16m14s (deps 12m38s incl. 10m28s instance) | ✅ PASS, zero orphans |
-| Additional scenarios (public/private instance, user chain, Terraform engine) | Pulumi + TF | batched post-audit | see session notes |
+| Scenario | Pulumi | Terraform |
+|---|---|---|
+| `gcpcloudsql/private-postgres` (PSA chain → private-IP instance) | ✅ PASS (23m) | ✅ PASS (33m) |
+| `gcpcloudsql/public-postgres` | ✅ PASS (25m) | ✅ PASS (30m) |
+| `gcpcloudsqldatabase/minimal` (full PSA chain → instance → database) | ✅ PASS (16m) | ✅ PASS (13m) |
+| `gcpcloudsqluser/minimal` (full PSA chain → instance → user) | ✅ PASS (16m) | ✅ PASS (17m) |
 
-The database chain run exercises all three kinds composed in one scenario — bounding instance-create repetition while proving the data-wave flagship path live.
+8/8 scenario-runs green across both engines, zero orphans after final teardown. The database/user chains exercise all three kinds composed through the full private services access chain in one scenario each.
 
 ## Learn-once uplifts
 
