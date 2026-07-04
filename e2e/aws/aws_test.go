@@ -250,6 +250,24 @@ func TestAwsRedshiftCluster_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsredshiftcluster", "terraform")
 }
 
+// --- AWS Redshift Serverless Namespace (account-level data plane; managed admin password) ---
+
+func TestAwsRedshiftServerlessNamespace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsredshiftserverlessnamespace", "pulumi")
+}
+func TestAwsRedshiftServerlessNamespace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsredshiftserverlessnamespace", "terraform")
+}
+
+// --- AWS Redshift Serverless Workgroup (8-RPU compute plane on the namespace + three-AZ subnet trio) ---
+
+func TestAwsRedshiftServerlessWorkgroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsredshiftserverlessworkgroup", "pulumi")
+}
+func TestAwsRedshiftServerlessWorkgroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsredshiftserverlessworkgroup", "terraform")
+}
+
 // --- AWS ElastiCache RBAC (account-level; no VPC prerequisite) ---
 
 func TestAwsElasticacheUser_Pulumi(t *testing.T) {

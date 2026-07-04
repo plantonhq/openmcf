@@ -1,10 +1,12 @@
 # AwsSubnet install profile used as a prerequisite by composed components.
-# Publishes a TWO-AZ pair because the most demanding dependents (load balancers,
-# EKS clusters) require subnets in at least two availability zones; components
-# that need only one subnet (e.g. AwsNatGateway) reference the first by name.
-# Both subnets resolve their vpcId against the AwsVpc prerequisite. CIDRs are
-# carved high in the VPC's 10.0.0.0/16 to avoid colliding with any component
-# scenario's own ranges. Full metadata is supplied for tagging/orphan cleanup.
+# Publishes a THREE-AZ trio because the most demanding dependents require
+# subnets across multiple availability zones -- load balancers and EKS
+# clusters need two, and Redshift Serverless workgroups need three. Components
+# that need fewer reference the instances they want by name (e.g.
+# AwsNatGateway takes only the first). All subnets resolve their vpcId against
+# the AwsVpc prerequisite. CIDRs are carved high in the VPC's 10.0.0.0/16 to
+# avoid colliding with any component scenario's own ranges. Full metadata is
+# supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1
 kind: AwsSubnet
 metadata:
@@ -52,3 +54,27 @@ spec:
       fieldPath: status.outputs.vpc_id
   availabilityZone: us-west-2b
   cidrBlock: 10.0.102.0/24
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsSubnet
+metadata:
+  name: planton-oss-e2e-awssubnet-prereq-c
+  id: planton-oss-e2e-awssubnet-prereq-c
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: us-west-2c
+  cidrBlock: 10.0.103.0/24
