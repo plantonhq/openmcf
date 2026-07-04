@@ -3172,9 +3172,9 @@ const file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDesc 
 	"\tpublisher\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tpublisher\"\x88\x01\n" +
 	")AzureVirtualMachineAdditionalCapabilities\x12*\n" +
 	"\x11ultra_ssd_enabled\x18\x01 \x01(\bR\x0fultraSsdEnabled\x12/\n" +
-	"\x13hibernation_enabled\x18\x02 \x01(\bR\x12hibernationEnabled\"\xa1\x02\n" +
-	"\x19AzureVirtualMachineSecret\x12|\n" +
-	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x17status.outputs.vault_idR\n" +
+	"\x13hibernation_enabled\x18\x02 \x01(\bR\x12hibernationEnabled\"\xa6\x02\n" +
+	"\x19AzureVirtualMachineSecret\x12\x80\x01\n" +
+	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
 	"keyVaultId\x12\x85\x01\n" +
 	"\fcertificates\x18\x02 \x03(\v2W.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecretCertificateB\b\xbaH\x05\x92\x01\x02\b\x01R\fcertificates\"V\n" +
 	"$AzureVirtualMachineSecretCertificate\x12\x18\n" +

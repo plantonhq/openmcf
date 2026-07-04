@@ -1,6 +1,6 @@
 ---
-title: "Standard Key Vault with RBAC"
-description: "This preset creates an Azure Key Vault with Standard SKU, Azure RBAC authorization, purge protection, and 90-day soft delete retention. This is the recommended configuration for most production..."
+title: "Standard RBAC Vault"
+description: "This preset creates the baseline modern vault: Standard SKU, Azure RBAC authorization (the spec default), public endpoint, and Azure's own deletion-safety defaults (90-day soft delete, purge..."
 type: "preset"
 rank: "01"
 presetSlug: "01-standard-rbac"
@@ -11,33 +11,60 @@ icon: "package"
 order: 1
 ---
 
-# Standard Key Vault with RBAC
+# Standard RBAC Vault
 
-This preset creates an Azure Key Vault with Standard SKU, Azure RBAC authorization, purge protection, and 90-day soft delete retention. This is the recommended configuration for most production workloads -- RBAC provides fine-grained access control through Azure AD and is the modern replacement for vault access policies.
+This preset creates the baseline modern vault: Standard SKU, Azure RBAC
+authorization (the spec default), public endpoint, and Azure's own
+deletion-safety defaults (90-day soft delete, purge protection off so
+non-production vaults can be cleanly destroyed and their names reused).
+
+Data-plane access is granted by composing `AzureRoleAssignment` resources
+scoped at the vault -- nothing about who-can-do-what lives inside the vault
+spec in RBAC mode.
 
 ## When to Use
 
-- Storing application secrets, API keys, connection strings, and certificates
-- Environments where Azure RBAC is the primary authorization mechanism
-- Standard production workloads without HSM compliance requirements
+- The starting point for almost every new vault -- development, staging,
+  and any production vault that does not yet hold customer-managed keys
+- Teams standardizing on Azure RBAC for data-plane authorization (PIM,
+  access reviews, fine-grained scopes)
 
 ## Key Configuration Choices
 
-- **Standard SKU** (`sku: STANDARD`) -- Software-protected keys and secrets. Sufficient for most applications
-- **RBAC authorization** (`enableRbacAuthorization: true`) -- Uses Azure AD RBAC roles (e.g., "Key Vault Secrets User") instead of legacy vault access policies
-- **Purge protection** (`enablePurgeProtection: true`) -- Prevents permanent deletion of the vault during the soft-delete retention period
-- **90-day soft delete** (`softDeleteRetentionDays: 90`) -- Maximum retention for deleted secrets, keys, and certificates
-- **No network restrictions** -- Network ACLs are not configured, allowing access from any network. Add `networkAcls` for network-isolated environments
+- **RBAC on (default)** -- grants compose as `AzureRoleAssignment` with
+  roles like "Key Vault Administrator", "Key Vault Secrets User", "Key
+  Vault Crypto Officer"
+- **Purge protection off** -- destroy purges the vault so the globally
+  unique name frees up immediately; move to the production preset before
+  the vault holds CMKs
+- **`vault_name` is a global DNS name** -- it becomes
+  `{name}.vault.azure.net`, so pick something org-prefixed
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<azure-region>` | Azure region | Your regional deployment strategy |
-| `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-secret-name-1>` | Name of the first secret to create (values set post-deployment) | Your application configuration |
-| `<your-secret-name-2>` | Name of the second secret to create | Your application configuration |
+| `<resource-group-name>` | The resource group to create the vault in | The resource group's `status.outputs.resource_group_name` |
+| `<globally-unique-vault-name>` | 3-24 chars, letters/digits/hyphens, globally unique | Your naming convention (org prefix recommended) |
+| `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 
-## Related Presets
+## Downstream Wiring
 
-- **02-premium-network-restricted** -- Use instead for compliance workloads requiring HSM-backed keys and network isolation
+Grant an identity read access to secrets:
+
+```yaml
+apiVersion: azure.planton.dev/v1
+kind: AzureRoleAssignment
+metadata:
+  name: app-reads-secrets
+spec:
+  scope:
+    valueFrom:
+      kind: AzureKeyVault
+      name: platform-vault
+      fieldPath: status.outputs.key_vault_id
+  roleDefinitionName: Key Vault Secrets User
+  principalId:
+    valueFrom:
+      name: app-identity
+```

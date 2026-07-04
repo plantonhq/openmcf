@@ -24,6 +24,8 @@ The following AZURE resources can be deployed using Planton:
 - [Front Door Profile](/docs/catalog/azure/front-door-profile)
 - [Function App](/docs/catalog/azure/function-app)
 - [Key Vault](/docs/catalog/azure/key-vault)
+- [Key Vault Certificate](/docs/catalog/azure/key-vault-certificate)
+- [Key Vault Key](/docs/catalog/azure/key-vault-key)
 - [Linux Web App](/docs/catalog/azure/linux-web-app)
 - [Load Balancer](/docs/catalog/azure/load-balancer)
 - [Log Analytics Workspace](/docs/catalog/azure/log-analytics-workspace)

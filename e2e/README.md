@@ -358,6 +358,25 @@ owns two responsibilities beyond wiring verifiers:
   405 Method Not Allowed while GET works fine. A GET with the typed 404 as the
   absence signal works everywhere; treat every non-404 failure as a real error so
   auth/network problems never masquerade as "absent".
+- **Data-plane resources need a data-plane grant AND sometimes a data-plane
+  verifier.** Some resources live behind a service's own endpoint rather than the
+  control plane (e.g. Azure Key Vault keys/certificates behind
+  `{vault}.vault.azure.net`): the deploying credential needs an explicit
+  data-plane authorization even when it owns the subscription. Grant it once at
+  the subscription scope as an idempotent harness-Setup bootstrap rather than
+  per-ephemeral-resource — data-plane RBAC takes minutes to propagate, so a
+  per-run grant makes every scenario race its own authorization. For
+  verification, check whether the control plane exposes a read proxy first
+  (Azure vault KEYS have one; CERTIFICATES do not) and fall back to the service's
+  data-plane SDK only when it does not.
+- **Soft-delete/retention services add an orphan class the resource list does not
+  show.** A destroyed Azure Key Vault lingers soft-deleted (its globally unique
+  name stays reserved) unless purged; both IaC engines purge on destroy by
+  default, but an interrupted run can strand one. The zero-orphan sweep for such
+  services must check the recycle bin too (`az keyvault list-deleted`), and
+  scenarios should keep purge protection OFF so teardown can actually purge.
+  Expect destroys to be slow (a vault purge runs ~10 minutes) and size test
+  timeouts accordingly.
 
 ## Architecture
 

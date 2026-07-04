@@ -2137,7 +2137,7 @@ message AzureAksClusterServiceMeshCertificateAuthority {
   dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
   ];
 
   // Key Vault object name of the root certificate.
@@ -2183,9 +2183,15 @@ message AzureAksClusterKeyManagementService {
   // VERSIONED Key Vault key id used to envelope-encrypt Kubernetes
   // secrets in etcd, e.g.
   // https://myvault.vault.azure.net/keys/etcd-cmk/<version>.
-  // Plain string: rotate by updating the version. The cluster identity
-  // needs encrypt/decrypt on the key.
-  string key_vault_key_id = 1 [(buf.validate.field).required = true];
+  // AKS pins a specific key version: rotate by updating to the new
+  // version's id. Defaults to referencing an AzureKeyVaultKey's key_id
+  // output (the versioned id) in composed environments. The cluster
+  // identity needs encrypt/decrypt on the key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
 
   // Whether the Key Vault is reached over public network or private
   // link. Unspecified applies Azure's default (PUBLIC).

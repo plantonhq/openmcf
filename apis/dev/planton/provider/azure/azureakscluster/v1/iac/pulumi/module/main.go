@@ -1047,7 +1047,7 @@ func buildPlatformProfiles(spec *azureaksclusterv1.AzureAksClusterSpec, clusterA
 
 	if kms := spec.KeyManagementService; kms != nil {
 		kmsArgs := &containerservice.KubernetesClusterKeyManagementServiceArgs{
-			KeyVaultKeyId: pulumi.String(kms.KeyVaultKeyId),
+			KeyVaultKeyId: pulumi.String(kms.KeyVaultKeyId.GetValue()),
 		}
 		switch kms.KeyVaultNetworkAccess {
 		case azureaksclusterv1.AzureAksClusterKeyVaultNetworkAccess_KMS_PRIVATE:

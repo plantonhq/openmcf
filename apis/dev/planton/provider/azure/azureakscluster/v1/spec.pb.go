@@ -5972,9 +5972,11 @@ type AzureAksClusterKeyManagementService struct {
 	// VERSIONED Key Vault key id used to envelope-encrypt Kubernetes
 	// secrets in etcd, e.g.
 	// https://myvault.vault.azure.net/keys/etcd-cmk/<version>.
-	// Plain string: rotate by updating the version. The cluster identity
-	// needs encrypt/decrypt on the key.
-	KeyVaultKeyId string `protobuf:"bytes,1,opt,name=key_vault_key_id,json=keyVaultKeyId,proto3" json:"key_vault_key_id,omitempty"`
+	// AKS pins a specific key version: rotate by updating to the new
+	// version's id. Defaults to referencing an AzureKeyVaultKey's key_id
+	// output (the versioned id) in composed environments. The cluster
+	// identity needs encrypt/decrypt on the key.
+	KeyVaultKeyId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=key_vault_key_id,json=keyVaultKeyId,proto3" json:"key_vault_key_id,omitempty"`
 	// Whether the Key Vault is reached over public network or private
 	// link. Unspecified applies Azure's default (PUBLIC).
 	KeyVaultNetworkAccess AzureAksClusterKeyVaultNetworkAccess `protobuf:"varint,2,opt,name=key_vault_network_access,json=keyVaultNetworkAccess,proto3,enum=dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccess" json:"key_vault_network_access,omitempty"`
@@ -6012,11 +6014,11 @@ func (*AzureAksClusterKeyManagementService) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDescGZIP(), []int{33}
 }
 
-func (x *AzureAksClusterKeyManagementService) GetKeyVaultKeyId() string {
+func (x *AzureAksClusterKeyManagementService) GetKeyVaultKeyId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.KeyVaultKeyId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureAksClusterKeyManagementService) GetKeyVaultNetworkAccess() AzureAksClusterKeyVaultNetworkAccess {
@@ -6857,9 +6859,9 @@ const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = ""
 	"\xbaH\a\x92\x01\x04\b\x01\x10\x02R\trevisions\x12G\n" +
 	" internal_ingress_gateway_enabled\x18\x03 \x01(\bR\x1dinternalIngressGatewayEnabled\x12G\n" +
 	" external_ingress_gateway_enabled\x18\x04 \x01(\bR\x1dexternalIngressGatewayEnabled\x12\x92\x01\n" +
-	"\x15certificate_authority\x18\x05 \x01(\v2].dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthorityR\x14certificateAuthority\"\x88\x03\n" +
-	".AzureAksClusterServiceMeshCertificateAuthority\x12|\n" +
-	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x17status.outputs.vault_idR\n" +
+	"\x15certificate_authority\x18\x05 \x01(\v2].dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthorityR\x14certificateAuthority\"\x8d\x03\n" +
+	".AzureAksClusterServiceMeshCertificateAuthority\x12\x80\x01\n" +
+	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
 	"keyVaultId\x129\n" +
 	"\x15root_cert_object_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12rootCertObjectName\x12;\n" +
 	"\x16cert_chain_object_name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13certChainObjectName\x120\n" +
@@ -6875,9 +6877,9 @@ const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = ""
 	"\x1c_snapshot_controller_enabled\"\x94\x01\n" +
 	"(AzureAksClusterWorkloadAutoscalerProfile\x12!\n" +
 	"\fkeda_enabled\x18\x01 \x01(\bR\vkedaEnabled\x12E\n" +
-	"\x1fvertical_pod_autoscaler_enabled\x18\x02 \x01(\bR\x1cverticalPodAutoscalerEnabled\"\xe5\x01\n" +
-	"#AzureAksClusterKeyManagementService\x12/\n" +
-	"\x10key_vault_key_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rkeyVaultKeyId\x12\x8c\x01\n" +
+	"\x1fvertical_pod_autoscaler_enabled\x18\x02 \x01(\bR\x1cverticalPodAutoscalerEnabled\"\xb8\x02\n" +
+	"#AzureAksClusterKeyManagementService\x12\x81\x01\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x15status.outputs.key_idR\rkeyVaultKeyId\x12\x8c\x01\n" +
 	"\x18key_vault_network_access\x18\x02 \x01(\x0e2S.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccessR\x15keyVaultNetworkAccess\"\xa0\x01\n" +
 	"\x1eAzureAksClusterHttpProxyConfig\x12\x1d\n" +
 	"\n" +
@@ -7305,18 +7307,19 @@ var file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_depIdxs = []in
 	30,  // 90: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshMode
 	66,  // 91: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshProfile.certificate_authority:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority
 	81,  // 92: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	31,  // 93: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_network_access:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccess
-	32,  // 94: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.license:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsLicense
-	73,  // 95: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.gmsa:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsGmsa
-	33,  // 96: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.artifact_source:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSource
-	81,  // 97: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.container_registry_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	34,  // 98: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningMode
-	35,  // 99: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.default_node_pools:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningDefaultPools
-	100, // [100:100] is the sub-list for method output_type
-	100, // [100:100] is the sub-list for method input_type
-	100, // [100:100] is the sub-list for extension type_name
-	100, // [100:100] is the sub-list for extension extendee
-	0,   // [0:100] is the sub-list for field type_name
+	81,  // 93: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31,  // 94: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyManagementService.key_vault_network_access:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKeyVaultNetworkAccess
+	32,  // 95: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.license:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsLicense
+	73,  // 96: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsProfile.gmsa:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterWindowsGmsa
+	33,  // 97: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.artifact_source:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapArtifactSource
+	81,  // 98: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterBootstrapProfile.container_registry_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34,  // 99: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.mode:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningMode
+	35,  // 100: dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningProfile.default_node_pools:type_name -> dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNodeProvisioningDefaultPools
+	101, // [101:101] is the sub-list for method output_type
+	101, // [101:101] is the sub-list for method input_type
+	101, // [101:101] is the sub-list for extension type_name
+	101, // [101:101] is the sub-list for extension extendee
+	0,   // [0:101] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_init() }

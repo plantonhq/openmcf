@@ -1,0 +1,45 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVaultCertificate
+metadata:
+  name: test-kv-cert
+  org: test-org
+  env: dev
+spec:
+  name: test-tls
+  key_vault_id:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/test-kv
+  certificate_policy:
+    issuer_name: Self
+    key_properties:
+      exportable: true
+      key_type: EC_HSM
+      curve: P_384
+      reuse_key: true
+    lifetime_actions:
+      - action_type: AUTO_RENEW
+        trigger:
+          lifetime_percentage: 80
+      - action_type: EMAIL_CONTACTS
+        trigger:
+          days_before_expiry: 14
+    secret_properties:
+      content_type: PEM
+    x509_certificate_properties:
+      subject: CN=hack.example.com
+      subject_alternative_names:
+        dns_names:
+          - hack.example.com
+          - alt.example.com
+        emails:
+          - admin@example.com
+        upns:
+          - user@example.com
+      key_usage:
+        - DIGITAL_SIGNATURE
+        - KEY_ENCIPHERMENT
+        - KEY_AGREEMENT
+      extended_key_usage:
+        - 1.3.6.1.5.5.7.3.1
+      validity_in_months: 12
+  tags:
+    purpose: hack-testing

@@ -641,10 +641,13 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azdns"
   }];
+  // AzureResourceGroup is a prerequisite because a key vault is created
+  // inside a referenced resource group in composed environments.
   AzureKeyVault = 405 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azkv"
+    prerequisites: [AzureResourceGroup]
   }];
   // AzureResourceGroup is a prerequisite because a virtual network is created
   // inside a referenced resource group in composed environments.
@@ -803,6 +806,26 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azvmss"
     prerequisites: [AzureSubnet]
+  }];
+  // AzureKeyVault is a prerequisite because a key is a data-plane object
+  // inside a referenced vault -- the vault must exist before the key can be
+  // written (the resource group chains transitively through the vault's own
+  // prerequisite).
+  AzureKeyVaultKey = 425 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azkvkey"
+    prerequisites: [AzureKeyVault]
+  }];
+  // AzureKeyVault is a prerequisite because a certificate is a data-plane
+  // object inside a referenced vault -- the vault must exist before the
+  // certificate can be enrolled or imported (the resource group chains
+  // transitively through the vault's own prerequisite).
+  AzureKeyVaultCertificate = 426 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azkvcert"
+    prerequisites: [AzureKeyVault]
   }];
   AzurePostgresqlFlexibleServer = 430 [(kind_meta) = {
     provider: azure

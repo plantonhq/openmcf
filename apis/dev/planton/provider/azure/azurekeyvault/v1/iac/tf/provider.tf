@@ -7,12 +7,11 @@ terraform {
   }
 }
 
+# Credentials are injected by the runtime as ARM_* environment variables --
+# the empty block is what enables keyless (OIDC) auth. The default feature
+# behavior purges a soft-deleted vault on destroy (unless purge protection
+# is on, which turns destroy into a scheduled deletion) and auto-recovers a
+# soft-deleted vault on a name-colliding create.
 provider "azurerm" {
-  features {
-    key_vault {
-      purge_soft_delete_on_destroy    = false
-      recover_soft_deleted_key_vaults = true
-    }
-  }
+  features {}
 }
-

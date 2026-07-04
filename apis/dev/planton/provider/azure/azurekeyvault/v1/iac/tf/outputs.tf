@@ -1,33 +1,24 @@
-output "vault_id" {
-  description = "The Azure Resource Manager ID of the Key Vault"
+output "key_vault_id" {
+  description = "The vault's ARM resource ID -- the reference vault keys, certificates, and vault-scoped role assignments target"
   value       = azurerm_key_vault.main.id
 }
 
-output "vault_name" {
-  description = "The name of the Key Vault"
+output "key_vault_name" {
+  description = "The vault's name"
   value       = azurerm_key_vault.main.name
 }
 
 output "vault_uri" {
-  description = "The URI of the Key Vault for accessing secrets, keys, and certificates"
+  description = "The vault's data-plane URI (https://{name}.vault.azure.net/)"
   value       = azurerm_key_vault.main.vault_uri
 }
 
-output "secret_id_map" {
-  description = "Map of secret names to their full secret IDs"
-  value = {
-    for name, secret in azurerm_key_vault_secret.secrets :
-    name => secret.id
-  }
+output "tenant_id" {
+  description = "The Azure AD tenant the vault authenticates against"
+  value       = azurerm_key_vault.main.tenant_id
 }
 
-output "region" {
-  description = "The Azure region where the Key Vault was deployed"
-  value       = var.spec.region
+output "resource_group_name" {
+  description = "The resource group the vault was created in"
+  value       = azurerm_key_vault.main.resource_group_name
 }
-
-output "resource_group" {
-  description = "The resource group name where the Key Vault was created"
-  value       = var.spec.resource_group
-}
-

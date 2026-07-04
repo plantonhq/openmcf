@@ -1149,6 +1149,73 @@ func TestStackOutputsConformance(t *testing.T) {
 				"system_assigned_identity_principal_id",
 			},
 		},
+		{
+			// AzureKeyVault: the vault's ARM id is the seam keys,
+			// certificates, VM/VMSS secret blocks, and vault-scoped role
+			// assignments reference; vault_uri is the data-plane endpoint
+			// applications call.
+			name: "AzureKeyVault",
+			kind: cloudresourcekind.CloudResourceKind_AzureKeyVault,
+			rawOutputs: map[string]interface{}{
+				"key_vault_id":        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/security-rg/providers/Microsoft.KeyVault/vaults/platform-kv",
+				"key_vault_name":      "platform-kv",
+				"vault_uri":           "https://platform-kv.vault.azure.net/",
+				"tenant_id":           "255aadad-0000-0000-0000-000000000000",
+				"resource_group_name": "security-rg",
+			},
+			mustPopulate: []string{
+				"key_vault_id", "key_vault_name", "vault_uri",
+				"tenant_id", "resource_group_name",
+			},
+		},
+		{
+			// AzureKeyVaultKey: versionless_id is the CMK seam consumers
+			// (ACR encryption) reference so rotation propagates; key_id
+			// pins a version (the AKS KMS grain); the ARM proxy ids serve
+			// control-plane integrations.
+			name: "AzureKeyVaultKey",
+			kind: cloudresourcekind.CloudResourceKind_AzureKeyVaultKey,
+			rawOutputs: map[string]interface{}{
+				"key_id":                  "https://platform-kv.vault.azure.net/keys/storage-cmk/abc123def456",
+				"versionless_id":          "https://platform-kv.vault.azure.net/keys/storage-cmk",
+				"key_name":                "storage-cmk",
+				"version":                 "abc123def456",
+				"resource_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/security-rg/providers/Microsoft.KeyVault/vaults/platform-kv/keys/storage-cmk/versions/abc123def456",
+				"resource_versionless_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/security-rg/providers/Microsoft.KeyVault/vaults/platform-kv/keys/storage-cmk",
+				"public_key_pem":          "-----BEGIN PUBLIC KEY-----\nMIIBIjAN...\n-----END PUBLIC KEY-----",
+				"public_key_openssh":      "ssh-rsa AAAAB3NzaC1yc2E...",
+			},
+			mustPopulate: []string{
+				"key_id", "versionless_id", "key_name", "version",
+				"resource_id", "resource_versionless_id",
+				"public_key_pem", "public_key_openssh",
+			},
+		},
+		{
+			// AzureKeyVaultCertificate: the secret face
+			// (versionless_secret_id) is the seam TLS terminators
+			// (Application Gateway) consume so renewals propagate; the
+			// thumbprint serves fingerprint-pinning integrations.
+			name: "AzureKeyVaultCertificate",
+			kind: cloudresourcekind.CloudResourceKind_AzureKeyVaultCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id":                  "https://platform-kv.vault.azure.net/certificates/internal-tls/fed321cba654",
+				"versionless_id":                  "https://platform-kv.vault.azure.net/certificates/internal-tls",
+				"secret_id":                       "https://platform-kv.vault.azure.net/secrets/internal-tls/fed321cba654",
+				"versionless_secret_id":           "https://platform-kv.vault.azure.net/secrets/internal-tls",
+				"certificate_name":                "internal-tls",
+				"version":                         "fed321cba654",
+				"thumbprint":                      "9F3C4E2A1B0D8765F4E3D2C1B0A99887E6D5C4B3",
+				"resource_manager_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/security-rg/providers/Microsoft.KeyVault/vaults/platform-kv/certificates/internal-tls/versions/fed321cba654",
+				"resource_manager_versionless_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/security-rg/providers/Microsoft.KeyVault/vaults/platform-kv/certificates/internal-tls",
+			},
+			mustPopulate: []string{
+				"certificate_id", "versionless_id", "secret_id",
+				"versionless_secret_id", "certificate_name", "version",
+				"thumbprint", "resource_manager_id",
+				"resource_manager_versionless_id",
+			},
+		},
 	}
 
 	for _, tc := range cases {

@@ -334,9 +334,14 @@ message AzureContainerRegistryEncryption {
 
   // The Key Vault key encrypting the registry, as the key's full Key
   // Vault ID, e.g. "https://{vault}.vault.azure.net/keys/{name}" (pin a
-  // version suffix to freeze rotation). A plain value today; becomes
-  // referenceable when a Key Vault key kind exists in the catalog.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 2 [(buf.validate.field).required = true];
+  // version suffix to freeze rotation). Defaults to referencing an
+  // AzureKeyVaultKey's versionless_id output in composed environments,
+  // so key rotation propagates to the registry automatically.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
 }
 
 // The pricing tier of a container registry. Unspecified means Azure's

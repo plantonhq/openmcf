@@ -4868,11 +4868,11 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x10force_update_tag\x18\v \x01(\tR\x0eforceUpdateTag\x12>\n" +
 	"\x1bfailure_suppression_enabled\x18\f \x01(\bR\x19failureSuppressionEnabled:\xd5\x01\xbaH\xd1\x01\x1a\xce\x01\n" +
 	"*vmss_extension_protected_settings_conflict\x12Oprotected_settings and protected_settings_from_key_vault are mutually exclusive\x1aO!(this.protected_settings != '' && has(this.protected_settings_from_key_vault))B%\n" +
-	"#_auto_upgrade_minor_version_enabled\"\xef\x01\n" +
+	"#_auto_upgrade_minor_version_enabled\"\xf3\x01\n" +
 	"AAzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault\x12%\n" +
 	"\n" +
-	"secret_url\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tsecretUrl\x12\x82\x01\n" +
-	"\x0fsource_vault_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x17status.outputs.vault_idR\rsourceVaultId\"\\\n" +
+	"secret_url\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tsecretUrl\x12\x86\x01\n" +
+	"\x0fsource_vault_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\rsourceVaultId\"\\\n" +
 	"*AzureVirtualMachineScaleSetBootDiagnostics\x12.\n" +
 	"\x13storage_account_uri\x18\x01 \x01(\tR\x11storageAccountUri\"\xf7\x05\n" +
 	"$AzureVirtualMachineScaleSetPlacement\x12?\n" +
@@ -4885,9 +4885,9 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x17_single_placement_group\"\xd1\x01\n" +
 	"\"AzureVirtualMachineScaleSetScaleIn\x12u\n" +
 	"\x04rule\x18\x01 \x01(\x0e2a.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleInRuleR\x04rule\x124\n" +
-	"\x16force_deletion_enabled\x18\x02 \x01(\bR\x14forceDeletionEnabled\"\xb9\x02\n" +
-	"!AzureVirtualMachineScaleSetSecret\x12|\n" +
-	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x17status.outputs.vault_idR\n" +
+	"\x16force_deletion_enabled\x18\x02 \x01(\bR\x14forceDeletionEnabled\"\xbe\x02\n" +
+	"!AzureVirtualMachineScaleSetSecret\x12\x80\x01\n" +
+	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
 	"keyVaultId\x12\x95\x01\n" +
 	"\fcertificates\x18\x02 \x03(\v2g.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecretCertificateB\b\xbaH\x05\x92\x01\x02\b\x01R\fcertificates\"^\n" +
 	",AzureVirtualMachineScaleSetSecretCertificate\x12\x18\n" +

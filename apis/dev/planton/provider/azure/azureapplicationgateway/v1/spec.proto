@@ -563,10 +563,15 @@ message AzureSslCertificate {
   // This is the full URI to the Key Vault secret/certificate.
   // Format: https://{vault-name}.vault.azure.net/secrets/{secret-name}
   // or https://{vault-name}.vault.azure.net/secrets/{secret-name}/{version}
+  // (the versionless form keeps the gateway on the CURRENT certificate
+  // across renewals).
   //
-  // The certificate must be stored as a PFX in Key Vault.
-  string key_vault_secret_id = 2 [
+  // The certificate must be stored as a PFX in Key Vault. Defaults to
+  // referencing an AzureKeyVaultCertificate's versionless_secret_id
+  // output in composed environments.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_secret_id = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_secret_id"
   ];
 }

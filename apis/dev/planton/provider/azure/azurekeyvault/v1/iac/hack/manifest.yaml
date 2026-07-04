@@ -6,18 +6,34 @@ metadata:
   env: dev
 spec:
   region: eastus
-  resource_group: test-rg
-  sku: STANDARD
-  enable_rbac_authorization: true
-  enable_purge_protection: false
+  resource_group:
+    value: test-rg
+  vault_name: planton-hack-kv
+  sku: PREMIUM
+  rbac_authorization_enabled: false
+  access_policies:
+    - object_id:
+        value: 00000000-0000-0000-0000-000000000001
+      key_permissions:
+        - KEY_GET
+        - KEY_UNWRAP_KEY
+        - KEY_WRAP_KEY
+      secret_permissions:
+        - SECRET_GET
+      certificate_permissions:
+        - CERTIFICATE_GET
+      storage_permissions:
+        - STORAGE_GET
+  enabled_for_deployment: true
+  enabled_for_disk_encryption: true
+  purge_protection_enabled: true
   soft_delete_retention_days: 7
   network_acls:
     default_action: DENY
-    bypass_azure_services: true
+    bypass: NONE
     ip_rules:
       - "203.0.113.0/24"
-  secret_names:
-    - test-secret-1
-    - test-secret-2
-    - test-api-key
-
+    virtual_network_subnet_ids:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/test-subnet
+  tags:
+    team: security

@@ -1284,7 +1284,7 @@ message AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault {
   dev.planton.shared.foreignkey.v1.StringValueOrRef source_vault_id = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
   ];
 }
 
@@ -1350,7 +1350,7 @@ message AzureVirtualMachineScaleSetSecret {
   dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
   ];
 
   // The certificates to install from the vault.

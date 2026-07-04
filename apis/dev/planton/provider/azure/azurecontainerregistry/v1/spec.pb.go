@@ -817,8 +817,9 @@ type AzureContainerRegistryEncryption struct {
 	IdentityClientId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=identity_client_id,json=identityClientId,proto3" json:"identity_client_id,omitempty"`
 	// The Key Vault key encrypting the registry, as the key's full Key
 	// Vault ID, e.g. "https://{vault}.vault.azure.net/keys/{name}" (pin a
-	// version suffix to freeze rotation). A plain value today; becomes
-	// referenceable when a Key Vault key kind exists in the catalog.
+	// version suffix to freeze rotation). Defaults to referencing an
+	// AzureKeyVaultKey's versionless_id output in composed environments,
+	// so key rotation propagates to the registry automatically.
 	KeyVaultKeyId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=key_vault_key_id,json=keyVaultKeyId,proto3" json:"key_vault_key_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -934,10 +935,10 @@ const file_dev_planton_provider_azure_azurecontainerregistry_v1_spec_proto_rawDe
 	"\x1eAzureContainerRegistryIdentity\x12t\n" +
 	"\x04type\x18\x01 \x01(\x0e2X.dev.planton.provider.azure.azurecontainerregistry.v1.AzureContainerRegistryIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
 	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf6\x01\xbaH\xf2\x01\x1a\xef\x01\n" +
-	"\x1bacr_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\x93\x02\n" +
+	"\x1bacr_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xba\x02\n" +
 	" AzureContainerRegistryEncryption\x12\x89\x01\n" +
-	"\x12identity_client_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x18status.outputs.client_idR\x10identityClientId\x12c\n" +
-	"\x10key_vault_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\rkeyVaultKeyId*o\n" +
+	"\x12identity_client_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x18status.outputs.client_idR\x10identityClientId\x12\x89\x01\n" +
+	"\x10key_vault_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId*o\n" +
 	"\x19AzureContainerRegistrySku\x12,\n" +
 	"(azure_container_registry_sku_unspecified\x10\x00\x12\t\n" +
 	"\x05BASIC\x10\x01\x12\f\n" +

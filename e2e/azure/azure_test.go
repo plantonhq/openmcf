@@ -275,6 +275,33 @@ func TestAzureVirtualMachineScaleSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurevirtualmachinescaleset", "terraform")
 }
 
+// --- Azure Key Vault (fixture RG -> Standard RBAC vault with network rules; purge-on-destroy frees the global name) ---
+
+func TestAzureKeyVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvault", "pulumi")
+}
+func TestAzureKeyVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvault", "terraform")
+}
+
+// --- Azure Key Vault Key (composed: fixture RG -> vault -> RSA CMK with a rotation policy; data-plane create) ---
+
+func TestAzureKeyVaultKey_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvaultkey", "pulumi")
+}
+func TestAzureKeyVaultKey_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvaultkey", "terraform")
+}
+
+// --- Azure Key Vault Certificate (composed: fixture RG -> vault -> self-signed auto-renewing certificate; data-plane create + verify) ---
+
+func TestAzureKeyVaultCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvaultcertificate", "pulumi")
+}
+func TestAzureKeyVaultCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvaultcertificate", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

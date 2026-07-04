@@ -953,9 +953,13 @@ type AzureSslCertificate struct {
 	// This is the full URI to the Key Vault secret/certificate.
 	// Format: https://{vault-name}.vault.azure.net/secrets/{secret-name}
 	// or https://{vault-name}.vault.azure.net/secrets/{secret-name}/{version}
+	// (the versionless form keeps the gateway on the CURRENT certificate
+	// across renewals).
 	//
-	// The certificate must be stored as a PFX in Key Vault.
-	KeyVaultSecretId string `protobuf:"bytes,2,opt,name=key_vault_secret_id,json=keyVaultSecretId,proto3" json:"key_vault_secret_id,omitempty"`
+	// The certificate must be stored as a PFX in Key Vault. Defaults to
+	// referencing an AzureKeyVaultCertificate's versionless_secret_id
+	// output in composed environments.
+	KeyVaultSecretId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=key_vault_secret_id,json=keyVaultSecretId,proto3" json:"key_vault_secret_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -997,11 +1001,11 @@ func (x *AzureSslCertificate) GetName() string {
 	return ""
 }
 
-func (x *AzureSslCertificate) GetKeyVaultSecretId() string {
+func (x *AzureSslCertificate) GetKeyVaultSecretId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.KeyVaultSecretId
 	}
-	return ""
+	return nil
 }
 
 var File_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto protoreflect.FileDescriptor
@@ -1093,11 +1097,10 @@ const file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_rawD
 	"\t_intervalB\n" +
 	"\n" +
 	"\b_timeoutB\x16\n" +
-	"\x14_unhealthy_threshold\"r\n" +
+	"\x14_unhealthy_threshold\"\xd0\x01\n" +
 	"\x13AzureSslCertificate\x12 \n" +
-	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x129\n" +
-	"\x13key_vault_secret_id\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x10keyVaultSecretIdB\xb4\x03\n" +
+	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x96\x01\n" +
+	"\x13key_vault_secret_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x03\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretIdB\xb4\x03\n" +
 	"9com.dev.planton.provider.azure.azureapplicationgateway.v1B\tSpecProtoP\x01Zqgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureapplicationgateway/v1;azureapplicationgatewayv1\xa2\x02\x05DPPAA\xaa\x025Dev.Planton.Provider.Azure.Azureapplicationgateway.V1\xca\x025Dev\\Planton\\Provider\\Azure\\Azureapplicationgateway\\V1\xe2\x02ADev\\Planton\\Provider\\Azure\\Azureapplicationgateway\\V1\\GPBMetadata\xea\x02:Dev::Planton::Provider::Azure::Azureapplicationgateway::V1b\x06proto3"
 
 var (
@@ -1136,11 +1139,12 @@ var file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_depIdx
 	6,  // 8: dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewaySpec.probes:type_name -> dev.planton.provider.azure.azureapplicationgateway.v1.AzureHealthProbe
 	7,  // 9: dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewaySpec.ssl_certificates:type_name -> dev.planton.provider.azure.azureapplicationgateway.v1.AzureSslCertificate
 	8,  // 10: dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewaySpec.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	8,  // 11: dev.planton.provider.azure.azureapplicationgateway.v1.AzureSslCertificate.key_vault_secret_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_init() }

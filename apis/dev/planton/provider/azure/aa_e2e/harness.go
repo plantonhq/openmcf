@@ -119,6 +119,17 @@ func (h *Harness) Setup(ctx context.Context) error {
 		}
 	}
 
+	// Key Vault data-plane bootstrap: keys and certificates are data-plane
+	// objects, and even a subscription Owner cannot create one without an
+	// explicit data-plane grant. Ensure (idempotently) that the signed-in
+	// test principal holds "Key Vault Administrator" at the subscription
+	// scope -- a one-time test-subscription bootstrap in the same class as
+	// the resource-provider-registration opt-out above. Best-effort: when
+	// the signed-in principal cannot be resolved (e.g. a service-principal
+	// login where `az ad signed-in-user` does not apply), the run proceeds
+	// and any data-plane scenario fails attributably with a 403.
+	ensureKeyVaultDataPlaneGrant(ctx, subscriptionID)
+
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load the ambient Azure credential chain "+
@@ -179,6 +190,51 @@ func (h *Harness) VerifyDestroyed(ctx context.Context, component string) error {
 		return errors.Errorf("no stored resource id for %s -- VerifyDeployed may not have run", component)
 	}
 	return v.VerifyAbsent(ctx, h.cred, h.subscriptionID, res.id)
+}
+
+// keyVaultDataPlaneRole is the built-in role granting full Key Vault
+// data-plane access (keys, secrets, certificates) on RBAC-mode vaults.
+const keyVaultDataPlaneRole = "Key Vault Administrator"
+
+// ensureKeyVaultDataPlaneGrant checks that the signed-in principal holds the
+// Key Vault data-plane role at the subscription scope and creates the grant
+// when missing. Subscription-scoped (rather than per-run, per-vault) is
+// deliberate: RBAC data-plane grants take minutes to propagate, so a
+// per-ephemeral-vault grant would make every key/certificate scenario race
+// its own authorization -- the standing grant propagates once and every
+// fresh vault the tests create is covered immediately.
+func ensureKeyVaultDataPlaneGrant(ctx context.Context, subscriptionID string) {
+	oidOut, err := exec.CommandContext(ctx, "az", "ad", "signed-in-user", "show",
+		"--query", "id", "--output", "tsv").Output()
+	if err != nil {
+		fmt.Printf("  [azure] note: could not resolve the signed-in principal "+
+			"(non-user login?); skipping the Key Vault data-plane grant check: %v\n", err)
+		return
+	}
+	objectID := strings.TrimSpace(string(oidOut))
+	if objectID == "" {
+		return
+	}
+
+	scope := "/subscriptions/" + subscriptionID
+	listOut, err := exec.CommandContext(ctx, "az", "role", "assignment", "list",
+		"--assignee", objectID, "--role", keyVaultDataPlaneRole, "--scope", scope,
+		"--query", "[].id", "--output", "tsv").Output()
+	if err == nil && strings.TrimSpace(string(listOut)) != "" {
+		return // grant already in place
+	}
+
+	if out, err := exec.CommandContext(ctx, "az", "role", "assignment", "create",
+		"--assignee-object-id", objectID, "--assignee-principal-type", "User",
+		"--role", keyVaultDataPlaneRole, "--scope", scope,
+		"--output", "none").CombinedOutput(); err != nil {
+		fmt.Printf("  [azure] note: could not create the Key Vault data-plane grant "+
+			"(data-plane scenarios may 403): %v: %s\n", err, strings.TrimSpace(string(out)))
+		return
+	}
+	fmt.Printf("  [azure] granted %q to the test principal at %s "+
+		"(one-time bootstrap; data-plane propagation may take a minute)\n",
+		keyVaultDataPlaneRole, scope)
 }
 
 // azAccount is the subset of `az account show` output the harness consumes.

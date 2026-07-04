@@ -140,6 +140,8 @@ import (
 	azurefrontdoorprofilev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorprofile/v1"
 	azurefunctionappv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefunctionapp/v1"
 	azurekeyvaultv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurekeyvault/v1"
+	azurekeyvaultcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurekeyvaultcertificate/v1"
+	azurekeyvaultkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurekeyvaultkey/v1"
 	azurelinuxwebappv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurelinuxwebapp/v1"
 	azureloadbalancerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloadbalancer/v1"
 	azureloganalyticsworkspacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloganalyticsworkspace/v1"
@@ -595,6 +597,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorProfile:                 &azurefrontdoorprofilev1.AzureFrontDoorProfile{},
 	cloudresourcekind.CloudResourceKind_AzureFunctionApp:                      &azurefunctionappv1.AzureFunctionApp{},
 	cloudresourcekind.CloudResourceKind_AzureKeyVault:                         &azurekeyvaultv1.AzureKeyVault{},
+	cloudresourcekind.CloudResourceKind_AzureKeyVaultCertificate:              &azurekeyvaultcertificatev1.AzureKeyVaultCertificate{},
+	cloudresourcekind.CloudResourceKind_AzureKeyVaultKey:                      &azurekeyvaultkeyv1.AzureKeyVaultKey{},
 	cloudresourcekind.CloudResourceKind_AzureLinuxWebApp:                      &azurelinuxwebappv1.AzureLinuxWebApp{},
 	cloudresourcekind.CloudResourceKind_AzureLoadBalancer:                     &azureloadbalancerv1.AzureLoadBalancer{},
 	cloudresourcekind.CloudResourceKind_AzureLogAnalyticsWorkspace:            &azureloganalyticsworkspacev1.AzureLogAnalyticsWorkspace{},

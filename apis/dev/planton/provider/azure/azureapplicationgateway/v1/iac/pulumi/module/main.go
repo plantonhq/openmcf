@@ -227,7 +227,7 @@ func Resources(ctx *pulumi.Context, stackInput *azureapplicationgatewayv1.AzureA
 		for _, cert := range spec.SslCertificates {
 			sslCerts = append(sslCerts, &network.ApplicationGatewaySslCertificateArgs{
 				Name:             pulumi.String(cert.Name),
-				KeyVaultSecretId: pulumi.StringPtr(cert.KeyVaultSecretId),
+				KeyVaultSecretId: pulumi.StringPtr(cert.KeyVaultSecretId.GetValue()),
 			})
 		}
 		appGwArgs.SslCertificates = sslCerts

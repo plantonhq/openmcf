@@ -1,0 +1,23 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVault
+metadata:
+  name: legacy-vault
+spec:
+  region: eastus
+  resourceGroup:
+    value: <resource-group-name>
+  vaultName: <globally-unique-vault-name>
+  rbacAuthorizationEnabled: false
+  accessPolicies:
+    - objectId:
+        value: <principal-object-id>
+      keyPermissions:
+        - KEY_GET
+        - KEY_UNWRAP_KEY
+        - KEY_WRAP_KEY
+      secretPermissions:
+        - SECRET_GET
+      certificatePermissions:
+        - CERTIFICATE_GET
+  tags:
+    cost-center: <cost-center>

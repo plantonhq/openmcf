@@ -1,0 +1,33 @@
+# AzureKeyVault install profile used as the parent fixture by the key and
+# certificate scenarios (their kinds declare AzureKeyVault as a registry
+# prerequisite). The harness deploys this document (via the vault's Pulumi
+# module) after the fixture resource group and captures its outputs --
+# key_vault_id in particular -- for the child scenarios' references to
+# resolve against.
+#
+# RBAC mode with purge protection OFF: the ambient test principal holds the
+# subscription-scoped "Key Vault Administrator" bootstrap grant (see the
+# harness Setup), so data-plane child objects deploy without per-run grants,
+# and the provider's default purge-on-destroy frees the globally unique
+# vault name on teardown. The vault_name is distinct from the smoke
+# scenario's so a fixture and a vault smoke run can coexist.
+apiVersion: azure.planton.dev/v1
+kind: AzureKeyVault
+metadata:
+  name: planton-oss-e2e-azure-fixture-kv
+  id: planton-oss-e2e-azure-fixture-kv
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurekeyvault
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  vaultName: pltn-oss-e2e-fx-kv

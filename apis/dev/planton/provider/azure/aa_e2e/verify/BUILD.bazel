@@ -7,6 +7,9 @@ go_library(
         "aks_node_pool.go",
         "container_registry.go",
         "federated_identity_credential.go",
+        "key_vault.go",
+        "key_vault_certificate.go",
+        "key_vault_key.go",
         "load_balancer.go",
         "managed_disk.go",
         "nat_gateway.go",
@@ -34,6 +37,7 @@ go_library(
         "@com_github_azure_azure_sdk_for_go_sdk_azcore//:azcore",
         "@com_github_azure_azure_sdk_for_go_sdk_resourcemanager_authorization_armauthorization_v2//:armauthorization",
         "@com_github_azure_azure_sdk_for_go_sdk_resourcemanager_resources_armresources//:armresources",
+        "@com_github_azure_azure_sdk_for_go_sdk_security_keyvault_azcertificates//:azcertificates",
         "@com_github_pkg_errors//:errors",
     ],
 )
