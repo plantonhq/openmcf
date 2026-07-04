@@ -22,7 +22,7 @@ message GcpComputeInstanceSpec {
   // Zone where the instance will be deployed, for example "us-central1-a".
   string zone = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]-[a-z]$"}
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+-[a-z]$"}
   ];
 
   // Machine type for the instance, for example "e2-medium", "n1-standard-1", "n2-standard-2".

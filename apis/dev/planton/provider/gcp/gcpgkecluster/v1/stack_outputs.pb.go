@@ -21,21 +21,36 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GcpGkeClusterStackOutputs captures key info after provisioning a GKE cluster.
+// GcpGkeClusterStackOutputs captures key info after provisioning a GKE
+// cluster.
 type GcpGkeClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes API server endpoint for the cluster.
-	// For a private cluster, this will be an internal/private endpoint URL or IP.
+	// Kubernetes API server endpoint (IP address). For a cluster with a
+	// private-only control plane this is the private endpoint.
 	Endpoint string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	// Base64-encoded CA certificate for the cluster’s API server.
-	// Clients need this to authenticate the cluster’s TLS cert.
+	// Base64-encoded CA certificate for the cluster's API server. Clients
+	// need this to validate the API server's TLS certificate. Public trust
+	// material, not a secret.
 	ClusterCaCertificate string `protobuf:"bytes,2,opt,name=cluster_ca_certificate,json=clusterCaCertificate,proto3" json:"cluster_ca_certificate,omitempty"`
-	// Workload Identity Pool identifier used by this cluster (e.g. "PROJECT_ID.svc.id.goog").
+	// Workload Identity pool used by this cluster (e.g.
+	// "PROJECT_ID.svc.id.goog"). Empty when Workload Identity is disabled.
 	WorkloadIdentityPool string `protobuf:"bytes,3,opt,name=workload_identity_pool,json=workloadIdentityPool,proto3" json:"workload_identity_pool,omitempty"`
-	// Fully qualified GKE cluster resource ID.
-	// Format: projects/{project}/locations/{location}/clusters/{name}
-	// Used by downstream resources (e.g., Dataproc on GKE) to reference this cluster.
-	ClusterId     string `protobuf:"bytes,4,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
+	// Fully qualified GKE cluster resource ID:
+	// projects/{project}/locations/{location}/clusters/{name}.
+	// Downstream resources (e.g. Dataproc on GKE) reference the cluster by
+	// this ID.
+	ClusterId string `protobuf:"bytes,4,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
+	// The cluster name as created in GCP — the handle node pools and gcloud
+	// commands use. Matches spec.cluster_name when set, otherwise
+	// metadata.name.
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	// The cluster's location (region for regional clusters, zone for zonal),
+	// exactly as provided in the spec.
+	Location string `protobuf:"bytes,6,opt,name=location,proto3" json:"location,omitempty"`
+	// Server-defined URL of the cluster resource.
+	SelfLink string `protobuf:"bytes,7,opt,name=self_link,json=selfLink,proto3" json:"self_link,omitempty"`
+	// The Kubernetes version currently running on the control plane.
+	MasterVersion string `protobuf:"bytes,8,opt,name=master_version,json=masterVersion,proto3" json:"master_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -98,17 +113,49 @@ func (x *GcpGkeClusterStackOutputs) GetClusterId() string {
 	return ""
 }
 
+func (x *GcpGkeClusterStackOutputs) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpGkeClusterStackOutputs) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GcpGkeClusterStackOutputs) GetSelfLink() string {
+	if x != nil {
+		return x.SelfLink
+	}
+	return ""
+}
+
+func (x *GcpGkeClusterStackOutputs) GetMasterVersion() string {
+	if x != nil {
+		return x.MasterVersion
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpgkecluster_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpgkecluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/gcp/gcpgkecluster/v1/stack_outputs.proto\x12)dev.planton.provider.gcp.gcpgkecluster.v1\"\xc2\x01\n" +
+	"=dev/planton/provider/gcp/gcpgkecluster/v1/stack_outputs.proto\x12)dev.planton.provider.gcp.gcpgkecluster.v1\"\xb6\x02\n" +
 	"\x19GcpGkeClusterStackOutputs\x12\x1a\n" +
 	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x124\n" +
 	"\x16cluster_ca_certificate\x18\x02 \x01(\tR\x14clusterCaCertificate\x124\n" +
 	"\x16workload_identity_pool\x18\x03 \x01(\tR\x14workloadIdentityPool\x12\x1d\n" +
 	"\n" +
-	"cluster_id\x18\x04 \x01(\tR\tclusterIdB\xea\x02\n" +
+	"cluster_id\x18\x04 \x01(\tR\tclusterId\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\x12\x1a\n" +
+	"\blocation\x18\x06 \x01(\tR\blocation\x12\x1b\n" +
+	"\tself_link\x18\a \x01(\tR\bselfLink\x12%\n" +
+	"\x0emaster_version\x18\b \x01(\tR\rmasterVersionB\xea\x02\n" +
 	"-com.dev.planton.provider.gcp.gcpgkecluster.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkecluster/v1;gcpgkeclusterv1\xa2\x02\x05DPPGG\xaa\x02)Dev.Planton.Provider.Gcp.Gcpgkecluster.V1\xca\x02)Dev\\Planton\\Provider\\Gcp\\Gcpgkecluster\\V1\xe2\x025Dev\\Planton\\Provider\\Gcp\\Gcpgkecluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Gcp::Gcpgkecluster::V1b\x06proto3"
 
 var (

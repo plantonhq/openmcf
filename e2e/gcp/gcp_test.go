@@ -295,6 +295,17 @@ func TestGcpRouterNat_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcprouternat", "terraform")
 }
 
+// GcpGkeCluster scenarios (the slowest resources in the harness — creates run
+// 10-25 minutes each; batch runs need -timeout >= 120m). The minimal zonal
+// scenario exercises GKE-managed pod ranges; the private regional scenario
+// exercises named secondary ranges + the private control plane.
+func TestGcpGkeCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpgkecluster", "pulumi")
+}
+func TestGcpGkeCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpgkecluster", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
@@ -344,6 +355,12 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 		RepoRoot:     repoRoot,
 		RunID:        runID,
 		T:            t,
+		// Dependencies always deploy via Pulumi — even for Terraform
+		// scenarios — so the backend URL must be set unconditionally.
+		// Leaving it empty makes the dependency stacks fall back to the
+		// machine's ambient `pulumi login` backend, coupling the run to
+		// stale developer state.
+		BackendURL: pulumiBackendURL,
 	}
 
 	if engine == "pulumi" {
@@ -352,7 +369,6 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 			stackName = stackName[:50]
 		}
 		tc.StackName = stackName
-		tc.BackendURL = pulumiBackendURL
 	}
 
 	ctx := context.Background()

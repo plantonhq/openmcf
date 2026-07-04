@@ -270,11 +270,20 @@ with Application Default Credentials.
 E2E_GCP_PROJECT=planton-e2e go test -tags=e2e -timeout=120m -v ./e2e/gcp/...
 ```
 
+**Backend contract:** every scenario's test context must carry the run-scoped
+Pulumi file backend URL — even Terraform scenarios, because dependency
+prerequisites always deploy via Pulumi. An empty backend URL silently falls
+back to the machine's ambient `pulumi login`, coupling runs to developer
+state that can vanish mid-run (e.g. a stale `/tmp` backend).
+
 **Timeout guidance:** scenarios with private services access prerequisite chains
 (VPC → global address → service networking connection) or Memorystore
 create/destroy need substantial headroom. Budget **≥35m per PSA-backed scenario**
 and **≥90m** when batching multiple PSA or Memorystore scenarios in one `go test`
-run — Redis instance destroy alone can exceed 15 minutes.
+run — Redis instance destroy alone can exceed 15 minutes. GKE clusters are the
+slowest resources in the harness: a control-plane create runs 10-25 minutes and
+a destroy 5-10, per scenario per engine — budget **≥150m** when batching the
+GKE cluster scenarios across both engines.
 
 ## Build Tag Isolation
 

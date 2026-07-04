@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/container/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/redis/v1"
 	"google.golang.org/api/sqladmin/v1"
@@ -27,13 +28,14 @@ import (
 type Services struct {
 	// Project is the resolved E2E test project id (exported as GOOGLE_PROJECT
 	// for the IaC subprocesses); the fallback when outputs omit a project.
-	Project  string
-	Crm      *cloudresourcemanager.Service
-	Iam      *iam.Service
-	Compute  *compute.Service
-	Storage  *storage.Service
-	SqlAdmin *sqladmin.Service
-	Redis    *redis.Service
+	Project   string
+	Crm       *cloudresourcemanager.Service
+	Iam       *iam.Service
+	Compute   *compute.Service
+	Storage   *storage.Service
+	SqlAdmin  *sqladmin.Service
+	Redis     *redis.Service
+	Container *container.Service
 }
 
 // Verifier checks a single component's GCP resource for existence/absence.
@@ -77,6 +79,7 @@ var verifiers = map[string]Verifier{
 	"gcpcloudsqluser":                 &cloudSqlUserVerifier{},
 	"gcpredisinstance":                &redisInstanceVerifier{},
 	"gcprouternat":                    &routerNatVerifier{},
+	"gcpgkecluster":                   &gkeClusterVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

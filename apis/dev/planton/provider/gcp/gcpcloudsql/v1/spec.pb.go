@@ -1655,12 +1655,12 @@ var File_dev_planton_provider_gcp_gcpcloudsql_v1_spec_proto protoreflect.FileDes
 
 const file_dev_planton_provider_gcp_gcpcloudsql_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2dev/planton/provider/gcp/gcpcloudsql/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudsql.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb78\n" +
+	"2dev/planton/provider/gcp/gcpcloudsql/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudsql.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb88\n" +
 	"\x0fGcpCloudSqlSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12M\n" +
-	"\rinstance_name\x18\x02 \x01(\tB(\xbaH%\xc8\x01\x01r \x18b2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\finstanceName\x126\n" +
-	"\x06region\x18\x03 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x14^[a-z]+-[a-z]+[0-9]$R\x06region\x12\xb2\x01\n" +
+	"\rinstance_name\x18\x02 \x01(\tB(\xbaH%\xc8\x01\x01r \x18b2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\finstanceName\x127\n" +
+	"\x06region\x18\x03 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12\xb2\x01\n" +
 	"\x0fdatabase_engine\x18\x04 \x01(\tB\x88\x01\xbaH\x84\x01\xba\x01~\n" +
 	"\x15database_engine_valid\x127database_engine must be MYSQL, POSTGRESQL, or SQLSERVER\x1a,this in ['MYSQL', 'POSTGRESQL', 'SQLSERVER']\xc8\x01\x01R\x0edatabaseEngine\x125\n" +
 	"\x10database_version\x18\x05 \x01(\tB\n" +

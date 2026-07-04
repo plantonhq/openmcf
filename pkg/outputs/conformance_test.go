@@ -473,6 +473,27 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpGkeCluster: control-plane endpoint + CA trust anchor, the
+			// Workload Identity pool, the fully qualified cluster ID, and the
+			// name/location handles node pools compose against.
+			name: "GcpGkeCluster",
+			kind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
+			rawOutputs: map[string]interface{}{
+				"endpoint":               "34.72.10.11",
+				"cluster_ca_certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t",
+				"workload_identity_pool": "my-project.svc.id.goog",
+				"cluster_id":             "projects/my-project/locations/us-central1/clusters/prod-primary",
+				"name":                   "prod-primary",
+				"location":               "us-central1",
+				"self_link":              "https://container.googleapis.com/v1/projects/my-project/locations/us-central1/clusters/prod-primary",
+				"master_version":         "1.31.4-gke.1256000",
+			},
+			mustPopulate: []string{
+				"endpoint", "cluster_ca_certificate", "workload_identity_pool",
+				"cluster_id", "name", "location", "self_link", "master_version",
+			},
+		},
+		{
 			// GcpRouterNat: NAT name, router self link, and the manual NAT IP
 			// self links (empty for auto-allocation).
 			name: "GcpRouterNat",

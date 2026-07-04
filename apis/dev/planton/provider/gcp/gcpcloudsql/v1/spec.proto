@@ -135,7 +135,7 @@ message GcpCloudSqlSpec {
   // an instance cannot move between regions in place.
   string region = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]$"}
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
   ];
 
   // The database engine family. Drives engine-specific validation: the

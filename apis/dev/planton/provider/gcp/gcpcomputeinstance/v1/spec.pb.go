@@ -686,11 +686,11 @@ var File_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/gcp/gcpcomputeinstance/v1/spec.proto\x12.dev.planton.provider.gcp.gcpcomputeinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb8\v\n" +
+	"9dev/planton/provider/gcp/gcpcomputeinstance/v1/spec.proto\x12.dev.planton.provider.gcp.gcpcomputeinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb9\v\n" +
 	"\x16GcpComputeInstanceSpec\x12{\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x128\n" +
-	"\x04zone\x18\x02 \x01(\tB$\xbaH!\xc8\x01\x01r\x1c2\x1a^[a-z]+-[a-z]+[0-9]-[a-z]$R\x04zone\x12-\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x129\n" +
+	"\x04zone\x18\x02 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\x04zone\x12-\n" +
 	"\fmachine_type\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vmachineType\x12o\n" +
 	"\tboot_disk\x18\x04 \x01(\v2J.dev.planton.provider.gcp.gcpcomputeinstance.v1.GcpComputeInstanceBootDiskB\x06\xbaH\x03\xc8\x01\x01R\bbootDisk\x12\x8e\x01\n" +

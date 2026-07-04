@@ -11,6 +11,7 @@ go_library(
         "@com_github_pkg_errors//:errors",
         "@org_golang_google_api//cloudresourcemanager/v1:cloudresourcemanager",
         "@org_golang_google_api//compute/v1:compute",
+        "@org_golang_google_api//container/v1:container",
         "@org_golang_google_api//iam/v1:iam",
         "@org_golang_google_api//redis/v1:redis",
         "@org_golang_google_api//sqladmin/v1:sqladmin",

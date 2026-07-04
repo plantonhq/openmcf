@@ -1,33 +1,42 @@
-# Private GKE Cluster -- Standard
+# Private Production Cluster — Standard
 
-This preset creates a private GKE cluster with no public node IPs, the REGULAR release channel, Workload Identity enabled, and network policy enforcement. Private clusters are the GCP-recommended configuration for production workloads, with internet egress routed through Cloud NAT.
+This preset creates a regional Standard cluster with private nodes, Dataplane V2, planned secondary ranges, a control-plane access allowlist, a daily maintenance window, and the Security Posture dashboard — the GCP-recommended production shape.
 
 ## When to Use
 
-- Production GKE deployments following GCP security best practices
-- Clusters where nodes should not have public IP addresses
-- Standard release cadence with balanced stability and feature availability
+- Production workloads that need control over node pools (machine types, GPUs, spot mixes) via `GcpGkeNodePool` resources
+- Clusters where nodes must not have public IP addresses
+- Organizations that plan pod/service address space explicitly on the subnetwork
 
 ## Key Configuration Choices
 
-- **Private nodes** (`enablePublicNodes: false`) -- nodes have no external IPs; outbound traffic goes through Cloud NAT
-- **REGULAR release channel** (`releaseChannel: REGULAR`) -- automatic upgrades on a predictable cadence (2-3 months behind RAPID)
-- **Workload Identity enabled** (default) -- `disableWorkloadIdentity` is not set, so pods can securely access GCP APIs via KSA-to-GSA bindings
-- **Network policy enabled** (default) -- `disableNetworkPolicy` is not set, so Calico-based network policies are enforced
-- **`/28` master CIDR** (`172.16.0.0/28`) -- private control plane endpoint; must not overlap with VPC or subnet ranges
-- **Secondary ranges** -- references `pods` and `services` range names from the GKE-ready subnet preset
+- **Regional location** (`us-central1`) — control-plane replicas across three zones; zonal clusters save money but take a brief API outage during upgrades
+- **Private nodes** (`privateCluster.enablePrivateNodes`) — no public node IPs; compose a `GcpRouterNat` on the network for image pulls and other egress
+- **Peering-based control plane** (`masterIpv4CidrBlock`) — a dedicated /28 that must not overlap any VPC range
+- **Dataplane V2** (`datapathProvider: ADVANCED_DATAPATH`) — native NetworkPolicy enforcement without the Calico addon, plus dataplane observability
+- **Named secondary ranges** (`ipAllocation`) — pod/service space comes from planned ranges on the `GcpSubnetwork`, not ad-hoc GKE carving
+- **Master authorized networks** — the API endpoint only accepts your listed CIDRs
+- **Cost allocation on** (`enableCostManagement`) — per-namespace cost attribution in the billing export
+- **Deletion protection on** (the default) — a destroy fails until it is explicitly set to `false`
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 |---|---|---|
-| `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
-| `<vpc-network-self-link>` | Self-link of the VPC network | `GcpVpcNetwork` status outputs |
-| `<gcp-region>` | GCP region (e.g., `us-central1`) | Your deployment region |
-| `<subnet-self-link>` | Self-link of the GKE-ready subnet | `GcpSubnetwork` status outputs |
-| `<your-cluster-name>` | GKE cluster name (1-40 chars, lowercase) | Choose a descriptive name |
-| `<router-nat-name>` | Name of the Cloud NAT configuration | `GcpRouterNat` metadata name |
+| `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
+| `my-app-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
+| `my-gke-subnet` | Your `GcpSubnetwork` resource name (with `pods`/`services` secondary ranges) | Your subnetwork manifest |
+| `172.16.0.16/28` | Control-plane /28 block | Your network plan; must not overlap any VPC range |
+| `203.0.113.0/24` | CIDR allowed to reach the API server | Your office/VPN egress range |
 
 ## Related Presets
 
-- **02-private-rapid** -- Use for dev/staging clusters that need the latest Kubernetes features
+- **02-autopilot** — let GKE manage nodes entirely and bill per pod
+- **03-dev-zonal** — the smallest, cheapest cluster for development
+
+## Related Components
+
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network the cluster lives in
+- [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — carries the pod/service secondary ranges
+- [GcpGkeNodePool](/docs/catalog/gcp/gcpgkenodepool) — compute for Standard clusters
+- [GcpRouterNat](/docs/catalog/gcp/gcprouternat) — outbound internet for private nodes

@@ -24,7 +24,7 @@ message GcpCloudFunctionSpec {
   // Region where the function is deployed, for example "us-central1" or "europe-west1".
   string region = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]$"}
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
   ];
 
   // Name of the Cloud Function. If not specified, defaults to metadata.name.
@@ -264,7 +264,7 @@ message GcpCloudFunctionEventTrigger {
   // the function region for optimal performance and data locality.
   string trigger_region = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]$"}
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
   ];
 
   // Retry policy for event delivery. If RETRY_POLICY_RETRY, failed invocations

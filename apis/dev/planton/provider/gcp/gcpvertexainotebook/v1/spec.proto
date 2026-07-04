@@ -224,7 +224,7 @@ message GcpVertexAiNotebookSpec {
   // Immutable after creation.
   string location = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]-[a-z]$"}
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+-[a-z]$"}
   ];
 
   // Compute Engine machine type for the instance.

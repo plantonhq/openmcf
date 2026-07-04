@@ -1,0 +1,34 @@
+# Minimal GcpGkeCluster scenario: a ZONAL Standard cluster with GKE-managed
+# pod/service ranges — the fastest cluster GKE can create, exercising the
+# no-ip_allocation module branch. The harness deploys GcpVpcNetwork (registry
+# prerequisite) and this component's consumer-scoped GcpSubnetwork, then
+# creates the cluster. project_id is deliberately omitted (ambient project).
+# deletion_protection is explicitly false so the ephemeral destroy just works.
+apiVersion: gcp.planton.dev/v1
+kind: GcpGkeCluster
+metadata:
+  name: planton-oss-e2e-gke-minimal
+  id: planton-oss-e2e-gke-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpgkecluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral zonal GKE cluster created by the Planton E2E harness; safe to delete
+  location: us-central1-a
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_self_link
+  subnetwork:
+    valueFrom:
+      kind: GcpSubnetwork
+      name: planton-oss-e2e-gcpsnw-gke-prereq
+      fieldPath: status.outputs.subnetwork_self_link
+  deletionProtection: false

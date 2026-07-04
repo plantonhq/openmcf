@@ -917,11 +917,11 @@ var File_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto protoreflect.Fi
 
 const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/gcp/gcpcloudfunction/v1/spec.proto\x12,dev.planton.provider.gcp.gcpcloudfunction.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xea\x04\n" +
+	"7dev/planton/provider/gcp/gcpcloudfunction/v1/spec.proto\x12,dev.planton.provider.gcp.gcpcloudfunction.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xeb\x04\n" +
 	"\x14GcpCloudFunctionSpec\x12{\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
-	"\x06region\x18\x02 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x14^[a-z]+-[a-z]+[0-9]$R\x06region\x12R\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12R\n" +
 	"\rfunction_name\x18\x03 \x01(\tB-\xbaH*\xd8\x01\x01r%\x18?2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\ffunctionName\x12t\n" +
 	"\fbuild_config\x18\x04 \x01(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfigB\x06\xbaH\x03\xc8\x01\x01R\vbuildConfig\x12r\n" +
 	"\x0eservice_config\x18\x05 \x01(\v2K.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfigR\rserviceConfig\x12_\n" +
@@ -970,14 +970,14 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"\x17GcpCloudFunctionTrigger\x12v\n" +
 	"\ftrigger_type\x18\x01 \x01(\x0e2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerTypeB\b\x92\xa6\x1d\x04HTTPR\vtriggerType\x12o\n" +
 	"\revent_trigger\x18\x02 \x01(\v2J.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventTriggerR\feventTrigger:\x98\x01\xbaH\x94\x01\x1a\x91\x01\n" +
-	"\x1etrigger.event-trigger-required\x12<event_trigger must be set when trigger_type is EVENT_TRIGGER\x1a1this.trigger_type != 1 || has(this.event_trigger)\"\x8d\x05\n" +
+	"\x1etrigger.event-trigger-required\x12<event_trigger must be set when trigger_type is EVENT_TRIGGER\x1a1this.trigger_type != 1 || has(this.event_trigger)\"\x8e\x05\n" +
 	"\x1cGcpCloudFunctionEventTrigger\x12)\n" +
 	"\n" +
 	"event_type\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\teventType\x12\x8a\x01\n" +
 	"\fpubsub_topic\x18\x02 \x01(\tBg\xbaHd\xd8\x01\x01r_2]^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/topics/[a-zA-Z]([a-zA-Z0-9-_.~+%]{0,253}[a-zA-Z0-9])?$R\vpubsubTopic\x12n\n" +
-	"\revent_filters\x18\x03 \x03(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilterR\feventFilters\x12E\n" +
-	"\x0etrigger_region\x18\x04 \x01(\tB\x1e\xbaH\x1b\xd8\x01\x01r\x162\x14^[a-z]+-[a-z]+[0-9]$R\rtriggerRegion\x12\x8b\x01\n" +
+	"\revent_filters\x18\x03 \x03(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilterR\feventFilters\x12F\n" +
+	"\x0etrigger_region\x18\x04 \x01(\tB\x1f\xbaH\x1c\xd8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\rtriggerRegion\x12\x8b\x01\n" +
 	"\fretry_policy\x18\x05 \x01(\x0e2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicyB\x1d\x92\xa6\x1d\x19RETRY_POLICY_DO_NOT_RETRYR\vretryPolicy\x12p\n" +
 	"\x15service_account_email\x18\x06 \x01(\tB<\xbaH9\xd8\x01\x01r422^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$R\x13serviceAccountEmail\"\x97\x01\n" +
 	"\x1bGcpCloudFunctionEventFilter\x12(\n" +

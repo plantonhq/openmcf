@@ -30,8 +30,10 @@ type GcpGkeNodePoolSpec struct {
 	// Reference to the parent GKE cluster (by name).
 	// Must refer to an existing GcpGkeCluster resource in the same environment.
 	ClusterProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=cluster_project_id,json=clusterProjectId,proto3" json:"cluster_project_id,omitempty"`
-	// Reference to the parent GKE cluster (by name).
-	// Must refer to an existing GcpGkeCluster resource in the same environment.
+	// Name of the parent GKE cluster as created in GCP.
+	// Resolves from the cluster's name output — the name GCP actually
+	// assigned — so it stays correct even when the cluster's cloud name
+	// differs from its Planton metadata.name.
 	ClusterName *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
 	// Location of the parent GKE cluster (region or zone).
 	// Must refer to an existing GcpGkeCluster resource in the same environment.
@@ -352,10 +354,10 @@ var File_dev_planton_provider_gcp_gcpgkenodepool_v1_spec_proto protoreflect.File
 
 const file_dev_planton_provider_gcp_gcpgkenodepool_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5dev/planton/provider/gcp/gcpgkenodepool/v1/spec.proto\x12*dev.planton.provider.gcp.gcpgkenodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf9\t\n" +
+	"5dev/planton/provider/gcp/gcpgkenodepool/v1/spec.proto\x12*dev.planton.provider.gcp.gcpgkenodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xff\t\n" +
 	"\x12GcpGkeNodePoolSpec\x12\x80\x01\n" +
-	"\x12cluster_project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x0fspec.project_idR\x10clusterProjectId\x12s\n" +
-	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\rmetadata.nameR\vclusterName\x12{\n" +
+	"\x12cluster_project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x0fspec.project_idR\x10clusterProjectId\x12y\n" +
+	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x13status.outputs.nameR\vclusterName\x12{\n" +
 	"\x10cluster_location\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\rspec.locationR\x0fclusterLocation\x125\n" +
 	"\fmachine_type\x18\x04 \x01(\tB\r\x8a\xa6\x1d\te2-mediumH\x01R\vmachineType\x88\x01\x01\x12 \n" +
 	"\fdisk_size_gb\x18\x05 \x01(\rR\n" +

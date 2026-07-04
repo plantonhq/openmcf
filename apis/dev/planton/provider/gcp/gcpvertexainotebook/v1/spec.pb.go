@@ -829,11 +829,11 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = 
 	"\x12enable_secure_boot\x18\x01 \x01(\bR\x10enableSecureBoot\x12\x1f\n" +
 	"\venable_vtpm\x18\x02 \x01(\bR\n" +
 	"enableVtpm\x12>\n" +
-	"\x1benable_integrity_monitoring\x18\x03 \x01(\bR\x19enableIntegrityMonitoring\"\x9a\x11\n" +
+	"\x1benable_integrity_monitoring\x18\x03 \x01(\bR\x19enableIntegrityMonitoring\"\x9b\x11\n" +
 	"\x17GcpVertexAiNotebookSpec\x12{\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12@\n" +
-	"\blocation\x18\x02 \x01(\tB$\xbaH!\xc8\x01\x01r\x1c2\x1a^[a-z]+-[a-z]+[0-9]-[a-z]$R\blocation\x12-\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12A\n" +
+	"\blocation\x18\x02 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\blocation\x12-\n" +
 	"\fmachine_type\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vmachineType\x12\xf4\x01\n" +
 	"\rinstance_name\x18\x04 \x01(\tB\xce\x01\xbaH\xca\x01\xba\x01\xc6\x01\n" +

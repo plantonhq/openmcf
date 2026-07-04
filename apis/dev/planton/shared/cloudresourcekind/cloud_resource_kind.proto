@@ -749,6 +749,10 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gke"
     container_kind: true
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork
+    ]
   }];
   GcpIamCustomRole = 608 [(kind_meta) = {
     provider: gcp

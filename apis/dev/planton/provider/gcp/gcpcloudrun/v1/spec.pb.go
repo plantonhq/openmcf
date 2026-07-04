@@ -888,12 +888,12 @@ var File_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto protoreflect.FileDes
 
 const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2dev/planton/provider/gcp/gcpcloudrun/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudrun.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x87\n" +
+	"2dev/planton/provider/gcp/gcpcloudrun/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudrun.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x88\n" +
 	"\n" +
 	"\x0fGcpCloudRunSpec\x12{\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
-	"\x06region\x18\x02 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x14^[a-z]+-[a-z]+[0-9]$R\x06region\x12N\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12N\n" +
 	"\fservice_name\x18\a \x01(\tB+\xbaH(\xd8\x01\x01r#\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\vserviceName\x12x\n" +
 	"\x0fservice_account\x18\b \x01(\tBO\xbaHL\xd8\x01\x01rG2E^[a-z0-9]([-a-z0-9]*[a-z0-9])?@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$R\x0eserviceAccount\x12c\n" +
 	"\tcontainer\x18\x03 \x01(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12<\n" +

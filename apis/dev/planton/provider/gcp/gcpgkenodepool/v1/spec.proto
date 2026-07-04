@@ -15,12 +15,14 @@ message GcpGkeNodePoolSpec {
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpGkeCluster,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.project_id"
   ];
-  // Reference to the parent GKE cluster (by name).
-  // Must refer to an existing GcpGkeCluster resource in the same environment.
+  // Name of the parent GKE cluster as created in GCP.
+  // Resolves from the cluster's name output — the name GCP actually
+  // assigned — so it stays correct even when the cluster's cloud name
+  // differs from its Planton metadata.name.
   dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_name = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpGkeCluster,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
   ];
 
   // Location of the parent GKE cluster (region or zone).

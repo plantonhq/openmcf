@@ -24,7 +24,7 @@ message GcpCloudRunSpec {
   // Region where the service is deployed, for example "us-central1".
   string region = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]$"}
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
   ];
 
   // Name of the Cloud Run service to create on GCP.
