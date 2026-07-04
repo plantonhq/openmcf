@@ -1,0 +1,45 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSql
+metadata:
+  name: my-postgres-prod
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  instanceName: orders-db-prod
+  region: us-central1
+  databaseEngine: POSTGRESQL
+  databaseVersion: POSTGRES_16
+  tier: db-custom-4-15360
+  edition: ENTERPRISE
+  availabilityType: REGIONAL
+  disk:
+    type: PD_SSD
+    sizeGb: 100
+    autoResize: true
+    autoResizeLimit: 500
+  network:
+    # Private IP only — the VPC must already carry private services access
+    # (GcpGlobalAddress with purpose VPC_PEERING + GcpServiceNetworkingConnection).
+    privateNetwork:
+      valueFrom:
+        kind: GcpVpcNetwork
+        name: my-prod-vpc # replace with your GcpVpcNetwork resource name
+        fieldPath: status.outputs.network_id
+    sslMode: ENCRYPTED_ONLY
+  backup:
+    enabled: true
+    startTime: "03:00"
+    pointInTimeRecoveryEnabled: true
+    transactionLogRetentionDays: 7
+    retainedBackups: 30
+  maintenanceWindow:
+    day: 7 # Sunday
+    hour: 3
+    updateTrack: stable
+  insightsConfig:
+    queryInsightsEnabled: true
+    recordApplicationTags: true
+  deletionProtection: true
+  deletionProtectionEnabled: true
+  retainBackupsOnDelete: true
+  rootPassword: ChangeMe-Prod-Password1! # replace, then rotate after first deploy

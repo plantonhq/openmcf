@@ -1,0 +1,21 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceNetworkingConnection
+metadata:
+  name: my-vpc-psa
+spec:
+  # The VPC network to peer with Google's managed-services producer.
+  # Reference the GcpVpcNetwork resource so the self-link resolves automatically.
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: prod-vpc
+      fieldPath: status.outputs.network_self_link
+
+  # The reserved VPC_PEERING range the producer carves service subnets from.
+  # Create it first as a GcpGlobalAddress (INTERNAL, purpose VPC_PEERING,
+  # prefix_length 16) and reference it here by name.
+  reservedPeeringRanges:
+    - valueFrom:
+        kind: GcpGlobalAddress
+        name: prod-vpc-psa-range
+        fieldPath: status.outputs.name

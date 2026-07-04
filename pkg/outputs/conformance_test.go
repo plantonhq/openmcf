@@ -494,6 +494,31 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpGkeNodePool: the pool name/location handles, the backing
+			// instance groups, the effective sizing bounds, and the fully
+			// qualified pool ID downstream services (e.g. Dataproc on GKE)
+			// reference.
+			name: "GcpGkeNodePool",
+			kind: cloudresourcekind.CloudResourceKind_GcpGkeNodePool,
+			rawOutputs: map[string]interface{}{
+				"node_pool_name": "general-pool",
+				"instance_group_urls": []interface{}{
+					"https://www.googleapis.com/compute/v1/projects/my-project/zones/us-central1-a/instanceGroupManagers/gke-prod-primary-general-pool-grp",
+				},
+				"min_nodes":          "1",
+				"max_nodes":          "5",
+				"current_node_count": "2",
+				"node_pool_id":       "projects/my-project/locations/us-central1/clusters/prod-primary/nodePools/general-pool",
+				"location":           "us-central1",
+				"version":            "1.31.4-gke.1256000",
+			},
+			mustPopulate: []string{
+				"node_pool_name", "instance_group_urls", "min_nodes",
+				"max_nodes", "current_node_count", "node_pool_id",
+				"location", "version",
+			},
+		},
+		{
 			// GcpRouterNat: NAT name, router self link, and the manual NAT IP
 			// self links (empty for auto-allocation).
 			name: "GcpRouterNat",

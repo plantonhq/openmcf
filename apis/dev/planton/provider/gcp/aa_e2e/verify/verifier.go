@@ -80,6 +80,7 @@ var verifiers = map[string]Verifier{
 	"gcpredisinstance":                &redisInstanceVerifier{},
 	"gcprouternat":                    &routerNatVerifier{},
 	"gcpgkecluster":                   &gkeClusterVerifier{},
+	"gcpgkenodepool":                  &gkeNodePoolVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

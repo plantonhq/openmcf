@@ -790,6 +790,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gkenp"
+    prerequisites: [GcpGkeCluster]
   }];
   GcpServiceAccount = 614 [(kind_meta) = {
     provider: gcp

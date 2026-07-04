@@ -1,0 +1,36 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpRedisInstance
+metadata:
+  name: my-psa-redis
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  instanceName: cache-psa-prod
+  region: us-central1
+  tier: STANDARD_HA
+  memorySizeGb: 10
+  redisVersion: REDIS_7_2
+  authorizedNetwork:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: my-prod-vpc # replace with your GcpVpcNetwork resource name
+      fieldPath: status.outputs.network_self_link
+  # PRIVATE_SERVICE_ACCESS: the instance consumes an address range you
+  # allocated on the VPC's private services access connection — required for
+  # Shared VPC, and the same connection Cloud SQL private IP uses. The VPC
+  # must already carry a GcpServiceNetworkingConnection whose reserved ranges
+  # include the one named below.
+  connectMode: PRIVATE_SERVICE_ACCESS
+  reservedIpRange: psa-range-services # replace with your GcpGlobalAddress name on the PSA connection
+  readReplicasMode: READ_REPLICAS_ENABLED
+  replicaCount: 2
+  authEnabled: true
+  transitEncryptionMode: SERVER_AUTHENTICATION
+  persistenceConfig:
+    persistenceMode: RDB
+    rdbSnapshotPeriod: SIX_HOURS
+  customerManagedKey:
+    valueFrom:
+      kind: GcpKmsKey
+      name: my-cache-cmek # replace with your GcpKmsKey resource name
+      fieldPath: status.outputs.key_id

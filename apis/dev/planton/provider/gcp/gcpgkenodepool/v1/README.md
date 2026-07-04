@@ -1,170 +1,63 @@
 # GCP GKE Node Pool
 
-**Deployment Component for Google Kubernetes Engine Node Pools**
+Deploys a Google Kubernetes Engine node pool via `google_container_node_pool` (Terraform) or Pulumi `container.NodePool` — a group of identically configured Compute Engine VMs attached to a GKE cluster, with the full node configuration surface: machine shape, disks, identity, scheduling constraints, GPU accelerators, security posture, and node-level tuning.
 
 ## Overview
 
-`GcpGkeNodePool` is a Planton deployment component that manages **GKE node pools**—groups of Compute Engine VMs that run your Kubernetes workloads. Node pools enable heterogeneous infrastructure within a single cluster, allowing you to match compute resources precisely to workload requirements.
+Node pools are the compute half of the GKE composition boundary: the `GcpGkeCluster` owns the control plane and cluster-wide configuration; every node pool is a first-class resource with its own lifecycle, referencing the cluster by its `name` and `location` outputs. Production clusters run several pools — general-purpose on-demand, scale-to-zero Spot for fault-tolerant batch, GPU pools for ML — each sized and tainted for its workloads.
 
-Unlike the "one-size-fits-all" approach of homogeneous clusters, node pools let you create specialized compute tiers:
-- **Cost-optimized pools** with Spot VMs for batch workloads (up to 91% savings)
-- **GPU/TPU pools** for machine learning workloads
-- **High-memory pools** for caches and in-memory databases
-- **General-purpose pools** for standard web applications
+The pool inherits its project and location from the parent cluster (both resolve by reference), and honors the ambient-project contract: an empty `project_id` falls back to the provider's default project.
 
-Node pools are **separate resources** from their parent GKE cluster, enabling independent lifecycle management—you can create, update, and destroy node pools without touching the cluster control plane, a critical pattern for production stability.
+## Purpose
+
+- **Heterogeneous compute, honest boundaries**: match infrastructure to workloads — pools are created, resized, and destroyed without ever touching the cluster control plane.
+- **Pre-deploy coherence**: the API's cross-field rules (per-zone XOR total autoscaling limits, surge XOR blue-green settings, spot XOR preemptible, fast-socket-needs-gVNIC, specific-reservation key pairing) are enforced by validation before any cloud call.
+- **Cost levers as first-class fields**: Spot VMs, scale-to-zero autoscaling, flex-start, max run duration, and reservation consumption are all modeled — not hidden behind escape hatches.
 
 ## Key Features
 
-### Infrastructure as Code
-- **Declarative YAML API** following Kubernetes conventions
-- Deploy via `planton apply` with state management and drift detection
-- Supports both **Pulumi** and **Terraform/OpenTofu** backends
+- **Sizing**: fixed count or cluster-autoscaler management with per-zone (`min_nodes`/`max_nodes`) or total (`total_min_nodes`/`total_max_nodes`) bounds and the `BALANCED`/`ANY` location policy
+- **Upgrades**: surge (max_surge/max_unavailable) or blue-green strategy with batch rollout pacing and soak windows
+- **Machine shape**: machine type, boot disk size/type (incl. hyperdisk), image type, min CPU platform, local SSDs (SCSI count, NVMe ephemeral-storage backing with data cache, raw-block NVMe)
+- **GPUs**: accelerator type/count, GKE-managed driver installation, MIG partitioning, time-sharing/MPS GPU sharing, NCCL Fast Socket + gVNIC for distributed training
+- **Scheduling**: Kubernetes node labels, taints with all three effects, network tags, compact placement (+ TPU topology), queued provisioning (Dynamic Workload Scheduler), flex-start, max run duration
+- **Identity & security**: node service account by reference, OAuth scopes, shielded VM options, confidential nodes (SEV/SEV-SNP/TDX), CMEK boot-disk encryption by `GcpKmsKey` reference, workload metadata mode
+- **Networking**: dedicated per-pool pod ranges (create-new or use-existing), per-pool private nodes override, TIER_1 egress bandwidth, pod CIDR overprovision control
+- **Node tuning**: kubelet (CPU manager, CFS quota, PID limits, log rotation, image GC, the insecure read-only port), Linux sysctls, cgroup mode, hugepages, logging variant, image streaming (GCFS)
+- **Capacity**: Spot and legacy preemptible VMs, Compute Engine reservation affinity, secondary boot disks for image preloading
 
-### Production-Ready Configuration
-- **Autoscaling**: Scale-to-zero for cost savings or fixed size for predictable capacity
-- **Spot VMs**: Up to 91% cost reduction for fault-tolerant workloads
-- **Auto-upgrade and auto-repair**: Enabled by default with customizable maintenance windows
-- **Custom service accounts**: Least-privilege IAM for security
-- **Flexible disk options**: Standard, SSD, or Balanced persistent disks
+## Stack Outputs
 
-### Planton Integration
-- **Foreign key references** to parent `GcpGkeCluster` resources
-- Automatic labeling with org, environment, and resource metadata
-- Consistent patterns with other Planton components
+| Output | Description |
+|---|---|
+| `node_pool_name` | Name of the pool as created in GKE |
+| `instance_group_urls` | Managed instance group URLs backing the pool (one per zone for regional clusters) |
+| `min_nodes` | Effective minimum size (autoscaling minimum, or the fixed count) |
+| `max_nodes` | Effective maximum size (autoscaling maximum, or the fixed count) |
+| `current_node_count` | Nodes per zone at the last deploy (a snapshot — the autoscaler moves it) |
+| `node_pool_id` | Fully qualified resource ID: `projects/{project}/locations/{location}/clusters/{cluster}/nodePools/{name}` |
+| `location` | The pool's location (the parent cluster's region or zone), exactly as provided in the spec |
+| `version` | Kubernetes version running on the pool's nodes |
 
-## Quick Start
+## Deliberately not modeled (recorded reasons)
 
-### Minimal Example: Dev/Test Pool with Spot VMs
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGkeNodePool
-metadata:
-  name: dev-pool
-spec:
-  cluster_project_id:
-    value: my-gcp-project
-  cluster_name:
-    value: dev-cluster
-  machine_type: e2-medium
-  disk_size_gb: 50
-  spot: true
-  autoscaling:
-    min_nodes: 0      # Scale-to-zero for cost savings
-    max_nodes: 3
-    location_policy: ANY  # Hunt for capacity across zones
-```
-
-### Deploy
-
-```bash
-planton apply -f dev-pool.yaml
-```
-
-### Production Example: High-Availability General-Purpose Pool
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpGkeNodePool
-metadata:
-  name: prod-general
-spec:
-  cluster_project_id:
-    value: my-gcp-project
-  cluster_name:
-    value: prod-cluster
-  machine_type: n2-standard-4
-  disk_size_gb: 100
-  disk_type: pd-ssd
-  service_account: gke-prod-sa@my-project.iam.gserviceaccount.com
-  autoscaling:
-    min_nodes: 3      # Multi-zone HA baseline
-    max_nodes: 10
-    location_policy: BALANCED  # Even spread for availability
-  management:
-    disable_auto_upgrade: false  # Keep security patches current
-    disable_auto_repair: false   # Auto-fix unhealthy nodes
-  node_labels:
-    workload-tier: general
-    environment: production
-```
-
-## Architecture
-
-### Separate Resource Pattern
-
-`GcpGkeNodePool` is an **independent resource** that references its parent `GcpGkeCluster`:
-
-```
-GcpGkeCluster (Control Plane)
-  ↑
-  └─ GcpGkeNodePool (Worker Nodes)
-     ├─ VM Instance 1
-     ├─ VM Instance 2
-     └─ VM Instance 3
-```
-
-**Why this design?**
-- Node pool updates never risk cluster control plane disruption
-- Lifecycle independence: create/update/delete pools without touching the cluster
-- Industry alignment: mirrors Terraform, Pulumi, and GKE API patterns
-
-### Configuration Inheritance
-
-Node pools automatically inherit:
-- **Network configuration** from the parent cluster (VPC, subnetwork, firewall tags)
-- **Planton metadata** (org, environment, resource labels)
-- **OAuth scopes** for monitoring, logging, and storage
-
-## Best Practices
-
-### Multiple Specialized Pools vs. One Large Pool
-
-**Anti-pattern**: A single, massive node pool with one machine type.
-
-**Best practice**: Create **multiple, specialized node pools** aligned to workload profiles:
-- **General-purpose pool**: E2 or N2 series for standard applications
-- **High-memory pool**: M2/M3 series for Redis, in-memory databases
-- **Compute-optimized pool**: C2 series for CPU-bound workloads
-- **Cost-optimized pool**: E2 Spot VMs for batch jobs, CI/CD runners
-- **Accelerator pool**: N1 with GPUs for ML inference and training
-
-### Autoscaling Location Policies
-
-- **BALANCED** (default): Spreads nodes evenly across zones. Best for high-availability production workloads.
-- **ANY**: Adds nodes wherever capacity is available. **Critical for Spot VM pools**—allows the autoscaler to "hunt" for spare capacity across all zones.
-
-### Spot VMs: Cost Savings with Constraints
-
-Spot VMs offer up to 91% cost reduction but can be preempted (terminated) by Google with short notice.
-
-**Production pattern**:
-1. **Mixed pools**: *Never* run a cluster solely on Spot VMs. At least one reliable, on-demand pool must exist for critical system components.
-2. **Use for fault-tolerant workloads**: Batch jobs, CI/CD runners, development environments.
-3. **Set `location_policy: ANY`** to maximize Spot VM acquisition success.
-
-### Auto-Upgrade and Auto-Repair
-
-**Keep both enabled** (the GKE default). Use **Maintenance Windows** to control *when* upgrades occur, rather than disabling them entirely. This ensures nodes stay current with security patches while minimizing disruption.
+| Excluded Feature | Why |
+|---|---|
+| `node_drain_config`, `ignore_node_count_changes`, `gpudirect_strategy`, `node_image_config`, `sandbox_config` (gVisor), `architecture_taint_behavior` | Exist only on the provider's unreleased main line, not on the released 6.x major the GCP modules pin. Revisit on the next provider major. |
+| `boot_disk` block (provisioned IOPS/throughput), `containerd_config` (private registry CAs), `advanced_machine_features`, `host_maintenance_policy`, `enable_confidential_storage`, `local_ssd_encryption_mode`, `storage_pools`, `node_group` + `sole_tenant_config` (sole tenancy), `windows_node_config`, kubelet eviction tuning (`eviction_soft`/`eviction_minimum_reclaim`/grace periods), `allowed_unsafe_sysctls`, transparent-hugepage knobs, `memory_manager`/`topology_manager`, `crash_loop_back_off`, `single_process_oom_kill` | Deep niches (sole tenancy, Windows pools, hyperdisk performance tuning, NUMA pinning, kubelet eviction surgery) without real-world pull relative to their spec weight. Each returns on demand — the modeled kubelet/Linux surface covers the tuning production pools actually reach for. |
+| `name_prefix` | Planton owns resource naming — the pool name is `node_pool_name` or `metadata.name`, never generated. |
+| `resource_manager_tags` | Catalog-wide decision — tag bindings are an org-governance layer pending a first-class design. |
+| `additional_node_network_configs` / `additional_pod_network_configs`, `network_config.subnetwork` | Multi-networking (extra node NICs / pod networks) is an advanced cluster feature modeled when the cluster's `enable_multi_networking` gains real pull; the pool's subnetwork override rides the same wave. |
 
 ## Related Components
 
-- **[GcpGkeCluster](../gcpgkecluster/v1/README.md)**: Parent GKE cluster (control plane)
-- **[GcpProject](../gcpproject/v1/README.md)**: GCP project for resource organization
-- **[GcpVpcNetwork](../gcpvpcnetwork/v1/README.md)**: VPC network for cluster connectivity
+- **GcpGkeCluster** — the control plane this pool attaches to (references its `name` and `location` outputs)
+- **GcpServiceAccount** — the node identity (`service_account` reference)
+- **GcpKmsKey** — CMEK key for boot-disk encryption
+- **GcpGkeWorkloadIdentityBinding** — grants workloads IAM identities; pair with `GKE_METADATA` workload metadata mode
+- **GcpDataprocVirtualCluster** — schedules Dataproc roles onto named node pools by `node_pool_id`
 
-## Documentation
+## Additional Resources
 
-- **[Examples](./examples.md)**: 5+ working YAML examples covering common patterns
-- **[Research Document](./docs/README.md)**: Deep dive into GKE node pools, deployment methods, and the evolution from manual operations to GitOps
-- **[Pulumi Module](./iac/pulumi/README.md)**: Standalone Pulumi usage
-- **[Terraform Module](./iac/tf/README.md)**: Standalone Terraform/OpenTofu usage
-
-## Support
-
-For issues, questions, or contributions, visit the [Planton repository](https://github.com/plantonhq/planton).
-
----
-
-**Note**: This component requires an existing `GcpGkeCluster` resource. Node pools cannot exist without a parent cluster.
+- [Node Pools Documentation](https://cloud.google.com/kubernetes-engine/docs/concepts/node-pools)
+- [NodePools REST API](https://cloud.google.com/kubernetes-engine/docs/reference/rest/v1/projects.locations.clusters.nodePools)

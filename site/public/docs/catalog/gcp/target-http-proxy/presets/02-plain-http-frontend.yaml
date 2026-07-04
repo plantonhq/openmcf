@@ -1,0 +1,11 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpTargetHttpProxy
+metadata:
+  name: plain-http-frontend
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  description: Serves the application over plain HTTP for internal testing
+  urlMap:
+    value: "<app-url-map-self-link>" # replace: the URL map routing to real backends
+  httpKeepAliveTimeoutSec: 610

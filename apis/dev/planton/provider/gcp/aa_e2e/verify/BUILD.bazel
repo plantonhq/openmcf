@@ -11,6 +11,7 @@ go_library(
         "cloud_sql_user.go",
         "gcs_bucket.go",
         "gke_cluster.go",
+        "gke_node_pool.go",
         "global_address.go",
         "global_forwarding_rule.go",
         "health_check.go",

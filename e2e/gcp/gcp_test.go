@@ -306,6 +306,19 @@ func TestGcpGkeCluster_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpgkecluster", "terraform")
 }
 
+// GcpGkeNodePool scenarios. Every scenario deploys a full GKE cluster
+// prerequisite chain (VPC -> subnetwork -> zonal cluster, 10-25 minutes)
+// before the pool itself; batch runs need -timeout >= 180m. The minimal
+// scenario exercises fixed-count sizing; the autoscaling-spot scenario
+// exercises scale-to-zero autoscaling, Spot capacity, taints, and kubelet
+// hardening.
+func TestGcpGkeNodePool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpgkenodepool", "pulumi")
+}
+func TestGcpGkeNodePool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpgkenodepool", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -1,0 +1,39 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpGkeNodePool
+metadata:
+  name: gpu-inference-pool
+spec:
+  clusterName:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: my-gke-cluster # replace with your GcpGkeCluster resource name
+      fieldPath: status.outputs.name
+  location:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: my-gke-cluster # replace with your GcpGkeCluster resource name
+      fieldPath: status.outputs.location
+  autoscaling:
+    minNodes: 0 # GPUs are expensive — scale to zero when no ML work is queued
+    maxNodes: 4
+    locationPolicy: ANY
+  nodeConfig:
+    # g2-standard-8 carries one NVIDIA L4 — the price/performance choice for
+    # inference. For training, move to a2/a3 machine types (A100/H100).
+    machineType: g2-standard-8
+    diskSizeGb: 200 # model weights and image layers need room
+    diskType: pd-ssd
+    guestAccelerators:
+      - type: nvidia-l4 # must match what the machine family carries
+        count: 1
+        gpuDriverVersion: DEFAULT # GKE installs and manages the driver
+    # Image streaming starts large ML images minutes faster.
+    gcfsEnabled: true
+    # GKE also taints GPU nodes automatically (nvidia.com/gpu); this
+    # explicit taint makes the fence visible in the manifest.
+    taints:
+      - key: nvidia.com/gpu
+        value: present
+        effect: NO_SCHEDULE
+    labels:
+      accelerator: nvidia-l4

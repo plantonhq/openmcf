@@ -1,42 +1,39 @@
-###############################################################################
-# Outputs
-###############################################################################
-
 output "node_pool_name" {
-  description = "Name of the GKE node pool"
-  value       = google_container_node_pool.node_pool.name
+  description = "Name of the node pool as created in GKE"
+  value       = google_container_node_pool.this.name
 }
 
 output "instance_group_urls" {
-  description = "URLs of the Compute Instance Group(s) backing this node pool (one per zone for regional clusters)"
-  value       = google_container_node_pool.node_pool.instance_group_urls
+  description = "Resource URLs of the managed instance groups backing this pool (one per zone for regional clusters)"
+  value       = google_container_node_pool.this.instance_group_urls
 }
 
 output "min_nodes" {
-  description = "Effective minimum size of the node pool"
-  value = (
-    var.spec.autoscaling != null
-    ? var.spec.autoscaling.min_nodes
-    : var.spec.node_count
-  )
+  description = "Effective minimum size of the pool (autoscaling minimum, or the fixed node_count)"
+  value       = local.effective_min
 }
 
 output "max_nodes" {
-  description = "Effective maximum size of the node pool"
-  value = (
-    var.spec.autoscaling != null
-    ? var.spec.autoscaling.max_nodes
-    : var.spec.node_count
-  )
+  description = "Effective maximum size of the pool (autoscaling maximum, or the fixed node_count)"
+  value       = local.effective_max
 }
 
 output "current_node_count" {
-  description = "Current number of nodes in this pool (managed by autoscaler if enabled)"
-  value       = google_container_node_pool.node_pool.node_count
+  description = "Nodes per zone at the last deploy (a snapshot — the autoscaler moves it at runtime)"
+  value       = google_container_node_pool.this.node_count
 }
 
 output "node_pool_id" {
-  description = "Fully qualified GKE node pool resource ID (projects/{project}/locations/{location}/clusters/{cluster}/nodePools/{nodePool})"
-  value       = google_container_node_pool.node_pool.id
+  description = "Fully qualified node pool resource ID (projects/{project}/locations/{location}/clusters/{cluster}/nodePools/{name})"
+  value       = google_container_node_pool.this.id
 }
 
+output "location" {
+  description = "The pool's location (the parent cluster's region or zone), exactly as provided in the spec"
+  value       = var.spec.location
+}
+
+output "version" {
+  description = "The Kubernetes version running on the pool's nodes"
+  value       = google_container_node_pool.this.version
+}

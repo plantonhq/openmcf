@@ -81,6 +81,15 @@ networking connection), then the dependency's `v1/e2e/prerequisite.yaml` (its
 published install profile), then its `v1/e2e/scenarios/minimal.yaml`. Declaring
 `prerequisites: [X]` is all that is needed -- no per-component wiring.
 
+**Transitive prerequisites resolve against the component under test, not against
+intermediate dependencies.** If kind A depends on B and B depends on C, the install
+manifest for C is looked up under A's `v1/e2e/prerequisites/c.yaml` (then C's published
+profile), NOT under B's consumer-scoped overrides. So when B's install profile
+references a specifically shaped C (e.g. a GKE cluster prerequisite referencing a
+subnetwork with named secondary ranges), the consuming kind A must ship its own
+consumer-scoped copy of that transitive prerequisite with matching `metadata.name`s —
+B's consumer-scoped shape does not carry over.
+
 **Cloud SQL chain note:** `GcpCloudSql` declares
 `prerequisites: [GcpServiceNetworkingConnection]`, so every instance/database/user
 scenario transitively installs VPC → VPC_PEERING range → connection before the

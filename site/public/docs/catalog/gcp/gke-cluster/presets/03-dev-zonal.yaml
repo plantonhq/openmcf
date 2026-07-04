@@ -1,0 +1,27 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpGkeCluster
+metadata:
+  name: dev-sandbox
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  # A zone (not a region) creates a ZONAL cluster: one control-plane
+  # instance, the cheapest GKE shape. Fine for development; production
+  # should be regional.
+  location: us-central1-a
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: my-app-vpc # replace with your GcpVpcNetwork resource name
+      fieldPath: status.outputs.network_self_link
+  subnetwork:
+    valueFrom:
+      kind: GcpSubnetwork
+      name: my-dev-subnet # replace with your GcpSubnetwork resource name
+      fieldPath: status.outputs.subnetwork_self_link
+  # No ipAllocation block: GKE creates and manages the pod/service
+  # secondary ranges itself — fine for sandboxes where address-space
+  # governance doesn't matter yet.
+  releaseChannel: RAPID # earliest access to new Kubernetes versions
+  # A sandbox is rebuilt freely; keep the guard off so destroy just works.
+  deletionProtection: false

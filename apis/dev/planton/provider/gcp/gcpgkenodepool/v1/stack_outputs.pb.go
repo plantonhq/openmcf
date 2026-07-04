@@ -21,23 +21,38 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Outputs produced after creating/updating a GKE Node Pool.
+// GcpGkeNodePoolStackOutputs captures key info after provisioning a GKE
+// node pool.
 type GcpGkeNodePoolStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the node pool in GKE (usually same as metadata.name of the resource).
+	// Name of the node pool as created in GKE — the handle gcloud commands
+	// and in-cluster references use. Matches spec.node_pool_name when set,
+	// otherwise metadata.name.
 	NodePoolName string `protobuf:"bytes,1,opt,name=node_pool_name,json=nodePoolName,proto3" json:"node_pool_name,omitempty"`
-	// URLs of the Compute Instance Group(s) backing this node pool.
-	// For regional clusters, there is one managed instance group per zone.
+	// Resource URLs of the managed instance groups backing this pool —
+	// one per zone for regional clusters. What instance-group-targeted
+	// load-balancer backends and infrastructure automation compose against.
 	InstanceGroupUrls []string `protobuf:"bytes,2,rep,name=instance_group_urls,json=instanceGroupUrls,proto3" json:"instance_group_urls,omitempty"`
-	// Effective minimum and maximum size of the node pool (for autoscaling).
+	// Effective minimum size of the pool: the autoscaling minimum (per zone)
+	// when autoscaling manages the pool, else the fixed node_count.
 	MinNodes string `protobuf:"bytes,3,opt,name=min_nodes,json=minNodes,proto3" json:"min_nodes,omitempty"`
+	// Effective maximum size of the pool: the autoscaling maximum (per zone)
+	// when autoscaling manages the pool, else the fixed node_count.
 	MaxNodes string `protobuf:"bytes,4,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
-	// Current number of nodes in this pool.
+	// Number of nodes per zone at the time of the last deploy. For
+	// autoscaled pools this drifts as the autoscaler works — treat it as a
+	// snapshot, not live state.
 	CurrentNodeCount string `protobuf:"bytes,5,opt,name=current_node_count,json=currentNodeCount,proto3" json:"current_node_count,omitempty"`
-	// Fully qualified GKE node pool resource ID.
-	// Format: projects/{project}/locations/{location}/clusters/{cluster}/nodePools/{nodePool}
-	// Used by downstream resources (e.g., Dataproc on GKE) to reference this node pool.
-	NodePoolId    string `protobuf:"bytes,6,opt,name=node_pool_id,json=nodePoolId,proto3" json:"node_pool_id,omitempty"`
+	// Fully qualified GKE node pool resource ID:
+	// projects/{project}/locations/{location}/clusters/{cluster}/nodePools/{name}.
+	// The handle downstream services (e.g. Dataproc on GKE) reference the
+	// pool by, and the path API callers address it with.
+	NodePoolId string `protobuf:"bytes,6,opt,name=node_pool_id,json=nodePoolId,proto3" json:"node_pool_id,omitempty"`
+	// The pool's location (the parent cluster's region or zone), exactly as
+	// provided in the spec.
+	Location string `protobuf:"bytes,7,opt,name=location,proto3" json:"location,omitempty"`
+	// The Kubernetes version running on the pool's nodes.
+	Version       string `protobuf:"bytes,8,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -114,11 +129,25 @@ func (x *GcpGkeNodePoolStackOutputs) GetNodePoolId() string {
 	return ""
 }
 
+func (x *GcpGkeNodePoolStackOutputs) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolStackOutputs) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpgkenodepool_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpgkenodepool_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/gcp/gcpgkenodepool/v1/stack_outputs.proto\x12*dev.planton.provider.gcp.gcpgkenodepool.v1\"\xfc\x01\n" +
+	">dev/planton/provider/gcp/gcpgkenodepool/v1/stack_outputs.proto\x12*dev.planton.provider.gcp.gcpgkenodepool.v1\"\xb2\x02\n" +
 	"\x1aGcpGkeNodePoolStackOutputs\x12$\n" +
 	"\x0enode_pool_name\x18\x01 \x01(\tR\fnodePoolName\x12.\n" +
 	"\x13instance_group_urls\x18\x02 \x03(\tR\x11instanceGroupUrls\x12\x1b\n" +
@@ -126,7 +155,9 @@ const file_dev_planton_provider_gcp_gcpgkenodepool_v1_stack_outputs_proto_rawDes
 	"\tmax_nodes\x18\x04 \x01(\tR\bmaxNodes\x12,\n" +
 	"\x12current_node_count\x18\x05 \x01(\tR\x10currentNodeCount\x12 \n" +
 	"\fnode_pool_id\x18\x06 \x01(\tR\n" +
-	"nodePoolIdB\xf1\x02\n" +
+	"nodePoolId\x12\x1a\n" +
+	"\blocation\x18\a \x01(\tR\blocation\x12\x18\n" +
+	"\aversion\x18\b \x01(\tR\aversionB\xf1\x02\n" +
 	".com.dev.planton.provider.gcp.gcpgkenodepool.v1B\x11StackOutputsProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkenodepool/v1;gcpgkenodepoolv1\xa2\x02\x05DPPGG\xaa\x02*Dev.Planton.Provider.Gcp.Gcpgkenodepool.V1\xca\x02*Dev\\Planton\\Provider\\Gcp\\Gcpgkenodepool\\V1\xe2\x026Dev\\Planton\\Provider\\Gcp\\Gcpgkenodepool\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Gcp::Gcpgkenodepool::V1b\x06proto3"
 
 var (

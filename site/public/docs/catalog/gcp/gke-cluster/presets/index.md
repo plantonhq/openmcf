@@ -10,12 +10,16 @@ order: 200
 presets:
   - slug: "01-private-standard"
     rank: "01"
-    title: "Private GKE Cluster -- Standard"
-    excerpt: "This preset creates a private GKE cluster with no public node IPs, the REGULAR release channel, Workload Identity enabled, and network policy enforcement. Private clusters are the GCP-recommended..."
-  - slug: "02-private-rapid"
+    title: "Private Production Cluster — Standard"
+    excerpt: "This preset creates a regional Standard cluster with private nodes, Dataplane V2, planned secondary ranges, a control-plane access allowlist, a daily maintenance window, and the Security Posture..."
+  - slug: "02-autopilot"
     rank: "02"
-    title: "Private GKE Cluster -- Rapid Channel"
-    excerpt: "This preset creates a private GKE cluster on the RAPID release channel for development or staging environments that want early access to the latest Kubernetes versions and GKE features. Otherwise..."
+    title: "Autopilot Cluster"
+    excerpt: "This preset creates a private Autopilot cluster: GKE provisions and manages the nodes, bills per running pod, and enforces a hardened security posture out of the box."
+  - slug: "03-dev-zonal"
+    rank: "03"
+    title: "Development Zonal Cluster"
+    excerpt: "This preset creates the smallest, cheapest GKE control plane: a zonal Standard cluster with GKE-managed IP ranges, public nodes, the RAPID channel, and deletion protection off."
 ---
 
 # GKE Cluster Presets

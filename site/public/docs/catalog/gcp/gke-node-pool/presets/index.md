@@ -10,12 +10,16 @@ order: 200
 presets:
   - slug: "01-on-demand-autoscaling"
     rank: "01"
-    title: "On-Demand Autoscaling Node Pool"
-    excerpt: "This preset creates a GKE node pool with on-demand (non-preemptible) VMs, SSD boot disks, and cluster autoscaler enabled. It scales between 1 and 5 nodes per zone with balanced distribution, making..."
+    title: "On-Demand Autoscaling Pool"
+    excerpt: "This preset creates the workhorse node pool most clusters run first: on-demand VMs, per-zone autoscaling, surge upgrades with zero capacity dip, a dedicated node service account, and secure boot on."
   - slug: "02-spot-cost-optimized"
     rank: "02"
-    title: "Spot VM Cost-Optimized Node Pool"
-    excerpt: "This preset creates a GKE node pool using Spot VMs for significant cost savings (60-91% discount). Spot VMs can be preempted at any time, making this pool suitable for fault-tolerant batch jobs, CI..."
+    title: "Spot Cost-Optimized Pool"
+    excerpt: "This preset creates a scale-to-zero Spot pool for fault-tolerant workloads: deeply discounted capacity (60-91%) that costs nothing while idle, fenced off from general workloads by a taint."
+  - slug: "03-gpu-accelerated"
+    rank: "03"
+    title: "GPU-Accelerated Pool"
+    excerpt: "This preset creates a scale-to-zero GPU pool for ML workloads: NVIDIA L4 nodes with GKE-managed drivers, image streaming for large ML images, and an explicit GPU taint."
 ---
 
 # GKE Node Pool Presets

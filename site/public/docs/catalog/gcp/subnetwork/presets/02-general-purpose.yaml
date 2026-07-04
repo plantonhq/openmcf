@@ -7,7 +7,7 @@ spec:
     value: "<gcp-project-id>"
   vpcSelfLink:
     value: "<vpc-network-self-link>"
-  subnetworkName: <your-subnet-name>
-  region: <gcp-region>
+  subnetworkName: general-subnet  # replace with your subnet name
+  region: us-central1             # replace with your region
   ipCidrRange: 10.1.0.0/24  # 256 IPs for general compute workloads
   privateIpGoogleAccess: true  # allows VMs without external IPs to reach Google APIs

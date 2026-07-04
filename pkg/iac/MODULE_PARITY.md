@@ -41,6 +41,18 @@ matching `pulumi/module/*.go`), confirm both sides agree on:
 - **Resource naming basis.** Both engines name the created objects (operator CRs, pod
   annotations, secret names) off the SAME field -- `metadata.name` is the established
   basis. Don't introduce a parallel `metadata.id`-based name on one side.
+- **Reference resolution source.** Both engines consume the same resolved spec
+  references (`StringValueOrRef` fields arrive as plain strings). Never substitute a
+  provider data-source lookup on one side for a spec field the other side reads -- the
+  two resolution paths can disagree (a wildcard-location cluster lookup vs the spec's
+  location reference), and the ignored spec field becomes dead config on one engine
+  only, which is a spec-feature-coverage defect.
+- **Cross-resource addressing.** Both engines consume the spec's resolved reference
+  fields (`StringValueOrRef` arrives as a plain string) to address a parent or sibling
+  resource. Never re-discover a parent on one engine via a provider data-source lookup
+  (e.g. a wildcard-location search by name) while the other reads the spec field -- the
+  two resolution paths diverge the moment names collide across locations or projects,
+  and the data-source path silently ignores the spec contract.
 - **Labels.** Same keys and values. The resource-identity labels are the
   `kuberneteslabelkeys` set (`planton.ai/resource`, `planton.ai/name`, `planton.ai/kind`,
   `planton.ai/id`, `planton.ai/organization`, `planton.ai/environment`); the kind value

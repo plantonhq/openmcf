@@ -7,8 +7,8 @@ spec:
     value: "<gcp-project-id>"
   vpcSelfLink:
     value: "<vpc-network-self-link>"
-  subnetworkName: <your-subnet-name>
-  region: <gcp-region>
+  subnetworkName: gke-subnet    # replace with your subnet name
+  region: us-central1           # replace with your region
   ipCidrRange: 10.0.0.0/20  # 4,096 IPs for nodes
   secondaryIpRanges:
     - rangeName: pods
