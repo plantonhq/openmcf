@@ -11,17 +11,24 @@ spec:
   # DescribeClusterV2 keyed on the cluster ARN, shared with the
   # provisioned sibling.
   #
-  # deferred: both engines are validated offline only -- tofu
-  # init/validate/plan and pulumi preview against the hack manifest --
-  # with no live provision lane yet (the provider's contract ceiling is
-  # 120 min each way; in practice serverless provisions faster than the
-  # provisioned sibling, but the sibling's lane is also deferred and
-  # long-tail adoption does not yet earn the run). The scenario,
-  # prerequisite chain, and verifier are live-ready; flip to green after
-  # the first full deploy -> verify -> destroy run on both provisioners.
+  # deferred: both engines are validated offline only -- tofu init +
+  # validate, spec/CEL tests, outputs conformance, and Pulumi module
+  # compile -- with no live provision lane yet (plan/preview lanes also
+  # not run: no usable AWS credentials were reachable; the provider's
+  # contract ceiling is 120 min each way; in practice serverless
+  # provisions faster than the provisioned sibling, but the sibling's
+  # lane is also deferred and long-tail adoption does not yet earn the
+  # run). The scenario, prerequisite chain, and verifier are live-ready;
+  # flip to green after the first full deploy -> verify -> destroy run
+  # on both provisioners.
   tier: 1
   status: deferred
   validated_provisioners:
     - pulumi
     - terraform
   timeout_minutes: 120
+  deferred_reason: >-
+    Long-tail kind; live lane deferred by owner decision (consistent with
+    the provisioned MSK sibling). Offline gate green (tofu init + validate,
+    spec/CEL tests, outputs conformance, Pulumi module compile); artifacts
+    live-ready.
