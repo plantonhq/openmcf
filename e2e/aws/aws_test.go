@@ -123,13 +123,17 @@ func TestAwsVpcEndpoint_Terraform(t *testing.T) {
 
 // --- AWS IAM Policy (leaf of the identity graph: a standalone managed policy) ---
 
-func TestAwsIamPolicy_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awsiampolicy", "pulumi") }
-func TestAwsIamPolicy_Terraform(t *testing.T) { runAllScenariosForComponent(t, "awsiampolicy", "terraform") }
+func TestAwsIamPolicy_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "awsiampolicy", "pulumi") }
+func TestAwsIamPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiampolicy", "terraform")
+}
 
 // --- AWS IAM Role (trust policy + attachments + inline policies) ---
 
-func TestAwsIamRole_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awsiamrole", "pulumi") }
-func TestAwsIamRole_Terraform(t *testing.T) { runAllScenariosForComponent(t, "awsiamrole", "terraform") }
+func TestAwsIamRole_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "awsiamrole", "pulumi") }
+func TestAwsIamRole_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamrole", "terraform")
+}
 
 // --- AWS IAM Instance Profile (composed identity chain: deploys an AwsIamRole prerequisite) ---
 
@@ -142,8 +146,10 @@ func TestAwsIamInstanceProfile_Terraform(t *testing.T) {
 
 // --- AWS IAM User (long-lived identity with access key + force-destroy teardown) ---
 
-func TestAwsIamUser_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awsiamuser", "pulumi") }
-func TestAwsIamUser_Terraform(t *testing.T) { runAllScenariosForComponent(t, "awsiamuser", "terraform") }
+func TestAwsIamUser_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "awsiamuser", "pulumi") }
+func TestAwsIamUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamuser", "terraform")
+}
 
 // --- AWS IAM OIDC Provider (keyless-federation trust anchor; synthetic issuer) ---
 
@@ -314,6 +320,24 @@ func TestAwsServerlessElasticache_Pulumi(t *testing.T) {
 }
 func TestAwsServerlessElasticache_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsserverlesselasticache", "terraform")
+}
+
+// --- AWS MSK Cluster (two kafka.t3.small brokers, SASL/IAM; subnet + security-group prerequisite chain) ---
+
+func TestAwsMskCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmskcluster", "pulumi")
+}
+func TestAwsMskCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmskcluster", "terraform")
+}
+
+// --- AWS OpenSearch Domain (true leaf; public single-node t3.small.search domain) ---
+
+func TestAwsOpenSearchDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsopensearchdomain", "pulumi")
+}
+func TestAwsOpenSearchDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsopensearchdomain", "terraform")
 }
 
 // --- AWS EKS Cluster (the control plane; slowest single resource in the suite, ~25 min/engine) ---

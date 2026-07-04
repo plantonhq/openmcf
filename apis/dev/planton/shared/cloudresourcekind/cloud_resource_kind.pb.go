@@ -239,6 +239,9 @@ const (
 	// In-Memory Database
 	CloudResourceKind_AwsMemorydbCluster CloudResourceKind = 342
 	// Streaming
+	// AwsSubnet and AwsSecurityGroup are prerequisites because brokers are
+	// placed in referenced subnets and AWS requires at least one attached
+	// security group at creation.
 	CloudResourceKind_AwsMskCluster CloudResourceKind = 350
 	// 400–599: Azure resources
 	CloudResourceKind_AzureResourceGroup            CloudResourceKind = 400
@@ -1697,7 +1700,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xae\x97\x01\n" +
+	"\x02v1\x10\x01*\xb4\x97\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1796,8 +1799,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0fAwsCodePipeline\x10\xcb\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscp\x12*\n" +
 	"\x12AwsMwaaEnvironment\x10\xd4\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsmwaa\x12,\n" +
 	"\x11AwsNeptuneCluster\x10\xd5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnep:\x02\x9c\x02\x12)\n" +
-	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsmdb\x12$\n" +
-	"\rAwsMskCluster\x10\xde\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsmsk\x12)\n" +
+	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsmdb\x12*\n" +
+	"\rAwsMskCluster\x10\xde\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsmsk:\x04\x9c\x02\xd7\x01\x12)\n" +
 	"\x12AzureResourceGroup\x10\x90\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x04azrg0\x01\x12%\n" +
 	"\x0fAzureAksCluster\x10\x91\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x03aks0\x01\x12&\n" +
 	"\x10AzureAksNodePool\x10\x92\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05aksnp\x12*\n" +

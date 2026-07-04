@@ -210,10 +210,13 @@ enum CloudResourceKind {
     id_prefix: "lbtg"
     prerequisites: [AwsVpc]
   }];
+  // AwsVpc is a prerequisite because every security group is created in a
+  // VPC; the E2E install profile resolves vpc_id against the VPC prerequisite.
   AwsSecurityGroup = 215 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awssg"
+    prerequisites: [AwsVpc]
   }];
   AwsVpc = 216 [(kind_meta) = {
     provider: aws
@@ -707,10 +710,17 @@ enum CloudResourceKind {
   }];
 
   // Streaming
+  // AwsSubnet and AwsSecurityGroup are prerequisites because brokers are
+  // placed in referenced subnets and AWS requires at least one attached
+  // security group at creation.
   AwsMskCluster = 350 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsmsk"
+    prerequisites: [
+      AwsSubnet,
+      AwsSecurityGroup
+    ]
   }];
 
   // 400–599: Azure resources

@@ -68,6 +68,9 @@ var verifiers = map[string]Verifier{
 	"awsrediselasticache":            &elasticacheReplicationGroupVerifier{},
 	"awsmemcachedelasticache":        &elasticacheClusterVerifier{},
 	"awsserverlesselasticache":       &elasticacheServerlessCacheVerifier{},
+	"awssecuritygroup":               &securityGroupVerifier{},
+	"awsmskcluster":                  &mskClusterVerifier{},
+	"awsopensearchdomain":            &opensearchDomainVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

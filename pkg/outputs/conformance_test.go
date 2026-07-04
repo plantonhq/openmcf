@@ -686,6 +686,70 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsMskCluster: cluster_arn keys the E2E verifier and IAM
+			// policies; the bootstrap_brokers_* family carries the
+			// per-listener connection strings clients consume (each engine
+			// emits every variant, empty when the listener is off); and
+			// configuration_arn surfaces the module-managed configuration
+			// folded from server_properties.
+			name: "AwsMskCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsMskCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_arn":                                   "arn:aws:kafka:us-west-2:123456789012:cluster/orders-streaming/abc12345-6789-0abc-def1-234567890abc-2",
+				"cluster_name":                                  "orders-streaming",
+				"cluster_uuid":                                  "abc12345-6789-0abc-def1-234567890abc-2",
+				"current_version":                               "K3AEGXETSR30VB",
+				"bootstrap_brokers":                             "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9092",
+				"bootstrap_brokers_tls":                         "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9094",
+				"bootstrap_brokers_sasl_iam":                    "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9098",
+				"bootstrap_brokers_sasl_scram":                  "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9096",
+				"bootstrap_brokers_public_tls":                  "b-1-public.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9194",
+				"bootstrap_brokers_public_sasl_iam":             "b-1-public.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9198",
+				"bootstrap_brokers_public_sasl_scram":           "b-1-public.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9196",
+				"bootstrap_brokers_vpc_connectivity_tls":        "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:14001",
+				"bootstrap_brokers_vpc_connectivity_sasl_iam":   "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:14003",
+				"bootstrap_brokers_vpc_connectivity_sasl_scram": "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:14002",
+				"zookeeper_connect_string":                      "z-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:2181",
+				"zookeeper_connect_string_tls":                  "z-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:2182",
+				"configuration_arn":                             "arn:aws:kafka:us-west-2:123456789012:configuration/orders-streaming/def67890-1234-5abc-def6-789012345def-3",
+			},
+			mustPopulate: []string{
+				"cluster_arn", "cluster_name", "cluster_uuid", "current_version",
+				"bootstrap_brokers", "bootstrap_brokers_tls",
+				"bootstrap_brokers_sasl_iam", "bootstrap_brokers_sasl_scram",
+				"bootstrap_brokers_public_tls", "bootstrap_brokers_public_sasl_iam",
+				"bootstrap_brokers_public_sasl_scram",
+				"bootstrap_brokers_vpc_connectivity_tls",
+				"bootstrap_brokers_vpc_connectivity_sasl_iam",
+				"bootstrap_brokers_vpc_connectivity_sasl_scram",
+				"zookeeper_connect_string", "zookeeper_connect_string_tls",
+				"configuration_arn",
+			},
+		},
+		{
+			// AwsOpenSearchDomain: domain_name keys the E2E verifier;
+			// endpoint + dashboard_endpoint are the connection handles
+			// downstream references consume; the *_v2 trio carries the
+			// dual-stack endpoint surface added this session.
+			name: "AwsOpenSearchDomain",
+			kind: cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain,
+			rawOutputs: map[string]interface{}{
+				"domain_id":                         "123456789012/search-logs",
+				"domain_name":                       "search-logs",
+				"domain_arn":                        "arn:aws:es:us-west-2:123456789012:domain/search-logs",
+				"endpoint":                          "search-search-logs-abc123.us-west-2.es.amazonaws.com",
+				"dashboard_endpoint":                "search-search-logs-abc123.us-west-2.es.amazonaws.com/_dashboards",
+				"endpoint_v2":                       "search-logs-abc123.us-west-2.aos.amazonaws.com",
+				"dashboard_endpoint_v2":             "search-logs-abc123.us-west-2.aos.amazonaws.com/_dashboards",
+				"domain_endpoint_v2_hosted_zone_id": "Z1H1FL5HABSF5",
+			},
+			mustPopulate: []string{
+				"domain_id", "domain_name", "domain_arn", "endpoint",
+				"dashboard_endpoint", "endpoint_v2", "dashboard_endpoint_v2",
+				"domain_endpoint_v2_hosted_zone_id",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the
