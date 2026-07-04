@@ -1,6 +1,6 @@
 ---
 title: "On-Demand Simple Table"
-description: "This preset creates a DynamoDB table with on-demand (pay-per-request) billing and a simple partition key. On-demand pricing automatically scales to handle any traffic level without capacity planning...."
+description: "This preset creates a DynamoDB table with on-demand (pay-per-request) billing and a simple partition key. On-demand pricing automatically scales to handle any traffic level without capacity planning..."
 type: "preset"
 rank: "01"
 presetSlug: "01-on-demand-simple"
@@ -13,7 +13,7 @@ order: 1
 
 # On-Demand Simple Table
 
-This preset creates a DynamoDB table with on-demand (pay-per-request) billing and a simple partition key. On-demand pricing automatically scales to handle any traffic level without capacity planning. Point-in-time recovery and deletion protection are enabled for production safety. This is the 30-second default for most DynamoDB use cases.
+This preset creates a DynamoDB table with on-demand (pay-per-request) billing and a simple partition key. On-demand pricing automatically scales to handle any traffic level without capacity planning and costs nothing while idle. Point-in-time recovery and deletion protection are enabled for production safety. This is the 30-second default for most DynamoDB use cases.
 
 ## When to Use
 
@@ -23,15 +23,18 @@ This preset creates a DynamoDB table with on-demand (pay-per-request) billing an
 
 ## Key Configuration Choices
 
-- **On-demand billing** (`billingMode: PAY_PER_REQUEST`) -- No capacity planning; pay only for reads/writes consumed; scales instantly
+- **On-demand billing** (`billingMode: PAY_PER_REQUEST`) -- No capacity planning; pay only for reads/writes consumed; scales instantly. Add an `onDemandThroughput` ceiling later if you want a hard spend guardrail.
 - **String partition key** (`keySchema: [{attributeName: id, keyType: HASH}]`) -- Simple HASH key on `id`; sufficient for most key-value access patterns
-- **Point-in-time recovery** (`pointInTimeRecoveryEnabled: true`) -- Continuous backups enabling restoration to any point in the last 35 days
+- **Point-in-time recovery** (`pointInTimeRecovery.enabled: true`) -- Continuous backups enabling restoration to any second in the recovery window (the AWS default keeps 35 days; set `recoveryPeriodInDays` to shorten it)
 - **Deletion protection** (`deletionProtectionEnabled: true`) -- Prevents accidental table deletion
 
 ## Placeholders to Replace
 
-This preset has no placeholders. The table uses on-demand billing and a generic `id` partition key. Rename the `id` attribute and adjust the type (`S` for string, `N` for number, `B` for binary) based on your data model.
+- `<aws-region>` -- The AWS region for the table (e.g. `us-west-2`)
+
+The table uses a generic `id` partition key. Rename the `id` attribute and adjust the type (`S` for string, `N` for number, `B` for binary) based on your data model.
 
 ## Related Presets
 
-- **02-provisioned-production** -- Use instead for predictable workloads where provisioned capacity is more cost-effective
+- **02-provisioned-production** -- Use instead for sustained, predictable workloads where provisioned capacity is more cost-effective
+- **03-global-table** -- Use instead for multi-region active-active deployments

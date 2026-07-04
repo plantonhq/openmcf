@@ -668,6 +668,24 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsDynamodb: table_name/table_arn are the join keys IAM policies
+			// and application config consume; stream_arn is what Lambda
+			// event-source mappings attach to when streams are enabled.
+			name: "AwsDynamodb",
+			kind: cloudresourcekind.CloudResourceKind_AwsDynamodb,
+			rawOutputs: map[string]interface{}{
+				"table_name":   "orders",
+				"table_arn":    "arn:aws:dynamodb:us-west-2:123456789012:table/orders",
+				"table_id":     "orders",
+				"stream_arn":   "arn:aws:dynamodb:us-west-2:123456789012:table/orders/stream/2026-07-04T00:00:00.000",
+				"stream_label": "2026-07-04T00:00:00.000",
+			},
+			mustPopulate: []string{
+				"table_name", "table_arn", "table_id", "stream_arn",
+				"stream_label",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

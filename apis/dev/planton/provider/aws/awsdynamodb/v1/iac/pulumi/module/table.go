@@ -1,168 +1,311 @@
 package module
 
 import (
+	"github.com/pkg/errors"
+	awsdynamodbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsdynamodb/v1"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/dynamodb"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type tableResult struct {
-	Table *dynamodb.Table
-}
+// table provisions the DynamoDB table itself: key schema and indexes,
+// capacity, streams, global-table replication, encryption, and
+// recovery. Create-only in AWS: the table name, the primary key schema,
+// and every local secondary index (LSIs can never be added or removed
+// later). Everything else -- billing mode, GSIs, streams, replicas,
+// TTL, PITR, SSE key, table class -- edits in place.
+func table(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*dynamodb.Table, error) {
+	spec := locals.AwsDynamodb.Spec
 
-func createTable(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*tableResult, error) {
-	// Get billing mode directly from enum (values match AWS API strings)
-	var billingMode pulumi.StringPtrInput
-	if locals.Spec.BillingMode != 0 {
-		billingMode = pulumi.StringPtr(locals.Spec.BillingMode.String())
+	args := &dynamodb.TableArgs{
+		// The table name is metadata.name on both engines, so a
+		// manifest deploys the same table regardless of engine.
+		Name: pulumi.String(locals.TableName),
+		Tags: pulumi.ToStringMap(locals.AwsTags),
+
+		DeletionProtectionEnabled: pulumi.Bool(spec.DeletionProtectionEnabled),
 	}
 
-	// Attributes - get type directly from enum
-	var attrDefs dynamodb.TableAttributeArray
-	for _, a := range locals.Spec.AttributeDefinitions {
-		attrType := "S" // default to String
-		if a.Type != 0 {
-			attrType = a.Type.String()
+	// Empty keeps the AWS default (PROVISIONED). Spec values are the
+	// exact AWS API strings, so they pass through untranslated.
+	if spec.BillingMode != "" {
+		args.BillingMode = pulumi.String(spec.BillingMode)
+	}
+
+	// Key attributes only -- DynamoDB is schemaless beyond the keys.
+	// Restore-created tables inherit schema from the source, so the
+	// lists may be empty (CEL enforces the coupling).
+	if len(spec.AttributeDefinitions) > 0 {
+		attributes := dynamodb.TableAttributeArray{}
+		for _, attribute := range spec.AttributeDefinitions {
+			attributes = append(attributes, dynamodb.TableAttributeArgs{
+				Name: pulumi.String(attribute.Name),
+				Type: pulumi.String(attribute.Type),
+			})
 		}
-		attrDefs = append(attrDefs, dynamodb.TableAttributeArgs{
-			Name: pulumi.String(a.Name),
-			Type: pulumi.String(attrType),
+		args.Attributes = attributes
+	}
+
+	// The provider models the table's primary key as hash_key/range_key
+	// scalars; the spec's key_schema (one HASH, optional RANGE --
+	// CEL-enforced) is lowered here.
+	for _, element := range spec.KeySchema {
+		switch element.KeyType {
+		case "HASH":
+			args.HashKey = pulumi.String(element.AttributeName)
+		case "RANGE":
+			args.RangeKey = pulumi.String(element.AttributeName)
+		}
+	}
+
+	// Reserved capacity applies only when the effective billing mode is
+	// PROVISIONED (CEL enforces the coupling either way).
+	if spec.ProvisionedThroughput != nil {
+		args.ReadCapacity = pulumi.Int(int(spec.ProvisionedThroughput.ReadCapacityUnits))
+		args.WriteCapacity = pulumi.Int(int(spec.ProvisionedThroughput.WriteCapacityUnits))
+	}
+
+	// On-demand ceilings throttle instead of billing past the cap; -1
+	// explicitly removes a previously-set ceiling.
+	if spec.OnDemandThroughput != nil {
+		args.OnDemandThroughput = onDemandThroughputArgs(spec.OnDemandThroughput)
+	}
+
+	// Warm throughput only ever increases -- AWS replaces the table on
+	// a decrease (the provider marks it ForceNew for that reason).
+	if spec.WarmThroughput != nil {
+		warm := &dynamodb.TableWarmThroughputArgs{}
+		if spec.WarmThroughput.ReadUnitsPerSecond != 0 {
+			warm.ReadUnitsPerSecond = pulumi.Int(int(spec.WarmThroughput.ReadUnitsPerSecond))
+		}
+		if spec.WarmThroughput.WriteUnitsPerSecond != 0 {
+			warm.WriteUnitsPerSecond = pulumi.Int(int(spec.WarmThroughput.WriteUnitsPerSecond))
+		}
+		args.WarmThroughput = warm
+	}
+
+	if len(spec.GlobalSecondaryIndexes) > 0 {
+		globalSecondaryIndexes := dynamodb.TableGlobalSecondaryIndexArray{}
+		for _, gsi := range spec.GlobalSecondaryIndexes {
+			globalSecondaryIndexes = append(globalSecondaryIndexes, globalSecondaryIndexArgs(gsi))
+		}
+		args.GlobalSecondaryIndexes = globalSecondaryIndexes
+	}
+
+	// LSIs are create-only: they can never be added or removed after
+	// the table exists, and their presence permanently caps each item
+	// collection at 10 GB.
+	if len(spec.LocalSecondaryIndexes) > 0 {
+		localSecondaryIndexes := dynamodb.TableLocalSecondaryIndexArray{}
+		for _, lsi := range spec.LocalSecondaryIndexes {
+			lsiArgs := dynamodb.TableLocalSecondaryIndexArgs{
+				Name:           pulumi.String(lsi.Name),
+				RangeKey:       pulumi.String(lsi.RangeKey),
+				ProjectionType: pulumi.String(lsi.Projection.Type),
+			}
+			if len(lsi.Projection.NonKeyAttributes) > 0 {
+				lsiArgs.NonKeyAttributes = pulumi.ToStringArray(lsi.Projection.NonKeyAttributes)
+			}
+			localSecondaryIndexes = append(localSecondaryIndexes, lsiArgs)
+		}
+		args.LocalSecondaryIndexes = localSecondaryIndexes
+	}
+
+	if spec.Ttl != nil {
+		ttlArgs := &dynamodb.TableTtlArgs{Enabled: pulumi.Bool(spec.Ttl.Enabled)}
+		if spec.Ttl.AttributeName != "" {
+			ttlArgs.AttributeName = pulumi.String(spec.Ttl.AttributeName)
+		}
+		args.Ttl = ttlArgs
+	}
+
+	// Streams carry item-level change data; global tables require the
+	// NEW_AND_OLD_IMAGES view (CEL enforces it).
+	args.StreamEnabled = pulumi.Bool(spec.StreamEnabled)
+	if spec.StreamViewType != "" {
+		args.StreamViewType = pulumi.String(spec.StreamViewType)
+	}
+
+	if spec.PointInTimeRecovery != nil {
+		pitrArgs := &dynamodb.TablePointInTimeRecoveryArgs{
+			Enabled: pulumi.Bool(spec.PointInTimeRecovery.Enabled),
+		}
+		if spec.PointInTimeRecovery.RecoveryPeriodInDays != 0 {
+			pitrArgs.RecoveryPeriodInDays = pulumi.Int(int(spec.PointInTimeRecovery.RecoveryPeriodInDays))
+		}
+		args.PointInTimeRecovery = pitrArgs
+	}
+
+	// DynamoDB always encrypts; this block switches from the AWS-owned
+	// key to the AWS-managed aws/dynamodb key (no KMS ARN) or a
+	// customer-managed key (ARN set).
+	if spec.ServerSideEncryption != nil {
+		sseArgs := &dynamodb.TableServerSideEncryptionArgs{
+			Enabled: pulumi.Bool(spec.ServerSideEncryption.Enabled),
+		}
+		if spec.ServerSideEncryption.KmsKeyArn.GetValue() != "" {
+			sseArgs.KmsKeyArn = pulumi.String(spec.ServerSideEncryption.KmsKeyArn.GetValue())
+		}
+		args.ServerSideEncryption = sseArgs
+	}
+
+	// Empty keeps the AWS default (STANDARD).
+	if spec.TableClass != "" {
+		args.TableClass = pulumi.String(spec.TableClass)
+	}
+
+	// Global Tables v2: each replica is an active read/write copy in
+	// another region; each region encrypts independently, so the KMS
+	// key is per-replica.
+	if len(spec.Replicas) > 0 {
+		replicas := dynamodb.TableReplicaTypeArray{}
+		for _, replica := range spec.Replicas {
+			replicaArgs := dynamodb.TableReplicaTypeArgs{
+				RegionName:                pulumi.String(replica.RegionName),
+				PointInTimeRecovery:       pulumi.Bool(replica.PointInTimeRecovery),
+				DeletionProtectionEnabled: pulumi.Bool(replica.DeletionProtectionEnabled),
+				PropagateTags:             pulumi.Bool(replica.PropagateTags),
+			}
+			if replica.KmsKeyArn.GetValue() != "" {
+				replicaArgs.KmsKeyArn = pulumi.String(replica.KmsKeyArn.GetValue())
+			}
+			if replica.ConsistencyMode != "" {
+				replicaArgs.ConsistencyMode = pulumi.String(replica.ConsistencyMode)
+			}
+			replicas = append(replicas, replicaArgs)
+		}
+		args.Replicas = replicas
+	}
+
+	// The MRSC witness persists replicated writes for quorum but serves
+	// no reads or writes; CEL pins the exact topology AWS accepts.
+	if spec.GlobalTableWitness != nil {
+		args.GlobalTableWitness = &dynamodb.TableGlobalTableWitnessArgs{
+			RegionName: pulumi.String(spec.GlobalTableWitness.RegionName),
+		}
+	}
+
+	// Create sources are mutually exclusive (CEL): a point-in-time
+	// restore by name or ARN, a backup restore, or an S3 import.
+	if spec.RestoreSourceName != "" {
+		args.RestoreSourceName = pulumi.String(spec.RestoreSourceName)
+	}
+	if spec.RestoreSourceTableArn != "" {
+		args.RestoreSourceTableArn = pulumi.String(spec.RestoreSourceTableArn)
+	}
+	if spec.RestoreDateTime != "" {
+		args.RestoreDateTime = pulumi.String(spec.RestoreDateTime)
+	}
+	if spec.RestoreToLatestTime {
+		args.RestoreToLatestTime = pulumi.Bool(true)
+	}
+	if spec.RestoreBackupArn != "" {
+		args.RestoreBackupArn = pulumi.String(spec.RestoreBackupArn)
+	}
+	if spec.ImportTable != nil {
+		args.ImportTable = importTableArgs(spec.ImportTable)
+	}
+
+	createdTable, err := dynamodb.NewTable(ctx, "table", args, pulumi.Provider(provider))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create DynamoDB table")
+	}
+	return createdTable, nil
+}
+
+// globalSecondaryIndexArgs lowers one GSI. The modern key_schema shape
+// carries multi-attribute keys (1-4 HASH elements first, then 0-4
+// RANGE elements); per-index capacity follows the table's billing mode
+// (CEL enforces the coupling).
+func globalSecondaryIndexArgs(gsi *awsdynamodbv1.AwsDynamodbGlobalSecondaryIndex) dynamodb.TableGlobalSecondaryIndexArgs {
+	keySchemas := dynamodb.TableGlobalSecondaryIndexKeySchemaArray{}
+	for _, element := range gsi.KeySchema {
+		keySchemas = append(keySchemas, dynamodb.TableGlobalSecondaryIndexKeySchemaArgs{
+			AttributeName: pulumi.String(element.AttributeName),
+			KeyType:       pulumi.String(element.KeyType),
 		})
 	}
 
-	// Table keys - get key type directly from enum
-	var tableHashKey, tableRangeKey string
-	for _, k := range locals.Spec.KeySchema {
-		keyType := k.KeyType.String()
-		if keyType == "HASH" {
-			tableHashKey = k.AttributeName
+	gsiArgs := dynamodb.TableGlobalSecondaryIndexArgs{
+		Name:           pulumi.String(gsi.Name),
+		KeySchemas:     keySchemas,
+		ProjectionType: pulumi.String(gsi.Projection.Type),
+	}
+	if len(gsi.Projection.NonKeyAttributes) > 0 {
+		gsiArgs.NonKeyAttributes = pulumi.ToStringArray(gsi.Projection.NonKeyAttributes)
+	}
+	if gsi.ProvisionedThroughput != nil {
+		gsiArgs.ReadCapacity = pulumi.Int(int(gsi.ProvisionedThroughput.ReadCapacityUnits))
+		gsiArgs.WriteCapacity = pulumi.Int(int(gsi.ProvisionedThroughput.WriteCapacityUnits))
+	}
+	if gsi.OnDemandThroughput != nil {
+		onDemand := &dynamodb.TableGlobalSecondaryIndexOnDemandThroughputArgs{}
+		if gsi.OnDemandThroughput.MaxReadRequestUnits != 0 {
+			onDemand.MaxReadRequestUnits = pulumi.Int(int(gsi.OnDemandThroughput.MaxReadRequestUnits))
 		}
-		if keyType == "RANGE" {
-			tableRangeKey = k.AttributeName
+		if gsi.OnDemandThroughput.MaxWriteRequestUnits != 0 {
+			onDemand.MaxWriteRequestUnits = pulumi.Int(int(gsi.OnDemandThroughput.MaxWriteRequestUnits))
 		}
+		gsiArgs.OnDemandThroughput = onDemand
+	}
+	if gsi.WarmThroughput != nil {
+		warm := &dynamodb.TableGlobalSecondaryIndexWarmThroughputArgs{}
+		if gsi.WarmThroughput.ReadUnitsPerSecond != 0 {
+			warm.ReadUnitsPerSecond = pulumi.Int(int(gsi.WarmThroughput.ReadUnitsPerSecond))
+		}
+		if gsi.WarmThroughput.WriteUnitsPerSecond != 0 {
+			warm.WriteUnitsPerSecond = pulumi.Int(int(gsi.WarmThroughput.WriteUnitsPerSecond))
+		}
+		gsiArgs.WarmThroughput = warm
+	}
+	return gsiArgs
+}
+
+// onDemandThroughputArgs lowers the table-level on-demand ceilings.
+// 0 means "not configured" and is omitted; -1 passes through to
+// explicitly remove a previously-set ceiling.
+func onDemandThroughputArgs(spec *awsdynamodbv1.AwsDynamodbOnDemandThroughput) *dynamodb.TableOnDemandThroughputArgs {
+	onDemand := &dynamodb.TableOnDemandThroughputArgs{}
+	if spec.MaxReadRequestUnits != 0 {
+		onDemand.MaxReadRequestUnits = pulumi.Int(int(spec.MaxReadRequestUnits))
+	}
+	if spec.MaxWriteRequestUnits != 0 {
+		onDemand.MaxWriteRequestUnits = pulumi.Int(int(spec.MaxWriteRequestUnits))
+	}
+	return onDemand
+}
+
+// importTableArgs lowers the S3 import source that seeds a brand-new
+// table -- billed as a one-time import instead of per-item writes.
+func importTableArgs(spec *awsdynamodbv1.AwsDynamodbImportTable) *dynamodb.TableImportTableArgs {
+	s3BucketSource := dynamodb.TableImportTableS3BucketSourceArgs{
+		Bucket: pulumi.String(spec.S3Bucket.GetValue()),
+	}
+	if spec.S3BucketOwner != "" {
+		s3BucketSource.BucketOwner = pulumi.String(spec.S3BucketOwner)
+	}
+	if spec.S3KeyPrefix != "" {
+		s3BucketSource.KeyPrefix = pulumi.String(spec.S3KeyPrefix)
 	}
 
-	// LSI
-	var lsiArgs dynamodb.TableLocalSecondaryIndexArray
-	for _, l := range locals.Spec.LocalSecondaryIndexes {
-		var lsiRangeKey string
-		for _, lk := range l.KeySchema {
-			if lk.KeyType.String() == "RANGE" {
-				lsiRangeKey = lk.AttributeName
-			}
-		}
-		lsi := dynamodb.TableLocalSecondaryIndexArgs{
-			Name:     pulumi.String(l.Name),
-			RangeKey: pulumi.String(lsiRangeKey),
-		}
-		// Default projection ALL; override per spec
-		lsi.ProjectionType = pulumi.String("ALL")
-		if l.Projection != nil {
-			projType := l.Projection.Type.String()
-			switch projType {
-			case "KEYS_ONLY_PROJECTION":
-				lsi.ProjectionType = pulumi.String("KEYS_ONLY")
-			case "INCLUDE":
-				lsi.ProjectionType = pulumi.String("INCLUDE")
-				var nonKeys pulumi.StringArray
-				for _, n := range l.Projection.NonKeyAttributes {
-					nonKeys = append(nonKeys, pulumi.String(n))
-				}
-				lsi.NonKeyAttributes = nonKeys
-			case "ALL":
-				lsi.ProjectionType = pulumi.String("ALL")
-			}
-		}
-		lsiArgs = append(lsiArgs, lsi)
+	importArgs := &dynamodb.TableImportTableArgs{
+		InputFormat:    pulumi.String(spec.InputFormat),
+		S3BucketSource: s3BucketSource,
 	}
-
-	// GSI
-	var gsiArgs dynamodb.TableGlobalSecondaryIndexArray
-	for _, g := range locals.Spec.GlobalSecondaryIndexes {
-		var gsiHashKey, gsiRangeKey string
-		for _, gk := range g.KeySchema {
-			keyType := gk.KeyType.String()
-			if keyType == "HASH" {
-				gsiHashKey = gk.AttributeName
-			}
-			if keyType == "RANGE" {
-				gsiRangeKey = gk.AttributeName
-			}
-		}
-		gsi := dynamodb.TableGlobalSecondaryIndexArgs{
-			Name:    pulumi.String(g.Name),
-			HashKey: pulumi.String(gsiHashKey),
-		}
-		if gsiRangeKey != "" {
-			gsi.RangeKey = pulumi.StringPtr(gsiRangeKey)
-		}
-		// Default projection ALL; override per spec
-		gsi.ProjectionType = pulumi.String("ALL")
-		if g.Projection != nil {
-			projType := g.Projection.Type.String()
-			switch projType {
-			case "KEYS_ONLY_PROJECTION":
-				gsi.ProjectionType = pulumi.String("KEYS_ONLY")
-			case "INCLUDE":
-				gsi.ProjectionType = pulumi.String("INCLUDE")
-				var nonKeys pulumi.StringArray
-				for _, n := range g.Projection.NonKeyAttributes {
-					nonKeys = append(nonKeys, pulumi.String(n))
-				}
-				gsi.NonKeyAttributes = nonKeys
-			case "ALL":
-				gsi.ProjectionType = pulumi.String("ALL")
-			}
-		}
-		if g.ProvisionedThroughput != nil && locals.Spec.BillingMode.String() == "PROVISIONED" {
-			gsi.ReadCapacity = pulumi.IntPtr(int(g.ProvisionedThroughput.ReadCapacityUnits))
-			gsi.WriteCapacity = pulumi.IntPtr(int(g.ProvisionedThroughput.WriteCapacityUnits))
-		}
-		gsiArgs = append(gsiArgs, gsi)
+	if spec.InputCompressionType != "" {
+		importArgs.InputCompressionType = pulumi.String(spec.InputCompressionType)
 	}
-
-	// SSE
-	var sseArgs *dynamodb.TableServerSideEncryptionArgs
-	if locals.Spec.ServerSideEncryption != nil && locals.Spec.ServerSideEncryption.Enabled {
-		sseArgs = &dynamodb.TableServerSideEncryptionArgs{
-			Enabled:   pulumi.Bool(true),
-			KmsKeyArn: pulumi.StringPtr(locals.Spec.ServerSideEncryption.KmsKeyArn),
+	if spec.Csv != nil {
+		csvArgs := &dynamodb.TableImportTableInputFormatOptionsCsvArgs{}
+		if spec.Csv.Delimiter != "" {
+			csvArgs.Delimiter = pulumi.String(spec.Csv.Delimiter)
+		}
+		if len(spec.Csv.HeaderList) > 0 {
+			csvArgs.HeaderLists = pulumi.ToStringArray(spec.Csv.HeaderList)
+		}
+		importArgs.InputFormatOptions = &dynamodb.TableImportTableInputFormatOptionsArgs{
+			Csv: csvArgs,
 		}
 	}
-
-	args := &dynamodb.TableArgs{
-		Attributes:             attrDefs,
-		HashKey:                pulumi.String(tableHashKey),
-		BillingMode:            billingMode,
-		LocalSecondaryIndexes:  lsiArgs,
-		GlobalSecondaryIndexes: gsiArgs,
-		ServerSideEncryption:   sseArgs,
-		Tags:                   pulumi.ToStringMap(locals.AwsTags),
-		StreamEnabled:          pulumi.BoolPtr(locals.Spec.StreamEnabled),
-	}
-	if tableRangeKey != "" {
-		args.RangeKey = pulumi.StringPtr(tableRangeKey)
-	}
-
-	if locals.Spec.StreamEnabled && locals.Spec.StreamViewType != 0 {
-		args.StreamViewType = pulumi.StringPtr(locals.Spec.StreamViewType.String())
-	}
-
-	if locals.Spec.TableClass != 0 && locals.Spec.TableClass.String() != "STANDARD" {
-		args.TableClass = pulumi.StringPtr(locals.Spec.TableClass.String())
-	}
-	if locals.Spec.PointInTimeRecoveryEnabled {
-		args.PointInTimeRecovery = &dynamodb.TablePointInTimeRecoveryArgs{Enabled: pulumi.Bool(true)}
-	}
-	if locals.Spec.BillingMode.String() == "PROVISIONED" && locals.Spec.ProvisionedThroughput != nil {
-		args.ReadCapacity = pulumi.IntPtr(int(locals.Spec.ProvisionedThroughput.ReadCapacityUnits))
-		args.WriteCapacity = pulumi.IntPtr(int(locals.Spec.ProvisionedThroughput.WriteCapacityUnits))
-	}
-
-	table, err := dynamodb.NewTable(ctx, locals.Target.Metadata.Name, args, pulumi.Provider(provider))
-	if err != nil {
-		return nil, err
-	}
-
-	return &tableResult{Table: table}, nil
+	return importArgs
 }

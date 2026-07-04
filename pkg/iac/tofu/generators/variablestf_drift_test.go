@@ -73,6 +73,8 @@ var migratedKinds = []string{
 	// Redshift Serverless pair, generator-owned from the day it was forged.
 	"AwsRedshiftServerlessNamespace",
 	"AwsRedshiftServerlessWorkgroup",
+	// DynamoDB, migrated off the legacy hand-written contract.
+	"AwsDynamodb",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

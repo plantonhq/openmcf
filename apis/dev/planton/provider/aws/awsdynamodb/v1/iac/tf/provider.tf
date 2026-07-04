@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a pin: 6.37.0 carries the full surface this module
+      # renders -- global_table_witness (6.22), multi-attribute GSI
+      # key_schema (6.29), and the 6.37 fix for GSI removal under the
+      # key_schema syntax deleting every index on the table.
+      version = ">= 6.37.0"
     }
   }
 }
@@ -14,5 +18,3 @@ provider "aws" {
   # connections the runtime performs the STS web-identity exchange and injects the resulting
   # short-lived credentials. Keep this block empty -- do not wire region or static keys here.
 }
-
-

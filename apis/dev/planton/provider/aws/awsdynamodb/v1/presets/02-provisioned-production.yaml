@@ -13,12 +13,27 @@ spec:
       type: S
     - name: sk
       type: S
+    - name: gsi1pk
+      type: S
   keySchema:
     - attributeName: pk
       keyType: HASH
     - attributeName: sk
       keyType: RANGE
-  pointInTimeRecoveryEnabled: true
-  deletionProtectionEnabled: true
+  globalSecondaryIndexes:
+    - name: gsi1
+      keySchema:
+        - attributeName: gsi1pk
+          keyType: HASH
+      projection:
+        type: ALL
+      provisionedThroughput:
+        readCapacityUnits: 10
+        writeCapacityUnits: 10
+  pointInTimeRecovery:
+    enabled: true
   serverSideEncryption:
     enabled: true
+  contributorInsights:
+    enabled: true
+  deletionProtectionEnabled: true
