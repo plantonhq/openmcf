@@ -33,4 +33,4 @@ This preset reserves a regional internal IP address with the `GCE_ENDPOINT` purp
 ## Related Components
 
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — provides the subnetwork referenced by `subnetwork`
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — parent network for the subnetwork
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — parent network for the subnetwork

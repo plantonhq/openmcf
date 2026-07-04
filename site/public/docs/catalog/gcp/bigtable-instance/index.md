@@ -270,4 +270,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [GcpProject](/docs/catalog/gcp/project) — project where the instance is created
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — encryption key for CMEK-protected clusters
 - [GcpKmsKeyRing](/docs/catalog/gcp/kms-key-ring) — key ring containing the CMEK key
-- [GcpVpc](/docs/catalog/gcp/vpc) — network infrastructure for Private Service Connect (if applicable)
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — network infrastructure for Private Service Connect (if applicable)

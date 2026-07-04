@@ -3,7 +3,7 @@ kind: ComponentE2EProfile
 metadata:
   name: gcpaddress
 spec:
-  # Composed scenario: external addresses need only the GcpVpc prerequisite
+  # Composed scenario: external addresses need only the GcpVpcNetwork prerequisite
   # from the kind registry (no component-specific prerequisite.yaml — the
   # harness installs the VPC's published install profile). Two scenarios cover
   # the kind's two primary branches — an EXTERNAL regional IP (minimal) and an

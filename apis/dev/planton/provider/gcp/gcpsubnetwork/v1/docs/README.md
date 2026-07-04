@@ -36,7 +36,7 @@ VPC Flow Logs sample the subnet's TCP/UDP flows into Cloud Logging — the raw m
 
 | Provider field | Modeled | Notes |
 |---|---|---|
-| `name` / `network` / `region` / `project` | ✅ | `vpc_self_link` → GcpVpc ref; project falls back to the provider default |
+| `name` / `network` / `region` / `project` | ✅ | `vpc_self_link` → GcpVpcNetwork ref; project falls back to the provider default |
 | `ip_cidr_range` | ✅ | Optional only for IPV6_ONLY (spec-enforced); expand-don't-shrink documented |
 | `description` | ✅ | Immutable on this resource (provider ForceNew) |
 | `purpose` + `role` | ✅ | All six purposes; role gated to REGIONAL_MANAGED_PROXY pre-deploy |
@@ -56,7 +56,7 @@ VPC Flow Logs sample the subnet's TCP/UDP flows into Cloud Logging — the raw m
 
 The subnet sits one layer above the VPC and one below everything compute:
 
-1. **GcpVpc** — the parent network (`vpc_self_link` references its `network_self_link` output).
+1. **GcpVpcNetwork** — the parent network (`vpc_self_link` references its `network_self_link` output).
 2. **GcpSubnetwork** (this component) — the address plan.
 3. **GcpGkeCluster** — references the subnet's self-link and selects pod/service secondary ranges by name; **GcpComputeInstance**, **GcpCloudRun** (Direct VPC egress by subnet name), **Dataproc**, **Composer**, and **Vertex AI** consumers reference it the same way.
 

@@ -48,7 +48,71 @@ From the Planton architecture:
 - Alter resource creation patterns
 - Break backward compatibility of deployed resources
 
-## Usage
+## High-fan-in renames (script scope + manual fan-in)
+
+The rename script (`rename_deployment_component.py`) **only** renames the component
+directory, applies in-tree content replacements, renames the provider icon folder,
+and updates `site/public/docs/`. It does **not** call `update_registry_entry()` or
+`run_build_pipeline()` today (those functions exist but are dead code — main exits
+with `success: true` without running them). **High-fan-in renames cannot rely on the
+script alone.**
+
+After the script (or in parallel with a manual tree rename), run a disciplined
+**repo-wide fan-in sweep**:
+
+### Four-way naming (each layer decided independently)
+
+| Layer | Example (GcpVpc → GcpVpcNetwork) | Used for |
+|-------|----------------------------------|----------|
+| Enum / kind string | `GcpVpcNetwork` | `kind:` in manifests, `default_kind` in protos |
+| Folder / E2E slug | `gcpvpcnetwork` | component paths, E2E harness, prerequisite filenames |
+| id_prefix | `gcpvpc` (kept) | metadata ID generation (`cloud_resource_kind.proto`) |
+| TF `planton-ai_kind` label | `gcpvpcnetwork` | GCP legacy: slug, **not** id_prefix (`iac/tf/locals.tf`) |
+
+E2E dependency slug = `strings.ToLower(enum.String())` → folder slug, **not** id_prefix.
+
+The id_prefix does NOT have to change with the kind name — it is an abbreviation
+whose only hard requirement is registry uniqueness (cf. `gcpsnw`, `gcprnat`,
+`gsa`). Prefer keeping the existing prefix unless it is misleading.
+
+### Safe replace order (mandatory)
+
+1. **PascalCase first** (exclude `_changelog/**`, `*.pb.go`): `\bGcpVpc\b` →
+   `GcpVpcNetwork` — covers enum refs, `default_kind`, message types, tests.
+2. **Anchored slug replaces only** — **never** blind repo-wide lowercase
+   `gcpvpc` → `gcpvpcnetwork`: when the id_prefix equals or shares a prefix
+   with the old slug (here `gcpvpc` IS the id_prefix), a blind replace corrupts
+   the registry entry and every generated-ID example:
+   - Path segments: `/gcpvpc/` → `/gcpvpcnetwork/`; relative `../gcpvpc/`
+   - Catalog links: `/docs/catalog/gcp/gcpvpc` → `/docs/catalog/gcp/gcpvpcnetwork`
+   - E2E: `component:` and `e2e-component:` labels; verifier map keys; harness slugs
+   - Prerequisite files: `gcpvpc.yaml` → `gcpvpcnetwork.yaml` (consumer paths)
+   - TF tag: `planton-ai_kind = "gcpvpc"` → `"gcpvpcnetwork"`
+3. **Post-script id_prefix fix** — the script's lowercase pass rewrites
+   README/metadata ID examples to the slug (`gcpvpcnetwork-…`); restore them to
+   the actual id_prefix (`gcpvpc-…`) afterward.
+
+### High-fan-in checklist (verify with grep gate)
+
+- [ ] Manual registry: enum rename, id_prefix, all `prerequisites:` arrays
+- [ ] Sibling `spec.proto` files: every `default_kind = OldKind`
+- [ ] Explicit `valueFrom.kind` YAML blocks + chart templates
+- [ ] Sibling catalog cross-links (`/docs/catalog/gcp/<slug>`)
+- [ ] E2E harness: `gcp_test.go`, `dependencies_test.go`, `aa_e2e/verify/verifier.go`
+- [ ] Prerequisite file renames under consumer `e2e/prerequisites/`
+- [ ] `pkg/outputs/conformance_test.go` + `make generate-cloud-resource-kind-map`
+- [ ] `make protos` + `make reset-gazelle`
+- [ ] Exclude `_changelog/**` from automated replace
+
+### Live E2E minimum for renames
+
+Prove two failure modes on **both engines**:
+
+1. **Leaf** — renamed kind's own scenario
+2. **Composed FK** — one direct `default_kind` consumer (e.g. subnetwork → network)
+
+Post-run: zero-orphan sweep in the test project.
+
 
 ### Basic Syntax
 
@@ -653,13 +717,14 @@ Build failures include full output:
 After rename completion:
 
 ✅ Component folder renamed
-✅ All 7 naming patterns replaced
-✅ Registry updated (enum name, optional ID prefix)
-✅ Documentation updated
-✅ Old directory deleted
+✅ Registry updated manually (enum name, id_prefix, prerequisite arrays)
+✅ High-fan-in sweep complete (see checklist above; grep gate zero outside `_changelog/`)
+✅ All naming patterns replaced in component tree; sibling protos + charts + E2E updated
+✅ Documentation + catalog cross-links updated
 ✅ `make protos` passed
-✅ `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` passed
-✅ `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` passed
+✅ `make generate-cloud-resource-kind-map` + `make reset-gazelle` passed
+✅ `go test` on renamed kind + `pkg/outputs` + `pkg/refcheck` passed
+✅ Live dual-engine E2E: leaf + one FK consumer (when fan-in > ~5 kinds)
 ✅ Changelog created
 ✅ Changes committed
 

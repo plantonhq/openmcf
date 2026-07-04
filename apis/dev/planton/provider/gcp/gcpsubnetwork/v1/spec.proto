@@ -33,11 +33,11 @@ message GcpSubnetworkSpec {
   ];
 
   // The parent VPC network, by self-link.
-  // Reference a GcpVpc resource or provide the self-link directly.
+  // Reference a GcpVpcNetwork resource or provide the self-link directly.
   // Immutable: a subnet cannot move between networks.
   dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_self_link = 2 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 

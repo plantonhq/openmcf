@@ -142,7 +142,7 @@ func TestGcpBackendService_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpbackendservice", "terraform")
 }
 
-// --- GCP Subnetwork (composed address plan: deploys a GcpVpc prerequisite) ---
+// --- GCP Subnetwork (composed address plan: deploys a GcpVpcNetwork prerequisite) ---
 
 func TestGcpSubnetwork_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpsubnetwork", "pulumi")
@@ -243,11 +243,11 @@ func TestGcpAddress_Terraform(t *testing.T) {
 
 // --- GCP VPC (deep-rebuilt network; leaf scenario) ---
 
-func TestGcpVpc_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "gcpvpc", "pulumi")
+func TestGcpVpcNetwork_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvpcnetwork", "pulumi")
 }
-func TestGcpVpc_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "gcpvpc", "terraform")
+func TestGcpVpcNetwork_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvpcnetwork", "terraform")
 }
 
 // --- GCP Cloud SQL (composed PSA chain + public/private instance scenarios) ---

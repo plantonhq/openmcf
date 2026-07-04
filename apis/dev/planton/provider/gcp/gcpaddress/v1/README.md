@@ -62,7 +62,7 @@ This reserves a static external IPv4 address in `us-central1` that you can attac
 | `addressType` | `string` | `EXTERNAL` | `EXTERNAL` for public IPs, `INTERNAL` for private IPs/ranges. |
 | `description` | `string` | `""` | Human-readable description. |
 | `ipVersion` | `string` | `IPV4` | `IPV4` or `IPV6`. |
-| `network` | `StringValueOrRef` | — | VPC network for INTERNAL VPC_PEERING / IPSEC_INTERCONNECT. Can reference GcpVpc. |
+| `network` | `StringValueOrRef` | — | VPC network for INTERNAL VPC_PEERING / IPSEC_INTERCONNECT. Can reference GcpVpcNetwork. |
 | `subnetwork` | `StringValueOrRef` | — | Subnetwork for INTERNAL GCE_ENDPOINT / DNS_RESOLVER. Can reference GcpSubnetwork. |
 | `networkTier` | `string` | `PREMIUM` | `PREMIUM` or `STANDARD` — EXTERNAL only. |
 | `prefixLength` | `int32` | — | CIDR prefix length (8-29) for peering/interconnect ranges. |
@@ -111,7 +111,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 ## Related Components
 
 - [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) — global-scope static IPs and VPC peering ranges
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network for INTERNAL addresses
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network for INTERNAL addresses
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — provides the subnetwork for GCE_ENDPOINT addresses
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project
 

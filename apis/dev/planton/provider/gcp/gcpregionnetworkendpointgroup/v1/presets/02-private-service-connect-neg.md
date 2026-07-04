@@ -10,5 +10,5 @@ A PSC network endpoint group fronting a published producer service or a Google A
 ## Remix Notes
 
 - `pscTargetService` is required — it is the producer's service-attachment URL or a Google API bundle name.
-- Reference a `GcpVpc` and `GcpSubnetwork` under `network.valueFrom` / `subnetwork.valueFrom` to wire the NEG to networks Planton manages.
+- Reference a `GcpVpcNetwork` and `GcpSubnetwork` under `network.valueFrom` / `subnetwork.valueFrom` to wire the NEG to networks Planton manages.
 - `pscData.producerPort` selects a specific producer port; omit it to connect to the first port in the producer's advertised range.

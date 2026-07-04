@@ -67,7 +67,7 @@ For a SERVERLESS NEG set exactly one of `cloudRun` / `cloudFunction` / `appEngin
 | `region` | `string` | — (required) | Region the NEG lives in. Immutable. |
 | `networkEndpointType` | `string` | `SERVERLESS` | Endpoint type. Immutable. |
 | `description` | `string` | `""` | What the NEG fronts. Immutable. |
-| `network` | `StringValueOrRef` | — | VPC for PSC/INTERNET/PORTMAP NEGs. Can reference a GcpVpc. Immutable. |
+| `network` | `StringValueOrRef` | — | VPC for PSC/INTERNET/PORTMAP NEGs. Can reference a GcpVpcNetwork. Immutable. |
 | `subnetwork` | `StringValueOrRef` | — | Subnet for PSC/PORTMAP NEGs. Can reference a GcpSubnetwork. Immutable. |
 | `pscTargetService` | `string` | — | Target service URL for PSC/INTERNET NEGs (required for PSC). Immutable. |
 
@@ -101,7 +101,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 - [GcpBackendService](/docs/catalog/gcp/gcpbackendservice) — references this NEG in `backends[].group`
 - [GcpCloudRun](/docs/catalog/gcp/gcpcloudrun) — the serverless workload a SERVERLESS NEG fronts
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network for PSC/INTERNET NEGs
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network for PSC/INTERNET NEGs
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project that owns the NEG
 
 ## Additional Resources

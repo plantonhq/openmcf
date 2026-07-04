@@ -34,7 +34,7 @@ spec:
   networkInterface:
     network:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: "{{ values.vpc_name }}"
         fieldPath: status.outputs.network_self_link
     subnet:

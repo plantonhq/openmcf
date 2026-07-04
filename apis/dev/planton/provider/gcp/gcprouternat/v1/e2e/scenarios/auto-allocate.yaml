@@ -24,7 +24,7 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: planton-oss-e2e-gcpvpc-prereq
       fieldPath: status.outputs.network_self_link
   minPortsPerVm: 128

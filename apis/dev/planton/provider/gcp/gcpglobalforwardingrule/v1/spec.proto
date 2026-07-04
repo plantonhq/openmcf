@@ -133,11 +133,11 @@ message GcpGlobalForwardingRuleSpec {
   // The VPC network this frontend belongs to. Only used by internal-facing
   // schemes and Private Service Connect (INTERNAL_MANAGED,
   // INTERNAL_SELF_MANAGED, NONE); external load balancers live on Google's
-  // edge, not in a VPC. Reference a GcpVpc resource or provide a network
+  // edge, not in a VPC. Reference a GcpVpcNetwork resource or provide a network
   // self-link. For PSC rules a network is required. If omitted where
   // applicable, GCP uses the default network. Immutable.
   dev.planton.shared.foreignkey.v1.StringValueOrRef network = 10 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 

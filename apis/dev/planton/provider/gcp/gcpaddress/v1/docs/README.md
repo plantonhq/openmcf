@@ -72,7 +72,7 @@ applying.
 spec:
   network:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       fieldPath: status.outputs.network_self_link
   subnetwork:
@@ -99,6 +99,6 @@ verification use this to confirm scope compatibility without parsing URLs.
 ## Related components
 
 - [GcpGlobalAddress](../gcpglobaladdress/v1/README.md) — global-scope addresses
-- [GcpVpc](../gcpvpc/v1/README.md) — VPC network for INTERNAL addresses
+- [GcpVpcNetwork](../gcpvpcnetwork/v1/README.md) — VPC network for INTERNAL addresses
 - [GcpSubnetwork](../gcpsubnetwork/v1/README.md) — subnetwork for GCE endpoints
 - [GcpServiceNetworkingConnection](../gcpservicenetworkingconnection/v1/README.md) — uses global VPC peering ranges, not regional addresses

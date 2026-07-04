@@ -70,7 +70,7 @@ This creates a PostgreSQL 16 instance with a public IPv4 address and **no author
 | `availabilityType` | `string` | `ZONAL` | `REGIONAL` enables HA with automatic failover (requires backups). |
 | `activationPolicy` | `string` | `ALWAYS` | `NEVER` stops the instance while retaining storage. |
 | `disk` | object | 10 GB PD_SSD, auto-resize | `type`, `sizeGb`, `autoResize`, `autoResizeLimit`. Disks grow, never shrink. |
-| `network` | object | public IPv4, no allowlist | `privateNetwork` (ref → GcpVpc), `ipv4Enabled`, `authorizedNetworks`, `allocatedIpRange`, `enablePrivatePathForGoogleCloudServices`, `sslMode`, `serverCaMode`/`serverCaPool`/`customSubjectAlternativeNames`, `psc`. |
+| `network` | object | public IPv4, no allowlist | `privateNetwork` (ref → GcpVpcNetwork), `ipv4Enabled`, `authorizedNetworks`, `allocatedIpRange`, `enablePrivatePathForGoogleCloudServices`, `sslMode`, `serverCaMode`/`serverCaPool`/`customSubjectAlternativeNames`, `psc`. |
 | `locationPreference` | object | GCP picks | `zone`, `secondaryZone` (REGIONAL only). |
 | `backup` | object | disabled | `enabled`, `startTime`, `location`, `binaryLogEnabled` (MySQL PITR), `pointInTimeRecoveryEnabled` (PG/SQL Server PITR), `transactionLogRetentionDays` (1–35), `retainedBackups`. |
 | `maintenanceWindow` | object | any time | `day` (1=Mon..7=Sun), `hour` (UTC), `updateTrack` (`canary`/`stable`/`week5`). |
@@ -151,7 +151,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 - [GcpCloudSqlUser](/docs/catalog/gcp/gcpcloudsqluser) — per-application users
 - [GcpServiceNetworkingConnection](/docs/catalog/gcp/gcpservicenetworkingconnection) — the private services access peering private IP depends on
 - [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) — the reserved peering range
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network for private IP
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network for private IP
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — CMEK encryption
 
 ## Additional Resources

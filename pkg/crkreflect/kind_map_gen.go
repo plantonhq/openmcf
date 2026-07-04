@@ -267,7 +267,7 @@ import (
 	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
 	gcpvertexaiendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiendpoint/v1"
 	gcpvertexainotebookv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexainotebook/v1"
-	gcpvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvpc/v1"
+	gcpvpcnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvpcnetwork/v1"
 	gcpworkloadidentitypoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpworkloadidentitypool/v1"
 	gcpworkloadidentitypoolproviderv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpworkloadidentitypoolprovider/v1"
 	hetznercloudcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudcertificate/v1"
@@ -738,7 +738,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpUrlMap:                       &gcpurlmapv1.GcpUrlMap{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint:             &gcpvertexaiendpointv1.GcpVertexAiEndpoint{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook:             &gcpvertexainotebookv1.GcpVertexAiNotebook{},
-	cloudresourcekind.CloudResourceKind_GcpVpc:                          &gcpvpcv1.GcpVpc{},
+	cloudresourcekind.CloudResourceKind_GcpVpcNetwork:                   &gcpvpcnetworkv1.GcpVpcNetwork{},
 	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPool:         &gcpworkloadidentitypoolv1.GcpWorkloadIdentityPool{},
 	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPoolProvider: &gcpworkloadidentitypoolproviderv1.GcpWorkloadIdentityPoolProvider{},
 }

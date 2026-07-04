@@ -820,7 +820,7 @@ func (x *GcpCloudRunCloudSqlAuthProxy) GetUsePrivateIp() bool {
 type GcpCloudRunVpcAccess struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// VPC network name for Direct VPC Egress.
-	// Can be a direct value or a reference to a GcpVpc resource.
+	// Can be a direct value or a reference to a GcpVpcNetwork resource.
 	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
 	// VPC subnet name for Direct VPC Egress.
 	// Can be a direct value or a reference to a GcpSubnetwork resource.

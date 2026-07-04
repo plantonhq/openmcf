@@ -57,4 +57,4 @@ planton apply -f neg.yaml
 
 - [GcpBackendService](/docs/catalog/gcp/gcpbackendservice) — references this NEG in `backends[].group`
 - [GcpCloudRun](/docs/catalog/gcp/gcpcloudrun) — the serverless workload a SERVERLESS NEG fronts
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network for PSC/INTERNET NEGs
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network for PSC/INTERNET NEGs

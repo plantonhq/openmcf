@@ -61,7 +61,7 @@ This creates a subnetwork named `my-subnet` in `us-central1` with a `/24` primar
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `projectId` | `string` | GCP project ID where the subnetwork is created. Supports `valueFrom` referencing a GcpProject resource. | Required |
-| `vpcSelfLink` | `string` | Self-link of the parent VPC network. Supports `valueFrom` referencing a GcpVpc resource. | Required |
+| `vpcSelfLink` | `string` | Self-link of the parent VPC network. Supports `valueFrom` referencing a GcpVpcNetwork resource. | Required |
 | `region` | `string` | GCP region for the subnetwork (e.g. `us-central1`). Cannot be changed after creation. | Required; must match `^[a-z]([-a-z0-9]*[a-z0-9])?$` |
 | `ipCidrRange` | `string` | Primary IPv4 CIDR range for the subnetwork (e.g. `10.0.0.0/24`). Must be unique within the VPC. | Required; must match IPv4 CIDR format |
 | `subnetworkName` | `string` | Name of the subnetwork resource in GCP. | Required; 1-63 chars, lowercase letters/numbers/hyphens, must start with a letter and end with a letter or number |
@@ -150,7 +150,7 @@ spec:
       field: status.outputs.project_id
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       field: status.outputs.network_self_link
   region: europe-west1
@@ -177,7 +177,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the parent VPC network for this subnetwork
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the parent VPC network for this subnetwork
 - [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — consumes subnetwork and secondary ranges for node, Pod, and Service networking
 - [GcpRouterNat](/docs/catalog/gcp/router-nat) — provides NAT gateway for subnetworks without external IPs
 - [GcpProject](/docs/catalog/gcp/project) — manages the GCP project that hosts the subnetwork

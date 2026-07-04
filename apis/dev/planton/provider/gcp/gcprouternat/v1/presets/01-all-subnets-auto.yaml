@@ -10,8 +10,8 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
-      name: my-app-vpc # replace with your GcpVpc resource name
+      kind: GcpVpcNetwork
+      name: my-app-vpc # replace with your GcpVpcNetwork resource name
       fieldPath: status.outputs.network_self_link
   # No natIps: GCP auto-allocates and scales the external IP pool.
   # No subnetworks: every subnetwork in the region gets NAT, all ranges.

@@ -19,7 +19,7 @@ in the network works — one connection serves all of them.
 Private services access decomposes into three first-class resources, each
 independently owned and referenceable:
 
-1. **GcpVpc** — the consumer network.
+1. **GcpVpcNetwork** — the consumer network.
 2. **GcpGlobalAddress** — an `INTERNAL` address with purpose `VPC_PEERING`
    and a `prefixLength`: the reserved block. Reserving it does nothing on
    its own; it only marks space the producer may use.
@@ -82,7 +82,7 @@ who remembers the ordering and the cardinality rule.
 | **gcloud** | `gcloud compute addresses create ... --purpose=VPC_PEERING` then `gcloud services vpc-peerings connect --ranges=...` | Two imperative commands with an implicit ordering; `vpc-peerings connect` silently *updates* an existing connection (the CLI's `connect` is an upsert), so a second team's ranges can be overwritten without an error. Nothing records which services depend on the connection at teardown time. |
 | **Cloud Console** | The "Private services access" tab under VPC network → Private service connection | Fine for a first exploration; produces exactly the unmanaged pre-existing connection that later forces `updateOnCreationFail: true` when the network moves under IaC. |
 | **Raw Terraform** | `google_compute_global_address` + `google_service_networking_connection` in one stack | Correct, but every team re-derives the same pitfalls: the ranges must be passed by *name*, `deletion_policy = "ABANDON"` gets cargo-culted to dodge teardown-order errors, and the one-connection-per-pair rule surfaces as a confusing "Cannot modify allocated ranges" apply failure. |
-| **Planton composition** | `GcpVpc` + `GcpGlobalAddress` + `GcpServiceNetworkingConnection`, wired by references | The ordering and addressing rules are encoded once: references resolve the self-link and range names, the dependency graph yields create/destroy order, and adoption of a console-era connection is an explicit spec field instead of an accident. |
+| **Planton composition** | `GcpVpcNetwork` + `GcpGlobalAddress` + `GcpServiceNetworkingConnection`, wired by references | The ordering and addressing rules are encoded once: references resolve the self-link and range names, the dependency graph yields create/destroy order, and adoption of a console-era connection is an explicit spec field instead of an accident. |
 
 The upsert behavior of `gcloud services vpc-peerings connect` is worth
 internalizing: it is the reason the API returns "Cannot modify allocated

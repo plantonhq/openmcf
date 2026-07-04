@@ -107,7 +107,7 @@ type GcpGlobalForwardingRuleSpec struct {
 	// The VPC network this frontend belongs to. Only used by internal-facing
 	// schemes and Private Service Connect (INTERNAL_MANAGED,
 	// INTERNAL_SELF_MANAGED, NONE); external load balancers live on Google's
-	// edge, not in a VPC. Reference a GcpVpc resource or provide a network
+	// edge, not in a VPC. Reference a GcpVpcNetwork resource or provide a network
 	// self-link. For PSC rules a network is required. If omitted where
 	// applicable, GCP uses the default network. Immutable.
 	Network *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=network,proto3" json:"network,omitempty"`

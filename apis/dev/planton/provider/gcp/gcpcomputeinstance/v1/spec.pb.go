@@ -296,7 +296,7 @@ func (x *GcpComputeInstanceBootDisk) GetAutoDelete() bool {
 type GcpComputeInstanceNetworkInterface struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// VPC network for this interface.
-	// Can be a literal value or a reference to a GcpVpc resource.
+	// Can be a literal value or a reference to a GcpVpcNetwork resource.
 	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
 	// Subnetwork for this interface.
 	// Can be a literal value or a reference to a GcpSubnetwork resource.

@@ -1,6 +1,6 @@
 ---
 apiVersion: gcp.planton.dev/v1
-kind: GcpVpc
+kind: GcpVpcNetwork
 metadata:
   name: "{{ values.env }}-{{ values.vpc_name }}"
 spec:
@@ -27,7 +27,7 @@ spec:
     value: "{{ values.project_id }}"
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: "{{ values.env }}-{{ values.vpc_name }}"
       fieldPath: status.outputs.network_self_link
   region: "{{ values.region }}"
@@ -50,7 +50,7 @@ spec:
   natName: "{{ values.router_nat_name }}"
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: "{{ values.env }}-{{ values.vpc_name }}"
       fieldPath: status.outputs.network_self_link
   region: "{{ values.region }}"

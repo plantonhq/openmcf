@@ -32,4 +32,4 @@ This preset reserves a regional internal IP address with the `SHARED_LOADBALANCE
 ## Related Components
 
 - [GcpRegionalBackendService](/docs/catalog/gcp/gcpregionalbackendservice) — backend service that the ILB routes to
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network for internal addresses
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network for internal addresses

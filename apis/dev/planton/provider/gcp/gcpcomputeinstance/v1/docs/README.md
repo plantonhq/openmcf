@@ -218,7 +218,7 @@ Planton provides a Kubernetes Resource Model (KRM) interface for GCP Compute Eng
 
 1. **Declarative YAML Configuration**: Familiar syntax for Kubernetes users
 2. **Dual IaC Implementation**: Both Pulumi (Go) and Terraform modules
-3. **Cross-Resource References**: Link to GcpProject, GcpVpc, GcpSubnetwork resources
+3. **Cross-Resource References**: Link to GcpProject, GcpVpcNetwork, GcpSubnetwork resources
 4. **Validation at Definition Time**: Proto-based schema with buf.validate rules
 5. **Consistent Patterns**: Same structure across all deployment components
 

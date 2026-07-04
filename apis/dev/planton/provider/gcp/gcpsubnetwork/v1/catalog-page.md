@@ -27,7 +27,7 @@ spec:
     value: my-gcp-project-123
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       fieldPath: status.outputs.network_self_link
   subnetworkName: app-subnet
@@ -44,7 +44,7 @@ planton apply -f subnetwork.yaml
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `vpcSelfLink` | `StringValueOrRef` | — | Required. The parent VPC. Can reference a GcpVpc. Immutable. |
+| `vpcSelfLink` | `StringValueOrRef` | — | Required. The parent VPC. Can reference a GcpVpcNetwork. Immutable. |
 | `subnetworkName` | `string` | — | Required. Name in GCP (RFC1035). Immutable. |
 | `region` | `string` | — | Required. Region of the subnet. Immutable. |
 | `ipCidrRange` | `string` | — | Primary IPv4 CIDR. Required except for IPv6-only subnets. Expandable in place; never shrinkable. |
@@ -74,7 +74,7 @@ planton apply -f subnetwork.yaml
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the parent VPC network
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the parent VPC network
 - [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — consumes the subnet and secondary ranges for node, pod, and service networking
 - [GcpRouterNat](/docs/catalog/gcp/gcprouternat) — outbound internet for private-only subnets
 - [GcpProject](/docs/catalog/gcp/gcpproject) — manages the GCP project that hosts the subnet

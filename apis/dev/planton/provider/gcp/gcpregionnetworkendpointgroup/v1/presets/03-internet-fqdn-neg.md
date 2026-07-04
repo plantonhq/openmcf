@@ -11,4 +11,4 @@ An internet NEG that lets a Google Cloud load balancer front an external origin 
 
 - Use `INTERNET_FQDN_PORT` for a hostname origin and `INTERNET_IP_PORT` for a fixed IP origin.
 - The actual endpoint (the FQDN:port or IP:port) is attached to the NEG as a network endpoint after the NEG is created.
-- Reference a `GcpVpc` under `network.valueFrom` to wire the NEG to a network Planton manages.
+- Reference a `GcpVpcNetwork` under `network.valueFrom` to wire the NEG to a network Planton manages.

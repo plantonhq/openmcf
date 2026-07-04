@@ -283,7 +283,7 @@ go_library(
         "//apis/dev/planton/provider/gcp/gcpurlmap/v1:gcpurlmap",
         "//apis/dev/planton/provider/gcp/gcpvertexaiendpoint/v1:gcpvertexaiendpoint",
         "//apis/dev/planton/provider/gcp/gcpvertexainotebook/v1:gcpvertexainotebook",
-        "//apis/dev/planton/provider/gcp/gcpvpc/v1:gcpvpc",
+        "//apis/dev/planton/provider/gcp/gcpvpcnetwork/v1:gcpvpcnetwork",
         "//apis/dev/planton/provider/gcp/gcpworkloadidentitypool/v1:gcpworkloadidentitypool",
         "//apis/dev/planton/provider/gcp/gcpworkloadidentitypoolprovider/v1:gcpworkloadidentitypoolprovider",
         "//apis/dev/planton/provider/hetznercloud/hetznercloudcertificate/v1:hetznercloudcertificate",

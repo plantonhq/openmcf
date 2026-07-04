@@ -60,7 +60,7 @@ This reserves a public IPv4 address that you can reference in global forwarding 
 | `address` | `string` | — | Specific IP to reserve. Omit to let GCP assign one automatically. For VPC_PEERING, this is the start of the CIDR range. |
 | `addressType` | `string` | `EXTERNAL` | `EXTERNAL` for a public IP or `INTERNAL` for a private IP range within a VPC. |
 | `ipVersion` | `string` | `IPV4` | IP version: `IPV4` or `IPV6`. |
-| `network` | `StringValueOrRef` | — | VPC network name or self-link. Required when `addressType` is `INTERNAL`. Can reference a GcpVpc resource. |
+| `network` | `StringValueOrRef` | — | VPC network name or self-link. Required when `addressType` is `INTERNAL`. Can reference a GcpVpcNetwork resource. |
 | `prefixLength` | `int32` | — | CIDR prefix length (8-29). Required when `purpose` is `VPC_PEERING`. A `/20` reserves 4,096 IPs. |
 | `purpose` | `string` | — | Purpose of an INTERNAL address: `VPC_PEERING` (managed-service private networking) or `PRIVATE_SERVICE_CONNECT` (PSC endpoint). Leave empty for EXTERNAL addresses. |
 | `description` | `string` | — | Human-readable description of the address reservation. |
@@ -175,7 +175,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project and enables the Compute Engine API
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network for internal address reservations and can enable Private Services Access
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network for internal address reservations and can enable Private Services Access
 - [GcpGlobalForwardingRule](/docs/catalog/gcp/gcpglobalforwardingrule) — binds this external global address as the frontend VIP of a global load balancer
 - [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) — uses a VPC_PEERING range for private IP connectivity to database instances
 - [GcpCertManagerCert](/docs/catalog/gcp/gcpcertmanagercert) — provisions managed SSL certificates that attach to the same load balancer using this IP

@@ -23,7 +23,7 @@ This preset creates a PRIVATE-type NAT gateway that translates traffic between V
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `my-spoke-vpc` | Your spoke `GcpVpc` resource name | Your VPC manifest |
+| `my-spoke-vpc` | Your spoke `GcpVpcNetwork` resource name | Your VPC manifest |
 | `my-workload-subnet` | Your workload `GcpSubnetwork` name | Your subnetwork manifest |
 | `my-private-nat-range` | Your PRIVATE_NAT-purpose `GcpSubnetwork` name | Your subnetwork manifest |
 | `my-hub` | Your Network Connectivity Center hub name | NCC console or manifests |
@@ -36,4 +36,4 @@ This preset creates a PRIVATE-type NAT gateway that translates traffic between V
 ## Related Components
 
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — the PRIVATE_NAT-purpose range provider
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the spoke network
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the spoke network

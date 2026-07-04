@@ -11,7 +11,7 @@ This preset deploys a single-node BASIC tier Redis instance — the smallest, ch
 ## Key Configuration Choices
 
 - **BASIC tier, 1 GiB** — one node, no failover; a restart or maintenance event flushes the cache
-- **VPC by reference** — `authorizedNetwork` resolves the `GcpVpc` node's self link, so the cache lands on the same network as its consumers
+- **VPC by reference** — `authorizedNetwork` resolves the `GcpVpcNetwork` node's self link, so the cache lands on the same network as its consumers
 - **Direct peering** (the default `connectMode`) — the simplest connectivity; GCP picks an unused /29 automatically
 
 ## Placeholders to Replace
@@ -19,7 +19,7 @@ This preset deploys a single-node BASIC tier Redis instance — the smallest, ch
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `my-app-vpc` | Your `GcpVpc` resource name | Your VPC manifest |
+| `my-app-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 
 ## Related Presets
 
@@ -28,4 +28,4 @@ This preset deploys a single-node BASIC tier Redis instance — the smallest, ch
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network the cache attaches to
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network the cache attaches to

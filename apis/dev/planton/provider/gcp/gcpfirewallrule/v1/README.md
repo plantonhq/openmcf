@@ -66,7 +66,7 @@ This creates an INGRESS ALLOW rule permitting TCP ports 80 and 443 from any sour
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `projectId` | `StringValueOrRef` | GCP project ID where the firewall rule is created. Can reference a GcpProject resource. | Required |
-| `network` | `StringValueOrRef` | VPC network name or self-link URL. Can reference a GcpVpc resource. | Required |
+| `network` | `StringValueOrRef` | VPC network name or self-link URL. Can reference a GcpVpcNetwork resource. | Required |
 | `ruleName` | `string` | Name of the firewall rule in GCP. | 1-63 chars, lowercase letters/numbers/hyphens, must start with a letter and end with a letter or number |
 | `direction` | `string` | Traffic direction: `INGRESS` or `EGRESS`. | Required, must be `INGRESS` or `EGRESS` |
 | `action` | `string` | Action when traffic matches: `ALLOW` or `DENY`. | Required, must be `ALLOW` or `DENY` |
@@ -224,7 +224,7 @@ For more comprehensive examples, see [`examples.md`](examples.md), including:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network that firewall rules are attached to
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network that firewall rules are attached to
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project and enables the Compute Engine API
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — creates subnets within the VPC
 - [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — deploys GKE clusters that benefit from firewall rules for node traffic control

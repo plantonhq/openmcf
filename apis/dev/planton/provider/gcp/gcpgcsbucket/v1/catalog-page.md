@@ -269,4 +269,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project where the bucket is created
 - [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — creates service accounts that can be added to `iamBindings` members
 - [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — workloads running in GKE clusters commonly read from and write to GCS buckets
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — network configuration for private connectivity to GCS via Private Google Access
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — network configuration for private connectivity to GCS via Private Google Access

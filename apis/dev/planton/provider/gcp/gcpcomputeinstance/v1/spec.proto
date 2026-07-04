@@ -106,9 +106,9 @@ message GcpComputeInstanceBootDisk {
 // GcpComputeInstanceNetworkInterface defines a network interface configuration.
 message GcpComputeInstanceNetworkInterface {
   // VPC network for this interface.
-  // Can be a literal value or a reference to a GcpVpc resource.
+  // Can be a literal value or a reference to a GcpVpcNetwork resource.
   dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 

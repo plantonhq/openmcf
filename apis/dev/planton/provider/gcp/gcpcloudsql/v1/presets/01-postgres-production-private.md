@@ -29,7 +29,7 @@ Private IP requires **private services access** on the VPC before the instance c
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `my-prod-vpc` | Your `GcpVpc` resource name | Your VPC manifest |
+| `my-prod-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 | `rootPassword` | Initial postgres superuser password | Generate one; rotate after first deploy |
 
 ## Related Presets

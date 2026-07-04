@@ -74,7 +74,7 @@ type GcpRegionNetworkEndpointGroupSpec struct {
 	// the operator tracing a request path later. Immutable.
 	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
 	// The VPC network for PRIVATE_SERVICE_CONNECT, INTERNET, and
-	// GCE_VM_IP_PORTMAP NEGs. Reference a GcpVpc or provide a network self-link
+	// GCE_VM_IP_PORTMAP NEGs. Reference a GcpVpcNetwork or provide a network self-link
 	// directly. Not used by (and rejected for) SERVERLESS NEGs — serverless
 	// platforms are not attached to a VPC here. Immutable.
 	Network *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=network,proto3" json:"network,omitempty"`

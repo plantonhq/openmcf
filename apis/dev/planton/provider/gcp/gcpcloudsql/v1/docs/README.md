@@ -53,7 +53,7 @@ The spec validates cross-field rules GCP would otherwise reject mid-deploy (an e
 
 ## Composition map
 
-- `network.privateNetwork` ← `GcpVpc.status.outputs.network_id` (the `projects/.../global/networks/...` form the API canonically accepts).
+- `network.privateNetwork` ← `GcpVpcNetwork.status.outputs.network_id` (the `projects/.../global/networks/...` form the API canonically accepts).
 - `network.allocatedIpRange` ← a `GcpGlobalAddress.name` (VPC_PEERING range) when pinning which range the private IP comes from.
 - `encryptionKeyName` ← `GcpKmsKey.status.outputs.key_id`.
 - `masterInstanceName` ← another `GcpCloudSql.status.outputs.instance_name`.

@@ -212,6 +212,6 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — provides the parent GKE cluster that this node pool attaches to
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network used by the parent cluster
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network used by the parent cluster
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — provides the subnetwork with IP ranges for pods and services
 - [GcpRouterNat](/docs/catalog/gcp/gcprouternat) — provides Cloud NAT for private node outbound internet access

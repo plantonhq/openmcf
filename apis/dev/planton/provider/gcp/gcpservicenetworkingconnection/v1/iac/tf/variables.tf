@@ -21,7 +21,7 @@ variable "spec" {
     project_id = optional(string, "")
 
     # The VPC network to peer with the service producer — a network name or
-    # full self-link URL (a GcpVpc reference resolves to the self-link).
+    # full self-link URL (a GcpVpcNetwork reference resolves to the self-link).
     # Immutable (ForceNew).
     network = string
 

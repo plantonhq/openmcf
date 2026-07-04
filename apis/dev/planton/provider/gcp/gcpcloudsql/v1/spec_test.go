@@ -312,7 +312,7 @@ var _ = ginkgo.Describe("GcpCloudSqlSpec", func() {
 		ginkgo.It("accepts private-only connectivity via a reference", func() {
 			r := minimalPostgres()
 			r.Spec.Network = &GcpCloudSqlNetwork{
-				PrivateNetwork: fromRef("GcpVpc", "my-vpc", "status.outputs.network_id"),
+				PrivateNetwork: fromRef("GcpVpcNetwork", "my-vpc", "status.outputs.network_id"),
 			}
 			expectValid(r)
 		})
@@ -668,7 +668,7 @@ var _ = ginkgo.Describe("GcpCloudSqlSpec", func() {
 				AutoResizeLimit: intPtr(500),
 			}
 			r.Spec.Network = &GcpCloudSqlNetwork{
-				PrivateNetwork: fromRef("GcpVpc", "prod-vpc", "status.outputs.network_id"),
+				PrivateNetwork: fromRef("GcpVpcNetwork", "prod-vpc", "status.outputs.network_id"),
 				SslMode:        "ENCRYPTED_ONLY",
 			}
 			r.Spec.Backup = &GcpCloudSqlBackup{

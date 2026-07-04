@@ -83,7 +83,7 @@ This creates a single-shard Memorystore instance in `us-central1` with a PSC end
 | `engineConfigs` | `map<string, string>` | `{}` | Engine configuration parameters as key-value pairs (e.g., `maxmemory-policy`, `notify-keyspace-events`). |
 | `replicaCount` | `int` | `0` | Read replicas per shard (0-5). Replicas provide read scaling and automatic failover. |
 | `pscAutoConnections` | `object[]` | `[]` | PSC endpoints for VPC connectivity. Each entry creates a PSC endpoint in the specified consumer VPC. Immutable after creation. |
-| `pscAutoConnections[].network` | `string` | — | Consumer VPC network. Format: `projects/{project}/global/networks/{network}`. Can reference GcpVpc via `valueFrom`. |
+| `pscAutoConnections[].network` | `string` | — | Consumer VPC network. Format: `projects/{project}/global/networks/{network}`. Can reference GcpVpcNetwork via `valueFrom`. |
 | `pscAutoConnections[].projectId` | `string` | — | Consumer project ID for the PSC endpoint. Can reference GcpProject via `valueFrom`. |
 | `authorizationMode` | `string` | `AUTH_DISABLED` | Authentication mode. `AUTH_DISABLED`: no auth. `IAM_AUTH`: GCP IAM credentials required. Immutable after creation. |
 | `transitEncryptionMode` | `string` | `TRANSIT_ENCRYPTION_DISABLED` | TLS encryption mode. `TRANSIT_ENCRYPTION_DISABLED`: no encryption. `SERVER_AUTHENTICATION`: clients verify server via TLS. Immutable after creation. |
@@ -219,7 +219,7 @@ spec:
   pscAutoConnections:
     - network:
         valueFrom:
-          kind: GcpVpc
+          kind: GcpVpcNetwork
           name: prod-vpc
           field: status.outputs.network_self_link
       projectId:
@@ -248,7 +248,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network for PSC endpoint creation
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network for PSC endpoint creation
 - [GcpProject](/docs/catalog/gcp/project) — provides the GCP project for instance deployment
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — provides the Cloud KMS key for customer-managed encryption at rest
 - [GcpRedisInstance](/docs/catalog/gcp/redis-instance) — legacy Memorystore for Redis API using VPC peering instead of PSC

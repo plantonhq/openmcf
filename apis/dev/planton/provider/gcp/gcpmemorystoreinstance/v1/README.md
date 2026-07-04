@@ -95,7 +95,7 @@ spec:
 ## Related Components
 
 - **GcpProject** — provides the GCP project ID
-- **GcpVpc** — provides the VPC network for PSC auto-connections
+- **GcpVpcNetwork** — provides the VPC network for PSC auto-connections
 - **GcpKmsKey** — provides a CMEK key for encryption at rest
 - **GcpRedisInstance** — legacy Memorystore for Redis (VPC peering model)
 

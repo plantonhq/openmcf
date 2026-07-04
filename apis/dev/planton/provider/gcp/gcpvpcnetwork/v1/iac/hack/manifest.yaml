@@ -1,0 +1,11 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpVpcNetwork
+metadata:
+  name: my-sample-vpc
+spec:
+  projectId:
+    value: my-gcp-project-123
+  networkName: app-vpc
+  autoCreateSubnetworks: false
+  routingMode: REGIONAL
+  description: Application VPC with custom subnets

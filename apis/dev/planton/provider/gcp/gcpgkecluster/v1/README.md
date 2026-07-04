@@ -137,7 +137,7 @@ Planton will:
 Before creating a GKE cluster, ensure these resources exist:
 
 1. **GcpProject**: The GCP project where the cluster will be created
-2. **GcpVpc**: The VPC network (custom mode, not auto mode)
+2. **GcpVpcNetwork**: The VPC network (custom mode, not auto mode)
 3. **GcpSubnetwork**: A subnet with:
    - Primary IP range for nodes
    - Secondary range for pod IPs (`cluster_secondary_range_name`)

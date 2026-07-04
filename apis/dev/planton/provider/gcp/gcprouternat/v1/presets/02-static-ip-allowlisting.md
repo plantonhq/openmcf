@@ -26,7 +26,7 @@ Each entry in `natIps` references an existing reservation:
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `my-prod-vpc` | Your `GcpVpc` resource name | Your VPC manifest |
+| `my-prod-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 | `egress-ip-a` / `egress-ip-b` | Your `GcpAddress` resource names | Your address manifests |
 | `my-workload-subnet` | Your `GcpSubnetwork` resource name | Your subnetwork manifest |
 

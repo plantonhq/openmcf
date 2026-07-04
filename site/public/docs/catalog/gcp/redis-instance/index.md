@@ -77,7 +77,7 @@ This creates a standalone 1 GiB Redis instance in `us-central1` using the defaul
 | `redisVersion` | `string` | Latest supported | Redis engine version (e.g., `REDIS_7_0`, `REDIS_7_2`, `REDIS_6_X`). |
 | `displayName` | `string` | — | Human-readable display name for the instance. |
 | `locationId` | `string` | GCP-selected | Zone within the region for the primary node. For `STANDARD_HA`, GCP automatically picks a different zone for the replica. |
-| `authorizedNetwork` | `StringValueOrRef` | Default network | VPC network the instance connects to. Immutable after creation. Can reference a GcpVpc resource via `valueFrom`. |
+| `authorizedNetwork` | `StringValueOrRef` | Default network | VPC network the instance connects to. Immutable after creation. Can reference a GcpVpcNetwork resource via `valueFrom`. |
 | `connectMode` | `string` | `DIRECT_PEERING` | How the instance connects to the VPC. `DIRECT_PEERING` or `PRIVATE_SERVICE_ACCESS`. Immutable after creation. |
 | `reservedIpRange` | `string` | GCP-selected | CIDR `/29` block reserved for the instance (e.g., `10.0.0.0/29`). Must not overlap with existing subnets. Immutable after creation. |
 | `authEnabled` | `bool` | `false` | Enables Redis AUTH. When `true`, GCP generates a random AUTH string exported in stack outputs. |
@@ -177,7 +177,7 @@ spec:
   memorySizeGb: 8
   authorizedNetwork:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       field: status.outputs.network_self_link
   connectMode: PRIVATE_SERVICE_ACCESS
@@ -210,7 +210,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network for instance connectivity
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network for instance connectivity
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — provides the Cloud KMS key for customer-managed encryption at rest
 - [GcpKmsKeyRing](/docs/catalog/gcp/kms-key-ring) — manages the key ring containing the KMS key
 - [GcpFirewallRule](/docs/catalog/gcp/firewall-rule) — controls network access to the VPC where the instance resides

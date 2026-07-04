@@ -107,7 +107,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 - [GcpTargetHttpsProxy](/docs/catalog/gcp/gcptargethttpsproxy) — the default target
 - [GcpTargetHttpProxy](/docs/catalog/gcp/gcptargethttpproxy) — the port-80 redirect target
 - [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) — the reserved static VIP
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network for internal/PSC frontends
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network for internal/PSC frontends
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project that owns the rule
 
 ## Additional Resources

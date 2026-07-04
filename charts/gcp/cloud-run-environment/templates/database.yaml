@@ -29,7 +29,7 @@ spec:
     ipv4Enabled: false
     privateNetwork:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: "{{ values.vpc_name }}"
         fieldPath: status.outputs.network_id
     enablePrivatePathForGoogleCloudServices: true

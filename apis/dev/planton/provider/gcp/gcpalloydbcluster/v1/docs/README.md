@@ -320,14 +320,14 @@ This prevents accidental deletion of production data.
 ### Pattern 1: VPC + Cluster (Minimal)
 
 ```
-GcpVpc + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
+GcpVpcNetwork + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 └── GcpAlloydbCluster (references network via valueFrom)
 ```
 
 ### Pattern 2: VPC + KMS + Cluster (Enterprise)
 
 ```
-GcpVpc + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
+GcpVpcNetwork + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 ├── GcpKmsKeyRing
 │   └── GcpKmsKey (cluster key)
 │   └── GcpKmsKey (backup key)
@@ -338,7 +338,7 @@ GcpVpc + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 ### Pattern 3: Multi-Cluster (Multi-Tenant)
 
 ```
-GcpVpc + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
+GcpVpcNetwork + GcpGlobalAddress (VPC_PEERING) + GcpServiceNetworkingConnection
 ├── GcpAlloydbCluster "tenant-a"
 ├── GcpAlloydbCluster "tenant-b"
 └── GcpAlloydbCluster "tenant-c"

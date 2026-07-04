@@ -58,7 +58,7 @@ type GcpServiceNetworkingConnectionSpec struct {
 	// differs from the provider's default project.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// The VPC network to peer with the service producer. Accepts a network
-	// name or full self-link URL; a reference resolves to the GcpVpc's
+	// name or full self-link URL; a reference resolves to the GcpVpcNetwork's
 	// self-link. Immutable: changing it destroys and recreates the connection
 	// (and with it, every producer resource's private connectivity).
 	Network *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=network,proto3" json:"network,omitempty"`

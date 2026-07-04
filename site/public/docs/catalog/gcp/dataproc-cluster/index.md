@@ -88,7 +88,7 @@ This creates a Dataproc cluster with 1 master, 2 workers, Spark 3.5, Component G
 | `gracefulDecommissionTimeout` | `string` | `"0s"` | Duration for YARN graceful decommissioning during scale-down (e.g., `"3600s"`). |
 | `clusterConfig.stagingBucket` | `StringValueOrRef` | Auto-created | GCS bucket for staging job dependencies. Can reference a GcpGcsBucket. |
 | `clusterConfig.tempBucket` | `StringValueOrRef` | Auto-created | GCS bucket for ephemeral data. Can reference a GcpGcsBucket. |
-| `clusterConfig.gceConfig.network` | `StringValueOrRef` | Default VPC | VPC network for nodes. Mutually exclusive with `subnetwork`. Can reference GcpVpc. |
+| `clusterConfig.gceConfig.network` | `StringValueOrRef` | Default VPC | VPC network for nodes. Mutually exclusive with `subnetwork`. Can reference GcpVpcNetwork. |
 | `clusterConfig.gceConfig.subnetwork` | `StringValueOrRef` | — | VPC subnetwork for nodes. Mutually exclusive with `network`. Can reference GcpSubnetwork. |
 | `clusterConfig.gceConfig.serviceAccount` | `StringValueOrRef` | Default CE SA | Service account for node VMs. Can reference GcpServiceAccount. |
 | `clusterConfig.gceConfig.zone` | `string` | Auto-selected | Zone within region for node placement. |
@@ -290,7 +290,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) — Staging and temp bucket for job artifacts
-- [GcpVpc](/docs/catalog/gcp/vpc) — VPC network for cluster node placement
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — VPC network for cluster node placement
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — Subnetwork for controlled IP range allocation
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — Custom IAM identity for cluster VMs
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — Customer-managed encryption keys for disk encryption

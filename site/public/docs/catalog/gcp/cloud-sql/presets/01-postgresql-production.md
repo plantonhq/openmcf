@@ -39,7 +39,7 @@ This preset creates a production-grade Cloud SQL PostgreSQL instance with high a
 |---|---|---|
 | `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
 | `<gcp-region>` | GCP region (e.g., `us-central1`) | Your deployment region |
-| `<vpc-network-id>` | VPC network ID for private IP | `GcpVpc` status outputs (requires Private Services Access) |
+| `<vpc-network-id>` | VPC network ID for private IP | `GcpVpcNetwork` status outputs (requires Private Services Access) |
 | `<failover-zone>` | Zone for HA failover (e.g., `us-central1-b`) | Different zone in the same region |
 
 ## Related Presets

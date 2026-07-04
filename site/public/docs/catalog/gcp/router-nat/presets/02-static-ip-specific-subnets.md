@@ -32,7 +32,7 @@ This preset creates a Cloud Router with NAT restricted to specific subnets using
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `<gcp-project-id>` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `<vpc-network-self-link>` | Self-link of the VPC network | `GcpVpc` status outputs |
+| `<vpc-network-self-link>` | Self-link of the VPC network | `GcpVpcNetwork` status outputs |
 | `<gcp-region>` | GCP region (e.g., `us-central1`) | Your deployment region |
 | `<your-router-name>` | Name for the Cloud Router (1-63 chars, lowercase) | Choose a descriptive name |
 | `<your-nat-name>` | Name for the NAT configuration (1-63 chars, lowercase) | Choose a descriptive name |

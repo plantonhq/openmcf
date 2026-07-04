@@ -16,7 +16,7 @@ Static NAT IPs are **referenced, never created**: each `natIps` entry points at 
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **A GCP project** — referenced via `projectId` (or the provider's default project)
-- **An existing VPC network** — referenced via `vpcSelfLink` (typically a GcpVpc resource)
+- **An existing VPC network** — referenced via `vpcSelfLink` (typically a GcpVpcNetwork resource)
 - **GcpAddress reservations** (EXTERNAL, same region) if you need stable, allowlistable egress IPs — omit `natIps` entirely for auto-allocation
 - **GcpSubnetwork references** if you want to restrict NAT to specific subnetworks — omit for region-wide coverage
 
@@ -37,7 +37,7 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       fieldPath: status.outputs.network_self_link
 ```
@@ -59,7 +59,7 @@ This creates a Cloud Router and NAT gateway covering all subnetworks in `us-cent
 | `routerName` | `string` | Name of the Cloud Router to create. | RFC 1035, 1-63 chars. Immutable. |
 | `natName` | `string` | Name of the NAT configuration on the router. | RFC 1035, 1-63 chars. Immutable. |
 | `region` | `string` | GCP region for the router and NAT. | Required. Immutable. |
-| `vpcSelfLink` | `StringValueOrRef` | The VPC network the router attaches to. | Required. Can reference a GcpVpc. Immutable. |
+| `vpcSelfLink` | `StringValueOrRef` | The VPC network the router attaches to. | Required. Can reference a GcpVpcNetwork. Immutable. |
 
 ### Optional Fields
 
@@ -138,7 +138,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network the router attaches to
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network the router attaches to
 - [GcpAddress](/docs/catalog/gcp/gcpaddress) — EXTERNAL reservations referenced as stable NAT IPs
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — subnetworks scoped for NAT coverage
 - [GcpProject](/docs/catalog/gcp/gcpproject) — the GCP project where the router and NAT are created

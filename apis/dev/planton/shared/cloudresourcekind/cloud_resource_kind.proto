@@ -761,7 +761,7 @@ enum CloudResourceKind {
     id_prefix: "gcpprj"
     container_kind: true
   }];
-  GcpVpc = 610 [(kind_meta) = {
+  GcpVpcNetwork = 610 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpvpc"
@@ -771,14 +771,14 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpsnw"
-    prerequisites: [GcpVpc]
+    prerequisites: [GcpVpcNetwork]
   }];
   GcpRouterNat = 612 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcprnat"
     prerequisites: [
-      GcpVpc,
+      GcpVpcNetwork,
       GcpAddress
     ]
   }];
@@ -1030,7 +1030,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpsnc"
     prerequisites: [
-      GcpVpc,
+      GcpVpcNetwork,
       GcpGlobalAddress
     ]
   }];
@@ -1039,7 +1039,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpaddr"
     prerequisites: [
-      GcpVpc,
+      GcpVpcNetwork,
       GcpSubnetwork
     ]
   }];

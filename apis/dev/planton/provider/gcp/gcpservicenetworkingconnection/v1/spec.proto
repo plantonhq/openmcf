@@ -43,12 +43,12 @@ message GcpServiceNetworkingConnectionSpec {
   ];
 
   // The VPC network to peer with the service producer. Accepts a network
-  // name or full self-link URL; a reference resolves to the GcpVpc's
+  // name or full self-link URL; a reference resolves to the GcpVpcNetwork's
   // self-link. Immutable: changing it destroys and recreates the connection
   // (and with it, every producer resource's private connectivity).
   dev.planton.shared.foreignkey.v1.StringValueOrRef network = 2 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 

@@ -45,7 +45,7 @@ This preset provisions a fully-featured Memorystore instance in CLUSTER mode wit
 | `<gcp-project-id>` | GCP project ID where the instance will be created | GCP Console or `GcpProject` outputs |
 | `<instance-name>` | Name for this Memorystore instance (4-63 chars, lowercase, hyphens) | Choose a descriptive name (e.g., `enterprise-cache`) |
 | `<gcp-region>` | GCP region for the instance (e.g., `us-central1`) | [GCP regions](https://cloud.google.com/about/locations) |
-| `<vpc-network-path>` | Full path of the VPC network (e.g., `projects/my-project/global/networks/prod-vpc`) | `GcpVpc` status outputs or GCP Console |
+| `<vpc-network-path>` | Full path of the VPC network (e.g., `projects/my-project/global/networks/prod-vpc`) | `GcpVpcNetwork` status outputs or GCP Console |
 | `<kms-key-resource-name>` | Full KMS key resource name (e.g., `projects/my-project/locations/us-central1/keyRings/cache-keys/cryptoKeys/cache-cmek`) or reference via `valueFrom` | `GcpKmsKey` status outputs or GCP Console |
 
 ## Related Presets

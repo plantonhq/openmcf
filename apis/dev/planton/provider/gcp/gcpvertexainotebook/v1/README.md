@@ -67,7 +67,7 @@ Two mutually exclusive options:
 ## Related Components
 
 - **GcpProject** -- project where the notebook is created
-- **GcpVpc / GcpSubnetwork** -- VPC networking for private instances
+- **GcpVpcNetwork / GcpSubnetwork** -- VPC networking for private instances
 - **GcpServiceAccount** -- VM identity for accessing GCP resources
 - **GcpKmsKey** -- encryption keys for CMEK-encrypted disks
 - **GcpGcsBucket** -- storage for notebooks and datasets

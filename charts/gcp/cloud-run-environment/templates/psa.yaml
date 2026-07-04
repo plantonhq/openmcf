@@ -6,7 +6,7 @@ metadata:
   name: "{{ values.vpc_name }}-psa-range"
   group: network
   relationships:
-    - kind: GcpVpc
+    - kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       type: runs_on
 spec:
@@ -18,7 +18,7 @@ spec:
   prefixLength: 16
   network:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       fieldPath: status.outputs.network_self_link
 ---
@@ -28,7 +28,7 @@ metadata:
   name: "{{ values.vpc_name }}-psa"
   group: network
   relationships:
-    - kind: GcpVpc
+    - kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       type: runs_on
     - kind: GcpGlobalAddress
@@ -39,7 +39,7 @@ spec:
     value: "{{ values.gcp_project_id }}"
   network:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       fieldPath: status.outputs.network_self_link
   reservedPeeringRanges:

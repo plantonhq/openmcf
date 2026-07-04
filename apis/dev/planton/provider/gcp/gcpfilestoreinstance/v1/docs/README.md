@@ -73,7 +73,7 @@ STANDARD/PREMIUM are the rebranded names for BASIC_HDD/BASIC_SSD. Both names are
 | Field | Default Kind | Field Path | Purpose |
 |-------|-------------|------------|---------|
 | `projectId` | GcpProject | `status.outputs.project_id` | GCP project for instance creation |
-| `networkConfig.network` | GcpVpc | `status.outputs.network_self_link` | VPC network attachment |
+| `networkConfig.network` | GcpVpcNetwork | `status.outputs.network_self_link` | VPC network attachment |
 | `kmsKeyName` | GcpKmsKey | `status.outputs.key_id` | CMEK encryption key |
 
 ## Stack Outputs
@@ -92,7 +92,7 @@ Filestore instances are commonly composed with:
 
 - **GcpGkeCluster**: GKE pods mount Filestore via PersistentVolume/PersistentVolumeClaim using the NFS CSI driver
 - **GcpComputeInstance**: VMs mount Filestore shares directly via `mount` command
-- **GcpVpc + GcpSubnetwork**: Network foundation for Filestore connectivity
+- **GcpVpcNetwork + GcpSubnetwork**: Network foundation for Filestore connectivity
 - **GcpKmsKey + GcpKmsKeyRing**: CMEK encryption chain
 
 Filestore sits at DAG layer 2 (depends on VPC/network at layer 1, consumed by compute/workloads at layer 3+).

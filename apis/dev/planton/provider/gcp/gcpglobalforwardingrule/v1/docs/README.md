@@ -48,7 +48,7 @@ With scheme `NONE`, the same resource stops being a load balancer frontend and b
 | `ip_version` | ✅ `ipVersion` | |
 | `load_balancing_scheme` | ✅ | NONE sentinel ↔ API empty scheme |
 | `port_range` | ✅ `portRange` | `n` / `n-m` pattern CEL |
-| `network` / `subnetwork` | ✅ | Refs → GcpVpc / GcpSubnetwork; scheme coherence CEL |
+| `network` / `subnetwork` | ✅ | Refs → GcpVpcNetwork / GcpSubnetwork; scheme coherence CEL |
 | `network_tier` | ✅ `networkTier` | PREMIUM-only CEL (STANDARD is regional-only) |
 | `metadata_filters` | ✅ | Traffic Director CEL fence |
 | `service_directory_registrations` | ✅ `serviceDirectoryRegistration` | Provider caps the list at 1 → modeled singular |

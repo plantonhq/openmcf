@@ -16,8 +16,8 @@ spec:
   alternativeLocationId: us-central1-b
   authorizedNetwork:
     valueFrom:
-      kind: GcpVpc
-      name: my-prod-vpc # replace with your GcpVpc resource name
+      kind: GcpVpcNetwork
+      name: my-prod-vpc # replace with your GcpVpcNetwork resource name
       fieldPath: status.outputs.network_self_link
   authEnabled: true
   transitEncryptionMode: SERVER_AUTHENTICATION

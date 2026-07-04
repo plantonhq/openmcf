@@ -62,7 +62,7 @@ var verifiers = map[string]Verifier{
 	"gcpurlmap":                       &urlMapVerifier{},
 	"gcpmanagedsslcertificate":        &managedSslCertificateVerifier{},
 	"gcpsubnetwork":                   &subnetworkVerifier{},
-	"gcpvpc":                          &vpcVerifier{},
+	"gcpvpcnetwork":                   &vpcVerifier{},
 	"gcpgcsbucket":                    &gcsBucketVerifier{},
 	"gcptargethttpproxy":              &targetHttpProxyVerifier{},
 	"gcptargethttpsproxy":             &targetHttpsProxyVerifier{},

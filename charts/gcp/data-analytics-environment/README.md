@@ -11,7 +11,7 @@ This chart gives a data engineering team everything they need to start building 
                   │  Networking                               │
                   │                                          │
                   │  ┌──────────┐     ┌───────────────────┐  │
-                  │  │  GcpVpc  │────▶│  GcpSubnetwork    │  │
+                  │  │  GcpVpcNetwork  │────▶│  GcpSubnetwork    │  │
                   │  │          │     │  Private Google    │  │
                   │  └──────────┘     │  Access enabled    │  │
                   │                   └─────────┬──────────┘  │
@@ -42,7 +42,7 @@ This chart gives a data engineering team everything they need to start building 
 ## Dependency Graph
 
 ```
-Layer 0 (parallel):  GcpVpc, GcpServiceAccount, GcpGcsBucket, GcpBigQueryDataset, GcpPubSubTopic
+Layer 0 (parallel):  GcpVpcNetwork, GcpServiceAccount, GcpGcsBucket, GcpBigQueryDataset, GcpPubSubTopic
 Layer 1 (dep VPC):   GcpSubnetwork
 Layer 2 (dep all):   GcpDataprocCluster
 ```
@@ -51,7 +51,7 @@ Layer 2 (dep all):   GcpDataprocCluster
 
 | Resource | Kind | Group | Purpose |
 |----------|------|-------|---------|
-| VPC Network | `GcpVpc` | network | Private networking for the cluster |
+| VPC Network | `GcpVpcNetwork` | network | Private networking for the cluster |
 | Subnetwork | `GcpSubnetwork` | network | Subnet with Private Google Access |
 | Service Account | `GcpServiceAccount` | identity | Cluster node identity with data access roles |
 | GCS Bucket | `GcpGcsBucket` | storage | Dataproc staging, data lake, intermediate artifacts |

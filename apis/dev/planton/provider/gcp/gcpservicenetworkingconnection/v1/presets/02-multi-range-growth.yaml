@@ -5,7 +5,7 @@ metadata:
 spec:
   network:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       fieldPath: status.outputs.network_self_link
 

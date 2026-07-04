@@ -33,7 +33,7 @@ Cloud Spanner is a fully managed, globally distributed, strongly consistent rela
 │      Optional: Networking                 │
 │                                          │
 │  ┌──────────────────┐                    │
-│  │    GcpVpc        │                    │
+│  │    GcpVpcNetwork        │                    │
 │  └────────┬─────────┘                    │
 │           │                              │
 │           ▼                              │
@@ -47,7 +47,7 @@ Cloud Spanner is a fully managed, globally distributed, strongly consistent rela
 ## Dependency Graph
 
 ```
-Layer 0 (parallel):  GcpVpc, GcpServiceAccount, GcpSpannerInstance
+Layer 0 (parallel):  GcpVpcNetwork, GcpServiceAccount, GcpSpannerInstance
 Layer 1 (depends):   GcpFirewallRule (← VPC), GcpSpannerDatabase (← SpannerInstance)
 ```
 
@@ -55,7 +55,7 @@ Layer 1 (depends):   GcpFirewallRule (← VPC), GcpSpannerDatabase (← SpannerI
 
 | Resource | Kind | Group | Purpose |
 |----------|------|-------|---------|
-| VPC Network | `GcpVpc` | network | Application networking (optional) |
+| VPC Network | `GcpVpcNetwork` | network | Application networking (optional) |
 | Firewall Rule | `GcpFirewallRule` | network | Allow internal traffic (optional) |
 | Service Account | `GcpServiceAccount` | identity | Application identity with Spanner access |
 | Spanner Instance | `GcpSpannerInstance` | database | Compute capacity for Spanner databases |

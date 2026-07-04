@@ -172,7 +172,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — creates a VPC network inside this project
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — creates a VPC network inside this project
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — creates subnets within a VPC in this project
 - [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — provisions service accounts scoped to this project
 - [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — deploys a GKE cluster into this project

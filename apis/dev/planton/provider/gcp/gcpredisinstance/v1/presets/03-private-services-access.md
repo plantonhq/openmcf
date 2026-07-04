@@ -28,7 +28,7 @@ Private services access must exist on the VPC before the instance is created —
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `my-prod-vpc` | Your `GcpVpc` resource name | Your VPC manifest |
+| `my-prod-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 | `psa-range-services` | The allocated range's `GcpGlobalAddress` name | Your PSA manifests |
 | `my-cache-cmek` | Your `GcpKmsKey` resource name | Your KMS manifests |
 

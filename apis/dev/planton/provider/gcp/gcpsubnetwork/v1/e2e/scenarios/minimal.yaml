@@ -1,5 +1,5 @@
 # Composed GcpSubnetwork scenario. The network is a value_from reference to
-# the GcpVpc prerequisite (declared via prerequisites in the kind registry);
+# the GcpVpcNetwork prerequisite (declared via prerequisites in the kind registry);
 # the E2E harness deploys the VPC first and resolves the reference before the
 # subnet is applied. project_id is omitted and rides the harness-exported
 # GOOGLE_PROJECT. Subnet names are project-scoped with no soft-delete
@@ -22,7 +22,7 @@ metadata:
 spec:
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: planton-oss-e2e-gcpvpc-prereq
       fieldPath: status.outputs.network_self_link
   subnetworkName: planton-oss-e2e-subnet

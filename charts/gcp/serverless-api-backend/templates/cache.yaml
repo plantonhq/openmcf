@@ -6,7 +6,7 @@ metadata:
   name: "{{ values.redis_instance_name }}"
   group: cache
   relationships:
-    - kind: GcpVpc
+    - kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       type: runs_on
 spec:
@@ -18,7 +18,7 @@ spec:
   memorySizeGb: {{ values.redis_memory_size_gb }}
   authorizedNetwork:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       fieldPath: status.outputs.network_self_link
 {% endif %}

@@ -16,7 +16,7 @@ Static NAT IPs are referenced [GcpAddress](/docs/catalog/gcp/gcpaddress) reserva
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **A GCP project** — referenced via `projectId` (or the provider's default project)
-- **An existing VPC network** — referenced via `vpcSelfLink` (typically a GcpVpc resource)
+- **An existing VPC network** — referenced via `vpcSelfLink` (typically a GcpVpcNetwork resource)
 - **GcpAddress reservations** (EXTERNAL, same region) for stable allowlistable egress IPs (optional — omit `natIps` for auto-allocation)
 - **GcpSubnetwork references** to restrict NAT coverage (optional — omit for all subnetworks in the region)
 
@@ -37,7 +37,7 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       fieldPath: status.outputs.network_self_link
 ```
@@ -59,7 +59,7 @@ This creates a Cloud Router and NAT gateway covering all subnetworks in `us-cent
 | `routerName` | `string` | Name of the Cloud Router to create. | RFC 1035, 1-63 chars. Immutable. |
 | `natName` | `string` | Name of the NAT configuration on the router. | RFC 1035, 1-63 chars. Immutable. |
 | `region` | `string` | GCP region for the router and NAT. | Required. Immutable. |
-| `vpcSelfLink` | `StringValueOrRef` | The VPC network the router attaches to. | Required. Can reference a GcpVpc. Immutable. |
+| `vpcSelfLink` | `StringValueOrRef` | The VPC network the router attaches to. | Required. Can reference a GcpVpcNetwork. Immutable. |
 
 ### Optional Fields
 
@@ -101,7 +101,7 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       fieldPath: status.outputs.network_self_link
   logFilter: ERRORS_ONLY
@@ -124,7 +124,7 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       fieldPath: status.outputs.network_self_link
   natIps:
@@ -157,7 +157,7 @@ spec:
   region: europe-west1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       fieldPath: status.outputs.network_self_link
   sourceSubnetworkIpRangesToNat: LIST_OF_SUBNETWORKS
@@ -191,7 +191,7 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       fieldPath: status.outputs.network_self_link
   natIps:
@@ -227,7 +227,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network that the Cloud Router attaches to
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network that the Cloud Router attaches to
 - [GcpAddress](/docs/catalog/gcp/gcpaddress) — EXTERNAL reservations referenced as stable NAT IPs
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — subnets that can be scoped for NAT coverage
 - [GcpProject](/docs/catalog/gcp/gcpproject) — the GCP project where the router and NAT are created

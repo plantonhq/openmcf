@@ -3,7 +3,7 @@ title: "VPC"
 description: "VPC deployment documentation"
 icon: "package"
 order: 100
-componentName: "gcpvpc"
+componentName: "gcpvpcnetwork"
 ---
 
 # GCP VPC
@@ -12,7 +12,7 @@ Deploys a GCP VPC network in custom subnet mode by default, with configurable dy
 
 ## What Gets Created
 
-When you deploy a GcpVpc resource, Planton provisions:
+When you deploy a GcpVpcNetwork resource, Planton provisions:
 
 - **Compute Engine API enablement** — a `google_project_service` resource that activates `compute.googleapis.com` on the target project
 - **VPC Network** — a `google_compute_network` resource with the specified name, subnet mode, and routing mode in the target project
@@ -32,14 +32,14 @@ Create a file `vpc.yaml`:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
-kind: GcpVpc
+kind: GcpVpcNetwork
 metadata:
   name: my-vpc
   labels:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpVpc.my-vpc
+    pulumi.planton.dev/stack.name: dev.GcpVpcNetwork.my-vpc
 spec:
   projectId:
     value: my-gcp-project-123
@@ -80,14 +80,14 @@ A basic VPC for a single-region deployment:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
-kind: GcpVpc
+kind: GcpVpcNetwork
 metadata:
   name: dev-vpc
   labels:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpVpc.dev-vpc
+    pulumi.planton.dev/stack.name: dev.GcpVpcNetwork.dev-vpc
 spec:
   projectId:
     value: my-dev-project-123
@@ -100,14 +100,14 @@ A VPC with global dynamic routing for multi-region workloads or hybrid VPN/Inter
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
-kind: GcpVpc
+kind: GcpVpcNetwork
 metadata:
   name: prod-vpc
   labels:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpVpc.prod-vpc
+    pulumi.planton.dev/stack.name: prod.GcpVpcNetwork.prod-vpc
 spec:
   projectId:
     value: my-prod-project-456
@@ -121,14 +121,14 @@ A VPC configured for private connectivity to Google managed services, using a Gc
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
-kind: GcpVpc
+kind: GcpVpcNetwork
 metadata:
   name: data-vpc
   labels:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpVpc.data-vpc
+    pulumi.planton.dev/stack.name: prod.GcpVpcNetwork.data-vpc
 spec:
   projectId:
     valueFrom:

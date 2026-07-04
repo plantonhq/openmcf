@@ -27,7 +27,7 @@ spec:
     ipv4Enabled: false
     privateNetwork:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: planton-oss-e2e-gcpvpc-prereq
         fieldPath: status.outputs.network_id
     enablePrivatePathForGoogleCloudServices: true

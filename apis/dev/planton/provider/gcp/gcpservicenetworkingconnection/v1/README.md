@@ -9,7 +9,7 @@ One connection per (network, service) pair. GCP creates a VPC peering on the net
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A VPC network** — referenced via `network` (a `GcpVpc` resource or a literal self-link)
+- **A VPC network** — referenced via `network` (a `GcpVpcNetwork` resource or a literal self-link)
 - **At least one reserved range** — a `GcpGlobalAddress` with `addressType: INTERNAL` and `purpose: VPC_PEERING`, referenced by name
 - **IAM permissions** — `servicenetworking.services.addPeering` (e.g. `roles/servicenetworking.networksAdmin`)
 
@@ -25,7 +25,7 @@ metadata:
 spec:
   network:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       fieldPath: status.outputs.network_self_link
   reservedPeeringRanges:
@@ -50,7 +50,7 @@ Once the connection exists, managed services in this network can use private IP 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `projectId` | `StringValueOrRef` | provider default project | Project used for in-module API enablement. Set only when the network's project differs from the provider default. |
-| `network` | `StringValueOrRef` | — (required) | VPC network to peer — name or self-link. Can reference a GcpVpc. Immutable. |
+| `network` | `StringValueOrRef` | — (required) | VPC network to peer — name or self-link. Can reference a GcpVpcNetwork. Immutable. |
 | `service` | `string` | `servicenetworking.googleapis.com` | The service producer to peer with. Immutable. |
 | `reservedPeeringRanges` | `StringValueOrRef[]` | — (min 1) | Names of INTERNAL `VPC_PEERING` global address ranges. Mutable — append to grow capacity. |
 | `updateOnCreationFail` | `bool` | `false` | Adopt a pre-existing connection for the same pair instead of failing. |
@@ -88,7 +88,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network being peered
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network being peered
 - [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) — reserves the `VPC_PEERING` ranges this connection hands to the producer
 - [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) — uses private IP through this connection
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project for API enablement

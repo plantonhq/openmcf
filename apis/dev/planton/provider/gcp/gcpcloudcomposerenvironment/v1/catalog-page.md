@@ -70,7 +70,7 @@ This creates a Composer environment with default settings (Composer 2.x, ENVIRON
 | `kmsKeyName` | `StringValueOrRef` | — | CMEK encryption key for all Composer-managed resources. Can reference GcpKmsKey via `valueFrom`. |
 | `enablePrivateEnvironment` | `bool` | `false` | Composer 3 only. Disables the public web server endpoint. |
 | `enablePrivateBuildsOnly` | `bool` | `false` | Composer 3 only. Restricts package builds to private connectivity. |
-| `nodeConfig.network` | `StringValueOrRef` | — | VPC network for Composer 2.x. Can reference GcpVpc via `valueFrom`. |
+| `nodeConfig.network` | `StringValueOrRef` | — | VPC network for Composer 2.x. Can reference GcpVpcNetwork via `valueFrom`. |
 | `nodeConfig.subnetwork` | `StringValueOrRef` | — | VPC subnetwork for Composer 2.x. Can reference GcpSubnetwork via `valueFrom`. |
 | `nodeConfig.serviceAccount` | `StringValueOrRef` | — | Service account for GKE nodes. Can reference GcpServiceAccount via `valueFrom`. |
 | `nodeConfig.tags` | `string[]` | `[]` | Network tags for firewall targeting. |
@@ -280,7 +280,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — Network for Composer 2.x VPC peering
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — Network for Composer 2.x VPC peering
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — Subnetwork for node placement
 - [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — Custom identity for Composer nodes
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — Customer-managed encryption key for CMEK

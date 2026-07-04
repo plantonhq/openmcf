@@ -58,7 +58,7 @@ After deployment, the following outputs are available:
 ## Related Components
 
 - **GcpGcsBucket**: Staging and temp bucket for job artifacts
-- **GcpVpc / GcpSubnetwork**: Network placement for cluster nodes
+- **GcpVpcNetwork / GcpSubnetwork**: Network placement for cluster nodes
 - **GcpServiceAccount**: Custom IAM identity for cluster VMs
 - **GcpKmsKey**: Customer-managed encryption keys for disk encryption
 - **GcpDataprocVirtualCluster**: Dataproc-on-GKE for Kubernetes-native Spark (separate component)

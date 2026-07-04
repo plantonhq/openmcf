@@ -8,7 +8,7 @@ spec:
   projectId:
     value: my-gcp-project-123
 
-  # Self-link of the parent VPC (or reference a GcpVpc resource).
+  # Self-link of the parent VPC (or reference a GcpVpcNetwork resource).
   vpcSelfLink:
     value: projects/my-gcp-project-123/global/networks/my-vpc
 

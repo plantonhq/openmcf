@@ -3,7 +3,7 @@ kind: ComponentE2EProfile
 metadata:
   name: gcpsubnetwork
 spec:
-  # Composed scenario: the harness deploys a GcpVpc prerequisite (custom-mode
+  # Composed scenario: the harness deploys a GcpVpcNetwork prerequisite (custom-mode
   # network), resolves the subnet's network reference from its outputs, then
   # runs deploy -> compute subnetworks.get verify (incl. primary-range check)
   # -> destroy -> verify 404, on both provisioners. The scenario carries

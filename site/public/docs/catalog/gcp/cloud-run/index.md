@@ -93,7 +93,7 @@ This creates a publicly accessible Cloud Run service with 1 vCPU, 512 MiB memory
 | `allowUnauthenticated` | `bool` | `true` | When `true`, the service is publicly invokable without IAM authentication. |
 | `executionEnvironment` | `enum` | `EXECUTION_ENVIRONMENT_GEN2` | Execution environment. `EXECUTION_ENVIRONMENT_GEN1`: first generation. `EXECUTION_ENVIRONMENT_GEN2`: full Linux compatibility, slower cold starts. |
 | `deleteProtection` | `bool` | `false` | Prevents accidental deletion of the service when enabled. |
-| `vpcAccess.network` | `string` | — | VPC network name for Direct VPC Egress. Can reference a GcpVpc resource via `valueFrom`. |
+| `vpcAccess.network` | `string` | — | VPC network name for Direct VPC Egress. Can reference a GcpVpcNetwork resource via `valueFrom`. |
 | `vpcAccess.subnet` | `string` | — | Subnet name for Direct VPC Egress. Can reference a GcpSubnetwork resource via `valueFrom`. |
 | `vpcAccess.egress` | `string` | — | Egress routing: `ALL_TRAFFIC` routes all egress through VPC, `PRIVATE_RANGES_ONLY` routes only private IP traffic. |
 | `dns.enabled` | `bool` | `false` | Enables custom domain mapping for the service. |
@@ -252,7 +252,7 @@ spec:
   vpcAccess:
     network:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: my-vpc
         field: status.outputs.network_name
     subnet:
@@ -276,6 +276,6 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpProject](/docs/catalog/gcp/project) — provides the GCP project where the service is created
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network for Direct VPC Egress
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network for Direct VPC Egress
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — provides the subnet for Direct VPC Egress
 - [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — commonly co-deployed as the database backend accessed via VPC

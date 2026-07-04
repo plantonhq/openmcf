@@ -235,7 +235,7 @@ type GcpVertexAiNotebookNetworkInterface struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// VPC network for the instance.
 	// Can be a literal value (VPC name or self_link) or a reference to
-	// a GcpVpc resource.
+	// a GcpVpcNetwork resource.
 	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
 	// Subnetwork for the instance.
 	// Can be a literal value (subnet name or self_link) or a reference to

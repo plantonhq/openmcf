@@ -12,7 +12,7 @@ When you deploy a GcpSubnetwork resource, Planton provisions:
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **An existing custom-mode VPC** — referenced via `vpcSelfLink` (a GcpVpc resource or a literal self-link)
+- **An existing custom-mode VPC** — referenced via `vpcSelfLink` (a GcpVpcNetwork resource or a literal self-link)
 - **IAM permissions** — `roles/compute.networkAdmin` on the target project
 
 ## Quick Start
@@ -29,7 +29,7 @@ spec:
     value: my-gcp-project-123
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       fieldPath: status.outputs.network_self_link
   subnetworkName: app-subnet
@@ -50,7 +50,7 @@ planton apply -f subnetwork.yaml
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `vpcSelfLink` | `StringValueOrRef` | The parent VPC network. Can reference a GcpVpc resource. Immutable. |
+| `vpcSelfLink` | `StringValueOrRef` | The parent VPC network. Can reference a GcpVpcNetwork resource. Immutable. |
 | `subnetworkName` | `string` | Name in GCP (RFC1035, 1-63 chars). Immutable. |
 | `region` | `string` | Region the subnet lives in. Immutable. |
 | `ipCidrRange` | `string` | Primary IPv4 CIDR (e.g. `10.10.0.0/20`). Required except for `IPV6_ONLY` subnets. Expandable in place; shrinking recreates. |
@@ -128,7 +128,7 @@ See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment ins
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the parent network
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the parent network
 - [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — consumes the subnet + secondary ranges by reference
 - [GcpRouterNat](/docs/catalog/gcp/gcprouternat) — gives private subnets outbound internet access
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project that owns the subnet

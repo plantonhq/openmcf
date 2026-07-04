@@ -66,7 +66,7 @@ This creates a 2.5 TiB SSD-backed NFS instance in `us-central1-a` connected to t
 | `tier` | `string` | Service tier controlling performance, availability, and pricing. Immutable after creation. | `STANDARD`, `PREMIUM`, `BASIC_HDD`, `BASIC_SSD`, `HIGH_SCALE_SSD`, `ZONAL`, `REGIONAL`, `ENTERPRISE` |
 | `fileShare.name` | `string` | Name of the NFS file share. Becomes the export path. Immutable after creation. | Letters, numbers, underscores; 1-16 characters; must start with a letter |
 | `fileShare.capacityGb` | `int` | File share capacity in GiB. Can be increased after creation but not decreased. | Minimum 1024 (tier-specific minimums enforced by GCP) |
-| `networkConfig.network` | `StringValueOrRef` | VPC network the instance connects to. Immutable after creation. Can reference a GcpVpc resource via `valueFrom`. | Required |
+| `networkConfig.network` | `StringValueOrRef` | VPC network the instance connects to. Immutable after creation. Can reference a GcpVpcNetwork resource via `valueFrom`. | Required |
 
 ### Optional Fields
 
@@ -157,7 +157,7 @@ spec:
   networkConfig:
     network:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: my-vpc
     connectMode: PRIVATE_SERVICE_ACCESS
   performanceConfig:
@@ -263,7 +263,7 @@ spec:
   networkConfig:
     network:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: my-vpc
     connectMode: PRIVATE_SERVICE_ACCESS
     reservedIpRange: "10.10.0.0/29"
@@ -283,7 +283,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — VPC network the Filestore instance connects to
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — VPC network the Filestore instance connects to
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — KMS key for customer-managed encryption at rest
 - [GcpKmsKeyRing](/docs/catalog/gcp/gcpkmskeyring) — Key ring containing the KMS key
 - [GcpProject](/docs/catalog/gcp/gcpproject) — GCP project where the instance is created

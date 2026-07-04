@@ -48,7 +48,7 @@ type GcpSubnetworkSpec struct {
 	// Immutable: changing it destroys and recreates the subnetwork.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// The parent VPC network, by self-link.
-	// Reference a GcpVpc resource or provide the self-link directly.
+	// Reference a GcpVpcNetwork resource or provide the self-link directly.
 	// Immutable: a subnet cannot move between networks.
 	VpcSelfLink *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=vpc_self_link,json=vpcSelfLink,proto3" json:"vpc_self_link,omitempty"`
 	// Name of the subnetwork in GCP. Must be 1-63 characters: lowercase

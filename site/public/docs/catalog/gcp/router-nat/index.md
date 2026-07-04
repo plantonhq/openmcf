@@ -64,7 +64,7 @@ This creates a Cloud Router and NAT gateway covering all subnets in `us-central1
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `projectId` | `StringValueOrRef` | GCP project ID where the Cloud Router and NAT will be created. | Required. Can reference a GcpProject resource via `valueFrom`. |
-| `vpcSelfLink` | `StringValueOrRef` | Self-link or name of the target VPC network. | Required. Can reference a GcpVpc resource via `valueFrom`. |
+| `vpcSelfLink` | `StringValueOrRef` | Self-link or name of the target VPC network. | Required. Can reference a GcpVpcNetwork resource via `valueFrom`. |
 | `region` | `string` | GCP region for the Cloud Router and NAT. | Required |
 | `routerName` | `string` | Name of the Cloud Router to create. | Required. Must match `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$` |
 | `natName` | `string` | Name of the NAT configuration on the Cloud Router. | Required. Must match `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$` |
@@ -178,7 +178,7 @@ spec:
       fieldPath: status.outputs.project_id
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       fieldPath: status.outputs.network_self_link
   region: us-central1
@@ -199,7 +199,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network that the Cloud Router attaches to
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network that the Cloud Router attaches to
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — subnets that can be scoped for NAT coverage
 - [GcpProject](/docs/catalog/gcp/project) — the GCP project where the router and NAT are created
 - [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — private GKE clusters that depend on Cloud NAT for outbound internet access

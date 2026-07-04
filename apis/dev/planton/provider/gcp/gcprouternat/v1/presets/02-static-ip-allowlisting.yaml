@@ -10,8 +10,8 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
-      name: my-prod-vpc # replace with your GcpVpc resource name
+      kind: GcpVpcNetwork
+      name: my-prod-vpc # replace with your GcpVpcNetwork resource name
       fieldPath: status.outputs.network_self_link
   # Manual allocation: each entry references a GcpAddress reservation, so the
   # egress IPs are stable and third parties can allowlist them. The literal

@@ -94,7 +94,7 @@ For STANDARD_HA, GCP automatically places the primary and replica in different z
 ## Related Components
 
 - **GcpProject** — provides the GCP project
-- **GcpVpc** — provides the VPC network for `authorized_network`
+- **GcpVpcNetwork** — provides the VPC network for `authorized_network`
 - **GcpGlobalAddress** — reserves the VPC_PEERING range named by `reserved_ip_range` in PRIVATE_SERVICE_ACCESS mode
 - **GcpServiceNetworkingConnection** — the private services access peering PRIVATE_SERVICE_ACCESS instances ride on
 - **GcpKmsKey** — provides a CMEK key for `customer_managed_key`

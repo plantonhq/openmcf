@@ -79,7 +79,7 @@ This creates a private GKE cluster in `us-central1` with Workload Identity enabl
 | `clusterName` | `string` | Name of the GKE cluster in GCP. | 1-40 chars, lowercase, letters/numbers/hyphens, must start with a letter |
 | `projectId` | `StringValueOrRef` | GCP project ID. Can reference a GcpProject resource via `valueFrom`. | Required |
 | `location` | `string` | Region or zone for the cluster (e.g., `us-central1` for regional, `us-central1-a` for zonal). | Required, must match GCP location pattern |
-| `networkSelfLink` | `StringValueOrRef` | VPC network self-link. Can reference a GcpVpc resource via `valueFrom`. | Required |
+| `networkSelfLink` | `StringValueOrRef` | VPC network self-link. Can reference a GcpVpcNetwork resource via `valueFrom`. | Required |
 | `subnetworkSelfLink` | `StringValueOrRef` | VPC subnetwork self-link. Can reference a GcpSubnetwork resource via `valueFrom`. | Required |
 | `clusterSecondaryRangeName` | `StringValueOrRef` | Name of the secondary IP range on the subnetwork for pod IPs. Can reference a GcpSubnetwork. | Required |
 | `servicesSecondaryRangeName` | `StringValueOrRef` | Name of the secondary IP range on the subnetwork for service IPs. Can reference a GcpSubnetwork. | Required |
@@ -154,7 +154,7 @@ spec:
   location: us-east1
   networkSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       field: status.outputs.self_link
   subnetworkSelfLink:
@@ -197,6 +197,6 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpProject](/docs/catalog/gcp/project) — provides the GCP project for cluster creation
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — provides the subnetwork with secondary IP ranges for pods and services
 - [GcpRouterNat](/docs/catalog/gcp/router-nat) — provides Cloud NAT for private node outbound internet access

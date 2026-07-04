@@ -12,7 +12,7 @@ This preset creates a Cloud Router with a NAT gateway that covers all subnets in
 
 - **All subnets covered** — `subnetworks` is empty, so NAT applies to every subnetwork in the region, primary and secondary ranges
 - **Auto-allocated IPs** — `natIps` is empty, so GCP provisions and scales the external IP pool itself; the IPs can change over time, so use the static-IP preset when third parties allowlist your egress
-- **VPC by reference** — `vpcSelfLink` resolves the `GcpVpc` node's self link
+- **VPC by reference** — `vpcSelfLink` resolves the `GcpVpcNetwork` node's self link
 - **Error-only logging** (`logFilter: ERRORS_ONLY`) — logs port exhaustion and connection failures without the volume of full translation logging
 
 ## Placeholders to Replace
@@ -20,7 +20,7 @@ This preset creates a Cloud Router with a NAT gateway that covers all subnets in
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `my-app-vpc` | Your `GcpVpc` resource name | Your VPC manifest |
+| `my-app-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 
 ## Related Presets
 
@@ -29,5 +29,5 @@ This preset creates a Cloud Router with a NAT gateway that covers all subnets in
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network the router attaches to
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network the router attaches to
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — scope NAT to specific subnetworks when needed

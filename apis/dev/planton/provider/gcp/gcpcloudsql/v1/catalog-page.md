@@ -57,7 +57,7 @@ This creates a PostgreSQL 16 instance whose public IP has **no authorized networ
 | `edition` | `string` | `ENTERPRISE` | `ENTERPRISE_PLUS` adds the data cache + 99.99% HA SLA. |
 | `availabilityType` | `string` | `ZONAL` | `REGIONAL` = HA with automatic failover (requires backups). |
 | `disk` | object | 10 GB PD_SSD | Type/size/auto-resize. Disks grow, never shrink. |
-| `network` | object | public, no allowlist | Private VPC IP (ref → GcpVpc), public IPv4 + authorized networks, TLS posture, server CA mode, PSC. |
+| `network` | object | public, no allowlist | Private VPC IP (ref → GcpVpcNetwork), public IPv4 + authorized networks, TLS posture, server CA mode, PSC. |
 | `backup` | object | disabled | Daily backups, PITR (PG/SQL Server) or binary logs (MySQL), retention. |
 | `maintenanceWindow` / `denyMaintenancePeriod` | object | — | Weekly window + freeze periods. |
 | `insightsConfig` | object | disabled | Query Insights telemetry. |
@@ -92,7 +92,7 @@ spec:
   network:
     privateNetwork:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: prod-vpc
         fieldPath: status.outputs.network_id
     sslMode: ENCRYPTED_ONLY

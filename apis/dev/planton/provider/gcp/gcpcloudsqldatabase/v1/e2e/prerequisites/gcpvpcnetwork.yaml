@@ -1,0 +1,19 @@
+# Consumer-scoped GcpVpcNetwork install profile for the database chain (same shape
+# as the instance chain — run-scoped network name, fixed metadata for FK refs).
+apiVersion: gcp.planton.dev/v1
+kind: GcpVpcNetwork
+metadata:
+  name: planton-oss-e2e-gcpvpc-prereq
+  id: planton-oss-e2e-gcpvpc-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvpcnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  networkName: planton-oss-e2e-vpc-${E2E_RUN_ID}
+  autoCreateSubnetworks: false

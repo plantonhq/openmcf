@@ -75,7 +75,7 @@ This creates an `e2-medium` instance running Debian 12 in `us-central1-a` with a
 | `bootDisk.sizeGb` | `int32` | `10` | Boot disk size in GB. Range: 10–65536. |
 | `bootDisk.type` | `string` | `pd-standard` | Boot disk type: `pd-standard`, `pd-ssd`, or `pd-balanced`. |
 | `bootDisk.autoDelete` | `bool` | `true` | Auto-delete the boot disk when the instance is deleted. |
-| `networkInterfaces[].network` | `string` | — | VPC network for the interface. Can reference a GcpVpc resource via `valueFrom`. Either `network` or `subnetwork` is required. |
+| `networkInterfaces[].network` | `string` | — | VPC network for the interface. Can reference a GcpVpcNetwork resource via `valueFrom`. Either `network` or `subnetwork` is required. |
 | `networkInterfaces[].subnetwork` | `string` | — | Subnetwork for the interface. Can reference a GcpSubnetwork resource via `valueFrom`. Either `network` or `subnetwork` is required. |
 | `networkInterfaces[].accessConfigs` | `object[]` | `[]` | External IP access configurations. If empty, the interface has no external IP. |
 | `networkInterfaces[].accessConfigs[].natIp` | `string` | — | Static external IP address. If omitted, an ephemeral IP is assigned. |
@@ -257,5 +257,5 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project where the instance is created
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network for network interface configuration
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network for network interface configuration
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — provides the subnetwork for network interface configuration

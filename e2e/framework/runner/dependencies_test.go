@@ -30,7 +30,7 @@ func TestResolveDependencies_ConsumerScopedPrerequisiteWins(t *testing.T) {
 	consumerPrereq := writeManifest(t, repoRoot,
 		"apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1/e2e/prerequisites/gcpglobaladdress.yaml")
 	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpglobaladdress/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpvpc/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpvpcnetwork/v1/e2e/prerequisite.yaml")
 
 	deps, err := ResolveDependencies(repoRoot, "gcp", "gcpservicenetworkingconnection")
 	if err != nil {
@@ -43,7 +43,7 @@ func TestResolveDependencies_ConsumerScopedPrerequisiteWins(t *testing.T) {
 	for i, d := range deps {
 		got[i] = d.KindSlug
 	}
-	want := []string{"gcpvpc", "gcpglobaladdress"}
+	want := []string{"gcpvpcnetwork", "gcpglobaladdress"}
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("dependency order = %v, want %v", got, want)

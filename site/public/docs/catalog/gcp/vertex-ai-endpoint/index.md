@@ -69,7 +69,7 @@ This creates a public Vertex AI Endpoint accessible via the shared regional DNS 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `description` | `string` | `""` | Description of the endpoint. |
-| `network` | `StringValueOrRef` | — | VPC network for private endpoints via VPC peering. Format: `projects/{project}/global/networks/{network}`. Mutually exclusive with `privateServiceConnectConfig`. Immutable. Can reference a GcpVpc resource via `valueFrom`. |
+| `network` | `StringValueOrRef` | — | VPC network for private endpoints via VPC peering. Format: `projects/{project}/global/networks/{network}`. Mutually exclusive with `privateServiceConnectConfig`. Immutable. Can reference a GcpVpcNetwork resource via `valueFrom`. |
 | `kmsKeyName` | `StringValueOrRef` | — | Cloud KMS key for CMEK encryption. Format: `projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}`. Immutable. Can reference a GcpKmsKey resource via `valueFrom`. |
 | `dedicatedEndpointEnabled` | `bool` | `false` | Enables a dedicated DNS name for better performance and traffic isolation. Mutually exclusive with `privateServiceConnectConfig`. |
 | `privateServiceConnectConfig` | `object` | — | Private Service Connect configuration. Mutually exclusive with `network` and `dedicatedEndpointEnabled`. |
@@ -177,7 +177,7 @@ spec:
   displayName: Composed ML Endpoint
   network:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: ml-vpc
       field: status.outputs.network_self_link
   kmsKeyName:
@@ -201,7 +201,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpProject](/docs/catalog/gcp/project) — provides the GCP project for the endpoint
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network for VPC-peered private endpoints
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network for VPC-peered private endpoints
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — provides the encryption key for CMEK
 - [GcpVertexAiNotebook](/docs/catalog/gcp/vertex-ai-notebook) — commonly co-deployed for ML development workflows
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — provides the service identity for model serving

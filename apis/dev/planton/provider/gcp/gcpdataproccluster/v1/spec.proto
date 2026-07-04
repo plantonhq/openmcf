@@ -53,7 +53,7 @@ message GcpDataprocClusterGceConfig {
   // VPC network for the cluster's nodes. Mutually exclusive with subnetwork.
   // Expects a network self-link or resource reference.
   dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 

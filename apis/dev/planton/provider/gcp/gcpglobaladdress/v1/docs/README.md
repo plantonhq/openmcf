@@ -333,7 +333,7 @@ spec:
       name: my-project
   network:
     ref:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
 ```
 

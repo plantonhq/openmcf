@@ -11,7 +11,7 @@ This chart differs from the [Cloud Run Environment](../cloud-run-environment/) b
                     │  Network                                  │
                     │                                          │
                     │  ┌──────────┐  ┌────────────┐           │
-                    │  │  GcpVpc  │─▶│ GcpSubnet  │           │
+                    │  │  GcpVpcNetwork  │─▶│ GcpSubnet  │           │
                     │  │  (PSA)   │  └─────┬──────┘           │
                     │  └────┬─────┘        │                  │
                     │       │        ┌─────┴──────┐           │
@@ -44,7 +44,7 @@ This chart differs from the [Cloud Run Environment](../cloud-run-environment/) b
 ## Dependency Graph
 
 ```
-Layer 0 (parallel):  GcpVpc, GcpServiceAccount, GcpPubSubTopic, GcpCloudTasksQueue
+Layer 0 (parallel):  GcpVpcNetwork, GcpServiceAccount, GcpPubSubTopic, GcpCloudTasksQueue
 Layer 1 (dep VPC):   GcpSubnetwork, GcpRouterNat, GcpCloudSql, GcpRedisInstance
 Layer 2 (dep all):   GcpCloudRun
 ```
@@ -53,7 +53,7 @@ Layer 2 (dep all):   GcpCloudRun
 
 | Resource | Kind | Group | Condition | Purpose |
 |----------|------|-------|-----------|---------|
-| VPC Network | `GcpVpc` | network | Always | Private networking foundation |
+| VPC Network | `GcpVpcNetwork` | network | Always | Private networking foundation |
 | PSA Range | `GcpGlobalAddress` | network | Always | Reserved VPC_PEERING range for managed services |
 | PSA Connection | `GcpServiceNetworkingConnection` | network | Always | Peering with Google's service producer network |
 | Subnetwork | `GcpSubnetwork` | network | Always | Subnet with Private Google Access |

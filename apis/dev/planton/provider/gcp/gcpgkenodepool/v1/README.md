@@ -152,7 +152,7 @@ Spot VMs offer up to 91% cost reduction but can be preempted (terminated) by Goo
 
 - **[GcpGkeCluster](../gcpgkecluster/v1/README.md)**: Parent GKE cluster (control plane)
 - **[GcpProject](../gcpproject/v1/README.md)**: GCP project for resource organization
-- **[GcpVpc](../gcpvpc/v1/README.md)**: VPC network for cluster connectivity
+- **[GcpVpcNetwork](../gcpvpcnetwork/v1/README.md)**: VPC network for cluster connectivity
 
 ## Documentation
 

@@ -39,7 +39,7 @@ This preset provisions a production-ready Memorystore for Redis instance with ST
 | `<gcp-project-id>` | GCP project ID where the instance will be created | GCP Console or `GcpProject` outputs |
 | `<instance-name>` | Name for this Redis instance (2-40 chars, lowercase, hyphens) | Choose a descriptive name (e.g., `prod-cache`) |
 | `<gcp-region>` | GCP region for the instance (e.g., `us-central1`) | [GCP regions](https://cloud.google.com/about/locations) |
-| `<vpc-network-self-link>` | Full self-link of the VPC network (e.g., `projects/my-project/global/networks/prod-vpc`) | `GcpVpc` status outputs or GCP Console |
+| `<vpc-network-self-link>` | Full self-link of the VPC network (e.g., `projects/my-project/global/networks/prod-vpc`) | `GcpVpcNetwork` status outputs or GCP Console |
 
 ## Related Presets
 

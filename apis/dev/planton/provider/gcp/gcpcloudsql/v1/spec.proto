@@ -437,13 +437,13 @@ message GcpCloudSqlNetwork {
 
   // The VPC network for private IP connectivity, in
   // projects/{project}/global/networks/{network} form. Accepts a literal or
-  // a reference to a GcpVpc resource. Setting this ENABLES private IP.
+  // a reference to a GcpVpcNetwork resource. Setting this ENABLES private IP.
   // The network must already have a service networking connection (compose
   // GcpGlobalAddress with purpose VPC_PEERING + GcpServiceNetworkingConnection)
   // or instance creation fails. Can be set or changed in place, but never
   // removed — removing it forces instance replacement.
   dev.planton.shared.foreignkey.v1.StringValueOrRef private_network = 1 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_id"
   ];
 

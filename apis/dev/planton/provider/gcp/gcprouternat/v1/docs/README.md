@@ -227,7 +227,7 @@ For a typical deployment with 20 VMs and 100 GB monthly egress, total NAT costs 
 
 Planton's `GcpRouterNat` models the full NAT surface as one composable node — the router and its NAT provisioned together (the overwhelmingly common one-NAT-per-router shape), with every production lever first-class in the spec:
 
-- **Where**: the VPC (a reference to a `GcpVpc` node) and the region — the required, immutable context.
+- **Where**: the VPC (a reference to a `GcpVpcNetwork` node) and the region — the required, immutable context.
 - **What**: subnetwork coverage, from region-wide (the future-proof default) down to individual secondary ranges of individual subnetworks (referenced `GcpSubnetwork` nodes) — the shape that NATs a GKE pod range without exposing the node range.
 - **How**: IP allocation. Empty means auto-allocation (GCP owns the pool). Listing `GcpAddress` references means manual allocation with stable, allowlistable egress IPs — the addresses are their own nodes with their own lifecycle, referenced by the NAT and never created inside it, so the literal IPs live on those nodes' outputs and survive NAT reconfiguration. Drain entries rotate an IP out of service without dropping established connections.
 - **How much**: port floors and ceilings, dynamic port allocation (mutually exclusive with endpoint-independent mapping — enforced at validation time, before anything reaches GCP), and all five connection timeouts.

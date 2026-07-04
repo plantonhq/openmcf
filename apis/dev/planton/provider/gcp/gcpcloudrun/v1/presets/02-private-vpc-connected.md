@@ -26,7 +26,7 @@ This preset deploys a Cloud Run service that is only accessible internally (with
 | `<gcp-region>` | GCP region (e.g., `us-central1`) | Your deployment region |
 | `<container-image-repo>` | Container image repository | `GcpArtifactRegistryRepo` outputs |
 | `<image-tag>` | Image tag | Your CI/CD pipeline |
-| `<vpc-network-name>` | VPC network name (not self-link) | `GcpVpc` status outputs |
+| `<vpc-network-name>` | VPC network name (not self-link) | `GcpVpcNetwork` status outputs |
 | `<subnet-name>` | Subnet name (not self-link) | `GcpSubnetwork` status outputs |
 
 ## Related Presets

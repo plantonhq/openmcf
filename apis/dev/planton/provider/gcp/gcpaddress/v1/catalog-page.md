@@ -119,6 +119,6 @@ spec:
 ## Related Components
 
 - [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) — global-scope addresses (HTTP(S) LB VIPs, global VPC peering ranges, PSC)
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — VPC network for INTERNAL addresses
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — VPC network for INTERNAL addresses
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — subnetwork for GCE endpoint addresses
 - [GcpProject](/docs/catalog/gcp/gcpproject) — GCP project and API enablement

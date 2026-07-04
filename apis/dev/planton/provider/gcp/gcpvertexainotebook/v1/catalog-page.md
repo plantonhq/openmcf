@@ -78,7 +78,7 @@ This creates a CPU-only Workbench instance with a default deep learning VM image
 | `dataDisk.kmsKey` | `StringValueOrRef` | — | KMS key for CMEK encryption. Can reference GcpKmsKey via `valueFrom`. Immutable. |
 | `acceleratorConfig.type` | `string` | — | GPU type: `NVIDIA_TESLA_T4`, `NVIDIA_L4`, `NVIDIA_TESLA_A100`, `NVIDIA_A100_80GB`, etc. |
 | `acceleratorConfig.coreCount` | `int` | — | Number of GPU cores (typically 1, 2, 4, or 8). |
-| `networkInterface.network` | `StringValueOrRef` | default VPC | VPC network. Can reference GcpVpc via `valueFrom`. Immutable. |
+| `networkInterface.network` | `StringValueOrRef` | default VPC | VPC network. Can reference GcpVpcNetwork via `valueFrom`. Immutable. |
 | `networkInterface.subnet` | `StringValueOrRef` | — | Subnet. Can reference GcpSubnetwork via `valueFrom`. Immutable. |
 | `networkInterface.nicType` | `string` | `VIRTIO_NET` | NIC type: `VIRTIO_NET` or `GVNIC`. Immutable. |
 | `disablePublicIp` | `bool` | `false` | If `true`, no external IP. Instance accessible only via proxy or VPN. Immutable. |
@@ -178,7 +178,7 @@ spec:
   networkInterface:
     network:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: ml-vpc
     subnet:
       valueFrom:
@@ -227,7 +227,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpProject](/docs/catalog/gcp/gcpproject) — project where the notebook is created
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — VPC network for private notebook deployments
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — VPC network for private notebook deployments
 - [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — subnet for VPC-connected notebooks
 - [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — VM identity for accessing GCP resources
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — encryption key for CMEK-encrypted disks

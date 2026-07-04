@@ -11,7 +11,7 @@ A data scientist can start working immediately after deployment: the notebook ha
 │  Network (optional)                                              │
 │                                                                  │
 │  ┌──────────────┐       ┌─────────────────────────┐             │
-│  │   GcpVpc     │──────▶│    GcpSubnetwork         │             │
+│  │   GcpVpcNetwork     │──────▶│    GcpSubnetwork         │             │
 │  │              │       │  Private Google Access    │             │
 │  └──────────────┘       └────────────┬─────────────┘             │
 │                                      │                           │
@@ -35,7 +35,7 @@ A data scientist can start working immediately after deployment: the notebook ha
 ## Dependency Graph
 
 ```
-Layer 0 (parallel):  GcpVpc, GcpServiceAccount, GcpGcsBucket, GcpBigQueryDataset
+Layer 0 (parallel):  GcpVpcNetwork, GcpServiceAccount, GcpGcsBucket, GcpBigQueryDataset
 Layer 1 (dep VPC):   GcpSubnetwork
 Layer 2 (dep all):   GcpVertexAiNotebook
 ```
@@ -44,7 +44,7 @@ Layer 2 (dep all):   GcpVertexAiNotebook
 
 | Resource | Kind | Group | Purpose |
 |----------|------|-------|---------|
-| VPC Network | `GcpVpc` | network | Private networking (optional) |
+| VPC Network | `GcpVpcNetwork` | network | Private networking (optional) |
 | Subnetwork | `GcpSubnetwork` | network | Subnet with Private Google Access (optional) |
 | Service Account | `GcpServiceAccount` | identity | Notebook VM identity with BigQuery, GCS, Vertex AI access |
 | GCS Bucket | `GcpGcsBucket` | storage | Datasets, model artifacts, training outputs |

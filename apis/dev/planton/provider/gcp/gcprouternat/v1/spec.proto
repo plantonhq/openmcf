@@ -171,7 +171,7 @@ message GcpRouterNatSpec {
   // Immutable after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_self_link = 5 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 

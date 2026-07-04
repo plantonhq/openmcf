@@ -546,7 +546,7 @@ type GcpCloudSqlNetwork struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The VPC network for private IP connectivity, in
 	// projects/{project}/global/networks/{network} form. Accepts a literal or
-	// a reference to a GcpVpc resource. Setting this ENABLES private IP.
+	// a reference to a GcpVpcNetwork resource. Setting this ENABLES private IP.
 	// The network must already have a service networking connection (compose
 	// GcpGlobalAddress with purpose VPC_PEERING + GcpServiceNetworkingConnection)
 	// or instance creation fails. Can be set or changed in place, but never

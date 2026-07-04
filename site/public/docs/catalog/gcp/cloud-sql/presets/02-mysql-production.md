@@ -37,7 +37,7 @@ This preset creates a production-grade Cloud SQL MySQL 8.0 instance with the sam
 |---|---|---|
 | `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
 | `<gcp-region>` | GCP region (e.g., `us-central1`) | Your deployment region |
-| `<vpc-network-id>` | VPC network ID for private IP | `GcpVpc` status outputs |
+| `<vpc-network-id>` | VPC network ID for private IP | `GcpVpcNetwork` status outputs |
 | `<failover-zone>` | Zone for HA failover | Different zone in the same region |
 
 ## Related Presets

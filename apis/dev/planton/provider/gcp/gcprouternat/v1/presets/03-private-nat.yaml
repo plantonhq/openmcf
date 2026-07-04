@@ -10,8 +10,8 @@ spec:
   region: us-central1
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
-      name: my-spoke-vpc # replace with your GcpVpc resource name
+      kind: GcpVpcNetwork
+      name: my-spoke-vpc # replace with your GcpVpcNetwork resource name
       fieldPath: status.outputs.network_self_link
   # PRIVATE: NAT between VPC networks attached as Network Connectivity
   # Center spokes — overlapping subnets on two spokes can still talk because

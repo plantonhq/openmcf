@@ -26,7 +26,7 @@ This preset attaches a read replica to an existing PostgreSQL primary. A replica
 |---|---|---|
 | `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
 | `my-postgres-prod` | Your primary's resource name | The primary's manifest |
-| `my-prod-vpc` | Your `GcpVpc` resource name | Your VPC manifest |
+| `my-prod-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 
 ## Related Presets
 

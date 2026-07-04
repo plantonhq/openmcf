@@ -22,8 +22,8 @@ spec:
     # (GcpGlobalAddress with purpose VPC_PEERING + GcpServiceNetworkingConnection).
     privateNetwork:
       valueFrom:
-        kind: GcpVpc
-        name: my-prod-vpc # replace with your GcpVpc resource name
+        kind: GcpVpcNetwork
+        name: my-prod-vpc # replace with your GcpVpcNetwork resource name
         fieldPath: status.outputs.network_id
     sslMode: ENCRYPTED_ONLY
   backup:

@@ -82,7 +82,7 @@ This creates a PostgreSQL 15 instance on a `db-n1-standard-1` machine with 10 GB
 | `queryInsightsEnabled` | `bool` | `false` | Enables Query Insights for performance monitoring and query analysis. |
 | `rootPassword` | `string` | — | Initial root password for the instance. Minimum length: 8 characters. |
 | `databaseFlags` | `map<string, string>` | `{}` | Engine-specific configuration flags as key-value pairs (e.g., `max_connections: "200"`). |
-| `network.vpcId` | `string` | — | VPC network ID for private IP connectivity. Can reference a GcpVpc resource via `valueFrom`. |
+| `network.vpcId` | `string` | — | VPC network ID for private IP connectivity. Can reference a GcpVpcNetwork resource via `valueFrom`. |
 | `network.privateIpEnabled` | `bool` | `false` | Enables private IP for the instance. Requires `network.vpcId` to be set. |
 | `network.ipv4Enabled` | `bool` | `false` | Enables public IPv4 for the instance. Can be combined with private IP. |
 | `network.authorizedNetworks` | `string[]` | `[]` | CIDR blocks allowed to connect via public IP. Must be unique. Pattern: `x.x.x.x/x`. |
@@ -230,7 +230,7 @@ spec:
   network:
     vpcId:
       valueFrom:
-        kind: GcpVpc
+        kind: GcpVpcNetwork
         name: my-vpc
         fieldPath: status.outputs.network_id
     privateIpEnabled: true
@@ -255,4 +255,4 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpProject](/docs/catalog/gcp/project) — provides the GCP project where the instance is created
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network for private IP connectivity
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network for private IP connectivity

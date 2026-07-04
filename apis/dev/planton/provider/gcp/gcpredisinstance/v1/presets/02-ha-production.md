@@ -20,7 +20,7 @@ This preset deploys a STANDARD_HA Redis instance — a primary with an automatic
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `my-gcp-project-123` | GCP project ID | GCP Console or `GcpProject` outputs |
-| `my-prod-vpc` | Your `GcpVpc` resource name | Your VPC manifest |
+| `my-prod-vpc` | Your `GcpVpcNetwork` resource name | Your VPC manifest |
 
 ## Related Presets
 
@@ -29,4 +29,4 @@ This preset deploys a STANDARD_HA Redis instance — a primary with an automatic
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network the cache attaches to
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network the cache attaches to

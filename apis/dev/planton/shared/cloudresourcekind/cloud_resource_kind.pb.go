@@ -210,7 +210,7 @@ const (
 	CloudResourceKind_GcpGkeCluster                 CloudResourceKind = 607
 	CloudResourceKind_GcpIamCustomRole              CloudResourceKind = 608
 	CloudResourceKind_GcpProject                    CloudResourceKind = 609
-	CloudResourceKind_GcpVpc                        CloudResourceKind = 610
+	CloudResourceKind_GcpVpcNetwork                 CloudResourceKind = 610
 	CloudResourceKind_GcpSubnetwork                 CloudResourceKind = 611
 	CloudResourceKind_GcpRouterNat                  CloudResourceKind = 612
 	CloudResourceKind_GcpGkeNodePool                CloudResourceKind = 613
@@ -658,7 +658,7 @@ var (
 		607:  "GcpGkeCluster",
 		608:  "GcpIamCustomRole",
 		609:  "GcpProject",
-		610:  "GcpVpc",
+		610:  "GcpVpcNetwork",
 		611:  "GcpSubnetwork",
 		612:  "GcpRouterNat",
 		613:  "GcpGkeNodePool",
@@ -1087,7 +1087,7 @@ var (
 		"GcpGkeCluster":                           607,
 		"GcpIamCustomRole":                        608,
 		"GcpProject":                              609,
-		"GcpVpc":                                  610,
+		"GcpVpcNetwork":                           610,
 		"GcpSubnetwork":                           611,
 		"GcpRouterNat":                            612,
 		"GcpGkeNodePool":                          613,
@@ -1646,7 +1646,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x9d\x98\x01\n" +
+	"\x02v1\x10\x01*\xa4\x98\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1790,8 +1790,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\rGcpGkeCluster\x10\xdf\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x03gke0\x01\x12(\n" +
 	"\x10GcpIamCustomRole\x10\xe0\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcprole\x12#\n" +
 	"\n" +
-	"GcpProject\x10\xe1\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpprj0\x01\x12\x1f\n" +
-	"\x06GcpVpc\x10\xe2\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpvpc0\x01\x12(\n" +
+	"GcpProject\x10\xe1\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpprj0\x01\x12&\n" +
+	"\rGcpVpcNetwork\x10\xe2\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\x06gcpvpc0\x01\x12(\n" +
 	"\rGcpSubnetwork\x10\xe3\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpsnw:\x02\xe2\x04\x12*\n" +
 	"\fGcpRouterNat\x10\xe4\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\agcprnat:\x04\xe2\x04\xca\x05\x12$\n" +
 	"\x0eGcpGkeNodePool\x10\xe5\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gkenp\x12%\n" +

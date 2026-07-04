@@ -22,7 +22,7 @@ This preset creates a private GKE cluster with no public node IPs, the REGULAR r
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
-| `<vpc-network-self-link>` | Self-link of the VPC network | `GcpVpc` status outputs |
+| `<vpc-network-self-link>` | Self-link of the VPC network | `GcpVpcNetwork` status outputs |
 | `<gcp-region>` | GCP region (e.g., `us-central1`) | Your deployment region |
 | `<subnet-self-link>` | Self-link of the GKE-ready subnet | `GcpSubnetwork` status outputs |
 | `<your-cluster-name>` | GKE cluster name (1-40 chars, lowercase) | Choose a descriptive name |

@@ -20,7 +20,7 @@ variable "spec" {
     # If empty, the provider's default project is used (see locals.tf).
     project_id = optional(string, "")
 
-    # Self-link of the parent VPC network (resolved from a GcpVpc reference
+    # Self-link of the parent VPC network (resolved from a GcpVpcNetwork reference
     # or given directly). Immutable.
     vpc_self_link = string
 

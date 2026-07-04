@@ -257,7 +257,7 @@ spec:
   displayName: Production session cache
   authorizedNetwork:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       field: status.outputs.network_self_link
   connectMode: DIRECT_PEERING

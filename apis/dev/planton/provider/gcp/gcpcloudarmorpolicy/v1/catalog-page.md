@@ -271,7 +271,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the network context for CLOUD_ARMOR_INTERNAL_SERVICE policies
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the network context for CLOUD_ARMOR_INTERNAL_SERVICE policies
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project referenced by `projectId`
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — provides encryption keys if needed for related services
 - [GcpFirewallRule](/docs/catalog/gcp/gcpfirewallrule) — complements Cloud Armor with network-level firewall rules

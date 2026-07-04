@@ -40,7 +40,7 @@ This preset provisions a Memorystore for Redis instance with STANDARD_HA tier, t
 | `<gcp-project-id>` | GCP project ID where the instance will be created | GCP Console or `GcpProject` outputs |
 | `<instance-name>` | Name for this Redis instance (2-40 chars, lowercase, hyphens) | Choose a descriptive name (e.g., `prod-cache-read-scale`) |
 | `<gcp-region>` | GCP region for the instance (e.g., `us-central1`) | [GCP regions](https://cloud.google.com/about/locations) |
-| `<vpc-network-self-link>` | Full self-link of the VPC network | `GcpVpc` status outputs or GCP Console |
+| `<vpc-network-self-link>` | Full self-link of the VPC network | `GcpVpcNetwork` status outputs or GCP Console |
 | `<kms-key-resource-name>` | Full KMS key resource name (e.g., `projects/my-project/locations/us-central1/keyRings/redis-keys/cryptoKeys/redis-cmek`) or reference via `valueFrom` | `GcpKmsKey` status outputs or GCP Console |
 
 ## Related Presets

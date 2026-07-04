@@ -71,7 +71,7 @@ This creates an AlloyDB cluster with a 2-CPU primary instance in `us-central1`, 
 | `projectId` | `StringValueOrRef` | GCP project where the cluster is created. Can reference a GcpProject resource via `valueFrom`. | Required |
 | `clusterName` | `string` | Name of the AlloyDB cluster. Becomes the GCP resource ID. Immutable after creation. | Pattern: `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`, 2-63 chars |
 | `location` | `string` | GCP region (e.g., `us-central1`). Immutable after creation. | Required |
-| `network` | `StringValueOrRef` | VPC network with Private Service Access. Can reference a GcpVpc resource via `valueFrom`. Immutable after creation. | Required |
+| `network` | `StringValueOrRef` | VPC network with Private Service Access. Can reference a GcpVpcNetwork resource via `valueFrom`. Immutable after creation. | Required |
 | `primaryInstance.instanceId` | `string` | Name of the primary instance. Immutable after creation. | Pattern: `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`, 2-63 chars |
 
 ### Optional Fields
@@ -166,7 +166,7 @@ spec:
   location: us-east1
   network:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: enterprise-vpc
   databaseVersion: POSTGRES_16
   kmsKeyName:
@@ -255,7 +255,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/vpc) — VPC network with Private Service Access for cluster connectivity
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — VPC network with Private Service Access for cluster connectivity
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — CMEK encryption keys for data, backups, and continuous backups
 - [GcpKmsKeyRing](/docs/catalog/gcp/kms-key-ring) — Key ring containing KMS keys (must be in the same region as the cluster)
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — Service account for application-level IAM access to AlloyDB

@@ -35,7 +35,7 @@ This preset creates a restrictive egress baseline by denying all outbound traffi
 | Placeholder | Description | Where to Find |
 |---|---|---|
 | `<gcp-project-id>` | GCP project ID where the firewall rule will be created | GCP Console or `GcpProject` outputs |
-| `<vpc-network-name-or-self-link>` | VPC network name (e.g., `default`) or full self-link | `GcpVpc` status outputs |
+| `<vpc-network-name-or-self-link>` | VPC network name (e.g., `default`) or full self-link | `GcpVpcNetwork` status outputs |
 | `<your-rule-name>` | Unique name for this firewall rule (1-63 chars, lowercase, hyphens) | Choose a descriptive name (e.g., `deny-all-egress`) |
 
 ## Related Presets

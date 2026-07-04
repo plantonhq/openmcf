@@ -9,7 +9,7 @@ One connection per (network, service) pair: a VPC peering on the network (e.g. `
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A VPC network** — referenced via `network` (a `GcpVpc` resource or a literal self-link)
+- **A VPC network** — referenced via `network` (a `GcpVpcNetwork` resource or a literal self-link)
 - **At least one reserved range** — a `GcpGlobalAddress` with `addressType: INTERNAL` and `purpose: VPC_PEERING`
 - **IAM permissions** — `servicenetworking.services.addPeering` (e.g. `roles/servicenetworking.networksAdmin`)
 
@@ -23,7 +23,7 @@ metadata:
 spec:
   network:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: prod-vpc
       fieldPath: status.outputs.network_self_link
   reservedPeeringRanges:
@@ -41,7 +41,7 @@ planton apply -f psa-connection.yaml
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `network` | `StringValueOrRef` | — (required) | VPC network to peer — name or self-link. Can reference a GcpVpc. Immutable. |
+| `network` | `StringValueOrRef` | — (required) | VPC network to peer — name or self-link. Can reference a GcpVpcNetwork. Immutable. |
 | `reservedPeeringRanges` | `StringValueOrRef[]` | — (min 1) | Names of INTERNAL `VPC_PEERING` global address ranges. Mutable — append to grow capacity. |
 | `service` | `string` | `servicenetworking.googleapis.com` | The service producer to peer with. Immutable. |
 | `updateOnCreationFail` | `bool` | `false` | Adopt a pre-existing connection for the same pair instead of failing. |
@@ -56,6 +56,6 @@ planton apply -f psa-connection.yaml
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — the network being peered
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — the network being peered
 - [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) — reserves the `VPC_PEERING` ranges handed to the producer
 - [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) — uses private IP through this connection

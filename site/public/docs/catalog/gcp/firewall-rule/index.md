@@ -72,7 +72,7 @@ This creates an INGRESS firewall rule that allows HTTP and HTTPS traffic from an
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `projectId` | `StringValueOrRef` | GCP project ID where the firewall rule is created. Can reference a GcpProject resource. | Required |
-| `network` | `StringValueOrRef` | VPC network name or self-link URL. Can reference a GcpVpc resource. | Required |
+| `network` | `StringValueOrRef` | VPC network name or self-link URL. Can reference a GcpVpcNetwork resource. | Required |
 | `ruleName` | `string` | Name of the firewall rule in GCP. | 1-63 chars, lowercase letters/numbers/hyphens |
 | `direction` | `string` | Traffic direction: `INGRESS` or `EGRESS`. | Required |
 | `action` | `string` | Action when traffic matches: `ALLOW` or `DENY`. | Required |
@@ -197,7 +197,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/vpc) — provides the VPC network that firewall rules are attached to
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network that firewall rules are attached to
 - [GcpProject](/docs/catalog/gcp/project) — provides the GCP project and enables the Compute Engine API
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — creates subnets within the VPC
 - [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — deploys GKE clusters that benefit from firewall rules for node traffic control

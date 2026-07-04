@@ -25,7 +25,7 @@ This component abstracts the complexity of Cloud Run v2 service provisioning int
 | Ingress control | Public, internal-only, or internal + load balancer |
 | Secret Manager | Inject secrets directly from GCP Secret Manager as environment variables |
 | Deletion protection | Prevent accidental deletion of production services |
-| Cross-resource references | Foreign key references to GcpProject, GcpVpc, GcpSubnetwork, and GcpCloudSql resources |
+| Cross-resource references | Foreign key references to GcpProject, GcpVpcNetwork, GcpSubnetwork, and GcpCloudSql resources |
 
 ## Cloud SQL Connectivity Options
 

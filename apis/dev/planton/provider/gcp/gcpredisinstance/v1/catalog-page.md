@@ -70,7 +70,7 @@ This creates a standalone 1 GiB Redis instance in `us-central1` using the defaul
 | `displayName` | `string` | — | Human-readable display name for the instance. |
 | `locationId` | `string` | GCP-selected | Zone within the region for the primary node. Immutable after creation. |
 | `alternativeLocationId` | `string` | GCP-selected | Zone for the `STANDARD_HA` replica; must differ from `locationId`. Pin both to co-locate the cache with zonal workloads. Immutable after creation. |
-| `authorizedNetwork` | `StringValueOrRef` | Default network | VPC network the instance connects to. Immutable after creation. Can reference a GcpVpc resource via `valueFrom`. |
+| `authorizedNetwork` | `StringValueOrRef` | Default network | VPC network the instance connects to. Immutable after creation. Can reference a GcpVpcNetwork resource via `valueFrom`. |
 | `connectMode` | `string` | `DIRECT_PEERING` | How the instance connects to the VPC. `DIRECT_PEERING` or `PRIVATE_SERVICE_ACCESS`. Immutable after creation. |
 | `reservedIpRange` | `string` | GCP-selected | For `DIRECT_PEERING`: a `/29` CIDR block (e.g., `10.0.0.0/29`), non-overlapping. For `PRIVATE_SERVICE_ACCESS`: the NAME of an allocated range on the private services access connection. Immutable after creation. |
 | `secondaryIpRange` | `string` | — | Additional range for node placement — required when enabling read replicas on an existing instance. A `/28` CIDR or `"auto"` (direct peering), or an allocated range name (private service access). Mutable. |
@@ -174,7 +174,7 @@ spec:
   memorySizeGb: 8
   authorizedNetwork:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: my-vpc
       fieldPath: status.outputs.network_self_link
   connectMode: PRIVATE_SERVICE_ACCESS
@@ -211,7 +211,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [GcpVpc](/docs/catalog/gcp/gcpvpc) — provides the VPC network for instance connectivity
+- [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network for instance connectivity
 - [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress) — reserves the VPC_PEERING range named by `reservedIpRange` in PRIVATE_SERVICE_ACCESS mode
 - [GcpServiceNetworkingConnection](/docs/catalog/gcp/gcpservicenetworkingconnection) — the private services access peering PRIVATE_SERVICE_ACCESS instances ride on
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — provides the Cloud KMS key for customer-managed encryption at rest

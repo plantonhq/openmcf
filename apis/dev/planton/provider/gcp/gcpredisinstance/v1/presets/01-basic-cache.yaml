@@ -12,6 +12,6 @@ spec:
   redisVersion: REDIS_7_2
   authorizedNetwork:
     valueFrom:
-      kind: GcpVpc
-      name: my-app-vpc # replace with your GcpVpc resource name
+      kind: GcpVpcNetwork
+      name: my-app-vpc # replace with your GcpVpcNetwork resource name
       fieldPath: status.outputs.network_self_link

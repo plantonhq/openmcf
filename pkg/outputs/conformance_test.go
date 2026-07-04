@@ -485,9 +485,9 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"name", "router_self_link", "nat_ips"},
 		},
 		{
-			// GcpVpc: deep-rebuilt outputs — PSA fields removed, gateway + ULA added.
-			name: "GcpVpc",
-			kind: cloudresourcekind.CloudResourceKind_GcpVpc,
+			// GcpVpcNetwork: deep-rebuilt outputs — PSA fields removed, gateway + ULA added.
+			name: "GcpVpcNetwork",
+			kind: cloudresourcekind.CloudResourceKind_GcpVpcNetwork,
 			rawOutputs: map[string]interface{}{
 				"network_self_link":   "https://www.googleapis.com/compute/v1/projects/my-project/global/networks/app-vpc",
 				"network_name":        "app-vpc",

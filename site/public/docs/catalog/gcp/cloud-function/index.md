@@ -302,4 +302,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [GcpProject](/docs/catalog/gcp/project) — provides the GCP project where the function is created
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — creates service accounts for `serviceConfig.serviceAccountEmail` and event trigger identity
 - [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) — stores the function source code archive and can be an event trigger source
-- [GcpVpc](/docs/catalog/gcp/vpc) — network for VPC connector used by `serviceConfig.vpcConnector`
+- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — network for VPC connector used by `serviceConfig.vpcConnector`

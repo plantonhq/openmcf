@@ -189,7 +189,7 @@ message GcpRedisInstanceSpec {
   // If not specified, the default network is used.
   // Immutable after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef authorized_network = 10 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 

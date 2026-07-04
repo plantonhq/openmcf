@@ -1,7 +1,7 @@
 {% if values.networkingEnabled | bool %}
 ---
 apiVersion: gcp.planton.dev/v1
-kind: GcpVpc
+kind: GcpVpcNetwork
 metadata:
   name: "{{ values.vpc_name }}"
   group: network
@@ -18,7 +18,7 @@ metadata:
   name: "{{ values.vpc_name }}-subnet"
   group: network
   relationships:
-    - kind: GcpVpc
+    - kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       type: runs_on
 spec:
@@ -27,7 +27,7 @@ spec:
     value: "{{ values.gcp_project_id }}"
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       fieldPath: status.outputs.network_self_link
   region: "{{ values.gcp_region }}"
@@ -40,7 +40,7 @@ metadata:
   name: "{{ values.vpc_name }}-router-nat"
   group: network
   relationships:
-    - kind: GcpVpc
+    - kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       type: runs_on
 spec:
@@ -50,7 +50,7 @@ spec:
   natName: "{{ values.vpc_name }}-nat"
   vpcSelfLink:
     valueFrom:
-      kind: GcpVpc
+      kind: GcpVpcNetwork
       name: "{{ values.vpc_name }}"
       fieldPath: status.outputs.network_self_link
   region: "{{ values.gcp_region }}"

@@ -74,7 +74,7 @@ variable "spec" {
 
     # Optional: VPC access configuration for private resource access
     vpc_access = optional(object({
-      # VPC network name - can be a direct value or a reference to a GcpVpc resource
+      # VPC network name - can be a direct value or a reference to a GcpVpcNetwork resource
       network = optional(object({
         value = string
       }))

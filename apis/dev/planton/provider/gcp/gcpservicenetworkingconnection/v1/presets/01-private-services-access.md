@@ -10,7 +10,7 @@ One connection between the referenced VPC and the Google producer, backed by one
 
 This preset is the middle node of a three-resource chain:
 
-1. **GcpVpc** — the network (`prod-vpc` here).
+1. **GcpVpcNetwork** — the network (`prod-vpc` here).
 2. **GcpGlobalAddress** — an INTERNAL address with purpose `VPC_PEERING` and a prefix length (16 reserves a /16, the common default; producers carve every service subnet out of this space, so size generously).
 3. **GcpServiceNetworkingConnection** (this preset) — peers the two.
 
