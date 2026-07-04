@@ -48,6 +48,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
+          # CLI point releases carry no infra-charts/version.txt assets, so they
+          # must never move the /releases/latest pointer that chart consumers
+          # (e.g. the desktop daemon's chart seeder) resolve. Consumed by
+          # release.make_latest in .goreleaser.yaml; the strict-semver lane
+          # (release.cli.yaml) leaves it unset -> latest as normal.
+          GORELEASER_MAKE_LATEST: 'false'
 
       - name: Summary
         run: |
