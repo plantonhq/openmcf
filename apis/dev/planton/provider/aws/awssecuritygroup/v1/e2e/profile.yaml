@@ -19,14 +19,8 @@ spec:
   # acyclic) -- proven by CEL spec tests and every consumer chain that
   # attaches the shared SG fixtures.
   tier: 1
-  status: deferred
+  status: green
   validated_provisioners:
     - pulumi
     - terraform
   timeout_minutes: 15
-  deferred_reason: >-
-    Live lane not run: the ambient AWS credential chain returned
-    InvalidClientTokenId (aws sts get-caller-identity). Offline gate green
-    (tofu init + validate, spec/CEL tests, outputs conformance, Pulumi module
-    compile). Re-run when a usable test account is reachable; flip to green
-    after deploy->verify->destroy on both provisioners.
