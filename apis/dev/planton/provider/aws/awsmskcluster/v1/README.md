@@ -14,7 +14,7 @@ Amazon MSK (Managed Streaming for Apache Kafka) cluster resource for Planton. Pr
 | Prerequisite | Why | Planton Resource |
 |---|---|---|
 | VPC with private subnets in 2+ AZs | Brokers are placed in subnets; count must be a multiple of subnet count | `AwsVpc` |
-| Security groups (optional) | Control which clients can reach Kafka (9092-9098) and ZooKeeper (2181-2182) ports | `AwsSecurityGroup` |
+| Security group (required, ≥1) | Attached to the broker network interfaces; ingress rules for Kafka (9092-9098) and ZooKeeper (2181-2182) ports live on this first-class node | `AwsSecurityGroup` |
 | KMS key (optional) | Customer-managed encryption at rest for EBS volumes | `AwsKmsKey` |
 | CloudWatch log group (optional) | Destination for broker log delivery | `AwsCloudwatchLogGroup` |
 | Kinesis Firehose delivery stream (optional) | Destination for broker log delivery | `AwsKinesisFirehose` |
@@ -45,12 +45,11 @@ spec: { ... }
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `subnetIds` | list(StringValueOrRef) | **yes** (≥1) | — | VPC subnets for broker placement. Supports `value` or `valueFrom` (AwsVpc). **ForceNew**. |
-| `securityGroupIds` | list(StringValueOrRef) | no | [] | Source security groups. When set (with `vpcId`), creates a managed SG with ingress on ports 9092-9098 and 2181-2182. |
-| `allowedCidrBlocks` | list(string) | no | [] | IPv4 CIDRs allowed to reach brokers. Same managed-SG behavior as `securityGroupIds`. |
-| `associateSecurityGroupIds` | list(StringValueOrRef) | no | [] | Existing SGs attached directly alongside the managed SG. **ForceNew**. |
-| `vpcId` | StringValueOrRef | conditional | — | VPC for the managed SG. Required when `securityGroupIds` or `allowedCidrBlocks` are set. |
-| `publicAccessType` | string | no | `""` | `DISABLED` (default) or `SERVICE_PROVIDED_EIPS`. Public access requires SASL auth + TLS. |
+| `subnetIds` | list(StringValueOrRef) | **yes** (≥1) | — | VPC subnets for broker placement. Supports `value` or `valueFrom` (AwsSubnet). **ForceNew**. |
+| `securityGroupIds` | list(StringValueOrRef) | **yes** (≥1) | — | Security groups attached to the broker network interfaces. Ingress rules for Kafka/ZooKeeper ports live on the referenced `AwsSecurityGroup` nodes. **ForceNew**. |
+| `publicAccessType` | string | no | `""` | `DISABLED` (default) or `SERVICE_PROVIDED_EIPS`. Public access requires SASL/mTLS auth + TLS-only encryption; AWS turns it on as a follow-up update after creation. |
+| `vpcConnectivity` | message | no | — | Multi-VPC private connectivity (PrivateLink) auth schemes: `saslIamEnabled`, `saslScramEnabled`, `tlsEnabled`. Each enabled scheme must also be enabled in `authentication`. |
+| `networkType` | string | no | `IPV4` | `IPV4` or `DUAL` (dual-stack IPv4+IPv6; requires dual-stack subnets). Only `IPV4`→`DUAL` updates in place. |
 
 ### Storage
 
@@ -81,6 +80,13 @@ Nested message `authentication` with:
 | `tlsCertificateAuthorityArns` | list(StringValueOrRef) | [] | ACM PCA ARNs for mTLS certificate validation. |
 | `unauthenticated` | bool | false | Allow unauthenticated connections. Not recommended for production. |
 
+Spec-level companions:
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `scramSecretArns` | list(string) | [] | Secrets Manager ARNs (must be `AmazonMSK_`-prefixed, customer-managed KMS key) associated for SASL/SCRAM. Requires `saslScramEnabled`. Associations are added/removed in place. |
+| `clusterPolicy` | string (JSON) | — | Resource-based IAM policy on the cluster — the mechanism behind cross-account PrivateLink access. Updated in place. |
+
 ### Configuration
 
 | Field | Type | Required | Default | Description |
@@ -109,6 +115,12 @@ All three destinations can be enabled simultaneously.
 | `jmxExporterEnabled` | bool | false | Prometheus JMX Exporter on port 11001. |
 | `nodeExporterEnabled` | bool | false | Prometheus Node Exporter on port 11002. |
 
+### Express-broker rebalancing
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `rebalancingStatus` | string | — | `ACTIVE` or `PAUSED` intelligent rebalancing. Express-broker (`express.*` instance type) clusters only; AWS rejects it on standard `kafka.*` types. |
+
 ## Output fields reference
 
 | Output | Type | Description |
@@ -124,9 +136,11 @@ All three destinations can be enabled simultaneously.
 | `bootstrap_brokers_public_tls` | string | Public TLS broker endpoints (when public access enabled). |
 | `bootstrap_brokers_public_sasl_iam` | string | Public SASL/IAM broker endpoints. |
 | `bootstrap_brokers_public_sasl_scram` | string | Public SASL/SCRAM broker endpoints. |
-| `zookeeper_connect_string` | string | ZooKeeper plaintext endpoints. |
-| `zookeeper_connect_string_tls` | string | ZooKeeper TLS endpoints. |
-| `security_group_id` | string | Managed security group ID (if created). |
+| `bootstrap_brokers_vpc_connectivity_tls` | string | PrivateLink (multi-VPC) mTLS broker endpoints. |
+| `bootstrap_brokers_vpc_connectivity_sasl_iam` | string | PrivateLink (multi-VPC) SASL/IAM broker endpoints. |
+| `bootstrap_brokers_vpc_connectivity_sasl_scram` | string | PrivateLink (multi-VPC) SASL/SCRAM broker endpoints. |
+| `zookeeper_connect_string` | string | ZooKeeper plaintext endpoints. Empty on KRaft-mode clusters. |
+| `zookeeper_connect_string_tls` | string | ZooKeeper TLS endpoints. Empty on KRaft-mode clusters. |
 | `configuration_arn` | string | Inline MSK Configuration ARN (if created from `serverProperties`). |
 
 ## Examples
@@ -146,6 +160,8 @@ spec:
     - value: subnet-0aaa1111
     - value: subnet-0bbb2222
     - value: subnet-0ccc3333
+  securityGroupIds:
+    - value: sg-0abc1234
   authentication:
     saslIamEnabled: true
 ```
@@ -174,11 +190,6 @@ spec:
         kind: AwsSubnet
         name: production-private-subnet-c
         fieldPath: status.outputs.subnet_id
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: production-vpc
-      fieldPath: status.outputs.vpc_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
@@ -218,8 +229,8 @@ spec:
 
 | Resource | Relationship |
 |---|---|
-| `AwsVpc` | Provides subnets and VPC ID for broker placement and managed security group. |
-| `AwsSecurityGroup` | Source security groups for managed ingress rules. |
+| `AwsSubnet` | Broker placement across availability zones. |
+| `AwsSecurityGroup` | Attached to broker network interfaces; carries the Kafka/ZooKeeper ingress rules. |
 | `AwsKmsKey` | Customer-managed KMS key for at-rest encryption. |
 | `AwsCloudwatchLogGroup` | Destination for broker log delivery. |
 | `AwsKinesisFirehose` | Destination for broker log delivery via Firehose. |
@@ -227,11 +238,15 @@ spec:
 
 ## Cross-field validations
 
-The spec enforces three cross-field validations at the protobuf level:
+The spec enforces cross-field validations at the protobuf level:
 
 1. **Provisioned throughput requires MiB/s** — `provisionedThroughputMbs` must be 250-2375 when `provisionedThroughputEnabled` is true.
 2. **Configuration mutual exclusion** — `configurationArn` and `serverProperties` cannot both be set.
 3. **Configuration revision required** — `configurationRevision` (≥1) is required when `configurationArn` is set.
+4. **SCRAM secrets require SCRAM auth** — `scramSecretArns` requires `authentication.saslScramEnabled`.
+5. **PrivateLink schemes require cluster schemes** — each `vpcConnectivity` scheme requires the same scheme in `authentication`.
+6. **Public access requires authenticated TLS** — `SERVICE_PROVIDED_EIPS` requires real client auth (no `unauthenticated`) and TLS-only `clientBrokerEncryption`.
+7. **mTLS requires certificate authorities** — `tlsCertificateAuthorityArns` is required when `authentication.tlsEnabled` is true.
 
 ## Deliberately omitted features
 
@@ -239,11 +254,9 @@ The following MSK features are **not** covered by this v1 API. They may be added
 
 | Feature | Reason |
 |---|---|
-| MSK Serverless | Different provisioning model; would be a separate resource kind. |
-| SCRAM secret association | Requires `aws_msk_scram_secret_association` after cluster creation; better modeled as a lifecycle operation. |
-| VPC connectivity (multi-VPC) | Requires `aws_msk_vpc_connection`; cross-VPC plumbing is a separate concern. |
+| MSK Serverless | Different provisioning model; a separate resource kind. |
+| Consumer-side VPC connections | The provider VPC-connectivity schemes are covered by `vpcConnectivity`; the consumer-side `aws_msk_vpc_connection` lives in the client VPC and is a separate concern. |
 | MSK Replicator | Cross-region/cross-cluster replication is a separate resource. |
-| Cluster rebalancing (CRUISE_CONTROL) | v2 candidate; requires additional partition assignment configuration. |
 
 ## How it works
 

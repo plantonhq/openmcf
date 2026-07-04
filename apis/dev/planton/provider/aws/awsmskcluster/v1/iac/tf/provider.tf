@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: connectivity_info.network_type landed in 6.40.0 and
+      # 6.41.0 fixed a vpc_connectivity update regression introduced there;
+      # the rebalancing block (Express brokers) is older (6.22.1). Everything
+      # else this module uses predates the v6 line.
+      version = ">= 6.41.0"
     }
   }
 }

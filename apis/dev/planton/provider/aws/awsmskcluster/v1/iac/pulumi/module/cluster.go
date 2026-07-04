@@ -4,33 +4,33 @@ import (
 	"github.com/pkg/errors"
 	awsmskclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskcluster/v1"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
-	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/msk"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// cluster creates the MSK cluster. Broker networking (subnets, security
+// groups) and encryption_info are create-time in AWS: changing them replaces
+// the cluster. Compute (instance type), storage size, broker count (increase
+// only), monitoring, configuration, and connectivity are all granular in-place
+// update operations the provider drives.
 func cluster(
 	ctx *pulumi.Context,
 	locals *Locals,
 	provider *aws.Provider,
-	createdSg *ec2.SecurityGroup,
 	createdConfig *msk.Configuration,
 ) (*msk.Cluster, error) {
 	spec := locals.AwsMskCluster.Spec
 
-	// Resolve subnets
 	var subnets pulumi.StringArray
 	for _, s := range spec.SubnetIds {
 		subnets = append(subnets, pulumi.String(s.GetValue()))
 	}
 
-	// Resolve security groups: combine associate SGs + managed SG
+	// Attached directly -- ingress rules live on the referenced first-class
+	// security-group nodes, never on a module-managed shadow group.
 	var securityGroups pulumi.StringArray
-	for _, sg := range spec.AssociateSecurityGroupIds {
+	for _, sg := range spec.SecurityGroupIds {
 		securityGroups = append(securityGroups, pulumi.String(sg.GetValue()))
-	}
-	if createdSg != nil {
-		securityGroups = append(securityGroups, createdSg.ID())
 	}
 
 	// Storage info
@@ -51,18 +51,14 @@ func cluster(
 		}
 	}
 
-	// Connectivity info (public access)
-	var connectivityInfo msk.ClusterBrokerNodeGroupInfoConnectivityInfoPtrInput
-	if spec.PublicAccessType != "" {
-		connectivityInfo = &msk.ClusterBrokerNodeGroupInfoConnectivityInfoArgs{
-			PublicAccess: &msk.ClusterBrokerNodeGroupInfoConnectivityInfoPublicAccessArgs{
-				Type: pulumi.String(spec.PublicAccessType),
-			},
-		}
-	}
+	// Connectivity: AWS activates public access, PrivateLink auth schemes, and
+	// dual-stack addressing as follow-up updates after the cluster is created;
+	// the provider drives that create-then-update flow from this one
+	// declarative block.
+	connectivityInfo := buildConnectivityInfo(spec)
 
 	args := &msk.ClusterArgs{
-		ClusterName:         pulumi.String(locals.AwsMskCluster.Metadata.Id),
+		ClusterName:         pulumi.String(locals.ClusterName),
 		KafkaVersion:        pulumi.String(spec.KafkaVersion),
 		NumberOfBrokerNodes: pulumi.Int(int(spec.NumberOfBrokerNodes)),
 		BrokerNodeGroupInfo: &msk.ClusterBrokerNodeGroupInfoArgs{
@@ -75,12 +71,12 @@ func cluster(
 		Tags: pulumi.ToStringMap(locals.Labels),
 	}
 
-	// Storage mode
 	if spec.StorageMode != "" {
 		args.StorageMode = pulumi.String(spec.StorageMode)
 	}
 
-	// Encryption
+	// Encryption. encryption_info is create-time: the at-rest KMS key and
+	// in-cluster TLS cannot be changed after creation.
 	encryptionInTransit := &msk.ClusterEncryptionInfoEncryptionInTransitArgs{}
 	hasEncryptionInTransit := false
 
@@ -96,7 +92,7 @@ func cluster(
 	encryptionArgs := &msk.ClusterEncryptionInfoArgs{}
 	hasEncryption := false
 
-	if spec.KmsKeyArn != nil && spec.KmsKeyArn.GetValue() != "" {
+	if spec.KmsKeyArn.GetValue() != "" {
 		encryptionArgs.EncryptionAtRestKmsKeyArn = pulumi.String(spec.KmsKeyArn.GetValue())
 		hasEncryption = true
 	}
@@ -145,7 +141,10 @@ func cluster(
 		}
 	}
 
-	// Configuration
+	// Configuration: the module-managed configuration (from server_properties)
+	// or an externally managed one (configuration_arn + revision). An update to
+	// inline properties bumps the configuration revision and the cluster follows
+	// -- a rolling broker restart, never a replacement.
 	if createdConfig != nil {
 		args.ConfigurationInfo = &msk.ClusterConfigurationInfoArgs{
 			Arn:      createdConfig.Arn,
@@ -184,12 +183,62 @@ func cluster(
 		}
 	}
 
+	// Intelligent rebalancing is an Express-broker (express.* instance type)
+	// capability; AWS rejects it on standard kafka.* clusters, so it is set
+	// only when the spec opts in.
+	if spec.RebalancingStatus != "" {
+		args.Rebalancing = &msk.ClusterRebalancingArgs{
+			Status: pulumi.String(spec.RebalancingStatus),
+		}
+	}
+
 	mskCluster, err := msk.NewCluster(ctx, "msk-cluster", args, pulumi.Provider(provider))
 	if err != nil {
 		return nil, errors.Wrap(err, "create msk cluster")
 	}
 
 	return mskCluster, nil
+}
+
+// buildConnectivityInfo assembles the connectivity_info block. It is emitted
+// only when some connectivity surface is configured; an empty block would
+// still trigger AWS's create-then-update connectivity flow for no reason.
+func buildConnectivityInfo(spec *awsmskclusterv1.AwsMskClusterSpec) msk.ClusterBrokerNodeGroupInfoConnectivityInfoPtrInput {
+	vpcConnectivityEnabled := spec.VpcConnectivity != nil &&
+		(spec.VpcConnectivity.SaslIamEnabled || spec.VpcConnectivity.SaslScramEnabled || spec.VpcConnectivity.TlsEnabled)
+
+	if spec.PublicAccessType == "" && !vpcConnectivityEnabled && spec.NetworkType == "" {
+		return nil
+	}
+
+	connectivityArgs := &msk.ClusterBrokerNodeGroupInfoConnectivityInfoArgs{}
+
+	if spec.NetworkType != "" {
+		connectivityArgs.NetworkType = pulumi.String(spec.NetworkType)
+	}
+
+	if spec.PublicAccessType != "" {
+		connectivityArgs.PublicAccess = &msk.ClusterBrokerNodeGroupInfoConnectivityInfoPublicAccessArgs{
+			Type: pulumi.String(spec.PublicAccessType),
+		}
+	}
+
+	if vpcConnectivityEnabled {
+		clientAuthArgs := &msk.ClusterBrokerNodeGroupInfoConnectivityInfoVpcConnectivityClientAuthenticationArgs{
+			Tls: pulumi.Bool(spec.VpcConnectivity.TlsEnabled),
+		}
+		if spec.VpcConnectivity.SaslIamEnabled || spec.VpcConnectivity.SaslScramEnabled {
+			clientAuthArgs.Sasl = &msk.ClusterBrokerNodeGroupInfoConnectivityInfoVpcConnectivityClientAuthenticationSaslArgs{
+				Iam:   pulumi.Bool(spec.VpcConnectivity.SaslIamEnabled),
+				Scram: pulumi.Bool(spec.VpcConnectivity.SaslScramEnabled),
+			}
+		}
+		connectivityArgs.VpcConnectivity = &msk.ClusterBrokerNodeGroupInfoConnectivityInfoVpcConnectivityArgs{
+			ClientAuthentication: clientAuthArgs,
+		}
+	}
+
+	return connectivityArgs
 }
 
 // buildLogging constructs the logging configuration from the spec.
@@ -206,7 +255,7 @@ func buildLogging(spec *awsmskclusterv1.AwsMskClusterSpec) *msk.ClusterLoggingIn
 		cwArgs := &msk.ClusterLoggingInfoBrokerLogsCloudwatchLogsArgs{
 			Enabled: pulumi.Bool(logging.CloudwatchLogs.Enabled),
 		}
-		if logging.CloudwatchLogs.LogGroup != nil && logging.CloudwatchLogs.LogGroup.GetValue() != "" {
+		if logging.CloudwatchLogs.LogGroup.GetValue() != "" {
 			cwArgs.LogGroup = pulumi.String(logging.CloudwatchLogs.LogGroup.GetValue())
 		}
 		brokerLogsArgs.CloudwatchLogs = cwArgs
@@ -217,7 +266,7 @@ func buildLogging(spec *awsmskclusterv1.AwsMskClusterSpec) *msk.ClusterLoggingIn
 		fhArgs := &msk.ClusterLoggingInfoBrokerLogsFirehoseArgs{
 			Enabled: pulumi.Bool(logging.Firehose.Enabled),
 		}
-		if logging.Firehose.DeliveryStream != nil && logging.Firehose.DeliveryStream.GetValue() != "" {
+		if logging.Firehose.DeliveryStream.GetValue() != "" {
 			fhArgs.DeliveryStream = pulumi.String(logging.Firehose.DeliveryStream.GetValue())
 		}
 		brokerLogsArgs.Firehose = fhArgs
@@ -228,7 +277,7 @@ func buildLogging(spec *awsmskclusterv1.AwsMskClusterSpec) *msk.ClusterLoggingIn
 		s3Args := &msk.ClusterLoggingInfoBrokerLogsS3Args{
 			Enabled: pulumi.Bool(logging.S3.Enabled),
 		}
-		if logging.S3.Bucket != nil && logging.S3.Bucket.GetValue() != "" {
+		if logging.S3.Bucket.GetValue() != "" {
 			s3Args.Bucket = pulumi.String(logging.S3.Bucket.GetValue())
 		}
 		if logging.S3.Prefix != "" {

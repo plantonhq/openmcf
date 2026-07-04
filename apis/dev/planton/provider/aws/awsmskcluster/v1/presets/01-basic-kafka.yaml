@@ -11,5 +11,7 @@ spec:
     - value: "<private-subnet-id-az1>"
     - value: "<private-subnet-id-az2>"
     - value: "<private-subnet-id-az3>"
+  securityGroupIds:
+    - value: "<broker-security-group-id>"
   authentication:
     saslIamEnabled: true

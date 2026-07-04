@@ -58,16 +58,24 @@ type AwsMskClusterStackOutputs struct {
 	// bootstrap_brokers_public_sasl_scram is a comma-separated list of public SASL/SCRAM broker endpoints.
 	// Populated when public access and SASL/SCRAM authentication are both enabled.
 	BootstrapBrokersPublicSaslScram string `protobuf:"bytes,11,opt,name=bootstrap_brokers_public_sasl_scram,json=bootstrapBrokersPublicSaslScram,proto3" json:"bootstrap_brokers_public_sasl_scram,omitempty"`
+	// bootstrap_brokers_vpc_connectivity_tls is a comma-separated list of PrivateLink broker
+	// endpoints for mutual-TLS connections. Populated when vpc_connectivity.tls_enabled is true.
+	BootstrapBrokersVpcConnectivityTls string `protobuf:"bytes,12,opt,name=bootstrap_brokers_vpc_connectivity_tls,json=bootstrapBrokersVpcConnectivityTls,proto3" json:"bootstrap_brokers_vpc_connectivity_tls,omitempty"`
+	// bootstrap_brokers_vpc_connectivity_sasl_iam is a comma-separated list of PrivateLink broker
+	// endpoints for SASL/IAM connections. Populated when vpc_connectivity.sasl_iam_enabled is true.
+	BootstrapBrokersVpcConnectivitySaslIam string `protobuf:"bytes,13,opt,name=bootstrap_brokers_vpc_connectivity_sasl_iam,json=bootstrapBrokersVpcConnectivitySaslIam,proto3" json:"bootstrap_brokers_vpc_connectivity_sasl_iam,omitempty"`
+	// bootstrap_brokers_vpc_connectivity_sasl_scram is a comma-separated list of PrivateLink broker
+	// endpoints for SASL/SCRAM connections. Populated when vpc_connectivity.sasl_scram_enabled is true.
+	BootstrapBrokersVpcConnectivitySaslScram string `protobuf:"bytes,14,opt,name=bootstrap_brokers_vpc_connectivity_sasl_scram,json=bootstrapBrokersVpcConnectivitySaslScram,proto3" json:"bootstrap_brokers_vpc_connectivity_sasl_scram,omitempty"`
 	// zookeeper_connect_string is a comma-separated list of ZooKeeper endpoints for plaintext connections.
-	ZookeeperConnectString string `protobuf:"bytes,12,opt,name=zookeeper_connect_string,json=zookeeperConnectString,proto3" json:"zookeeper_connect_string,omitempty"`
+	// Empty on KRaft-mode clusters (Kafka versions without ZooKeeper).
+	ZookeeperConnectString string `protobuf:"bytes,15,opt,name=zookeeper_connect_string,json=zookeeperConnectString,proto3" json:"zookeeper_connect_string,omitempty"`
 	// zookeeper_connect_string_tls is a comma-separated list of ZooKeeper endpoints for TLS connections.
-	ZookeeperConnectStringTls string `protobuf:"bytes,13,opt,name=zookeeper_connect_string_tls,json=zookeeperConnectStringTls,proto3" json:"zookeeper_connect_string_tls,omitempty"`
-	// security_group_id is the ID of the managed security group, if one was created
-	// from security_group_ids or allowed_cidr_blocks in the spec.
-	SecurityGroupId string `protobuf:"bytes,14,opt,name=security_group_id,json=securityGroupId,proto3" json:"security_group_id,omitempty"`
-	// configuration_arn is the ARN of the inline MSK Configuration resource,
+	// Empty on KRaft-mode clusters (Kafka versions without ZooKeeper).
+	ZookeeperConnectStringTls string `protobuf:"bytes,16,opt,name=zookeeper_connect_string_tls,json=zookeeperConnectStringTls,proto3" json:"zookeeper_connect_string_tls,omitempty"`
+	// configuration_arn is the ARN of the module-managed MSK Configuration resource,
 	// if one was created from server_properties in the spec.
-	ConfigurationArn string `protobuf:"bytes,15,opt,name=configuration_arn,json=configurationArn,proto3" json:"configuration_arn,omitempty"`
+	ConfigurationArn string `protobuf:"bytes,17,opt,name=configuration_arn,json=configurationArn,proto3" json:"configuration_arn,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -179,6 +187,27 @@ func (x *AwsMskClusterStackOutputs) GetBootstrapBrokersPublicSaslScram() string 
 	return ""
 }
 
+func (x *AwsMskClusterStackOutputs) GetBootstrapBrokersVpcConnectivityTls() string {
+	if x != nil {
+		return x.BootstrapBrokersVpcConnectivityTls
+	}
+	return ""
+}
+
+func (x *AwsMskClusterStackOutputs) GetBootstrapBrokersVpcConnectivitySaslIam() string {
+	if x != nil {
+		return x.BootstrapBrokersVpcConnectivitySaslIam
+	}
+	return ""
+}
+
+func (x *AwsMskClusterStackOutputs) GetBootstrapBrokersVpcConnectivitySaslScram() string {
+	if x != nil {
+		return x.BootstrapBrokersVpcConnectivitySaslScram
+	}
+	return ""
+}
+
 func (x *AwsMskClusterStackOutputs) GetZookeeperConnectString() string {
 	if x != nil {
 		return x.ZookeeperConnectString
@@ -189,13 +218,6 @@ func (x *AwsMskClusterStackOutputs) GetZookeeperConnectString() string {
 func (x *AwsMskClusterStackOutputs) GetZookeeperConnectStringTls() string {
 	if x != nil {
 		return x.ZookeeperConnectStringTls
-	}
-	return ""
-}
-
-func (x *AwsMskClusterStackOutputs) GetSecurityGroupId() string {
-	if x != nil {
-		return x.SecurityGroupId
 	}
 	return ""
 }
@@ -211,7 +233,7 @@ var File_dev_planton_provider_aws_awsmskcluster_v1_stack_outputs_proto protorefl
 
 const file_dev_planton_provider_aws_awsmskcluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awsmskcluster/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsmskcluster.v1\"\xb7\x06\n" +
+	"=dev/planton/provider/aws/awsmskcluster/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsmskcluster.v1\"\x9d\b\n" +
 	"\x19AwsMskClusterStackOutputs\x12\x1f\n" +
 	"\vcluster_arn\x18\x01 \x01(\tR\n" +
 	"clusterArn\x12!\n" +
@@ -225,11 +247,13 @@ const file_dev_planton_provider_aws_awsmskcluster_v1_stack_outputs_proto_rawDesc
 	"\x1cbootstrap_brokers_public_tls\x18\t \x01(\tR\x19bootstrapBrokersPublicTls\x12H\n" +
 	"!bootstrap_brokers_public_sasl_iam\x18\n" +
 	" \x01(\tR\x1dbootstrapBrokersPublicSaslIam\x12L\n" +
-	"#bootstrap_brokers_public_sasl_scram\x18\v \x01(\tR\x1fbootstrapBrokersPublicSaslScram\x128\n" +
-	"\x18zookeeper_connect_string\x18\f \x01(\tR\x16zookeeperConnectString\x12?\n" +
-	"\x1czookeeper_connect_string_tls\x18\r \x01(\tR\x19zookeeperConnectStringTls\x12*\n" +
-	"\x11security_group_id\x18\x0e \x01(\tR\x0fsecurityGroupId\x12+\n" +
-	"\x11configuration_arn\x18\x0f \x01(\tR\x10configurationArnB\xea\x02\n" +
+	"#bootstrap_brokers_public_sasl_scram\x18\v \x01(\tR\x1fbootstrapBrokersPublicSaslScram\x12R\n" +
+	"&bootstrap_brokers_vpc_connectivity_tls\x18\f \x01(\tR\"bootstrapBrokersVpcConnectivityTls\x12[\n" +
+	"+bootstrap_brokers_vpc_connectivity_sasl_iam\x18\r \x01(\tR&bootstrapBrokersVpcConnectivitySaslIam\x12_\n" +
+	"-bootstrap_brokers_vpc_connectivity_sasl_scram\x18\x0e \x01(\tR(bootstrapBrokersVpcConnectivitySaslScram\x128\n" +
+	"\x18zookeeper_connect_string\x18\x0f \x01(\tR\x16zookeeperConnectString\x12?\n" +
+	"\x1czookeeper_connect_string_tls\x18\x10 \x01(\tR\x19zookeeperConnectStringTls\x12+\n" +
+	"\x11configuration_arn\x18\x11 \x01(\tR\x10configurationArnB\xea\x02\n" +
 	"-com.dev.planton.provider.aws.awsmskcluster.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskcluster/v1;awsmskclusterv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsmskcluster.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsmskcluster\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsmskcluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsmskcluster::V1b\x06proto3"
 
 var (

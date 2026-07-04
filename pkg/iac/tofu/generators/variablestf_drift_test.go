@@ -75,6 +75,10 @@ var migratedKinds = []string{
 	"AwsRedshiftServerlessWorkgroup",
 	// DynamoDB, migrated off the legacy hand-written contract.
 	"AwsDynamodb",
+	// Streaming + search depth pass: MSK migrated off its legacy hand-written
+	// contract, OpenSearch off its legacy type = any contract.
+	"AwsMskCluster",
+	"AwsOpenSearchDomain",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed
