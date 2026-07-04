@@ -315,18 +315,26 @@ A new kind is only exercised once it is registered in the provider harness:
   typed not-found error as the absent signal.
 - `e2e/<provider>/<provider>_test.go` — add `Test<Kind>_Pulumi` / `Test<Kind>_Terraform` entrypoints. Scenarios are auto-discovered; the entry funcs are not.
 
-**Composed scenarios are registry-driven.** The harness resolves a component's
-E2E dependencies from the kind registry's `kind_meta.prerequisites` annotation
-(transitively), NOT from the presence of an `e2e/prerequisite.yaml` file — that
-file is merely the install manifest used once the registry declares the
-dependency (falling back to the dependency's `scenarios/minimal.yaml`). So: for
-a scenario's `valueFrom` reference to resolve, the referenced kind must be a
-registry prerequisite of the kind under test. Declare a prerequisite only when
-the dependency is genuinely required for the kind to function (a required ref);
-optional refs are exercised through a composed kind that does require them, or
-with literals. Singular AND repeated `StringValueOrRef` fields both resolve,
-refs nested inside (repeated) spec messages resolve too, and a repeated list
-can mix literals with references.
+**Composed scenarios are registry-driven, with a scenario-level extension for
+optional composition.** The harness resolves a component's E2E dependencies
+from the kind registry's `kind_meta.prerequisites` annotation (transitively),
+NOT from the presence of an `e2e/prerequisite.yaml` file — that file is merely
+the install manifest used once a dependency is declared (falling back to the
+dependency's `scenarios/minimal.yaml`). Declare a registry prerequisite only
+when the dependency is genuinely required for the kind to function (a required
+ref) — the registry is the honest statement of what a kind needs to deploy,
+and it propagates transitively into every consumer's dependency chain, so a
+padded registry taxes every downstream lane. For OPTIONAL references that only
+a particular scenario composes (an instance's subnet, a cluster's capacity
+group), the scenario manifest declares its own additional dependencies via the
+`planton.dev/e2e-prerequisites` metadata annotation (a comma-separated kind
+list, e.g. `"AwsSubnet,AwsSecurityGroup"`); declared kinds expand through
+their own registry graphs, merge and dedupe with the component's registry
+prerequisites, and deploy in topological order — so annotating the top of a
+chain is enough. Unknown kinds and self-references fail loudly. Singular AND
+repeated `StringValueOrRef` fields both resolve, refs nested inside (repeated)
+spec messages resolve too, and a repeated list can mix literals with
+references.
 
 **Multi-instance prerequisites.** A prerequisite install profile
 (`e2e/prerequisite.yaml`) may carry multiple `---`-separated documents of the

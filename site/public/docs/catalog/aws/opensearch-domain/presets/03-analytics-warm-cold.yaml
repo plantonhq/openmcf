@@ -63,4 +63,5 @@ spec:
     - logType: ES_APPLICATION_LOGS
       cloudwatchLogGroupArn:
         value: "<application-logs-log-group-arn>"
-  autoTuneEnabled: true
+  autoTuneOptions:
+    desiredState: ENABLED

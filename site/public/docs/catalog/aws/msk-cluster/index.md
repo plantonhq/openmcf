@@ -8,21 +8,22 @@ componentName: "awsmskcluster"
 
 # AWS MSK Cluster
 
-Deploys an Amazon MSK (Managed Streaming for Apache Kafka) cluster with configurable broker nodes, multi-method authentication (SASL/IAM, SASL/SCRAM, mTLS), encryption at rest and in transit, inline Kafka configuration management, and broker log delivery to CloudWatch Logs, Kinesis Data Firehose, and S3. The component creates a managed security group with Kafka and ZooKeeper port rules when ingress sources are specified.
+Deploys an Amazon MSK (Managed Streaming for Apache Kafka) cluster with configurable broker nodes, multi-method authentication (SASL/IAM, SASL/SCRAM, mTLS), encryption at rest and in transit, inline Kafka configuration management, SCRAM secret associations, a cluster resource policy, multi-VPC PrivateLink connectivity, and broker log delivery to CloudWatch Logs, Kinesis Data Firehose, and S3. Brokers attach the referenced security groups directly; ingress rules live on those first-class AwsSecurityGroup resources.
 
 ## What Gets Created
 
 When you deploy an AwsMskCluster resource, Planton provisions:
 
 - **MSK Cluster** — an `aws_msk_cluster` resource with the specified number of broker nodes distributed across subnets, configured with the requested Kafka version, instance type, authentication methods, encryption settings, and monitoring level
-- **Security Group** — created only when `securityGroupIds` or `allowedCidrBlocks` are provided; opens ports 9092-9098 (Kafka broker protocols) and 2181-2182 (ZooKeeper) for the specified source security groups and CIDR ranges, with unrestricted egress
 - **MSK Configuration** — created only when `serverProperties` is provided; holds Apache Kafka server.properties overrides (e.g., replication factor, min ISR, auto-create topics) and is associated with the cluster
+- **SCRAM secret associations** — one per ARN in `scramSecretArns`, associating Secrets Manager credentials for SASL/SCRAM authentication
+- **Cluster policy** — created only when `clusterPolicy` is provided; the resource-based IAM policy behind cross-account PrivateLink access
 
 ## Prerequisites
 
 - **AWS credentials** configured via environment variables or Planton provider config
 - **At least one VPC subnet** for broker placement; three subnets across distinct Availability Zones recommended for production
-- **A VPC ID** if specifying `securityGroupIds` or `allowedCidrBlocks` (required for managed security group creation)
+- **At least one security group** attached to the broker network interfaces; open Kafka ports 9092-9098 and ZooKeeper 2181-2182 on it for your clients
 - **A KMS key ARN** if using customer-managed encryption at rest
 - **An ACM Private CA ARN** if enabling mutual TLS (mTLS) authentication
 - **A CloudWatch Log Group** if enabling CloudWatch broker log delivery
@@ -52,6 +53,8 @@ spec:
     - subnet-0a1b2c3d4e5f00001
     - subnet-0a1b2c3d4e5f00002
     - subnet-0a1b2c3d4e5f00003
+  securityGroupIds:
+    - sg-0a1b2c3d4e5f00001
   authentication:
     saslIamEnabled: true
 ```
@@ -74,16 +77,19 @@ This creates a 3-broker MSK cluster with SASL/IAM authentication across three su
 | `kafkaVersion` | `string` | Apache Kafka version (e.g., "3.6.0", "3.5.1"). Downgrades force cluster replacement. | Required |
 | `numberOfBrokerNodes` | `int` | Total broker nodes. Must be a multiple of the number of subnets for even AZ distribution. | Required, >= 1 |
 | `instanceType` | `string` | Broker EC2 instance type (e.g., "kafka.m5.large", "kafka.m7g.xlarge", "kafka.t3.small"). | Required |
-| `subnetIds` | `StringValueOrRef[]` | VPC subnets for broker placement. ForceNew. Can reference AwsVpc via `valueFrom`. | Minimum 1 item |
+| `subnetIds` | `StringValueOrRef[]` | VPC subnets for broker placement. ForceNew. Can reference AwsSubnet via `valueFrom`. | Minimum 1 item |
+| `securityGroupIds` | `StringValueOrRef[]` | Security groups attached to the broker network interfaces. Ingress rules live on the referenced AwsSecurityGroup resources. ForceNew. | Minimum 1 item |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Source security groups for managed SG ingress rules. Can reference AwsSecurityGroup via `valueFrom`. |
-| `allowedCidrBlocks` | `string[]` | `[]` | IPv4 CIDR ranges for managed SG ingress rules. Must be valid CIDR notation. |
-| `associateSecurityGroupIds` | `StringValueOrRef[]` | `[]` | Existing security groups attached directly to the cluster. ForceNew: changes force replacement. |
-| `vpcId` | `StringValueOrRef` | — | VPC for managed security group creation. Required when `securityGroupIds` or `allowedCidrBlocks` are set. |
+| `publicAccessType` | `string` | `DISABLED` | `DISABLED` or `SERVICE_PROVIDED_EIPS`. Public access requires authenticated TLS; AWS applies it as a follow-up update after creation. |
+| `vpcConnectivity` | `object` | — | Multi-VPC PrivateLink auth schemes: `saslIamEnabled`, `saslScramEnabled`, `tlsEnabled`. Each requires the same scheme in `authentication`. |
+| `networkType` | `string` | `IPV4` | `IPV4` or `DUAL` (dual-stack; requires dual-stack subnets). Only `IPV4`→`DUAL` updates in place. |
+| `scramSecretArns` | `string[]` | `[]` | Secrets Manager ARNs (`AmazonMSK_`-prefixed, customer-managed KMS key) associated for SASL/SCRAM. Requires `authentication.saslScramEnabled`. |
+| `clusterPolicy` | `string` | — | Resource-based IAM policy JSON attached to the cluster (cross-account PrivateLink access). |
+| `rebalancingStatus` | `string` | — | `ACTIVE` or `PAUSED` intelligent rebalancing. Express-broker (`express.*`) clusters only. |
 | `ebsVolumeSizeGib` | `int` | AWS default | EBS volume size per broker in GiB. Range: 1-16384. |
 | `provisionedThroughputEnabled` | `bool` | `false` | Enable provisioned EBS throughput. Requires large instance types and `ebsVolumeSizeGib` >= 10. |
 | `provisionedThroughputMbs` | `int` | — | Provisioned throughput in MiB/s per broker. Range: 250-2375. Required when `provisionedThroughputEnabled` is `true`. |
@@ -256,11 +262,6 @@ spec:
         kind: AwsSubnet
         name: production-private-subnet-c
         fieldPath: status.outputs.subnet_id
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: production-vpc
-      fieldPath: status.outputs.vpc_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
@@ -300,15 +301,17 @@ After deployment, the following outputs are available in `status.outputs`:
 | `bootstrap_brokers_public_tls` | `string` | Comma-separated public TLS endpoints. Populated when `publicAccessType` is `SERVICE_PROVIDED_EIPS`. |
 | `bootstrap_brokers_public_sasl_iam` | `string` | Comma-separated public SASL/IAM endpoints |
 | `bootstrap_brokers_public_sasl_scram` | `string` | Comma-separated public SASL/SCRAM endpoints |
-| `zookeeper_connect_string` | `string` | Comma-separated ZooKeeper plaintext endpoints |
-| `zookeeper_connect_string_tls` | `string` | Comma-separated ZooKeeper TLS endpoints |
-| `security_group_id` | `string` | ID of the managed security group. Only set when `securityGroupIds` or `allowedCidrBlocks` are provided. |
+| `bootstrap_brokers_vpc_connectivity_tls` | `string` | Comma-separated PrivateLink mTLS endpoints. Populated when `vpcConnectivity.tlsEnabled` is `true`. |
+| `bootstrap_brokers_vpc_connectivity_sasl_iam` | `string` | Comma-separated PrivateLink SASL/IAM endpoints. Populated when `vpcConnectivity.saslIamEnabled` is `true`. |
+| `bootstrap_brokers_vpc_connectivity_sasl_scram` | `string` | Comma-separated PrivateLink SASL/SCRAM endpoints. Populated when `vpcConnectivity.saslScramEnabled` is `true`. |
+| `zookeeper_connect_string` | `string` | Comma-separated ZooKeeper plaintext endpoints. Empty on KRaft-mode clusters. |
+| `zookeeper_connect_string_tls` | `string` | Comma-separated ZooKeeper TLS endpoints. Empty on KRaft-mode clusters. |
 | `configuration_arn` | `string` | ARN of the inline MSK Configuration. Only set when `serverProperties` is provided. |
 
 ## Related Components
 
-- [AwsVpc](/docs/catalog/aws/vpc) — provides subnets for broker placement and VPC ID for managed security group
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls network access to Kafka and ZooKeeper ports
+- [AwsSubnet](/docs/catalog/aws/subnet) — provides subnets for broker placement
+- [AwsSecurityGroup](/docs/catalog/aws/security-group) — attached to the broker network interfaces; carries the Kafka/ZooKeeper ingress rules
 - [AwsKmsKey](/docs/catalog/aws/kms-key) — provides customer-managed encryption key for data at rest
 - [AwsCloudwatchLogGroup](/docs/catalog/aws/cloudwatch-log-group) — receives broker logs via CloudWatch Logs integration
 - [AwsKinesisFirehose](/docs/catalog/aws/kinesis-firehose) — receives broker logs for analytics pipeline delivery
