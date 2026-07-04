@@ -62,6 +62,7 @@ var verifiers = map[string]Verifier{
 	"awseksaddon":                    &eksAddonVerifier{},
 	"awseksfargateprofile":           &eksFargateProfileVerifier{},
 	"awseksaccessentry":              &eksAccessEntryVerifier{},
+	"awsdynamodb":                    &dynamodbTableVerifier{},
 	"awselasticacheuser":             &elasticacheUserVerifier{},
 	"awselasticacheusergroup":        &elasticacheUserGroupVerifier{},
 	"awsrediselasticache":            &elasticacheReplicationGroupVerifier{},

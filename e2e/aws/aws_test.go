@@ -268,6 +268,15 @@ func TestAwsRedshiftServerlessWorkgroup_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsredshiftserverlessworkgroup", "terraform")
 }
 
+// --- AWS DynamoDB (true leaf; on-demand table with GSI, streams, PITR, folded satellites) ---
+
+func TestAwsDynamodb_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsdynamodb", "pulumi")
+}
+func TestAwsDynamodb_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsdynamodb", "terraform")
+}
+
 // --- AWS ElastiCache RBAC (account-level; no VPC prerequisite) ---
 
 func TestAwsElasticacheUser_Pulumi(t *testing.T) {
