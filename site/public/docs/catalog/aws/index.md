@@ -78,6 +78,8 @@ The following AWS resources can be deployed using Planton:
 - [RDS Instance](/docs/catalog/aws/rds-instance)
 - [Redis ElastiCache](/docs/catalog/aws/redis-elasticache)
 - [Redshift Cluster](/docs/catalog/aws/redshift-cluster)
+- [Redshift Serverless Namespace](/docs/catalog/aws/redshift-serverless-namespace)
+- [Redshift Serverless Workgroup](/docs/catalog/aws/redshift-serverless-workgroup)
 - [Route53 DNS Record](/docs/catalog/aws/route53-dns-record)
 - [Route53 Zone](/docs/catalog/aws/route53-zone)
 - [S3 Bucket](/docs/catalog/aws/s3-bucket)

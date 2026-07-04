@@ -176,7 +176,14 @@ const (
 	// AwsElasticacheUser is a genuine prerequisite: AWS refuses to create a
 	// user group that does not contain a user named "default", so a group's
 	// composed E2E scenario must resolve a deployed user's outputs.
-	CloudResourceKind_AwsElasticacheUserGroup CloudResourceKind = 244
+	CloudResourceKind_AwsElasticacheUserGroup        CloudResourceKind = 244
+	CloudResourceKind_AwsRedshiftServerlessNamespace CloudResourceKind = 245
+	// The namespace is a genuine prerequisite: a workgroup attaches to
+	// exactly one namespace by name at create time, so its composed E2E
+	// scenario must resolve a deployed namespace's outputs. AwsSubnet is a
+	// prerequisite because Redshift Serverless requires the workgroup's
+	// subnets to span three availability zones.
+	CloudResourceKind_AwsRedshiftServerlessWorkgroup CloudResourceKind = 246
 	// AwsSubnet is a prerequisite because the module builds an ElastiCache
 	// subnet group from referenced subnets -- the spec's subnet references
 	// must resolve before the replication group can deploy.
@@ -636,6 +643,8 @@ var (
 		242:  "AwsVpcEndpoint",
 		243:  "AwsElasticacheUser",
 		244:  "AwsElasticacheUserGroup",
+		245:  "AwsRedshiftServerlessNamespace",
+		246:  "AwsRedshiftServerlessWorkgroup",
 		250:  "AwsRedisElasticache",
 		251:  "AwsOpenSearchDomain",
 		252:  "AwsMemcachedElasticache",
@@ -1061,6 +1070,8 @@ var (
 		"AwsVpcEndpoint":                          242,
 		"AwsElasticacheUser":                      243,
 		"AwsElasticacheUserGroup":                 244,
+		"AwsRedshiftServerlessNamespace":          245,
+		"AwsRedshiftServerlessWorkgroup":          246,
 		"AwsRedisElasticache":                     250,
 		"AwsOpenSearchDomain":                     251,
 		"AwsMemcachedElasticache":                 252,
@@ -1686,7 +1697,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xbe\x96\x01\n" +
+	"\x02v1\x10\x01*\xae\x97\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1744,7 +1755,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12)\n" +
 	"\x0eAwsVpcEndpoint\x10\xf2\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x04vpce:\x04\xd8\x01\x9c\x02\x12)\n" +
 	"\x12AwsElasticacheUser\x10\xf3\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06ecuser\x120\n" +
-	"\x17AwsElasticacheUserGroup\x10\xf4\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04ecug:\x02\xf3\x01\x120\n" +
+	"\x17AwsElasticacheUserGroup\x10\xf4\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04ecug:\x02\xf3\x01\x123\n" +
+	"\x1eAwsRedshiftServerlessNamespace\x10\xf5\x01\x1a\x0e\xa2\xf7\x04\n" +
+	"\b\f\x10\x01\"\x04rsns\x129\n" +
+	"\x1eAwsRedshiftServerlessWorkgroup\x10\xf6\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x04rswg:\x04\xf5\x01\x9c\x02\x120\n" +
 	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsredis:\x02\x9c\x02\x12)\n" +
 	"\x13AwsOpenSearchDomain\x10\xfb\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsos\x128\n" +
 	"\x17AwsMemcachedElasticache\x10\xfc\x01\x1a\x1a\xa2\xf7\x04\x16\b\f\x10\x01\"\fawsmemcached:\x02\x9c\x02\x126\n" +

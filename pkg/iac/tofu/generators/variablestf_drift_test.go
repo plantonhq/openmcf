@@ -70,6 +70,9 @@ var migratedKinds = []string{
 	"AwsNeptuneCluster",
 	// Redshift, migrated off the legacy hand-written contract.
 	"AwsRedshiftCluster",
+	// Redshift Serverless pair, generator-owned from the day it was forged.
+	"AwsRedshiftServerlessNamespace",
+	"AwsRedshiftServerlessWorkgroup",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

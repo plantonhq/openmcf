@@ -631,6 +631,43 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsRedshiftServerlessNamespace: namespace_name is the join key
+			// workgroups attach with (downstream references resolve against
+			// stack outputs, never metadata); admin_password_secret_arn
+			// carries the AWS-managed credential handle.
+			name: "AwsRedshiftServerlessNamespace",
+			kind: cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace,
+			rawOutputs: map[string]interface{}{
+				"namespace_name":            "analytics-data",
+				"namespace_id":              "abc12345-6789-0abc-def1-234567890abc",
+				"arn":                       "arn:aws:redshift-serverless:us-west-2:123456789012:namespace/abc12345-6789-0abc-def1-234567890abc",
+				"db_name":                   "analytics",
+				"admin_password_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:redshift!analytics-data-admin-abc",
+			},
+			mustPopulate: []string{
+				"namespace_name", "namespace_id", "arn", "db_name",
+				"admin_password_secret_arn",
+			},
+		},
+		{
+			// AwsRedshiftServerlessWorkgroup: workgroup_name keys the E2E
+			// verifier and the credentials API; endpoint_address + port are
+			// the connection handles downstream references consume.
+			name: "AwsRedshiftServerlessWorkgroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessWorkgroup,
+			rawOutputs: map[string]interface{}{
+				"workgroup_name":   "analytics-compute",
+				"workgroup_id":     "def67890-1234-5abc-def6-789012345def",
+				"arn":              "arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/def67890-1234-5abc-def6-789012345def",
+				"endpoint_address": "analytics-compute.123456789012.us-west-2.redshift-serverless.amazonaws.com",
+				"port":             5439,
+			},
+			mustPopulate: []string{
+				"workgroup_name", "workgroup_id", "arn", "endpoint_address",
+				"port",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

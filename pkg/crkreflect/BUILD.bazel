@@ -133,6 +133,8 @@ go_library(
         "//apis/dev/planton/provider/aws/awsrdsinstance/v1:awsrdsinstance",
         "//apis/dev/planton/provider/aws/awsrediselasticache/v1:awsrediselasticache",
         "//apis/dev/planton/provider/aws/awsredshiftcluster/v1:awsredshiftcluster",
+        "//apis/dev/planton/provider/aws/awsredshiftserverlessnamespace/v1:awsredshiftserverlessnamespace",
+        "//apis/dev/planton/provider/aws/awsredshiftserverlessworkgroup/v1:awsredshiftserverlessworkgroup",
         "//apis/dev/planton/provider/aws/awsroute53dnsrecord/v1:awsroute53dnsrecord",
         "//apis/dev/planton/provider/aws/awsroute53zone/v1:awsroute53zone",
         "//apis/dev/planton/provider/aws/awss3bucket/v1:awss3bucket",

@@ -430,6 +430,25 @@ enum CloudResourceKind {
     id_prefix: "ecug"
     prerequisites: [AwsElasticacheUser]
   }];
+  AwsRedshiftServerlessNamespace = 245 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "rsns"
+  }];
+  // The namespace is a genuine prerequisite: a workgroup attaches to
+  // exactly one namespace by name at create time, so its composed E2E
+  // scenario must resolve a deployed namespace's outputs. AwsSubnet is a
+  // prerequisite because Redshift Serverless requires the workgroup's
+  // subnets to span three availability zones.
+  AwsRedshiftServerlessWorkgroup = 246 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "rswg"
+    prerequisites: [
+      AwsRedshiftServerlessNamespace,
+      AwsSubnet
+    ]
+  }];
   // AwsSubnet is a prerequisite because the module builds an ElastiCache
   // subnet group from referenced subnets -- the spec's subnet references
   // must resolve before the replication group can deploy.

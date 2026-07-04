@@ -117,6 +117,8 @@ import (
 	awsrdsinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdsinstance/v1"
 	awsrediselasticachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrediselasticache/v1"
 	awsredshiftclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftcluster/v1"
+	awsredshiftserverlessnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftserverlessnamespace/v1"
+	awsredshiftserverlessworkgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftserverlessworkgroup/v1"
 	awsroute53dnsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53dnsrecord/v1"
 	awsroute53zonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1"
 	awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1"
@@ -566,6 +568,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                   &awsrdsinstancev1.AwsRdsInstance{},
 	cloudresourcekind.CloudResourceKind_AwsRedisElasticache:              &awsrediselasticachev1.AwsRedisElasticache{},
 	cloudresourcekind.CloudResourceKind_AwsRedshiftCluster:               &awsredshiftclusterv1.AwsRedshiftCluster{},
+	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace:   &awsredshiftserverlessnamespacev1.AwsRedshiftServerlessNamespace{},
+	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessWorkgroup:   &awsredshiftserverlessworkgroupv1.AwsRedshiftServerlessWorkgroup{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord:              &awsroute53dnsrecordv1.AwsRoute53DnsRecord{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:                   &awsroute53zonev1.AwsRoute53Zone{},
 	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                      &awss3bucketv1.AwsS3Bucket{},
