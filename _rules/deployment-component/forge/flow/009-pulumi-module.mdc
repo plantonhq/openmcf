@@ -56,6 +56,12 @@ EXPORTING OUTPUTS -- APPLYT TYPING IS A DEPLOY-TIME TRAP
   ("applier's first input parameter must be assignable from string, got *string") --
   no offline gate catches it. `go doc` the SDK type to confirm Output vs PtrOutput
   before writing the applier.
+- Values nested in computed LIST/POINTER attributes (e.g. a connection endpoint the
+  SDK models as `XEndpointArrayOutput`) do not need an ApplyT either: `Index(...)`
+  returns the zero value when out of range and `Elem()` dereferences a Ptr output to
+  its zero value when nil, so a chain like
+  `created.Endpoints.Index(pulumi.Int(0)).Address().Elem()` is a stable, panic-free
+  export shape.
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` (pointer types in Go)
 - ALWAYS use getter methods: `spec.GetFieldName()` instead of `spec.FieldName`
