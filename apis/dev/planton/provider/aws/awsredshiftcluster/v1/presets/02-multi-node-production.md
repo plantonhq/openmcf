@@ -1,6 +1,6 @@
 # Multi-Node Production Data Warehouse
 
-This preset creates a 2-node RA3 Redshift cluster configured for production workloads. RA3 nodes decouple compute and storage by automatically tiering data between local SSD and Amazon S3, so you can scale each dimension independently. The cluster enforces encryption with a customer-managed KMS key, requires SSL for all connections, logs all user activity to CloudWatch, and takes a final snapshot before deletion.
+This preset creates a 2-node RA3 Redshift cluster configured for production workloads. RA3 nodes decouple compute and storage by automatically tiering data between local SSD and Amazon S3, so you can scale each dimension independently. The cluster enforces encryption with a customer-managed KMS key, requires SSL for all connections, logs all user activity to CloudWatch, copies snapshots to a second region for disaster recovery, and takes a final snapshot before deletion.
 
 ## When to Use
 
@@ -18,7 +18,8 @@ This preset creates a 2-node RA3 Redshift cluster configured for production work
 - **SSL required** (`parameters: require_ssl=true`) -- Rejects unencrypted client connections
 - **User activity logging** (`parameters: enable_user_activity_logging=true`) -- Logs all SQL statements executed by users
 - **CloudWatch audit logs** (`logging.logDestinationType: cloudwatch`) -- Connection, user activity, and user DDL logs streamed to CloudWatch Logs
-- **7-day snapshot retention** (`automatedSnapshotRetentionPeriod: 7`) -- Automated snapshots kept for one week
+- **Cross-region snapshot copy** (`snapshotCopy.destinationRegion: us-east-1`) -- Snapshots automatically copied to a second region for disaster recovery; the snapshot copy grant lets Redshift encrypt the copies with a KMS key there (required because the cluster is KMS-encrypted)
+- **7-day snapshot retention** (`automatedSnapshotRetentionPeriod: 7`) -- Automated snapshots kept for one week, in both regions
 - **Final snapshot on deletion** (`skipFinalSnapshot: false`) -- Creates `my-prod-warehouse-final` before cluster deletion
 - **Saturday maintenance window** (`preferredMaintenanceWindow: "sat:03:00-sat:04:00"`) -- Maintenance scheduled during low-traffic hours
 - **S3 access IAM role** (`iamRoles`) -- Attached role allows COPY/UNLOAD from S3
@@ -28,8 +29,9 @@ This preset creates a 2-node RA3 Redshift cluster configured for production work
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<kms-key-arn>` | ARN of the customer-managed KMS key for cluster encryption and Secrets Manager | AWS KMS console or `AwsKmsKey` status outputs |
-| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsVpc` status outputs |
+| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsSubnet` status outputs |
+| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsSubnet` status outputs |
+| `<snapshot-copy-grant-name>` | Name of the snapshot copy grant authorizing KMS encryption in the destination region | AWS Redshift console (snapshot copy grants) |
 | `<redshift-s3-access-role-arn>` | ARN of the IAM role granting Redshift read/write access to S3 | AWS IAM console or `AwsIamRole` status outputs |
 
 ## Related Presets

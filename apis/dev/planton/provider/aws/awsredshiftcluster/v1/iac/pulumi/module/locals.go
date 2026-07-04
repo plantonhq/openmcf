@@ -1,26 +1,39 @@
 package module
 
 import (
+	"strconv"
+
 	awsredshiftclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftcluster/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Locals struct {
 	AwsRedshiftCluster *awsredshiftclusterv1.AwsRedshiftCluster
-	Labels             map[string]string
+
+	// ClusterIdentifier is metadata.name -- create-only in AWS, and the
+	// basis both engines share so a manifest deploys identically on either.
+	ClusterIdentifier string
+
+	AwsTags map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, in *awsredshiftclusterv1.AwsRedshiftClusterStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *awsredshiftclusterv1.AwsRedshiftClusterStackInput) *Locals {
 	locals := &Locals{}
+	locals.AwsRedshiftCluster = stackInput.Target
 
-	locals.AwsRedshiftCluster = in.Target
+	metadata := stackInput.Target.Metadata
+	locals.ClusterIdentifier = metadata.Name
 
-	locals.Labels = map[string]string{
-		"planton.org/resource":      "true",
-		"planton.org/organization":  locals.AwsRedshiftCluster.Metadata.Org,
-		"planton.org/environment":   locals.AwsRedshiftCluster.Metadata.Env,
-		"planton.org/resource-kind": "AwsRedshiftCluster",
-		"planton.org/resource-id":   locals.AwsRedshiftCluster.Metadata.Id,
+	// Resource-identity tags match the Terraform module key-for-key.
+	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
+		awstagkeys.Resource:     strconv.FormatBool(true),
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
+		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsRedshiftCluster.String(),
+		awstagkeys.ResourceId:   metadata.Id,
 	}
 
 	return locals

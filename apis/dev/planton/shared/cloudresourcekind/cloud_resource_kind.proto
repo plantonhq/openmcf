@@ -628,6 +628,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsrs"
+    prerequisites: [AwsSubnet]
   }];
 
   // AI/ML

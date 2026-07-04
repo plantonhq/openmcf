@@ -121,12 +121,12 @@ a strongly-typed protobuf schema. The goals:
 
 | Feature | Why Included |
 |---------|-------------|
-| Subnet group (auto-created from subnet IDs) | ~90% of deployments need a custom subnet group |
-| Managed security group (from SG IDs or CIDRs) | Most common networking pattern |
-| Associate existing security groups | Covers the "bring your own SG" pattern |
+| Subnet group (auto-created from subnet IDs, or bring your own) | ~90% of deployments need a custom subnet group |
+| Security groups by reference | Ingress rules compose on first-class `AwsSecurityGroup` nodes; the cluster only attaches them |
+| AZ pinning + relocation | Zero-data-loss zone recovery for single clusters (RA3) |
 | Enhanced VPC routing | Required for compliance (PCI, HIPAA, SOC2) |
 | Multi-AZ | Production HA requirement for RA3 clusters |
-| Public accessibility toggle | Needed for external BI tool access |
+| Public accessibility toggle + Elastic IP by reference | Needed for external BI tool access with a stable address |
 
 ### Encryption
 
@@ -147,8 +147,10 @@ a strongly-typed protobuf schema. The goals:
 
 | Feature | Why Included |
 |---------|-------------|
-| Automated snapshot retention | Core backup strategy |
+| Automated + manual snapshot retention | Core backup strategy |
 | Final snapshot control | Critical for production data protection |
+| Snapshot restore shapes (by name or ARN, incl. cross-account) | Warehouse migration and recovery paths |
+| Cross-region snapshot copy (folded) | Disaster recovery without a standalone glue kind |
 
 ### Maintenance
 
@@ -176,23 +178,21 @@ a strongly-typed protobuf schema. The goals:
 
 ## What's Excluded from v1
 
-| Feature | Why Excluded | Adoption |
-|---------|-------------|----------|
-| Elastic resize scheduling | Newer API, complex scheduling logic | <10% |
-| Concurrency scaling configuration | WLM-specific, advanced tuning | <15% |
-| Snapshot copy to another region | Cross-region DR, complex setup | <10% |
-| Snapshot schedule | Cron-like expressions, niche requirement | <15% |
-| Redshift Serverless | Different resource model entirely | Separate component |
-| Classic resize | Deprecated in favor of elastic resize | Legacy |
-| HSM encryption | Hardware Security Module, very niche | <5% |
-| Aqua configuration | Auto-enabled on RA3, no user config needed | N/A |
-| Deferred maintenance window | Rarely used, maintenance is brief | <5% |
-| Endpoint access (VPC endpoint) | Redshift-managed VPC endpoints | <10% |
-| Partner integrations | Third-party data sharing, ETL connectors | Varies |
-| Usage limits | Spectrum/concurrency scaling cost controls | <10% |
-| Workload Management (WLM) JSON | Complex nested JSON parameter | <20% |
+| Feature | Why Excluded |
+|---------|-------------|
+| `master_password_wo` (write-only password arm) | The managed-password path (`manageMasterPassword`) is the recommended default, making a write-only plaintext arm redundant surface |
+| `aqua_configuration_status` | Deprecated no-op in the provider (diff-suppressed); AQUA is AWS-managed on RA3 |
+| Per-cluster `tags` map | Custom user-tags is a single platform-wide decision for the whole AWS surface, not per-component scope; identity tags derive from metadata |
+| Redshift Serverless (namespaces + workgroups) | A different product with its own AWS API and no cluster concept; candidate kinds of their own |
+| Snapshot schedules + associations, scheduled actions | Operational scheduling plumbing; revisit on concrete pull |
+| Usage limits | Spectrum/concurrency-scaling cost controls; account-governance surface |
+| Endpoint access / endpoint authorization | Redshift-managed VPC endpoints and cross-account grants; separate access-plane surface |
+| Event subscriptions | Account-level notification plumbing, not cluster shape |
+| Data shares, zero-ETL integrations | Producer/consumer data-plane surfaces with their own lifecycles |
+| HSM client certificate / configuration | Hardware Security Module, very niche |
+| IAM Identity Center application, partner integrations, authentication profiles, resource policies | Separate governance/integration surfaces |
 
-These features may be added in v2 based on community demand.
+Each exclusion is deliberate; a feature moves in only on concrete demand.
 
 ## Production Best Practices
 
@@ -200,13 +200,14 @@ These features may be added in v2 based on community demand.
 
 | Node Family | Best For | Storage Model |
 |-------------|----------|--------------|
-| `dc2.large` | Development, small datasets (<500 GB) | Local SSD only |
+| `ra3.large` | Development, small datasets | Managed storage (SSD + S3) |
 | `ra3.xlplus` | Small-medium production (1-4 nodes, up to ~32 TB managed) | Managed storage (SSD + S3) |
 | `ra3.4xlarge` | Medium production (2-32 nodes) | Managed storage |
 | `ra3.16xlarge` | Large production (2-128 nodes, petabyte-scale) | Managed storage |
 
-**Recommendation**: Always use RA3 for production. DC2 is suitable only for
-development clusters where cost is the primary concern and dataset sizes are small.
+**Recommendation**: Use RA3 everywhere. The legacy DC2 dense-compute family
+(node-local SSD only) is no longer creatable for new clusters -- existing DC2
+clusters keep running, but every new deployment starts on RA3.
 
 RA3 advantages over DC2:
 - Independent compute and storage scaling
@@ -232,8 +233,9 @@ For regulated workloads (PCI-DSS, HIPAA, SOC2):
 - **Use at least two subnets** in different Availability Zones for the subnet group.
 - **Enable enhanced VPC routing** for compliance environments — it forces all
   COPY/UNLOAD traffic through the VPC, making it visible to VPC flow logs.
-- **Use managed security groups** (via `securityGroupIds` or `allowedCidrBlocks`)
-  rather than wide-open security group rules.
+- **Attach dedicated security groups by reference** (`securityGroupIds`) and put
+  the warehouse ingress rules (e.g. port 5439 from your BI tooling) on those
+  `AwsSecurityGroup` nodes — never rely on the VPC default group in production.
 
 ### Multi-AZ Deployment
 
@@ -276,7 +278,7 @@ Always use `manageMasterPassword: true` for production. This:
 
 | Cluster Size | Recommended Starting Point |
 |-------------|---------------------------|
-| < 500 GB, development | 1 × `dc2.large` |
+| < 500 GB, development | 1 × `ra3.large` |
 | 500 GB - 2 TB, light queries | 2 × `ra3.xlplus` |
 | 2 - 16 TB, moderate queries | 2-4 × `ra3.4xlarge` |
 | 16+ TB, heavy concurrent queries | 2+ × `ra3.16xlarge` |
