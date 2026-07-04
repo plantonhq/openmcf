@@ -22,14 +22,27 @@ func Prerequisites(kind cloudresourcekind.CloudResourceKind) []cloudresourcekind
 //
 // Returns an error if a cycle is detected (indicates a modeling mistake).
 func TransitivePrerequisites(kind cloudresourcekind.CloudResourceKind) ([]cloudresourcekind.CloudResourceKind, error) {
+	return TransitiveClosure(Prerequisites(kind))
+}
+
+// TransitiveClosure returns the given kinds plus all of their transitive
+// prerequisites in topological order (deploy first to last), deduplicated.
+// Every kind appears after everything it depends on, so callers can deploy
+// the result front to back. Accepts multiple roots so a caller can expand a
+// combined set (e.g. a kind's registry prerequisites merged with extras a
+// test scenario composes) in one pass.
+//
+// Returns an error if a cycle is detected (indicates a modeling mistake).
+func TransitiveClosure(kinds []cloudresourcekind.CloudResourceKind) ([]cloudresourcekind.CloudResourceKind, error) {
 	var result []cloudresourcekind.CloudResourceKind
 	visited := make(map[cloudresourcekind.CloudResourceKind]bool)
 	inStack := make(map[cloudresourcekind.CloudResourceKind]bool)
 
+	var root cloudresourcekind.CloudResourceKind
 	var visit func(k cloudresourcekind.CloudResourceKind) error
 	visit = func(k cloudresourcekind.CloudResourceKind) error {
 		if inStack[k] {
-			return cycleError(kind, k)
+			return cycleError(root, k)
 		}
 		if visited[k] {
 			return nil
@@ -47,8 +60,9 @@ func TransitivePrerequisites(kind cloudresourcekind.CloudResourceKind) ([]cloudr
 		return nil
 	}
 
-	for _, prereq := range Prerequisites(kind) {
-		if err := visit(prereq); err != nil {
+	for _, k := range kinds {
+		root = k
+		if err := visit(k); err != nil {
 			return nil, err
 		}
 	}

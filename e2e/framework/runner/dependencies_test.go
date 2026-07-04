@@ -31,7 +31,7 @@ func TestResolveDependencies_RegistryPrerequisite(t *testing.T) {
 	repoRoot := t.TempDir()
 	want := writeManifest(t, repoRoot, gwCrdsPrereqRel)
 
-	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute")
+	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestResolveDependencies_FallbackToMinimalScenario(t *testing.T) {
 	repoRoot := t.TempDir()
 	want := writeManifest(t, repoRoot, gwCrdsMinimalRel)
 
-	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute")
+	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestResolveDependencies_PrerequisiteYamlWinsOverMinimal(t *testing.T) {
 	prereq := writeManifest(t, repoRoot, gwCrdsPrereqRel)
 	writeManifest(t, repoRoot, gwCrdsMinimalRel)
 
-	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute")
+	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestResolveDependencies_PrerequisiteYamlWinsOverMinimal(t *testing.T) {
 
 func TestResolveDependencies_NoPrerequisites(t *testing.T) {
 	repoRoot := t.TempDir()
-	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kubernetesnamespace")
+	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kubernetesnamespace", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestResolveDependencies_NoPrerequisites(t *testing.T) {
 func TestResolveDependencies_MissingInstallManifestErrors(t *testing.T) {
 	repoRoot := t.TempDir()
 	// httproute has a registry prereq but we create no install manifest for it.
-	if _, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute"); err == nil {
+	if _, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute", ""); err == nil {
 		t.Fatal("expected an error when the prerequisite install manifest is missing, got nil")
 	}
 }
@@ -214,6 +214,134 @@ func TestTeardownDependencies_AllCleanReturnsNil(t *testing.T) {
 	}
 }
 
+// writeScenarioManifest creates a real, loadable AwsEcsCluster scenario
+// manifest carrying the given annotations block (pass "" for none).
+func writeScenarioManifest(t *testing.T, dir, annotationsYaml string) string {
+	t.Helper()
+	content := "apiVersion: aws.planton.dev/v1\n" +
+		"kind: AwsEcsCluster\n" +
+		"metadata:\n" +
+		"  name: scenario-under-test\n" +
+		annotationsYaml +
+		"spec:\n" +
+		"  region: us-west-2\n"
+	path := filepath.Join(dir, "scenario.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write scenario manifest: %v", err)
+	}
+	return path
+}
+
+// TestResolveDependencies_ScenarioDeclaredPrerequisites guards the
+// scenario-annotation source: a scenario that composes an optional reference
+// (here an auto-scaling group) declares it via the e2e-prerequisites
+// annotation, and the harness expands the declared kind through its OWN
+// registry prerequisites -- so naming AwsAutoScalingGroup alone yields the
+// full VPC -> Subnet -> LaunchTemplate -> ASG chain in deploy order, without
+// the component kind carrying a false registry prerequisite.
+func TestResolveDependencies_ScenarioDeclaredPrerequisites(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awslaunchtemplate/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsautoscalinggroup/v1/e2e/scenarios/minimal.yaml")
+
+	scenario := writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n"+
+			"    planton.dev/e2e-prerequisites: \"AwsAutoScalingGroup\"\n")
+
+	deps, err := ResolveDependencies(repoRoot, "aws", "awsecscluster", scenario)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"awsvpc", "awssubnet", "awslaunchtemplate", "awsautoscalinggroup"}
+	if len(got) != len(want) {
+		t.Fatalf("dependency count = %d (%v), want %d (%v)", len(got), got, len(want), want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dependency order = %v, want %v", got, want)
+		}
+	}
+}
+
+// A scenario without the annotation resolves exactly as before -- the
+// registry graph alone (empty for a Fargate-capable ECS cluster, which is
+// honestly a leaf).
+func TestResolveDependencies_AnnotationAbsentUsesRegistryOnly(t *testing.T) {
+	repoRoot := t.TempDir()
+	scenario := writeScenarioManifest(t, t.TempDir(), "")
+
+	deps, err := ResolveDependencies(repoRoot, "aws", "awsecscluster", scenario)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+	if len(deps) != 0 {
+		t.Fatalf("expected no dependencies, got %d: %+v", len(deps), deps)
+	}
+}
+
+// An unknown kind in the annotation must fail loudly -- silently skipping it
+// would deploy the scenario without a dependency it relies on.
+func TestResolveDependencies_UnknownAnnotationKindErrors(t *testing.T) {
+	repoRoot := t.TempDir()
+	scenario := writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n"+
+			"    planton.dev/e2e-prerequisites: \"AwsNoSuchKind\"\n")
+
+	if _, err := ResolveDependencies(repoRoot, "aws", "awsecscluster", scenario); err == nil {
+		t.Fatal("expected an error for an unknown annotation kind, got nil")
+	} else if !strings.Contains(err.Error(), "AwsNoSuchKind") {
+		t.Errorf("error should name the unknown kind, got: %v", err)
+	}
+}
+
+// Declaring the component's own kind as its prerequisite is a modeling
+// mistake and must be rejected rather than deploying the kind twice.
+func TestResolveDependencies_SelfAnnotationErrors(t *testing.T) {
+	repoRoot := t.TempDir()
+	scenario := writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n"+
+			"    planton.dev/e2e-prerequisites: \"AwsEcsCluster\"\n")
+
+	if _, err := ResolveDependencies(repoRoot, "aws", "awsecscluster", scenario); err == nil {
+		t.Fatal("expected an error when a scenario declares its own kind, got nil")
+	}
+}
+
+// A kind already in the registry graph and also named by the annotation must
+// deploy once -- the closure dedupes across the two sources.
+func TestResolveDependencies_AnnotationMergesWithRegistry(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awselasticip/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsinternetgateway/v1/e2e/prerequisite.yaml")
+
+	// NAT gateway's registry graph already includes AwsSubnet; the annotation
+	// naming it again must not produce a duplicate deployment.
+	scenario := writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n"+
+			"    planton.dev/e2e-prerequisites: \"AwsSubnet\"\n")
+
+	deps, err := ResolveDependencies(repoRoot, "aws", "awsnatgateway", scenario)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+	seen := map[string]int{}
+	for _, d := range deps {
+		seen[d.KindSlug]++
+	}
+	if seen["awssubnet"] != 1 {
+		t.Fatalf("awssubnet deployed %d times, want exactly once: %+v", seen["awssubnet"], deps)
+	}
+}
+
 // TestResolveDependencies_TransitiveDeployOrder guards the deep-composition
 // ordering DeployDependencies relies on: AwsNatGateway ->
 // [AwsSubnet, AwsElasticIp, AwsInternetGateway] with AwsSubnet -> [AwsVpc] and
@@ -228,7 +356,7 @@ func TestResolveDependencies_TransitiveDeployOrder(t *testing.T) {
 	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awselasticip/v1/e2e/prerequisite.yaml")
 	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsinternetgateway/v1/e2e/prerequisite.yaml")
 
-	deps, err := ResolveDependencies(repoRoot, "aws", "awsnatgateway")
+	deps, err := ResolveDependencies(repoRoot, "aws", "awsnatgateway", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}

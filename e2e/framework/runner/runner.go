@@ -56,12 +56,13 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 
 	verifyCtx := context.WithValue(ctx, provider.ManifestPathKey{}, tc.ManifestPath)
 
-	// Phase 0: deploy dependencies (registry prerequisites)
+	// Phase 0: deploy dependencies (registry prerequisites merged with any the
+	// scenario manifest declares via its e2e-prerequisites annotation)
 	var dependencyStates []DependencyState
 	if tc.RepoRoot != "" {
 		depStart := time.Now()
 		var err error
-		dependencyStates, err = DeployDependencies(ctx, tc.RepoRoot, tc.Provider, tc.Component, tc.BackendURL, tc.RunID, harness)
+		dependencyStates, err = DeployDependencies(ctx, tc.RepoRoot, tc.Provider, tc.Component, tc.ManifestPath, tc.BackendURL, tc.RunID, harness)
 		pr := PhaseResult{
 			Phase:    PhaseDepsUp,
 			Duration: time.Since(depStart),
