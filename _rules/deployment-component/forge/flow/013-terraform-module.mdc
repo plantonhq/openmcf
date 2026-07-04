@@ -142,6 +142,15 @@ NOTES
   `StringValueOrRef` spec field arrives pre-resolved as `string` (repeated ones
   as `list(string)`). When updating an older module, conform its `variables.tf`
   to this shape before anything else -- the E2E Terraform run is the proof.
+- **User string content passes through the tfvars writer with HCL template
+  introducers escaped.** The proto->tfvars converter emits `$${` / `%%{` for
+  literal `${` / `%{` inside string values, so fields carrying IAM policy JSON
+  (`${aws:PrincipalAccount}` condition variables), shell user-data, and similar
+  template-looking content arrive in Terraform as literal characters. Modules
+  therefore consume such fields directly -- never add escaping in HCL, and never
+  avoid modeling a policy/user-data string field out of interpolation concerns.
+  (Exercise one template-introducer-bearing value in the kind's E2E scenario:
+  `tofu validate` never sees real tfvars, so only a rendered run proves it.)
 
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` in the proto schema

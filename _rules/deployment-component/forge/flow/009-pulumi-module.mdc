@@ -45,6 +45,19 @@ NOTES
 - Rule 010 handles entrypoint `iac/pulumi/main.go`, `Pulumi.yaml`, `Makefile`, and binary BUILD.
 - Use in-repo patterns (e.g., `awsalb`, `awsrdsinstance`) as guidance; always derive names/types/outputs from the proto files you read.
 
+CLOUD RESOURCE NAMES -- NEVER RELY ON PULUMI AUTO-NAMING
+- Always set the resource's own name argument (`Name:`, `BucketName:`,
+  `WorkgroupName:`, ...) explicitly from the module's naming basis
+  (`metadata.name`). When the name argument is left unset, Pulumi AUTO-NAMES the
+  cloud resource by appending a random suffix to the Pulumi resource name -- so
+  the same manifest deploys `<name>-<hex>` on Pulumi but `<name>` on Terraform, a
+  silent cross-engine identity divergence that no offline gate catches (both
+  modules validate and build; only comparing the live resource names reveals it).
+- Passing `metadata.name` as the Pulumi RESOURCE name (the second argument to
+  `NewX`) does NOT set the cloud name; the resource name is Pulumi-internal.
+  Prefer a stable, generic resource name ("table", "workgroup") and carry the
+  cloud identity exclusively through the name argument.
+
 EXPORTING OUTPUTS -- APPLYT TYPING IS A DEPLOY-TIME TRAP
 - Prefer exporting resource outputs DIRECTLY (`ctx.Export(OpX, created.X)`). Most SDK
   string attributes are `pulumi.StringOutput` and already resolve to `""` when the
