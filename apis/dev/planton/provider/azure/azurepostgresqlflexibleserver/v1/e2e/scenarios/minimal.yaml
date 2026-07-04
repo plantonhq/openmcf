@@ -11,13 +11,15 @@
 # child-resource paths live; the parameter (azure.extensions) is DYNAMIC,
 # so no restart-pending state lingers on the run.
 #
-# The region is eastus2 rather than the suite's eastus. NOTE: free/PAYG
-# test subscriptions can be offer-restricted from provisioning PostgreSQL
-# Flexible Servers ENTIRELY (LocationIsOfferRestricted verified live in
-# BOTH eastus and eastus2) -- running this scenario requires a subscription
-# with Postgres Flexible Server quota (see the quota-increase link in the
-# ARM error, https://aka.ms/postgres-request-quota-increase). A server may
-# live in a different region than its resource group, so the eastus
+# The region is westus3 rather than the suite's eastus: free/PAYG test
+# subscriptions are offer-restricted from provisioning PostgreSQL
+# Flexible Servers in some regions (LocationIsOfferRestricted -- verified
+# live in eastus, eastus2, AND westus2). Before moving this scenario,
+# probe the per-region flag:
+#   az rest --method get --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.DBforPostgreSQL/locations/{region}/capabilities?api-version=2024-08-01" --query "value[0].restricted"
+# ("Disabled" means provisioning is allowed; westus3/centralus/
+# canadacentral/northeurope/uksouth were Disabled at last check). A server
+# may live in a different region than its resource group, so the eastus
 # fixture RG serves unchanged.
 apiVersion: azure.planton.dev/v1
 kind: AzurePostgresqlFlexibleServer
@@ -34,7 +36,7 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: eastus2
+  region: westus3
   resourceGroup:
     valueFrom:
       name: planton-oss-e2e-azure-fixture-rg

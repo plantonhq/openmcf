@@ -61,8 +61,8 @@ The regional WAF policy: custom rules (match + rate-limit with grouping, priorit
 - `secret-coverage --check` (Azure 100%), `validate-refs --check` (all FK repoints/conversions resolve).
 - `pkg/outputs` conformance cases for all three kinds, including the gateway's map-keyed outputs.
 - Full `planton tofu plan` on all three hack manifests; 9 presets validate; parity audits ×3 at 100% Fully Complete, PARITY ✅ COVERAGE ✅.
-- **Live dual-engine E2E**: WAF policy green both engines (213s/290s); Application Gateway green ×4 — minimal (Pulumi 1166s / Terraform 1173s) and the composed WAF-attach chain RG → VNet → Subnet → PublicIp → WAF policy → gateway (1250s / 1266s). Zero orphans (`az group list` clean).
-- **Postgres live E2E deferred — subscription-blocked, not a code defect**: the ARM API rejects PostgreSQL Flexible Server provisioning on the test subscription with `LocationIsOfferRestricted` in BOTH eastus and eastus2 (verified live twice). The fix is a quota request (https://aka.ms/postgres-request-quota-increase) or a subscription that carries the quota; the scenario, verifier, and harness wiring are complete and run unchanged once quota exists. The offline gate (spec tests, both-engine builds, full tofu plan against the hack manifest exercising the deep surface) is fully green.
+- **Live dual-engine E2E**: WAF policy green both engines (213s/290s); Application Gateway green ×4 — minimal (Pulumi 1166s / Terraform 1173s) and the composed WAF-attach chain RG → VNet → Subnet → PublicIp → WAF policy → gateway (1250s / 1266s); Postgres green both engines (Pulumi 613s / Terraform 657s). Zero orphans (`az group list` clean).
+- **Postgres E2E region note**: the test subscription is offer-restricted from provisioning PostgreSQL Flexible Servers in several regions — `LocationIsOfferRestricted` verified live in eastus, eastus2, AND westus2. The per-region flag is queryable up front via the `Microsoft.DBforPostgreSQL` locations/{region}/capabilities API (`restricted`); westus3 verified clean and the scenario pins it (a server may live in a different region than its resource group, so the shared eastus fixture RG serves unchanged).
 
 ## Impact
 
