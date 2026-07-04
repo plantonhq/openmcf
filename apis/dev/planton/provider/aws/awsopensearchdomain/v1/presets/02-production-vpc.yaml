@@ -47,4 +47,5 @@ spec:
     masterUserName: admin
     masterUserPassword:
       value: "<master-password>"
-  autoTuneEnabled: true
+  autoTuneOptions:
+    desiredState: ENABLED
