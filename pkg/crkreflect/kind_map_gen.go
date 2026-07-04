@@ -166,6 +166,7 @@ import (
 	azuresubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuresubnet/v1"
 	azureuserassignedidentityv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureuserassignedidentity/v1"
 	azurevirtualmachinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualmachine/v1"
+	azurevirtualmachinescalesetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualmachinescaleset/v1"
 	azurevirtualnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualnetwork/v1"
 	azurevirtualnetworkpeeringv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1"
 	civobucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/civo/civobucket/v1"
@@ -620,6 +621,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureSubnet:                           &azuresubnetv1.AzureSubnet{},
 	cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity:             &azureuserassignedidentityv1.AzureUserAssignedIdentity{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualMachine:                   &azurevirtualmachinev1.AzureVirtualMachine{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualMachineScaleSet:           &azurevirtualmachinescalesetv1.AzureVirtualMachineScaleSet{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetwork:                   &azurevirtualnetworkv1.AzureVirtualNetwork{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkPeering:            &azurevirtualnetworkpeeringv1.AzureVirtualNetworkPeering{},
 }

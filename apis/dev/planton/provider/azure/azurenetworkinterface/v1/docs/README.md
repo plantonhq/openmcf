@@ -16,7 +16,7 @@ Three relationships define the NIC:
 
 **The NIC deploys into a subnet.** Each of the NIC's IP configurations places a private address in a subnet, and all of a NIC's configurations must address subnets of the same virtual network. The NIC is therefore the joint where compute meets network: its region must match the virtual network's, and its dependency chain runs Subnet → Virtual Network → Resource Group.
 
-**Traffic-shaping attachments hang off the NIC.** A network security group can attach at the NIC level. Application security group memberships are declared NIC-side. And — worth knowing even though it is not yet modeled here — load-balancer backend-pool membership is also expressed on the NIC in Azure's model, not on the load balancer.
+**Traffic-shaping attachments hang off the NIC.** A network security group can attach at the NIC level. Application security group memberships are declared NIC-side. And load-balancer membership is expressed on the NIC, not on the load balancer: an IP configuration declares which backend pools it joins and which inbound NAT rules it completes, each realized as its own association resource.
 
 ## Anatomy of an IP Configuration
 
@@ -58,6 +58,18 @@ The practical guidance: rely on subnet-level filtering alone for the common case
 Writing NSG rules against IP ranges couples the security policy to the network's address plan — every re-IP, every scale-out, every migration risks breaking a rule. **Application security groups** (ASGs) decouple them: a NIC declares membership in named groups ("web-servers", "databases"), and NSG rules target the groups. "Allow web-servers → databases on 5432" survives any amount of address churn.
 
 ASG membership is declared on the NIC, and — like the NSG attachment — it is its own ARM operation, not a NIC property. Joining or leaving a group never touches the NIC itself.
+
+## Load-Balancer Membership: Declared on the Member
+
+In Azure's model, a load balancer declares its backend *pools*, but never their *members*. Which instances belong to a pool is each member's declaration — a NIC-side association, exactly the shape of the NSG and ASG attachments. This API mirrors that seam with three fields on the IP configuration:
+
+**`loadBalancerBackendAddressPoolIds`** joins the configuration to load-balancer backend pools. The load balancer exports its pools as a name-keyed map, so the reference reads exactly as the pool was named — `valueFrom` fieldPath `status.outputs.backend_pool_ids.web` — instead of a raw ARM ID. A configuration can join several pools, and each membership is its own association resource: scaling a backend fleet in or out is purely NIC-side change, and the load balancer's spec never moves.
+
+**`loadBalancerInboundNatRuleIds`** completes single-target inbound NAT rules. The load balancer declares the port forward (frontend port → backend port); the NIC-side association picks which instance receives it — referenced the same way, e.g. fieldPath `status.outputs.nat_rule_ids.ssh-admin`. This is the per-instance admin-access pattern: the rule lives with the load balancer, the attachment lives with the machine.
+
+**`applicationGatewayBackendAddressPoolIds`** is the Layer 7 counterpart: joining an Application Gateway's backend pool, also realized as association resources. These take plain ARM IDs — the Application Gateway does not export per-pool IDs yet, so the reference crosses the model boundary as a literal until it does.
+
+The division of labor is worth internalizing: the load balancer owns the routing topology (frontends, pools, probes, rules), the NIC owns its own memberships, and the name-keyed output maps are the seam between them. Neither resource ever edits the other.
 
 ## Accelerated Networking: On by Deliberate Choice
 
@@ -113,22 +125,22 @@ The NIC carries two DNS settings, both narrow in scope:
 Operating a NIC safely requires knowing which changes are destructive:
 
 - **Identity — replaces the NIC**: name, region, and edge zone. Because a replacement NIC is a new resource, changing any of these *detaches the NIC from its VM*. Plan these as maintenance events.
-- **Everything else — updates in place**: IP configurations, DNS settings, accelerated networking, IP forwarding, the NSG attachment, ASG memberships, and tags.
+- **Everything else — updates in place**: IP configurations, DNS settings, accelerated networking, IP forwarding, the NSG attachment, ASG memberships, load-balancer and Application Gateway memberships, and tags.
 
 Two more lifecycle facts worth knowing:
 
 - **The MAC address does not exist at creation.** Azure assigns it when the NIC attaches to a *running* VM. Anything keyed on the MAC — license servers, appliance registrations — must wait for the attachment, not the provisioning.
-- **NSG and ASG attachments are separate ARM operations**, not NIC properties. Detaching a security group is a small, independent change that never risks the NIC itself.
+- **All memberships are separate ARM operations**, not NIC properties: the NSG attachment, ASG memberships, load-balancer pool and NAT-rule memberships, and Application Gateway pool memberships. Detaching any of them is a small, independent change that never risks the NIC itself.
 
 ## What Is Deliberately Not Modeled (Yet)
 
 A declarative API earns trust by being explicit about its edges.
 
-**Load-balancer backend-pool membership** is the one NIC-side capability in Azure's model that is deliberately not spec surface yet. In Azure, a NIC's IP configuration joins a load balancer's backend pool via an association declared NIC-side — exactly the shape of the NSG and ASG associations. The reason it is deferred is a dependency, not a design disagreement: the load balancer does not yet export per-pool IDs, so there is nothing well-formed for the NIC to reference. The seam arrives with the load-balancer depth work; when it does, backend membership will follow the same referenced-association pattern the NIC already uses everywhere else.
+**Application security groups as a first-class kind**: ASG memberships are accepted today as plain ARM IDs, because the ASG itself is not yet a modeled resource. The membership mechanism (association resources) will not change when it becomes one — only the reference will.
 
-**Application security groups as a first-class kind** are a smaller edge: ASG memberships are accepted today as plain ARM IDs, because the ASG itself is not yet a modeled resource. The membership mechanism (association resources) will not change when it becomes one — only the reference will.
+**Application Gateway pools as references**: the same edge on the Layer 7 side. Pool memberships are accepted as plain ARM IDs because the Application Gateway does not export per-pool IDs; when it does, the field upgrades from literal to reference without the mechanism changing.
 
-Nothing else notable is withheld. The spec covers the NIC's full production surface: multi-configuration addressing, dual-stack, static pinning, public fronting, both DNS levers, accelerated networking, IP forwarding, the preview auxiliary acceleration, edge-zone placement, gateway load-balancer chaining, NIC-level NSG, ASG memberships, and tags.
+Nothing else notable is withheld. The spec covers the NIC's full production surface: multi-configuration addressing, dual-stack, static pinning, public fronting, both DNS levers, accelerated networking, IP forwarding, the preview auxiliary acceleration, edge-zone placement, gateway load-balancer chaining, NIC-level NSG, ASG memberships, load-balancer pool and NAT-rule memberships, Application Gateway pool memberships, and tags.
 
 ## The Planton Approach
 
@@ -139,7 +151,8 @@ Planton provides a declarative, protobuf-based API for deploying Azure Network I
 - **The VM references the NIC.** `AzureVirtualMachine`'s `network_interface_ids` consumes this resource's `network_interface_id` output — a required list whose first entry is the primary interface, so a VM can carry several NICs without the API pretending otherwise.
 - **Each IP configuration references its subnet** (`subnetId` → an `AzureSubnet`'s `subnet_id` output) **and optionally a public IP** (`publicIpAddressId` → an `AzurePublicIp`'s `public_ip_id` output). The public address stays visible in the resource graph, allowlistable, and reusable if the NIC is replaced.
 - **The NIC-level NSG is referenced** (`networkSecurityGroupId` → an `AzureNetworkSecurityGroup`'s output) and realized as an association resource — Azure's own model — so filtering changes never touch the NIC.
-- **ASG memberships** take plain ARM IDs (one association resource each) until application security groups become a modeled kind.
+- **Load-balancer memberships reference the load balancer's name-keyed maps**: `loadBalancerBackendAddressPoolIds` → `status.outputs.backend_pool_ids.<pool-name>` and `loadBalancerInboundNatRuleIds` → `status.outputs.nat_rule_ids.<rule-name>`, one association resource per membership.
+- **ASG memberships** take plain ARM IDs (one association resource each) until application security groups become a modeled kind — as do **Application Gateway pool memberships** (`applicationGatewayBackendAddressPoolIds`) until the gateway exports per-pool IDs.
 
 ### Validation Where ARM Would Only Fail at Deploy Time
 
@@ -213,6 +226,6 @@ This configuration:
 
 The network interface is where a virtual machine's network life actually happens — its addresses, its subnet presence, its public exposure, its per-workload security, its performance path. Azure's model has always said so; the implicit, portal-generated NIC just made it easy not to notice.
 
-Modeling the NIC deliberately pays off in exactly the situations that matter: the appliance whose next-hop IP must survive a rebuild, the bastion whose firewall rules must not leak to its neighbors, the dual-stack service, the VM whose NIC — and address — outlives it. Planton's API keeps the resource honest: the VM references the NIC, the NIC references its subnet, public IP, and security group, and every ARM contract that would otherwise fail at deploy time is enforced at validation time.
+Modeling the NIC deliberately pays off in exactly the situations that matter: the appliance whose next-hop IP must survive a rebuild, the bastion whose firewall rules must not leak to its neighbors, the dual-stack service, the VM whose NIC — and address — outlives it. Planton's API keeps the resource honest: the VM references the NIC, the NIC references its subnet, public IP, security group, and the load-balancer pools it serves, and every ARM contract that would otherwise fail at deploy time is enforced at validation time.
 
 Give your VMs a NIC that was designed, not generated.

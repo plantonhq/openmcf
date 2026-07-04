@@ -66,3 +66,34 @@ resource "azurerm_network_interface_application_security_group_association" "mai
   network_interface_id          = azurerm_network_interface.main.id
   application_security_group_id = var.spec.application_security_group_ids[count.index]
 }
+
+# Join ip_configurations to load-balancer backend pools. Membership is
+# expressed from the member side in Azure's model -- the pool is declared
+# on the load balancer, and this association adds THIS NIC to it.
+resource "azurerm_network_interface_backend_address_pool_association" "main" {
+  for_each = local.lb_pool_associations
+
+  network_interface_id    = azurerm_network_interface.main.id
+  ip_configuration_name   = each.value.ip_configuration_name
+  backend_address_pool_id = each.value.pool_id
+}
+
+# Complete single-target inbound NAT rules: the load balancer declares
+# the port forward, this association picks the receiving instance.
+resource "azurerm_network_interface_nat_rule_association" "main" {
+  for_each = local.lb_nat_rule_associations
+
+  network_interface_id  = azurerm_network_interface.main.id
+  ip_configuration_name = each.value.ip_configuration_name
+  nat_rule_id           = each.value.nat_rule_id
+}
+
+# Join ip_configurations to Application Gateway backend pools (the L7
+# counterpart of the load-balancer membership above).
+resource "azurerm_network_interface_application_gateway_backend_address_pool_association" "main" {
+  for_each = local.appgw_pool_associations
+
+  network_interface_id    = azurerm_network_interface.main.id
+  ip_configuration_name   = each.value.ip_configuration_name
+  backend_address_pool_id = each.value.pool_id
+}

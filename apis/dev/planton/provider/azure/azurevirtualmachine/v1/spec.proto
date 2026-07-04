@@ -627,8 +627,14 @@ message AzureVirtualMachineAvailability {
 
   // Attaches the VM to a FLEXIBLE-orchestration scale set, by ARM ID --
   // scale-set-managed fault spreading for an individually-managed VM.
-  // Plain ARM ID today. Fixed at creation.
-  string virtual_machine_scale_set_id = 7;
+  // Can be a literal ARM ID or a reference to an
+  // AzureVirtualMachineScaleSet's scale_set_id output (the set must be
+  // FLEXIBLE -- UNIFORM sets do not accept attached VMs). Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_machine_scale_set_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualMachineScaleSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.scale_set_id"
+  ];
 
   // The fault domain to pin the VM to within virtual_machine_scale_set_id
   // (requires it). Unset lets Azure choose. Fixed at creation.
@@ -655,7 +661,7 @@ message AzureVirtualMachineAvailability {
   option (buf.validate.message).cel = {
     id: "vm_fault_domain_needs_scale_set"
     message: "platform_fault_domain requires virtual_machine_scale_set_id"
-    expression: "!has(this.platform_fault_domain) || this.virtual_machine_scale_set_id != ''"
+    expression: "!has(this.platform_fault_domain) || has(this.virtual_machine_scale_set_id)"
   };
 }
 

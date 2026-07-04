@@ -18,11 +18,11 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 //   front a referenced AzurePublicIp,
 // - a network security group attaches here (network_security_group_id) to
 //   filter this NIC's traffic specifically -- the per-workload complement
-//   to the subnet-level NSG attachment.
-// Load-balancer backend-pool membership is also expressed NIC-side in
-// Azure's model; it is deliberately not spec surface yet because the load
-// balancer does not yet export per-pool IDs to reference (it arrives with
-// the load-balancer depth work).
+//   to the subnet-level NSG attachment,
+// - load-balancer membership is expressed HERE, from the member side
+//   (Azure's own model): each ip_configuration lists the backend pools it
+//   joins and the inbound NAT rules it completes, referencing the load
+//   balancer's exported per-name IDs.
 message AzureNetworkInterfaceSpec {
   // The Azure region the NIC lives in, e.g. "eastus". Must match the
   // region of the virtual network it deploys into and of the VM that will
@@ -205,10 +205,40 @@ message AzureNetworkInterfaceIpConfiguration {
   bool primary = 7;
 
   // The frontend IP configuration of a Gateway-SKU load balancer that
-  // chains this NIC into a gateway appliance path, by ARM ID. A niche
-  // service-chaining seam; plain ARM ID because gateway load-balancer
-  // frontends are addressed as sub-resources of a load balancer.
+  // chains this NIC into a gateway appliance path, by ARM ID
+  // (referenceable via the gateway load balancer's
+  // frontend_ip_configuration_ids output). A niche service-chaining seam.
   string gateway_load_balancer_frontend_ip_configuration_id = 8;
+
+  // Load-balancer backend pools this configuration joins, by pool ARM
+  // ID -- membership is expressed from the member side in Azure's model.
+  // Reference a pool through the load balancer's name-keyed map output,
+  // e.g. valueFrom fieldPath "status.outputs.backend_pool_ids.web".
+  // Each membership is realized as its own association resource, so
+  // joining and leaving pools never touches the NIC itself.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef load_balancer_backend_address_pool_ids = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backend_pool_ids"
+  ];
+
+  // Single-target inbound NAT rules this configuration completes, by
+  // rule ARM ID -- the load balancer declares the rule (frontend port ->
+  // backend port) and the NIC-side association picks which instance
+  // receives the forwarded traffic. Reference a rule through the load
+  // balancer's name-keyed map output, e.g. valueFrom fieldPath
+  // "status.outputs.nat_rule_ids.ssh-admin". Realized as association
+  // resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef load_balancer_inbound_nat_rule_ids = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.nat_rule_ids"
+  ];
+
+  // Application Gateway backend pools this configuration joins, by pool
+  // ARM ID. Plain ARM IDs: the Application Gateway does not export
+  // per-pool IDs yet (they arrive with its depth work). Realized as
+  // association resources.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationGateways/{name}/backendAddressPools/{pool}
+  repeated string application_gateway_backend_address_pool_ids = 11;
 
   option (buf.validate.message).cel = {
     id: "nic_static_allocation_requires_address"

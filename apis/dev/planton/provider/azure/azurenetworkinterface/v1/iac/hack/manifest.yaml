@@ -16,13 +16,21 @@ spec:
   name: app-nic
 
   # A single IPv4 configuration: dynamic private address in a referenced
-  # subnet, fronted by a referenced public IP.
+  # subnet, fronted by a referenced public IP, joining a load-balancer
+  # pool, completing a single-target NAT rule, and joining an App Gateway
+  # pool (each membership realized as its own association resource).
   ipConfigurations:
     - name: primary
       subnetId:
         value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/app
       publicIpAddressId:
         value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/publicIPAddresses/test-pip
+      loadBalancerBackendAddressPoolIds:
+        - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/loadBalancers/test-lb/backendAddressPools/web
+      loadBalancerInboundNatRuleIds:
+        - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/loadBalancers/test-lb/inboundNatRules/ssh-admin
+      applicationGatewayBackendAddressPoolIds:
+        - /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationGateways/test-agw/backendAddressPools/web
 
   # Production NICs on supported VM sizes should enable SR-IOV.
   acceleratedNetworkingEnabled: true

@@ -114,8 +114,8 @@ func buildLinuxArgs(locals *Locals) *compute.LinuxVirtualMachineArgs {
 		if availability.DedicatedHostGroupId != "" {
 			args.DedicatedHostGroupId = pulumi.String(availability.DedicatedHostGroupId)
 		}
-		if availability.VirtualMachineScaleSetId != "" {
-			args.VirtualMachineScaleSetId = pulumi.String(availability.VirtualMachineScaleSetId)
+		if availability.VirtualMachineScaleSetId.GetValue() != "" {
+			args.VirtualMachineScaleSetId = pulumi.String(availability.VirtualMachineScaleSetId.GetValue())
 		}
 		if availability.PlatformFaultDomain != nil {
 			args.PlatformFaultDomain = pulumi.Int(int(availability.GetPlatformFaultDomain()))
@@ -383,8 +383,8 @@ func buildWindowsArgs(locals *Locals) *compute.WindowsVirtualMachineArgs {
 		if availability.DedicatedHostGroupId != "" {
 			args.DedicatedHostGroupId = pulumi.String(availability.DedicatedHostGroupId)
 		}
-		if availability.VirtualMachineScaleSetId != "" {
-			args.VirtualMachineScaleSetId = pulumi.String(availability.VirtualMachineScaleSetId)
+		if availability.VirtualMachineScaleSetId.GetValue() != "" {
+			args.VirtualMachineScaleSetId = pulumi.String(availability.VirtualMachineScaleSetId.GetValue())
 		}
 		if availability.PlatformFaultDomain != nil {
 			args.PlatformFaultDomain = pulumi.Int(int(availability.GetPlatformFaultDomain()))

@@ -15,22 +15,28 @@ func TestPreprocessKeys_DotBeforeBracket(t *testing.T) {
 	assertKey(t, got, "subnets[1].cidr", "10.0.0.0/24")
 }
 
-func TestPreprocessKeys_HyphensToUnderscores(t *testing.T) {
+func TestPreprocessKeys_PreservesHyphens(t *testing.T) {
+	// Hyphen-to-underscore normalization happens per FIELD segment at
+	// descriptor-lookup time in populateMessage, never on the whole key:
+	// segments after a map field are map KEYS (user data, e.g. a backend
+	// pool named "ssh-admin") that must survive verbatim.
 	input := map[string]string{
-		"load-balancer-arn": "arn:aws:elasticloadbalancing:...",
+		"load-balancer-arn":      "arn:aws:elasticloadbalancing:...",
+		"nat_rule_ids.ssh-admin": "/subscriptions/s/.../inboundNatRules/ssh-admin",
 	}
 	got := preprocessKeys(input)
 
-	assertKey(t, got, "load_balancer_arn", "arn:aws:elasticloadbalancing:...")
+	assertKey(t, got, "load-balancer-arn", "arn:aws:elasticloadbalancing:...")
+	assertKey(t, got, "nat_rule_ids.ssh-admin", "/subscriptions/s/.../inboundNatRules/ssh-admin")
 }
 
-func TestPreprocessKeys_Combined(t *testing.T) {
+func TestPreprocessKeys_BracketWithHyphenatedNames(t *testing.T) {
 	input := map[string]string{
 		"private-subnets.[0].nat-gateway.public-ip": "34.56.78.90",
 	}
 	got := preprocessKeys(input)
 
-	assertKey(t, got, "private_subnets[0].nat_gateway.public_ip", "34.56.78.90")
+	assertKey(t, got, "private-subnets[0].nat-gateway.public-ip", "34.56.78.90")
 }
 
 func TestPreprocessKeys_NoChanges(t *testing.T) {

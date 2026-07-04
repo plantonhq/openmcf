@@ -50,5 +50,6 @@ The following AZURE resources can be deployed using Planton:
 - [Subnet](/docs/catalog/azure/subnet)
 - [User Assigned Identity](/docs/catalog/azure/user-assigned-identity)
 - [Virtual Machine](/docs/catalog/azure/virtual-machine)
+- [Virtual Machine Scale Set](/docs/catalog/azure/virtual-machine-scale-set)
 - [Virtual Network](/docs/catalog/azure/virtual-network)
 - [Virtual Network Peering](/docs/catalog/azure/virtual-network-peering)

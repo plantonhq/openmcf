@@ -1,0 +1,1742 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurevirtualmachinescaleset.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureVirtualMachineScaleSetSpec** defines the configuration for
+// creating an Azure Virtual Machine Scale Set: a fleet of identical VMs
+// managed as one resource -- the template (image, size, OS profile,
+// disks, network), the fleet controls (instance count, zones, upgrade
+// policy, spot economics, instance repair), and the orchestration mode.
+//
+// ARM has exactly ONE scale-set resource type with an orchestration-mode
+// property, and this component models it that way:
+// - FLEXIBLE (the default, and Azure's recommendation for new workloads)
+//   spreads instances across fault domains like a resilient VM group;
+//   individual VMs can even attach to the set (an AzureVirtualMachine's
+//   availability.virtual_machine_scale_set_id). It carries per-OS patch
+//   orchestration, mixed-SKU profiles, and spot/on-demand priority
+//   mixing.
+// - UNIFORM is the classic mode behind large stateless fleets: identical
+//   instances, overprovisioning, automatic OS-image upgrades, spot
+//   restore, scale-in policy, and gallery applications.
+// Mode-specific capabilities are gated by validation, so the spec tells
+// the truth about what each mode supports.
+//
+// The scale set is a template, so its network and data-disk shapes are
+// deliberately INLINE (unlike the single VM, which references first-class
+// NICs and disks): every instance stamps its own NIC and disks from the
+// template, and they live and die with the instance. What IS shared is
+// referenced: subnets, load-balancer backend pools (by the load
+// balancer's name-keyed pool-ID outputs), NSGs, identities, and the
+// rolling-upgrade health probe.
+message AzureVirtualMachineScaleSetSpec {
+  // The Azure region the scale set runs in, e.g. "eastus". Must match
+  // the region of the referenced subnets and load balancer. Changing the
+  // region replaces the scale set.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the scale set will be created in. Can be a
+  // literal resource-group name or a reference to an AzureResourceGroup's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the scale set, unique within the resource group.
+  // Instance computer names derive from computer_name_prefix (or this
+  // name), so keep it short for Windows fleets (the 15-character
+  // computer-name limit, minus the instance suffix). Changing the name
+  // replaces the scale set.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // How the scale set orchestrates its instances. Unspecified applies
+  // FLEXIBLE -- Azure's recommendation for new workloads. The mode is
+  // fixed at creation and gates mode-specific capabilities (spec-level
+  // validation tells you which).
+  AzureVirtualMachineScaleSetOrchestrationMode orchestration_mode = 4;
+
+  // The VM size every instance uses, e.g. "Standard_D2s_v3",
+  // "Standard_B2s". On a FLEXIBLE scale set the special value "Mix"
+  // activates sku_profile (mixed sizes with an allocation strategy).
+  // Resizing updates in place and rolls instances per the upgrade
+  // policy.
+  string sku_name = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The number of instances. Unset lets the platform manage the count --
+  // right when an autoscaler owns it; set it for a fixed-size fleet.
+  // 0-1000.
+  optional int32 instances = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+
+  // FLEXIBLE + sku_name "Mix" only: the mixed VM sizes instances may use
+  // and the strategy for picking among them -- the capacity-resilient
+  // shape for spot fleets and constrained regions.
+  AzureVirtualMachineScaleSetSkuProfile sku_profile = 7;
+
+  // The operating-system profile: exactly one of `linux` or `windows`,
+  // carrying the OS's authentication and OS-specific management surface
+  // (SSH-first for Linux, password + WinRM/unattend for Windows, per-OS
+  // patch vocabularies on FLEXIBLE sets).
+  AzureVirtualMachineScaleSetOsProfile os_profile = 8 [(buf.validate.field).required = true];
+
+  // The OS disk template every instance stamps. Inline by definition --
+  // an instance's OS disk is born and dies with it.
+  AzureVirtualMachineScaleSetOsDisk os_disk = 9 [(buf.validate.field).required = true];
+
+  // Data-disk templates every instance stamps. Inline (template) disks,
+  // unlike the single VM's referenced first-class disks: each instance
+  // gets its own copies, created and deleted with the instance.
+  repeated AzureVirtualMachineScaleSetDataDisk data_disks = 10;
+
+  // Marketplace/platform image to boot from, by its four coordinates
+  // (publisher/offer/sku/version). Exactly one image source: this or
+  // source_image_id.
+  AzureVirtualMachineScaleSetSourceImageReference source_image_reference = 11;
+
+  // A custom or gallery image to boot from, by ARM ID (a managed image,
+  // or a Shared Image Gallery image/version -- community and direct
+  // shared gallery IDs included). Exactly one image source.
+  string source_image_id = 12;
+
+  // The network-interface templates every instance stamps -- at least
+  // one; exactly one marked primary (the first, when several are
+  // declared). Subnets, NSGs, load-balancer pools, and public IP
+  // prefixes are referenced; the NICs themselves are per-instance
+  // template stampings.
+  repeated AzureVirtualMachineScaleSetNetworkInterface network_interfaces = 13 [(buf.validate.field).repeated.min_items = 1];
+
+  // How instances receive template changes and OS image upgrades.
+  // Leave unset for MANUAL (changes apply to new instances only).
+  AzureVirtualMachineScaleSetUpgradePolicy upgrade_policy = 14;
+
+  // Run the fleet on spot capacity: deeply discounted, evictable when
+  // Azure needs the capacity back. Presence makes instances spot;
+  // absence is a regular on-demand fleet. Fixed at creation.
+  AzureVirtualMachineScaleSetSpot spot = 15;
+
+  // The scale set's managed identity: how instances authenticate to
+  // Azure services without stored credentials. On FLEXIBLE sets only
+  // user-assigned identities are supported (ARM's contract).
+  AzureVirtualMachineScaleSetIdentity identity = 16;
+
+  // The trusted-launch / encryption security posture. secure_boot and
+  // vtpm are UNIFORM-only capabilities; encryption_at_host works in both
+  // modes.
+  AzureVirtualMachineScaleSetSecurity security = 17;
+
+  // Automatic instance repair: unhealthy instances (per the health
+  // extension, or the health probe on UNIFORM sets) are replaced
+  // automatically. Requires health monitoring to be configured.
+  AzureVirtualMachineScaleSetAutomaticInstanceRepair automatic_instance_repair = 18;
+
+  // Emits a scheduled event before an instance is terminated, giving the
+  // workload up to 15 minutes to drain. Presence enables it.
+  AzureVirtualMachineScaleSetTerminationNotification termination_notification = 19;
+
+  // VM extensions installed onto every instance -- the health extension
+  // (ApplicationHealthLinux / ApplicationHealthWindows) is the load-
+  // bearing one: rolling upgrades, automatic instance repair, and
+  // hotpatching all key on instance health.
+  repeated AzureVirtualMachineScaleSetExtension extensions = 20;
+
+  // How long ALL extensions on an instance may collectively take to
+  // provision, as an ISO 8601 duration between PT15M and PT2H. Unset
+  // applies Azure's default (PT1H30M).
+  string extensions_time_budget = 21;
+
+  // Boot diagnostics: serial console output and boot screenshots.
+  // Presence enables it; an empty message uses Azure's managed storage
+  // (the right default), or point storage_account_uri at your own
+  // storage account.
+  AzureVirtualMachineScaleSetBootDiagnostics boot_diagnostics = 22;
+
+  // Availability zones instances spread across, e.g. ["1","2","3"] for
+  // zone redundancy. Removing a zone from an existing set replaces it.
+  repeated string zones = 23;
+
+  // Strictly balance instance counts across zones. Azure's default is
+  // false (best-effort); true requires zones and trades scale-out speed
+  // for exact balance. Fixed at creation.
+  optional bool zone_balance = 24 [(dev.planton.shared.options.default) = "false"];
+
+  // The number of fault domains instances spread across. REQUIRED on
+  // FLEXIBLE sets (1 with zones -- zones are the resilience unit -- or
+  // the region's max for regional spreading); optional on UNIFORM sets
+  // (Azure picks). Fixed at creation.
+  optional int32 platform_fault_domain_count = 25 [(buf.validate.field).int32.gte = 1];
+
+  // Placement constraints: proximity groups, capacity reservations,
+  // dedicated host groups, and placement-group sizing.
+  AzureVirtualMachineScaleSetPlacement placement = 26;
+
+  // UNIFORM only: provision extra instances during scale-out and keep
+  // the first healthy ones -- faster, more reliable scale-out at no
+  // extra cost (overprovisioned instances are not billed). Unset on a
+  // UNIFORM set applies Azure's default (true). No default annotation:
+  // the loader would materialize it onto FLEXIBLE sets, where the field
+  // is illegal.
+  optional bool overprovision = 27;
+
+  // UNIFORM only: which instances scale-in removes first, and whether
+  // removal force-deletes.
+  AzureVirtualMachineScaleSetScaleIn scale_in = 28;
+
+  // UNIFORM only: skip running extensions on overprovisioned instances
+  // that will be discarded anyway. Unset applies Azure's default
+  // (false). No default annotation: the loader would materialize it
+  // onto FLEXIBLE sets, where the field is illegal.
+  optional bool do_not_run_extensions_on_overprovisioned_machines = 29;
+
+  // Cloud-init / provisioning data, base64-encoded, delivered once at
+  // first boot of every instance. May embed bootstrap secrets, so it is
+  // treated as secret material.
+  string custom_data = 30 [
+    (buf.validate.field).string.max_bytes = 65536,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Arbitrary machine-readable data, base64-encoded, retrievable from
+  // inside instances via the Instance Metadata Service at any time --
+  // unlike custom_data it is UPDATABLE in place and readable back, so
+  // never put secrets here.
+  string user_data = 31 [(buf.validate.field).string.max_bytes = 65536];
+
+  // Whether the Azure VM agent is provisioned on instances. Azure's
+  // default is true; false is for appliance images that ship without an
+  // agent -- it disables extensions and most platform management. Fixed
+  // at creation.
+  optional bool provision_vm_agent = 32 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether extension operations are allowed. Azure's default is true;
+  // false requires the set to declare no extensions. Fixed at creation.
+  optional bool extension_operations_enabled = 33 [(dev.planton.shared.options.default) = "true"];
+
+  // Certificates from Key Vault installed onto every instance at
+  // provisioning time. Each entry names a vault and the certificate
+  // secret URLs to install (Windows fleets also name the certificate
+  // store).
+  repeated AzureVirtualMachineScaleSetSecret secrets = 34;
+
+  // FLEXIBLE only: the Microsoft.Network API version used for the
+  // instances' networking resources. Unset applies Azure's default
+  // ("2020-11-01"); "2022-11-01" unlocks NIC auxiliary acceleration.
+  string network_api_version = 35 [(buf.validate.field).cel = {
+    id: "vmss_network_api_version_valid"
+    message: "network_api_version must be \"2020-11-01\" or \"2022-11-01\" (or unset for Azure's default)"
+    expression: "this == '' || this in ['2020-11-01', '2022-11-01']"
+  }];
+
+  // The marketplace plan for images that require purchase-plan
+  // acceptance (third-party marketplace images). Leave unset for
+  // platform and custom images. Fixed at creation.
+  AzureVirtualMachineScaleSetPlan plan = 36;
+
+  // UNIFORM only: VM Applications (gallery applications) installed onto
+  // every instance, ordered by `order`. Up to 100.
+  repeated AzureVirtualMachineScaleSetGalleryApplication gallery_applications = 37 [(buf.validate.field).repeated.max_items = 100];
+
+  // Niche capability toggles: Ultra SSD attachability for instances.
+  AzureVirtualMachineScaleSetAdditionalCapabilities additional_capabilities = 38;
+
+  // UNIFORM only: the Azure Edge Zone the scale set is deployed in, for
+  // edge-computing workloads. Leave unset for regular regional
+  // deployment. Fixed at creation.
+  string edge_zone = 39;
+
+  // Free-form tags applied to the scale set, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Tags are Azure's governance
+  // surface -- Azure Policy enforces them and Microsoft Cost Management
+  // groups by them. Updatable in place.
+  map<string, string> tags = 40;
+
+  // -------------------------------------------------------------------
+  // Image / OS contracts
+  // -------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "vmss_image_source_exactly_one"
+    message: "set exactly one image source: source_image_reference (marketplace/platform) or source_image_id (custom/gallery)"
+    expression: "(has(this.source_image_reference) ? 1 : 0) + (this.source_image_id != '' ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_linux_auth_required"
+    message: "a Linux scale set requires admin_username and at least one credential -- SSH keys when password authentication is disabled (the default), admin_password when it is enabled"
+    expression: "!has(this.os_profile) || !has(this.os_profile.linux) || (this.os_profile.linux.admin_username != '' && ((!has(this.os_profile.linux.disable_password_authentication) || this.os_profile.linux.disable_password_authentication) ? this.os_profile.linux.ssh_public_keys.size() > 0 : has(this.os_profile.linux.admin_password)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_windows_auth_required"
+    message: "a Windows scale set requires admin_username and admin_password"
+    expression: "!has(this.os_profile) || !has(this.os_profile.windows) || (this.os_profile.windows.admin_username != '' && has(this.os_profile.windows.admin_password))"
+  };
+
+  // -------------------------------------------------------------------
+  // Orchestration-mode gating: UNIFORM-only capabilities
+  // (orchestration_mode: 0 = unspecified = FLEXIBLE, 1 = FLEXIBLE,
+  // 2 = UNIFORM)
+  // -------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "vmss_overprovision_is_uniform_only"
+    message: "overprovision is a UNIFORM-orchestration capability (FLEXIBLE sets never overprovision)"
+    expression: "this.orchestration_mode == 2 || !has(this.overprovision)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_scale_in_is_uniform_only"
+    message: "scale_in policy is a UNIFORM-orchestration capability"
+    expression: "this.orchestration_mode == 2 || !has(this.scale_in)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_gallery_applications_are_uniform_only"
+    message: "gallery_applications are a UNIFORM-orchestration capability"
+    expression: "this.orchestration_mode == 2 || this.gallery_applications.size() == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_overprovision_extensions_skip_is_uniform_only"
+    message: "do_not_run_extensions_on_overprovisioned_machines is a UNIFORM-orchestration capability"
+    expression: "this.orchestration_mode == 2 || !has(this.do_not_run_extensions_on_overprovisioned_machines)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_secure_boot_vtpm_are_uniform_only"
+    message: "secure_boot_enabled and vtpm_enabled (trusted launch) are UNIFORM-orchestration capabilities on scale sets"
+    expression: "this.orchestration_mode == 2 || !has(this.security) || (!this.security.secure_boot_enabled && !this.security.vtpm_enabled)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_os_disk_security_encryption_is_uniform_only"
+    message: "os_disk confidential-VM encryption (security_encryption_type / secure_vm_disk_encryption_set_id) is a UNIFORM-orchestration capability on scale sets"
+    expression: "this.orchestration_mode == 2 || !has(this.os_disk) || (this.os_disk.security_encryption_type == 0 && !has(this.os_disk.secure_vm_disk_encryption_set_id))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_health_probe_is_uniform_only"
+    message: "upgrade_policy.health_probe_id is a UNIFORM-orchestration capability (FLEXIBLE sets monitor health via the application health extension)"
+    expression: "this.orchestration_mode == 2 || !has(this.upgrade_policy) || !has(this.upgrade_policy.health_probe_id)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_automatic_os_upgrade_is_uniform_only"
+    message: "upgrade_policy.automatic_os_upgrade is a UNIFORM-orchestration capability"
+    expression: "this.orchestration_mode == 2 || !has(this.upgrade_policy) || !has(this.upgrade_policy.automatic_os_upgrade)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_spot_restore_is_uniform_only"
+    message: "spot.restore is a UNIFORM-orchestration capability"
+    expression: "this.orchestration_mode == 2 || !has(this.spot) || !has(this.spot.restore)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_host_group_is_uniform_only"
+    message: "placement.host_group_id is a UNIFORM-orchestration capability"
+    expression: "this.orchestration_mode == 2 || !has(this.placement) || this.placement.host_group_id == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_edge_zone_is_uniform_only"
+    message: "edge_zone is a UNIFORM-orchestration capability on scale sets"
+    expression: "this.orchestration_mode == 2 || this.edge_zone == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_nat_rules_are_uniform_only"
+    message: "ip_configuration load_balancer_inbound_nat_rule_ids are a UNIFORM-orchestration capability (on FLEXIBLE sets, NAT attaches to the instance NICs directly)"
+    expression: "this.orchestration_mode == 2 || this.network_interfaces.all(n, n.ip_configurations.all(c, c.load_balancer_inbound_nat_rule_ids.size() == 0))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_data_disk_name_is_uniform_only"
+    message: "data_disks[].name is a UNIFORM-orchestration capability (FLEXIBLE sets derive instance disk names; ARM's orchestrated surface carries no per-disk name)"
+    expression: "this.orchestration_mode == 2 || this.data_disks.all(d, d.name == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_extension_automatic_upgrade_is_uniform_only"
+    message: "extensions[].automatic_upgrade_enabled is a UNIFORM-orchestration capability (ARM's orchestrated extension surface does not carry it)"
+    expression: "this.orchestration_mode == 2 || this.extensions.all(e, !e.automatic_upgrade_enabled)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_extension_failure_suppression_is_flexible_only"
+    message: "extensions[].failure_suppression_enabled is a FLEXIBLE-orchestration capability"
+    expression: "this.orchestration_mode != 2 || this.extensions.all(e, !e.failure_suppression_enabled)"
+  };
+
+  // -------------------------------------------------------------------
+  // Orchestration-mode gating: FLEXIBLE-only capabilities
+  // -------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "vmss_sku_profile_is_flexible_only"
+    message: "sku_profile (mixed VM sizes) is a FLEXIBLE-orchestration capability"
+    expression: "this.orchestration_mode != 2 || !has(this.sku_profile)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_priority_mix_is_flexible_only"
+    message: "spot.priority_mix is a FLEXIBLE-orchestration capability"
+    expression: "this.orchestration_mode != 2 || !has(this.spot) || !has(this.spot.priority_mix)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_network_api_version_is_flexible_only"
+    message: "network_api_version is a FLEXIBLE-orchestration setting"
+    expression: "this.orchestration_mode != 2 || this.network_api_version == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_patch_modes_are_flexible_only"
+    message: "per-OS patch_mode / patch_assessment_mode / hotpatching are FLEXIBLE-orchestration capabilities on scale sets"
+    expression: "this.orchestration_mode != 2 || !has(this.os_profile) || ((!has(this.os_profile.linux) || (this.os_profile.linux.patch_mode == 0 && this.os_profile.linux.patch_assessment_mode == 0)) && (!has(this.os_profile.windows) || (this.os_profile.windows.patch_mode == 0 && this.os_profile.windows.patch_assessment_mode == 0 && !this.os_profile.windows.hotpatching_enabled)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_flexible_requires_fault_domain_count"
+    message: "FLEXIBLE orchestration requires platform_fault_domain_count (1 when spreading across zones, or the region's maximum for regional spreading)"
+    expression: "this.orchestration_mode == 2 || has(this.platform_fault_domain_count)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_flexible_identity_is_user_assigned_only"
+    message: "FLEXIBLE-orchestration scale sets support only USER_ASSIGNED managed identities (ARM's contract)"
+    expression: "this.orchestration_mode == 2 || !has(this.identity) || this.identity.type == 2"
+  };
+
+  // -------------------------------------------------------------------
+  // Mode-independent conditional contracts
+  // -------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "vmss_sku_profile_pairs_with_mix"
+    message: "sku_profile requires sku_name \"Mix\", and sku_name \"Mix\" requires sku_profile"
+    expression: "(this.sku_name == 'Mix') == has(this.sku_profile)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_zone_balance_requires_zones"
+    message: "zone_balance requires zones to be specified"
+    expression: "!has(this.zone_balance) || !this.zone_balance || this.zones.size() > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_rolling_upgrade_policy_pairing"
+    message: "upgrade_policy.rolling is required when mode is ROLLING and forbidden when mode is MANUAL"
+    expression: "!has(this.upgrade_policy) || (this.upgrade_policy.mode == 3 ? has(this.upgrade_policy.rolling) : (this.upgrade_policy.mode == 2 || !has(this.upgrade_policy.rolling)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_rolling_upgrades_need_health"
+    message: "ROLLING upgrade mode requires health monitoring: an ApplicationHealthLinux/ApplicationHealthWindows extension, or upgrade_policy.health_probe_id on a UNIFORM set"
+    expression: "!has(this.upgrade_policy) || this.upgrade_policy.mode != 3 || has(this.upgrade_policy.health_probe_id) || this.extensions.exists(e, e.type in ['ApplicationHealthLinux', 'ApplicationHealthWindows'])"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_automatic_os_upgrade_needs_automatic_or_rolling"
+    message: "upgrade_policy.automatic_os_upgrade requires upgrade mode AUTOMATIC or ROLLING"
+    expression: "!has(this.upgrade_policy) || !has(this.upgrade_policy.automatic_os_upgrade) || this.upgrade_policy.mode in [2, 3]"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_cross_zone_upgrades_require_zones"
+    message: "upgrade_policy.rolling.cross_zone_upgrades_enabled requires zones"
+    expression: "!has(this.upgrade_policy) || !has(this.upgrade_policy.rolling) || !this.upgrade_policy.rolling.cross_zone_upgrades_enabled || this.zones.size() > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_maximum_surge_requires_no_overprovision"
+    message: "upgrade_policy.rolling.maximum_surge_instances_enabled requires overprovision to be explicitly false"
+    expression: "!has(this.upgrade_policy) || !has(this.upgrade_policy.rolling) || !this.upgrade_policy.rolling.maximum_surge_instances_enabled || (has(this.overprovision) && !this.overprovision)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_instance_repair_needs_health"
+    message: "automatic_instance_repair requires health monitoring: an ApplicationHealthLinux/ApplicationHealthWindows extension, or upgrade_policy.health_probe_id on a UNIFORM set"
+    expression: "!has(this.automatic_instance_repair) || !this.automatic_instance_repair.enabled || (has(this.upgrade_policy) && has(this.upgrade_policy.health_probe_id)) || this.extensions.exists(e, e.type in ['ApplicationHealthLinux', 'ApplicationHealthWindows'])"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_hotpatching_needs_platform_patching_and_health"
+    message: "hotpatching_enabled requires patch_mode WINDOWS_AUTOMATIC_BY_PLATFORM and an ApplicationHealthWindows extension"
+    expression: "!has(this.os_profile) || !has(this.os_profile.windows) || !this.os_profile.windows.hotpatching_enabled || (this.os_profile.windows.patch_mode == 3 && this.extensions.exists(e, e.type == 'ApplicationHealthWindows'))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_platform_patching_needs_health_extension"
+    message: "patch_mode AUTOMATIC_BY_PLATFORM requires an ApplicationHealthLinux/ApplicationHealthWindows extension"
+    expression: "!has(this.os_profile) || (((!has(this.os_profile.linux) || this.os_profile.linux.patch_mode != 2) && (!has(this.os_profile.windows) || this.os_profile.windows.patch_mode != 3)) || this.extensions.exists(e, e.type in ['ApplicationHealthLinux', 'ApplicationHealthWindows']))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_guest_state_encryption_needs_secure_boot_and_vtpm"
+    message: "os_disk.security_encryption_type requires security.vtpm_enabled (and DISK_WITH_VM_GUEST_STATE additionally requires security.secure_boot_enabled)"
+    expression: "!has(this.os_disk) || this.os_disk.security_encryption_type == 0 || (has(this.security) && this.security.vtpm_enabled && (this.os_disk.security_encryption_type != 2 || this.security.secure_boot_enabled))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_encryption_at_host_conflicts_guest_state_disk"
+    message: "security.encryption_at_host_enabled cannot be combined with os_disk.security_encryption_type DISK_WITH_VM_GUEST_STATE"
+    expression: "!has(this.security) || !this.security.encryption_at_host_enabled || !has(this.os_disk) || this.os_disk.security_encryption_type != 2"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_extension_operations_need_agent"
+    message: "extension_operations_enabled requires provision_vm_agent"
+    expression: "!has(this.extension_operations_enabled) || !this.extension_operations_enabled || (!has(this.provision_vm_agent) || this.provision_vm_agent)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_first_network_interface_primary_when_multiple"
+    message: "when a scale set declares multiple network interfaces, the first must be marked primary"
+    expression: "this.network_interfaces.size() <= 1 || this.network_interfaces[0].primary"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_at_most_one_primary_network_interface"
+    message: "at most one network interface may be marked primary"
+    expression: "this.network_interfaces.filter(n, n.primary).size() <= 1"
+  };
+}
+
+// FLEXIBLE + "Mix" only: mixed VM sizes with an allocation strategy.
+message AzureVirtualMachineScaleSetSkuProfile {
+  // How Azure picks among the sizes: LOWEST_PRICE for cost,
+  // CAPACITY_OPTIMIZED for allocation success, PRIORITIZED to honor the
+  // per-size ranks.
+  AzureVirtualMachineScaleSetAllocationStrategy allocation_strategy = 1 [(buf.validate.field).required = true];
+
+  // The candidate VM sizes (up to 5). Ranks are only meaningful with
+  // the PRIORITIZED strategy.
+  repeated AzureVirtualMachineScaleSetVmSize vm_sizes = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 5
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "vmss_sku_profile_ranks_need_prioritized"
+    message: "vm_sizes ranks are only meaningful with the PRIORITIZED allocation strategy"
+    expression: "this.allocation_strategy == 3 || this.vm_sizes.all(s, !has(s.rank))"
+  };
+}
+
+// One candidate VM size in a mixed-SKU profile.
+message AzureVirtualMachineScaleSetVmSize {
+  // The VM size, e.g. "Standard_D2s_v3".
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The size's priority under the PRIORITIZED strategy (0 is highest).
+  optional int32 rank = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3
+  }];
+}
+
+// The operating-system profile: exactly one OS, its authentication, and
+// its OS-specific management surface.
+message AzureVirtualMachineScaleSetOsProfile {
+  // The prefix instance computer names derive from (Azure appends a
+  // unique suffix per instance). Unset defaults to the scale-set name.
+  // Keep it at most 9 characters for Windows fleets (the 15-character
+  // computer-name limit minus the 6-character suffix). Fixed at
+  // creation.
+  string computer_name_prefix = 1;
+
+  // Linux configuration. Exactly one of linux/windows.
+  AzureVirtualMachineScaleSetLinuxProfile linux = 2;
+
+  // Windows configuration. Exactly one of linux/windows.
+  AzureVirtualMachineScaleSetWindowsProfile windows = 3;
+
+  option (buf.validate.message).cel = {
+    id: "vmss_os_exactly_one"
+    message: "set exactly one OS profile: linux or windows"
+    expression: "has(this.linux) != has(this.windows)"
+  };
+}
+
+// Linux authentication and management: SSH-first, password optional.
+message AzureVirtualMachineScaleSetLinuxProfile {
+  // The admin account's username. Fixed at creation.
+  string admin_username = 1 [(buf.validate.field).string.max_len = 64];
+
+  // SSH public keys installed for the admin account -- the production
+  // authentication path. Each key's username defaults to admin_username.
+  repeated AzureVirtualMachineScaleSetSshPublicKey ssh_public_keys = 2;
+
+  // The admin account's password. Only meaningful when
+  // disable_password_authentication is explicitly false; SSH keys are
+  // the production path. Can be a literal or a reference to a secret
+  // (e.g. a Config Manager entry). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef admin_password = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // Whether SSH password authentication is disabled. Azure's default is
+  // true (keys only) -- the right posture; setting false requires
+  // admin_password. Fixed at creation.
+  optional bool disable_password_authentication = 4 [(dev.planton.shared.options.default) = "true"];
+
+  // FLEXIBLE only: how instance OSes are patched. Unspecified applies
+  // Azure's default (LINUX_IMAGE_DEFAULT). LINUX_AUTOMATIC_BY_PLATFORM
+  // hands orchestration to Azure Update Manager and requires the
+  // application health extension.
+  AzureVirtualMachineScaleSetLinuxPatchMode patch_mode = 5;
+
+  // FLEXIBLE only: how patch assessment runs. Unspecified applies
+  // Azure's default (ASSESSMENT_IMAGE_DEFAULT);
+  // ASSESSMENT_AUTOMATIC_BY_PLATFORM assesses pending patches daily.
+  AzureVirtualMachineScaleSetPatchAssessmentMode patch_assessment_mode = 6;
+}
+
+// One SSH public key installed onto Linux instances.
+message AzureVirtualMachineScaleSetSshPublicKey {
+  // The OpenSSH-format public key (at least 2048-bit RSA or an Ed25519
+  // key), e.g. "ssh-ed25519 AAAA...". Public material -- not a secret.
+  string public_key = 1 [(buf.validate.field).required = true];
+
+  // The account the key is installed for. Unset defaults to the
+  // profile's admin_username -- the common case.
+  string username = 2;
+}
+
+// Windows authentication and management.
+message AzureVirtualMachineScaleSetWindowsProfile {
+  // The admin account's username. Fixed at creation.
+  string admin_username = 1 [(buf.validate.field).string.max_len = 20];
+
+  // The admin account's password (8-123 characters, 3 of 4 complexity
+  // classes -- ARM enforces). Can be a literal or a reference to a
+  // secret (e.g. a Config Manager entry). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef admin_password = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  // FLEXIBLE only: how instance OSes are patched. Unspecified applies
+  // Azure's default (AUTOMATIC_BY_OS: Windows Update as configured in
+  // the image). WINDOWS_AUTOMATIC_BY_PLATFORM hands orchestration to
+  // Azure Update Manager, requires the application health extension,
+  // and is a prerequisite for hotpatching.
+  AzureVirtualMachineScaleSetWindowsPatchMode patch_mode = 3;
+
+  // FLEXIBLE only: how patch assessment runs.
+  AzureVirtualMachineScaleSetPatchAssessmentMode patch_assessment_mode = 4;
+
+  // Whether Windows Update's automatic updates are enabled. Azure's
+  // default is true. Fixed at creation.
+  optional bool automatic_updates_enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // FLEXIBLE only: hotpatching -- security updates applied without
+  // reboots, on supported Windows Server Azure Edition images only.
+  // Requires patch_mode WINDOWS_AUTOMATIC_BY_PLATFORM and the health
+  // extension.
+  bool hotpatching_enabled = 6;
+
+  // The Windows time zone, e.g. "Pacific Standard Time". Unset uses
+  // UTC. Fixed at creation.
+  string timezone = 7;
+
+  // WinRM remote-management listeners. HTTPS listeners reference the
+  // certificate by its Key Vault secret URL.
+  repeated AzureVirtualMachineScaleSetWinrmListener winrm_listeners = 8;
+
+  // Raw unattend.xml fragments injected into Windows setup (AutoLogon /
+  // FirstLogonCommands) for pre-agent bootstrap. The content may embed
+  // credentials, so it is treated as secret material. Fixed at creation.
+  repeated AzureVirtualMachineScaleSetAdditionalUnattendContent additional_unattend_contents = 9;
+
+  // Azure Hybrid Benefit: bring an existing Windows license instead of
+  // paying the image's Windows price. Unspecified means no benefit
+  // (regular pay-as-you-go).
+  AzureVirtualMachineScaleSetWindowsLicenseType license_type = 10;
+}
+
+// One WinRM listener.
+message AzureVirtualMachineScaleSetWinrmListener {
+  // The listener protocol. HTTPS requires certificate_url.
+  AzureVirtualMachineScaleSetWinrmProtocol protocol = 1 [(buf.validate.field).required = true];
+
+  // For HTTPS: the Key Vault secret URL of the listener's certificate,
+  // e.g. "https://{vault}.vault.azure.net/secrets/{name}/{version}". The
+  // vault must be enabled for deployment.
+  string certificate_url = 2;
+
+  option (buf.validate.message).cel = {
+    id: "vmss_winrm_https_needs_certificate"
+    message: "an HTTPS WinRM listener requires certificate_url (and HTTP forbids it)"
+    expression: "(this.protocol == 2) == (this.certificate_url != '')"
+  };
+}
+
+// One unattend.xml fragment for Windows setup.
+message AzureVirtualMachineScaleSetAdditionalUnattendContent {
+  // Which setup pass the fragment configures.
+  AzureVirtualMachineScaleSetUnattendSetting setting = 1 [(buf.validate.field).required = true];
+
+  // The raw XML fragment. May embed credentials (AutoLogon carries the
+  // admin password), so it is treated as secret material.
+  string content = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// The OS disk template every instance stamps.
+message AzureVirtualMachineScaleSetOsDisk {
+  // The host-caching mode. READ_WRITE is right for general OS disks;
+  // READ_ONLY suits high-IOPS workloads that re-read hot data (and is
+  // required for ephemeral OS disks); NONE for write-heavy disks.
+  AzureVirtualMachineScaleSetDiskCaching caching = 1 [(buf.validate.field).required = true];
+
+  // The disk's storage SKU. PREMIUM_LRS is the production default; the
+  // ZRS variants survive a zone outage. OS disks cannot use
+  // PremiumV2/Ultra. Changing it replaces instances' disks.
+  AzureVirtualMachineScaleSetOsDiskStorageAccountType storage_account_type = 2 [(buf.validate.field).required = true];
+
+  // The OS disk size in GiB (up to 4095). Unset inherits the image's
+  // size -- correct for almost everything. Can only increase.
+  optional int32 disk_size_gb = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 4095
+  }];
+
+  // Ephemeral OS disk: instances' OS disks live on local cache/temp
+  // storage instead of remote storage -- free, fast, and WIPED on every
+  // stop/reimage. The natural fit for stateless, image-driven fleets.
+  // Presence makes the OS disk ephemeral; requires caching READ_ONLY.
+  // Fixed at creation.
+  AzureVirtualMachineScaleSetDiffDiskSettings diff_disk_settings = 4;
+
+  // Customer-managed-key encryption: the disk encryption set encrypting
+  // instances' OS disks, by ARM ID. Plain ARM ID: disk encryption sets
+  // are not modeled as a Planton kind yet. Conflicts with
+  // secure_vm_disk_encryption_set_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 5;
+
+  // UNIFORM only, for confidential instances with customer-key
+  // guest-state encryption: the disk encryption set for the
+  // VMGuestState blob, by ARM ID. Requires security_encryption_type;
+  // conflicts with disk_encryption_set_id. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secure_vm_disk_encryption_set_id = 6;
+
+  // UNIFORM only: confidential-VM encryption of the instance guest
+  // state. VM_GUEST_STATE_ONLY encrypts just the guest-state blob;
+  // DISK_WITH_VM_GUEST_STATE also encrypts the OS disk (and requires
+  // security.secure_boot_enabled). Both require security.vtpm_enabled
+  // and a confidential-capable size. Fixed at creation.
+  AzureVirtualMachineScaleSetSecurityEncryptionType security_encryption_type = 7;
+
+  // Write Accelerator for M-series sizes with Premium disks and caching
+  // NONE -- sub-millisecond write latency for database logs.
+  bool write_accelerator_enabled = 8;
+
+  option (buf.validate.message).cel = {
+    id: "vmss_os_disk_encryption_sets_conflict"
+    message: "disk_encryption_set_id and secure_vm_disk_encryption_set_id are mutually exclusive"
+    expression: "!(has(this.disk_encryption_set_id) && has(this.secure_vm_disk_encryption_set_id))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_os_disk_secure_set_needs_encryption_type"
+    message: "secure_vm_disk_encryption_set_id requires security_encryption_type"
+    expression: "!has(this.secure_vm_disk_encryption_set_id) || this.security_encryption_type != 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_ephemeral_os_disk_needs_read_only_caching"
+    message: "an ephemeral OS disk (diff_disk_settings) requires caching READ_ONLY"
+    expression: "!has(this.diff_disk_settings) || this.caching == 2"
+  };
+}
+
+// Ephemeral OS disk placement.
+message AzureVirtualMachineScaleSetDiffDiskSettings {
+  // Which local storage hosts the ephemeral OS disk. Unspecified applies
+  // Azure's default (CACHE_DISK when the size's cache is big enough).
+  AzureVirtualMachineScaleSetDiffDiskPlacement placement = 1;
+}
+
+// One data-disk template every instance stamps.
+message AzureVirtualMachineScaleSetDataDisk {
+  // The logical unit number the disk mounts at (0-2000), unique per
+  // instance -- the stable identity the OS addresses the disk by.
+  // Explicit presence (optional + required) so LUN 0 -- the most common
+  // -- survives proto-JSON serialization, which drops plain zero values.
+  optional int32 lun = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 2000
+    }
+  ];
+
+  // The host-caching mode. READ_ONLY suits read-heavy data; NONE for
+  // write-heavy volumes and required for Ultra/PremiumV2 disks.
+  AzureVirtualMachineScaleSetDiskCaching caching = 2 [(buf.validate.field).required = true];
+
+  // The disk size in GiB (1-32767).
+  int32 disk_size_gb = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 32767
+    }
+  ];
+
+  // The disk's storage SKU. UltraSSD/PremiumV2 unlock dialed IOPS and
+  // throughput below (and require zonal instances).
+  AzureVirtualMachineScaleSetDataDiskStorageAccountType storage_account_type = 4 [(buf.validate.field).required = true];
+
+  // How the disk is created. Unspecified applies Azure's default
+  // (EMPTY); FROM_IMAGE stamps the disk from the source image's data
+  // disks (marketplace images that ship data volumes).
+  AzureVirtualMachineScaleSetDataDiskCreateOption create_option = 5;
+
+  // UNIFORM only: an explicit name for instances' disks. Unset lets
+  // Azure derive one (FLEXIBLE sets always derive -- ARM's orchestrated
+  // surface carries no per-disk name).
+  string name = 6;
+
+  // Write Accelerator for this disk (M-series + Premium + caching NONE).
+  bool write_accelerator_enabled = 7;
+
+  // Customer-managed-key encryption for instances' data disks, by disk
+  // encryption set ARM ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 8;
+
+  // For ULTRA_SSD_LRS / PREMIUM_V2_LRS: the dialed IOPS.
+  optional int64 ultra_ssd_disk_iops_read_write = 9 [(buf.validate.field).int64.gte = 1];
+
+  // For ULTRA_SSD_LRS / PREMIUM_V2_LRS: the dialed throughput in MBps.
+  optional int64 ultra_ssd_disk_mbps_read_write = 10 [(buf.validate.field).int64.gte = 1];
+
+  option (buf.validate.message).cel = {
+    id: "vmss_data_disk_dialed_performance_needs_ultra"
+    message: "ultra_ssd_disk_iops_read_write / ultra_ssd_disk_mbps_read_write require storage_account_type ULTRA_SSD_LRS or PREMIUM_V2_LRS"
+    expression: "(!has(this.ultra_ssd_disk_iops_read_write) && !has(this.ultra_ssd_disk_mbps_read_write)) || this.storage_account_type in [5, 6]"
+  };
+}
+
+// Marketplace/platform image coordinates.
+message AzureVirtualMachineScaleSetSourceImageReference {
+  // The image publisher, e.g. "Canonical".
+  string publisher = 1 [(buf.validate.field).required = true];
+
+  // The image offer, e.g. "ubuntu-24_04-lts".
+  string offer = 2 [(buf.validate.field).required = true];
+
+  // The image SKU, e.g. "server".
+  string sku = 3 [(buf.validate.field).required = true];
+
+  // The image version, e.g. "latest" or a pinned "24.04.202506100".
+  // With automatic OS upgrades, "latest" keeps the fleet on new image
+  // releases; otherwise it resolves at creation only.
+  string version = 4 [(buf.validate.field).required = true];
+}
+
+// One network-interface template every instance stamps.
+message AzureVirtualMachineScaleSetNetworkInterface {
+  // A label for this NIC template, unique within the scale set.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Whether this is the primary NIC. Exactly one NIC is primary; with a
+  // single NIC ARM treats it as primary automatically, and with multiple
+  // the FIRST must be marked (spec-level validation enforces both).
+  bool primary = 2;
+
+  // The NIC's IP configurations -- at least one; the first is primary
+  // when several are declared.
+  repeated AzureVirtualMachineScaleSetIpConfiguration ip_configurations = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // DNS servers instances behind this NIC use, overriding the virtual
+  // network's DNS. Rarely set -- prefer configuring DNS on the virtual
+  // network.
+  repeated string dns_servers = 4;
+
+  // Whether accelerated networking (SR-IOV) is enabled. Azure's default
+  // is false, but production fleets on supported sizes should enable it.
+  bool accelerated_networking_enabled = 5;
+
+  // Whether the NIC forwards traffic not addressed to it -- network
+  // virtual appliance fleets only.
+  bool ip_forwarding_enabled = 6;
+
+  // The network security group filtering these NICs' traffic, by ARM
+  // ID -- the per-fleet complement to the subnet-level NSG.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network_security_group_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureNetworkSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_security_group_id"
+  ];
+
+  // The auxiliary mode for network-virtual-appliance acceleration (a
+  // preview feature; on FLEXIBLE sets it requires network_api_version
+  // "2022-11-01"). Must be set together with auxiliary_sku.
+  AzureVirtualMachineScaleSetAuxiliaryMode auxiliary_mode = 8;
+
+  // The auxiliary SKU sizing the NVA acceleration. Must be set together
+  // with auxiliary_mode.
+  AzureVirtualMachineScaleSetAuxiliarySku auxiliary_sku = 9;
+
+  option (buf.validate.message).cel = {
+    id: "vmss_nic_auxiliary_mode_sku_paired"
+    message: "auxiliary_mode and auxiliary_sku must be set together (both or neither)"
+    expression: "(this.auxiliary_mode == 0) == (this.auxiliary_sku == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_nic_first_ip_configuration_primary_when_multiple"
+    message: "when a NIC template has multiple ip_configurations, the first must be marked primary"
+    expression: "this.ip_configurations.size() <= 1 || this.ip_configurations[0].primary"
+  };
+}
+
+// One IP configuration on a NIC template.
+message AzureVirtualMachineScaleSetIpConfiguration {
+  // A label for this configuration, unique within the NIC template.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Whether this is the NIC's primary configuration.
+  bool primary = 2;
+
+  // The subnet instances' private addresses live in, by ARM ID.
+  // Required for IPv4 configurations (ARM's contract).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The address family. Unspecified applies Azure's default (IPV4).
+  AzureVirtualMachineScaleSetIpVersion version = 4;
+
+  // Load-balancer backend pools every instance joins, by pool ARM ID --
+  // membership is expressed from the member side in Azure's model.
+  // Reference a pool through the load balancer's name-keyed map output,
+  // e.g. valueFrom fieldPath "status.outputs.backend_pool_ids.web".
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef load_balancer_backend_address_pool_ids = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backend_pool_ids"
+  ];
+
+  // UNIFORM only: pool-style inbound NAT rules whose port ranges map
+  // onto instances, by rule ARM ID. Reference a rule through the load
+  // balancer's name-keyed map output, e.g. valueFrom fieldPath
+  // "status.outputs.nat_rule_ids.per-instance-ssh".
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef load_balancer_inbound_nat_rule_ids = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.nat_rule_ids"
+  ];
+
+  // Application Gateway backend pools every instance joins, by pool ARM
+  // ID. Plain ARM IDs: the Application Gateway does not export per-pool
+  // IDs yet.
+  repeated string application_gateway_backend_address_pool_ids = 7;
+
+  // Application security groups instances join (up to 20), by ARM ID,
+  // so NSG rules can target the fleet as a workload group.
+  repeated string application_security_group_ids = 8 [(buf.validate.field).repeated.max_items = 20];
+
+  // Give every instance its own public IP, stamped from this template.
+  // For fleets reached through a load balancer or gateway leave it
+  // unset -- the production shape.
+  AzureVirtualMachineScaleSetPublicIpAddress public_ip_address = 9;
+}
+
+// A per-instance public IP template.
+message AzureVirtualMachineScaleSetPublicIpAddress {
+  // A label for the instances' public IPs.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The DNS label prefix for instances' addresses; Azure appends a
+  // per-instance suffix. Leave unset for IP-only addressing.
+  string domain_name_label = 2;
+
+  // The TCP idle timeout for the addresses, in minutes (4-32). Unset
+  // applies Azure's default.
+  optional int32 idle_timeout_in_minutes = 3 [(buf.validate.field).int32 = {
+    gte: 4
+    lte: 32
+  }];
+
+  // The address family. Unspecified applies Azure's default (IPV4).
+  // Fixed at creation.
+  AzureVirtualMachineScaleSetIpVersion version = 4;
+
+  // Draw instance addresses from a reserved public IP prefix, by ARM
+  // ID -- the fleet egresses/ingresses from a known CIDR partners can
+  // allowlist. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef public_ip_prefix_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIpPrefix,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_prefix_id"
+  ];
+
+  // Azure IP tags applied to instances' addresses (routing metadata,
+  // e.g. RoutingPreference=Internet). Fixed at creation.
+  repeated AzureVirtualMachineScaleSetIpTag ip_tags = 6;
+}
+
+// One Azure IP tag on per-instance public IPs.
+message AzureVirtualMachineScaleSetIpTag {
+  // The tag type, e.g. "RoutingPreference".
+  string type = 1 [(buf.validate.field).required = true];
+
+  // The tag value, e.g. "Internet".
+  string tag = 2 [(buf.validate.field).required = true];
+}
+
+// How instances receive template changes and OS image upgrades.
+message AzureVirtualMachineScaleSetUpgradePolicy {
+  // The upgrade mode. Unspecified applies Azure's default (MANUAL:
+  // template changes apply to NEW instances only; existing ones wait
+  // for a manual upgrade). AUTOMATIC upgrades all instances immediately
+  // (brief fleet-wide disruption); ROLLING upgrades in health-checked
+  // batches -- the production choice, requiring health monitoring.
+  // Fixed at creation.
+  AzureVirtualMachineScaleSetUpgradeMode mode = 1;
+
+  // ROLLING mode's batching contract: how much of the fleet upgrades at
+  // once and how much unhealth pauses the rollout. Required when mode
+  // is ROLLING.
+  AzureVirtualMachineScaleSetRollingUpgradePolicy rolling = 2;
+
+  // UNIFORM only: automatic OS image upgrades -- Azure rolls new image
+  // versions (e.g. "latest" marketplace releases) across the fleet
+  // automatically. Requires mode AUTOMATIC or ROLLING and health
+  // monitoring.
+  AzureVirtualMachineScaleSetAutomaticOsUpgrade automatic_os_upgrade = 3;
+
+  // UNIFORM only: the load-balancer health probe that reports instance
+  // health for rolling upgrades and instance repair, by probe ARM ID.
+  // Reference a probe through the load balancer's name-keyed map
+  // output, e.g. valueFrom fieldPath
+  // "status.outputs.probe_ids.http-health". FLEXIBLE sets use the
+  // application health extension instead.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef health_probe_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.probe_ids"
+  ];
+}
+
+// ROLLING upgrade batching.
+message AzureVirtualMachineScaleSetRollingUpgradePolicy {
+  // The maximum percent of the fleet upgraded in one batch (5-100).
+  int32 max_batch_instance_percent = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 5
+      lte: 100
+    }
+  ];
+
+  // The maximum percent of the fleet that may be unhealthy (from any
+  // cause) before the rollout pauses (5-100).
+  int32 max_unhealthy_instance_percent = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 5
+      lte: 100
+    }
+  ];
+
+  // The maximum percent of UPGRADED instances that may be unhealthy
+  // before the rollout pauses (0-100).
+  int32 max_unhealthy_upgraded_instance_percent = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 100
+    }
+  ];
+
+  // The wait between batches, as an ISO 8601 duration (e.g. "PT30S",
+  // "PT5M") -- health checks run during the pause.
+  string pause_time_between_batches = 4 [(buf.validate.field).required = true];
+
+  // Upgrade zone by zone instead of mixing zones in a batch. Requires
+  // zones.
+  bool cross_zone_upgrades_enabled = 5;
+
+  // Upgrade unhealthy instances first (they are already degraded, so
+  // upgrading them costs nothing).
+  bool prioritize_unhealthy_instances_enabled = 6;
+
+  // Surge new instances instead of upgrading in place: each batch
+  // creates fresh instances and deletes old ones after they pass health
+  // checks. Requires overprovision to be explicitly false.
+  bool maximum_surge_instances_enabled = 7;
+}
+
+// UNIFORM automatic OS image upgrades.
+message AzureVirtualMachineScaleSetAutomaticOsUpgrade {
+  // Whether Azure automatically rolls new OS image versions across the
+  // fleet.
+  bool enabled = 1;
+
+  // Disable the automatic rollback that restores the previous image
+  // when an upgrade batch fails health checks. Azure's default keeps
+  // rollback enabled -- the safer posture.
+  bool disable_automatic_rollback = 2;
+}
+
+// Spot (evictable, discounted) capacity settings. Presence makes the
+// fleet spot.
+message AzureVirtualMachineScaleSetSpot {
+  // What happens when Azure evicts an instance: DEALLOCATE stops it
+  // (compute billing stops, disks persist, restore can bring it back);
+  // DELETE removes it and its disks -- the usual fleet choice, letting
+  // autoscaling replace capacity. Fixed at creation.
+  AzureVirtualMachineScaleSetEvictionPolicy eviction_policy = 1 [(buf.validate.field).required = true];
+
+  // The maximum hourly price per instance in US dollars, or -1 (the
+  // default) to pay up to the on-demand price and never be evicted on
+  // price.
+  optional double max_bid_price = 2 [(buf.validate.field).double.gte = -1];
+
+  // UNIFORM only: automatically try to restore evicted spot instances
+  // when capacity returns. Presence enables it.
+  AzureVirtualMachineScaleSetSpotRestore restore = 3;
+
+  // FLEXIBLE only: mix spot and on-demand instances -- a guaranteed
+  // on-demand base plus a spot/on-demand ratio above it. The
+  // cost/availability middle ground for fleets that cannot be all-spot.
+  AzureVirtualMachineScaleSetPriorityMix priority_mix = 4;
+}
+
+// UNIFORM spot-restore settings. Presence enables it.
+message AzureVirtualMachineScaleSetSpotRestore {
+  // How long Azure keeps trying to restore evicted instances, as an ISO
+  // 8601 duration between PT15M and PT2H. Empty applies Azure's default
+  // (PT1H).
+  string timeout = 1;
+}
+
+// FLEXIBLE spot/on-demand mixing.
+message AzureVirtualMachineScaleSetPriorityMix {
+  // Instances guaranteed to run on-demand before any spot instance is
+  // considered (0-1000). Unset applies Azure's default (0).
+  optional int32 base_regular_count = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+
+  // The percentage of instances ABOVE the base that run on-demand
+  // (0-100; the rest are spot). Unset applies Azure's default (0 -- all
+  // spot above the base).
+  optional int32 regular_percentage_above_base = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+}
+
+// The scale set's managed identity.
+message AzureVirtualMachineScaleSetIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the scale set (UNIFORM only -- FLEXIBLE sets support
+  // USER_ASSIGNED only, ARM's contract); USER_ASSIGNED brings
+  // identities you manage and share; SYSTEM_AND_USER_ASSIGNED carries
+  // both.
+  AzureVirtualMachineScaleSetIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to instances, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so grants can be composed
+  // before the fleet exists.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "vmss_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// Trusted-launch / encryption posture.
+message AzureVirtualMachineScaleSetSecurity {
+  // UNIFORM only: UEFI secure boot -- only signed boot components load.
+  // With vtpm_enabled this is "trusted launch". Fixed at creation.
+  bool secure_boot_enabled = 1;
+
+  // UNIFORM only: virtual TPM -- measured boot and attestation;
+  // required for confidential guest-state encryption. Fixed at
+  // creation.
+  bool vtpm_enabled = 2;
+
+  // Encryption at host: instance data is encrypted on the compute host
+  // itself, covering temp disks and disk caches. The subscription must
+  // have the EncryptionAtHost feature registered.
+  bool encryption_at_host_enabled = 3;
+}
+
+// Automatic replacement of unhealthy instances.
+message AzureVirtualMachineScaleSetAutomaticInstanceRepair {
+  // Whether automatic repair is on. Requires health monitoring (the
+  // application health extension, or the health probe on UNIFORM sets).
+  bool enabled = 1 [(buf.validate.field).required = true];
+
+  // The grace period after an instance becomes available before repair
+  // kicks in, as an ISO 8601 duration between PT10M and PT90M. Empty
+  // applies Azure's default.
+  string grace_period = 2;
+
+  // What repair does. Unspecified applies Azure's default (REPLACE:
+  // delete and recreate). RESTART and REIMAGE are lighter-weight
+  // alternatives.
+  AzureVirtualMachineScaleSetRepairAction action = 3;
+}
+
+// Pre-termination scheduled event. Presence enables it.
+message AzureVirtualMachineScaleSetTerminationNotification {
+  // How long before termination the event fires, as an ISO 8601
+  // duration between PT5M and PT15M. Empty applies Azure's default
+  // (PT5M).
+  string timeout = 1;
+}
+
+// One VM extension installed onto every instance.
+message AzureVirtualMachineScaleSetExtension {
+  // The extension's name, unique within the scale set.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The extension publisher, e.g. "Microsoft.ManagedServices".
+  string publisher = 2 [(buf.validate.field).required = true];
+
+  // The extension type, e.g. "ApplicationHealthLinux" -- the health
+  // extension rolling upgrades and instance repair key on.
+  string type = 3 [(buf.validate.field).required = true];
+
+  // The extension version, e.g. "1.0" (major.minor).
+  string type_handler_version = 4 [(buf.validate.field).required = true];
+
+  // Whether the platform picks up new MINOR versions automatically.
+  // Azure's default is true.
+  optional bool auto_upgrade_minor_version_enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // UNIFORM only: whether the platform upgrades the extension across
+  // MAJOR versions automatically, for extensions that support it (ARM's
+  // orchestrated extension surface does not carry the toggle).
+  bool automatic_upgrade_enabled = 6;
+
+  // The extension's public settings, as a JSON object string.
+  string settings = 7;
+
+  // The extension's protected settings, as a JSON object string --
+  // credentials, connection strings, keys. Secret material. Conflicts
+  // with protected_settings_from_key_vault.
+  string protected_settings = 8 [(dev.planton.shared.options.sensitive) = true];
+
+  // Source the protected settings from a Key Vault secret instead of
+  // inlining them. Conflicts with protected_settings.
+  AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault protected_settings_from_key_vault = 9;
+
+  // Extensions that must provision before this one, by name.
+  repeated string provision_after_extensions = 10;
+
+  // A value that, when changed, forces the extension to re-run even if
+  // its settings did not change.
+  string force_update_tag = 11;
+
+  // FLEXIBLE only: whether an extension failure is suppressed instead
+  // of failing the instance deployment. Azure's default is false.
+  bool failure_suppression_enabled = 12;
+
+  option (buf.validate.message).cel = {
+    id: "vmss_extension_protected_settings_conflict"
+    message: "protected_settings and protected_settings_from_key_vault are mutually exclusive"
+    expression: "!(this.protected_settings != '' && has(this.protected_settings_from_key_vault))"
+  };
+}
+
+// Key-Vault-sourced protected settings for an extension.
+message AzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault {
+  // The secret's versioned URL, e.g.
+  // "https://{vault}.vault.azure.net/secrets/{name}/{version}".
+  string secret_url = 1 [(buf.validate.field).required = true];
+
+  // The vault holding the secret, by ARM ID. Can be a literal or a
+  // reference to an AzureKeyVault's id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_vault_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_id"
+  ];
+}
+
+// Boot diagnostics. Presence enables it.
+message AzureVirtualMachineScaleSetBootDiagnostics {
+  // The storage account to write console logs/screenshots to, by blob
+  // endpoint URI. Empty uses Azure's MANAGED storage -- the right
+  // default (no storage account to operate).
+  string storage_account_uri = 1;
+}
+
+// Placement constraints.
+message AzureVirtualMachineScaleSetPlacement {
+  // Co-locates instances with the group for minimal inter-VM latency
+  // (HPC/low-latency clusters), by ARM ID. Plain ARM ID. Conflicts with
+  // capacity_reservation_group_id. Fixed at creation.
+  string proximity_placement_group_id = 1;
+
+  // Consumes reserved capacity from a capacity reservation group, by
+  // ARM ID. Conflicts with proximity_placement_group_id and requires
+  // single_placement_group to be explicitly false. Fixed at creation.
+  string capacity_reservation_group_id = 2;
+
+  // UNIFORM only: lets Azure place instances on a dedicated host group,
+  // by ARM ID (single-tenant physical isolation). Fixed at creation.
+  string host_group_id = 3;
+
+  // Whether the fleet is confined to a single placement group (max 100
+  // instances). Unset lets Azure decide -- the right default. Large
+  // UNIFORM fleets set false; once false it can never return to true.
+  optional bool single_placement_group = 4;
+
+  option (buf.validate.message).cel = {
+    id: "vmss_capacity_reservation_conflicts_ppg"
+    message: "capacity_reservation_group_id and proximity_placement_group_id are mutually exclusive"
+    expression: "this.capacity_reservation_group_id == '' || this.proximity_placement_group_id == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vmss_capacity_reservation_needs_spg_false"
+    message: "capacity_reservation_group_id requires single_placement_group to be explicitly false"
+    expression: "this.capacity_reservation_group_id == '' || (has(this.single_placement_group) && !this.single_placement_group)"
+  };
+}
+
+// UNIFORM scale-in behavior.
+message AzureVirtualMachineScaleSetScaleIn {
+  // Which instances scale-in removes first. Unspecified applies Azure's
+  // default (DEFAULT: balance zones/domains, then highest instance
+  // IDs).
+  AzureVirtualMachineScaleSetScaleInRule rule = 1;
+
+  // Force-delete removed instances instead of the graceful path --
+  // faster scale-in, no drain.
+  bool force_deletion_enabled = 2;
+}
+
+// Certificates from a Key Vault installed at provisioning time.
+message AzureVirtualMachineScaleSetSecret {
+  // The vault holding the certificates, by ARM ID. Can be a literal or
+  // a reference to an AzureKeyVault's id output. The vault must be
+  // enabled for deployment.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_id"
+  ];
+
+  // The certificates to install from the vault.
+  repeated AzureVirtualMachineScaleSetSecretCertificate certificates = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One certificate installed from a Key Vault.
+message AzureVirtualMachineScaleSetSecretCertificate {
+  // The certificate's Key Vault secret URL (versioned), e.g.
+  // "https://{vault}.vault.azure.net/secrets/{name}/{version}".
+  string url = 1 [(buf.validate.field).required = true];
+
+  // For WINDOWS fleets: the certificate store to install into (e.g.
+  // "My"). Must stay empty on Linux.
+  string store = 2;
+}
+
+// A marketplace purchase plan (third-party images only).
+message AzureVirtualMachineScaleSetPlan {
+  // The plan name (the image SKU's plan id). Fixed at creation.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The product (offer id). Fixed at creation.
+  string product = 2 [(buf.validate.field).required = true];
+
+  // The publisher id. Fixed at creation.
+  string publisher = 3 [(buf.validate.field).required = true];
+}
+
+// One VM Application (gallery application) installed onto instances.
+message AzureVirtualMachineScaleSetGalleryApplication {
+  // The gallery application VERSION's ARM ID.
+  // Format: .../galleries/{g}/applications/{app}/versions/{v}
+  string version_id = 1 [(buf.validate.field).required = true];
+
+  // Installation order across the applications (lower installs first);
+  // 0 leaves ordering to Azure.
+  optional int32 order = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 2147483647
+  }];
+
+  // A free-form tag passed to the application's install script.
+  string tag = 3;
+
+  // A per-instance configuration blob overriding the version's default
+  // configuration, by URI.
+  string configuration_blob_uri = 4;
+}
+
+// Niche capability toggles.
+message AzureVirtualMachineScaleSetAdditionalCapabilities {
+  // Whether Ultra SSD data disks can attach to instances (requires
+  // zonal placement and a supported size).
+  bool ultra_ssd_enabled = 1;
+}
+
+// How the scale set orchestrates its instances. Unspecified means
+// FLEXIBLE (Azure's recommendation for new workloads).
+enum AzureVirtualMachineScaleSetOrchestrationMode {
+  // Not specified: FLEXIBLE.
+  azure_virtual_machine_scale_set_orchestration_mode_unspecified = 0;
+
+  // Instances are spread like a resilient VM group: per-OS patch
+  // orchestration, mixed-SKU profiles, spot/on-demand mixing, and
+  // standalone VMs can attach to the set.
+  FLEXIBLE = 1;
+
+  // The classic large-fleet mode: identical instances,
+  // overprovisioning, automatic OS image upgrades, spot restore,
+  // scale-in policy, gallery applications, trusted launch.
+  UNIFORM = 2;
+}
+
+// Mixed-SKU allocation strategies.
+enum AzureVirtualMachineScaleSetAllocationStrategy {
+  // Not specified -- invalid; the strategy is an explicit choice.
+  azure_virtual_machine_scale_set_allocation_strategy_unspecified = 0;
+
+  // Pick the cheapest available size first.
+  LOWEST_PRICE = 1;
+
+  // Pick the size most likely to allocate successfully.
+  CAPACITY_OPTIMIZED = 2;
+
+  // Honor the per-size ranks.
+  PRIORITIZED = 3;
+}
+
+// Host-caching modes for a disk.
+enum AzureVirtualMachineScaleSetDiskCaching {
+  // Not specified -- invalid; caching is an explicit choice per disk.
+  azure_virtual_machine_scale_set_disk_caching_unspecified = 0;
+
+  // No host caching: write-heavy disks, and required for Ultra/
+  // PremiumV2 data disks.
+  NONE = 1;
+
+  // Read caching only: re-read-heavy data, and required for ephemeral
+  // OS disks.
+  READ_ONLY = 2;
+
+  // Read/write caching: the general-purpose OS-disk mode.
+  READ_WRITE = 3;
+}
+
+// Storage SKUs valid for scale-set OS disks.
+enum AzureVirtualMachineScaleSetOsDiskStorageAccountType {
+  // Not specified -- invalid; the SKU is an explicit choice.
+  azure_virtual_machine_scale_set_os_disk_storage_account_type_unspecified = 0;
+
+  // HDD -- dev/test only.
+  STANDARD_LRS = 1;
+
+  // Standard SSD, locally redundant.
+  STANDARD_SSD_LRS = 2;
+
+  // Premium SSD, locally redundant -- the production default.
+  PREMIUM_LRS = 3;
+
+  // Standard SSD, zone redundant.
+  STANDARD_SSD_ZRS = 4;
+
+  // Premium SSD, zone redundant.
+  PREMIUM_ZRS = 5;
+}
+
+// Storage SKUs valid for scale-set data disks.
+enum AzureVirtualMachineScaleSetDataDiskStorageAccountType {
+  // Not specified -- invalid; the SKU is an explicit choice.
+  azure_virtual_machine_scale_set_data_disk_storage_account_type_unspecified = 0;
+
+  // HDD -- dev/test only.
+  DATA_STANDARD_LRS = 1;
+
+  // Standard SSD, locally redundant.
+  DATA_STANDARD_SSD_LRS = 2;
+
+  // Premium SSD, locally redundant.
+  DATA_PREMIUM_LRS = 3;
+
+  // Premium SSD, zone redundant.
+  DATA_PREMIUM_ZRS = 4;
+
+  // Ultra SSD: dialed IOPS/throughput, zonal instances only.
+  ULTRA_SSD_LRS = 5;
+
+  // Premium SSD v2: dialed IOPS/throughput, zonal instances only.
+  PREMIUM_V2_LRS = 6;
+
+  // Standard SSD, zone redundant.
+  DATA_STANDARD_SSD_ZRS = 7;
+}
+
+// How a data disk is created.
+enum AzureVirtualMachineScaleSetDataDiskCreateOption {
+  // Not specified: Azure's default (EMPTY).
+  azure_virtual_machine_scale_set_data_disk_create_option_unspecified = 0;
+
+  // A fresh empty disk per instance.
+  EMPTY = 1;
+
+  // Stamped from the source image's data disks.
+  FROM_IMAGE = 2;
+}
+
+// Ephemeral OS disk placement targets.
+enum AzureVirtualMachineScaleSetDiffDiskPlacement {
+  // Not specified: Azure's default (the cache disk when big enough).
+  azure_virtual_machine_scale_set_diff_disk_placement_unspecified = 0;
+
+  // The VM size's cache disk.
+  CACHE_DISK = 1;
+
+  // The VM size's temp/resource disk.
+  RESOURCE_DISK = 2;
+
+  // The VM size's local NVMe disks.
+  NVME_DISK = 3;
+}
+
+// Confidential guest-state encryption modes (UNIFORM only).
+enum AzureVirtualMachineScaleSetSecurityEncryptionType {
+  // Not specified: not confidential instances.
+  azure_virtual_machine_scale_set_security_encryption_type_unspecified = 0;
+
+  // Only the instance guest state is encrypted.
+  VM_GUEST_STATE_ONLY = 1;
+
+  // The OS disk and guest state are encrypted (requires secure boot).
+  DISK_WITH_VM_GUEST_STATE = 2;
+}
+
+// The address family of an IP configuration or per-instance public IP.
+enum AzureVirtualMachineScaleSetIpVersion {
+  // Not specified: IPv4.
+  azure_virtual_machine_scale_set_ip_version_unspecified = 0;
+
+  // IPv4.
+  IPV4 = 1;
+
+  // IPv6 (dual-stack templates pair it with an IPv4 configuration).
+  IPV6 = 2;
+}
+
+// Upgrade modes.
+enum AzureVirtualMachineScaleSetUpgradeMode {
+  // Not specified: Azure's default (MANUAL).
+  azure_virtual_machine_scale_set_upgrade_mode_unspecified = 0;
+
+  // Template changes apply to new instances only; existing instances
+  // wait for a manual upgrade.
+  MANUAL = 1;
+
+  // All instances upgrade immediately on template changes.
+  AUTOMATIC = 2;
+
+  // Instances upgrade in health-checked batches (requires health
+  // monitoring and a rolling policy) -- the production choice.
+  ROLLING = 3;
+}
+
+// The scale set's managed-identity flavor.
+enum AzureVirtualMachineScaleSetIdentityType {
+  // Not specified: no managed identity.
+  azure_virtual_machine_scale_set_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the scale set (UNIFORM only).
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring-your-own user-assigned identities (set identity_ids).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned identity and the listed user-assigned ones
+  // (UNIFORM only).
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// What happens when Azure evicts a spot instance.
+enum AzureVirtualMachineScaleSetEvictionPolicy {
+  // Not specified -- invalid; eviction behavior is an explicit choice.
+  azure_virtual_machine_scale_set_eviction_policy_unspecified = 0;
+
+  // Stop the instance (billing stops, disks persist, restorable).
+  DEALLOCATE = 1;
+
+  // Delete the instance and its disks -- the usual fleet choice.
+  DELETE = 2;
+}
+
+// What automatic instance repair does to an unhealthy instance.
+enum AzureVirtualMachineScaleSetRepairAction {
+  // Not specified: Azure's default (REPLACE).
+  azure_virtual_machine_scale_set_repair_action_unspecified = 0;
+
+  // Delete the unhealthy instance and create a fresh one.
+  REPLACE = 1;
+
+  // Restart the unhealthy instance in place.
+  RESTART = 2;
+
+  // Reimage the unhealthy instance (fresh OS disk, same identity).
+  REIMAGE = 3;
+}
+
+// UNIFORM scale-in selection rules.
+enum AzureVirtualMachineScaleSetScaleInRule {
+  // Not specified: Azure's default (DEFAULT).
+  azure_virtual_machine_scale_set_scale_in_rule_unspecified = 0;
+
+  // Balance zones/domains, then remove the highest instance IDs.
+  DEFAULT = 1;
+
+  // Remove the newest instances first.
+  NEWEST_VM = 2;
+
+  // Remove the oldest instances first.
+  OLDEST_VM = 3;
+}
+
+// Linux patch modes (ARM's Linux vocabulary; FLEXIBLE only).
+enum AzureVirtualMachineScaleSetLinuxPatchMode {
+  // Not specified: Azure's default (ImageDefault).
+  azure_virtual_machine_scale_set_linux_patch_mode_unspecified = 0;
+
+  // The image's own update configuration governs patching.
+  LINUX_IMAGE_DEFAULT = 1;
+
+  // Azure Update Manager orchestrates patching (requires the health
+  // extension).
+  LINUX_AUTOMATIC_BY_PLATFORM = 2;
+}
+
+// Windows patch modes (ARM's Windows vocabulary; FLEXIBLE only).
+enum AzureVirtualMachineScaleSetWindowsPatchMode {
+  // Not specified: Azure's default (AutomaticByOS).
+  azure_virtual_machine_scale_set_windows_patch_mode_unspecified = 0;
+
+  // Windows Update is fully manual.
+  WINDOWS_MANUAL = 1;
+
+  // Windows Update as configured in the image (Azure's default).
+  AUTOMATIC_BY_OS = 2;
+
+  // Azure Update Manager orchestrates patching (prerequisite for
+  // hotpatching; requires the health extension).
+  WINDOWS_AUTOMATIC_BY_PLATFORM = 3;
+}
+
+// Patch assessment modes (FLEXIBLE only).
+enum AzureVirtualMachineScaleSetPatchAssessmentMode {
+  // Not specified: Azure's default (ImageDefault).
+  azure_virtual_machine_scale_set_patch_assessment_mode_unspecified = 0;
+
+  // The image's own assessment behavior.
+  ASSESSMENT_IMAGE_DEFAULT = 1;
+
+  // Azure assesses pending patches daily.
+  ASSESSMENT_AUTOMATIC_BY_PLATFORM = 2;
+}
+
+// Azure Hybrid Benefit licensing for Windows fleets.
+enum AzureVirtualMachineScaleSetWindowsLicenseType {
+  // Not specified: regular pay-as-you-go image billing.
+  azure_virtual_machine_scale_set_windows_license_type_unspecified = 0;
+
+  // Explicitly no benefit (ARM's literal None).
+  WINDOWS_LICENSE_NONE = 1;
+
+  // Bring a Windows Client license.
+  WINDOWS_CLIENT = 2;
+
+  // Bring a Windows Server license.
+  WINDOWS_SERVER = 3;
+}
+
+// WinRM listener protocols.
+enum AzureVirtualMachineScaleSetWinrmProtocol {
+  // Not specified -- invalid; the protocol is an explicit choice.
+  azure_virtual_machine_scale_set_winrm_protocol_unspecified = 0;
+
+  // Unencrypted HTTP (port 5985) -- VNet-internal management only.
+  HTTP = 1;
+
+  // TLS (port 5986); requires certificate_url.
+  HTTPS = 2;
+}
+
+// Windows unattend.xml setup passes.
+enum AzureVirtualMachineScaleSetUnattendSetting {
+  // Not specified -- invalid; the pass is an explicit choice.
+  azure_virtual_machine_scale_set_unattend_setting_unspecified = 0;
+
+  // Automatic logon configuration (carries credentials).
+  AUTO_LOGON = 1;
+
+  // Commands run at first logon.
+  FIRST_LOGON_COMMANDS = 2;
+}
+
+// The NVA-acceleration auxiliary mode (preview).
+enum AzureVirtualMachineScaleSetAuxiliaryMode {
+  // Not specified: no auxiliary acceleration.
+  azure_virtual_machine_scale_set_auxiliary_mode_unspecified = 0;
+
+  // Optimizes connections-per-second for appliance fleets.
+  ACCELERATED_CONNECTIONS = 1;
+
+  // Floating IP support for the auxiliary path.
+  FLOATING = 2;
+}
+
+// The NVA-acceleration auxiliary SKU (A1 smallest to A8 largest).
+enum AzureVirtualMachineScaleSetAuxiliarySku {
+  // Not specified: no auxiliary SKU.
+  azure_virtual_machine_scale_set_auxiliary_sku_unspecified = 0;
+
+  // The smallest acceleration tier.
+  A1 = 1;
+
+  // The second acceleration tier.
+  A2 = 2;
+
+  // The mid acceleration tier.
+  A4 = 3;
+
+  // The largest acceleration tier.
+  A8 = 4;
+}

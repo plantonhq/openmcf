@@ -112,6 +112,14 @@ registry chain uses, and teardown runs in reverse across the merged chain.
 Every kind that appears in the annotation needs a verifier and an install
 profile, exactly like a registry prerequisite.
 
+A dependency whose `pulumi up` FAILS is still tracked for teardown: a failed
+update may have created any number of resources before erroring, and skipping
+its destroy would orphan them -- and, because Azure-style parents refuse to
+delete while children exist, a single orphaned fixture (say, a load balancer
+holding a frontend in the fixture subnet) blocks the entire reverse teardown
+chain behind it. Destroying a stack whose update failed is safe; it removes
+whatever was actually created.
+
 ## E2E Profiles
 
 Profiles are KRM-style YAML files (`apiVersion: qa.planton.dev/v1`) that

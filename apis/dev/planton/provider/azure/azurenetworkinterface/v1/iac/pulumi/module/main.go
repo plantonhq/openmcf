@@ -133,6 +133,59 @@ func Resources(ctx *pulumi.Context, stackInput *azurenetworkinterfacev1.AzureNet
 		}
 	}
 
+	// Load-balancer and Application Gateway memberships: expressed from
+	// the member side in Azure's model. Each membership is its own ARM
+	// association, so joining/leaving never touches the NIC itself.
+	for _, config := range spec.IpConfigurations {
+		for i, poolId := range config.LoadBalancerBackendAddressPoolIds {
+			if poolId.GetValue() == "" {
+				continue
+			}
+			if _, err := network.NewNetworkInterfaceBackendAddressPoolAssociation(ctx,
+				fmt.Sprintf("%s-%s-lb-pool-%d", spec.Name, config.Name, i),
+				&network.NetworkInterfaceBackendAddressPoolAssociationArgs{
+					NetworkInterfaceId:   createdNetworkInterface.ID(),
+					IpConfigurationName:  pulumi.String(config.Name),
+					BackendAddressPoolId: pulumi.String(poolId.GetValue()),
+				},
+				pulumi.Provider(azureProvider)); err != nil {
+				return errors.Wrapf(err, "failed to associate load balancer backend pool %d with ip configuration %s", i, config.Name)
+			}
+		}
+		// Single-target inbound NAT rules: the load balancer declares the
+		// port forward, this association picks the receiving instance.
+		for i, natRuleId := range config.LoadBalancerInboundNatRuleIds {
+			if natRuleId.GetValue() == "" {
+				continue
+			}
+			if _, err := network.NewNetworkInterfaceNatRuleAssociation(ctx,
+				fmt.Sprintf("%s-%s-lb-nat-%d", spec.Name, config.Name, i),
+				&network.NetworkInterfaceNatRuleAssociationArgs{
+					NetworkInterfaceId:  createdNetworkInterface.ID(),
+					IpConfigurationName: pulumi.String(config.Name),
+					NatRuleId:           pulumi.String(natRuleId.GetValue()),
+				},
+				pulumi.Provider(azureProvider)); err != nil {
+				return errors.Wrapf(err, "failed to associate inbound NAT rule %d with ip configuration %s", i, config.Name)
+			}
+		}
+		for i, poolId := range config.ApplicationGatewayBackendAddressPoolIds {
+			if poolId == "" {
+				continue
+			}
+			if _, err := network.NewNetworkInterfaceApplicationGatewayBackendAddressPoolAssociation(ctx,
+				fmt.Sprintf("%s-%s-agw-pool-%d", spec.Name, config.Name, i),
+				&network.NetworkInterfaceApplicationGatewayBackendAddressPoolAssociationArgs{
+					NetworkInterfaceId:   createdNetworkInterface.ID(),
+					IpConfigurationName:  pulumi.String(config.Name),
+					BackendAddressPoolId: pulumi.String(poolId),
+				},
+				pulumi.Provider(azureProvider)); err != nil {
+				return errors.Wrapf(err, "failed to associate application gateway backend pool %d with ip configuration %s", i, config.Name)
+			}
+		}
+	}
+
 	// Export stack outputs from the created resource.
 	ctx.Export(OpNetworkInterfaceId, createdNetworkInterface.ID())
 	ctx.Export(OpNetworkInterfaceName, createdNetworkInterface.Name)

@@ -215,7 +215,7 @@ questions.
 | `proximityPlacementGroupId` | "As physically close as possible?" | Minimal inter-VM latency for HPC and chatty clusters -- the opposite trade of zone spreading. |
 | `capacityReservationGroupId` | "Is capacity guaranteed?" | Consumes reserved capacity for burst/DR events -- capacity insurance, not fault isolation. |
 | `dedicatedHostId` / `dedicatedHostGroupId` | "Whose hardware?" | Single-tenant physical isolation for compliance/licensing; pin a host or let Azure pick within the group (mutually exclusive). |
-| `virtualMachineScaleSetId` (+ `platformFaultDomain`) | "Managed fault spreading for an individual VM?" | Attaches the VM to a FLEXIBLE-orchestration scale set; optionally pin the fault domain. Fixed at creation. |
+| `virtualMachineScaleSetId` (+ `platformFaultDomain`) | "Managed fault spreading for an individual VM?" | Attaches the VM to a FLEXIBLE-orchestration scale set (value-or-ref against AzureVirtualMachineScaleSet's `scale_set_id` output); optionally pin the fault domain. Fixed at creation. |
 
 The spec enforces the real conflicts up front: zone XOR availability set;
 capacity reservations cannot combine with availability sets or proximity

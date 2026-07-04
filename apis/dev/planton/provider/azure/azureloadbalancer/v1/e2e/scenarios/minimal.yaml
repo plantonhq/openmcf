@@ -1,0 +1,71 @@
+# Minimal AzureLoadBalancer scenario: a PUBLIC Standard load balancer
+# carrying the full traffic surface in one document -- frontend (the
+# public IP fixture), a backend pool, an HTTP health probe, a
+# load-balancing rule with TCP reset, a single-target inbound NAT rule,
+# and an explicit outbound SNAT rule. The outbound rule is the reason
+# this scenario is public: outbound rules are only legal on public
+# frontends, so an internal scenario could never prove that family.
+#
+# The public IP is a scenario-declared extra fixture (see the
+# annotation): frontends are OPTIONAL references (public IP, prefix, or
+# subnet), so no address kind belongs in the registry prerequisites.
+# Pool membership is deliberately absent -- it is expressed from the
+# member side and proven by the NIC's lb-membership scenario.
+apiVersion: azure.planton.dev/v1
+kind: AzureLoadBalancer
+metadata:
+  name: planton-oss-e2e-azureloadbalancer-smoke
+  id: planton-oss-e2e-azureloadbalancer-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureloadbalancer
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-extra-prerequisites: "AzurePublicIp"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-lb-smoke
+  frontendIpConfigurations:
+    - name: public
+      publicIpAddressId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-pip
+  backendPools:
+    - name: web
+  healthProbes:
+    - name: http-health
+      protocol: PROBE_HTTP
+      port: 80
+      requestPath: /healthz
+      probeThreshold: 2
+  rules:
+    - name: http
+      protocol: TCP
+      frontendPort: 80
+      backendPort: 80
+      backendPoolNames: [web]
+      probeName: http-health
+      tcpResetEnabled: true
+      # Required alongside the explicit outbound rule on the same pool.
+      disableOutboundSnat: true
+  natRules:
+    - name: ssh-admin
+      protocol: TCP
+      frontendPort: 2222
+      backendPort: 22
+  outboundRules:
+    - name: egress
+      frontendIpConfigurationNames: [public]
+      backendPoolName: web
+      protocol: ALL
+      allocatedOutboundPorts: 1024
+  tags:
+    e2e-suite: azure
+    purpose: smoke

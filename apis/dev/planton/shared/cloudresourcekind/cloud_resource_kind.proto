@@ -726,10 +726,15 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azagw"
   }];
+  // AzureResourceGroup is a prerequisite because a load balancer is
+  // created inside a referenced resource group (frontends additionally
+  // reference subnets or public IPs, but neither is universally
+  // required, so they are not registry prerequisites).
   AzureLoadBalancer = 417 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azlb"
+    prerequisites: [AzureResourceGroup]
   }];
   // AzureResourceGroup is a prerequisite because a route table is created
   // inside a referenced resource group in composed environments.
@@ -788,6 +793,16 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azdisk"
     prerequisites: [AzureResourceGroup]
+  }];
+  // AzureSubnet is a prerequisite because every scale-set instance's
+  // network interface deploys into a subnet (the virtual network and
+  // resource group chain transitively through the subnet's own
+  // prerequisite).
+  AzureVirtualMachineScaleSet = 424 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azvmss"
+    prerequisites: [AzureSubnet]
   }];
   AzurePostgresqlFlexibleServer = 430 [(kind_meta) = {
     provider: azure

@@ -241,7 +241,11 @@ const (
 	// inside a referenced resource group in composed environments.
 	CloudResourceKind_AzurePrivateDnsZone     CloudResourceKind = 415
 	CloudResourceKind_AzureApplicationGateway CloudResourceKind = 416
-	CloudResourceKind_AzureLoadBalancer       CloudResourceKind = 417
+	// AzureResourceGroup is a prerequisite because a load balancer is
+	// created inside a referenced resource group (frontends additionally
+	// reference subnets or public IPs, but neither is universally
+	// required, so they are not registry prerequisites).
+	CloudResourceKind_AzureLoadBalancer CloudResourceKind = 417
 	// AzureResourceGroup is a prerequisite because a route table is created
 	// inside a referenced resource group in composed environments.
 	CloudResourceKind_AzureRouteTable CloudResourceKind = 418
@@ -266,7 +270,12 @@ const (
 	CloudResourceKind_AzureNetworkInterface CloudResourceKind = 422
 	// AzureResourceGroup is a prerequisite because a managed disk is created
 	// inside a resource group.
-	CloudResourceKind_AzureManagedDisk              CloudResourceKind = 423
+	CloudResourceKind_AzureManagedDisk CloudResourceKind = 423
+	// AzureSubnet is a prerequisite because every scale-set instance's
+	// network interface deploys into a subnet (the virtual network and
+	// resource group chain transitively through the subnet's own
+	// prerequisite).
+	CloudResourceKind_AzureVirtualMachineScaleSet   CloudResourceKind = 424
 	CloudResourceKind_AzurePostgresqlFlexibleServer CloudResourceKind = 430
 	CloudResourceKind_AzureRedisCache               CloudResourceKind = 431
 	CloudResourceKind_AzureCosmosdbAccount          CloudResourceKind = 432
@@ -724,6 +733,7 @@ var (
 		421:  "AzurePublicIpPrefix",
 		422:  "AzureNetworkInterface",
 		423:  "AzureManagedDisk",
+		424:  "AzureVirtualMachineScaleSet",
 		430:  "AzurePostgresqlFlexibleServer",
 		431:  "AzureRedisCache",
 		432:  "AzureCosmosdbAccount",
@@ -1151,6 +1161,7 @@ var (
 		"AzurePublicIpPrefix":                     421,
 		"AzureNetworkInterface":                   422,
 		"AzureManagedDisk":                        423,
+		"AzureVirtualMachineScaleSet":             424,
 		"AzurePostgresqlFlexibleServer":           430,
 		"AzureRedisCache":                         431,
 		"AzureCosmosdbAccount":                    432,
@@ -1722,7 +1733,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*ܗ\x01\n" +
+	"\x02v1\x10\x01*\x98\x98\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1832,16 +1843,16 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14AzurePrivateEndpoint\x10\x9e\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azpe\x12.\n" +
 	"\x13AzurePrivateDnsZone\x10\x9f\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azpdns:\x02\x90\x03\x12-\n" +
-	"\x17AzureApplicationGateway\x10\xa0\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azagw\x12&\n" +
-	"\x11AzureLoadBalancer\x10\xa1\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azlb\x12(\n" +
+	"\x17AzureApplicationGateway\x10\xa0\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azagw\x12*\n" +
+	"\x11AzureLoadBalancer\x10\xa1\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azlb:\x02\x90\x03\x12(\n" +
 	"\x0fAzureRouteTable\x10\xa2\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azrt:\x02\x90\x03\x12F\n" +
 	"%AzurePrivateDnsZoneVirtualNetworkLink\x10\xa3\x03\x1a\x1a\xa2\xf7\x04\x16\b\r\x10\x01\"\n" +
 	"azpdnslink:\x04\x9f\x03\x96\x03\x125\n" +
 	"\x1aAzureVirtualNetworkPeering\x10\xa4\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azpeer:\x02\x96\x03\x120\n" +
 	"\x13AzurePublicIpPrefix\x10\xa5\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazpippfx:\x02\x90\x03\x12/\n" +
 	"\x15AzureNetworkInterface\x10\xa6\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznic:\x02\x9b\x03\x12+\n" +
-	"\x10AzureManagedDisk\x10\xa7\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azdisk:\x02\x90\x03\x122\n" +
+	"\x10AzureManagedDisk\x10\xa7\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azdisk:\x02\x90\x03\x126\n" +
+	"\x1bAzureVirtualMachineScaleSet\x10\xa8\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azvmss:\x02\x9b\x03\x122\n" +
 	"\x1dAzurePostgresqlFlexibleServer\x10\xae\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azpg\x12%\n" +
 	"\x0fAzureRedisCache\x10\xaf\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azred\x12*\n" +

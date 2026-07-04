@@ -265,12 +265,11 @@ func (AzureNetworkInterfaceAuxiliarySku) EnumDescriptor() ([]byte, []int) {
 //     front a referenced AzurePublicIp,
 //   - a network security group attaches here (network_security_group_id) to
 //     filter this NIC's traffic specifically -- the per-workload complement
-//     to the subnet-level NSG attachment.
-//
-// Load-balancer backend-pool membership is also expressed NIC-side in
-// Azure's model; it is deliberately not spec surface yet because the load
-// balancer does not yet export per-pool IDs to reference (it arrives with
-// the load-balancer depth work).
+//     to the subnet-level NSG attachment,
+//   - load-balancer membership is expressed HERE, from the member side
+//     (Azure's own model): each ip_configuration lists the backend pools it
+//     joins and the inbound NAT rules it completes, referencing the load
+//     balancer's exported per-name IDs.
 type AzureNetworkInterfaceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure region the NIC lives in, e.g. "eastus". Must match the
@@ -519,12 +518,33 @@ type AzureNetworkInterfaceIpConfiguration struct {
 	// (spec-level validation enforces both).
 	Primary bool `protobuf:"varint,7,opt,name=primary,proto3" json:"primary,omitempty"`
 	// The frontend IP configuration of a Gateway-SKU load balancer that
-	// chains this NIC into a gateway appliance path, by ARM ID. A niche
-	// service-chaining seam; plain ARM ID because gateway load-balancer
-	// frontends are addressed as sub-resources of a load balancer.
+	// chains this NIC into a gateway appliance path, by ARM ID
+	// (referenceable via the gateway load balancer's
+	// frontend_ip_configuration_ids output). A niche service-chaining seam.
 	GatewayLoadBalancerFrontendIpConfigurationId string `protobuf:"bytes,8,opt,name=gateway_load_balancer_frontend_ip_configuration_id,json=gatewayLoadBalancerFrontendIpConfigurationId,proto3" json:"gateway_load_balancer_frontend_ip_configuration_id,omitempty"`
-	unknownFields                                protoimpl.UnknownFields
-	sizeCache                                    protoimpl.SizeCache
+	// Load-balancer backend pools this configuration joins, by pool ARM
+	// ID -- membership is expressed from the member side in Azure's model.
+	// Reference a pool through the load balancer's name-keyed map output,
+	// e.g. valueFrom fieldPath "status.outputs.backend_pool_ids.web".
+	// Each membership is realized as its own association resource, so
+	// joining and leaving pools never touches the NIC itself.
+	LoadBalancerBackendAddressPoolIds []*v1.StringValueOrRef `protobuf:"bytes,9,rep,name=load_balancer_backend_address_pool_ids,json=loadBalancerBackendAddressPoolIds,proto3" json:"load_balancer_backend_address_pool_ids,omitempty"`
+	// Single-target inbound NAT rules this configuration completes, by
+	// rule ARM ID -- the load balancer declares the rule (frontend port ->
+	// backend port) and the NIC-side association picks which instance
+	// receives the forwarded traffic. Reference a rule through the load
+	// balancer's name-keyed map output, e.g. valueFrom fieldPath
+	// "status.outputs.nat_rule_ids.ssh-admin". Realized as association
+	// resources.
+	LoadBalancerInboundNatRuleIds []*v1.StringValueOrRef `protobuf:"bytes,10,rep,name=load_balancer_inbound_nat_rule_ids,json=loadBalancerInboundNatRuleIds,proto3" json:"load_balancer_inbound_nat_rule_ids,omitempty"`
+	// Application Gateway backend pools this configuration joins, by pool
+	// ARM ID. Plain ARM IDs: the Application Gateway does not export
+	// per-pool IDs yet (they arrive with its depth work). Realized as
+	// association resources.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/applicationGateways/{name}/backendAddressPools/{pool}
+	ApplicationGatewayBackendAddressPoolIds []string `protobuf:"bytes,11,rep,name=application_gateway_backend_address_pool_ids,json=applicationGatewayBackendAddressPoolIds,proto3" json:"application_gateway_backend_address_pool_ids,omitempty"`
+	unknownFields                           protoimpl.UnknownFields
+	sizeCache                               protoimpl.SizeCache
 }
 
 func (x *AzureNetworkInterfaceIpConfiguration) Reset() {
@@ -613,6 +633,27 @@ func (x *AzureNetworkInterfaceIpConfiguration) GetGatewayLoadBalancerFrontendIpC
 	return ""
 }
 
+func (x *AzureNetworkInterfaceIpConfiguration) GetLoadBalancerBackendAddressPoolIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.LoadBalancerBackendAddressPoolIds
+	}
+	return nil
+}
+
+func (x *AzureNetworkInterfaceIpConfiguration) GetLoadBalancerInboundNatRuleIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.LoadBalancerInboundNatRuleIds
+	}
+	return nil
+}
+
+func (x *AzureNetworkInterfaceIpConfiguration) GetApplicationGatewayBackendAddressPoolIds() []string {
+	if x != nil {
+		return x.ApplicationGatewayBackendAddressPoolIds
+	}
+	return nil
+}
+
 var File_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_rawDesc = "" +
@@ -642,7 +683,7 @@ const file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_rawDes
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9e\x04\xbaH\x9a\x04\x1a\xa1\x01\n" +
 	"\x1dnic_auxiliary_mode_sku_paired\x12Gauxiliary_mode and auxiliary_sku must be set together (both or neither)\x1a7(this.auxiliary_mode == 0) == (this.auxiliary_sku == 0)\x1a\xd9\x01\n" +
 	"0nic_first_ip_configuration_primary_when_multiple\x12\\when a NIC has multiple ip_configurations, the first must be marked primary (ARM's contract)\x1aGthis.ip_configurations.size() <= 1 || this.ip_configurations[0].primary\x1a\x97\x01\n" +
-	"(nic_at_most_one_primary_ip_configuration\x122at most one ip_configuration may be marked primary\x1a7this.ip_configurations.filter(c, c.primary).size() <= 1\"\x9a\t\n" +
+	"(nic_at_most_one_primary_ip_configuration\x122at most one ip_configuration may be marked primary\x1a7this.ip_configurations.filter(c, c.primary).size() <= 1\"\xd1\f\n" +
 	"$AzureNetworkInterfaceIpConfiguration\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12r\n" +
@@ -652,7 +693,11 @@ const file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_rawDes
 	"\x12private_ip_version\x18\x05 \x01(\x0e2Z.dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpVersionR\x10privateIpVersion\x12\x89\x01\n" +
 	"\x14public_ip_address_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\x12\x18\n" +
 	"\aprimary\x18\a \x01(\bR\aprimary\x12h\n" +
-	"2gateway_load_balancer_frontend_ip_configuration_id\x18\b \x01(\tR,gatewayLoadBalancerFrontendIpConfigurationId:\x80\x03\xbaH\xfc\x02\x1a\xc1\x01\n" +
+	"2gateway_load_balancer_frontend_ip_configuration_id\x18\b \x01(\tR,gatewayLoadBalancerFrontendIpConfigurationId\x12\xaf\x01\n" +
+	"&load_balancer_backend_address_pool_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xa1\x03\x92\xd4a\x1fstatus.outputs.backend_pool_idsR!loadBalancerBackendAddressPoolIds\x12\xa3\x01\n" +
+	"\"load_balancer_inbound_nat_rule_ids\x18\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xa1\x03\x92\xd4a\x1bstatus.outputs.nat_rule_idsR\x1dloadBalancerInboundNatRuleIds\x12]\n" +
+	",application_gateway_backend_address_pool_ids\x18\v \x03(\tR'applicationGatewayBackendAddressPoolIds:\x80\x03\xbaH\xfc\x02\x1a\xc1\x01\n" +
 	"&nic_static_allocation_requires_address\x12QSTATIC private_ip_allocation requires private_ip_address (and DYNAMIC forbids it)\x1aD(this.private_ip_allocation == 2) == (this.private_ip_address != '')\x1a\xb5\x01\n" +
 	"\x18nic_ipv4_requires_subnet\x12dan IPv4 ip_configuration requires subnet_id (IPv6 configurations inherit the NIC's subnet placement)\x1a3this.private_ip_version == 2 || has(this.subnet_id)*\x82\x01\n" +
 	"(AzureNetworkInterfacePrivateIpAllocation\x12=\n" +
@@ -712,11 +757,13 @@ var file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_depIdxs 
 	0,  // 7: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.private_ip_allocation:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpAllocation
 	1,  // 8: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.private_ip_version:type_name -> dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpVersion
 	7,  // 9: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.public_ip_address_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	7,  // 10: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.load_balancer_backend_address_pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 11: dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfiguration.load_balancer_inbound_nat_rule_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_init() }

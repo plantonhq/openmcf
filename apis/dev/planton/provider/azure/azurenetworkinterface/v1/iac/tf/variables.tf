@@ -58,6 +58,18 @@ variable "spec" {
 
       # Gateway-SKU load balancer frontend for service chaining (niche).
       gateway_load_balancer_frontend_ip_configuration_id = optional(string)
+
+      # Load-balancer backend pools this configuration joins, as resolved
+      # ARM IDs; each membership is realized as an association resource.
+      load_balancer_backend_address_pool_ids = optional(list(string), [])
+
+      # Single-target inbound NAT rules this configuration completes, as
+      # resolved ARM IDs; realized as association resources.
+      load_balancer_inbound_nat_rule_ids = optional(list(string), [])
+
+      # Application Gateway backend pools this configuration joins, as
+      # ARM IDs; realized as association resources.
+      application_gateway_backend_address_pool_ids = optional(list(string), [])
     }))
 
     # DNS servers overriding the virtual network's DNS for this NIC only.

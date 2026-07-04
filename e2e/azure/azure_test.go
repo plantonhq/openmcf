@@ -257,6 +257,24 @@ func TestAzureContainerRegistry_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecontainerregistry", "terraform")
 }
 
+// --- Azure Load Balancer (composed: fixture RG + extra-fixture public IP -> public LB with pool, probe, rule, NAT rule, and outbound rule) ---
+
+func TestAzureLoadBalancer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureloadbalancer", "pulumi")
+}
+func TestAzureLoadBalancer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureloadbalancer", "terraform")
+}
+
+// --- Azure Virtual Machine Scale Set (composed: fixture RG -> VNet -> subnet -> one-instance fleet, BOTH orchestration modes) ---
+
+func TestAzureVirtualMachineScaleSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualmachinescaleset", "pulumi")
+}
+func TestAzureVirtualMachineScaleSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualmachinescaleset", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

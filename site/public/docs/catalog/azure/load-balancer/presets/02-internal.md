@@ -1,6 +1,6 @@
 ---
 title: "Internal Load Balancer"
-description: "This preset creates an internal (private VNet) Azure Load Balancer with Standard SKU, using a subnet frontend instead of a public IP. Traffic is distributed across backend instances using a private..."
+description: "This preset creates an internal (private VNet) Azure Load Balancer: a zone-redundant frontend with a pinned static private address in your subnet, an `app` backend pool, a TCP health probe, and a TCP..."
 type: "preset"
 rank: "02"
 presetSlug: "02-internal"
@@ -13,32 +13,32 @@ order: 2
 
 # Internal Load Balancer
 
-This preset creates an internal (private VNet) Azure Load Balancer with Standard SKU, using a subnet frontend instead of a public IP. Traffic is distributed across backend instances using a private IP address within the VNet. This is the standard configuration for internal services that should not be exposed to the internet -- such as internal APIs, microservice tiers, or database connection pools.
+This preset creates an internal (private VNet) Azure Load Balancer: a zone-redundant frontend with a pinned static private address in your subnet, an `app` backend pool, a TCP health probe, and a TCP rule on port 8080 with a raised idle timeout for long-lived east-west connections.
 
 ## When to Use
 
-- Internal microservices or APIs that receive traffic only from within the VNet or peered networks
-- Database or middleware tiers in a multi-tier architecture where the load balancer must stay private
-- AKS internal ingress or internal service endpoints that need a stable private IP
-- Workloads that require a predictable private frontend IP for DNS or firewall rules
+- Load balancing internal service tiers (APIs, databases, middleware) that must never be internet-reachable
+- A stable, DNS-addressable private entry point for a service backed by VMs or a scale set
+- Multi-tier architectures where a public LB fronts the web tier and this internal LB fronts the app tier
 
 ## Key Configuration Choices
 
-- **Internal frontend** (`subnetId`) -- Uses a private IP from the specified subnet instead of a public IP. No internet exposure
-- **Optional static IP** (`privateIpAddress`) -- Set a specific IP within the subnet range for predictable addressing. Omit for dynamic allocation
-- **TCP health probe** (`healthProbes: Tcp on port 8080`) -- Simple TCP connectivity check every 15 seconds; marks backend unhealthy after 2 failures
-- **TCP rule on port 8080** (`rules: Tcp 8080→8080`) -- Routes internal traffic on port 8080 to backend port 8080
+- **Internal frontend with a pinned address** (`subnetId` + `privateIpAddress`) -- DNS records, firewall rules, and service discovery stay stable across redeployments
+- **Zone-redundant frontend** (`zones: ["1","2","3"]`) -- the private address survives a zone outage; changing zones later replaces the frontend, so pick the posture up front
+- **TCP probe** -- port-open health checking; switch to `PROBE_HTTP` with a `requestPath` when the workload exposes a health endpoint
+- **Raised idle timeout with TCP reset** -- long-lived connections aren't silently dropped, and both ends learn immediately when they are
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<azure-region>` | Azure region (must match the subnet's VNet region) | Your regional deployment strategy |
+| `<azure-region>` | Azure region (must match backend resources) | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
 | `<your-lb-name>` | Name for the load balancer (unique within resource group) | Your naming convention |
-| `<subnet-resource-id>` | Full ARM resource ID of the target subnet | Azure portal or `AzureSubnet` status outputs |
-| `<private-ip-address>` | Static private IP within the subnet range (or remove line for dynamic) | Your network IP plan |
+| `<subnet-resource-id>` | Full ARM resource ID of the frontend subnet | `AzureSubnet` status outputs |
+| `<static-private-ip>` | An unassigned address inside the subnet's range | Your IP allocation plan |
 
 ## Related Presets
 
-- **01-public** -- Use instead for internet-facing load balancing with a public IP frontend
+- **01-public** -- internet-facing load balancing
+- **03-outbound-and-nat** -- explicit SNAT egress and admin port forwarding

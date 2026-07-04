@@ -943,6 +943,39 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureLoadBalancer: the name-keyed maps are the composition
+			// seams -- backend_pool_ids is what NIC ip_configurations and
+			// scale-set network profiles join, nat_rule_ids is what a NIC's
+			// NAT-rule association completes, probe_ids is what a scale
+			// set's rolling-upgrade health probe references.
+			name: "AzureLoadBalancer",
+			kind: cloudresourcekind.CloudResourceKind_AzureLoadBalancer,
+			rawOutputs: map[string]interface{}{
+				"load_balancer_id":     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/loadBalancers/app-lb",
+				"load_balancer_name":   "app-lb",
+				"private_ip_address":   "10.0.1.6",
+				"private_ip_addresses": []interface{}{"10.0.1.6"},
+				"frontend_ip_configuration_ids": map[string]interface{}{
+					"internal": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/loadBalancers/app-lb/frontendIPConfigurations/internal",
+				},
+				"backend_pool_ids": map[string]interface{}{
+					"web": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/loadBalancers/app-lb/backendAddressPools/web",
+				},
+				"probe_ids": map[string]interface{}{
+					"http-health": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/loadBalancers/app-lb/probes/http-health",
+				},
+				"nat_rule_ids": map[string]interface{}{
+					"ssh-admin": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/loadBalancers/app-lb/inboundNatRules/ssh-admin",
+				},
+			},
+			mustPopulate: []string{
+				"load_balancer_id", "load_balancer_name",
+				"private_ip_address", "private_ip_addresses",
+				"frontend_ip_configuration_ids", "backend_pool_ids",
+				"probe_ids", "nat_rule_ids",
+			},
+		},
+		{
 			// AzureNatGateway: the gateway's ARM id (the join key subnets
 			// attach through), its name, and the ARM-assigned GUID.
 			name: "AzureNatGateway",
@@ -1075,6 +1108,24 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 			mustPopulate: []string{
 				"disk_id", "disk_name", "disk_size_gb",
+			},
+		},
+		{
+			// AzureVirtualMachineScaleSet: the scale set's ARM id is the
+			// seam a standalone VM's Flexible-attach consumes and what
+			// autoscale/monitoring scope to; the system-assigned principal
+			// is the AzureRoleAssignment seam (UNIFORM sets).
+			name: "AzureVirtualMachineScaleSet",
+			kind: cloudresourcekind.CloudResourceKind_AzureVirtualMachineScaleSet,
+			rawOutputs: map[string]interface{}{
+				"scale_set_id":                          "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Compute/virtualMachineScaleSets/web-fleet",
+				"scale_set_name":                        "web-fleet",
+				"unique_id":                             "88888888-8888-8888-8888-888888888888",
+				"system_assigned_identity_principal_id": "99999999-9999-9999-9999-999999999999",
+			},
+			mustPopulate: []string{
+				"scale_set_id", "scale_set_name", "unique_id",
+				"system_assigned_identity_principal_id",
 			},
 		},
 		{

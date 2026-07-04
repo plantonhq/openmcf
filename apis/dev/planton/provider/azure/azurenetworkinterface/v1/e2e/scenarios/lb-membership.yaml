@@ -1,0 +1,48 @@
+# AzureNetworkInterface load-balancer membership scenario: proves the
+# member-side association seams live -- the NIC's ip_configuration joins
+# the fixture load balancer's "web" pool (referencing the LB's
+# name-keyed backend_pool_ids map output) and completes its
+# single-target "ssh-admin" NAT rule (nat_rule_ids map output). Both are
+# realized as association resources; this scenario is their live proof.
+#
+# The load balancer is a scenario-declared extra fixture (see the
+# annotation): membership is an OPTIONAL seam, so the LB kind must never
+# pollute the NIC's registry prerequisites. The explicit fieldPath
+# reaches into the map outputs by sub-resource name.
+apiVersion: azure.planton.dev/v1
+kind: AzureNetworkInterface
+metadata:
+  name: planton-oss-e2e-azurenetworkinterface-lb-membership
+  id: planton-oss-e2e-azurenetworkinterface-lb-membership
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurenetworkinterface
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-extra-prerequisites: "AzureLoadBalancer"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-nic-lb-member
+  ipConfigurations:
+    - name: primary
+      subnetId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-subnet
+      loadBalancerBackendAddressPoolIds:
+        - valueFrom:
+            name: planton-oss-e2e-azure-fixture-lb
+            fieldPath: status.outputs.backend_pool_ids.web
+      loadBalancerInboundNatRuleIds:
+        - valueFrom:
+            name: planton-oss-e2e-azure-fixture-lb
+            fieldPath: status.outputs.nat_rule_ids.ssh-admin
+  tags:
+    e2e-suite: azure
+    purpose: lb-membership

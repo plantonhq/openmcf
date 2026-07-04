@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	auth0v1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1"
+	azurelbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloadbalancer/v1"
 	gcpdnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnszone/v1"
 	gcpsubnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1"
 	k8spgv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1"
@@ -60,6 +61,56 @@ func TestPopulate_RepeatedString(t *testing.T) {
 	}
 	if msg.GetNameservers()[2] != "ns-9012.awsdns-34.net" {
 		t.Errorf("nameservers[2]: expected %q, got %q", "ns-9012.awsdns-34.net", msg.GetNameservers()[2])
+	}
+}
+
+func TestPopulate_HyphenatedFieldNames(t *testing.T) {
+	// Field-name normalization happens per segment at lookup time; a
+	// hyphenated IaC output name still lands on its snake_case proto field.
+	msg := &gcpdnsv1.GcpDnsZoneStackOutputs{}
+	outputs := map[string]string{
+		"zone-id":   "zone-123",
+		"zone-name": "example-zone",
+	}
+
+	if err := populateMessage(msg, outputs); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if msg.GetZoneId() != "zone-123" {
+		t.Errorf("zone_id: expected %q, got %q", "zone-123", msg.GetZoneId())
+	}
+	if msg.GetZoneName() != "example-zone" {
+		t.Errorf("zone_name: expected %q, got %q", "example-zone", msg.GetZoneName())
+	}
+}
+
+func TestPopulate_MapEntriesFromDottedKeys(t *testing.T) {
+	// The flattener emits one dotted key per map entry
+	// ("backend_pool_ids.web" = id). Map keys are user data -- pool or
+	// rule names -- and must be preserved verbatim, hyphens included.
+	msg := &azurelbv1.AzureLoadBalancerStackOutputs{}
+	outputs := map[string]string{
+		"load_balancer_id":              "/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/loadBalancers/app-lb",
+		"backend_pool_ids.web":          "/subscriptions/s/.../backendAddressPools/web",
+		"backend_pool_ids.api":          "/subscriptions/s/.../backendAddressPools/api",
+		"nat_rule_ids.ssh-admin":        "/subscriptions/s/.../inboundNatRules/ssh-admin",
+		"frontend_ip_configuration_ids": "",
+	}
+
+	if err := populateMessage(msg, outputs); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := msg.GetBackendPoolIds()["web"]; got != "/subscriptions/s/.../backendAddressPools/web" {
+		t.Errorf("backend_pool_ids[web]: got %q", got)
+	}
+	if got := msg.GetBackendPoolIds()["api"]; got != "/subscriptions/s/.../backendAddressPools/api" {
+		t.Errorf("backend_pool_ids[api]: got %q", got)
+	}
+	if got := msg.GetNatRuleIds()["ssh-admin"]; got != "/subscriptions/s/.../inboundNatRules/ssh-admin" {
+		t.Errorf("nat_rule_ids[ssh-admin]: map key must be preserved verbatim, got map %v", msg.GetNatRuleIds())
+	}
+	if len(msg.GetFrontendIpConfigurationIds()) != 0 {
+		t.Errorf("empty map sentinel: expected no entries, got %v", msg.GetFrontendIpConfigurationIds())
 	}
 }
 

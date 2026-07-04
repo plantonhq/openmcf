@@ -182,6 +182,7 @@ go_library(
         "//apis/dev/planton/provider/azure/azuresubnet/v1:azuresubnet",
         "//apis/dev/planton/provider/azure/azureuserassignedidentity/v1:azureuserassignedidentity",
         "//apis/dev/planton/provider/azure/azurevirtualmachine/v1:azurevirtualmachine",
+        "//apis/dev/planton/provider/azure/azurevirtualmachinescaleset/v1:azurevirtualmachinescaleset",
         "//apis/dev/planton/provider/azure/azurevirtualnetwork/v1:azurevirtualnetwork",
         "//apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1:azurevirtualnetworkpeering",
         "//apis/dev/planton/provider/civo/civobucket/v1:civobucket",

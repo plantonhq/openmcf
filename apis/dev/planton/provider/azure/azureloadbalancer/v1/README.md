@@ -7,67 +7,59 @@ Azure Load Balancer is a Layer 4 (TCP/UDP) network load balancer that distribute
 Use AzureLoadBalancer when you need:
 
 - **Layer 4 load balancing** -- TCP/UDP traffic distribution without HTTP inspection
-- **High availability** -- Automatic health checks remove unhealthy backends from rotation
-- **Internal service routing** -- Private load balancing within a VNet for microservice architectures
-- **Public internet ingress** -- Internet-facing traffic distribution to backend pools
-- **HA ports** -- Forward all ports and protocols (protocol "All") for NVA or SQL AlwaysOn scenarios
+- **High availability** -- automatic health checks remove unhealthy backends from rotation
+- **Internal service routing** -- private load balancing within a VNet for multi-tier architectures
+- **Public internet ingress** -- internet-facing traffic distribution to backend pools
+- **Explicit outbound SNAT** -- deliberately sized egress port budgets through public frontends
+- **Port forwarding** -- inbound NAT rules reaching individual instances (single-target or per-pool-member)
+- **HA ports** -- forward all ports and protocols (protocol `ALL`) for NVA or SQL AlwaysOn scenarios
 
 For Layer 7 (HTTP/HTTPS) load balancing with path-based routing, SSL termination, or WAF, use **AzureApplicationGateway** instead.
 
 ## Key Configuration
 
-### Public vs Internal
+### Frontends: public vs internal, per frontend
 
-The LB mode is determined by which frontend field you set -- there is no separate `is_internal` flag:
+Each entry in `frontend_ip_configurations` is either public (references an `AzurePublicIp` or an `AzurePublicIpPrefix`) or internal (references an `AzureSubnet`, with an optional pinned private address and availability zones). One load balancer can mix both -- for example a public frontend for ingress and an internal one for east-west traffic. Rules, NAT rules, and outbound rules target a frontend by name; the name may be omitted when exactly one frontend exists.
 
-- **`public_ip_id`** -- Creates a public (internet-facing) load balancer using the referenced AzurePublicIp
-- **`subnet_id`** -- Creates an internal (private VNet) load balancer in the specified subnet
+### SKU and tier
 
-Exactly one must be set. For internal LBs, you can optionally specify a `private_ip_address` for a static IP (otherwise Azure allocates dynamically).
+`STANDARD` (the default) is the production SKU: zone redundancy, SLA, outbound rules, HA ports. `GATEWAY` is the niche SKU for chaining network virtual appliances -- its backend pools carry tunnel interfaces, and the subscription needs the `Microsoft.Network/AllowGatewayLoadBalancer` feature registered. Basic is not modeled: Azure retired it in September 2025.
 
-### Standard SKU
+`sku_tier: GLOBAL` creates a cross-region load balancer whose backend members are the frontends of regional load balancers (declared as pool `addresses` referencing regional frontend IDs).
 
-Standard SKU is hardcoded. Basic SKU was retired by Azure in September 2025 and lacks zone redundancy, outbound rule support, and SLA guarantees. This matches the AzurePublicIp component which also hardcodes Standard.
+### Backend pools and membership
 
-### Backend Pools
+Pools are named containers. NIC-based membership is expressed **from the member side** -- a network interface's ip_configuration or a virtual machine scale set's network profile references `status.outputs.backend_pool_ids.<pool-name>` -- which is Azure's own attachment model. Vnet-scoped IP-based members (appliances addressed by IP) are declared inline via each pool's `addresses`.
 
-Backend pools define named containers for backend instances. Only the pool name is configured here. Actual instance membership -- VMs, VMSS instances, or NICs -- is managed through separate mechanisms (AKS node pools, VMSS configurations, or NIC-to-pool bindings). This keeps the LB lifecycle clean and independent.
+### Health probes
 
-### Health Probes
+`PROBE_TCP` (default) checks that the port opens; `PROBE_HTTP`/`PROBE_HTTPS` GET a `request_path` and require HTTP 200 -- prefer them when the workload exposes a health endpoint. `probe_threshold` sets how many consecutive successes re-admit a recovered instance.
 
-Health probes check backend availability at configurable intervals. Supported protocols:
+### Rules, NAT rules, and outbound rules
 
-- **Tcp** -- Simple TCP connection check (port open = healthy)
-- **Http** -- HTTP GET request, expects 200 OK
-- **Https** -- HTTPS GET request, expects 200 OK
-
-After `number_of_probes` consecutive failures (default 2), the backend is removed from rotation. Healthy backends are automatically re-added.
-
-### Load Balancing Rules
-
-Each rule maps a frontend port/protocol to a backend pool and health probe. The frontend IP configuration name is auto-derived from the LB name and does not need to be specified.
-
-Advanced options per rule:
-- **`enable_floating_ip`** -- Direct Server Return for SQL AlwaysOn and HA clustering
-- **`disable_outbound_snat`** -- Prevent SNAT port exhaustion when using NAT Gateway for outbound
+- **Load-balancing rules** map a frontend port/protocol to a backend pool and port, with `load_distribution` (session persistence), `tcp_reset_enabled`, `floating_ip_enabled` (Direct Server Return), and `disable_outbound_snat`.
+- **Inbound NAT rules** forward frontend ports to individual instances: single-target rules are completed by a NIC-side association referencing `status.outputs.nat_rule_ids.<rule-name>`; pool-style rules give every pool member its own frontend port from a range.
+- **Outbound rules** configure explicit SNAT through public frontends with a deliberately sized per-instance port budget -- combine with `disable_outbound_snat` on the load-balancing rules that share the pool.
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `lb_id` | Azure Resource Manager ID |
-| `lb_name` | Load Balancer name |
-| `frontend_ip_address` | Frontend IP (public or private) |
-| `frontend_ip_configuration_id` | Frontend config ID (for NAT rule association) |
-| `backend_pool_id` | First (default) backend pool ID |
-
-## Infra Chart Usage
-
-AzureLoadBalancer is a component in the **enterprise-network-foundation** infra chart, providing Layer 4 traffic distribution alongside AzureApplicationGateway (Layer 7), NSGs, and public IPs.
+| `load_balancer_id` | Azure Resource Manager ID |
+| `load_balancer_name` | Load balancer name |
+| `private_ip_address` | First internal frontend's private address (empty when all frontends are public) |
+| `private_ip_addresses` | All internal frontends' private addresses |
+| `frontend_ip_configuration_ids` | Frontend IDs keyed by frontend name (gateway chaining, GLOBAL-tier pools) |
+| `backend_pool_ids` | Pool IDs keyed by pool name -- the member-side association seam |
+| `probe_ids` | Probe IDs keyed by probe name (scale-set rolling-upgrade health probe) |
+| `nat_rule_ids` | Inbound NAT rule IDs keyed by rule name -- the NIC NAT-rule association seam |
 
 ## Related Resources
 
-- **AzurePublicIp** -- Provides the public IP for public load balancers
-- **AzureSubnet** -- Provides the subnet for internal load balancers
+- **AzurePublicIp** / **AzurePublicIpPrefix** -- public frontend addresses
+- **AzureSubnet** -- internal frontend placement
+- **AzureNetworkInterface** -- joins pools and completes single-target NAT rules from the member side
+- **AzureVirtualMachineScaleSet** -- scale-set instances join pools through their network profile
 - **AzureApplicationGateway** -- Layer 7 alternative with HTTP routing and WAF
-- **AzureDnsRecord** -- Create DNS records pointing to the frontend IP
+- **AzureDnsRecord** -- DNS records pointing at frontend addresses

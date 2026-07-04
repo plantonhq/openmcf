@@ -47,6 +47,37 @@ locals {
     }
   ]
 
+  # Flatten each configuration's load-balancer / App Gateway memberships
+  # into one collection per association type, keyed "{config}/{index}",
+  # so a single for_each realizes every membership as its own ARM
+  # association (joining/leaving never touches the NIC itself).
+  lb_pool_associations = merge([
+    for c in var.spec.ip_configurations : {
+      for i, pool_id in c.load_balancer_backend_address_pool_ids : "${c.name}/${i}" => {
+        ip_configuration_name = c.name
+        pool_id               = pool_id
+      }
+    }
+  ]...)
+
+  lb_nat_rule_associations = merge([
+    for c in var.spec.ip_configurations : {
+      for i, rule_id in c.load_balancer_inbound_nat_rule_ids : "${c.name}/${i}" => {
+        ip_configuration_name = c.name
+        nat_rule_id           = rule_id
+      }
+    }
+  ]...)
+
+  appgw_pool_associations = merge([
+    for c in var.spec.ip_configurations : {
+      for i, pool_id in c.application_gateway_backend_address_pool_ids : "${c.name}/${i}" => {
+        ip_configuration_name = c.name
+        pool_id               = pool_id
+      }
+    }
+  ]...)
+
   # ARM auxiliary values: AcceleratedConnections/Floating/MaxConnections
   # and A1/A2/A4/A8; null sends nothing (the non-appliance default).
   auxiliary_mode = (

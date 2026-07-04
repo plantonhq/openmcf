@@ -352,10 +352,14 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		return DependencyState{}, errors.Wrapf(err, "failed to build stack input for dependency %q", dep.KindSlug)
 	}
 
-	if _, err := PulumiDeploy(moduleDir, stackName, backendURL, stackInputPath); err != nil {
-		return DependencyState{}, errors.Wrapf(err, "failed to deploy dependency %q", dep.KindSlug)
-	}
-
+	// The state is constructed BEFORE `pulumi up` runs: a failed deploy may
+	// still have created any number of resources (the stack exists the moment
+	// the update starts), and returning an empty state here would hide them
+	// from teardown -- the partially-created fixture then orphans and blocks
+	// the whole reverse teardown chain (a leftover load balancer holds its
+	// subnet, the subnet holds the network, the network holds the resource
+	// group). Destroying a stack whose update failed is safe: destroy removes
+	// whatever was actually created.
 	state := DependencyState{
 		Dependency:     dep,
 		ModuleDir:      moduleDir,
@@ -363,6 +367,10 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		BackendURL:     backendURL,
 		StackInputPath: stackInputPath,
 		ManifestName:   manifestName,
+	}
+
+	if _, err := PulumiDeploy(moduleDir, stackName, backendURL, stackInputPath); err != nil {
+		return state, errors.Wrapf(err, "failed to deploy dependency %q", dep.KindSlug)
 	}
 
 	// Capture the dependency's outputs so its verifier can confirm it (cloud

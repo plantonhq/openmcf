@@ -47,13 +47,34 @@ NOTES
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` (pointer types in Go)
 - ALWAYS use getter methods: `spec.GetFieldName()` instead of `spec.FieldName`
-- NO defensive coding needed - Planton middleware applies defaults before IaC modules run
-- Example:
+- **Default materialization is middleware behavior, NOT a wire guarantee.** Stack inputs
+  built directly from a manifest (the E2E harness, `planton pulumi up --stack-input`)
+  deliver unset optionals as nil, so a bare getter yields the Go zero value. That is fine
+  for fields where the provider treats zero as "unset" — but it silently diverges from the
+  Terraform module's `optional(type, default)` encoding, and it HARD-FAILS deploy for any
+  field the provider range-validates (e.g. an interval that must be >= 5, a threshold in
+  1-100: sending 0 is rejected at `pulumi up`, and no offline gate catches it).
+- Therefore: **every optional field with a proto default MUST be presence-guarded in the
+  Pulumi module**, falling back to the proto-declared default — the same value the
+  Terraform module's `optional(type, default)` carries. Never invent a different fallback.
   ```go
-  // CORRECT: Use getter (safe, framework guarantees defaults)
-  l.RunnerGroup = in.Target.Spec.GetRunnerGroup()
-  
-  // WRONG: Don't add defensive defaults
-  // if l.RunnerGroup == "" { l.RunnerGroup = "default" }  // Unnecessary!
+  // CORRECT: presence-guard with the proto default (matches TF's optional(number, 15))
+  if spec.IntervalInSeconds != nil {
+      args.IntervalInSeconds = pulumi.Int(int(spec.GetIntervalInSeconds()))
+  } else {
+      args.IntervalInSeconds = pulumi.Int(15)
+  }
+
+  // WRONG: bare getter — deploys 0 on stack-input paths and fails provider validation
+  // args.IntervalInSeconds = pulumi.Int(int(spec.GetIntervalInSeconds()))
+
+  // WRONG: a fallback that differs from the proto default (engine divergence)
+  // if l.RunnerGroup == "" { l.RunnerGroup = "some-other-value" }
   ```
+- PULUMI OUTPUT TYPING: an `ApplyT` applier's input parameter type must match the SDK
+  output's element type EXACTLY (a `func(addr *string)` applier on a `StringOutput`
+  panics `applier's first input parameter must be assignable from string` at deploy
+  time — it compiles clean and no offline gate catches it). Prefer exporting SDK outputs
+  directly; reach for `ApplyT` only when genuinely transforming, and check the output's
+  `ElementType` (e.g. via `go doc` on the SDK type) before writing the applier.
 - See the reference component `module/` directories named in TOOLS for worked examples

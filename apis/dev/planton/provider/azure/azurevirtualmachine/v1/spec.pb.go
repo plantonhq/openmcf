@@ -2286,8 +2286,11 @@ type AzureVirtualMachineAvailability struct {
 	DedicatedHostGroupId string `protobuf:"bytes,6,opt,name=dedicated_host_group_id,json=dedicatedHostGroupId,proto3" json:"dedicated_host_group_id,omitempty"`
 	// Attaches the VM to a FLEXIBLE-orchestration scale set, by ARM ID --
 	// scale-set-managed fault spreading for an individually-managed VM.
-	// Plain ARM ID today. Fixed at creation.
-	VirtualMachineScaleSetId string `protobuf:"bytes,7,opt,name=virtual_machine_scale_set_id,json=virtualMachineScaleSetId,proto3" json:"virtual_machine_scale_set_id,omitempty"`
+	// Can be a literal ARM ID or a reference to an
+	// AzureVirtualMachineScaleSet's scale_set_id output (the set must be
+	// FLEXIBLE -- UNIFORM sets do not accept attached VMs). Fixed at
+	// creation.
+	VirtualMachineScaleSetId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=virtual_machine_scale_set_id,json=virtualMachineScaleSetId,proto3" json:"virtual_machine_scale_set_id,omitempty"`
 	// The fault domain to pin the VM to within virtual_machine_scale_set_id
 	// (requires it). Unset lets Azure choose. Fixed at creation.
 	PlatformFaultDomain *int32 `protobuf:"varint,8,opt,name=platform_fault_domain,json=platformFaultDomain,proto3,oneof" json:"platform_fault_domain,omitempty"`
@@ -2367,11 +2370,11 @@ func (x *AzureVirtualMachineAvailability) GetDedicatedHostGroupId() string {
 	return ""
 }
 
-func (x *AzureVirtualMachineAvailability) GetVirtualMachineScaleSetId() string {
+func (x *AzureVirtualMachineAvailability) GetVirtualMachineScaleSetId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.VirtualMachineScaleSetId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureVirtualMachineAvailability) GetPlatformFaultDomain() int32 {
@@ -3124,21 +3127,20 @@ const file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_rawDesc 
 	"\x17AzureVirtualMachineSpot\x12\x85\x01\n" +
 	"\x0feviction_policy\x18\x01 \x01(\x0e2T.dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineEvictionPolicyB\x06\xbaH\x03\xc8\x01\x01R\x0eevictionPolicy\x127\n" +
 	"\rmax_bid_price\x18\x02 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\xf0\xbfH\x00R\vmaxBidPrice\x88\x01\x01B\x10\n" +
-	"\x0e_max_bid_price\"\xb7\n" +
-	"\n" +
+	"\x0e_max_bid_price\"\x91\v\n" +
 	"\x1fAzureVirtualMachineAvailability\x12$\n" +
 	"\x04zone\x18\x01 \x01(\tB\x10\xbaH\rr\vR\x00R\x011R\x012R\x013R\x04zone\x12.\n" +
 	"\x13availability_set_id\x18\x02 \x01(\tR\x11availabilitySetId\x12?\n" +
 	"\x1cproximity_placement_group_id\x18\x03 \x01(\tR\x19proximityPlacementGroupId\x12A\n" +
 	"\x1dcapacity_reservation_group_id\x18\x04 \x01(\tR\x1acapacityReservationGroupId\x12*\n" +
 	"\x11dedicated_host_id\x18\x05 \x01(\tR\x0fdedicatedHostId\x125\n" +
-	"\x17dedicated_host_group_id\x18\x06 \x01(\tR\x14dedicatedHostGroupId\x12>\n" +
-	"\x1cvirtual_machine_scale_set_id\x18\a \x01(\tR\x18virtualMachineScaleSetId\x12@\n" +
-	"\x15platform_fault_domain\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x13platformFaultDomain\x88\x01\x01:\xba\x06\xbaH\xb6\x06\x1a\xa1\x01\n" +
+	"\x17dedicated_host_group_id\x18\x06 \x01(\tR\x14dedicatedHostGroupId\x12\x98\x01\n" +
+	"\x1cvirtual_machine_scale_set_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xa8\x03\x92\xd4a\x1bstatus.outputs.scale_set_idR\x18virtualMachineScaleSetId\x12@\n" +
+	"\x15platform_fault_domain\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x13platformFaultDomain\x88\x01\x01:\xb9\x06\xbaH\xb5\x06\x1a\xa1\x01\n" +
 	"\"vm_zone_conflicts_availability_set\x12Hzone and availability_set_id are mutually exclusive placement strategies\x1a1this.zone == '' || this.availability_set_id == ''\x1a\xd7\x01\n" +
 	"\x1bvm_dedicated_host_exclusive\x12tdedicated_host_id and dedicated_host_group_id are mutually exclusive (pin a host or let Azure pick within the group)\x1aBthis.dedicated_host_id == '' || this.dedicated_host_group_id == ''\x1a\x87\x02\n" +
-	"!vm_capacity_reservation_conflicts\x12icapacity_reservation_group_id cannot be combined with availability_set_id or proximity_placement_group_id\x1awthis.capacity_reservation_group_id == '' || (this.availability_set_id == '' && this.proximity_placement_group_id == '')\x1a\xab\x01\n" +
-	"\x1fvm_fault_domain_needs_scale_set\x12;platform_fault_domain requires virtual_machine_scale_set_id\x1aK!has(this.platform_fault_domain) || this.virtual_machine_scale_set_id != ''B\x18\n" +
+	"!vm_capacity_reservation_conflicts\x12icapacity_reservation_group_id cannot be combined with availability_set_id or proximity_placement_group_id\x1awthis.capacity_reservation_group_id == '' || (this.availability_set_id == '' && this.proximity_placement_group_id == '')\x1a\xaa\x01\n" +
+	"\x1fvm_fault_domain_needs_scale_set\x12;platform_fault_domain requires virtual_machine_scale_set_id\x1aJ!has(this.platform_fault_domain) || has(this.virtual_machine_scale_set_id)B\x18\n" +
 	"\x16_platform_fault_domain\"\xad\x01\n" +
 	"\x1bAzureVirtualMachineSecurity\x12.\n" +
 	"\x13secure_boot_enabled\x18\x01 \x01(\bR\x11secureBootEnabled\x12!\n" +
@@ -3372,15 +3374,16 @@ var file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_depIdxs = 
 	4,  // 43: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentity.type:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentityType
 	40, // 44: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	5,  // 45: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSpot.eviction_policy:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineEvictionPolicy
-	8,  // 46: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatching.assessment_mode:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatchAssessmentMode
-	9,  // 47: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatching.reboot_setting:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineRebootSetting
-	40, // 48: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	38, // 49: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecret.certificates:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecretCertificate
-	50, // [50:50] is the sub-list for method output_type
-	50, // [50:50] is the sub-list for method input_type
-	50, // [50:50] is the sub-list for extension type_name
-	50, // [50:50] is the sub-list for extension extendee
-	0,  // [0:50] is the sub-list for field type_name
+	40, // 46: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineAvailability.virtual_machine_scale_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 47: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatching.assessment_mode:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatchAssessmentMode
+	9,  // 48: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachinePatching.reboot_setting:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineRebootSetting
+	40, // 49: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	38, // 50: dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecret.certificates:type_name -> dev.planton.provider.azure.azurevirtualmachine.v1.AzureVirtualMachineSecretCertificate
+	51, // [51:51] is the sub-list for method output_type
+	51, // [51:51] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurevirtualmachine_v1_spec_proto_init() }

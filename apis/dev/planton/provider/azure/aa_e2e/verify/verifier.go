@@ -33,6 +33,7 @@ var verifiers = map[string]Verifier{
 	"azureaksnodepool":                      &aksNodePoolVerifier{},
 	"azurecontainerregistry":                &containerRegistryVerifier{},
 	"azurefederatedidentitycredential":      &federatedIdentityCredentialVerifier{},
+	"azureloadbalancer":                     &loadBalancerVerifier{},
 	"azuremanageddisk":                      &managedDiskVerifier{},
 	"azurenatgateway":                       &natGatewayVerifier{},
 	"azurenetworkinterface":                 &networkInterfaceVerifier{},
@@ -48,6 +49,7 @@ var verifiers = map[string]Verifier{
 	"azuresubnet":                           &subnetVerifier{},
 	"azureuserassignedidentity":             &userAssignedIdentityVerifier{},
 	"azurevirtualmachine":                   &virtualMachineVerifier{},
+	"azurevirtualmachinescaleset":           &virtualMachineScaleSetVerifier{},
 	"azurevirtualnetwork":                   &virtualNetworkVerifier{},
 	"azurevirtualnetworkpeering":            &virtualNetworkPeeringVerifier{},
 }
