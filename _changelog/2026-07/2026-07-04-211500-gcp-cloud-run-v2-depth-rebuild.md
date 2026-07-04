@@ -8,7 +8,7 @@
 
 Deep-rebuilt the `GcpCloudRun` component from a flat 38-field single-container
 abstraction to the released google-provider v2 floor: provider-authentic
-multi-container shape with sidecars, startup ordering, all three probe types,
+multi-container shape with sidecars, startup ordering, startup and liveness probes,
 secret/GCS/NFS/in-memory/Cloud SQL volumes, revision traffic splitting,
 direct VPC egress, session affinity, CMEK, binary authorization, and GPU
 inference. Removed the bundled custom-domain black box (hidden DomainMapping +
@@ -24,7 +24,8 @@ public-service scenario, zero orphans.
 - **Multi-container**: `containers[]` (min 1 by CEL) replaces the single
   `container`; each container carries image, command/args, env (literal XOR
   Secret Manager `secret_key_ref`), ports, provider-authentic cpu/memory limits,
-  startup/liveness/readiness probes, volume mounts, working directory,
+  startup and liveness probes (readiness_probe is main-branch-only on the
+  provider and recorded as a skip), volume mounts, working directory,
   `depends_on` startup ordering, and name.
 - **Volumes**: `volumes[]` with exactly-one-source CEL per volume — cloud_sql
   (repeated refs → `GcpCloudSql` connection names), secret, empty_dir, gcs
