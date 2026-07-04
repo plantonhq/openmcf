@@ -26,12 +26,17 @@ This preset creates an ECS cluster with both Fargate and Fargate Spot capacity p
 - **Fargate + Fargate Spot** -- Enables mixed pricing with a guaranteed on-demand baseline
 - **Base 1 on-demand** (`base: 1` on FARGATE) -- At least one task always runs on on-demand Fargate, ensuring minimum availability even if all Spot capacity is reclaimed
 - **80/20 Spot weighting** (`weight: 4` for Spot vs `weight: 1` for on-demand) -- For every 5 scaled tasks beyond the base, 4 use Spot and 1 uses on-demand
-- **Container Insights enabled** -- Full observability for monitoring task placement and Spot interruptions
+- **Container Insights** (`containerInsights: enabled`) -- Task/service-level observability for monitoring placement and Spot interruptions
 
 ## Placeholders to Replace
 
-This preset has no placeholders. Deploy as-is and then create `AwsEcsService` resources targeting this cluster. Services inherit the cluster's default capacity provider strategy unless they override it.
+| Placeholder | Description | Where to Find |
+| --- | --- | --- |
+| `<aws-region>` | AWS region where the cluster will be created (e.g., `us-west-2`) | AWS region list |
+
+Deploy and then create `AwsEcsService` resources targeting this cluster. Services inherit the cluster's default capacity provider strategy unless they override it.
 
 ## Related Presets
 
 - **01-fargate-standard** -- Use instead when Spot interruptions are not acceptable (stateful services, critical single-replica workloads)
+- **03-ec2-capacity** -- Add EC2 capacity backed by an auto-scaling group
