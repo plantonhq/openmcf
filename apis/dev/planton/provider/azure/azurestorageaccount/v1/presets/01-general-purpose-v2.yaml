@@ -1,24 +1,28 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
-  name: my-storage-account
+  name: my-app-storage
 spec:
   region: <azure-region>
   resourceGroup:
-    value: "<your-resource-group-name>"
-  accountKind: STORAGE_V2  # default from spec
-  accountTier: STANDARD  # default from spec
-  replicationType: LRS  # default from spec; locally redundant
-  accessTier: HOT  # default from spec
-  enableHttpsTrafficOnly: true  # default from spec
-  minTlsVersion: TLS1_2  # default from spec
-  networkRules:
-    defaultAction: DENY  # default from spec
-    bypassAzureServices: true  # default from spec
+    valueFrom:
+      kind: AzureResourceGroup
+      name: <resource-group-resource-name>
+      fieldPath: status.outputs.resource_group_name
+  # 3-24 lowercase letters and digits ONLY (no hyphens), globally unique
+  # across all of Azure -- it becomes the DNS prefix of every endpoint.
+  accountName: <accountname>
+  # StorageV2 / Standard / LRS are the spec defaults -- the
+  # general-purpose baseline for app assets, uploads, and scratch data.
+  replicationType: LRS
   blobProperties:
-    enableVersioning: true
-    softDeleteRetentionDays: 7  # default from spec
-    containerSoftDeleteRetentionDays: 7  # default from spec
-  containers:
-    - name: data
-    - name: backups
+    # Versioning keeps every overwrite recoverable; the two retention
+    # blocks are the recycle bin for blobs and containers (7 days is
+    # Azure's default window).
+    versioningEnabled: true
+    deleteRetentionPolicy:
+      days: 7
+    containerDeleteRetentionPolicy:
+      days: 7
+  tags:
+    cost-center: <cost-center>

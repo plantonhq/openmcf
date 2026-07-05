@@ -803,9 +803,16 @@ message AzureLinuxWebAppStorageMount {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // Access key for the storage account.
-  // This is a sensitive credential.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef access_key = 5 [(buf.validate.field).required = true];
+  // Access key for the storage account. Defaults to referencing an
+  // AzureStorageAccount's primary_access_key output, so the mount
+  // composes in one manifest set; a literal value or a managed-secret
+  // reference works too.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef access_key = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_access_key"
+  ];
 
   // Path inside the container where the share is mounted.
   // Example: "/mnt/data"

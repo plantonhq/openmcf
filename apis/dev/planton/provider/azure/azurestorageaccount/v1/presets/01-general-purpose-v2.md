@@ -1,29 +1,43 @@
-# General-Purpose v2 Storage Account
+# General-Purpose v2 Account
 
-This preset creates an Azure Storage Account with General-Purpose v2 (StorageV2), Standard tier, and locally redundant storage. It includes a default-deny network posture, blob versioning, 7-day soft delete, and two starter containers. This is the standard configuration for most application storage needs.
+This preset creates a StorageV2 account on the standard tier with local
+redundancy and blob data protection -- the baseline for application
+assets, uploads, and scratch data. Containers are added as separate
+AzureStorageContainer resources referencing this account.
 
 ## When to Use
 
-- Application data storage (blobs, files, queues, tables)
-- Storing backups, logs, or artifacts
-- Any workload needing a general-purpose storage account with sensible security defaults
+- The default storage account for an application environment
+- Dev/test environments where local redundancy is acceptable
+- The backend a Function App or Web App binds to
 
 ## Key Configuration Choices
 
-- **StorageV2 / Standard / LRS** -- General-purpose with HDD-backed locally redundant storage. The most cost-effective tier for most workloads
-- **Network rules** (`networkRules.defaultAction: DENY`) -- Denies all public access by default. Azure trusted services can still access the account
-- **Blob versioning** (`blobProperties.enableVersioning: true`) -- Maintains previous versions of blobs for data protection
-- **7-day soft delete** -- Deleted blobs and containers are recoverable for 7 days
-- **HTTPS only + TLS 1.2** -- Enforces encrypted connections with modern TLS
-- **Two containers** -- `data` for application data, `backups` for backup storage. Adjust or add containers as needed
+- **StorageV2 / Standard / LRS** (the spec defaults) -- every data
+  service available, cheapest redundancy
+- **Blob versioning + soft delete** -- overwrites and deletes stay
+  recoverable for 7 days (Azure's default window)
+- **No firewall block** -- reachable from all networks (Azure's
+  default); add `networkRules` when locking down
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<azure-region>` | Azure region | Your regional deployment strategy |
-| `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
+| `<azure-region>` | The Azure region, e.g. `eastus` | Your region strategy |
+| `<resource-group-resource-name>` | The AzureResourceGroup's Planton resource name | Your resource-group composition |
+| `<accountname>` | 3-24 lowercase letters/digits, globally unique | Your naming convention (no hyphens!) |
+| `<cost-center>` | Your org's cost-attribution tag value | Your tagging convention |
 
-## Related Presets
+## Downstream Wiring
 
-- **02-production-geo-redundant** -- Use instead for production workloads requiring geo-replication and longer retention
+Add containers and bind app services through the account's outputs:
+
+```yaml
+# On an AzureStorageContainer
+storageAccountId:
+  valueFrom:
+    kind: AzureStorageAccount
+    name: my-app-storage
+    fieldPath: status.outputs.storage_account_id
+```

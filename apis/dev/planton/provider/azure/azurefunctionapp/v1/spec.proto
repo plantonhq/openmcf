@@ -126,16 +126,18 @@ message AzureFunctionAppSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_name"
   ];
 
-  // The access key for the storage account.
-  // This is a sensitive credential. Provide it directly as a literal value
-  // or reference it from a secrets manager via StringValueOrRef.
-  //
-  // Note: AzureStorageAccount does not export access keys in its status outputs
-  // (by design -- exporting secrets through status is an anti-pattern). Provide
-  // the key directly or use storage_uses_managed_identity instead.
+  // The access key for the storage account. Defaults to referencing an
+  // AzureStorageAccount's primary_access_key output, so the binding
+  // composes in one manifest set; a literal value or a managed-secret
+  // reference works too. Prefer storage_uses_managed_identity where the
+  // workload supports it -- keys are static credential material.
   //
   // Conflicts with storage_uses_managed_identity.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_access_key = 6 [(dev.planton.shared.options.sensitive) = true];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_access_key = 6 [
+    (dev.planton.shared.options.sensitive) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_access_key"
+  ];
 
   // Use the Function App's managed identity to access the storage account
   // instead of an access key. This is the modern, credential-free approach.

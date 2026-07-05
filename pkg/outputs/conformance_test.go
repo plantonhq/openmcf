@@ -1324,6 +1324,62 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureStorageAccount: storage_account_id is the parent seam
+			// AzureStorageContainer references (and data-plane role
+			// assignments scope to); the name + primary_access_key pair is
+			// what Function App / Linux Web App storage bindings consume;
+			// the endpoints are what applications and CDN origins connect
+			// to.
+			name: "AzureStorageAccount",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageAccount,
+			rawOutputs: map[string]interface{}{
+				"storage_account_id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage",
+				"storage_account_name":             "plantonappstorage",
+				"resource_group_name":              "app-rg",
+				"primary_blob_endpoint":            "https://plantonappstorage.blob.core.windows.net/",
+				"primary_blob_host":                "plantonappstorage.blob.core.windows.net",
+				"primary_queue_endpoint":           "https://plantonappstorage.queue.core.windows.net/",
+				"primary_table_endpoint":           "https://plantonappstorage.table.core.windows.net/",
+				"primary_file_endpoint":            "https://plantonappstorage.file.core.windows.net/",
+				"primary_dfs_endpoint":             "https://plantonappstorage.dfs.core.windows.net/",
+				"primary_web_endpoint":             "https://plantonappstorage.z13.web.core.windows.net/",
+				"primary_web_host":                 "plantonappstorage.z13.web.core.windows.net",
+				"secondary_blob_endpoint":          "https://plantonappstorage-secondary.blob.core.windows.net/",
+				"primary_access_key":               "base64keymaterial==",
+				"secondary_access_key":             "base64keymaterial2==",
+				"primary_connection_string":        "DefaultEndpointsProtocol=https;AccountName=plantonappstorage;AccountKey=base64keymaterial==;EndpointSuffix=core.windows.net",
+				"secondary_connection_string":      "DefaultEndpointsProtocol=https;AccountName=plantonappstorage;AccountKey=base64keymaterial2==;EndpointSuffix=core.windows.net",
+				"primary_blob_connection_string":   "DefaultEndpointsProtocol=https;BlobEndpoint=https://plantonappstorage.blob.core.windows.net/;AccountName=plantonappstorage;AccountKey=base64keymaterial==",
+				"secondary_blob_connection_string": "DefaultEndpointsProtocol=https;BlobEndpoint=https://plantonappstorage-secondary.blob.core.windows.net/;AccountName=plantonappstorage;AccountKey=base64keymaterial2==",
+				"identity_principal_id":            "44444444-4444-4444-4444-444444444444",
+			},
+			mustPopulate: []string{
+				"storage_account_id", "storage_account_name", "resource_group_name",
+				"primary_blob_endpoint", "primary_blob_host", "primary_queue_endpoint",
+				"primary_table_endpoint", "primary_file_endpoint", "primary_dfs_endpoint",
+				"primary_web_endpoint", "primary_web_host", "secondary_blob_endpoint",
+				"primary_access_key", "secondary_access_key", "primary_connection_string",
+				"secondary_connection_string", "primary_blob_connection_string",
+				"secondary_blob_connection_string", "identity_principal_id",
+			},
+		},
+		{
+			// AzureStorageContainer: container_id is the scope data-plane
+			// role assignments target for container-level access; the
+			// account/container name pair is what SDK clients and function
+			// bindings consume.
+			name: "AzureStorageContainer",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageContainer,
+			rawOutputs: map[string]interface{}{
+				"container_id":         "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/blobServices/default/containers/uploads",
+				"container_name":       "uploads",
+				"storage_account_name": "plantonappstorage",
+			},
+			mustPopulate: []string{
+				"container_id", "container_name", "storage_account_name",
+			},
+		},
+		{
 			// AzureKeyVaultCertificate: the secret face
 			// (versionless_secret_id) is the seam TLS terminators
 			// (Application Gateway) consume so renewals propagate; the

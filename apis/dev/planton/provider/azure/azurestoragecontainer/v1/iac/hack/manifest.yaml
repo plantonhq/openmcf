@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageContainer
+metadata:
+  name: test-storage-container
+spec:
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/plantonhackstorage
+  containerName: hack-uploads
+  # Exercises the access-type enum mapping (blob = anonymous blob reads,
+  # no listing -- the CDN-origin pattern).
+  containerAccessType: BLOB
+  # Exercises the encryption-scope pair.
+  defaultEncryptionScope: hackscope
+  encryptionScopeOverrideEnabled: false
+  metadata:
+    purpose: hack-validation

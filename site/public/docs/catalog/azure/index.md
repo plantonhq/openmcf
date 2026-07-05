@@ -51,6 +51,7 @@ The following AZURE resources can be deployed using Planton:
 - [SQL Elastic Pool](/docs/catalog/azure/sql-elastic-pool)
 - [SQL Server](/docs/catalog/azure/sql-server)
 - [Storage Account](/docs/catalog/azure/storage-account)
+- [Storage Container](/docs/catalog/azure/storage-container)
 - [Subnet](/docs/catalog/azure/subnet)
 - [User Assigned Identity](/docs/catalog/azure/user-assigned-identity)
 - [Virtual Machine](/docs/catalog/azure/virtual-machine)

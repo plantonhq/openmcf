@@ -183,6 +183,7 @@ go_library(
         "//apis/dev/planton/provider/azure/azureservicebusnamespace/v1:azureservicebusnamespace",
         "//apis/dev/planton/provider/azure/azureserviceplan/v1:azureserviceplan",
         "//apis/dev/planton/provider/azure/azurestorageaccount/v1:azurestorageaccount",
+        "//apis/dev/planton/provider/azure/azurestoragecontainer/v1:azurestoragecontainer",
         "//apis/dev/planton/provider/azure/azuresubnet/v1:azuresubnet",
         "//apis/dev/planton/provider/azure/azureuserassignedidentity/v1:azureuserassignedidentity",
         "//apis/dev/planton/provider/azure/azurevirtualmachine/v1:azurevirtualmachine",

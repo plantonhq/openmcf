@@ -55,6 +55,8 @@ var verifiers = map[string]Verifier{
 	"azureroleassignment":                   &roleAssignmentVerifier{},
 	"azureroledefinition":                   &roleDefinitionVerifier{},
 	"azureroutetable":                       &routeTableVerifier{},
+	"azurestorageaccount":                   &storageAccountVerifier{},
+	"azurestoragecontainer":                 &storageContainerVerifier{},
 	"azuresubnet":                           &subnetVerifier{},
 	"azureuserassignedidentity":             &userAssignedIdentityVerifier{},
 	"azurevirtualmachine":                   &virtualMachineVerifier{},

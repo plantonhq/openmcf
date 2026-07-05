@@ -29,6 +29,8 @@ go_library(
         "role_assignment.go",
         "role_definition.go",
         "route_table.go",
+        "storage_account.go",
+        "storage_container.go",
         "subnet.go",
         "user_assigned_identity.go",
         "verifier.go",

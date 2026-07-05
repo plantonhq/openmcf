@@ -71,6 +71,15 @@ HANDLING OPTIONAL FIELDS WITH DEFAULTS
   // WRONG: a fallback that differs from the proto default (engine divergence)
   // if l.RunnerGroup == "" { l.RunnerGroup = "some-other-value" }
   ```
+- **ONE-WAY / Computed provider flags: send only when true, on BOTH engines.** Some
+  provider bools are one-way enables (the service cannot disable them once on) or
+  Computed (the service turns them on inherently for certain shapes). For these, a plain
+  proto bool's `false` must mean "leave it to the provider", never "disable": send the
+  argument only when the spec value is true, and mirror the exact same only-when-true
+  posture in the Terraform module (`var.x ? true : null`). Always-sending `false` on one
+  engine plans a destructive replacement or fights the service, while the other engine
+  silently no-ops — an audit-only divergence no offline gate catches. Document the
+  "false means leave it to the provider" contract on the spec field.
 - PULUMI OUTPUT TYPING: an `ApplyT` applier's input parameter type must match the SDK
   output's element type EXACTLY (a `func(addr *string)` applier on a `StringOutput`
   panics `applier's first input parameter must be assignable from string` at deploy

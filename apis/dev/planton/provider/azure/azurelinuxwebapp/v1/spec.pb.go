@@ -1405,8 +1405,10 @@ type AzureLinuxWebAppStorageMount struct {
 	AccountName string `protobuf:"bytes,3,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
 	// Name of the file share or blob container to mount.
 	ShareName string `protobuf:"bytes,4,opt,name=share_name,json=shareName,proto3" json:"share_name,omitempty"`
-	// Access key for the storage account.
-	// This is a sensitive credential.
+	// Access key for the storage account. Defaults to referencing an
+	// AzureStorageAccount's primary_access_key output, so the mount
+	// composes in one manifest set; a literal value or a managed-secret
+	// reference works too.
 	AccessKey *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
 	// Path inside the container where the share is mounted.
 	// Example: "/mnt/data"
@@ -1860,7 +1862,7 @@ const file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_rawDesc = "
 	"\x1cAzureLinuxWebAppCorsSettings\x121\n" +
 	"\x0fallowed_origins\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eallowedOrigins\x12?\n" +
 	"\x13support_credentials\x18\x02 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x12supportCredentials\x88\x01\x01B\x16\n" +
-	"\x14_support_credentials\"\x9d\x03\n" +
+	"\x14_support_credentials\"\xcc\x03\n" +
 	"\x1cAzureLinuxWebAppStorageMount\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x88\x01\n" +
@@ -1870,9 +1872,9 @@ const file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_rawDesc = "
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vaccountName\x12)\n" +
 	"\n" +
 	"share_name\x18\x04 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tshareName\x12Y\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tshareName\x12\x87\x01\n" +
 	"\n" +
-	"access_key\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\taccessKey\x12\x1d\n" +
+	"access_key\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.primary_access_keyR\taccessKey\x12\x1d\n" +
 	"\n" +
 	"mount_path\x18\x06 \x01(\tR\tmountPath\"\xbe\x03\n" +
 	"\x14AzureLinuxWebAppLogs\x12z\n" +

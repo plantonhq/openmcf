@@ -1,0 +1,56 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageAccount
+metadata:
+  name: prod-storage
+spec:
+  region: <azure-region>
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: <resource-group-resource-name>
+      fieldPath: status.outputs.resource_group_name
+  accountName: <accountname>
+  # Zone-redundant at home plus geo-replication: survives a zone loss
+  # and a regional disaster.
+  replicationType: GZRS
+  # Anonymous container access is unrepresentable account-wide, and the
+  # data plane rejects everything the firewall does not admit.
+  allowNestedItemsToBePublic: false
+  networkRules:
+    defaultAction: DENY
+    # Trusted Microsoft services (Backup, Monitor, Event Grid) stay
+    # admitted; application traffic enters via the subnet references.
+    bypass:
+      - AZURE_SERVICES
+    virtualNetworkSubnetIds:
+      - valueFrom:
+          kind: AzureSubnet
+          name: <app-subnet-resource-name>
+          fieldPath: status.outputs.subnet_id
+  # Cap user-signed SAS tokens at 7 days and reject longer ones.
+  sasPolicy:
+    expirationPeriod: "7.00:00:00"
+    expirationAction: BLOCK
+  blobProperties:
+    versioningEnabled: true
+    changeFeedEnabled: true
+    lastAccessTimeEnabled: true
+    deleteRetentionPolicy:
+      days: 30
+    containerDeleteRetentionPolicy:
+      days: 30
+  # Tier stale data down and age it out on a schedule.
+  lifecycleRules:
+    - name: tier-and-expire
+      filters:
+        blobTypes:
+          - BLOCK_BLOB
+      actions:
+        baseBlob:
+          tierToCoolAfterDaysSinceLastAccessTimeGreaterThan: 30
+          autoTierToHotFromCoolEnabled: true
+          tierToArchiveAfterDaysSinceModificationGreaterThan: 180
+          deleteAfterDaysSinceModificationGreaterThan: 730
+  tags:
+    cost-center: <cost-center>
+    environment: production

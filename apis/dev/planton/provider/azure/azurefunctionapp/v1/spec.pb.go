@@ -116,13 +116,11 @@ type AzureFunctionAppSpec struct {
 	//
 	// Mutually exclusive with storage_key_vault_secret_id (not exposed in v1).
 	StorageAccountName *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=storage_account_name,json=storageAccountName,proto3" json:"storage_account_name,omitempty"`
-	// The access key for the storage account.
-	// This is a sensitive credential. Provide it directly as a literal value
-	// or reference it from a secrets manager via StringValueOrRef.
-	//
-	// Note: AzureStorageAccount does not export access keys in its status outputs
-	// (by design -- exporting secrets through status is an anti-pattern). Provide
-	// the key directly or use storage_uses_managed_identity instead.
+	// The access key for the storage account. Defaults to referencing an
+	// AzureStorageAccount's primary_access_key output, so the binding
+	// composes in one manifest set; a literal value or a managed-secret
+	// reference works too. Prefer storage_uses_managed_identity where the
+	// workload supports it -- keys are static credential material.
 	//
 	// Conflicts with storage_uses_managed_identity.
 	StorageAccountAccessKey *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=storage_account_access_key,json=storageAccountAccessKey,proto3" json:"storage_account_access_key,omitempty"`
@@ -1636,7 +1634,7 @@ var File_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/azure/azurefunctionapp/v1/spec.proto\x12.dev.planton.provider.azure.azurefunctionapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xae\x19\n" +
+	"9dev/planton/provider/azure/azurefunctionapp/v1/spec.proto\x12.dev.planton.provider.azure.azurefunctionapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd9\x19\n" +
 	"\x14AzureFunctionAppSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -1644,8 +1642,8 @@ const file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc = "
 	"\x04name\x18\x03 \x01(\tB\xda\x01\xbaH\xd6\x01\xba\x01\xc9\x01\n" +
 	"\x18function_app_name_format\x12qname must contain only alphanumeric characters and hyphens, and must start and end with an alphanumeric character\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,58}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18<R\x04name\x12\x81\x01\n" +
 	"\x0fservice_plan_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\x03\x92\xd4a\x16status.outputs.plan_idR\rservicePlanId\x12\x98\x01\n" +
-	"\x14storage_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a#status.outputs.storage_account_nameR\x12storageAccountName\x12u\n" +
-	"\x1astorage_account_access_key\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x17storageAccountAccessKey\x12Q\n" +
+	"\x14storage_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a#status.outputs.storage_account_nameR\x12storageAccountName\x12\x9f\x01\n" +
+	"\x1astorage_account_access_key\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xa0\xa6\x1d\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.primary_access_keyR\x17storageAccountAccessKey\x12Q\n" +
 	"\x1dstorage_uses_managed_identity\x18\a \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x1astorageUsesManagedIdentity\x88\x01\x01\x12K\n" +
 	"\x1bfunctions_extension_version\x18\b \x01(\tB\x06\x8a\xa6\x1d\x02~4H\x01R\x19functionsExtensionVersion\x88\x01\x01\x12s\n" +
 	"\vsite_config\x18\t \x01(\v2J.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfigB\x06\xbaH\x03\xc8\x01\x01R\n" +

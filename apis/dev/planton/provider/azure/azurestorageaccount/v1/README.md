@@ -1,81 +1,80 @@
-# Overview
+# AzureStorageAccount
 
-The **Azure Storage Account API Resource** provides a consistent and standardized interface for deploying and managing Azure Storage Accounts within our infrastructure. This resource simplifies the process of creating storage accounts with blob containers, configuring replication strategies, and managing network access controls.
+An Azure Storage Account: the multi-service storage primitive fronting
+Blob (objects), Files (SMB/NFS shares), Queues, Tables, and Data Lake
+Storage Gen2 behind one globally-unique DNS name. Kind, performance
+tier, and replication pick the SKU; service-level blocks tune the data
+services; blob containers are first-class `AzureStorageContainer`
+resources referencing this account.
 
-## Purpose
+## When to Use
 
-We developed this API resource to streamline the deployment of Azure Storage Accounts across various applications and services. By offering a unified interface, it reduces the complexity involved in storage management, enabling users to:
+Use AzureStorageAccount when you need:
 
-- **Create Storage Accounts**: Effortlessly provision Azure Storage Accounts with best-practice defaults.
-- **Configure Replication**: Choose from multiple replication strategies (LRS, ZRS, GRS, GZRS) based on durability requirements.
-- **Manage Blob Containers**: Create and configure blob containers with appropriate access levels.
-- **Control Network Access**: Restrict storage access to specific IP ranges and Virtual Networks.
-- **Enable Data Protection**: Configure soft delete and versioning for blob data recovery.
+- **Object storage** -- application assets, uploads, backups, data-lake
+  raw zones (add `is_hns_enabled` for ADLS Gen2 analytics)
+- **The storage backend an app service requires** -- Function Apps and
+  Web Apps bind to the account's name and access key
+- **File shares, queues, or tables** -- one account fronts all of them
+- **A static website or CDN origin** -- `static_website` plus the
+  `primary_web_host` / `primary_blob_host` outputs
 
-## Key Features
+## Key Configuration
 
-- **Consistent Interface**: Aligns with our existing APIs for deploying cloud infrastructure and services.
-- **Simplified Configuration**: Abstracts the complexities of Azure Storage, enabling quicker setups without deep Azure expertise.
-- **Multiple Storage Types**: Support for StorageV2, BlobStorage, BlockBlobStorage, and FileStorage.
-- **Flexible Replication**: Choose from locally redundant (LRS) to geo-zone-redundant (GZRS) storage.
-- **Access Tier Optimization**: Configure Hot or Cool access tiers for cost optimization.
-- **Security First**: HTTPS-only traffic, TLS 1.2 minimum, and network ACL controls.
-- **Data Protection**: Built-in support for blob versioning and soft delete.
+### The SKU trio
 
-## Spec Fields (Key Configuration)
+- `account_kind` -- STORAGE_V2 (default, right for virtually everything),
+  BLOCK_BLOB_STORAGE / FILE_STORAGE (premium specializations),
+  BLOB_STORAGE / STORAGE (legacy)
+- `account_tier` -- STANDARD (default) or PREMIUM (SSD, pairs with the
+  specialized kinds); fixed at creation
+- `replication_type` -- LRS (default) → ZRS (zone loss) → GZRS (regional
+  loss) → RA_* (adds a read-only paired-region endpoint, lighting up the
+  secondary endpoint outputs)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `region` | string | Azure region for deployment (e.g., "eastus", "westus2") |
-| `resource_group` | string | Resource group name (must exist) |
-| `account_kind` | enum | Storage account kind: STORAGE_V2, BLOB_STORAGE, BLOCK_BLOB_STORAGE, FILE_STORAGE |
-| `account_tier` | enum | Performance tier: STANDARD or PREMIUM |
-| `replication_type` | enum | Replication: LRS, ZRS, GRS, GZRS, RA_GRS, RA_GZRS |
-| `access_tier` | enum | Blob access tier: HOT or COOL |
-| `enable_https_traffic_only` | bool | Require HTTPS for all requests (default: true) |
-| `min_tls_version` | enum | Minimum TLS version: TLS1_0, TLS1_1, TLS1_2 |
-| `network_rules` | object | Network ACL configuration (IP rules, VNet rules) |
-| `blob_properties` | object | Blob service properties (versioning, soft delete) |
-| `containers` | list | Blob containers to create |
+### Security posture
 
-## Stack Outputs
+- `https_traffic_only_enabled` + `min_tls_version` -- transport floor
+  (both default to Azure's secure side)
+- `shared_access_key_enabled: false` -- Entra-only data plane (verify
+  every consumer first)
+- `allow_nested_items_to_be_public: false` -- makes anonymous container
+  access unrepresentable account-wide
+- `network_rules` -- DENY + IP rules / subnet references /
+  trusted-service bypass; `public_network_access_enabled: false` removes
+  the public endpoint entirely
+- `customer_managed_key` + `identity` -- bring-your-own-key encryption
+  against an `AzureKeyVaultKey`; `infrastructure_encryption_enabled`
+  double-encrypts at rest
 
-| Output | Description |
-|--------|-------------|
-| `storage_account_id` | Azure Resource Manager ID of the storage account |
-| `storage_account_name` | Name of the storage account |
-| `primary_blob_endpoint` | Primary blob service endpoint URL |
-| `primary_queue_endpoint` | Primary queue service endpoint URL |
-| `primary_table_endpoint` | Primary table service endpoint URL |
-| `primary_file_endpoint` | Primary file service endpoint URL |
-| `primary_dfs_endpoint` | Primary Data Lake Storage endpoint URL |
-| `primary_web_endpoint` | Primary static website endpoint URL |
-| `container_url_map` | Map of container names to their URLs |
-| `region` | Azure region where deployed |
-| `resource_group` | Resource group name |
+### Data protection
 
-## How It Works
+- `blob_properties` -- versioning, blob + container soft delete, change
+  feed, point-in-time restore, CORS, last-access tracking
+- `immutability_policy` -- account-wide WORM (requires versioning; LOCKED
+  is irreversible)
+- `lifecycle_rules` -- tier down (cool/cold/archive) and delete on
+  age/access schedules, filtered by prefix, blob type, and index tags
 
-This resource deploys Azure Storage Accounts using:
+## Composition
 
-- **Pulumi Module**: `iac/pulumi/module/` - Go-based deployment using Pulumi Azure SDK
-- **Terraform Module**: `iac/tf/` - HCL-based deployment using Azure Provider
+Reference the account's outputs from other resources:
 
-Both modules provide feature parity and create identical resources.
+```yaml
+storageAccountId:
+  valueFrom:
+    kind: AzureStorageAccount
+    name: app-storage
+    fieldPath: status.outputs.storage_account_id
+```
 
-## Use Cases
+Key outputs: `storage_account_id` (containers, role-assignment scopes),
+`storage_account_name` + `primary_access_key` (app-service bindings),
+per-service endpoints and hosts (applications, CDN origins).
 
-- **Application Data Storage**: Store application data, logs, and backups
-- **Static Website Hosting**: Host static websites using blob storage
-- **Data Lake**: Build data lakes using Data Lake Storage Gen2
-- **File Shares**: Provide SMB file shares for applications
-- **Archive Storage**: Long-term retention of infrequently accessed data
-- **Container Data**: Store container images and artifacts
+## Documentation
 
-## References
-
-- [Azure Storage Account Overview](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview)
-- [Storage Replication Options](https://learn.microsoft.com/en-us/azure/storage/common/storage-redundancy)
-- [Blob Access Tiers](https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-overview)
-- [Network Security for Storage](https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security)
-- [Blob Soft Delete](https://learn.microsoft.com/en-us/azure/storage/blobs/soft-delete-blob-overview)
+- [Design research](docs/README.md) -- field mapping, decomposition
+  decisions, recorded skips
+- [Presets](presets/) -- remixable starting points
+- [Terraform module](iac/tf/README.md) / [Pulumi module](iac/pulumi/README.md)

@@ -365,6 +365,24 @@ func TestAzureMssqlElasticPool_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremssqlelasticpool", "terraform")
 }
 
+// --- Azure storage account (fixture RG -> StorageV2 with firewall + lifecycle policy) ---
+
+func TestAzureStorageAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestorageaccount", "pulumi")
+}
+func TestAzureStorageAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestorageaccount", "terraform")
+}
+
+// --- Azure storage container (fixture RG -> scenario-local account -> private container) ---
+
+func TestAzureStorageContainer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragecontainer", "pulumi")
+}
+func TestAzureStorageContainer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragecontainer", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

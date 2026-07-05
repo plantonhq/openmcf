@@ -225,6 +225,8 @@ const (
 	// attaches at least one NIC (the subnet, network, and resource group
 	// chain transitively through the NIC's own prerequisites).
 	CloudResourceKind_AzureVirtualMachine CloudResourceKind = 408
+	// AzureResourceGroup is a prerequisite because a storage account is
+	// created inside a referenced resource group in composed environments.
 	CloudResourceKind_AzureStorageAccount CloudResourceKind = 409
 	CloudResourceKind_AzureDnsRecord      CloudResourceKind = 410
 	// AzureVirtualNetwork is a prerequisite because a subnet is an ARM child
@@ -349,6 +351,13 @@ const (
 	CloudResourceKind_AzureServiceBusNamespace         CloudResourceKind = 470
 	CloudResourceKind_AzureEventHubNamespace           CloudResourceKind = 471
 	CloudResourceKind_AzureFrontDoorProfile            CloudResourceKind = 480
+	// No registry prerequisite on AzureStorageAccount: account names are
+	// GLOBALLY unique and Azure holds a just-deleted name, so a
+	// recreate-per-scenario fixture would hang -- container E2E scenarios
+	// declare a scenario-local account fixture instead. Deploy ordering in
+	// composed environments still flows from the storage_account_id
+	// reference itself.
+	CloudResourceKind_AzureStorageContainer CloudResourceKind = 490
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -798,6 +807,7 @@ var (
 		470:  "AzureServiceBusNamespace",
 		471:  "AzureEventHubNamespace",
 		480:  "AzureFrontDoorProfile",
+		490:  "AzureStorageContainer",
 		600:  "GcpArtifactRegistryRepo",
 		601:  "GcpCloudCdn",
 		602:  "GcpCloudFunction",
@@ -1231,6 +1241,7 @@ var (
 		"AzureServiceBusNamespace":                470,
 		"AzureEventHubNamespace":                  471,
 		"AzureFrontDoorProfile":                   480,
+		"AzureStorageContainer":                   490,
 		"GcpArtifactRegistryRepo":                 600,
 		"GcpCloudCdn":                             601,
 		"GcpCloudFunction":                        602,
@@ -1783,7 +1794,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xb4\x9a\x01\n" +
+	"\x02v1\x10\x01*\xe4\x9a\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1882,9 +1893,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\rAzureKeyVault\x10\x95\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azkv:\x02\x90\x03\x120\n" +
 	"\x13AzureVirtualNetwork\x10\x96\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\x06azvnet0\x01:\x02\x90\x03\x12)\n" +
 	"\x0fAzureNatGateway\x10\x97\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznat:\x02\x90\x03\x12,\n" +
-	"\x13AzureVirtualMachine\x10\x98\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azvm:\x02\xa6\x03\x12(\n" +
-	"\x13AzureStorageAccount\x10\x99\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azsa\x12%\n" +
+	"\x13AzureVirtualMachine\x10\x98\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azvm:\x02\xa6\x03\x12,\n" +
+	"\x13AzureStorageAccount\x10\x99\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azsa:\x02\x90\x03\x12%\n" +
 	"\x0eAzureDnsRecord\x10\x9a\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azdrec\x12%\n" +
 	"\vAzureSubnet\x10\x9b\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azsub:\x02\x96\x03\x123\n" +
 	"\x19AzureNetworkSecurityGroup\x10\x9c\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05aznsg:\x02\x90\x03\x12'\n" +
@@ -1933,7 +1943,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x16AzureEventHubNamespace\x10\xd7\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azeh\x12*\n" +
 	"\x15AzureFrontDoorProfile\x10\xe0\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azfd\x12.\n" +
+	"\b\r\x10\x01\"\x04azfd\x12*\n" +
+	"\x15AzureStorageContainer\x10\xea\x03\x1a\x0e\xa2\xf7\x04\n" +
+	"\b\r\x10\x01\"\x04azsc\x12.\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
 	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +

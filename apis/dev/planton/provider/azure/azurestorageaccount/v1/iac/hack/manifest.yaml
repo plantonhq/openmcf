@@ -1,31 +1,141 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
-  name: test-storage
-  org: test-org
-  env: dev
+  name: test-storage-account
 spec:
   region: eastus
-  resource_group: test-rg
-  account_kind: STORAGE_V2
-  account_tier: STANDARD
-  replication_type: LRS
-  access_tier: HOT
-  enable_https_traffic_only: true
-  min_tls_version: TLS1_2
-  network_rules:
-    default_action: DENY
-    bypass_azure_services: true
-    ip_rules:
+  resourceGroup:
+    value: test-rg
+  accountName: plantonhackstorage
+  # Exercises the SKU-trio enum mappings (kind/tier/replication) plus the
+  # COLD access tier added in v4.
+  accountKind: STORAGE_V2
+  accountTier: STANDARD
+  replicationType: RA_GRS
+  accessTier: COOL
+  # Security posture: TLS floor, key policy, anonymous-access lockdown,
+  # SAS lifetime policy with the BLOCK action (exercises both enum maps).
+  minTlsVersion: TLS1_2
+  sharedAccessKeyEnabled: true
+  defaultToOauthAuthentication: true
+  allowNestedItemsToBePublic: false
+  allowedCopyScope: AAD
+  sasPolicy:
+    expirationPeriod: "90.00:00:00"
+    expirationAction: BLOCK
+  # Exercises the account-scoped queue/table encryption key types.
+  queueEncryptionKeyType: ACCOUNT
+  tableEncryptionKeyType: ACCOUNT
+  infrastructureEncryptionEnabled: true
+  # Exercises the identity + CMK pair (the identity must carry the
+  # unwrapping user-assigned identity).
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/storage-uai
+  customerManagedKey:
+    keyVaultKeyId:
+      value: https://test-vault.vault.azure.net/keys/storage-cmk
+    userAssignedIdentityId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/storage-uai
+  # Exercises the firewall: DENY default, two bypass classes, IP rules,
+  # a subnet reference, and a private-link exception.
+  networkRules:
+    defaultAction: DENY
+    bypass:
+      - AZURE_SERVICES
+      - METRICS
+    ipRules:
       - "203.0.113.0/24"
-  blob_properties:
-    enable_versioning: false
-    soft_delete_retention_days: 7
-    container_soft_delete_retention_days: 7
-  containers:
-    - name: data
-      access_type: PRIVATE
-    - name: logs
-      access_type: PRIVATE
-    - name: backups
-      access_type: PRIVATE
+    virtualNetworkSubnetIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/app
+    privateLinkAccess:
+      - endpointResourceId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Synapse/workspaces/test-ws
+  # Exercises the full blob-service surface: versioning + change feed +
+  # both soft-delete policies + point-in-time restore + CORS (incl. the
+  # PATCH method) + last-access tracking.
+  blobProperties:
+    versioningEnabled: true
+    changeFeedEnabled: true
+    changeFeedRetentionInDays: 90
+    lastAccessTimeEnabled: true
+    deleteRetentionPolicy:
+      days: 30
+      permanentDeleteEnabled: true
+    containerDeleteRetentionPolicy:
+      days: 14
+    restorePolicy:
+      days: 7
+    corsRules:
+      - allowedOrigins:
+          - https://app.example.com
+        allowedMethods:
+          - GET
+          - PUT
+          - PATCH
+        allowedHeaders:
+          - "*"
+        exposedHeaders:
+          - x-ms-meta-*
+        maxAgeInSeconds: 3600
+  # Exercises the file-service block on a standard StorageV2 account
+  # (share retention + SMB dials; multichannel stays off -- premium-only).
+  shareProperties:
+    retentionPolicy:
+      days: 14
+    smb:
+      versions:
+        - SMB3.1.1
+      authenticationTypes:
+        - Kerberos
+      kerberosTicketEncryptionType:
+        - AES-256
+      channelEncryptionType:
+        - AES-256-GCM
+  # Exercises the standalone static-website resource path.
+  staticWebsite:
+    indexDocument: index.html
+    error404Document: "404.html"
+  # Exercises the routing enum + endpoint publication flags.
+  routing:
+    choice: INTERNET_ROUTING
+    publishInternetEndpoints: true
+  # Exercises the Entra Kerberos files-auth path with a default share
+  # permission (the SHARE_PERMISSION_* enum map).
+  azureFilesAuthentication:
+    directoryType: AADKERB
+    defaultShareLevelPermission: SHARE_PERMISSION_READER
+  # Exercises the management-policy fold end to end: a tiering rule with
+  # prefix filters, an index-tag rule (base-blob only -- ARM forbids
+  # snapshot/version actions with tag filters), and snapshot/version
+  # trimming.
+  lifecycleRules:
+    - name: age-out-logs
+      filters:
+        blobTypes:
+          - BLOCK_BLOB
+        prefixMatch:
+          - logs/
+      actions:
+        baseBlob:
+          tierToCoolAfterDaysSinceModificationGreaterThan: 30
+          tierToArchiveAfterDaysSinceModificationGreaterThan: 90
+          deleteAfterDaysSinceModificationGreaterThan: 365
+        snapshot:
+          deleteAfterDaysSinceCreationGreaterThan: 90
+        version:
+          changeTierToCoolAfterDaysSinceCreation: 30
+          deleteAfterDaysSinceCreation: 180
+    - name: expire-tagged
+      filters:
+        blobTypes:
+          - BLOCK_BLOB
+        matchBlobIndexTags:
+          - name: retention
+            value: short
+      actions:
+        baseBlob:
+          deleteAfterDaysSinceCreationGreaterThan: 30
+  tags:
+    team: platform
+    cost-center: eng
