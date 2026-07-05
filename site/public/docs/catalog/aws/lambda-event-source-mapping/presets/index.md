@@ -11,11 +11,11 @@ presets:
   - slug: "01-sqs-worker"
     rank: "01"
     title: "SQS Queue Worker"
-    excerpt: "SQS-to-Lambda mapping with ReportBatchItemFailures and composed AwsLambda and AwsSqsQueue references."
+    excerpt: "An SQS-to-Lambda mapping with partial-batch failure reporting -- the right default for independent record processing."
   - slug: "02-kinesis-consumer"
     rank: "02"
     title: "Kinesis Stream Consumer"
-    excerpt: "Kinesis stream consumer from TRIM_HORIZON with partial-batch failures and parallelization_factor 2."
+    excerpt: "A Kinesis-to-Lambda mapping that processes the backlog from the oldest available record with partial-batch failure reporting."
 ---
 
 # Lambda Event Source Mapping Presets

@@ -2,7 +2,7 @@
 title: "MSK Serverless Cluster"
 description: "MSK Serverless Cluster deployment documentation"
 icon: "package"
-order: 101
+order: 100
 componentName: "awsmskserverlesscluster"
 ---
 
@@ -118,6 +118,6 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AwsMskCluster](/docs/catalog/aws/msk-cluster) — the provisioned sibling: choose it for SCRAM/mTLS auth, public access, PrivateLink, tiered storage, or sustained high throughput
-- [AwsSubnet](/docs/catalog/aws/awssubnet) — provides the subnets where the cluster places network interfaces
-- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — controls which clients can reach the SASL/IAM listener (port 9098)
-- [AwsIamRole](/docs/catalog/aws/awsiamrole) — client workloads need `kafka-cluster:*` IAM permissions scoped to the exported `cluster_arn`
+- [AwsSubnet](/docs/catalog/aws/subnet) — provides the subnets where the cluster places network interfaces
+- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls which clients can reach the SASL/IAM listener (port 9098)
+- [AwsIamRole](/docs/catalog/aws/iam-role) — client workloads need `kafka-cluster:*` IAM permissions scoped to the exported `cluster_arn`

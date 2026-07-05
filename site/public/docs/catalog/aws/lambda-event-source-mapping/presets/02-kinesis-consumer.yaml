@@ -4,17 +4,17 @@ metadata:
   name: analytics-consumer
 spec:
   region: us-west-2
-  function_arn:
+  functionArn:
     valueFrom:
       kind: AwsLambda
       name: stream-processor
       fieldPath: status.outputs.function_arn
-  event_source_arn:
+  eventSourceArn:
     valueFrom:
       kind: AwsKinesisStream
       name: clickstream
       fieldPath: status.outputs.stream_arn
-  starting_position: TRIM_HORIZON
-  function_response_types:
+  startingPosition: TRIM_HORIZON
+  functionResponseTypes:
     - ReportBatchItemFailures
-  parallelization_factor: 2
+  parallelizationFactor: 2

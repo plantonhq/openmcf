@@ -1,3 +1,16 @@
+---
+title: "Symmetric Encryption Key"
+description: "This preset creates a customer-managed symmetric KMS key (`SYMMETRIC_DEFAULT`) with automatic rotation enabled and a 30-day deletion window. Symmetric keys are what AWS service integrations (S3, RDS,..."
+type: "preset"
+rank: "01"
+presetSlug: "01-symmetric-encryption"
+componentSlug: "kms-key"
+componentTitle: "KMS Key"
+provider: "aws"
+icon: "package"
+order: 1
+---
+
 # Symmetric Encryption Key
 
 This preset creates a customer-managed symmetric KMS key (`SYMMETRIC_DEFAULT`) with automatic rotation enabled and a 30-day deletion window. Symmetric keys are what AWS service integrations (S3, RDS, Lambda environment encryption, MSK, ...) expect.

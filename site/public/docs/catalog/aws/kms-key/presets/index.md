@@ -11,7 +11,7 @@ presets:
   - slug: "01-symmetric-encryption"
     rank: "01"
     title: "Symmetric Encryption Key"
-    excerpt: "SYMMETRIC_DEFAULT key with enable_key_rotation, 365-day rotation period, and alias/ prefix aliases — the shape AWS service integrations expect."
+    excerpt: "This preset creates a customer-managed symmetric KMS key (`SYMMETRIC_DEFAULT`) with automatic rotation enabled and a 30-day deletion window. Symmetric keys are what AWS service integrations (S3, RDS,..."
 ---
 
 # KMS Key Presets

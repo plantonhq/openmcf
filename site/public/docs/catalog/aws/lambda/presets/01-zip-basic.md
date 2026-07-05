@@ -1,3 +1,16 @@
+---
+title: "Zip-Based Lambda Function"
+description: "This preset creates a Lambda function deployed from a zip archive in S3. The function name comes from `metadata.name` (create-time immutable in AWS). It uses the Node.js 22.x runtime with 256 MB..."
+type: "preset"
+rank: "01"
+presetSlug: "01-zip-basic"
+componentSlug: "lambda"
+componentTitle: "Lambda"
+provider: "aws"
+icon: "package"
+order: 1
+---
+
 # Zip-Based Lambda Function
 
 This preset creates a Lambda function deployed from a zip archive in S3. The function name comes from `metadata.name` (create-time immutable in AWS). It uses the Node.js 22.x runtime with 256 MB memory and a 30-second timeout — the most common deployment model for event handlers, API endpoints, and automation scripts.

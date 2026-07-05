@@ -8,15 +8,17 @@ componentName: "awssecuritygroup"
 
 # AWS Security Group
 
-Deploys an AWS EC2 Security Group in a specified VPC with configurable ingress and egress rules supporting IPv4 CIDRs, IPv6 CIDRs, source/destination security group references, and self-referencing rules.
+Deploys an AWS EC2 Security Group in a specified VPC with configurable ingress and egress rules supporting IPv4 CIDRs, IPv6 CIDRs, managed prefix lists, source/destination security group references, and self-referencing rules.
 
 ## What Gets Created
 
 When you deploy an AwsSecurityGroup resource, Planton provisions:
 
 - **Security Group** — an `ec2.SecurityGroup` resource in the specified VPC with the given name, description, ingress rules, and egress rules
-- **Ingress Rules** — inbound traffic rules mapped from the `ingress` field, each specifying protocol, port range, CIDR blocks, security group references, and self-reference settings
-- **Egress Rules** — outbound traffic rules mapped from the `egress` field, each specifying protocol, port range, CIDR blocks, destination security group references, and self-reference settings
+- **Ingress Rules** — inbound traffic rules mapped from the `ingress` field, each specifying protocol, port range, CIDR blocks, managed prefix lists, security group references, and self-reference settings
+- **Egress Rules** — outbound traffic rules mapped from the `egress` field, each specifying protocol, port range, CIDR blocks, managed prefix lists, destination security group references, and self-reference settings
+
+Rules are managed inline on the group: the manifest is the complete statement of what the group permits, and rules added outside of it are removed on the next apply.
 
 ## Prerequisites
 
@@ -50,7 +52,7 @@ Deploy:
 planton apply -f sg.yaml
 ```
 
-This creates a Security Group in the specified VPC with no ingress rules (all inbound traffic denied) and default AWS egress behavior.
+This creates a Security Group in the specified VPC with no ingress rules (all inbound traffic denied) and no egress rules (all outbound traffic denied — add an explicit all-traffic egress rule to allow outbound connectivity).
 
 ## Configuration Reference
 
@@ -69,17 +71,19 @@ This creates a Security Group in the specified VPC with no ingress rules (all in
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `ingress` | `SecurityGroupRule[]` | `[]` | Inbound traffic rules. If empty, all inbound traffic is denied. |
-| `egress` | `SecurityGroupRule[]` | `[]` | Outbound traffic rules. If empty, AWS defaults to allow all outbound traffic. |
+| `egress` | `SecurityGroupRule[]` | `[]` | Outbound traffic rules. If empty, all outbound traffic is denied (the allow-all rule AWS adds to new groups is revoked so the manifest fully owns the rule set). |
+| `revokeRulesOnDelete` | `bool` | `false` | Forcibly revoke this group's rules — and rules in other groups that reference it — before delete. Enable for groups referenced cross-group so teardown never fails with a `DependencyViolation`. |
 
 Each `SecurityGroupRule` contains:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `protocol` | `string` | — | Protocol for the rule: `"tcp"`, `"udp"`, `"icmp"`, or `"-1"` (all protocols). **Required.** |
-| `fromPort` | `int32` | `0` | Starting port in the range. For single-port rules, set equal to `toPort`. Use `0` with protocol `-1`. |
-| `toPort` | `int32` | `0` | Ending port in the range. For single-port rules, set equal to `fromPort`. Use `0` with protocol `-1`. |
+| `protocol` | `string` | — | Protocol for the rule: `"tcp"`, `"udp"`, `"icmp"`, `"icmpv6"`, an IANA protocol number, or `"-1"` (all protocols). **Required.** |
+| `fromPort` | `int32` | `0` | Starting port in the range (`-1`–`65535`). For single-port rules, set equal to `toPort`. For ICMP, this is the ICMP *type* (`-1` = all types). Must be `0` with protocol `-1`. |
+| `toPort` | `int32` | `0` | Ending port in the range (`-1`–`65535`). For single-port rules, set equal to `fromPort`. For ICMP, this is the ICMP *code* (`-1` = all codes). Must be `0` with protocol `-1`. |
 | `ipv4Cidrs` | `string[]` | `[]` | IPv4 CIDR blocks allowed (ingress) or targeted (egress). Example: `"0.0.0.0/0"`. |
 | `ipv6Cidrs` | `string[]` | `[]` | IPv6 CIDR blocks allowed or targeted. Example: `"::/0"`. |
+| `prefixListIds` | `string[]` | `[]` | Managed prefix list IDs allowed (ingress) or targeted (egress). Example: `"pl-63a5400a"`. Targets a named CIDR set — an AWS service like S3, or a customer-maintained range — by stable ID. |
 | `sourceSecurityGroupIds` | `string[]` | `[]` | Security Group IDs that can send traffic (for ingress rules). |
 | `destinationSecurityGroupIds` | `string[]` | `[]` | Security Group IDs that receive traffic (for egress rules). |
 | `selfReference` | `bool` | `false` | When `true`, allows traffic from/to instances associated with the same Security Group. |
@@ -283,7 +287,9 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `security_group_id` | `string` | The unique ID of the created Security Group |
+| `security_group_id` | `string` | The unique ID of the created Security Group (`sg-...`) — the join key other resources reference |
+| `security_group_arn` | `string` | The ARN of the Security Group — the form IAM policy conditions expect |
+| `owner_id` | `string` | The AWS account ID that owns the Security Group — needed for cross-account rule references |
 
 ## Related Components
 

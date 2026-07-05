@@ -1,3 +1,16 @@
+---
+title: "Composed Serverless Kafka (Full References)"
+description: "An MSK Serverless cluster where every cross-resource input resolves from Planton-managed resources: subnets from `AwsSubnet` nodes and the attached security group from an `AwsSecurityGroup` node. The..."
+type: "preset"
+rank: "02"
+presetSlug: "02-composed-references"
+componentSlug: "msk-serverless-cluster"
+componentTitle: "MSK Serverless Cluster"
+provider: "aws"
+icon: "package"
+order: 2
+---
+
 # Composed Serverless Kafka (Full References)
 
 An MSK Serverless cluster where every cross-resource input resolves from Planton-managed resources: subnets from `AwsSubnet` nodes and the attached security group from an `AwsSecurityGroup` node. The cluster joins the resource graph — redeploying the network layer flows new IDs into the cluster automatically.

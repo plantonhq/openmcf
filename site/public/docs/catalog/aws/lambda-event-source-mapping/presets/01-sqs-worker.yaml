@@ -4,15 +4,15 @@ metadata:
   name: order-worker
 spec:
   region: us-west-2
-  function_arn:
+  functionArn:
     valueFrom:
       kind: AwsLambda
       name: order-processor
       fieldPath: status.outputs.function_arn
-  event_source_arn:
+  eventSourceArn:
     valueFrom:
       kind: AwsSqsQueue
       name: order-events
       fieldPath: status.outputs.queue_arn
-  function_response_types:
+  functionResponseTypes:
     - ReportBatchItemFailures

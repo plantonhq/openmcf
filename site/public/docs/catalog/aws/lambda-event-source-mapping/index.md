@@ -8,13 +8,13 @@ componentName: "awslambdaeventsourcemapping"
 
 # AWS Lambda Event Source Mapping
 
-Deploys a Lambda event source mapping — the managed poller that reads an SQS queue, a Kinesis or DynamoDB stream, a Kafka topic, an Amazon MQ queue, or a DocumentDB change stream and invokes a Lambda function with batched records.
+Deploys a Lambda event source mapping -- the managed poller that reads an SQS queue, a Kinesis or DynamoDB stream, a Kafka topic, an Amazon MQ queue, or a DocumentDB change stream and invokes a Lambda function with batched records.
 
 ## What Gets Created
 
 When you deploy an AwsLambdaEventSourceMapping resource, Planton provisions:
 
-- **Event Source Mapping** — an `aws_lambda_event_source_mapping` wired to the referenced function and event source, with optional batching, filtering, failure handling, and consumption controls
+- **Event Source Mapping** -- an `aws_lambda_event_source_mapping` wired to the referenced function and event source, with optional batching, filtering, failure handling, and consumption controls
 
 The event source itself is create-time immutable; batching, filters, and the target function edit in place.
 
@@ -35,11 +35,11 @@ metadata:
   name: my-worker
 spec:
   region: us-west-2
-  function_arn:
+  functionArn:
     value: arn:aws:lambda:us-west-2:123456789012:function:my-function
-  event_source_arn:
+  eventSourceArn:
     value: arn:aws:sqs:us-west-2:123456789012:my-queue
-  function_response_types:
+  functionResponseTypes:
     - ReportBatchItemFailures
 ```
 
@@ -56,18 +56,18 @@ planton apply -f sqs-worker.yaml
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `region` | `string` | AWS region for the mapping. | Required; non-empty |
-| `function_arn` | `StringValueOrRef` | Lambda function to invoke. Defaults to `AwsLambda` → `status.outputs.function_arn`. | Required |
-| `event_source_arn` or `self_managed_kafka` | `StringValueOrRef` / `object` | Exactly one event source. | CEL-enforced |
+| `functionArn` | `StringValueOrRef` | Lambda function to invoke. | Required |
+| `eventSourceArn` or `selfManagedKafka` | `StringValueOrRef` / `object` | Exactly one event source. | CEL-enforced |
 
 ### Common Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `disabled` | `bool` | `false` | Pause consumption without deleting the mapping. |
-| `batch_size` | `int32` | source default | Records per invocation batch. |
-| `maximum_batching_window_seconds` | `int32` | `0` | Batching window in seconds (1–300). |
-| `function_response_types` | `string[]` | — | `ReportBatchItemFailures` for partial-batch retry. |
-| `starting_position` | `string` | — | Stream/Kafka start position. ForceNew. |
+| `batchSize` | `int32` | source default | Records per invocation batch. |
+| `maximumBatchingWindowSeconds` | `int32` | `0` | Batching window in seconds (1–300). |
+| `functionResponseTypes` | `string[]` | — | `ReportBatchItemFailures` for partial-batch retry. |
+| `startingPosition` | `string` | — | Stream/Kafka start position. ForceNew. |
 
 ## Stack Outputs
 
@@ -82,7 +82,7 @@ After deployment, the following outputs are available in `status.outputs`:
 
 ## Related Components
 
-- [AwsLambda](/docs/catalog/aws/lambda) — the function this mapping invokes
-- [AwsSqsQueue](/docs/catalog/aws/sqs-queue) — common SQS event source
-- [AwsKinesisStream](/docs/catalog/aws/kinesis-stream) — Kinesis stream event source
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — encrypts filter criteria at rest
+- [AwsLambda](/docs/catalog/aws/lambda) -- the function this mapping invokes
+- [AwsSqsQueue](/docs/catalog/aws/sqs-queue) -- common SQS event source
+- [AwsKinesisStream](/docs/catalog/aws/kinesis-data-stream) -- Kinesis stream event source
+- [AwsKmsKey](/docs/catalog/aws/kms-key) -- encrypts filter criteria at rest

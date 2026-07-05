@@ -1,3 +1,16 @@
+---
+title: "Basic IAM-Authenticated Serverless Kafka"
+description: "A minimal MSK Serverless cluster: network interfaces in two private subnets, a referenced security group controlling access, and SASL/IAM authentication (always on — the only scheme serverless MSK..."
+type: "preset"
+rank: "01"
+presetSlug: "01-basic-iam"
+componentSlug: "msk-serverless-cluster"
+componentTitle: "MSK Serverless Cluster"
+provider: "aws"
+icon: "package"
+order: 1
+---
+
 # Basic IAM-Authenticated Serverless Kafka
 
 A minimal MSK Serverless cluster: network interfaces in two private subnets, a referenced security group controlling access, and SASL/IAM authentication (always on — the only scheme serverless MSK supports).

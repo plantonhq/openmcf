@@ -1,3 +1,16 @@
+---
+title: "Container-Based Lambda Function"
+description: "This preset creates a Lambda function from a container image in ECR. The function name comes from `metadata.name`. Runtime and entrypoint are defined by the image — leave `runtime` and `handler`..."
+type: "preset"
+rank: "02"
+presetSlug: "02-container-basic"
+componentSlug: "lambda"
+componentTitle: "Lambda"
+provider: "aws"
+icon: "package"
+order: 2
+---
+
 # Container-Based Lambda Function
 
 This preset creates a Lambda function from a container image in ECR. The function name comes from `metadata.name`. Runtime and entrypoint are defined by the image — leave `runtime` and `handler` empty.

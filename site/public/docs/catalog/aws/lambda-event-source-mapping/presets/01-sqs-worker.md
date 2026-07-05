@@ -1,12 +1,25 @@
+---
+title: "SQS Queue Worker"
+description: "An SQS-to-Lambda mapping with partial-batch failure reporting -- the right default for independent record processing."
+type: "preset"
+rank: "01"
+presetSlug: "01-sqs-worker"
+componentSlug: "lambda-event-source-mapping"
+componentTitle: "Lambda Event Source Mapping"
+provider: "aws"
+icon: "package"
+order: 1
+---
+
 # SQS Queue Worker
 
-An SQS-to-Lambda mapping with partial-batch failure reporting — the right default for independent record processing.
+An SQS-to-Lambda mapping with partial-batch failure reporting -- the right default for independent record processing.
 
 ## What this preset gives you
 
 - A managed poller that reads from an SQS queue and invokes your Lambda function in batches.
 - `ReportBatchItemFailures` so only failed messages are retried instead of the whole batch.
-- Composed references to an `AwsLambda` function and an `AwsSqsQueue` — no literal ARNs to wire by hand.
+- Composed references to an `AwsLambda` function and an `AwsSqsQueue` -- no literal ARNs to wire by hand.
 
 ## Before you deploy
 
@@ -15,6 +28,6 @@ An SQS-to-Lambda mapping with partial-batch failure reporting — the right defa
 
 ## Remix ideas
 
-- Add `batch_size` and `maximum_batching_window_seconds` together for higher throughput.
-- Set `scaling_max_concurrency` to throttle how many concurrent invocations this mapping drives.
+- Add `batchSize` and `maximumBatchingWindowSeconds` together for higher throughput.
+- Set `scalingMaxConcurrency` to throttle how many concurrent invocations this mapping drives.
 - Add `filters` with EventBridge-style JSON patterns to discard records before invocation.
