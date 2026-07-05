@@ -11,15 +11,15 @@ presets:
   - slug: "01-free-instance"
     rank: "01"
     title: "Free Instance"
-    excerpt: "This preset provisions a zero-cost Cloud Spanner instance using the FREE_INSTANCE type. It is ideal for development, prototyping, CI/CD testing, and learning Spanner without incurring any charges."
+    excerpt: "Provisions the project's one zero-cost Cloud Spanner instance — full Spanner semantics (strong consistency, SQL, the same client libraries) with limited capacity (about 10 GB of storage). Nothing..."
   - slug: "02-regional-production"
     rank: "02"
     title: "Regional Production"
-    excerpt: "This preset provisions a production-ready Cloud Spanner instance with a single node, ENTERPRISE edition, and automatic backup scheduling. It is suitable for production workloads with predictable..."
+    excerpt: "Provisions a production-ready Cloud Spanner instance with fixed capacity (one node), ENTERPRISE edition, and automatic backup schedules for new databases. Suitable for production workloads with..."
   - slug: "03-autoscaling-production"
     rank: "03"
-    title: "Autoscaling Production"
-    excerpt: "This preset provisions a production Cloud Spanner instance with autoscaling enabled. Spanner automatically adjusts compute capacity between 1 and 3 nodes based on CPU and storage utilization targets...."
+    title: "Autoscaling Production (Multi-Region)"
+    excerpt: "Provisions a multi-region Cloud Spanner instance with Spanner's managed autoscaler: capacity follows utilization within explicit bounds, including an asymmetric override that scales one read-heavy..."
 ---
 
 # Spanner Instance Presets

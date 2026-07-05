@@ -58,6 +58,7 @@ The following GCP resources can be deployed using Planton:
 - [Router NAT](/docs/catalog/gcp/router-nat)
 - [Service Account](/docs/catalog/gcp/service-account)
 - [Service Networking Connection](/docs/catalog/gcp/service-networking-connection)
+- [Spanner Backup Schedule](/docs/catalog/gcp/spanner-backup-schedule)
 - [Spanner Database](/docs/catalog/gcp/spanner-database)
 - [Spanner Instance](/docs/catalog/gcp/spanner-instance)
 - [SSL Certificate (Self-Managed)](/docs/catalog/gcp/ssl-certificate-self-managed)

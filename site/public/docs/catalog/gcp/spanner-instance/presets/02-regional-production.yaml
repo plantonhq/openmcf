@@ -1,13 +1,13 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
-  name: my-prod-spanner
+  name: prod-spanner
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  instanceName: <instance-name>
-  config: <instance-config>
-  displayName: <display-name>
+  # project_id omitted: falls back to the provider's default project.
+  config: regional-us-central1 # replace with your region's config
+  displayName: Production Spanner
   numNodes: 1
   edition: ENTERPRISE
   defaultBackupScheduleType: AUTOMATIC
+  labels:
+    team: platform # replace with your owning team
