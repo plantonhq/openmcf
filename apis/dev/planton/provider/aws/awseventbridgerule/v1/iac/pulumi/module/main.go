@@ -70,6 +70,19 @@ func rule(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*cloudwa
 		args.State = pulumi.StringPtr(spec.State)
 	}
 
+	// Rule-level invocation role (per-target role_arn takes precedence for
+	// its own target).
+	if spec.RoleArn.GetValue() != "" {
+		args.RoleArn = pulumi.StringPtr(spec.RoleArn.GetValue())
+	}
+
+	// AWS refuses to delete a rule that still has targets unless forced. The
+	// module removes its own targets first, so force only matters when an
+	// out-of-band consumer attached extra targets to this rule.
+	if spec.ForceDestroy {
+		args.ForceDestroy = pulumi.BoolPtr(true)
+	}
+
 	createdRule, err := cloudwatch.NewEventRule(ctx, locals.Target.Metadata.Name, args, pulumi.Provider(provider))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create EventBridge rule")

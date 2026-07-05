@@ -1,8 +1,10 @@
 terraform {
   required_providers {
     aws = {
+      # v6 family floor — kms_key_identifier, dead_letter_config, and
+      # log_config on aws_cloudwatch_event_bus require the 6.x provider line.
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.0.0"
     }
   }
 }

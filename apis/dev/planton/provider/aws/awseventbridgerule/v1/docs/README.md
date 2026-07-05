@@ -47,7 +47,7 @@ Common target types:
 Targets are bundled with the rule (as a `repeated` field) rather than being separate Planton components because:
 
 1. **A rule without targets is useless** — it matches events but does nothing.
-2. **Follows the AwsSnsTopic precedent** — SNS subscriptions are bundled with the topic for the same reason.
+2. **Targets are never referenced independently** — no other resource points at an EventBridge target, so they are satellites of the rule, not graph nodes (contrast with SNS subscriptions, which ARE first-class `AwsSnsSubscription` resources because they carry independent identity and cross-graph references).
 3. **Simplifies infra chart templates** — one resource = one complete routing configuration.
 4. **Independent lifecycle is rare** — targets rarely change independently from the rule they belong to.
 
@@ -59,7 +59,7 @@ Event patterns are JSON structures with nested arrays and objects. Using `google
 
 This follows the precedent set by:
 - AwsSqsQueue's `policy` field (IAM policy as Struct)
-- AwsSnsTopic's `filter_policy` field (subscription filter as Struct)
+- AwsSnsSubscription's `filter_policy` field (message filter as Struct)
 
 ### Why Mutual Exclusivity for Event Pattern and Schedule
 
@@ -71,23 +71,26 @@ The AWS documentation states that `event_pattern` and `schedule_expression` are 
 
 ### Why No Map-Keyed Target Outputs
 
-Unlike AwsSnsTopic which exports `subscription_arns` (subscription ARNs are useful for downstream resources), EventBridge target resources don't produce useful outputs for downstream consumption. The Terraform `aws_cloudwatch_event_target` resource ID is an internal identifier, not an AWS ARN. The target's `arn` is the USER's resource ARN (e.g., the Lambda function ARN), which they already know.
+EventBridge target resources don't produce useful outputs for downstream consumption. The Terraform `aws_cloudwatch_event_target` resource ID is an internal identifier, not an AWS ARN. The target's `arn` is the USER's resource ARN (e.g., the Lambda function ARN), which they already know.
 
-### Why Only SQS-Specific Config (No ECS, Batch, etc.)
+### Which Typed Target Blocks Made the Cut
 
-The Terraform provider supports 12 target-specific configuration blocks. We include only `sqs_config` (for FIFO queue `message_group_id`) because:
+The Terraform provider supports 12 target-specific configuration blocks. The spec models the five with real demand:
 
-1. **80/20 rule**: Lambda, SQS, SNS, and Step Functions cover ~90% of EventBridge targets. They need only `arn` + optional `role_arn`.
-2. **Complexity budget**: ECS target alone has ~15 fields. Including all blocks would make the spec enormous.
-3. **SQS FIFO is essential**: Without `message_group_id`, EventBridge cannot deliver to FIFO queues at all. This is a blocker, not a convenience feature.
-4. **Escape hatch**: Users needing ECS/Batch/Kinesis targets can use Terraform or Pulumi directly.
+1. **`sqs_target`** — essential: without `message_group_id`, EventBridge cannot deliver to FIFO queues at all.
+2. **`kinesis_target`** — one field (`partition_key_path`) that decides per-entity ordering on the stream.
+3. **`http_target`** — path/query/header parameters, the whole surface of API destination invocation.
+4. **`batch_target`** — job submission parameters for Batch job queues.
+5. **`ecs_target`** — the full RunTask surface (capacity strategies, awsvpc networking, placement); heavyweight, but event-launched containers are a mainstream pattern.
+
+Deferred with recorded reasons: `redshift_target`, `sagemaker_pipeline_target`, `appsync_target`, and `run_command_targets` — each serves a niche integration; users needing them can drive Terraform or Pulumi directly until demand shows up (DD-005 ledger).
+
+### Constraints That Cannot Be CEL
+
+- **Schedule-only-on-default-bus**: AWS rejects a `schedule_expression` on a custom bus. `event_bus_name` is a `StringValueOrRef` whose value may resolve at deploy time (and message-level CEL dereferencing its sub-fields breaks protovalidate-java), so this lives in the spec comment and docs rather than a validation rule.
 
 ### Deliberately Omitted for v1
 
-- **Rule-level `role_arn`**: For cross-account event delivery. Niche (<5% of rules).
-- **`ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS` state**: Very niche CloudTrail-specific state.
-- **`force_destroy`**: For managed rules. Planton manages the lifecycle.
-- **Target-specific blocks**: `ecs_target`, `batch_target`, `kinesis_target`, `redshift_target`, `http_target`, `appsync_target`, `sagemaker_pipeline_target`, `run_command_targets`.
 - **`target_id` auto-generation**: Derived from target `name` field.
 
 ## Terraform Provider Reference

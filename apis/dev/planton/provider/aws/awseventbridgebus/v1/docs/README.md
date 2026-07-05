@@ -10,17 +10,19 @@ EventBridge operates around three core concepts: **event buses**, **rules**, and
 
 **Event buses** receive events. Every AWS account has a default event bus that automatically receives events from AWS services (EC2 state changes, S3 object operations, etc.). Custom event buses isolate application-defined events from the default bus, enabling independent access control, encryption, and monitoring.
 
-**Rules** match incoming events against patterns and route matched events to one or more targets. Rules are attached to a specific bus.
+**Rules** match incoming events against patterns and route matched events to one or more targets. Rules are attached to a specific bus (`AwsEventBridgeRule` composes onto this bus's `bus_name` output).
 
-**Targets** are AWS services that process events (Lambda, SQS, SNS, Step Functions, Kinesis, etc.).
+**Targets** are AWS services that process events (Lambda, SQS, SNS, Step Functions, Kinesis, etc.), modeled as folded blocks on the rule.
 
 ### Custom vs Default Bus
 
 The default bus is shared across all AWS services in an account. Custom buses provide:
 - **Isolation**: Application events are separated from AWS service events.
-- **Access control**: Fine-grained IAM policies per bus.
+- **Access control**: Fine-grained resource policies per bus.
 - **Encryption**: Customer-managed KMS keys for event encryption.
 - **Partner integration**: SaaS partners deliver events to dedicated custom buses.
+
+A bus can never be named `default` — both IaC modules fail fast on that name before reaching the AWS API, since the account's built-in bus already exists and rules can target it directly.
 
 ### Partner Event Sources
 
@@ -40,31 +42,22 @@ The DLQ ARN uses `StringValueOrRef` to enable the common pattern of defining bot
 
 Log levels (`OFF`, `ERROR`, `INFO`, `TRACE`) and include_detail values (`NONE`, `FULL`) use plain strings with CEL `in` validation rather than protobuf enums. This keeps the values provider-authentic (matching the exact AWS API strings) and avoids proto enum prefix conventions.
 
-### Why dead_letter_config and log_config are included
+### Why the resource policy IS folded
 
-The T02 planning guidance listed only `description`, `kms_key_identifier`, and `event_source_name`. Deep research into the Terraform provider (`aws_cloudwatch_event_bus`) revealed two additional nested blocks:
+The bus's resource-based policy (`aws_cloudwatch_event_bus_policy`) is a **single-per-bus** setting keyed by the bus name — the classic folded-satellite shape. It is the mechanism behind cross-account and cross-organization event ingestion (`events:PutEvents` grants), and it has no independent lifecycle: it exists to configure exactly one bus. The modules materialize it as its own provider resource when `resource_policy` is set. The granular `aws_cloudwatch_event_permission` resource is deliberately NOT modeled — it is the same policy expressed one statement at a time, and two writers to one policy document fight on every apply; author the full document in `resource_policy` instead.
 
-1. **`dead_letter_config`**: Bus-level DLQ for events that fail delivery to any rule target. This is a production best practice for event-driven architectures where event loss is unacceptable.
-2. **`log_config`**: Event delivery logging with configurable verbosity. Essential for debugging event routing and monitoring delivery failures.
+### Deliberately Omitted
 
-Both are simple nested messages that add significant production value without introducing complexity.
-
-### Why bus policy is NOT bundled
-
-The `aws_cloudwatch_event_bus_policy` is a separate Terraform resource (unlike SQS where policy is an attribute of the queue). Bundling it would add complexity, and most custom buses work fine with the default same-account access policy. Bus policies are a niche use case (cross-account event delivery) that can be added in a future iteration.
-
-### Deliberately Omitted for v1
-
-- **Bus policy**: Resource-based IAM policy for the bus. Separate TF resource, niche use case.
-- **Event archive**: Replaying historical events. Complex feature with its own lifecycle.
+- **Event archive** (`aws_cloudwatch_event_archive`): event retention/replay with its own lifecycle (many archives per bus) — a candidate kind on demand.
+- **Connections + API destinations** (`aws_cloudwatch_event_connection` / `_api_destination`): the outbound HTTP-integration surface with its own auth lifecycle — a candidate kind pair on demand.
+- **Global endpoints** (`aws_cloudwatch_event_endpoint`): multi-region failover routing across two buses — a separate DR product surface.
 - **Schema discovery**: EventBridge Schema Registry integration. Separate concern.
 
 ## Terraform Provider Reference
 
-The primary Terraform resource is `aws_cloudwatch_event_bus` from the `hashicorp/aws` provider.
+The primary Terraform resource is `aws_cloudwatch_event_bus` from the `hashicorp/aws` provider (the 6.x line — `kms_key_identifier`, `dead_letter_config`, and `log_config` all require it).
 
 Key attributes:
-- `region` (Required) — AWS region where the EventBridge bus will be created
 - `name` (ForceNew) — bus name is immutable
 - `event_source_name` (ForceNew) — partner source is immutable
 - `kms_key_identifier` — KMS key ARN, key ID, key alias, or key alias ARN
@@ -73,10 +66,10 @@ Key attributes:
 - `description` — up to 512 characters
 
 Related resources:
-- `aws_cloudwatch_event_bus_policy` — resource-based IAM policy (not bundled)
+- `aws_cloudwatch_event_bus_policy` — resource-based policy (folded as `resource_policy`)
 - `aws_cloudwatch_event_rule` — rules that match and route events (separate component: AwsEventBridgeRule)
-- `aws_cloudwatch_event_target` — targets attached to rules
+- `aws_cloudwatch_event_target` — targets attached to rules (folded on the rule)
 
 ## Pulumi Resource Reference
 
-The Pulumi resource is `cloudwatch.EventBus` from `pulumi-aws/sdk/v7/go/aws/cloudwatch`. Input properties map directly to Terraform attributes with camelCase naming. The bus name and ARN are the primary outputs.
+The Pulumi resources are `cloudwatch.EventBus` and `cloudwatch.EventBusPolicy` from `pulumi-aws/sdk/v7/go/aws/cloudwatch`. Input properties map directly to Terraform attributes with camelCase naming. The bus name and ARN are the primary outputs.

@@ -11,6 +11,7 @@ import (
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -76,9 +77,16 @@ type AwsEventBridgeBusSpec struct {
 	// Logging configuration for the event bus. When set, EventBridge writes
 	// event delivery logs to CloudWatch Logs. Useful for debugging event
 	// routing, monitoring delivery failures, and auditing event traffic.
-	LogConfig     *AwsEventBridgeBusLogConfig `protobuf:"bytes,6,opt,name=log_config,json=logConfig,proto3" json:"log_config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LogConfig *AwsEventBridgeBusLogConfig `protobuf:"bytes,6,opt,name=log_config,json=logConfig,proto3" json:"log_config,omitempty"`
+	// Resource-based policy for the event bus. Controls which AWS principals
+	// (accounts, organizations, or roles) may put events onto this bus —
+	// the mechanism behind cross-account event ingestion. Expressed as a
+	// standard IAM policy document structure; one policy per bus (statements
+	// express per-account/per-org grants). When unset, only the owning
+	// account can put events.
+	ResourcePolicy *structpb.Struct `protobuf:"bytes,7,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsEventBridgeBusSpec) Reset() {
@@ -149,6 +157,13 @@ func (x *AwsEventBridgeBusSpec) GetDeadLetterConfig() *AwsEventBridgeBusDeadLett
 func (x *AwsEventBridgeBusSpec) GetLogConfig() *AwsEventBridgeBusLogConfig {
 	if x != nil {
 		return x.LogConfig
+	}
+	return nil
+}
+
+func (x *AwsEventBridgeBusSpec) GetResourcePolicy() *structpb.Struct {
+	if x != nil {
+		return x.ResourcePolicy
 	}
 	return nil
 }
@@ -277,7 +292,7 @@ var File_dev_planton_provider_aws_awseventbridgebus_v1_spec_proto protoreflect.F
 
 const file_dev_planton_provider_aws_awseventbridgebus_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/aws/awseventbridgebus/v1/spec.proto\x12-dev.planton.provider.aws.awseventbridgebus.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x88\x06\n" +
+	"8dev/planton/provider/aws/awseventbridgebus/v1/spec.proto\x12-dev.planton.provider.aws.awseventbridgebus.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xca\x06\n" +
 	"\x15AwsEventBridgeBusSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\vdescription\x12\x81\x01\n" +
@@ -285,7 +300,8 @@ const file_dev_planton_provider_aws_awseventbridgebus_v1_spec_proto_rawDesc = ""
 	"\x11event_source_name\x18\x04 \x01(\tR\x0feventSourceName\x12~\n" +
 	"\x12dead_letter_config\x18\x05 \x01(\v2P.dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusDeadLetterConfigR\x10deadLetterConfig\x12h\n" +
 	"\n" +
-	"log_config\x18\x06 \x01(\v2I.dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusLogConfigR\tlogConfig:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
+	"log_config\x18\x06 \x01(\v2I.dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusLogConfigR\tlogConfig\x12@\n" +
+	"\x0fresource_policy\x18\a \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
 	"\x19event_source_name_pattern\x12xevent_source_name must match the pattern aws.partner/{partner}/{...} (e.g., aws.partner/example.com/tenant/event-source)\x1aithis.event_source_name == '' || this.event_source_name.matches('^aws\\\\.partner(/[.\\\\-_A-Za-z0-9]+){2,}$')\"\x92\x01\n" +
 	"!AwsEventBridgeBusDeadLetterConfig\x12m\n" +
 	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x03arn\"\xe7\x02\n" +
@@ -314,17 +330,19 @@ var file_dev_planton_provider_aws_awseventbridgebus_v1_spec_proto_goTypes = []an
 	(*AwsEventBridgeBusDeadLetterConfig)(nil), // 1: dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusDeadLetterConfig
 	(*AwsEventBridgeBusLogConfig)(nil),        // 2: dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusLogConfig
 	(*v1.StringValueOrRef)(nil),               // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),                   // 4: google.protobuf.Struct
 }
 var file_dev_planton_provider_aws_awseventbridgebus_v1_spec_proto_depIdxs = []int32{
 	3, // 0: dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusSpec.kms_key_identifier:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 1: dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusSpec.dead_letter_config:type_name -> dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusDeadLetterConfig
 	2, // 2: dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusSpec.log_config:type_name -> dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusLogConfig
-	3, // 3: dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusDeadLetterConfig.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	4, // 3: dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusSpec.resource_policy:type_name -> google.protobuf.Struct
+	3, // 4: dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusDeadLetterConfig.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awseventbridgebus_v1_spec_proto_init() }

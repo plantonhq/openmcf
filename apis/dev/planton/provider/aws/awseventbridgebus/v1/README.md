@@ -68,7 +68,7 @@ Create a bus to receive events from SaaS partners (Datadog, Zendesk, PagerDuty) 
 - Individual EventBridge rules can also have their own DLQ configuration for rule-specific failure handling.
 
 ### Resource-Based Policy
-- Bus access policies (who can put events on this bus) are managed via a separate resource (`AwsEventBridgeBusPolicy`, not yet implemented). For most use cases, the default policy (same-account access) is sufficient.
+- The `resource_policy` field carries the bus's resource-based policy — the mechanism for cross-account and cross-organization `events:PutEvents` grants. When unset, only the owning account can put events (the AWS default). One policy per bus; author cross-account grants as statements within it.
 
 ## Validation Rules
 

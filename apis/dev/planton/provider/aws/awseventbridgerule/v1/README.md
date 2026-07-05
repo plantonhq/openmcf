@@ -1,21 +1,23 @@
 # AwsEventBridgeRule
 
-The **AwsEventBridgeRule** resource provides a standardized way to provision and manage AWS EventBridge rules with bundled targets through Planton. It supports event pattern matching, schedule-based triggering, input transformation, per-target dead letter queues, and retry policies.
+The **AwsEventBridgeRule** resource provides a standardized way to provision and manage AWS EventBridge rules with bundled targets through Planton. It supports event pattern matching, schedule-based triggering, input transformation, per-target dead letter queues, retry policies, and service-typed target parameter blocks (SQS, Kinesis, HTTP/API destinations, Batch, ECS RunTask).
 
 ## Spec Fields (80/20)
 
 ### Rule Configuration
 
-- **event_bus_name**: Name of the event bus to attach this rule to. Defaults to "default" (the built-in AWS event bus). Accepts a `valueFrom` reference to an AwsEventBridgeBus resource. Changing this forces rule replacement.
+- **event_bus_name**: Name of the event bus to attach this rule to. Defaults to "default" (the built-in AWS event bus). Accepts a `valueFrom` reference to an AwsEventBridgeBus resource. Changing this forces rule replacement. Note: AWS only supports `schedule_expression` on the DEFAULT bus — custom buses take event-pattern rules only.
 - **description**: Human-readable description of the rule (max 512 characters).
-- **event_pattern**: JSON event pattern for matching incoming events. Expressed as a structured object in YAML. Mutually exclusive with `schedule_expression`.
+- **event_pattern**: JSON event pattern for matching incoming events. Expressed as a structured object in YAML. AWS caps the serialized pattern at 4096 characters. Mutually exclusive with `schedule_expression`.
 - **schedule_expression**: Cron or rate expression for time-based triggering. Mutually exclusive with `event_pattern`. Examples: `"rate(5 minutes)"`, `"cron(0 12 * * ? *)"`.
-- **state**: Rule state — `"ENABLED"` or `"DISABLED"`. Defaults to `"ENABLED"` when not set.
+- **state**: Rule state — `"ENABLED"`, `"DISABLED"`, or `"ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"` (additionally matches read-only CloudTrail management events, which ENABLED rules never receive). Defaults to `"ENABLED"` when not set.
+- **role_arn**: Rule-level IAM role EventBridge assumes when invoking targets. Per-target `role_arn` takes precedence for its own target. Accepts a `valueFrom` reference to an AwsIamRole resource.
+- **force_destroy**: Force rule deletion even when out-of-band consumers attached extra targets (AWS refuses to delete a rule with targets unless forced). The module manages its own targets' teardown ordering either way; keep the default (false) so an unexpectedly shared rule fails loudly.
 
 ### Targets
 
 - **targets[].name**: User-assigned name for the target (max 64 chars, alphanumeric plus `-`, `_`, `.`). Used as the EventBridge `target_id` and Pulumi resource name.
-- **targets[].arn**: ARN of the target resource (Lambda function, SQS queue, SNS topic, Step Functions state machine, etc.). Accepts `valueFrom` references.
+- **targets[].arn**: ARN of the target resource (Lambda function, SQS queue, SNS topic, Step Functions state machine, ECS cluster, etc.). Accepts `valueFrom` references.
 - **targets[].role_arn**: IAM role for EventBridge to assume when invoking this target. Required for Step Functions, ECS, Kinesis, Batch. Not needed for Lambda, SQS, SNS (they use resource-based policies).
 
 ### Input Transformation (mutually exclusive)
@@ -28,11 +30,15 @@ The **AwsEventBridgeRule** resource provides a standardized way to provision and
 
 - **targets[].dead_letter_config.arn**: SQS queue ARN for events that fail delivery after all retries. Accepts `valueFrom` reference to AwsSqsQueue.
 - **targets[].retry_policy.maximum_event_age_in_seconds**: How long to keep retrying (60-86400 seconds, default 86400).
-- **targets[].retry_policy.maximum_retry_attempts**: Max retry count (0-185, default 185).
+- **targets[].retry_policy.maximum_retry_attempts**: Max retry count (0-185, default 185). Set to 0 to send failures straight to the DLQ.
 
-### SQS-Specific
+### Service-Typed Parameter Blocks (at most one per target)
 
-- **targets[].sqs_config.message_group_id**: Message group ID for FIFO SQS queue targets.
+- **targets[].sqs_target.message_group_id**: Message group ID for FIFO SQS queue targets. Without it, EventBridge cannot deliver to a FIFO queue at all.
+- **targets[].kinesis_target.partition_key_path**: JSONPath extracting the partition key from the event (shard routing). When unset, EventBridge uses the event ID.
+- **targets[].http_target**: Path wildcards, query string parameters, and header parameters for EventBridge API destination targets.
+- **targets[].batch_target**: Batch job submission parameters — `job_definition` and `job_name` (required), optional `array_size` (2-10000) and `job_attempts` (1-10).
+- **targets[].ecs_target**: ECS RunTask parameters — the target `arn` is the CLUSTER, and this block carries `task_definition_arn` (required, accepts an AwsEcsTaskDefinition reference), task count, launch type or capacity provider strategy, awsvpc network configuration, placement strategies/constraints, and tagging behavior. The target's `role_arn` is required — EventBridge assumes it to call `ecs:RunTask`.
 
 ## Stack Outputs
 
@@ -47,7 +53,7 @@ When you define an AwsEventBridgeRule resource, Planton:
 
 1. **Creates Rule**: Provisions an EventBridge rule with the name from `metadata.name`, attached to the specified event bus.
 2. **Configures Matching**: Sets up either event pattern matching or schedule-based triggering.
-3. **Creates Targets**: Provisions an EventTarget for each entry in `targets`, linked to the rule.
+3. **Creates Targets**: Provisions an EventTarget for each entry in `targets`, linked to the rule, including any service-typed parameter block.
 4. **Configures Reliability**: Applies dead letter queues and retry policies to individual targets.
 5. **Applies Tags**: Tags the rule with Planton metadata (organization, environment, resource kind, resource ID).
 
@@ -65,11 +71,15 @@ Route a single event to multiple targets simultaneously — for example, sending
 ### Event Transformation
 Reshape event data before delivery using input transformers. Extract specific fields, add static context, or reformat the payload for the target's expected schema.
 
+### Event-Launched ECS Tasks
+Launch a containerized job per matched event with `ecs_target` — for example, spinning up a transcoding task whenever an upload event lands.
+
 ## Important Notes
 
 ### Rule vs Bus
 - Rules are attached to a specific event bus. The default bus receives AWS service events automatically.
 - For custom application events, create an AwsEventBridgeBus first, then attach rules to it.
+- Schedule rules only work on the DEFAULT bus — AWS rejects a `schedule_expression` on a custom bus at deploy time. This is documented rather than CEL-validated because `event_bus_name` accepts references that only resolve at deploy time.
 
 ### Target IAM Permissions
 - **Lambda, SQS, SNS**: Use resource-based policies. EventBridge does NOT need a `role_arn` — but the target resource must grant EventBridge permission to invoke it.
@@ -83,17 +93,20 @@ Reshape event data before delivery using input transformers. Extract specific fi
 ### AWS Limits
 - Maximum 5 targets per rule.
 - Maximum 300 rules per event bus (soft limit, can be increased).
+- Serialized event patterns are capped at 4096 characters.
 
 ## Validation Rules
 
 1. **Exactly one trigger**: Either `event_pattern` or `schedule_expression` must be set, not both.
 2. **At least one target**: The `targets` list must contain at least one entry.
-3. **State values**: Must be `"ENABLED"` or `"DISABLED"` when set.
+3. **State values**: Must be `"ENABLED"`, `"DISABLED"`, or `"ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"` when set.
 4. **Target name format**: Max 64 chars, pattern `^[0-9A-Za-z_.-]+$`.
 5. **Input mutual exclusion**: Only one of `input`, `input_path`, or `input_transformer` per target.
 6. **Input template required**: When `input_transformer` is present, `input_template` is required.
 7. **Retry policy ranges**: `maximum_event_age_in_seconds` (60-86400), `maximum_retry_attempts` (0-185).
 8. **DLQ ARN required**: When `dead_letter_config` is present, `arn` is required.
+9. **One typed block per target**: At most one of `sqs_target`, `kinesis_target`, `http_target`, `batch_target`, or `ecs_target`.
+10. **ECS constraints**: `launch_type` XOR `capacity_provider_strategy`; `platform_version` requires the FARGATE launch type; placement strategy/constraint types and `memberOf` expressions are validated.
 
 ## References
 
