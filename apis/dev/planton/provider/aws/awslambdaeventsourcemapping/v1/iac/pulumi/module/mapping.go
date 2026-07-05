@@ -139,15 +139,38 @@ func mapping(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lamb
 		args.ProvisionedPollerConfig = pollerArgs
 	}
 
-	if spec.KafkaConsumerGroupId != "" {
+	// Kafka source config: consumer group + schema registry. AWS models the
+	// same shape once per source family (MSK vs self-managed), so both arms
+	// mirror the Terraform module's paired dynamic blocks.
+	if spec.KafkaConsumerGroupId != "" || spec.SchemaRegistry != nil {
 		if spec.SelfManagedKafka != nil {
-			args.SelfManagedKafkaEventSourceConfig = &lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigArgs{
-				ConsumerGroupId: pulumi.String(spec.KafkaConsumerGroupId),
+			cfg := &lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigArgs{}
+			if spec.KafkaConsumerGroupId != "" {
+				cfg.ConsumerGroupId = pulumi.String(spec.KafkaConsumerGroupId)
 			}
+			if spec.SchemaRegistry != nil {
+				cfg.SchemaRegistryConfig = &lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigSchemaRegistryConfigArgs{
+					SchemaRegistryUri:       pulumi.String(spec.SchemaRegistry.Uri),
+					EventRecordFormat:       pulumi.String(spec.SchemaRegistry.EventRecordFormat),
+					SchemaValidationConfigs: selfManagedSchemaValidationConfigs(spec.SchemaRegistry.ValidationAttributes),
+					AccessConfigs:           selfManagedSchemaAccessConfigs(spec.SchemaRegistry.AccessConfigurations),
+				}
+			}
+			args.SelfManagedKafkaEventSourceConfig = cfg
 		} else if len(spec.Topics) > 0 {
-			args.AmazonManagedKafkaEventSourceConfig = &lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigArgs{
-				ConsumerGroupId: pulumi.String(spec.KafkaConsumerGroupId),
+			cfg := &lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigArgs{}
+			if spec.KafkaConsumerGroupId != "" {
+				cfg.ConsumerGroupId = pulumi.String(spec.KafkaConsumerGroupId)
 			}
+			if spec.SchemaRegistry != nil {
+				cfg.SchemaRegistryConfig = &lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigSchemaRegistryConfigArgs{
+					SchemaRegistryUri:       pulumi.String(spec.SchemaRegistry.Uri),
+					EventRecordFormat:       pulumi.String(spec.SchemaRegistry.EventRecordFormat),
+					SchemaValidationConfigs: amazonManagedSchemaValidationConfigs(spec.SchemaRegistry.ValidationAttributes),
+					AccessConfigs:           amazonManagedSchemaAccessConfigs(spec.SchemaRegistry.AccessConfigurations),
+				}
+			}
+			args.AmazonManagedKafkaEventSourceConfig = cfg
 		}
 	}
 
@@ -163,6 +186,53 @@ func sourceAccessConfigurations(configs []*awslambdaeventsourcemappingv1.AwsLamb
 	result := lambda.EventSourceMappingSourceAccessConfigurationArray{}
 	for _, c := range configs {
 		result = append(result, &lambda.EventSourceMappingSourceAccessConfigurationArgs{
+			Type: pulumi.String(c.Type),
+			Uri:  pulumi.String(c.Uri),
+		})
+	}
+	return result
+}
+
+// The schema-registry validation/access builders below exist once per Kafka
+// source family because the provider generates a distinct (but identically
+// shaped) type tree for each -- MSK and self-managed configs cannot share
+// argument structs.
+
+func amazonManagedSchemaValidationConfigs(attributes []string) lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigSchemaRegistryConfigSchemaValidationConfigArray {
+	result := lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigSchemaRegistryConfigSchemaValidationConfigArray{}
+	for _, attribute := range attributes {
+		result = append(result, &lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigSchemaRegistryConfigSchemaValidationConfigArgs{
+			Attribute: pulumi.String(attribute),
+		})
+	}
+	return result
+}
+
+func amazonManagedSchemaAccessConfigs(configs []*awslambdaeventsourcemappingv1.AwsLambdaEventSourceMappingSourceAccess) lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigSchemaRegistryConfigAccessConfigArray {
+	result := lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigSchemaRegistryConfigAccessConfigArray{}
+	for _, c := range configs {
+		result = append(result, &lambda.EventSourceMappingAmazonManagedKafkaEventSourceConfigSchemaRegistryConfigAccessConfigArgs{
+			Type: pulumi.String(c.Type),
+			Uri:  pulumi.String(c.Uri),
+		})
+	}
+	return result
+}
+
+func selfManagedSchemaValidationConfigs(attributes []string) lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigSchemaRegistryConfigSchemaValidationConfigArray {
+	result := lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigSchemaRegistryConfigSchemaValidationConfigArray{}
+	for _, attribute := range attributes {
+		result = append(result, &lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigSchemaRegistryConfigSchemaValidationConfigArgs{
+			Attribute: pulumi.String(attribute),
+		})
+	}
+	return result
+}
+
+func selfManagedSchemaAccessConfigs(configs []*awslambdaeventsourcemappingv1.AwsLambdaEventSourceMappingSourceAccess) lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigSchemaRegistryConfigAccessConfigArray {
+	result := lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigSchemaRegistryConfigAccessConfigArray{}
+	for _, c := range configs {
+		result = append(result, &lambda.EventSourceMappingSelfManagedKafkaEventSourceConfigSchemaRegistryConfigAccessConfigArgs{
 			Type: pulumi.String(c.Type),
 			Uri:  pulumi.String(c.Uri),
 		})

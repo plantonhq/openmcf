@@ -550,8 +550,34 @@ message AwsLambdaAlias {
   // Pre-warmed execution environments kept ready for this alias --
   // eliminates cold starts at the cost of paying for idle warmth.
   // Applied as a provisioned-concurrency config keyed by this alias.
-  // Unset means no provisioned concurrency.
+  // Unset means no provisioned concurrency. AWS only allows provisioned
+  // concurrency on an alias that points at exactly one published version:
+  // not on a weighted (canary) alias, and not on $LATEST.
   optional int32 provisioned_concurrent_executions = 5 [(buf.validate.field).int32.gte = 1];
+
+  option (buf.validate.message).cel = {
+    id: "alias_weights_exclude_provisioned_concurrency"
+    message: "AWS rejects provisioned concurrency on a weighted (canary) alias -- point the alias at a single version or drop the routing weights"
+    expression: "this.routing_additional_version_weights.size() == 0 || !has(this.provisioned_concurrent_executions)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alias_at_most_one_additional_version"
+    message: "AWS allows at most one additional version in an alias's routing config"
+    expression: "this.routing_additional_version_weights.size() <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alias_weights_are_traffic_fractions"
+    message: "routing weights are fractions of this alias's traffic -- each must be between 0.0 and 1.0"
+    expression: "this.routing_additional_version_weights.all(v, this.routing_additional_version_weights[v] >= 0.0 && this.routing_additional_version_weights[v] <= 1.0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alias_latest_excludes_provisioned_concurrency"
+    message: "provisioned concurrency cannot target $LATEST -- point the alias at a published version"
+    expression: "this.function_version != '$LATEST' || !has(this.provisioned_concurrent_executions)"
+  };
 }
 
 // AwsLambdaFunctionUrl exposes the function through a built-in HTTPS

@@ -2,9 +2,10 @@ terraform {
   required_providers {
     aws = {
       source = "hashicorp/aws"
-      # Floor, not a pin: aws_lambda_event_source_mapping is stable across the
-      # v6 line; nothing this module uses is newer.
-      version = ">= 6.0.0"
+      # Floor, not a pin: the newest surface this module renders is the Kafka
+      # schema_registry_config block, added to aws_lambda_event_source_mapping
+      # in provider 6.16.0.
+      version = ">= 6.16.0"
     }
   }
 }

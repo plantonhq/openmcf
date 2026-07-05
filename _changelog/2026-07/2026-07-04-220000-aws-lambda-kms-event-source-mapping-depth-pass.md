@@ -46,3 +46,36 @@ stub to the complete customer-managed key surface with multi-alias support.
 
 Offline gate green: spec tests, drift guard, outputs conformance, tofu validate
 (all three TF modules), Pulumi bazel builds. Live E2E not run (`InvalidClientTokenId`).
+
+## Post-review fixes (same session)
+
+A full adversarial review of the implementation surfaced and fixed, before any
+live lane runs:
+
+- **KMS verifier lifecycle** — destroyed KMS keys sit in `PendingDeletion` for
+  the 7–30 day recovery window and stay describable, so the verifier now treats
+  `PendingDeletion`/`PendingReplicaDeletion` as absent (verify-absent could
+  never pass otherwise).
+- **Harness: install-manifest prerequisites** — the dependency resolver now
+  expands the `planton.dev/e2e-prerequisites` annotation on each prerequisite's
+  OWN install manifest (recursively, cycle-checked), so a dependency whose
+  manifest composes sibling fixtures (the zip-backed Lambda referencing the S3
+  object-set) deploys after them. Previously the ESM lane deployed the function
+  before its S3 chain and could not succeed. Unit-tested.
+- **`AwsS3ObjectSet` registry honesty** — gained its required
+  `prerequisites: [AwsS3Bucket]` edge (the bucket ref is required).
+- **CI matrix regression avoided** — registry-driven test-name discovery
+  returned `KubernetesArgocd` where the green ArgoCD lane's entrypoints are
+  `TestKubernetesArgoCD_*`; an explicit override map (verified as the only
+  enum/test-name deviation repo-wide) plus tests now guard it. The dead
+  60-entry hand table was removed.
+- **ESM Pulumi schema registry** — pulumi-aws v7.35.0 (the pinned SDK) does
+  carry `SchemaRegistryConfig`; the Kafka schema-registry block is now wired on
+  both source families, closing a silent TF/Pulumi divergence. The ESM TF
+  provider floor rose to `>= 6.16.0` (where `schema_registry_config` landed).
+- **Lambda alias CEL honesty** — four new rules reject configurations AWS
+  rejects at deploy time: provisioned concurrency on a weighted (canary) alias
+  or on `$LATEST`, more than one additional routing version, and weights
+  outside 0.0–1.0. Spec tests cover each.
+- Cosmetics: gofmt across touched files, empty-vs-omit `description` idiom
+  aligned across engines, leftover Pulumi.yaml scaffolding removed.

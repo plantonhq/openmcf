@@ -16,7 +16,6 @@ metadata:
     e2e-component: awss3objectset
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-prerequisites: "AwsS3Bucket"
   tags:
     - planton-e2e
 spec:

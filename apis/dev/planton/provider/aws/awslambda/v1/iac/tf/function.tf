@@ -6,7 +6,7 @@
 resource "aws_lambda_function" "this" {
   function_name = local.function_name
   role          = var.spec.role_arn
-  description   = var.spec.description
+  description   = var.spec.description != "" ? var.spec.description : null
   tags          = local.aws_tags
 
   # Zip vs container image is a create-time fork (CEL guarantees

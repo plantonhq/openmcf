@@ -11,7 +11,12 @@ import (
 )
 
 // kmsKeyVerifier verifies an AwsKmsKey via DescribeKey, keyed on the key_id
-// output.
+// output. KMS keys are never deleted immediately: destroy schedules deletion
+// and the key sits in PendingDeletion for the 7-30 day recovery window, still
+// fully describable. So existence is "described AND not pending deletion",
+// and absence accepts either the (eventual) NotFoundException or the
+// PendingDeletion/PendingReplicaDeletion states -- otherwise verify-absent
+// could never pass within a test run's lifetime.
 type kmsKeyVerifier struct{}
 
 func (*kmsKeyVerifier) IDOutputKey() string { return "key_id" }
@@ -53,6 +58,13 @@ func kmsKeyExists(ctx context.Context, cfg aws.Config, id, region string) (bool,
 		return false, err
 	}
 	if out.KeyMetadata == nil {
+		return false, nil
+	}
+	// A key scheduled for deletion is destroyed from the harness's point of
+	// view: the IaC destroy succeeded and only AWS's mandatory recovery window
+	// keeps the key describable.
+	switch out.KeyMetadata.KeyState {
+	case types.KeyStatePendingDeletion, types.KeyStatePendingReplicaDeletion:
 		return false, nil
 	}
 	return true, nil

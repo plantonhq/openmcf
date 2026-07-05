@@ -124,13 +124,15 @@ const (
 	CloudResourceKind_AwsClientVpn        CloudResourceKind = 221
 	CloudResourceKind_AwsDocumentDb       CloudResourceKind = 222
 	CloudResourceKind_AwsRoute53DnsRecord CloudResourceKind = 223
-	CloudResourceKind_AwsS3ObjectSet      CloudResourceKind = 224
-	CloudResourceKind_AwsSqsQueue         CloudResourceKind = 225
-	CloudResourceKind_AwsSnsTopic         CloudResourceKind = 226
-	CloudResourceKind_AwsEventBridgeBus   CloudResourceKind = 227
-	CloudResourceKind_AwsEventBridgeRule  CloudResourceKind = 228
-	CloudResourceKind_AwsIamOidcProvider  CloudResourceKind = 229
-	CloudResourceKind_AwsIamPolicy        CloudResourceKind = 230
+	// AwsS3Bucket is a prerequisite because the object set's bucket reference
+	// is required -- objects cannot exist without the bucket that holds them.
+	CloudResourceKind_AwsS3ObjectSet     CloudResourceKind = 224
+	CloudResourceKind_AwsSqsQueue        CloudResourceKind = 225
+	CloudResourceKind_AwsSnsTopic        CloudResourceKind = 226
+	CloudResourceKind_AwsEventBridgeBus  CloudResourceKind = 227
+	CloudResourceKind_AwsEventBridgeRule CloudResourceKind = 228
+	CloudResourceKind_AwsIamOidcProvider CloudResourceKind = 229
+	CloudResourceKind_AwsIamPolicy       CloudResourceKind = 230
 	// AwsIamRole is a prerequisite because an instance profile is a wrapper that
 	// must contain a role to be useful -- the profile's spec requires a role
 	// reference, so the role must be deployed first.
@@ -1718,7 +1720,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xb3\x98\x01\n" +
+	"\x02v1\x10\x01*\xb7\x98\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1755,8 +1757,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0eAwsEc2Instance\x10\xdc\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aec2inst\x12#\n" +
 	"\fAwsClientVpn\x10\xdd\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsvpn\x12'\n" +
 	"\rAwsDocumentDb\x10\xde\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05docdb:\x02\x9c\x02\x12*\n" +
-	"\x13AwsRoute53DnsRecord\x10\xdf\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06r53rec\x12%\n" +
-	"\x0eAwsS3ObjectSet\x10\xe0\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06s3objs\x12\"\n" +
+	"\x13AwsRoute53DnsRecord\x10\xdf\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06r53rec\x12)\n" +
+	"\x0eAwsS3ObjectSet\x10\xe0\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06s3objs:\x02\xd5\x01\x12\"\n" +
 	"\vAwsSqsQueue\x10\xe1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssqs\x12\"\n" +
 	"\vAwsSnsTopic\x10\xe2\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssns\x12'\n" +
 	"\x11AwsEventBridgeBus\x10\xe3\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awseb\x12)\n" +

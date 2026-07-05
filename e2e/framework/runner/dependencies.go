@@ -63,7 +63,7 @@ const scenarioPrerequisitesAnnotation = "planton.dev/e2e-prerequisites"
 
 // ResolveDependencies returns the ordered, deduplicated list of prerequisite
 // deployments a component needs before its own scenario is applied. Dependencies
-// come from two sources, merged and expanded transitively in deploy-first order:
+// come from three sources, merged and expanded transitively in deploy-first order:
 //
 //  1. The component's CloudResourceKindMeta.prerequisites graph in the proto
 //     registry: declaring `prerequisites: [X]` on a kind is enough for the
@@ -71,6 +71,13 @@ const scenarioPrerequisitesAnnotation = "planton.dev/e2e-prerequisites"
 //  2. The scenario manifest's `planton.dev/e2e-prerequisites` annotation, for
 //     compositions that are optional on the kind and therefore must not be
 //     registry prerequisites (see scenarioPrerequisitesAnnotation).
+//  3. The same annotation on each prerequisite's OWN install manifest: an
+//     install profile that composes fixtures of other kinds (e.g. the
+//     zip-backed Lambda scenario referencing the S3 object-set fixture)
+//     declares them there, and the harness orders those fixtures BEFORE the
+//     declaring kind so its value_from references resolve. Without this, a
+//     dependency whose install manifest references sibling fixtures would
+//     deploy before them and fail.
 //
 // Teardown runs in reverse, so the most foundational dependency is removed last.
 //
@@ -104,9 +111,9 @@ func ResolveDependencies(repoRoot, componentProvider, component, scenarioManifes
 		roots = append(roots, d)
 	}
 
-	prereqs, err := crkreflect.TransitiveClosure(roots)
+	prereqs, err := expandPrerequisiteGraph(repoRoot, componentProvider, component, roots)
 	if err != nil {
-		return nil, errors.Wrapf(err, "resolving prerequisites for %s", component)
+		return nil, err
 	}
 
 	var deps []Dependency
@@ -122,6 +129,107 @@ func ResolveDependencies(repoRoot, componentProvider, component, scenarioManifes
 		})
 	}
 	return deps, nil
+}
+
+// expandPrerequisiteGraph topologically orders the root prerequisites plus
+// everything they transitively require, deduplicated, deploy-first. Each
+// kind's edges come from two sources: its registry prerequisites (the honest
+// statement of what it needs to deploy at all) and the e2e-prerequisites
+// annotation on its own install manifest (the fixtures that manifest's
+// value_from references compose -- see ResolveDependencies point 3). Cycles
+// across either edge source indicate a modeling mistake and fail loudly.
+func expandPrerequisiteGraph(repoRoot, componentProvider, component string, roots []cloudresourcekind.CloudResourceKind) ([]cloudresourcekind.CloudResourceKind, error) {
+	var result []cloudresourcekind.CloudResourceKind
+	visited := make(map[cloudresourcekind.CloudResourceKind]bool)
+	inStack := make(map[cloudresourcekind.CloudResourceKind]bool)
+
+	var visit func(k cloudresourcekind.CloudResourceKind) error
+	visit = func(k cloudresourcekind.CloudResourceKind) error {
+		if inStack[k] {
+			return errors.Errorf("prerequisite cycle detected at %s while resolving dependencies for %s", k.String(), component)
+		}
+		if visited[k] {
+			return nil
+		}
+		inStack[k] = true
+
+		edges := append([]cloudresourcekind.CloudResourceKind{}, crkreflect.Prerequisites(k)...)
+		manifestDeclared, err := installManifestPrerequisites(repoRoot, componentProvider, k)
+		if err != nil {
+			return err
+		}
+		edges = append(edges, manifestDeclared...)
+
+		for _, e := range edges {
+			if err := visit(e); err != nil {
+				return err
+			}
+		}
+
+		inStack[k] = false
+		visited[k] = true
+		result = append(result, k)
+		return nil
+	}
+
+	for _, r := range roots {
+		if err := visit(r); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// installManifestPrerequisites reads the e2e-prerequisites annotation from a
+// prerequisite kind's install manifest (every document of a multi-document
+// profile), returning the extra kinds that must deploy before it. A kind with
+// no install manifest contributes no edges here -- the missing manifest fails
+// loudly later, when the dependency list is materialized, keeping that the
+// single authoritative error. A manifest that cannot be parsed also
+// contributes no edges: deploying it will fail with the real parse error, so
+// swallowing it here never hides a failure. An annotation naming an unknown
+// kind, however, errors immediately -- silently skipping it would deploy the
+// manifest without a fixture it relies on.
+func installManifestPrerequisites(repoRoot, componentProvider string, k cloudresourcekind.CloudResourceKind) ([]cloudresourcekind.CloudResourceKind, error) {
+	slug := strings.ToLower(k.String())
+	manifestPath, err := prerequisiteManifestPath(repoRoot, componentProvider, slug)
+	if err != nil {
+		return nil, nil
+	}
+
+	docPaths, err := splitManifestDocuments(manifestPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "splitting install profile for prerequisite %q", slug)
+	}
+
+	var kinds []cloudresourcekind.CloudResourceKind
+	seen := make(map[cloudresourcekind.CloudResourceKind]bool)
+	for _, docPath := range docPaths {
+		raw, err := manifestAnnotation(docPath, scenarioPrerequisitesAnnotation)
+		if err != nil {
+			// Unparseable document: its deploy will surface the real error.
+			continue
+		}
+		if raw == "" {
+			continue
+		}
+		for _, token := range strings.Split(raw, ",") {
+			token = strings.TrimSpace(token)
+			if token == "" {
+				continue
+			}
+			declared := crkreflect.KindFromString(token)
+			if declared == cloudresourcekind.CloudResourceKind_unspecified {
+				return nil, errors.Errorf("install manifest %s declares unknown kind %q in the %s annotation", manifestPath, token, scenarioPrerequisitesAnnotation)
+			}
+			if declared == k || seen[declared] {
+				continue
+			}
+			seen[declared] = true
+			kinds = append(kinds, declared)
+		}
+	}
+	return kinds, nil
 }
 
 // prerequisiteManifestPath returns the manifest used to install a prerequisite:

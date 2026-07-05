@@ -117,6 +117,7 @@ go_library(
         "//apis/dev/planton/provider/aws/awskinesisstreamconsumer/v1:awskinesisstreamconsumer",
         "//apis/dev/planton/provider/aws/awskmskey/v1:awskmskey",
         "//apis/dev/planton/provider/aws/awslambda/v1:awslambda",
+        "//apis/dev/planton/provider/aws/awslambdaeventsourcemapping/v1:awslambdaeventsourcemapping",
         "//apis/dev/planton/provider/aws/awslaunchtemplate/v1:awslaunchtemplate",
         "//apis/dev/planton/provider/aws/awslblistener/v1:awslblistener",
         "//apis/dev/planton/provider/aws/awslblistenerrule/v1:awslblistenerrule",

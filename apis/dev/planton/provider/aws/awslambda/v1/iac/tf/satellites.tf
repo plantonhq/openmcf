@@ -14,7 +14,7 @@ resource "aws_lambda_alias" "this" {
   for_each = local.aliases
 
   name             = each.value.name
-  description      = each.value.description
+  description      = each.value.description != "" ? each.value.description : null
   function_name    = aws_lambda_function.this.function_name
   function_version = each.value.function_version
 

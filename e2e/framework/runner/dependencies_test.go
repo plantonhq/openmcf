@@ -342,6 +342,74 @@ func TestResolveDependencies_AnnotationMergesWithRegistry(t *testing.T) {
 	}
 }
 
+// TestResolveDependencies_InstallManifestPrerequisites guards edge source 3:
+// a prerequisite whose OWN install manifest composes fixtures of other kinds
+// (the zip-backed Lambda function referencing the S3 object-set fixture)
+// declares them via its manifest's e2e-prerequisites annotation, and those
+// fixtures must deploy BEFORE the declaring kind so its value_from references
+// resolve. Here the event-source-mapping's registry prerequisite (AwsLambda)
+// installs via a manifest declaring AwsS3ObjectSet, whose registry graph pulls
+// in AwsS3Bucket -- so the resolved order must place the bucket and object set
+// ahead of the function, with the scenario-declared SQS queue after.
+func TestResolveDependencies_InstallManifestPrerequisites(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsiamrole/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awss3bucket/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awss3objectset/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssqsqueue/v1/e2e/prerequisite.yaml")
+
+	// The Lambda install manifest is a REAL loadable manifest carrying the
+	// annotation -- placeholder manifests are unparseable and contribute no
+	// edges by design.
+	lambdaManifest := "apiVersion: aws.planton.dev/v1\n" +
+		"kind: AwsLambda\n" +
+		"metadata:\n" +
+		"  name: lambda-fixture\n" +
+		"  annotations:\n" +
+		"    planton.dev/e2e-prerequisites: \"AwsS3ObjectSet\"\n" +
+		"spec:\n" +
+		"  region: us-west-2\n"
+	lambdaPath := filepath.Join(repoRoot, "apis/dev/planton/provider/aws/awslambda/v1/e2e/scenarios/minimal.yaml")
+	if err := os.MkdirAll(filepath.Dir(lambdaPath), 0o755); err != nil {
+		t.Fatalf("mkdir lambda scenario dir: %v", err)
+	}
+	if err := os.WriteFile(lambdaPath, []byte(lambdaManifest), 0o600); err != nil {
+		t.Fatalf("write lambda install manifest: %v", err)
+	}
+
+	scenario := "apiVersion: aws.planton.dev/v1\n" +
+		"kind: AwsLambdaEventSourceMapping\n" +
+		"metadata:\n" +
+		"  name: esm-under-test\n" +
+		"  annotations:\n" +
+		"    planton.dev/e2e-prerequisites: \"AwsSqsQueue\"\n" +
+		"spec:\n" +
+		"  region: us-west-2\n"
+	scenarioPath := filepath.Join(t.TempDir(), "scenario.yaml")
+	if err := os.WriteFile(scenarioPath, []byte(scenario), 0o600); err != nil {
+		t.Fatalf("write scenario manifest: %v", err)
+	}
+
+	deps, err := ResolveDependencies(repoRoot, "aws", "awslambdaeventsourcemapping", scenarioPath)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"awsiamrole", "awss3bucket", "awss3objectset", "awslambda", "awssqsqueue"}
+	if len(got) != len(want) {
+		t.Fatalf("dependency count = %d (%v), want %d (%v)", len(got), got, len(want), want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dependency order = %v, want %v (the S3 chain must precede the function whose manifest references it)", got, want)
+		}
+	}
+}
+
 // TestResolveDependencies_TransitiveDeployOrder guards the deep-composition
 // ordering DeployDependencies relies on: AwsNatGateway ->
 // [AwsSubnet, AwsElasticIp, AwsInternetGateway] with AwsSubnet -> [AwsVpc] and

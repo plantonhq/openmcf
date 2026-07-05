@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 
 	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
-	"github.com/plantonhq/planton/pkg/crkreflect"
 	providerv1 "github.com/plantonhq/planton/apis/dev/planton/qa/providere2eprofile/v1"
 	sharedpb "github.com/plantonhq/planton/apis/dev/planton/shared"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 )
 
 // ComponentEntry pairs a component name with its loaded profile.
@@ -215,11 +215,28 @@ func buildRunRegex(components []string, engine string) string {
 	return fmt.Sprintf("Test(%s)_%s", strings.Join(parts, "|"), engineSuffix)
 }
 
-// toPascalCase converts a lowercase component directory name to PascalCase for
-// Go test -run regex matching (e.g. "awslambda" -> "AwsLambda").
+// testNameOverrides maps the component directory names whose Go test
+// entrypoint capitalization deviates from the registry's enum-derived kind
+// name. The registry is the source of truth for every other kind (component
+// directories are the lowercased enum names, and test entrypoints follow the
+// enum name), so keep this list to genuine, verified deviations only.
+var testNameOverrides = map[string]string{
+	// The enum is KubernetesArgocd but the test entrypoints (and the product
+	// spelling) use TestKubernetesArgoCD_*.
+	"kubernetesargocd": "KubernetesArgoCD",
+}
+
+// toPascalCase converts a lowercase component directory name to the PascalCase
+// used in Go test entrypoint names (e.g. "awslambda" -> "AwsLambda" for
+// TestAwsLambda_Pulumi), resolving through the kind registry so no
+// hand-maintained per-kind table is needed.
 func toPascalCase(name string) string {
 	if name == "" {
 		return ""
+	}
+
+	if override, ok := testNameOverrides[name]; ok {
+		return override
 	}
 
 	kind := crkreflect.KindFromString(name)
@@ -229,89 +246,9 @@ func toPascalCase(name string) string {
 		}
 	}
 
-	// Kubernetes components: registry lookup covers most kinds, but the table
-	// below remains as a fallback for any slug the registry does not resolve.
-	knownPrefixes := []struct {
-		lower  string
-		pascal string
-	}{
-		{"kubernetesnamespace", "KubernetesNamespace"},
-		{"kubernetesdeployment", "KubernetesDeployment"},
-		{"kubernetesstatefulset", "KubernetesStatefulSet"},
-		{"kubernetessecret", "KubernetesSecret"},
-		{"kubernetesservice", "KubernetesService"},
-		{"kubernetescronjob", "KubernetesCronJob"},
-		{"kubernetesjob", "KubernetesJob"},
-		{"kubernetesdaemonset", "KubernetesDaemonSet"},
-		{"kubernetesmanifest", "KubernetesManifest"},
-		{"kubernetesredis", "KubernetesRedis"},
-		{"kubernetesgrafana", "KubernetesGrafana"},
-		{"kubernetesopenbao", "KubernetesOpenBao"},
-		{"kubernetesargocd", "KubernetesArgoCD"},
-		{"kuberneteslocust", "KubernetesLocust"},
-		{"kubernetesnats", "KubernetesNats"},
-		{"kubernetesneo4j", "KubernetesNeo4j"},
-		{"kubernetesjenkins", "KubernetesJenkins"},
-		{"kubernetessolroperator", "KubernetesSolrOperator"},
-		{"kubernetesperconamongooperator", "KubernetesPerconaMongoOperator"},
-		{"kubernetesperconamysqloperator", "KubernetesPerconaMysqlOperator"},
-		{"kubernetesperconapostgresoperator", "KubernetesPerconaPostgresOperator"},
-		{"kubernetesgitlab", "KubernetesGitlab"},
-		{"kubernetespostgres", "KubernetesPostgres"},
-		{"kuberneteskafka", "KubernetesKafka"},
-		{"kuberneteselasticsearch", "KubernetesElasticsearch"},
-		{"kubernetesmongodb", "KubernetesMongodb"},
-		{"kubernetessolr", "KubernetesSolr"},
-		{"kubernetesclickhouse", "KubernetesClickHouse"},
-		{"kuberneteszalandopostgresoperator", "KubernetesZalandoPostgresOperator"},
-		{"kubernetesstrimzikafkaoperator", "KubernetesStrimziKafkaOperator"},
-		{"kuberneteselasticoperator", "KubernetesElasticOperator"},
-		{"kubernetesaltinityoperator", "KubernetesAltinityOperator"},
-		{"kubernetesgatewayapicrds", "KubernetesGatewayApiCrds"},
-		{"kubernetesgatewayclass", "KubernetesGatewayClass"},
-		{"kubernetesgateway", "KubernetesGateway"},
-		{"kuberneteshttproute", "KubernetesHttpRoute"},
-		{"kubernetesgrpcroute", "KubernetesGrpcRoute"},
-		{"kubernetestcproute", "KubernetesTcpRoute"},
-		{"kubernetestlsroute", "KubernetesTlsRoute"},
-		{"kubernetesreferencegrant", "KubernetesReferenceGrant"},
-		{"kubernetesistiobasecrds", "KubernetesIstioBaseCrds"},
-		{"kubernetespeerauthentication", "KubernetesPeerAuthentication"},
-		{"kubernetesrequestauthentication", "KubernetesRequestAuthentication"},
-		{"kubernetesauthorizationpolicy", "KubernetesAuthorizationPolicy"},
-		{"kubernetesserviceentry", "KubernetesServiceEntry"},
-		{"kubernetesdestinationrule", "KubernetesDestinationRule"},
-		{"kubernetesenvoyfilter", "KubernetesEnvoyFilter"},
-		{"kubernetestelemetry", "KubernetesTelemetry"},
-		{"kubernetesgharunnerscalesetcontroller", "KubernetesGhaRunnerScaleSetController"},
-		{"kubernetesrookcephoperator", "KubernetesRookCephOperator"},
-		{"kubernetesexternalsecrets", "KubernetesExternalSecrets"},
-		{"kubernetesingressnginx", "KubernetesIngressNginx"},
-		{"kubernetestekton", "KubernetesTekton"},
-		{"kubernetestektonoperator", "KubernetesTektonOperator"},
-		{"kubernetesistio", "KubernetesIstio"},
-		{"kuberneteshelmrelease", "KubernetesHelmRelease"},
-		{"kubernetescertmanager", "KubernetesCertManager"},
-		{"kubernetesexternaldns", "KubernetesExternalDns"},
-		{"kubernetesgharunnerscaleset", "KubernetesGhaRunnerScaleSet"},
-		{"kubernetesrookcephcluster", "KubernetesRookCephCluster"},
-		{"kubernetesprometheus", "KubernetesPrometheus"},
-		{"kuberneteskeycloak", "KubernetesKeycloak"},
-		{"kubernetesopenfga", "KubernetesOpenFGA"},
-		{"kubernetestemporal", "KubernetesTemporal"},
-		{"kubernetesharbor", "KubernetesHarbor"},
-		{"kubernetessignoz", "KubernetesSigNoz"},
-	}
-
-	for _, kp := range knownPrefixes {
-		if strings.EqualFold(name, kp.lower) {
-			return kp.pascal
-		}
-	}
-
-	// Fallback: capitalize first letter. This works for most simple names but
-	// won't handle multi-word camelCase correctly. Known prefixes above handle
-	// all existing Kubernetes components.
+	// Unregistered directory (should not happen for real components):
+	// capitalize the first letter so the regex at least stays syntactically
+	// valid; it will match zero tests, which the profile gates surface.
 	return strings.ToUpper(name[:1]) + name[1:]
 }
 

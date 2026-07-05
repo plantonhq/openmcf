@@ -808,7 +808,9 @@ type AwsLambdaAlias struct {
 	// Pre-warmed execution environments kept ready for this alias --
 	// eliminates cold starts at the cost of paying for idle warmth.
 	// Applied as a provisioned-concurrency config keyed by this alias.
-	// Unset means no provisioned concurrency.
+	// Unset means no provisioned concurrency. AWS only allows provisioned
+	// concurrency on an alias that points at exactly one published version:
+	// not on a weighted (canary) alias, and not on $LATEST.
 	ProvisionedConcurrentExecutions *int32 `protobuf:"varint,5,opt,name=provisioned_concurrent_executions,json=provisionedConcurrentExecutions,proto3,oneof" json:"provisioned_concurrent_executions,omitempty"`
 	unknownFields                   protoimpl.UnknownFields
 	sizeCache                       protoimpl.SizeCache
@@ -1387,7 +1389,7 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\x15application_log_level\x18\x02 \x01(\tB0\xbaH-\xd8\x01\x01r(R\x05TRACER\x05DEBUGR\x04INFOR\x04WARNR\x05ERRORR\x05FATALR\x13applicationLogLevel\x12E\n" +
 	"\x10system_log_level\x18\x03 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\x05DEBUGR\x04INFOR\x04WARNR\x0esystemLogLevel\x12w\n" +
 	"\tlog_group\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xb6\x02\x92\xd4a\x1dstatus.outputs.log_group_nameR\blogGroup:\xff\x01\xbaH\xfb\x01\x1a\xf8\x01\n" +
-	"\x1dlevel_filtering_requires_json\x12wapplication_log_level and system_log_level require log_format JSON -- plain-text logs carry no level field to filter on\x1a^(this.application_log_level == '' && this.system_log_level == '') || this.log_format == 'JSON'\"\x96\x04\n" +
+	"\x1dlevel_filtering_requires_json\x12wapplication_log_level and system_log_level require log_format JSON -- plain-text logs carry no level field to filter on\x1a^(this.application_log_level == '' && this.system_log_level == '') || this.log_format == 'JSON'\"\xdb\v\n" +
 	"\x0eAwsLambdaAlias\x120\n" +
 	"\x04name\x18\x01 \x01(\tB\x1c\xbaH\x19r\x17\x10\x01\x18\x80\x012\x10^[a-zA-Z0-9-_]+$R\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x122\n" +
@@ -1396,7 +1398,11 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"!provisioned_concurrent_executions\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\x1fprovisionedConcurrentExecutions\x88\x01\x01\x1aR\n" +
 	"$RoutingAdditionalVersionWeightsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01B$\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01:\xc2\a\xbaH\xbe\a\x1a\x9a\x02\n" +
+	"-alias_weights_exclude_provisioned_concurrency\x12\x83\x01AWS rejects provisioned concurrency on a weighted (canary) alias -- point the alias at a single version or drop the routing weights\x1acthis.routing_additional_version_weights.size() == 0 || !has(this.provisioned_concurrent_executions)\x1a\xa3\x01\n" +
+	"$alias_at_most_one_additional_version\x12FAWS allows at most one additional version in an alias's routing config\x1a3this.routing_additional_version_weights.size() <= 1\x1a\x99\x02\n" +
+	"#alias_weights_are_traffic_fractions\x12Yrouting weights are fractions of this alias's traffic -- each must be between 0.0 and 1.0\x1a\x96\x01this.routing_additional_version_weights.all(v, this.routing_additional_version_weights[v] >= 0.0 && this.routing_additional_version_weights[v] <= 1.0)\x1a\xdc\x01\n" +
+	"-alias_latest_excludes_provisioned_concurrency\x12Wprovisioned concurrency cannot target $LATEST -- point the alias at a published version\x1aRthis.function_version != '$LATEST' || !has(this.provisioned_concurrent_executions)B$\n" +
 	"\"_provisioned_concurrent_executions\"\xf9\x01\n" +
 	"\x14AwsLambdaFunctionUrl\x12F\n" +
 	"\x12authorization_type\x18\x01 \x01(\tB\x17\xbaH\x14\xc8\x01\x01r\x0fR\aAWS_IAMR\x04NONER\x11authorizationType\x12D\n" +

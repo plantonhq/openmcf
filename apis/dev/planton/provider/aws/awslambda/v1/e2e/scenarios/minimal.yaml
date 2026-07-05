@@ -3,8 +3,9 @@
 # composed onto the shared Lambda execution-role fixture. Full metadata is
 # supplied for tagging/orphan cleanup.
 #
-# The e2e-prerequisites annotation composes the S3 bucket and object-set
-# fixtures; the execution role is a registry prerequisite (AwsIamRole).
+# The e2e-prerequisites annotation composes the object-set fixture, which
+# pulls in its bucket through its own registry prerequisite (AwsS3Bucket);
+# the execution role is a registry prerequisite (AwsIamRole).
 apiVersion: aws.planton.dev/v1
 kind: AwsLambda
 metadata:
@@ -17,7 +18,7 @@ metadata:
     e2e-component: awslambda
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-prerequisites: "AwsS3Bucket,AwsS3ObjectSet"
+    planton.dev/e2e-prerequisites: "AwsS3ObjectSet"
   tags:
     - planton-e2e
 spec:

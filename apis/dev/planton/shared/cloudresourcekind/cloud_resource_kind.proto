@@ -269,10 +269,13 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "r53rec"
   }];
+  // AwsS3Bucket is a prerequisite because the object set's bucket reference
+  // is required -- objects cannot exist without the bucket that holds them.
   AwsS3ObjectSet = 224 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "s3objs"
+    prerequisites: [AwsS3Bucket]
   }];
   AwsSqsQueue = 225 [(kind_meta) = {
     provider: aws

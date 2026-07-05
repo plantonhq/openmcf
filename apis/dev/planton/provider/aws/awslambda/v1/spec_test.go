@@ -84,12 +84,20 @@ var _ = ginkgo.Describe("AwsLambdaSpec validations", func() {
 			LogGroup:            literal("/platform/order-api"),
 		}
 		spec.CodeSigningConfigArn = "arn:aws:lambda:us-west-2:123456789012:code-signing-config:csc-1"
-		spec.Aliases = []*AwsLambdaAlias{{
-			Name:                              "live",
-			FunctionVersion:                   "1",
-			RoutingAdditionalVersionWeights:   map[string]float64{"2": 0.1},
-			ProvisionedConcurrentExecutions:   intPtr(5),
-		}}
+		// Provisioned concurrency and canary weights are mutually exclusive
+		// per alias in AWS, so the fixture carries one alias of each shape.
+		spec.Aliases = []*AwsLambdaAlias{
+			{
+				Name:                            "live",
+				FunctionVersion:                 "1",
+				ProvisionedConcurrentExecutions: intPtr(5),
+			},
+			{
+				Name:                            "canary",
+				FunctionVersion:                 "1",
+				RoutingAdditionalVersionWeights: map[string]float64{"2": 0.1},
+			},
+		}
 		spec.FunctionUrl = &AwsLambdaFunctionUrl{
 			AuthorizationType: "AWS_IAM",
 			InvokeMode:        "RESPONSE_STREAM",
@@ -105,9 +113,9 @@ var _ = ginkgo.Describe("AwsLambdaSpec validations", func() {
 			SourceArn:   "arn:aws:s3:::uploads-bucket",
 		}}
 		spec.AsyncInvokeConfig = &AwsLambdaAsyncInvokeConfig{
-			MaximumRetryAttempts:     intPtr(1),
-			MaximumEventAgeSeconds:   3600,
-			OnFailureDestinationArn:  literal("arn:aws:sqs:us-west-2:123456789012:order-api-failures"),
+			MaximumRetryAttempts:    intPtr(1),
+			MaximumEventAgeSeconds:  3600,
+			OnFailureDestinationArn: literal("arn:aws:sqs:us-west-2:123456789012:order-api-failures"),
 		}
 		spec.RecursiveLoop = "Terminate"
 		spec.RuntimeManagement = &AwsLambdaRuntimeManagement{UpdateRuntimeOn: "Auto"}
@@ -260,6 +268,47 @@ var _ = ginkgo.Describe("AwsLambdaSpec validations", func() {
 			{Name: "live", FunctionVersion: "1"},
 			{Name: "live", FunctionVersion: "2"},
 		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects provisioned concurrency on a weighted (canary) alias", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsLambdaAlias{{
+			Name:                            "live",
+			FunctionVersion:                 "1",
+			RoutingAdditionalVersionWeights: map[string]float64{"2": 0.1},
+			ProvisionedConcurrentExecutions: intPtr(5),
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects more than one additional routing version on an alias", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsLambdaAlias{{
+			Name:                            "live",
+			FunctionVersion:                 "1",
+			RoutingAdditionalVersionWeights: map[string]float64{"2": 0.1, "3": 0.1},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a routing weight above 1.0", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsLambdaAlias{{
+			Name:                            "live",
+			FunctionVersion:                 "1",
+			RoutingAdditionalVersionWeights: map[string]float64{"2": 1.5},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects provisioned concurrency on a $LATEST alias", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsLambdaAlias{{
+			Name:                            "dev",
+			FunctionVersion:                 "$LATEST",
+			ProvisionedConcurrentExecutions: intPtr(2),
+		}}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 

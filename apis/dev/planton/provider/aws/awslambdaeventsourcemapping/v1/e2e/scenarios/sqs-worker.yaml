@@ -2,9 +2,10 @@
 # to the shared zip-backed Lambda smoke function. Full metadata is supplied
 # for tagging/orphan cleanup.
 #
-# The e2e-prerequisites annotation composes the SQS queue fixture and the
-# zip-staging chain the function needs; AwsLambda is a registry prerequisite
-# and deploys the function scenario as the install profile fallback.
+# The e2e-prerequisites annotation composes the SQS queue fixture. AwsLambda
+# is a registry prerequisite; its install manifest (the function's minimal
+# scenario) declares its own zip-staging chain (S3 object set -> bucket),
+# which the harness deploys first so the function's references resolve.
 apiVersion: aws.planton.dev/v1
 kind: AwsLambdaEventSourceMapping
 metadata:
@@ -17,7 +18,7 @@ metadata:
     e2e-component: awslambdaeventsourcemapping
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-prerequisites: "AwsS3Bucket,AwsS3ObjectSet,AwsSqsQueue"
+    planton.dev/e2e-prerequisites: "AwsSqsQueue"
   tags:
     - planton-e2e
 spec:
