@@ -1,3 +1,8 @@
+output "bucket_id" {
+  description = "The bucket the objects were uploaded to"
+  value       = local.bucket_name
+}
+
 output "object_etags" {
   description = "Map of object key to its ETag (content hash)"
   value = {

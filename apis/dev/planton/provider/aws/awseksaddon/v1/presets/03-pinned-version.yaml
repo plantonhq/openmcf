@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAddon
+metadata:
+  name: <addon-resource-name>
+spec:
+  region: <aws-region>
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: <cluster-resource-name>
+      fieldPath: status.outputs.name
+  addonName: coredns
+  # Pin the exact version for byte-identical clusters; bump the pin to
+  # roll the add-on's pods on your schedule. Replace with a version from
+  # `aws eks describe-addon-versions --addon-name coredns`.
+  addonVersion: v1.11.3-eksbuild.2
+  # Tune the add-on through its own JSON schema (`aws eks
+  # describe-addon-configuration` shows what is configurable).
+  configurationValues: '{"replicaCount":3}'
+  resolveConflictsOnCreate: OVERWRITE
+  # Restore pinned configuration if it drifts out-of-band.
+  resolveConflictsOnUpdate: OVERWRITE

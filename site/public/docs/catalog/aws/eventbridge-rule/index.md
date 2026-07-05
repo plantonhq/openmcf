@@ -74,9 +74,11 @@ This creates a scheduled rule on the default event bus that triggers a Lambda fu
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `eventBusName` | `StringValueOrRef` | `"default"` | Event bus to attach the rule to. Changing this forces rule replacement. Can reference AwsEventBridgeBus via `valueFrom`. |
+| `eventBusName` | `StringValueOrRef` | `"default"` | Event bus to attach the rule to. Changing this forces rule replacement. Can reference AwsEventBridgeBus via `valueFrom`. Schedule rules only work on the default bus (AWS constraint). |
 | `description` | `string` | — | Human-readable description. Max 512 characters. |
-| `state` | `string` | `"ENABLED"` | Rule state. Valid values: `"ENABLED"`, `"DISABLED"`. |
+| `state` | `string` | `"ENABLED"` | Rule state. Valid values: `"ENABLED"`, `"DISABLED"`, `"ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"` (additionally matches read-only CloudTrail management events). |
+| `roleArn` | `StringValueOrRef` | — | Rule-level IAM role EventBridge assumes when invoking targets. Per-target `roleArn` takes precedence for its own target. Can reference AwsIamRole via `valueFrom`. |
+| `forceDestroy` | `bool` | `false` | Force rule deletion even when out-of-band consumers attached extra targets. The module manages its own targets' teardown ordering either way. |
 | `targets[].roleArn` | `StringValueOrRef` | — | IAM role ARN for EventBridge to assume when invoking this target. Required for Step Functions, ECS, Kinesis, Batch, CodeBuild, and CodePipeline targets. Can reference AwsIamRole via `valueFrom`. |
 | `targets[].input` | `string` | — | Constant JSON input passed to the target instead of the matched event. Max 8192 chars. Mutually exclusive with `inputPath` and `inputTransformer`. |
 | `targets[].inputPath` | `string` | — | JSONPath expression to extract a portion of the matched event (e.g., `$.detail`). Max 256 chars. Mutually exclusive with `input` and `inputTransformer`. |
@@ -85,7 +87,16 @@ This creates a scheduled rule on the default event bus that triggers a Lambda fu
 | `targets[].deadLetterConfig.arn` | `StringValueOrRef` | — | SQS queue ARN for events that fail delivery after all retries. Queue must be in the same account and region. Can reference AwsSqsQueue via `valueFrom`. |
 | `targets[].retryPolicy.maximumEventAgeInSeconds` | `int32` | `86400` | Max time in seconds EventBridge keeps retrying delivery. Range: 60–86400. |
 | `targets[].retryPolicy.maximumRetryAttempts` | `int32` | `185` | Max number of retry attempts. Range: 0–185. Set to 0 to send failures directly to DLQ. |
-| `targets[].sqsConfig.messageGroupId` | `string` | — | Message group ID for FIFO SQS queues. Required when targeting a FIFO queue. |
+
+### Service-Typed Target Blocks (at most one per target)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `targets[].sqsTarget.messageGroupId` | `string` | Message group ID for FIFO SQS queues. Required when targeting a FIFO queue. |
+| `targets[].kinesisTarget.partitionKeyPath` | `string` | JSONPath extracting the partition key from the event (shard routing). Max 256 chars. When unset, EventBridge uses the event ID. |
+| `targets[].httpTarget` | `object` | API destination parameters: `pathParameterValues` (path wildcards), `queryStringParameters`, and `headerParameters`. |
+| `targets[].batchTarget` | `object` | Batch job submission: `jobDefinition` and `jobName` (required), `arraySize` (2–10000), `jobAttempts` (1–10). |
+| `targets[].ecsTarget` | `object` | ECS RunTask parameters — the target `arn` is the CLUSTER. Carries `taskDefinitionArn` (required, references AwsEcsTaskDefinition), `taskCount` (1–10), `launchType` XOR `capacityProviderStrategy`, `networkConfiguration` (subnets required, references AwsSubnet/AwsSecurityGroup), `orderedPlacementStrategy` (max 5), `placementConstraints` (max 10), `propagateTags`, `enableEcsManagedTags`, `enableExecuteCommand`. The target's `roleArn` is required for ECS. |
 
 ## Examples
 

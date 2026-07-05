@@ -4,14 +4,13 @@ metadata:
   name: my-cost-optimized-cluster
 spec:
   region: <aws-region>
-  enableContainerInsights: true  # recommended_default from spec
+  containerInsights: enabled
   capacityProviders:
     - FARGATE
     - FARGATE_SPOT
   defaultCapacityProviderStrategy:
     - capacityProvider: FARGATE
-      base: 1  # Guarantee at least 1 on-demand task for stability
+      base: 1  # guarantee at least 1 On-Demand task for stability
       weight: 1
     - capacityProvider: FARGATE_SPOT
-      base: 0
-      weight: 4  # 80% of scaled tasks use Spot for cost savings
+      weight: 4  # ~80% of scaled tasks ride Spot for the discount

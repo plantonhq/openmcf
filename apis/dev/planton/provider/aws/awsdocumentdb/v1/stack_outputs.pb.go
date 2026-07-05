@@ -21,30 +21,44 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsDocumentDbStackOutputs captures observable identifiers and endpoints from the DocumentDB cluster.
+// AwsDocumentDbStackOutputs captures the observable identifiers and
+// connection endpoints of the DocumentDB cluster after deployment.
 type AwsDocumentDbStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The primary endpoint for connecting to the DocumentDB cluster (writer endpoint).
-	ClusterEndpoint string `protobuf:"bytes,1,opt,name=cluster_endpoint,json=clusterEndpoint,proto3" json:"cluster_endpoint,omitempty"`
-	// The reader endpoint for load-balanced read traffic across replica instances.
-	ClusterReaderEndpoint string `protobuf:"bytes,2,opt,name=cluster_reader_endpoint,json=clusterReaderEndpoint,proto3" json:"cluster_reader_endpoint,omitempty"`
-	// The AWS identifier of the DocumentDB cluster.
-	ClusterId string `protobuf:"bytes,3,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
-	// The Amazon Resource Name (ARN) of the DocumentDB cluster.
-	ClusterArn string `protobuf:"bytes,4,opt,name=cluster_arn,json=clusterArn,proto3" json:"cluster_arn,omitempty"`
-	// The port on which the DocumentDB cluster accepts connections.
-	ClusterPort int32 `protobuf:"varint,5,opt,name=cluster_port,json=clusterPort,proto3" json:"cluster_port,omitempty"`
-	// The name of the DB subnet group associated with the cluster.
-	DbSubnetGroupName string `protobuf:"bytes,6,opt,name=db_subnet_group_name,json=dbSubnetGroupName,proto3" json:"db_subnet_group_name,omitempty"`
-	// The security group ID associated with the cluster (if created by the module).
-	SecurityGroupId string `protobuf:"bytes,7,opt,name=security_group_id,json=securityGroupId,proto3" json:"security_group_id,omitempty"`
-	// The cluster parameter group name in use by the cluster.
-	ClusterParameterGroupName string `protobuf:"bytes,8,opt,name=cluster_parameter_group_name,json=clusterParameterGroupName,proto3" json:"cluster_parameter_group_name,omitempty"`
-	// The connection string for MongoDB-compatible drivers.
-	// Format: mongodb://user:password@endpoint:port/database
-	ConnectionString string `protobuf:"bytes,9,opt,name=connection_string,json=connectionString,proto3" json:"connection_string,omitempty"`
-	// The cluster resource ID (internal AWS identifier).
-	ClusterResourceId string `protobuf:"bytes,10,opt,name=cluster_resource_id,json=clusterResourceId,proto3" json:"cluster_resource_id,omitempty"`
+	// The cluster identifier (e.g. "orders-docdb").
+	ClusterIdentifier string `protobuf:"bytes,1,opt,name=cluster_identifier,json=clusterIdentifier,proto3" json:"cluster_identifier,omitempty"`
+	// The Amazon Resource Name of the cluster.
+	Arn string `protobuf:"bytes,2,opt,name=arn,proto3" json:"arn,omitempty"`
+	// The immutable cluster resource ID (cluster-...). Survives
+	// identifier renames -- the durable handle for point-in-time restores
+	// and CloudWatch dimensions.
+	ClusterResourceId string `protobuf:"bytes,3,opt,name=cluster_resource_id,json=clusterResourceId,proto3" json:"cluster_resource_id,omitempty"`
+	// The writer endpoint -- connect here for reads and writes.
+	Endpoint string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The reader endpoint -- load-balances connections across the
+	// cluster's reader instances.
+	ReaderEndpoint string `protobuf:"bytes,5,opt,name=reader_endpoint,json=readerEndpoint,proto3" json:"reader_endpoint,omitempty"`
+	// The port the cluster accepts connections on.
+	Port int32 `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
+	// The Route53 hosted zone ID of the cluster endpoints, for DNS alias
+	// records.
+	HostedZoneId string `protobuf:"bytes,7,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	// The resolved engine version actually running (meaningful when the
+	// spec leaves engine_version to the AWS default).
+	EngineVersionActual string `protobuf:"bytes,8,opt,name=engine_version_actual,json=engineVersionActual,proto3" json:"engine_version_actual,omitempty"`
+	// The ARN of the AWS-managed master-user secret in Secrets Manager.
+	// Populated only when manage_master_user_password is true -- the
+	// handle applications use to fetch credentials at runtime.
+	MasterUserSecretArn string `protobuf:"bytes,9,opt,name=master_user_secret_arn,json=masterUserSecretArn,proto3" json:"master_user_secret_arn,omitempty"`
+	// The name of the DB subnet group the cluster runs in.
+	DbSubnetGroupName string `protobuf:"bytes,10,opt,name=db_subnet_group_name,json=dbSubnetGroupName,proto3" json:"db_subnet_group_name,omitempty"`
+	// The name of the cluster parameter group in use (module-managed or
+	// the referenced existing group).
+	DbClusterParameterGroupName string `protobuf:"bytes,11,opt,name=db_cluster_parameter_group_name,json=dbClusterParameterGroupName,proto3" json:"db_cluster_parameter_group_name,omitempty"`
+	// Per-instance endpoints of the cluster's folded instances, ordered
+	// as declared in spec.instances. Empty for headless shapes (restores
+	// and global-cluster members created without instances).
+	InstanceEndpoints []string `protobuf:"bytes,12,rep,name=instance_endpoints,json=instanceEndpoints,proto3" json:"instance_endpoints,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -79,65 +93,16 @@ func (*AwsDocumentDbStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsdocumentdb_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AwsDocumentDbStackOutputs) GetClusterEndpoint() string {
+func (x *AwsDocumentDbStackOutputs) GetClusterIdentifier() string {
 	if x != nil {
-		return x.ClusterEndpoint
+		return x.ClusterIdentifier
 	}
 	return ""
 }
 
-func (x *AwsDocumentDbStackOutputs) GetClusterReaderEndpoint() string {
+func (x *AwsDocumentDbStackOutputs) GetArn() string {
 	if x != nil {
-		return x.ClusterReaderEndpoint
-	}
-	return ""
-}
-
-func (x *AwsDocumentDbStackOutputs) GetClusterId() string {
-	if x != nil {
-		return x.ClusterId
-	}
-	return ""
-}
-
-func (x *AwsDocumentDbStackOutputs) GetClusterArn() string {
-	if x != nil {
-		return x.ClusterArn
-	}
-	return ""
-}
-
-func (x *AwsDocumentDbStackOutputs) GetClusterPort() int32 {
-	if x != nil {
-		return x.ClusterPort
-	}
-	return 0
-}
-
-func (x *AwsDocumentDbStackOutputs) GetDbSubnetGroupName() string {
-	if x != nil {
-		return x.DbSubnetGroupName
-	}
-	return ""
-}
-
-func (x *AwsDocumentDbStackOutputs) GetSecurityGroupId() string {
-	if x != nil {
-		return x.SecurityGroupId
-	}
-	return ""
-}
-
-func (x *AwsDocumentDbStackOutputs) GetClusterParameterGroupName() string {
-	if x != nil {
-		return x.ClusterParameterGroupName
-	}
-	return ""
-}
-
-func (x *AwsDocumentDbStackOutputs) GetConnectionString() string {
-	if x != nil {
-		return x.ConnectionString
+		return x.Arn
 	}
 	return ""
 }
@@ -149,25 +114,88 @@ func (x *AwsDocumentDbStackOutputs) GetClusterResourceId() string {
 	return ""
 }
 
+func (x *AwsDocumentDbStackOutputs) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *AwsDocumentDbStackOutputs) GetReaderEndpoint() string {
+	if x != nil {
+		return x.ReaderEndpoint
+	}
+	return ""
+}
+
+func (x *AwsDocumentDbStackOutputs) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *AwsDocumentDbStackOutputs) GetHostedZoneId() string {
+	if x != nil {
+		return x.HostedZoneId
+	}
+	return ""
+}
+
+func (x *AwsDocumentDbStackOutputs) GetEngineVersionActual() string {
+	if x != nil {
+		return x.EngineVersionActual
+	}
+	return ""
+}
+
+func (x *AwsDocumentDbStackOutputs) GetMasterUserSecretArn() string {
+	if x != nil {
+		return x.MasterUserSecretArn
+	}
+	return ""
+}
+
+func (x *AwsDocumentDbStackOutputs) GetDbSubnetGroupName() string {
+	if x != nil {
+		return x.DbSubnetGroupName
+	}
+	return ""
+}
+
+func (x *AwsDocumentDbStackOutputs) GetDbClusterParameterGroupName() string {
+	if x != nil {
+		return x.DbClusterParameterGroupName
+	}
+	return ""
+}
+
+func (x *AwsDocumentDbStackOutputs) GetInstanceEndpoints() []string {
+	if x != nil {
+		return x.InstanceEndpoints
+	}
+	return nil
+}
+
 var File_dev_planton_provider_aws_awsdocumentdb_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsdocumentdb_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awsdocumentdb/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsdocumentdb.v1\"\xdc\x03\n" +
-	"\x19AwsDocumentDbStackOutputs\x12)\n" +
-	"\x10cluster_endpoint\x18\x01 \x01(\tR\x0fclusterEndpoint\x126\n" +
-	"\x17cluster_reader_endpoint\x18\x02 \x01(\tR\x15clusterReaderEndpoint\x12\x1d\n" +
-	"\n" +
-	"cluster_id\x18\x03 \x01(\tR\tclusterId\x12\x1f\n" +
-	"\vcluster_arn\x18\x04 \x01(\tR\n" +
-	"clusterArn\x12!\n" +
-	"\fcluster_port\x18\x05 \x01(\x05R\vclusterPort\x12/\n" +
-	"\x14db_subnet_group_name\x18\x06 \x01(\tR\x11dbSubnetGroupName\x12*\n" +
-	"\x11security_group_id\x18\a \x01(\tR\x0fsecurityGroupId\x12?\n" +
-	"\x1ccluster_parameter_group_name\x18\b \x01(\tR\x19clusterParameterGroupName\x12+\n" +
-	"\x11connection_string\x18\t \x01(\tR\x10connectionString\x12.\n" +
-	"\x13cluster_resource_id\x18\n" +
-	" \x01(\tR\x11clusterResourceIdB\xea\x02\n" +
+	"=dev/planton/provider/aws/awsdocumentdb/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awsdocumentdb.v1\"\x9a\x04\n" +
+	"\x19AwsDocumentDbStackOutputs\x12-\n" +
+	"\x12cluster_identifier\x18\x01 \x01(\tR\x11clusterIdentifier\x12\x10\n" +
+	"\x03arn\x18\x02 \x01(\tR\x03arn\x12.\n" +
+	"\x13cluster_resource_id\x18\x03 \x01(\tR\x11clusterResourceId\x12\x1a\n" +
+	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12'\n" +
+	"\x0freader_endpoint\x18\x05 \x01(\tR\x0ereaderEndpoint\x12\x12\n" +
+	"\x04port\x18\x06 \x01(\x05R\x04port\x12$\n" +
+	"\x0ehosted_zone_id\x18\a \x01(\tR\fhostedZoneId\x122\n" +
+	"\x15engine_version_actual\x18\b \x01(\tR\x13engineVersionActual\x123\n" +
+	"\x16master_user_secret_arn\x18\t \x01(\tR\x13masterUserSecretArn\x12/\n" +
+	"\x14db_subnet_group_name\x18\n" +
+	" \x01(\tR\x11dbSubnetGroupName\x12D\n" +
+	"\x1fdb_cluster_parameter_group_name\x18\v \x01(\tR\x1bdbClusterParameterGroupName\x12-\n" +
+	"\x12instance_endpoints\x18\f \x03(\tR\x11instanceEndpointsB\xea\x02\n" +
 	"-com.dev.planton.provider.aws.awsdocumentdb.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsdocumentdb/v1;awsdocumentdbv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsdocumentdb.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsdocumentdb\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsdocumentdb\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsdocumentdb::V1b\x06proto3"
 
 var (

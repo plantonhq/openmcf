@@ -1,8 +1,10 @@
 package runner
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -29,7 +31,7 @@ func TestResolveDependencies_RegistryPrerequisite(t *testing.T) {
 	repoRoot := t.TempDir()
 	want := writeManifest(t, repoRoot, gwCrdsPrereqRel)
 
-	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute")
+	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}
@@ -49,7 +51,7 @@ func TestResolveDependencies_FallbackToMinimalScenario(t *testing.T) {
 	repoRoot := t.TempDir()
 	want := writeManifest(t, repoRoot, gwCrdsMinimalRel)
 
-	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute")
+	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}
@@ -66,7 +68,7 @@ func TestResolveDependencies_PrerequisiteYamlWinsOverMinimal(t *testing.T) {
 	prereq := writeManifest(t, repoRoot, gwCrdsPrereqRel)
 	writeManifest(t, repoRoot, gwCrdsMinimalRel)
 
-	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute")
+	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}
@@ -77,7 +79,7 @@ func TestResolveDependencies_PrerequisiteYamlWinsOverMinimal(t *testing.T) {
 
 func TestResolveDependencies_NoPrerequisites(t *testing.T) {
 	repoRoot := t.TempDir()
-	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kubernetesnamespace")
+	deps, err := ResolveDependencies(repoRoot, "kubernetes", "kubernetesnamespace", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}
@@ -89,8 +91,322 @@ func TestResolveDependencies_NoPrerequisites(t *testing.T) {
 func TestResolveDependencies_MissingInstallManifestErrors(t *testing.T) {
 	repoRoot := t.TempDir()
 	// httproute has a registry prereq but we create no install manifest for it.
-	if _, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute"); err == nil {
+	if _, err := ResolveDependencies(repoRoot, "kubernetes", "kuberneteshttproute", ""); err == nil {
 		t.Fatal("expected an error when the prerequisite install manifest is missing, got nil")
+	}
+}
+
+// A single-document install profile passes through untouched -- the common
+// case pays no temp-file cost and keeps error messages pointing at the real file.
+func TestSplitManifestDocuments_SingleDocumentPassesThrough(t *testing.T) {
+	repoRoot := t.TempDir()
+	path := writeManifest(t, repoRoot, "single.yaml")
+
+	docs, err := splitManifestDocuments(path)
+	if err != nil {
+		t.Fatalf("splitManifestDocuments: %v", err)
+	}
+	if len(docs) != 1 || docs[0] != path {
+		t.Fatalf("expected the original path back, got %v", docs)
+	}
+}
+
+// A multi-document install profile (e.g. the two different-AZ subnets a load
+// balancer requires) splits into one deployable file per document, in order,
+// with empty documents from leading separators skipped.
+func TestSplitManifestDocuments_MultiDocumentSplits(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "prerequisite.yaml")
+	content := "---\n" + // leading separator produces an empty doc that must be skipped
+		"apiVersion: aws.planton.dev/v1\nkind: AwsSubnet\nmetadata:\n  name: subnet-a\n" +
+		"---\n" +
+		"apiVersion: aws.planton.dev/v1\nkind: AwsSubnet\nmetadata:\n  name: subnet-b\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write profile: %v", err)
+	}
+
+	docs, err := splitManifestDocuments(path)
+	if err != nil {
+		t.Fatalf("splitManifestDocuments: %v", err)
+	}
+	if len(docs) != 2 {
+		t.Fatalf("expected 2 documents, got %d: %v", len(docs), docs)
+	}
+	for i, want := range []string{"name: subnet-a", "name: subnet-b"} {
+		raw, err := os.ReadFile(docs[i])
+		if err != nil {
+			t.Fatalf("read split doc %d: %v", i, err)
+		}
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("doc %d missing %q:\n%s", i, want, raw)
+		}
+	}
+}
+
+// TestTeardownDependencies_AggregatesFailures guards the teardown contract:
+// one dependency's destroy failure must not stop the remaining teardowns
+// (stopping early would leak everything deployed before it), yet every
+// failure must surface in the returned error so the run FAILS instead of
+// silently leaking cloud resources -- the exact failure mode when an
+// ephemeral backend's state disappears before teardown ("no stack named").
+func TestTeardownDependencies_AggregatesFailures(t *testing.T) {
+	origDestroy, origRemove := pulumiDestroyFn, pulumiRemoveStackFn
+	t.Cleanup(func() { pulumiDestroyFn, pulumiRemoveStackFn = origDestroy, origRemove })
+
+	var destroyed []string
+	pulumiDestroyFn = func(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+		destroyed = append(destroyed, stackName)
+		if stackName == "stack-b" {
+			return nil, errors.New("no stack named 'stack-b' found")
+		}
+		return &PulumiResult{}, nil
+	}
+	var removed []string
+	pulumiRemoveStackFn = func(moduleDir, stackName, backendURL string) error {
+		removed = append(removed, stackName)
+		return nil
+	}
+
+	deployed := []DependencyState{
+		{Dependency: Dependency{KindSlug: "awsvpc"}, StackName: "stack-a"},
+		{Dependency: Dependency{KindSlug: "awssubnet"}, StackName: "stack-b"},
+		{Dependency: Dependency{KindSlug: "awsiamrole"}, StackName: "stack-c"},
+	}
+
+	err := TeardownDependencies(deployed)
+	if err == nil {
+		t.Fatal("expected an aggregated error when a destroy fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "stack-b") || !strings.Contains(err.Error(), "awssubnet") {
+		t.Errorf("aggregated error should identify the failed dependency and stack, got: %v", err)
+	}
+	// Reverse order, and the failure in the middle must not stop stack-a.
+	wantDestroyed := []string{"stack-c", "stack-b", "stack-a"}
+	if len(destroyed) != len(wantDestroyed) {
+		t.Fatalf("destroyed = %v, want %v", destroyed, wantDestroyed)
+	}
+	for i := range wantDestroyed {
+		if destroyed[i] != wantDestroyed[i] {
+			t.Fatalf("destroy order = %v, want %v", destroyed, wantDestroyed)
+		}
+	}
+	// Stack removal runs only for the successful destroys.
+	if len(removed) != 2 || removed[0] != "stack-c" || removed[1] != "stack-a" {
+		t.Errorf("removed = %v, want [stack-c stack-a]", removed)
+	}
+}
+
+// A fully clean teardown returns nil so healthy runs keep passing.
+func TestTeardownDependencies_AllCleanReturnsNil(t *testing.T) {
+	origDestroy, origRemove := pulumiDestroyFn, pulumiRemoveStackFn
+	t.Cleanup(func() { pulumiDestroyFn, pulumiRemoveStackFn = origDestroy, origRemove })
+
+	pulumiDestroyFn = func(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+		return &PulumiResult{}, nil
+	}
+	pulumiRemoveStackFn = func(moduleDir, stackName, backendURL string) error { return nil }
+
+	deployed := []DependencyState{
+		{Dependency: Dependency{KindSlug: "awsvpc"}, StackName: "stack-a"},
+	}
+	if err := TeardownDependencies(deployed); err != nil {
+		t.Fatalf("expected nil for a clean teardown, got %v", err)
+	}
+}
+
+// writeScenarioManifest creates a real, loadable AwsEcsCluster scenario
+// manifest carrying the given annotations block (pass "" for none).
+func writeScenarioManifest(t *testing.T, dir, annotationsYaml string) string {
+	t.Helper()
+	content := "apiVersion: aws.planton.dev/v1\n" +
+		"kind: AwsEcsCluster\n" +
+		"metadata:\n" +
+		"  name: scenario-under-test\n" +
+		annotationsYaml +
+		"spec:\n" +
+		"  region: us-west-2\n"
+	path := filepath.Join(dir, "scenario.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write scenario manifest: %v", err)
+	}
+	return path
+}
+
+// TestResolveDependencies_ScenarioDeclaredPrerequisites guards the
+// scenario-annotation source: a scenario that composes an optional reference
+// (here an auto-scaling group) declares it via the e2e-prerequisites
+// annotation, and the harness expands the declared kind through its OWN
+// registry prerequisites -- so naming AwsAutoScalingGroup alone yields the
+// full VPC -> Subnet -> LaunchTemplate -> ASG chain in deploy order, without
+// the component kind carrying a false registry prerequisite.
+func TestResolveDependencies_ScenarioDeclaredPrerequisites(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awslaunchtemplate/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsautoscalinggroup/v1/e2e/scenarios/minimal.yaml")
+
+	scenario := writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n"+
+			"    planton.dev/e2e-prerequisites: \"AwsAutoScalingGroup\"\n")
+
+	deps, err := ResolveDependencies(repoRoot, "aws", "awsecscluster", scenario)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"awsvpc", "awssubnet", "awslaunchtemplate", "awsautoscalinggroup"}
+	if len(got) != len(want) {
+		t.Fatalf("dependency count = %d (%v), want %d (%v)", len(got), got, len(want), want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dependency order = %v, want %v", got, want)
+		}
+	}
+}
+
+// A scenario without the annotation resolves exactly as before -- the
+// registry graph alone (empty for a Fargate-capable ECS cluster, which is
+// honestly a leaf).
+func TestResolveDependencies_AnnotationAbsentUsesRegistryOnly(t *testing.T) {
+	repoRoot := t.TempDir()
+	scenario := writeScenarioManifest(t, t.TempDir(), "")
+
+	deps, err := ResolveDependencies(repoRoot, "aws", "awsecscluster", scenario)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+	if len(deps) != 0 {
+		t.Fatalf("expected no dependencies, got %d: %+v", len(deps), deps)
+	}
+}
+
+// An unknown kind in the annotation must fail loudly -- silently skipping it
+// would deploy the scenario without a dependency it relies on.
+func TestResolveDependencies_UnknownAnnotationKindErrors(t *testing.T) {
+	repoRoot := t.TempDir()
+	scenario := writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n"+
+			"    planton.dev/e2e-prerequisites: \"AwsNoSuchKind\"\n")
+
+	if _, err := ResolveDependencies(repoRoot, "aws", "awsecscluster", scenario); err == nil {
+		t.Fatal("expected an error for an unknown annotation kind, got nil")
+	} else if !strings.Contains(err.Error(), "AwsNoSuchKind") {
+		t.Errorf("error should name the unknown kind, got: %v", err)
+	}
+}
+
+// Declaring the component's own kind as its prerequisite is a modeling
+// mistake and must be rejected rather than deploying the kind twice.
+func TestResolveDependencies_SelfAnnotationErrors(t *testing.T) {
+	repoRoot := t.TempDir()
+	scenario := writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n"+
+			"    planton.dev/e2e-prerequisites: \"AwsEcsCluster\"\n")
+
+	if _, err := ResolveDependencies(repoRoot, "aws", "awsecscluster", scenario); err == nil {
+		t.Fatal("expected an error when a scenario declares its own kind, got nil")
+	}
+}
+
+// A kind already in the registry graph and also named by the annotation must
+// deploy once -- the closure dedupes across the two sources.
+func TestResolveDependencies_AnnotationMergesWithRegistry(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awselasticip/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsinternetgateway/v1/e2e/prerequisite.yaml")
+
+	// NAT gateway's registry graph already includes AwsSubnet; the annotation
+	// naming it again must not produce a duplicate deployment.
+	scenario := writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n"+
+			"    planton.dev/e2e-prerequisites: \"AwsSubnet\"\n")
+
+	deps, err := ResolveDependencies(repoRoot, "aws", "awsnatgateway", scenario)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+	seen := map[string]int{}
+	for _, d := range deps {
+		seen[d.KindSlug]++
+	}
+	if seen["awssubnet"] != 1 {
+		t.Fatalf("awssubnet deployed %d times, want exactly once: %+v", seen["awssubnet"], deps)
+	}
+}
+
+// TestResolveDependencies_InstallManifestPrerequisites guards edge source 3:
+// a prerequisite whose OWN install manifest composes fixtures of other kinds
+// (the zip-backed Lambda function referencing the S3 object-set fixture)
+// declares them via its manifest's e2e-prerequisites annotation, and those
+// fixtures must deploy BEFORE the declaring kind so its value_from references
+// resolve. Here the event-source-mapping's registry prerequisite (AwsLambda)
+// installs via a manifest declaring AwsS3ObjectSet, whose registry graph pulls
+// in AwsS3Bucket -- so the resolved order must place the bucket and object set
+// ahead of the function, with the scenario-declared SQS queue after.
+func TestResolveDependencies_InstallManifestPrerequisites(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsiamrole/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awss3bucket/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awss3objectset/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssqsqueue/v1/e2e/prerequisite.yaml")
+
+	// The Lambda install manifest is a REAL loadable manifest carrying the
+	// annotation -- placeholder manifests are unparseable and contribute no
+	// edges by design.
+	lambdaManifest := "apiVersion: aws.planton.dev/v1\n" +
+		"kind: AwsLambda\n" +
+		"metadata:\n" +
+		"  name: lambda-fixture\n" +
+		"  annotations:\n" +
+		"    planton.dev/e2e-prerequisites: \"AwsS3ObjectSet\"\n" +
+		"spec:\n" +
+		"  region: us-west-2\n"
+	lambdaPath := filepath.Join(repoRoot, "apis/dev/planton/provider/aws/awslambda/v1/e2e/scenarios/minimal.yaml")
+	if err := os.MkdirAll(filepath.Dir(lambdaPath), 0o755); err != nil {
+		t.Fatalf("mkdir lambda scenario dir: %v", err)
+	}
+	if err := os.WriteFile(lambdaPath, []byte(lambdaManifest), 0o600); err != nil {
+		t.Fatalf("write lambda install manifest: %v", err)
+	}
+
+	scenario := "apiVersion: aws.planton.dev/v1\n" +
+		"kind: AwsLambdaEventSourceMapping\n" +
+		"metadata:\n" +
+		"  name: esm-under-test\n" +
+		"  annotations:\n" +
+		"    planton.dev/e2e-prerequisites: \"AwsSqsQueue\"\n" +
+		"spec:\n" +
+		"  region: us-west-2\n"
+	scenarioPath := filepath.Join(t.TempDir(), "scenario.yaml")
+	if err := os.WriteFile(scenarioPath, []byte(scenario), 0o600); err != nil {
+		t.Fatalf("write scenario manifest: %v", err)
+	}
+
+	deps, err := ResolveDependencies(repoRoot, "aws", "awslambdaeventsourcemapping", scenarioPath)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+
+	got := make([]string, len(deps))
+	for i, d := range deps {
+		got[i] = d.KindSlug
+	}
+	want := []string{"awsiamrole", "awss3bucket", "awss3objectset", "awslambda", "awssqsqueue"}
+	if len(got) != len(want) {
+		t.Fatalf("dependency count = %d (%v), want %d (%v)", len(got), got, len(want), want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dependency order = %v, want %v (the S3 chain must precede the function whose manifest references it)", got, want)
+		}
 	}
 }
 
@@ -108,7 +424,7 @@ func TestResolveDependencies_TransitiveDeployOrder(t *testing.T) {
 	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awselasticip/v1/e2e/prerequisite.yaml")
 	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsinternetgateway/v1/e2e/prerequisite.yaml")
 
-	deps, err := ResolveDependencies(repoRoot, "aws", "awsnatgateway")
+	deps, err := ResolveDependencies(repoRoot, "aws", "awsnatgateway", "")
 	if err != nil {
 		t.Fatalf("ResolveDependencies: %v", err)
 	}

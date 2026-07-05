@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awslambdaeventsourcemapping
+spec:
+  # An event source mapping under E2E: the harness deploys the AwsLambda
+  # registry prerequisite (the zip-backed function chain), composes the SQS
+  # queue fixture via the scenario's e2e-prerequisites annotation, then runs
+  # deploy -> GetEventSourceMapping verify -> destroy -> verify-destroyed on
+  # both provisioners. The scenario wires one standard queue into the shared
+  # smoke function -- the smallest honest SQS worker surface. Deliberately not
+  # in the live scenario: Kinesis, DynamoDB streams, MSK, and self-managed
+  # Kafka sources -- all proven by CEL spec tests, presets, and the offline
+  # gate.
+  #
+  # green: both engines have passed the full live lane -- prerequisite chain
+  # (7 roles -> bucket -> object set -> function -> queue) deploy -> mapping
+  # deploy -> GetEventSourceMapping verify -> destroy -> verify-destroyed
+  # (~6-8 min/lane, dominated by the prerequisite chain) -- on top of the
+  # standing offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

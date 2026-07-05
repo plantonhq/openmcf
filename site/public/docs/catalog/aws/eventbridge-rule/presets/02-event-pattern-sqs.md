@@ -52,7 +52,7 @@ arn:
 - Add `retryPolicy` to tune retry behavior
 - Add `inputPath: "$.detail"` to deliver only the event detail (not the full envelope)
 - Add additional targets for fan-out (e.g., Lambda for real-time processing + SQS for audit)
-- Add `sqsConfig.messageGroupId` if targeting a FIFO queue
+- Add `sqsTarget.messageGroupId` if targeting a FIFO queue
 
 ## Related Presets
 

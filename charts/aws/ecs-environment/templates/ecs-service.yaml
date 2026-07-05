@@ -1,43 +1,118 @@
 ---
+# The service's container blueprint. Registering a new revision (e.g. a new
+# image tag) changes the task_definition_arn output, which rolls the
+# service below -- deploys travel through the resource graph.
 apiVersion: aws.planton.dev/v1
-kind: AwsEcsService
+kind: AwsEcsTaskDefinition
 metadata:
   name: "{{ values.service_name }}"
 spec:
   region: "{{ values.aws_region }}"
-  alb:
-    arn:
-      valueFrom:
-        kind: AwsAlb
-        name: "{{ values.env }}-alb"
-        fieldPath: status.outputs.load_balancer_arn
-    enabled: true
-    hostname: "{{ values.service_name }}.{{ values.load_balancer_domain_name }}"
-    routingType: hostname
-    listenerPort: {{ 443 if (values.httpsEnabled | bool and values.dnsEnabled | bool) else 80 }}
-    listenerPriority: 100
+  cpu: 256
+  memory: 512
+  executionRole:
+    valueFrom:
+      kind: AwsIamRole
+      name: "{{ values.env }}-ecs-task-execution-role"
+      fieldPath: status.outputs.role_arn
+  containers:
+    - name: app
+      image: nginx:latest
+      portMappings:
+        - containerPort: 80
+          name: http
+          appProtocol: http
+      environment:
+        SERVICE_NAME: "{{ values.service_name }}"
+---
+# The service's target group: an empty ip-type group the ECS service
+# registers task IPs into as deployments roll. First-class so listeners,
+# rules, autoscaling, and blue/green pairs can all reference it.
+apiVersion: aws.planton.dev/v1
+kind: AwsLbTargetGroup
+metadata:
+  name: "{{ values.service_name }}"
+spec:
+  region: "{{ values.aws_region }}"
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: "{{ values.env }}-vpc"
+      fieldPath: status.outputs.vpc_id
+  targetType: ip
+  port: 80
+  protocol: HTTP
+  deregistrationDelaySeconds: 60
+  healthCheck:
+    protocol: HTTP
+    path: /
+    intervalSeconds: 15
+    timeoutSeconds: 5
+    healthyThreshold: 3
+    unhealthyThreshold: 3
+---
+# The routing rule: host-based routing from the shared ALB listener into
+# this service's target group. Referencing the listener's ARN output also
+# guarantees the listener exists before the rule -- and therefore before
+# the service, which AWS requires to see an LB-associated target group.
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListenerRule
+metadata:
+  name: "{{ values.service_name }}-route"
+spec:
+  region: "{{ values.aws_region }}"
+  listenerArn:
+    valueFrom:
+      kind: AwsLbListener
+{% if values.httpsEnabled | bool and values.dnsEnabled | bool %}
+      name: "{{ values.env }}-alb-https"
+{% else %}
+      name: "{{ values.env }}-alb-http"
+{% endif %}
+      fieldPath: status.outputs.listener_arn
+  priority: 100
+  conditions:
+    - hostHeader:
+        values:
+          - "{{ values.service_name }}.{{ values.load_balancer_domain_name }}"
+  actions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: "{{ values.service_name }}"
+                fieldPath: status.outputs.target_group_arn
+---
+# The service itself: pure scheduling. It runs the referenced
+# task-definition revision in the referenced cluster and registers task
+# IPs into the referenced target group. The cluster, task-definition,
+# subnet, and target-group ordering all come from FK references; the one
+# explicit relationship is the routing rule, because AWS rejects
+# CreateService until the target group is associated with a listener --
+# and it is the RULE that creates that association.
+apiVersion: aws.planton.dev/v1
+kind: AwsEcsService
+metadata:
+  name: "{{ values.service_name }}"
+  relationships:
+    - kind: AwsLbListenerRule
+      name: "{{ values.service_name }}-route"
+      type: depends_on
+spec:
+  region: "{{ values.aws_region }}"
   clusterArn:
     valueFrom:
       kind: AwsEcsCluster
       name: "{{ values.env }}-ecs-cluster"
       fieldPath: status.outputs.cluster_arn
-  container:
-    cpu: 256
-    env:
-      variables:
-        SERVICE_NAME: "{{ values.service_name }}"
-    image:
-      repo: nginx
-      tag: latest
-    memory: 512
-    port: 80
-    replicas: 1
-  iam:
-    taskExecutionRoleArn:
-      valueFrom:
-        kind: AwsIamRole
-        name: "{{ values.env }}-ecs-task-execution-role"
-        fieldPath: status.outputs.role_arn
+  taskDefinition:
+    valueFrom:
+      kind: AwsEcsTaskDefinition
+      name: "{{ values.service_name }}"
+      fieldPath: status.outputs.task_definition_arn
+  desiredCount: 1
   network:
     securityGroups:
       - valueFrom:
@@ -53,3 +128,15 @@ spec:
           kind: AwsSubnet
           name: "{{ values.env }}-private-2"
           fieldPath: status.outputs.subnet_id
+  loadBalancers:
+    - targetGroupArn:
+        valueFrom:
+          kind: AwsLbTargetGroup
+          name: "{{ values.service_name }}"
+          fieldPath: status.outputs.target_group_arn
+      containerName: app
+      containerPort: 80
+  healthCheckGracePeriodSeconds: 60
+  deploymentCircuitBreaker:
+    enable: true
+    rollback: true

@@ -20,5 +20,8 @@ variable "spec" {
     trust_policy = any
     managed_policy_arns = optional(list(string), [])
     inline_policies = optional(any, {})
+    max_session_duration = optional(number, 0)
+    permissions_boundary = optional(string, "")
+    force_detach_policies = optional(bool, false)
   })
 }

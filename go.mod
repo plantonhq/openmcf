@@ -6,13 +6,35 @@ require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20251209175733-2a1774d88802.1
 	buf.build/go/protovalidate v1.1.0
 	github.com/Masterminds/sprig v2.15.0+incompatible
-	github.com/aws/aws-sdk-go-v2 v1.42.0
+	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
+	github.com/aws/aws-sdk-go-v2/service/acm v1.30.6
+	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1
+	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4
+	github.com/aws/aws-sdk-go-v2/service/docdb v1.49.7
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.59.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.307.1
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.86.2
+	github.com/aws/aws-sdk-go-v2/service/eks v1.88.1
+	github.com/aws/aws-sdk-go-v2/service/elasticache v1.54.5
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.55.6
+	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.46.8
+	github.com/aws/aws-sdk-go-v2/service/iam v1.54.7
+	github.com/aws/aws-sdk-go-v2/service/kafka v1.54.2
+	github.com/aws/aws-sdk-go-v2/service/kms v1.53.6
+	github.com/aws/aws-sdk-go-v2/service/lambda v1.94.1
+	github.com/aws/aws-sdk-go-v2/service/mwaa v1.41.7
+	github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2
+	github.com/aws/aws-sdk-go-v2/service/opensearch v1.73.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.119.5
+	github.com/aws/aws-sdk-go-v2/service/redshift v1.63.5
+	github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0
+	github.com/aws/aws-sdk-go-v2/service/sns v1.40.3
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.37.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
-	github.com/aws/smithy-go v1.27.2
+	github.com/aws/smithy-go v1.27.3
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -29,7 +51,7 @@ require (
 	github.com/pulumi/pulumi-alicloud/sdk/v3 v3.95.0
 	github.com/pulumi/pulumi-auth0/sdk/v3 v3.35.0
 	github.com/pulumi/pulumi-aws-native/sdk v1.14.0
-	github.com/pulumi/pulumi-aws/sdk/v7 v7.3.0
+	github.com/pulumi/pulumi-aws/sdk/v7 v7.35.0
 	github.com/pulumi/pulumi-azure-native-sdk/compute/v3 v3.12.1
 	github.com/pulumi/pulumi-azure-native-sdk/containerregistry/v3 v3.10.1
 	github.com/pulumi/pulumi-azure-native-sdk/containerservice/v3 v3.10.1
@@ -50,8 +72,7 @@ require (
 	github.com/pulumi/pulumi-random/sdk/v4 v4.16.7
 	github.com/pulumi/pulumi-snowflake/sdk/v2 v2.9.1
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1
-	github.com/pulumi/pulumi-tls/sdk/v5 v5.2.1
-	github.com/pulumi/pulumi/sdk/v3 v3.242.0
+	github.com/pulumi/pulumi/sdk/v3 v3.246.0
 	github.com/pulumiverse/pulumi-scaleway/sdk v1.43.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.10.2
@@ -62,7 +83,6 @@ require (
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.35.0
-	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	sigs.k8s.io/kustomize/api v0.20.1
 	sigs.k8s.io/kustomize/kyaml v0.20.1
 	sigs.k8s.io/yaml v1.6.0
@@ -71,6 +91,7 @@ require (
 require (
 	cel.dev/expr v0.25.1 // indirect
 	dario.cat/mergo v1.0.0 // indirect
+	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -81,14 +102,15 @@ require (
 	github.com/aokoli/goutils v1.0.1 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.13 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.14 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.29 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.29 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.29 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.30 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.12 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.31 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.22 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.29 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.12.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.30 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.29 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.2.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.31.3 // indirect
@@ -116,7 +138,7 @@ require (
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.9.0 // indirect
-	github.com/go-git/go-git/v5 v5.19.0 // indirect
+	github.com/go-git/go-git/v5 v5.19.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
@@ -145,6 +167,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
@@ -224,6 +247,7 @@ require (
 	k8s.io/apimachinery v0.35.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
+	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4 // indirect
 	lukechampine.com/frand v1.4.2 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect

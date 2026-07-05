@@ -1,0 +1,35 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListenerRule
+metadata:
+  name: <service-name>-canary
+spec:
+  region: <aws-region>
+  listenerArn:
+    valueFrom:
+      kind: AwsLbListener
+      name: <listener-resource-name>
+      fieldPath: status.outputs.listener_arn
+  priority: 10
+  conditions:
+    - hostHeader:
+        values:
+          - <service-hostname>
+  actions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: <stable-target-group-name>
+                fieldPath: status.outputs.target_group_arn
+            weight: 95
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: <canary-target-group-name>
+                fieldPath: status.outputs.target_group_arn
+            weight: 5
+        stickiness:
+          enabled: true
+          durationSeconds: 3600

@@ -148,23 +148,12 @@ var _ = ginkgo.Describe("AwsBatchComputeEnvironmentSpec validations", func() {
 			})
 		})
 
-		ginkgo.Context("with launch template by ID", func() {
+		ginkgo.Context("with launch template reference", func() {
 			ginkgo.It("should not return a validation error", func() {
 				spec := minimalEc2Spec()
 				spec.ComputeResources.LaunchTemplate = &AwsBatchLaunchTemplate{
-					LaunchTemplateId: "lt-0123456789abcdef0",
+					LaunchTemplateId: svRef("lt-0123456789abcdef0"),
 					Version:          "$Latest",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with launch template by name", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec := minimalEc2Spec()
-				spec.ComputeResources.LaunchTemplate = &AwsBatchLaunchTemplate{
-					LaunchTemplateName: "my-batch-template",
 				}
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).To(gomega.BeNil())
@@ -352,19 +341,7 @@ var _ = ginkgo.Describe("AwsBatchComputeEnvironmentSpec validations", func() {
 			})
 		})
 
-		ginkgo.Context("with launch template having both id and name", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec := minimalEc2Spec()
-				spec.ComputeResources.LaunchTemplate = &AwsBatchLaunchTemplate{
-					LaunchTemplateId:   "lt-0123456789abcdef0",
-					LaunchTemplateName: "my-template",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with launch template having neither id nor name", func() {
+		ginkgo.Context("with launch template missing its reference", func() {
 			ginkgo.It("should return a validation error", func() {
 				spec := minimalEc2Spec()
 				spec.ComputeResources.LaunchTemplate = &AwsBatchLaunchTemplate{}

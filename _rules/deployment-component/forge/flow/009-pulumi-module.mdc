@@ -44,6 +44,37 @@ SUCCESS CRITERIA
 NOTES
 - Rule 010 handles entrypoint `iac/pulumi/main.go`, `Pulumi.yaml`, `Makefile`, and binary BUILD.
 - Use in-repo patterns (e.g., `awsalb`, `awsrdsinstance`) as guidance; always derive names/types/outputs from the proto files you read.
+
+CLOUD RESOURCE NAMES -- NEVER RELY ON PULUMI AUTO-NAMING
+- Always set the resource's own name argument (`Name:`, `BucketName:`,
+  `WorkgroupName:`, ...) explicitly from the module's naming basis
+  (`metadata.name`). When the name argument is left unset, Pulumi AUTO-NAMES the
+  cloud resource by appending a random suffix to the Pulumi resource name -- so
+  the same manifest deploys `<name>-<hex>` on Pulumi but `<name>` on Terraform, a
+  silent cross-engine identity divergence that no offline gate catches (both
+  modules validate and build; only comparing the live resource names reveals it).
+- Passing `metadata.name` as the Pulumi RESOURCE name (the second argument to
+  `NewX`) does NOT set the cloud name; the resource name is Pulumi-internal.
+  Prefer a stable, generic resource name ("table", "workgroup") and carry the
+  cloud identity exclusively through the name argument.
+
+EXPORTING OUTPUTS -- APPLYT TYPING IS A DEPLOY-TIME TRAP
+- Prefer exporting resource outputs DIRECTLY (`ctx.Export(OpX, created.X)`). Most SDK
+  string attributes are `pulumi.StringOutput` and already resolve to `""` when the
+  underlying value is absent -- no nil-normalizing transform is needed.
+- When a real transform IS needed, the `ApplyT` applier's input parameter must match
+  the output's element type EXACTLY: `StringOutput` takes `func(string) T`,
+  `StringPtrOutput` takes `func(*string) T`. A `func(*string)` applier on a
+  `StringOutput` compiles cleanly and panics only at live deploy
+  ("applier's first input parameter must be assignable from string, got *string") --
+  no offline gate catches it. `go doc` the SDK type to confirm Output vs PtrOutput
+  before writing the applier.
+- Values nested in computed LIST/POINTER attributes (e.g. a connection endpoint the
+  SDK models as `XEndpointArrayOutput`) do not need an ApplyT either: `Index(...)`
+  returns the zero value when out of range and `Elem()` dereferences a Ptr output to
+  its zero value when nil, so a chain like
+  `created.Endpoints.Index(pulumi.Int(0)).Address().Elem()` is a stable, panic-free
+  export shape.
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` (pointer types in Go)
 - ALWAYS use getter methods: `spec.GetFieldName()` instead of `spec.FieldName`

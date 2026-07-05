@@ -8,14 +8,14 @@ componentName: "awskmskey"
 
 # AWS KMS Key
 
-Deploys a customer-managed AWS KMS encryption key with configurable key type, automatic rotation, and an optional alias. Planton creates the key, applies organization and environment tags, and optionally registers an alias for human-readable key identification.
+Deploys a customer-managed AWS KMS key: cryptographic shape (`key_spec`, `key_usage`), optional key policy, rotation, multi-region designation, and friendly aliases. KMS has no name in AWS — identity is the generated key ID/ARN; consumers compose through `status.outputs.key_arn` or an alias.
 
 ## What Gets Created
 
 When you deploy an AwsKmsKey resource, Planton provisions:
 
-- **KMS Key** — a `kms.Key` resource with the specified cryptographic key type, description, rotation setting, and deletion window
-- **KMS Alias** (conditional) — a `kms.Alias` resource created only when `aliasName` is provided, mapping a friendly name (e.g., `alias/my-app-key`) to the key ID
+- **KMS key** — an `aws_kms_key` with the specified `key_spec`, `key_usage`, policy, rotation settings, and `disabled` state
+- **KMS aliases** — one `aws_kms_alias` per entry in `aliases` (each `alias/...` string), materialized in spec order
 
 ## Prerequisites
 
@@ -31,13 +31,10 @@ apiVersion: aws.planton.dev/v1
 kind: AwsKmsKey
 metadata:
   name: my-key
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsKmsKey.my-key
 spec:
-  region: us-east-1
+  region: us-west-2
+  aliases:
+    - alias/my-app
 ```
 
 Deploy:
@@ -46,134 +43,91 @@ Deploy:
 planton apply -f kms-key.yaml
 ```
 
-This creates a symmetric KMS key with automatic annual rotation enabled and a 30-day deletion window.
+This creates a symmetric encrypt/decrypt key with AWS default settings (no automatic rotation until you opt in).
 
 ## Configuration Reference
 
 ### Required Fields
 
-All spec fields except `region` are optional. An empty `spec: {}` (without `region`) is not valid — you must specify the AWS region.
-
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `region` | `string` | AWS region where the KMS key will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
+| `region` | `string` | AWS region where the key lives. | Required; non-empty |
+
+All other fields are optional.
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `keySpec` | `enum` | `symmetric` | Cryptographic key type. Valid values: `symmetric`, `rsa_2048`, `rsa_4096`, `ecc_nist_p256`. Maps to AWS key specs `SYMMETRIC_DEFAULT`, `RSA_2048`, `RSA_4096`, `ECC_NIST_P256`. |
-| `description` | `string` | `""` | Human-readable description for the KMS key. Maximum 250 characters. |
-| `disableKeyRotation` | `bool` | `false` | When `true`, disables automatic annual key rotation. When `false` (default), rotation is enabled. |
-| `deletionWindowDays` | `int32` | `30` | Waiting period in days before the key is permanently deleted after scheduling deletion. Must be between 7 and 30 inclusive. |
-| `aliasName` | `string` | — | Friendly name for the key. Must begin with `alias/` and contain only letters, numbers, underscores, or hyphens (up to 250 characters after the prefix). Example: `alias/my-app-encryption`. |
+| `description` | `string` | — | Console description (max 8192 characters). |
+| `key_spec` | `string` | `SYMMETRIC_DEFAULT` | Provider string: `SYMMETRIC_DEFAULT`, `RSA_2048`, `RSA_3072`, `RSA_4096`, `ECC_NIST_P256`, `HMAC_256`, etc. Create-time immutable. |
+| `key_usage` | `string` | `ENCRYPT_DECRYPT` | `ENCRYPT_DECRYPT`, `SIGN_VERIFY`, or `GENERATE_VERIFY_MAC`. Create-time immutable. |
+| `policy` | `string` | AWS default | Key policy as a JSON document. Empty grants account root full access and enables IAM delegation. |
+| `bypass_policy_lockout_safety_check` | `bool` | `false` | Skip lockout safety check when setting a custom policy — use with extreme care. |
+| `disabled` | `bool` | `false` | Create or pause the key in disabled state (all crypto operations fail). |
+| `enable_key_rotation` | `bool` | `false` | Automatic rotation (SYMMETRIC_DEFAULT only). |
+| `rotation_period_in_days` | `int32` | 365 | Rotation interval 90–2560; requires `enable_key_rotation`. |
+| `multi_region` | `bool` | `false` | Create as multi-Region primary key (create-time immutable). |
+| `deletion_window_days` | `int32` | 30 | Pending deletion window 7–30 days. |
+| `aliases` | `string[]` | — | Friendly names each starting with `alias/` (e.g. `alias/orders-db`). |
 
 ## Examples
 
-### Default Symmetric Key
-
-A symmetric encryption key with all defaults — rotation enabled, 30-day deletion window:
+### Symmetric Key with Rotation
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsKmsKey
 metadata:
-  name: default-key
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsKmsKey.default-key
+  name: app-encryption
 spec:
-  region: us-east-1
+  region: us-west-2
+  description: Application data encryption
+  key_spec: SYMMETRIC_DEFAULT
+  enable_key_rotation: true
+  aliases:
+    - alias/app-encryption
 ```
 
-### Symmetric Key with Alias and Description
-
-A named key for application-level encryption:
+### RSA Signing Key
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsKmsKey
 metadata:
-  name: app-encryption-key
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsKmsKey.app-encryption-key
+  name: jwt-signing
 spec:
-  region: us-east-1
-  description: "Encryption key for application secrets"
-  aliasName: alias/app-encryption
+  region: us-west-2
+  key_spec: RSA_4096
+  key_usage: SIGN_VERIFY
+  description: JWT signing key
+  aliases:
+    - alias/jwt-signing
+  deletion_window_days: 14
 ```
 
-### RSA Key for Asymmetric Operations
-
-An RSA 4096-bit key for signing or encryption workflows that require asymmetric cryptography:
+### Custom Key Policy
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsKmsKey
 metadata:
-  name: rsa-signing-key
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsKmsKey.rsa-signing-key
+  name: cross-account
 spec:
-  region: us-east-1
-  keySpec: rsa_4096
-  description: "RSA key for JWT signing"
-  aliasName: alias/jwt-signing
-  deletionWindowDays: 14
-```
-
-### ECC Key with Short Deletion Window
-
-An elliptic curve key for ECDSA signing with a minimal deletion safety window:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsKmsKey
-metadata:
-  name: ecc-signing-key
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AwsKmsKey.ecc-signing-key
-spec:
-  region: us-east-1
-  keySpec: ecc_nist_p256
-  description: "ECDSA P-256 signing key"
-  aliasName: alias/ecdsa-signing
-  deletionWindowDays: 7
-  disableKeyRotation: true
-```
-
-### Full Configuration
-
-A production symmetric key using every available field:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsKmsKey
-metadata:
-  name: prod-master-key
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsKmsKey.prod-master-key
-spec:
-  region: us-east-1
-  keySpec: symmetric
-  description: "Master encryption key for production data"
-  disableKeyRotation: false
-  deletionWindowDays: 30
-  aliasName: alias/prod-master
+  region: us-west-2
+  policy: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [{
+        "Sid": "EnableRoot",
+        "Effect": "Allow",
+        "Principal": {"AWS": "arn:aws:iam::123456789012:root"},
+        "Action": "kms:*",
+        "Resource": "*"
+      }]
+    }
+  aliases:
+    - alias/shared-encryption
 ```
 
 ## Stack Outputs
@@ -182,14 +136,13 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `key_id` | `string` | Unique identifier (UUID) of the KMS key |
-| `key_arn` | `string` | Full Amazon Resource Name of the KMS key, used in IAM policies and resource configurations |
-| `alias_name` | `string` | The alias assigned to the key, or an empty string if no alias was specified |
-| `rotation_enabled` | `bool` | Whether automatic annual key rotation is enabled (`true`) or disabled (`false`) |
+| `key_id` | `string` | Generated key ID (UUID; `mrk-...` for multi-Region keys) |
+| `key_arn` | `string` | Key ARN — join key for encryption-at-rest fields across the catalog |
+| `alias_names` | `string[]` | Attached alias names (`alias/...`) in spec order |
 
 ## Related Components
 
-- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — can use the KMS key ARN for server-side encryption of bucket objects
-- [AwsRdsInstance](/docs/catalog/aws/rds-instance) — can use the KMS key ARN for encrypting database storage
-- [AwsSecretsManager](/docs/catalog/aws/secrets-manager) — can use the KMS key ARN to encrypt stored secrets
-- [AwsEksCluster](/docs/catalog/aws/eks-cluster) — can use the KMS key ARN for envelope encryption of Kubernetes secrets
+- [AwsLambda](/docs/catalog/aws/lambda) — `kms_key_arn` encrypts environment variables
+- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — server-side encryption with customer-managed keys
+- [AwsRdsCluster](/docs/catalog/aws/rds-cluster) — storage encryption
+- [AwsLambdaEventSourceMapping](/docs/catalog/aws/lambda-event-source-mapping) — encrypts filter criteria at rest

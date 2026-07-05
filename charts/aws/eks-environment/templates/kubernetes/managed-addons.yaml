@@ -1,0 +1,64 @@
+{% if values.coreAddonsEnabled | bool %}
+# The AWS-managed core add-ons as first-class nodes: upgrades and
+# configuration flow through the EKS control plane per add-on instead of
+# riding whatever bootstrap copies the cluster started with. The cluster
+# bootstraps self-managed copies of this trio at creation (the AWS
+# default), so each add-on adopts its copy with
+# resolveConflictsOnCreate: OVERWRITE -- the exact migration path AWS
+# built the flag for. Versions stay unpinned: each follows the AWS
+# default for the cluster's Kubernetes version, so the chart never goes
+# stale. Ordering comes from the cluster reference itself.
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAddon
+metadata:
+  name: "{{ values.env }}-{{ values.cluster_name }}-vpc-cni"
+spec:
+  region: "{{ values.aws_region }}"
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: "{{ values.env }}-{{ values.cluster_name }}"
+      fieldPath: status.outputs.name
+  addonName: vpc-cni
+  resolveConflictsOnCreate: OVERWRITE
+  resolveConflictsOnUpdate: OVERWRITE
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAddon
+metadata:
+  name: "{{ values.env }}-{{ values.cluster_name }}-kube-proxy"
+spec:
+  region: "{{ values.aws_region }}"
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: "{{ values.env }}-{{ values.cluster_name }}"
+      fieldPath: status.outputs.name
+  addonName: kube-proxy
+  resolveConflictsOnCreate: OVERWRITE
+  resolveConflictsOnUpdate: OVERWRITE
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAddon
+metadata:
+  name: "{{ values.env }}-{{ values.cluster_name }}-coredns"
+  # depends_on the node group (not just the cluster): coredns runs as a
+  # Deployment, so on a cluster with no ready nodes the add-on sits
+  # DEGRADED and its create times out. The spec only references the
+  # cluster, which is why this ordering needs an explicit relationship.
+  relationships:
+    - kind: AwsEksNodeGroup
+      name: "{{ values.node_group_name }}"
+      type: depends_on
+spec:
+  region: "{{ values.aws_region }}"
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: "{{ values.env }}-{{ values.cluster_name }}"
+      fieldPath: status.outputs.name
+  addonName: coredns
+  resolveConflictsOnCreate: OVERWRITE
+  resolveConflictsOnUpdate: OVERWRITE
+{% endif %}

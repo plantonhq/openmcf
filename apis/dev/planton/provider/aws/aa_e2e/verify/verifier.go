@@ -24,16 +24,75 @@ type Verifier interface {
 	VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error
 }
 
+// OutputsVerifier inspects the full stack output map when a single string id is
+// insufficient (e.g. AwsS3ObjectSet verifies HeadObject per key in object_etags).
+type OutputsVerifier interface {
+	Verifier
+	VerifyExistsFromOutputs(ctx context.Context, cfg aws.Config, outputs map[string]interface{}, region string) error
+	VerifyAbsentFromOutputs(ctx context.Context, cfg aws.Config, outputs map[string]interface{}, region string) error
+}
+
 // verifiers maps a component name to its verifier. New AWS components register
 // here as they are forged; today it carries the S3 walking-skeleton only.
 var verifiers = map[string]Verifier{
-	"awss3bucket":                  &s3Verifier{},
-	"awssubnet":                    &subnetVerifier{},
-	"awsvpc":                       &vpcVerifier{},
-	"awsinternetgateway":           &internetGatewayVerifier{},
-	"awsegressonlyinternetgateway": &egressOnlyInternetGatewayVerifier{},
-	"awsnatgateway":                &natGatewayVerifier{},
-	"awselasticip":                 &elasticIpVerifier{},
+	"awscertmanagercert":             &acmCertificateVerifier{},
+	"awscloudfront":                  &cloudFrontDistributionVerifier{},
+	"awssqsqueue":                    &sqsQueueVerifier{},
+	"awssnstopic":                    &snsTopicVerifier{},
+	"awssnssubscription":             &snsSubscriptionVerifier{},
+	"awseventbridgebus":              &eventBridgeBusVerifier{},
+	"awseventbridgerule":             &eventBridgeRuleVerifier{},
+	"awss3bucket":                    &s3Verifier{},
+	"awss3objectset":                 &s3ObjectSetVerifier{},
+	"awssubnet":                      &subnetVerifier{},
+	"awsvpc":                         &vpcVerifier{},
+	"awsinternetgateway":             &internetGatewayVerifier{},
+	"awsegressonlyinternetgateway":   &egressOnlyInternetGatewayVerifier{},
+	"awsvpcendpoint":                 &vpcEndpointVerifier{},
+	"awsnatgateway":                  &natGatewayVerifier{},
+	"awselasticip":                   &elasticIpVerifier{},
+	"awsiampolicy":                   &iamPolicyVerifier{},
+	"awsiamrole":                     &iamRoleVerifier{},
+	"awsiaminstanceprofile":          &iamInstanceProfileVerifier{},
+	"awsiamuser":                     &iamUserVerifier{},
+	"awsiamoidcprovider":             &iamOidcProviderVerifier{},
+	"awsalb":                         &loadBalancerVerifier{component: "awsalb"},
+	"awsnlb":                         &loadBalancerVerifier{component: "awsnlb"},
+	"awslbtargetgroup":               &targetGroupVerifier{},
+	"awslblistener":                  &listenerVerifier{},
+	"awslblistenerrule":              &listenerRuleVerifier{},
+	"awslaunchtemplate":              &launchTemplateVerifier{},
+	"awsautoscalinggroup":            &autoScalingGroupVerifier{},
+	"awsecscluster":                  &ecsClusterVerifier{},
+	"awsecstaskdefinition":           &ecsTaskDefinitionVerifier{},
+	"awsecsservice":                  &ecsServiceVerifier{},
+	"awsrdscluster":                  &rdsClusterVerifier{},
+	"awsrdsinstance":                 &rdsInstanceVerifier{},
+	"awsdocumentdb":                  &docdbClusterVerifier{},
+	"awsneptunecluster":              &neptuneClusterVerifier{},
+	"awsredshiftcluster":             &redshiftClusterVerifier{},
+	"awsredshiftserverlessnamespace": &redshiftServerlessNamespaceVerifier{},
+	"awsredshiftserverlessworkgroup": &redshiftServerlessWorkgroupVerifier{},
+	"awsekscluster":                  &eksClusterVerifier{},
+	"awseksnodegroup":                &eksNodeGroupVerifier{},
+	"awseksaddon":                    &eksAddonVerifier{},
+	"awseksfargateprofile":           &eksFargateProfileVerifier{},
+	"awseksaccessentry":              &eksAccessEntryVerifier{},
+	"awsdynamodb":                    &dynamodbTableVerifier{},
+	"awslambda":                      &lambdaFunctionVerifier{},
+	"awslambdaeventsourcemapping":    &lambdaEventSourceMappingVerifier{},
+	"awskmskey":                      &kmsKeyVerifier{},
+	"awselasticacheuser":             &elasticacheUserVerifier{},
+	"awselasticacheusergroup":        &elasticacheUserGroupVerifier{},
+	"awsrediselasticache":            &elasticacheReplicationGroupVerifier{},
+	"awsmemcachedelasticache":        &elasticacheClusterVerifier{},
+	"awsserverlesselasticache":       &elasticacheServerlessCacheVerifier{},
+	"awssecuritygroup":               &securityGroupVerifier{},
+	"awsmskcluster":                  &mskClusterVerifier{},
+	"awsmskserverlesscluster":        &mskServerlessClusterVerifier{},
+	"awsmwaaenvironment":             &mwaaEnvironmentVerifier{},
+	"awsopensearchdomain":            &opensearchDomainVerifier{},
+	"awsec2instance":                 &ec2InstanceVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

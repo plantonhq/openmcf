@@ -4,49 +4,48 @@ import (
 	"github.com/pkg/errors"
 	awsmwaaenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmwaaenvironment/v1"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
-	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/mwaa"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func environment(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, createdSg *ec2.SecurityGroup) (*mwaa.Environment, error) {
+func environment(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*mwaa.Environment, error) {
 	spec := locals.AwsMwaaEnvironment.Spec
 
-	// Build the security group ID list: managed SG + associate_security_group_ids
+	// Ingress is composed, never embedded: the referenced security groups
+	// carry the self-referencing all-traffic rule MWAA components need to
+	// talk to each other, plus HTTPS (443) ingress for UI access.
 	sgIds := pulumi.StringArray{}
-	if createdSg != nil {
-		sgIds = append(sgIds, createdSg.ID())
-	}
-	for _, sgOrRef := range spec.AssociateSecurityGroupIds {
+	for _, sgOrRef := range spec.SecurityGroupIds {
 		sgIds = append(sgIds, pulumi.String(sgOrRef.GetValue()))
 	}
 
-	// Build subnet ID list
 	subnetIds := pulumi.StringArray{}
 	for _, s := range spec.SubnetIds {
 		subnetIds = append(subnetIds, pulumi.String(s.GetValue()))
 	}
 
 	args := &mwaa.EnvironmentArgs{
-		Name:                 pulumi.String(locals.AwsMwaaEnvironment.Metadata.Id),
+		Name:                 pulumi.String(locals.EnvironmentName),
 		DagS3Path:            pulumi.String(spec.DagS3Path),
 		ExecutionRoleArn:     pulumi.String(spec.ExecutionRoleArn.GetValue()),
 		SourceBucketArn:      pulumi.String(spec.SourceBucketArn.GetValue()),
 		NetworkConfiguration: buildNetworkConfiguration(subnetIds, sgIds),
-		Tags:                 pulumi.ToStringMap(locals.Labels),
+		Tags:                 pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	// Airflow version
+	// Airflow version: omitted means AWS picks the latest supported release.
 	if spec.AirflowVersion != "" {
 		args.AirflowVersion = pulumi.StringPtr(spec.AirflowVersion)
 	}
 
-	// Airflow configuration options
+	// Airflow config overrides ("section.property" keys). May carry secrets
+	// (connection URIs) -- AWS marks the whole map sensitive.
 	if len(spec.AirflowConfigurationOptions) > 0 {
 		args.AirflowConfigurationOptions = pulumi.ToStringMap(spec.AirflowConfigurationOptions)
 	}
 
-	// S3 artifact paths
+	// S3 artifacts: each optional path can be pinned to an S3 object version
+	// for deterministic deployments.
 	if spec.PluginsS3Path != "" {
 		args.PluginsS3Path = pulumi.StringPtr(spec.PluginsS3Path)
 	}
@@ -66,12 +65,14 @@ func environment(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, cr
 		args.StartupScriptS3ObjectVersion = pulumi.StringPtr(spec.StartupScriptS3ObjectVersion)
 	}
 
-	// KMS encryption
+	// KMS encryption at rest (metadata DB, logs, SQS). ForceNew.
 	if spec.KmsKeyArn != nil {
 		args.KmsKey = pulumi.StringPtr(spec.KmsKeyArn.GetValue())
 	}
 
-	// Environment sizing
+	// Environment sizing. Zero means "not set" for these optional numerics --
+	// AWS then applies its own defaults (class mw1.small, 1-10 workers, 2
+	// webservers, 2 schedulers).
 	if spec.EnvironmentClass != "" {
 		args.EnvironmentClass = pulumi.StringPtr(spec.EnvironmentClass)
 	}
@@ -91,7 +92,9 @@ func environment(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, cr
 		args.Schedulers = pulumi.IntPtr(int(spec.Schedulers))
 	}
 
-	// Access and networking
+	// Access and networking. endpoint_management is ForceNew; with CUSTOMER
+	// the operator creates VPC endpoints against the exported endpoint
+	// service names.
 	if spec.WebserverAccessMode != nil {
 		args.WebserverAccessMode = pulumi.StringPtr(*spec.WebserverAccessMode)
 	}
@@ -99,7 +102,7 @@ func environment(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, cr
 		args.EndpointManagement = pulumi.StringPtr(spec.EndpointManagement)
 	}
 
-	// Logging configuration
+	// Per-module log delivery to CloudWatch.
 	if spec.LoggingConfiguration != nil {
 		args.LoggingConfiguration = buildLoggingConfiguration(spec.LoggingConfiguration)
 	}
@@ -109,12 +112,11 @@ func environment(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, cr
 		args.WeeklyMaintenanceWindowStart = pulumi.StringPtr(spec.WeeklyMaintenanceWindowStart)
 	}
 
-	// NOTE: WorkerReplacementStrategy is included in the spec but not available in
-	// pulumi-aws SDK v7.3.0. The Terraform module supports it. When the SDK is upgraded,
-	// uncomment this block:
-	// if spec.WorkerReplacementStrategy != "" {
-	//     args.WorkerReplacementStrategy = pulumi.StringPtr(spec.WorkerReplacementStrategy)
-	// }
+	// Worker replacement strategy during environment updates (FORCED = fast,
+	// may interrupt running tasks; GRACEFUL = drain first).
+	if spec.WorkerReplacementStrategy != "" {
+		args.WorkerReplacementStrategy = pulumi.StringPtr(spec.WorkerReplacementStrategy)
+	}
 
 	env, err := mwaa.NewEnvironment(ctx, "mwaa-environment", args, pulumi.Provider(provider))
 	if err != nil {

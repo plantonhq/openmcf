@@ -56,10 +56,12 @@ Layer 4 (dep Zone):  AwsCertManagerCert
 | Resource | Kind | Group | Condition | Purpose |
 |----------|------|-------|-----------|---------|
 | VPC | `AwsVpc` | network | Always | Isolated network with public/private subnets and NAT |
+| S3 Gateway Endpoint | `AwsVpcEndpoint` | network | `s3EndpointEnabled` | Free private S3 path -- bypasses NAT data charges; the only S3 path when `nat_mode` is `none` |
 | Security Group | `AwsSecurityGroup` | network | Always | HTTP/HTTPS ingress, all egress |
 | Route 53 Zone | `AwsRoute53Zone` | network | `dnsEnabled` | DNS hosted zone |
 | ACM Certificate | `AwsCertManagerCert` | security | `httpsEnabled` | DNS-validated TLS certificate |
-| ALB | `AwsAlb` | network | Always | Application load balancer with optional DNS and TLS |
+| ALB | `AwsAlb` | network | Always | Application load balancer with optional DNS |
+| ALB Listener(s) | `AwsLbListener` | network | Always | HTTPS + redirect pair when TLS is on; plain HTTP otherwise. Services attach routing rules to these |
 | ECS Cluster | `AwsEcsCluster` | compute | Always | Fargate + Fargate Spot capacity |
 | ECR Repository | `AwsEcrRepo` | compute | Always | Container image registry |
 | IAM Role | `AwsIamRole` | identity | Always | ECS task execution role |
@@ -78,6 +80,7 @@ Layer 4 (dep Zone):  AwsCertManagerCert
 | `domain_name` | Route 53 zone domain | `example.com` | Yes |
 | `load_balancer_domain_name` | DNS name for the ALB | `app.example.com` | Yes |
 | `dnsEnabled` | Create Route53 zone and ALB DNS | `true` | No |
+| `s3EndpointEnabled` | Create the free S3 gateway endpoint | `true` | No |
 | `httpsEnabled` | Create ACM cert and terminate TLS | `true` | No |
 | `alb_idle_timeout_seconds` | ALB idle timeout | `60` | No |
 | **Compute** | | | |

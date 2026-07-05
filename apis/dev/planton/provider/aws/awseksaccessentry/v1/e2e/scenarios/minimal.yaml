@@ -1,0 +1,37 @@
+# Minimal AwsEksAccessEntry scenario: a STANDARD entry granting the
+# shared instance-profile fixture role (NOT the cluster creator -- EKS
+# auto-creates the creator's entry, and a duplicate create would fail)
+# cluster-scoped read-only access through the AWS-managed view policy.
+# Exercises both the entry and one folded policy association. The
+# prerequisite cluster runs authenticationMode API, which entries
+# require. Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAccessEntry
+metadata:
+  name: planton-oss-e2e-eksae-smoke
+  id: planton-oss-e2e-eksae-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awseksaccessentry
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: planton-oss-e2e-eks-cluster-prereq
+      fieldPath: status.outputs.name
+  principalArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-awsiamrole-prereq
+      fieldPath: status.outputs.role_arn
+  policyAssociations:
+    - policyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy
+      accessScope:
+        type: cluster

@@ -2,27 +2,45 @@ syntax = "proto3";
 
 package dev.planton.provider.aws.awsec2instance.v1;
 
-// AwsEc2InstanceStackOutputs captures the key output values after provisioning an EC2 instance.
-// These outputs include identifiers and network details which can be used to reference the instance in other resources or external systems.
+// AwsEc2InstanceStackOutputs captures the observable outputs of a
+// provisioned EC2 instance -- the identifiers and addresses downstream
+// resources and operators reference.
 message AwsEc2InstanceStackOutputs {
-  // Unique identifier of the EC2 instance (instance ID, e.g., "i-0123456789abcdef0").
+  // The instance ID (e.g. "i-0123456789abcdef0"). The primary handle:
+  // what load-balancer target groups register (an AwsLbTargetGroup
+  // instance target references this output), what the CLI and APIs
+  // address.
   string instance_id = 1;
 
-  // Primary private IPv4 address assigned to the instance.
-  string private_ip = 2;
+  // The ARN of the instance, for IAM policies and EventBridge rules
+  // scoped to this instance.
+  string arn = 2;
 
-  // Internal DNS hostname for the instance within the VPC.
-  string private_dns_name = 3;
+  // The instance lifecycle state as of the last deploy ("running",
+  // "stopped", ...).
+  string instance_state = 3;
 
-  // Availability zone where the instance is running (e.g., "us-west-2a").
+  // The availability zone the instance runs in (e.g. "us-west-2a").
   string availability_zone = 4;
 
-  // ARN of the IAM instance profile attached to the instance (if any).
-  string instance_profile_arn = 5;
+  // The primary private IPv4 address.
+  string private_ip = 5;
 
-  // Base‑64‑encoded PEM‑formatted private key when the module generates an SSH key pair.
-  string ssh_private_key = 6;
+  // The private DNS hostname within the VPC (e.g.
+  // "ip-10-0-1-5.us-west-2.compute.internal").
+  string private_dns = 6;
 
-  // OpenSSH‑formatted public key corresponding to the generated private key.
-  string ssh_public_key = 7;
+  // The public IPv4 address, when one is associated. Empty for
+  // private-only instances. Note this address changes across
+  // stop/start cycles -- compose an AwsElasticIp for a stable public
+  // address.
+  string public_ip = 7;
+
+  // The public DNS hostname, when a public address is associated. Empty
+  // for private-only instances.
+  string public_dns = 8;
+
+  // The ID of the primary network interface (eth0) -- the attachment
+  // point for Elastic IP associations and flow-log scoping.
+  string primary_network_interface_id = 9;
 }

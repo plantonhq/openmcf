@@ -7,4 +7,5 @@ const (
 	OpOidcIssuerUrl          = "oidc_issuer_url"
 	OpClusterArn             = "cluster_arn"
 	OpName                   = "name"
+	OpPlatformVersion        = "platform_version"
 )

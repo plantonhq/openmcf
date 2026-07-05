@@ -1,0 +1,30 @@
+# Minimal AwsNlb scenario: an internal NLB with one subnet mapping (NLB
+# requires only one, unlike ALB's two). subnetId is a value_from reference
+# addressing one specific subnet of the two-AZ install profile by name.
+# Internal on purpose: no Elastic IP dependency, so the scenario proves the
+# NLB lifecycle in isolation. Full metadata is supplied for tagging/orphan
+# cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsNlb
+metadata:
+  name: planton-oss-e2e-awsnlb-smoke
+  id: planton-oss-e2e-awsnlb-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsnlb
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  internal: true
+  subnetMappings:
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+  crossZoneLoadBalancingEnabled: false

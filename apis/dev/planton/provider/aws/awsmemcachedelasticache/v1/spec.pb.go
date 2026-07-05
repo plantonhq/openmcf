@@ -67,7 +67,8 @@ type AwsMemcachedElasticacheSpec struct {
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// Memcached engine version to deploy. Uses three-part versioning:
-	// "1.6.22", "1.6.17", "1.5.16", etc.
+	// "1.6.22", "1.6.17", "1.5.16", etc. Leave empty to use the AWS default —
+	// a versionless manifest never goes stale.
 	// Transit encryption requires version 1.6.12 or later.
 	EngineVersion string `protobuf:"bytes,2,opt,name=engine_version,json=engineVersion,proto3" json:"engine_version,omitempty"`
 	// ElastiCache node type. Determines CPU, memory, and network capacity.
@@ -93,35 +94,54 @@ type AwsMemcachedElasticacheSpec struct {
 	TransitEncryptionEnabled bool `protobuf:"varint,7,opt,name=transit_encryption_enabled,json=transitEncryptionEnabled,proto3" json:"transit_encryption_enabled,omitempty"`
 	// Subnet IDs for the ElastiCache subnet group. Provide subnets in at least
 	// two AZs when using cross-az mode. A subnet group is created automatically
-	// from these subnets.
+	// from these subnets. Mutually exclusive with `subnet_group_name`.
 	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
+	// Name of an EXISTING ElastiCache subnet group to place the cluster in,
+	// instead of building one from `subnet_ids`. Bring-your-own for
+	// organizations that manage subnet groups centrally. ForceNew — changing
+	// the subnet group replaces the cluster.
+	SubnetGroupName string `protobuf:"bytes,9,opt,name=subnet_group_name,json=subnetGroupName,proto3" json:"subnet_group_name,omitempty"`
 	// VPC security groups to attach to the cluster nodes. Controls network-level
 	// access to the Memcached endpoint. Since Memcached has no authentication,
 	// security groups are the primary access control mechanism.
-	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,9,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,10,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	// IP addressing for the cluster's network. Values: "ipv4" (default),
+	// "ipv6", "dual_stack". ForceNew — changing the network type replaces the
+	// cluster. Dual-stack requires subnets with both IPv4 and IPv6 CIDRs.
+	NetworkType string `protobuf:"bytes,11,opt,name=network_type,json=networkType,proto3" json:"network_type,omitempty"`
+	// Which address family DNS discovery returns to clients. Values: "ipv4",
+	// "ipv6". Only meaningful alongside a dual-stack `network_type`; updates
+	// in place, letting clients migrate address families without replacing
+	// the cluster.
+	IpDiscovery string `protobuf:"bytes,12,opt,name=ip_discovery,json=ipDiscovery,proto3" json:"ip_discovery,omitempty"`
 	// Parameter group family for custom parameters. Required when `parameters`
 	// is provided. Examples: "memcached1.6", "memcached1.5", "memcached1.4".
-	ParameterGroupFamily string `protobuf:"bytes,10,opt,name=parameter_group_family,json=parameterGroupFamily,proto3" json:"parameter_group_family,omitempty"`
+	ParameterGroupFamily string `protobuf:"bytes,13,opt,name=parameter_group_family,json=parameterGroupFamily,proto3" json:"parameter_group_family,omitempty"`
 	// Custom cache parameters to apply via a managed parameter group. Common
 	// Memcached parameters include: chunk_size, chunk_size_growth_factor,
-	// max_simultaneous_connections, binding_protocol.
-	Parameters []*AwsMemcachedElasticacheParameter `protobuf:"bytes,11,rep,name=parameters,proto3" json:"parameters,omitempty"`
+	// max_simultaneous_connections, binding_protocol. Mutually exclusive with
+	// `parameter_group_name`.
+	Parameters []*AwsMemcachedElasticacheParameter `protobuf:"bytes,14,rep,name=parameters,proto3" json:"parameters,omitempty"`
+	// Name of an EXISTING parameter group to use instead of managing
+	// parameters here. Bring-your-own for organizations that share one tuned
+	// group across many caches. Mutually exclusive with `parameters`.
+	ParameterGroupName string `protobuf:"bytes,15,opt,name=parameter_group_name,json=parameterGroupName,proto3" json:"parameter_group_name,omitempty"`
 	// Weekly maintenance window in UTC. Format: "ddd:hh24:mi-ddd:hh24:mi".
 	// Example: "sun:05:00-sun:06:00". Leave empty for AWS-assigned default.
-	MaintenanceWindow string `protobuf:"bytes,12,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
+	MaintenanceWindow string `protobuf:"bytes,16,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
 	// Apply changes immediately instead of waiting for the next maintenance
 	// window. May cause brief downtime for some operations.
-	ApplyImmediately bool `protobuf:"varint,13,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
+	ApplyImmediately bool `protobuf:"varint,17,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
 	// Automatically apply minor engine version upgrades during maintenance
 	// windows. Recommended for staying on supported versions.
-	AutoMinorVersionUpgrade bool `protobuf:"varint,14,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3" json:"auto_minor_version_upgrade,omitempty"`
+	AutoMinorVersionUpgrade bool `protobuf:"varint,18,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3" json:"auto_minor_version_upgrade,omitempty"`
 	// SNS topic ARN for cluster event notifications (node additions, removals,
 	// maintenance events, etc.).
-	NotificationTopicArn *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=notification_topic_arn,json=notificationTopicArn,proto3" json:"notification_topic_arn,omitempty"`
+	NotificationTopicArn *v1.StringValueOrRef `protobuf:"bytes,19,opt,name=notification_topic_arn,json=notificationTopicArn,proto3" json:"notification_topic_arn,omitempty"`
 	// Preferred Availability Zones for the cache nodes. When provided, the list
 	// length must match num_cache_nodes. Nodes are placed in the specified AZs
 	// in order. Leave empty for AWS-managed AZ distribution.
-	PreferredAvailabilityZones []string `protobuf:"bytes,16,rep,name=preferred_availability_zones,json=preferredAvailabilityZones,proto3" json:"preferred_availability_zones,omitempty"`
+	PreferredAvailabilityZones []string `protobuf:"bytes,20,rep,name=preferred_availability_zones,json=preferredAvailabilityZones,proto3" json:"preferred_availability_zones,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -212,11 +232,32 @@ func (x *AwsMemcachedElasticacheSpec) GetSubnetIds() []*v1.StringValueOrRef {
 	return nil
 }
 
+func (x *AwsMemcachedElasticacheSpec) GetSubnetGroupName() string {
+	if x != nil {
+		return x.SubnetGroupName
+	}
+	return ""
+}
+
 func (x *AwsMemcachedElasticacheSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.SecurityGroupIds
 	}
 	return nil
+}
+
+func (x *AwsMemcachedElasticacheSpec) GetNetworkType() string {
+	if x != nil {
+		return x.NetworkType
+	}
+	return ""
+}
+
+func (x *AwsMemcachedElasticacheSpec) GetIpDiscovery() string {
+	if x != nil {
+		return x.IpDiscovery
+	}
+	return ""
 }
 
 func (x *AwsMemcachedElasticacheSpec) GetParameterGroupFamily() string {
@@ -231,6 +272,13 @@ func (x *AwsMemcachedElasticacheSpec) GetParameters() []*AwsMemcachedElasticache
 		return x.Parameters
 	}
 	return nil
+}
+
+func (x *AwsMemcachedElasticacheSpec) GetParameterGroupName() string {
+	if x != nil {
+		return x.ParameterGroupName
+	}
+	return ""
 }
 
 func (x *AwsMemcachedElasticacheSpec) GetMaintenanceWindow() string {
@@ -329,32 +377,40 @@ var File_dev_planton_provider_aws_awsmemcachedelasticache_v1_spec_proto protoref
 
 const file_dev_planton_provider_aws_awsmemcachedelasticache_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awsmemcachedelasticache/v1/spec.proto\x123dev.planton.provider.aws.awsmemcachedelasticache.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\x0f\n" +
+	">dev/planton/provider/aws/awsmemcachedelasticache/v1/spec.proto\x123dev.planton.provider.aws.awsmemcachedelasticache.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xab\x16\n" +
 	"\x1bAwsMemcachedElasticacheSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12-\n" +
-	"\x0eengine_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rengineVersion\x12#\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12%\n" +
+	"\x0eengine_version\x18\x02 \x01(\tR\rengineVersion\x12#\n" +
 	"\tnode_type\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bnodeType\x121\n" +
 	"\x0fnum_cache_nodes\x18\x04 \x01(\x05B\t\xbaH\x06\x1a\x04\x18((\x01R\rnumCacheNodes\x12\x17\n" +
 	"\aaz_mode\x18\x05 \x01(\tR\x06azMode\x12-\n" +
 	"\x04port\x18\x06 \x01(\x05B\x14\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x0511211H\x00R\x04port\x88\x01\x01\x12<\n" +
 	"\x1atransit_encryption_enabled\x18\a \x01(\bR\x18transitEncryptionEnabled\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x124\n" +
-	"\x16parameter_group_family\x18\n" +
-	" \x01(\tR\x14parameterGroupFamily\x12u\n" +
+	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12*\n" +
+	"\x11subnet_group_name\x18\t \x01(\tR\x0fsubnetGroupName\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
+	"\fnetwork_type\x18\v \x01(\tR\vnetworkType\x12!\n" +
+	"\fip_discovery\x18\f \x01(\tR\vipDiscovery\x124\n" +
+	"\x16parameter_group_family\x18\r \x01(\tR\x14parameterGroupFamily\x12u\n" +
 	"\n" +
-	"parameters\x18\v \x03(\v2U.dev.planton.provider.aws.awsmemcachedelasticache.v1.AwsMemcachedElasticacheParameterR\n" +
-	"parameters\x12\xb4\x01\n" +
-	"\x12maintenance_window\x18\f \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x12+\n" +
-	"\x11apply_immediately\x18\r \x01(\bR\x10applyImmediately\x12E\n" +
-	"\x1aauto_minor_version_upgrade\x18\x0e \x01(\bB\b\x92\xa6\x1d\x04trueR\x17autoMinorVersionUpgrade\x12\x8b\x01\n" +
-	"\x16notification_topic_arn\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12@\n" +
-	"\x1cpreferred_availability_zones\x18\x10 \x03(\tR\x1apreferredAvailabilityZones:\x9d\x05\xbaH\x99\x05\x1a\x8b\x01\n" +
+	"parameters\x18\x0e \x03(\v2U.dev.planton.provider.aws.awsmemcachedelasticache.v1.AwsMemcachedElasticacheParameterR\n" +
+	"parameters\x120\n" +
+	"\x14parameter_group_name\x18\x0f \x01(\tR\x12parameterGroupName\x12\xb4\x01\n" +
+	"\x12maintenance_window\x18\x10 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x12+\n" +
+	"\x11apply_immediately\x18\x11 \x01(\bR\x10applyImmediately\x12E\n" +
+	"\x1aauto_minor_version_upgrade\x18\x12 \x01(\bB\b\x92\xa6\x1d\x04trueR\x17autoMinorVersionUpgrade\x12\x8b\x01\n" +
+	"\x16notification_topic_arn\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12@\n" +
+	"\x1cpreferred_availability_zones\x18\x14 \x03(\tR\x1apreferredAvailabilityZones:\x8c\v\xbaH\x88\v\x1a\x8b\x01\n" +
 	"\x14az_mode_valid_values\x122az_mode must be 'single-az' or 'cross-az' when set\x1a?this.az_mode == '' || this.az_mode in ['single-az', 'cross-az']\x1a\x87\x01\n" +
 	"\x1ccross_az_requires_multi_node\x12/az_mode 'cross-az' requires num_cache_nodes > 1\x1a6this.az_mode != 'cross-az' || this.num_cache_nodes > 1\x1a\xdd\x01\n" +
 	"\x1aaz_list_matches_node_count\x12Lpreferred_availability_zones length must match num_cache_nodes when provided\x1aqthis.preferred_availability_zones.size() == 0 || this.preferred_availability_zones.size() == this.num_cache_nodes\x1a\x9e\x01\n" +
-	"\x19parameters_require_family\x12?parameter_group_family is required when parameters are provided\x1a@this.parameters.size() == 0 || this.parameter_group_family != ''B\a\n" +
+	"\x19parameters_require_family\x12?parameter_group_family is required when parameters are provided\x1a@this.parameters.size() == 0 || this.parameter_group_family != ''\x1a\xaa\x01\n" +
+	"\x19network_type_valid_values\x12=network_type must be 'ipv4', 'ipv6', or 'dual_stack' when set\x1aNthis.network_type == '' || this.network_type in ['ipv4', 'ipv6', 'dual_stack']\x1a\x8d\x01\n" +
+	"\x19ip_discovery_valid_values\x12.ip_discovery must be 'ipv4' or 'ipv6' when set\x1a@this.ip_discovery == '' || this.ip_discovery in ['ipv4', 'ipv6']\x1a\xd7\x01\n" +
+	"\x1csubnet_arms_mutual_exclusion\x12xsubnet_ids and subnet_group_name are mutually exclusive — build a subnet group from subnets or bring an existing group\x1a=!(this.subnet_ids.size() > 0 && this.subnet_group_name != '')\x1a\xd5\x01\n" +
+	"\x1fparameter_arms_mutual_exclusion\x12pparameters and parameter_group_name are mutually exclusive — manage parameters here or bring an existing group\x1a@!(this.parameters.size() > 0 && this.parameter_group_name != '')B\a\n" +
 	"\x05_port\"\\\n" +
 	" AwsMemcachedElasticacheParameter\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +

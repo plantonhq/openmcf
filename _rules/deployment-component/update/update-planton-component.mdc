@@ -124,12 +124,25 @@ Use update when you need to:
 ```
 
 **What it does:**
-1. Updates Pulumi module based on your explanation, keeping comments at the module-comment bar (`architecture/deployment-component.md` §4.1)
-2. Updates Terraform module to maintain feature parity AND comment-quality parity (never strip module comments)
-3. Updates tests if needed
-4. Runs build validation: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` (rule 018)
-5. Runs E2E tests (rules 011, 014)
-6. Runs test validation: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` (rule 019)
+1. **Entrypoint-completeness gate first:** older components may predate the full
+   module anatomy — verify `iac/pulumi/` carries `Pulumi.yaml`, `Makefile`, and
+   `main.go` before touching logic. A missing `Pulumi.yaml` passes every offline
+   gate (the Go program builds fine) and only fails at live deploy time, with the
+   misleading `pulumi stack init` error "pass the fully qualified name
+   (organization/project/stack)" — the CLI found no Pulumi project in the module
+   dir. On the Terraform side, verify `iac/tf/outputs.tf` exists: a module
+   without it passes `tofu validate` AND the variables.tf drift guard, and the
+   gap only surfaces as a cross-engine parity failure at live verify (Terraform
+   emits zero stack outputs while Pulumi exports them all — found live on
+   AwsNeptuneCluster, session 014). Also verify the exact pin `= x.y.z` in
+   `iac/tf/provider.tf` is lifted to the provider family's floor constraint
+   (see forge rule 013) before adding fields that need a newer provider.
+2. Updates Pulumi module based on your explanation, keeping comments at the module-comment bar (`architecture/deployment-component.md` §4.1)
+3. Updates Terraform module to maintain feature parity AND comment-quality parity (never strip module comments)
+4. Updates tests if needed
+5. Runs build validation: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` (rule 018)
+6. Runs E2E tests (rules 011, 014)
+7. Runs test validation: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` (rule 019)
 
 **Use when:**
 - Adding new resources to deployment
@@ -258,8 +271,11 @@ After all updates, **execute validation commands in sequence**:
 3. **If Pulumi/Go code changed**: Run `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` to validate build (rule 018)
 4. **Always run component tests**: Run `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` to validate tests (rule 019)
 5. **If proto files changed and presets exist**: Verify all preset YAML field names exist in current spec.proto, all StringValueOrRef fields use `value:` wrapper, and apiVersion/kind still match api.proto
-6. Generate update report
-7. Recommend running audit to verify improvements
+6. **If any docs/catalog-page.md changed**: Run `yarn copy-docs && yarn generate-structure`
+   in `site/` so the built catalog reflects the update (the copy script self-cleans
+   provider directories; the site build does NOT pick up doc changes on its own)
+7. Generate update report
+8. Recommend running audit to verify improvements
 
 ### Step 5: Report Results
 
@@ -354,6 +370,7 @@ Specify update scenario:
 - `update-iac` - Modify deployment logic
 - `apply-default-semantics` - Formalize comment-only defaults as field options (Scenario 7)
 - `annotate-sensitive` - Annotate/exempt secret-by-default fields and pass the coverage gate (Scenario 8)
+- `rename-kind` - Rename a kind end to end: enum value, directory, protos, modules, docs, cross-references (Scenario 9)
 - `auto` - Let AI determine scenario (default)
 
 ### --explain "<description>"
@@ -658,3 +675,51 @@ pre-existing component, or `planton secret-coverage --check` reports a gap)
 
 **Reference:** rule `002-spec-validate` ("SENSITIVE FIELD OPTIONS") and the `sensitive` /
 `sensitive_exempt_reason` comments in `dev/planton/shared/options/options.proto`.
+
+#### Scenario 9: Rename a Kind
+
+**When:** A kind's name must change (e.g. aligning with the provider's own naming
+conventions). A rename keeps the enum **number** — only the name changes everywhere.
+
+```
+@update-planton-component AwsNetworkLoadBalancer --scenario rename-kind --explain "rename to AwsNlb"
+```
+
+**What it does (the complete rename surface — miss none of these):**
+1. **Enum value** in `cloud_resource_kind.proto`: rename the value, keep the number and
+   `kind_meta` (renumbering is never part of a rename).
+2. **Component directory**: `git mv provider/<provider>/<oldkind>/v1 provider/<provider>/<newkind>/v1`.
+   The CLI resolves a manifest's module directory from the kind name via `crkreflect`,
+   so the kind and its directory MUST move in lockstep.
+3. **Protos** (all four): the proto `package`, the `go_package` option, the
+   intra-component `import "dev/planton/provider/..."` paths, and every message name
+   (`<Kind>`, `<Kind>Spec`, `<Kind>Status`, `<Kind>StackInput`, `<Kind>StackOutputs`,
+   and all nested spec messages — follow the sibling convention `<Kind><Noun>`).
+4. **Manifests**: `kind:` in `iac/hack/manifest.yaml` and every `presets/*.yaml`.
+5. **Both IaC modules — watch the identity-tag asymmetry.** The Pulumi module derives
+   the `resource-kind` identity tag from the enum (`CloudResourceKind_<Kind>.String()`),
+   so it renames itself; the Terraform module hardcodes the kind string in `locals.tf`
+   (`"planton.dev/resource-kind" = "<Kind>"`) and MUST be updated by hand or the two
+   engines silently diverge on tag parity. Also update module comments and Go type
+   references (the generated stubs rename with the protos).
+6. **Docs**: component `README.md` H1 (the kind name), `catalog-page.md` H1 (the display
+   name — this drives the public catalog slug and sidebar label), `docs/README.md`,
+   `iac/tf/README.md`, preset `.md` files. Provider *service* names in prose stay
+   natural; only the kind/type identity changes.
+7. **Cross-references in OTHER components**: `git grep -i <oldname>` across the repo —
+   catalog-page links (use directory-name-based `/docs/catalog/<provider>/<newkind>`
+   links; the site build rewrites them to slugs), example manifests in docs, and proto
+   comments that name the kind.
+8. **Regenerate**: `make protos` -> `make generate-cloud-resource-kind-map` ->
+   `make reset-gazelle` (the Go package path changed) -> `yarn copy-docs &&
+   yarn generate-structure` in `site/` (the copy script clears provider dirs first, so
+   the old slug's built output disappears on its own).
+9. **Validate**: component spec tests, `go build ./...`, the Pulumi entrypoint build,
+   `planton validate-refs --check`, `planton secret-coverage --check`,
+   `tofu init -backend=false && tofu validate` in `iac/tf/`, and a final
+   `git grep -i <oldname>` sweep that must return zero tracked-file hits (historical
+   `_changelog/` entries are records and stay untouched).
+
+**Use when:**
+- A kind's name diverges from the provider's own naming format
+- A kind is being consolidated under a family naming convention

@@ -1,6 +1,6 @@
 # Pulumi Module to Deploy AwsDocumentDb
 
-This Pulumi program deploys an AWS DocumentDB cluster (MongoDB-compatible document database) using the Planton API and module.
+This Pulumi program deploys an Amazon DocumentDB (MongoDB-compatible) cluster and its instances using the Planton API and module.
 
 ## Requirements
 - Planton CLI built locally
@@ -46,9 +46,9 @@ planton pulumi destroy \
   --yes
 ```
 
-## Examples
+## Presets
 
-See `../../examples.md` for sample manifests.
+See `../../presets/` for sample manifests.
 
 ## Debugging
 

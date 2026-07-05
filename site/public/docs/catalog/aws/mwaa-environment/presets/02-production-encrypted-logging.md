@@ -43,7 +43,7 @@ This preset uses `valueFrom` references to compose with:
 - **AwsS3Bucket** (DAGs source bucket)
 - **AwsIamRole** (MWAA execution role)
 - **AwsVpc** (subnets and VPC ID)
-- **AwsSecurityGroup** (managed security group source)
+- **AwsSecurityGroup** (attached to the MWAA VPC endpoints; owns the self-referencing + HTTPS-ingress + egress rules)
 - **AwsKmsKey** (encryption at rest)
 
 ## Cost Estimate

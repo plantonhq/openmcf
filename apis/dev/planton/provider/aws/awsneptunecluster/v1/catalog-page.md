@@ -1,272 +1,152 @@
 # AWS Neptune Cluster
 
-Deploys an Amazon Neptune graph database cluster with automatic subnet group creation, managed security group configuration, configurable cluster instances, optional Serverless v2 scaling, and optional parameter group customization. The component provisions both the cluster and its instances in a single resource definition. Neptune supports property-graph queries via Apache TinkerPop Gremlin and RDF queries via SPARQL.
+Deploys an Amazon Neptune graph database cluster -- Gremlin, openCypher,
+and SPARQL over shared cluster storage, provisioned or Serverless --
+with its writer and reader instances folded into the same spec, IAM
+database authentication as the credential mechanism, and every
+attachment (subnets, security groups, KMS keys, IAM roles) composed by
+reference.
 
 ## What Gets Created
 
 When you deploy an AwsNeptuneCluster resource, Planton provisions:
 
-- **Neptune Cluster** — a `neptune.Cluster` with the `neptune` engine at the specified version, encryption settings, backup configuration, IAM database authentication, optional Serverless v2 scaling, and CloudWatch log exports
-- **Cluster Instances** — one `neptune.ClusterInstance` per `instanceCount` (default 1), each using the specified `instanceClass` (default `db.r6g.large`) with promotion tier assignment (primary at tier 0, replicas at tier 1)
-- **Neptune Subnet Group** — a `neptune.SubnetGroup` created automatically when `subnetIds` are provided and `neptuneSubnetGroupName` is not set, placing the cluster across the specified subnets
-- **Security Group** — an `ec2.SecurityGroup` created when `securityGroupIds` or `allowedCidrBlocks` are provided, with ingress rules on the cluster port from the specified sources and unrestricted egress
-- **Security Group Ingress Rules** — one `ec2.SecurityGroupRule` per source security group and one for CIDR blocks, scoped to the configured `port` (default 8182)
-- **Security Group Egress Rule** — an `ec2.SecurityGroupRule` allowing all outbound traffic
-- **Cluster Parameter Group** — a `neptune.ClusterParameterGroup` created when `clusterParameters` are provided, with the family auto-derived from the engine version (e.g., `neptune1.3` for engine version `1.3.0.0`)
+- **Neptune cluster** — an `aws_neptune_cluster` / `neptune.Cluster`
+  with the chosen shape: provisioned instances or Neptune Serverless NCU
+  bounds
+- **Cluster instances** — one `aws_neptune_cluster_instance` /
+  `neptune.ClusterInstance` per `instances` entry, keyed by name so
+  adding or removing a reader is an in-place update; the lowest
+  promotion tier becomes the writer
+- **Neptune subnet group** — managed automatically from `subnetIds`
+  (pure glue: a named list of subnets), or an existing group by name
+- **Cluster parameter group** — managed automatically when inline
+  `parameters` are provided, with the family derived from the pinned
+  engine version
+
+The cluster never modifies a resource it merely references: security
+groups carry their own ingress rules, IAM roles own their policies, and
+KMS keys govern their own rotation.
 
 ## Prerequisites
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least two subnets** in different Availability Zones, or an existing Neptune subnet group name
-- **A VPC ID** if creating a managed security group with `securityGroupIds` or `allowedCidrBlocks`
-- **A KMS key ARN** if using a customer-managed key for storage encryption
-- **IAM roles** if Neptune needs to access S3 for bulk data loading
+- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
+- **Two subnets in distinct AZs** (`AwsSubnet`) or an existing Neptune subnet group.
+- **A security group** (`AwsSecurityGroup`) allowing port 8182 from your application tier -- or omit to use the VPC default group.
+- **A KMS key** (`AwsKmsKey`) only when replacing the AWS-managed storage encryption key.
+- **IAM roles** (`AwsIamRole`) only for the S3 bulk loader or Neptune ML integrations.
 
 ## Quick Start
-
-Create a file `neptune.yaml`:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsNeptuneCluster
-metadata:
-  name: my-neptune
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsNeptuneCluster.my-neptune
-spec:
-  region: us-west-2
-  subnetIds:
-    - subnet-0a1b2c3d4e5f00001
-    - subnet-0a1b2c3d4e5f00002
-  storageEncrypted: true
-  skipFinalSnapshot: true
-```
-
-Deploy:
-
-```shell
-planton apply -f neptune.yaml
-```
-
-This creates a single-instance Neptune 1.3.0.0 cluster with encrypted storage, IAM-ready authentication, and a `db.r6g.large` instance in the specified subnets. Unlike relational databases, Neptune does not require a master username or password — access is controlled via IAM database authentication and VPC security groups.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the Neptune cluster will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `subnetIds` | `StringValueOrRef[]` | Subnet IDs for the Neptune subnet group. Provide at least two in distinct AZs. | Minimum 2 items unless `neptuneSubnetGroupName` is set. Can reference AwsVpc resource via `valueFrom`. |
-| `finalSnapshotIdentifier` | `string` | Identifier for the final snapshot on deletion. | Required when `skipFinalSnapshot` is `false` (the default). |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `neptuneSubnetGroupName` | `StringValueOrRef` | — | Name of an existing Neptune subnet group. When set, `subnetIds` is not required. |
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security group IDs used to create ingress rules on the managed security group. Can reference AwsSecurityGroup resources via `valueFrom`. |
-| `allowedCidrBlocks` | `string[]` | `[]` | IPv4 CIDRs to allow ingress to the managed security group. Must be unique, valid CIDR notation. |
-| `vpcId` | `StringValueOrRef` | — | VPC ID for the managed security group. Can reference AwsVpc resource via `valueFrom`. |
-| `engineVersion` | `string` | `"1.3.0.0"` | Neptune engine version. Examples: `1.2.1.0`, `1.3.0.0`, `1.3.1.0`. |
-| `port` | `int32` | `8182` | TCP port on which the cluster accepts connections. Valid range: 1-65535. |
-| `storageType` | `string` | `"standard"` | Storage I/O model. `standard` for general use; `iopt1` for I/O-Optimized storage with higher throughput and predictable pricing on read-heavy workloads. |
-| `instanceCount` | `int32` | `1` | Number of instances to create. First instance is the primary writer; additional instances are read replicas. Minimum: 1. |
-| `instanceClass` | `string` | `"db.r6g.large"` | Compute and memory capacity of each instance. Use `db.serverless` for Neptune Serverless (requires `serverlessV2Scaling`). Examples: `db.r6g.large`, `db.r6g.xlarge`, `db.r5.large`. |
-| `serverlessV2Scaling.minCapacity` | `double` | — | Minimum Neptune Capacity Units (NCUs) for Serverless v2. Range: 1.0-128.0. |
-| `serverlessV2Scaling.maxCapacity` | `double` | — | Maximum NCUs for Serverless v2. Must be >= `minCapacity`. Range: 1.0-128.0. |
-| `storageEncrypted` | `bool` | `true` | Encrypts cluster storage at rest. |
-| `kmsKeyId` | `StringValueOrRef` | — | KMS key ARN for storage encryption. Can reference AwsKmsKey resource via `valueFrom`. |
-| `iamDatabaseAuthenticationEnabled` | `bool` | `false` | Enables IAM database authentication, allowing IAM users and roles to authenticate using temporary credentials. |
-| `iamRoles` | `StringValueOrRef[]` | `[]` | IAM role ARNs to associate with Neptune for accessing other AWS services (e.g., S3 for bulk data loading). Can reference AwsIamRole resources via `valueFrom`. |
-| `backupRetentionPeriod` | `int32` | `7` | Number of days to retain automated backups. Valid range: 1-35. |
-| `preferredBackupWindow` | `string` | — | Daily backup window in UTC. Format: `hh24:mi-hh24:mi` (e.g., `03:00-04:00`). |
-| `preferredMaintenanceWindow` | `string` | — | Weekly maintenance window in UTC. Format: `ddd:hh24:mi-ddd:hh24:mi` (e.g., `sun:05:00-sun:06:00`). |
-| `deletionProtection` | `bool` | `false` | Prevents accidental cluster deletion when enabled. |
-| `skipFinalSnapshot` | `bool` | `false` | When `true`, no final snapshot is created on deletion. When `false`, `finalSnapshotIdentifier` is required. |
-| `enabledCloudwatchLogsExports` | `string[]` | `[]` | Log types to export to CloudWatch Logs. Valid values: `audit`, `slowquery`. |
-| `applyImmediately` | `bool` | `false` | Applies modifications immediately instead of during the next maintenance window. |
-| `copyTagsToSnapshot` | `bool` | `false` | Copies cluster tags to snapshots. |
-| `allowMajorVersionUpgrade` | `bool` | `false` | Allows major engine version upgrades. Required when updating `engineVersion` to a new major version. |
-| `clusterParameterGroupName` | `string` | — | Name of an existing Neptune cluster parameter group. |
-| `clusterParameters` | `AwsNeptuneClusterParameter[]` | `[]` | Inline cluster parameters. Each entry has `name`, `value`, and optional `applyMethod` (`immediate` or `pending-reboot`). |
-
-## Examples
-
-### Production Graph Database with IAM Auth
-
-A Neptune cluster with two instances for high availability, IAM authentication, encrypted storage, and audit logging:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsNeptuneCluster
 metadata:
   name: knowledge-graph
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsNeptuneCluster.knowledge-graph
-spec:
-  region: us-west-2
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-    - subnet-private-az3
-  vpcId: vpc-0a1b2c3d4e5f00001
-  securityGroupIds:
-    - sg-app-servers
-  storageEncrypted: true
-  kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/abc-12345
-  iamDatabaseAuthenticationEnabled: true
-  instanceCount: 2
-  instanceClass: db.r6g.xlarge
-  storageType: iopt1
-  deletionProtection: true
-  backupRetentionPeriod: 14
-  preferredBackupWindow: "03:00-04:00"
-  preferredMaintenanceWindow: "sun:05:00-sun:06:00"
-  copyTagsToSnapshot: true
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: knowledge-graph-final
-  enabledCloudwatchLogsExports:
-    - audit
-    - slowquery
-```
-
-### Neptune Serverless v2
-
-A Neptune Serverless cluster that auto-scales between 2.5 and 64 NCUs based on demand:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsNeptuneCluster
-metadata:
-  name: serverless-graph
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsNeptuneCluster.serverless-graph
-spec:
-  region: us-west-2
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-  storageEncrypted: true
-  instanceClass: db.serverless
-  serverlessV2Scaling:
-    minCapacity: 2.5
-    maxCapacity: 64.0
-  iamDatabaseAuthenticationEnabled: true
-  skipFinalSnapshot: true
-```
-
-### Neptune with S3 Bulk Loading
-
-A cluster with IAM roles for loading graph data from S3:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsNeptuneCluster
-metadata:
-  name: data-loader
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsNeptuneCluster.data-loader
-spec:
-  region: us-west-2
-  subnetIds:
-    - subnet-private-az1
-    - subnet-private-az2
-  storageEncrypted: true
-  iamDatabaseAuthenticationEnabled: true
-  iamRoles:
-    - arn:aws:iam::123456789012:role/NeptuneS3ReadRole
-  instanceCount: 2
-  enabledCloudwatchLogsExports:
-    - audit
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: data-loader-final
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsNeptuneCluster
-metadata:
-  name: ref-graph
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsNeptuneCluster.ref-graph
 spec:
   region: us-west-2
   subnetIds:
     - valueFrom:
         kind: AwsSubnet
-        name: my-private-subnet-a
+        name: platform-private-1
         fieldPath: status.outputs.subnet_id
     - valueFrom:
         kind: AwsSubnet
-        name: my-private-subnet-b
+        name: platform-private-2
         fieldPath: status.outputs.subnet_id
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: my-vpc
-      field: status.outputs.vpc_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
-        name: neptune-sg
-        field: status.outputs.security_group_id
-  kmsKeyId:
-    valueFrom:
-      kind: AwsKmsKey
-      name: neptune-encryption-key
-      field: status.outputs.key_arn
-  iamRoles:
-    - valueFrom:
-        kind: AwsIamRole
-        name: neptune-s3-role
-        field: status.outputs.role_arn
+        name: database-sg
+        fieldPath: status.outputs.security_group_id
   storageEncrypted: true
   iamDatabaseAuthenticationEnabled: true
-  skipFinalSnapshot: false
-  finalSnapshotIdentifier: ref-graph-final
+  skipFinalSnapshot: true
+  serverlessV2Scaling:
+    minCapacity: 1
+    maxCapacity: 8
+  instances:
+    - name: writer
+      instanceClass: db.serverless
 ```
+
+```shell
+planton apply -f neptune.yaml
+```
+
+This creates a Neptune Serverless cluster (the current AWS default
+engine version) that scales between 1 and 8 NCUs with demand and
+authenticates callers through IAM.
+
+## Configuration Reference
+
+### Required Fields
+
+| Field | Type | Description | Validation |
+| --- | --- | --- | --- |
+| `region` | `string` | AWS region; must match the referenced subnets/SGs/keys. | Required; non-empty |
+| networking | — | At least two `subnetIds` (distinct AZs) or an existing `neptuneSubnetGroupName`. | Enforced |
+| `instances` | `list` | The writer/reader instances. Required unless the cluster starts headless (a restore, a replica, or a global-cluster member). | Enforced |
+
+### Cluster Shape Fields
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `instances` | `list` | `[]` | Per-name instances (name, instanceClass incl. `db.serverless`, promotionTier, AZ pin, instance parameter group, maintenance window). |
+| `serverlessV2Scaling` | `object` | — | NCU bounds for `db.serverless` instances (1-128 on both ends). |
+| `engineVersion` | `string` | AWS default | Pin for deliberate upgrades; empty never goes stale. |
+| `storageType` | `string` | `standard` | `iopt1` enables I/O-Optimized storage (engine 1.3+). |
+| `port` | `int` | 8182 | Create-only. |
+
+### Authentication and Encryption
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `iamDatabaseAuthenticationEnabled` | `bool` | `false` | SigV4-signed requests from IAM identities -- Neptune's only credential mechanism (no master password exists). |
+| `iamRoles` | `list \| valueFrom` | `[]` | Roles the ENGINE assumes (S3 bulk loader, Neptune ML). Reference `AwsIamRole` `role_arn` outputs. |
+| `storageEncrypted` | `bool` | recommended `true` | Create-time one-way door. |
+| `kmsKeyId` | `string \| valueFrom` | AWS-managed key | Reference an `AwsKmsKey` `key_arn` output. |
+
+### Data Protection
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `backupRetentionPeriod` | `int` | 1 | Days of continuous backup (1-35) -- bounds point-in-time recovery. |
+| `skipFinalSnapshot` / `finalSnapshotIdentifier` | — | safe | A final-snapshot name is required unless skipping is explicit. |
+| `deletionProtection` | `bool` | `false` | Deleting becomes a deliberate two-step. |
+| `copyTagsToSnapshot` | `bool` | `false` | Cluster tags flow onto snapshots. |
+| `snapshotIdentifier` | `string` | — | Create the cluster from a snapshot. |
+| `replicationSourceIdentifier` | `string` | — | Make this cluster a read replica of the source ARN. |
+| `globalClusterIdentifier` | `string` | — | Join a Neptune global database. |
+
+### Observability and Parameters
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabledCloudwatchLogsExports` | `list` | `[]` | `audit` and/or `slowquery` -- each also needs its matching cluster parameter before Neptune emits anything. |
+| `parameters` / `neptuneClusterParameterGroupName` | — | engine default | Inline parameters (module-managed group) or an existing group. |
+| `neptuneInstanceParameterGroupName` | `string` | — | Applied to instances during a major version upgrade (required with `allowMajorVersionUpgrade`). |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+| --- | --- |
+| `cluster_identifier` | The cluster identifier. |
+| `arn` | The cluster ARN. |
+| `cluster_resource_id` | The immutable resource ID -- keys CloudWatch dimensions and IAM auth policies. |
+| `endpoint` | The writer endpoint. |
+| `reader_endpoint` | Load-balances read-only queries across reader instances. |
+| `port` | The listening port. |
+| `hosted_zone_id` | For Route53 alias records to the endpoints. |
+| `engine_version_actual` | The resolved running version. |
+| `neptune_subnet_group_name` | The subnet group in use. |
+| `neptune_cluster_parameter_group_name` | The parameter group in use. |
+| `instance_endpoints` | Per-instance endpoints of the folded instances, in spec order. |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_endpoint` | `string` | The primary writer endpoint for the Neptune cluster (Gremlin/SPARQL queries) |
-| `cluster_reader_endpoint` | `string` | The reader endpoint for load-balanced read traffic across replicas |
-| `cluster_id` | `string` | The AWS identifier of the Neptune cluster |
-| `cluster_arn` | `string` | The Amazon Resource Name of the Neptune cluster |
-| `cluster_resource_id` | `string` | The internal AWS resource identifier |
-| `cluster_port` | `int32` | The port on which the cluster accepts connections (default 8182) |
-| `db_subnet_group_name` | `string` | The subnet group name (only when created by the module) |
-| `security_group_id` | `string` | The security group ID (only when created by the module) |
-| `cluster_parameter_group_name` | `string` | The parameter group name (only when created by the module) |
-| `hosted_zone_id` | `string` | The Route 53 hosted zone ID for the cluster endpoint |
+## Related Resources
 
-## Related Components
-
-- [AwsVpc](/docs/catalog/aws/awsvpc) — provides subnets and VPC ID for cluster placement
-- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — controls network access to the cluster
-- [AwsKmsKey](/docs/catalog/aws/awskmskey) — provides KMS keys for storage encryption
-- [AwsIamRole](/docs/catalog/aws/awsiamrole) — provides IAM roles for S3 bulk data loading
-- [AwsRoute53Zone](/docs/catalog/aws/awsroute53zone) — hosts DNS zones for CNAME records pointing to the cluster endpoint
+- [AwsSubnet](/docs/catalog/aws/awssubnet) — the private subnets the cluster spans
+- [AwsSecurityGroup](/docs/catalog/aws/awssecuritygroup) — database ingress rules live here
+- [AwsKmsKey](/docs/catalog/aws/awskmskey) — customer-managed encryption keys
+- [AwsIamRole](/docs/catalog/aws/awsiamrole) — bulk loader and ML integration roles
+- [AwsDocumentDb](/docs/catalog/aws/awsdocumentdb) — the document-database sibling with the same cluster anatomy

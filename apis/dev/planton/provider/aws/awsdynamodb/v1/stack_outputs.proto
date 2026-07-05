@@ -2,20 +2,26 @@ syntax = "proto3";
 
 package dev.planton.provider.aws.awsdynamodb.v1;
 
-// AwsDynamodbStackOutputs captures observable identifiers from a DynamoDB table.
+// AwsDynamodbStackOutputs captures the observable identifiers of a
+// DynamoDB table after provisioning.
 message AwsDynamodbStackOutputs {
-  // Table name
+  // The table name -- what SDK calls, IAM policy resources, and
+  // application configuration reference.
   string table_name = 1;
 
-  // Table ARN
+  // The table ARN -- the join key for IAM policies, resource policies,
+  // and cross-service integrations.
   string table_arn = 2;
 
-  // Provider-assigned table ID (if available)
+  // The provider-assigned table identifier.
   string table_id = 3;
 
-  // Stream ARN when streams are enabled
+  // The DynamoDB Streams ARN -- what Lambda event-source mappings and
+  // other stream consumers attach to. Empty when streams are disabled.
   string stream_arn = 4;
 
-  // Stream label when streams are enabled
+  // The stream label (a per-stream timestamp qualifier); combined with
+  // the account and table name it uniquely identifies the stream.
+  // Empty when streams are disabled.
   string stream_label = 5;
 }

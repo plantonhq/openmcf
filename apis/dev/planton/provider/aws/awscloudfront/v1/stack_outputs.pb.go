@@ -21,15 +21,30 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsCloudFrontStackOutputs captures observable identifiers from CloudFront.
+// AwsCloudFrontStackOutputs captures the observable identifiers of a
+// deployed CloudFront distribution -- the join keys DNS and security
+// resources compose against.
 type AwsCloudFrontStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Distribution ID (e.g., E123ABCXYZ...).
+	// The distribution ID (e.g. "E2ABCDEF123456") -- what invalidation
+	// requests and monitoring subscriptions key on.
 	DistributionId string `protobuf:"bytes,1,opt,name=distribution_id,json=distributionId,proto3" json:"distribution_id,omitempty"`
-	// CloudFront distribution domain name (e.g., d123.cloudfront.net).
-	DomainName string `protobuf:"bytes,2,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
-	// Route53 hosted zone ID used for aliasing to CloudFront.
-	HostedZoneId  string `protobuf:"bytes,3,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	// The distribution ARN -- what WAF associations and resource
+	// policies reference.
+	DistributionArn string `protobuf:"bytes,2,opt,name=distribution_arn,json=distributionArn,proto3" json:"distribution_arn,omitempty"`
+	// The CloudFront domain name (e.g. "d123abc.cloudfront.net") --
+	// the target for Route53 alias records and CNAMEs pointing custom
+	// domains at the distribution.
+	DomainName string `protobuf:"bytes,3,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
+	// The Route53 hosted zone ID for CloudFront alias records -- always
+	// "Z2FDTNDATAQYW2" (CloudFront's global zone), exported so alias
+	// records can compose without hardcoding it.
+	HostedZoneId string `protobuf:"bytes,4,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	// The distribution status at the end of the deployment: "Deployed"
+	// (propagated to every edge location) or "InProgress" (still
+	// propagating -- the resting state when wait_for_deployment is
+	// false).
+	Status        string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -71,6 +86,13 @@ func (x *AwsCloudFrontStackOutputs) GetDistributionId() string {
 	return ""
 }
 
+func (x *AwsCloudFrontStackOutputs) GetDistributionArn() string {
+	if x != nil {
+		return x.DistributionArn
+	}
+	return ""
+}
+
 func (x *AwsCloudFrontStackOutputs) GetDomainName() string {
 	if x != nil {
 		return x.DomainName
@@ -85,16 +107,25 @@ func (x *AwsCloudFrontStackOutputs) GetHostedZoneId() string {
 	return ""
 }
 
+func (x *AwsCloudFrontStackOutputs) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awscloudfront_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awscloudfront_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awscloudfront/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awscloudfront.v1\"\x8b\x01\n" +
+	"=dev/planton/provider/aws/awscloudfront/v1/stack_outputs.proto\x12)dev.planton.provider.aws.awscloudfront.v1\"\xce\x01\n" +
 	"\x19AwsCloudFrontStackOutputs\x12'\n" +
-	"\x0fdistribution_id\x18\x01 \x01(\tR\x0edistributionId\x12\x1f\n" +
-	"\vdomain_name\x18\x02 \x01(\tR\n" +
+	"\x0fdistribution_id\x18\x01 \x01(\tR\x0edistributionId\x12)\n" +
+	"\x10distribution_arn\x18\x02 \x01(\tR\x0fdistributionArn\x12\x1f\n" +
+	"\vdomain_name\x18\x03 \x01(\tR\n" +
 	"domainName\x12$\n" +
-	"\x0ehosted_zone_id\x18\x03 \x01(\tR\fhostedZoneIdB\xea\x02\n" +
+	"\x0ehosted_zone_id\x18\x04 \x01(\tR\fhostedZoneId\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06statusB\xea\x02\n" +
 	"-com.dev.planton.provider.aws.awscloudfront.v1B\x11StackOutputsProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudfront/v1;awscloudfrontv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awscloudfront.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awscloudfront\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awscloudfront\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awscloudfront::V1b\x06proto3"
 
 var (

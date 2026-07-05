@@ -1,24 +1,22 @@
 # AWS Redshift Cluster
 
-Deploys an Amazon Redshift data warehouse cluster with automatic subnet group creation, managed security group configuration, optional Secrets Manager password management, KMS encryption, audit logging, and inline parameter group support. Redshift is a petabyte-scale columnar data warehouse for analytical (OLAP) queries on structured and semi-structured data.
+Deploys an Amazon Redshift provisioned cluster -- a petabyte-scale columnar data warehouse for analytical (OLAP) queries on structured and semi-structured data -- with automatic subnet group creation, optional Secrets Manager password management, KMS encryption, audit logging, cross-region snapshot copy, and inline parameter group support. Security groups, IAM roles, KMS keys, and Elastic IPs compose by reference; warehouse ingress rules live on the referenced `AwsSecurityGroup` nodes.
 
 ## What Gets Created
 
 When you deploy an AwsRedshiftCluster resource, Planton provisions:
 
-- **Redshift Cluster** — a `redshift.Cluster` with the specified node type, node count, encryption settings, snapshot configuration, and optional Multi-AZ deployment
+- **Redshift Cluster** — a `redshift.Cluster` with the specified node type, node count, credentials, encryption settings, snapshot configuration, and optional Multi-AZ deployment or availability-zone relocation
 - **Subnet Group** — a `redshift.SubnetGroup` created automatically when `subnetIds` are provided and `clusterSubnetGroupName` is not set, placing the cluster across the specified subnets
-- **Security Group** — an `ec2.SecurityGroup` created when `securityGroupIds` or `allowedCidrBlocks` are provided, with ingress rules on the cluster port from the specified sources and unrestricted egress
-- **Security Group Ingress Rules** — one `ec2.SecurityGroupRule` per source security group and one for CIDR blocks, scoped to the configured `port` (default 5439)
-- **Security Group Egress Rule** — an `ec2.SecurityGroupRule` allowing all outbound traffic
 - **Parameter Group** — a `redshift.ParameterGroup` (family `redshift-1.0`) created when inline `parameters` are provided
-- **Logging Configuration** — a `redshift.LoggingConfiguration` created when `logging` is specified, sending audit logs to S3 or CloudWatch Logs
+- **Logging Configuration** — audit logging enabled when `logging` is specified, sending connection/user-activity/user logs to S3 or CloudWatch Logs
+- **Snapshot Copy Configuration** — cross-region snapshot copy enabled when `snapshotCopy` is specified, for disaster recovery
 
 ## Prerequisites
 
 - **AWS credentials** configured via environment variables or Planton provider config
 - **At least two subnets** in different Availability Zones, or an existing Redshift subnet group name
-- **A VPC ID** if creating a managed security group with `securityGroupIds` or `allowedCidrBlocks`
+- **Security group IDs** if the cluster should not use the VPC's default security group -- ingress rules (e.g. port 5439 from BI tooling) belong on the referenced `AwsSecurityGroup` nodes
 - **A KMS key ARN** if enabling encryption with a customer-managed key or encrypting the managed password secret
 - **IAM role ARNs** if the cluster needs to access S3, DynamoDB, Glue Data Catalog, or other AWS services
 
@@ -38,12 +36,12 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AwsRedshiftCluster.my-warehouse
 spec:
   region: us-west-2
-  nodeType: dc2.large
+  nodeType: ra3.large
   subnetIds:
     - value: "<private-subnet-id-az1>"
     - value: "<private-subnet-id-az2>"
+  masterUsername: admin
   manageMasterPassword: true
-  encrypted: true
   skipFinalSnapshot: true
 ```
 
@@ -53,7 +51,7 @@ Deploy:
 planton apply -f redshift-cluster.yaml
 ```
 
-This creates a single-node dc2.large Redshift cluster across two subnets with AWS-managed encryption and a master password stored in AWS Secrets Manager.
+This creates a single-node ra3.large Redshift cluster across two subnets, encrypted at rest (the AWS default this component preserves), with the admin password generated, stored, and rotated by AWS Secrets Manager.
 
 ## Configuration Reference
 
@@ -62,52 +60,64 @@ This creates a single-node dc2.large Redshift cluster across two subnets with AW
 | Field | Type | Description |
 |-------|------|-------------|
 | `region` | `string` | AWS region where the Redshift cluster will be created. Example: `us-west-2`, `eu-west-1`. |
-| `nodeType` | `string` | Compute and storage capacity of each node. Common values: `dc2.large`, `ra3.xlplus`, `ra3.4xlarge`, `ra3.16xlarge`. RA3 nodes are recommended for most workloads (decoupled compute and storage). |
-| `subnetIds` | `StringValueOrRef[]` | Subnet IDs for automatic Redshift subnet group creation. Provide at least two in distinct AZs. Can reference `AwsVpc` outputs via `valueFrom`. Not required when `clusterSubnetGroupName` is set. |
+| `nodeType` | `string` | Compute and storage capacity of each node: `ra3.large`, `ra3.xlplus`, `ra3.4xlarge`, `ra3.16xlarge` (managed storage -- recommended), or the legacy dense-compute `dc2` family. |
+| `subnetIds` | `StringValueOrRef[]` | Subnet IDs for automatic Redshift subnet group creation. Provide at least two in distinct AZs. Can reference `AwsSubnet` outputs via `valueFrom`. Not required when `clusterSubnetGroupName` is set. |
+| `masterUsername` | `string` | Admin username. Required for a new cluster; only snapshot restores leave it empty and inherit the source's credentials. Create-time only. |
 | `finalSnapshotIdentifier` | `string` | Identifier for the final snapshot created on cluster deletion. Required when `skipFinalSnapshot` is `false`. |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `numberOfNodes` | `int32` | `1` | Cluster size. `1` = single-node (leader+compute combined); `>1` = multi-node (dedicated leader + N compute nodes). |
-| `databaseName` | `string` | `"dev"` | Name of the first database created in the cluster. 1-64 characters, lowercase alphanumeric and underscores, starts with a letter or underscore. |
-| `masterUsername` | `string` | `"admin"` | Admin user for the cluster. 1-128 characters, starts with a letter. |
-| `masterPassword` | `string` | — | Admin password (8-64 chars, mixed case + digit). Mutually exclusive with `manageMasterPassword`. |
-| `manageMasterPassword` | `bool` | `false` (recommended: `true`) | When `true`, AWS Secrets Manager generates, rotates, and stores the master password. Mutually exclusive with `masterPassword`. |
-| `masterPasswordSecretKmsKeyId` | `StringValueOrRef` | — | KMS key ARN to encrypt the Secrets Manager secret holding the managed password. Only used when `manageMasterPassword` is `true`. Can reference `AwsKmsKey` via `valueFrom`. |
-| `port` | `int32` | `5439` | TCP port for client connections. Valid range: 1115-65535. |
+| `numberOfNodes` | `int32` | `1` | Cluster size, 1-128. `1` = single-node (leader+compute combined); `2+` = multi-node (dedicated leader + N compute nodes). Resize is in-place. |
+| `clusterVersion` | `string` | AWS default | Redshift engine version family (`"1.0"` -- the only family). Engine patches ride `maintenanceTrackName` and `allowVersionUpgrade`. |
+| `databaseName` | `string` | AWS default (`dev`) | Name of the first database created in the cluster. 1-64 lowercase alphanumeric/underscore characters. |
+| `masterPassword` | `string` | — | Admin password (8-64 chars, mixed case + digit), stored in IaC state. Mutually exclusive with `manageMasterPassword` -- prefer the managed path. |
+| `manageMasterPassword` | `bool` | `false` (recommended: `true`) | When `true`, AWS Secrets Manager generates, rotates, and stores the admin password; the secret's ARN is exported. Mutually exclusive with `masterPassword`. |
+| `masterPasswordSecretKmsKeyId` | `StringValueOrRef` | — | KMS key to encrypt the Secrets Manager secret holding the managed password. Only used when `manageMasterPassword` is `true`. Can reference `AwsKmsKey` via `valueFrom`. |
+| `port` | `int32` | `5439` | TCP port for client connections. Valid range: 1115-65535 (5431-5455 or 8191-8215 when AZ relocation is enabled). |
 | `clusterSubnetGroupName` | `StringValueOrRef` | — | Name of an existing Redshift subnet group. When set, `subnetIds` is not required. |
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security group IDs used to create ingress rules on the managed security group. Can reference `AwsSecurityGroup` via `valueFrom`. |
-| `allowedCidrBlocks` | `string[]` | `[]` | IPv4 CIDRs to allow ingress on the cluster port. Must be unique, valid CIDR notation. |
-| `associateSecurityGroupIds` | `StringValueOrRef[]` | `[]` | Existing security groups attached directly to the cluster alongside the managed SG. Can reference `AwsSecurityGroup` via `valueFrom`. |
-| `vpcId` | `StringValueOrRef` | — | VPC ID for the managed security group. Required when `securityGroupIds` or `allowedCidrBlocks` are provided. Can reference `AwsVpc` via `valueFrom`. |
+| `securityGroupIds` | `StringValueOrRef[]` | VPC default SG | Security groups attached to the cluster. Warehouse ingress rules live on the referenced `AwsSecurityGroup` nodes. Can reference `AwsSecurityGroup` via `valueFrom`. |
+| `availabilityZone` | `string` | AWS placement | Pin the cluster to one AZ. Changing it on a live cluster requires `availabilityZoneRelocationEnabled`. |
+| `availabilityZoneRelocationEnabled` | `bool` | `false` | Allow the cluster to be relocated to another AZ during outages or on demand. Requires RA3 node types; mutually exclusive with `multiAz`. |
 | `publiclyAccessible` | `bool` | `false` | When `true`, the cluster gets a public IP and is reachable from outside the VPC. |
+| `elasticIp` | `StringValueOrRef` | — | Static public IPv4 ADDRESS for the leader node (the IP itself, not an allocation ID). Requires `publiclyAccessible`. Can reference `AwsElasticIp` `public_ip` via `valueFrom`. |
 | `enhancedVpcRouting` | `bool` | `false` | Forces all COPY/UNLOAD traffic through the VPC, enabling VPC flow logs and endpoint policies. |
-| `multiAz` | `bool` | `false` | Enables Multi-AZ deployment with automatic failover. Requires RA3 node types. |
-| `encrypted` | `bool` | `true` | Enables at-rest encryption. Uses the AWS-managed Redshift service key unless `kmsKeyId` is specified. |
-| `kmsKeyId` | `StringValueOrRef` | — | Customer-managed KMS key ARN for cluster encryption. Requires `encrypted: true`. Can reference `AwsKmsKey` via `valueFrom`. |
-| `iamRoles` | `StringValueOrRef[]` | `[]` | IAM roles attached to the cluster for accessing S3, DynamoDB, Glue, etc. Maximum 10 roles. Can reference `AwsIamRole` via `valueFrom`. |
-| `defaultIamRoleArn` | `StringValueOrRef` | — | IAM role used by default when SQL commands do not specify a role. Can reference `AwsIamRole` via `valueFrom`. |
-| `automatedSnapshotRetentionPeriod` | `int32` | `1` | Days to retain automated snapshots. `0` disables automated snapshots. Maximum: 35. |
+| `multiAz` | `bool` | `false` | Multi-AZ deployment with automatic failover to a standby. Requires RA3 node types and a multi-node cluster; mutually exclusive with `availabilityZoneRelocationEnabled`. |
+| `encrypted` | `bool` | `true` | At-rest encryption (the AWS default). Uses the AWS-managed Redshift service key unless `kmsKeyId` is specified. |
+| `kmsKeyId` | `StringValueOrRef` | — | Customer-managed KMS key for cluster storage encryption. Requires `encrypted: true`. Can reference `AwsKmsKey` via `valueFrom`. |
+| `iamRoles` | `StringValueOrRef[]` | `[]` | IAM roles the cluster assumes for COPY/UNLOAD/Spectrum access to S3, DynamoDB, Glue, etc. Maximum 10 roles. Can reference `AwsIamRole` via `valueFrom`. |
+| `defaultIamRoleArn` | `StringValueOrRef` | — | IAM role used by default when SQL commands do not specify a role. Must also be present in `iamRoles`. Can reference `AwsIamRole` via `valueFrom`. |
+| `automatedSnapshotRetentionPeriod` | `int32` | `1` | Days to retain automated snapshots, 0-35. `0` disables automated snapshots. |
+| `manualSnapshotRetentionPeriod` | `int32` | AWS default (indefinite) | Days manual snapshots are retained: 1-3653, or `-1` for indefinite. |
 | `skipFinalSnapshot` | `bool` | `false` | When `true`, no final snapshot is created on deletion. Set to `true` only for ephemeral dev/test clusters. |
-| `preferredMaintenanceWindow` | `string` | — | Weekly UTC maintenance window. Format: `ddd:hh:mi-ddd:hh:mi` (e.g., `sat:03:00-sat:04:00`). |
-| `allowVersionUpgrade` | `bool` | `true` | Permits AWS to apply major engine version upgrades during the maintenance window. |
-| `maintenanceTrackName` | `string` | — | Cluster maintenance track. `"current"` applies the latest approved version; `"trailing"` uses the previous major version. |
+| `snapshotIdentifier` | `string` | — | Restore from an existing snapshot by NAME at create time. Mutually exclusive with `snapshotArn`. |
+| `snapshotArn` | `string` | — | Restore from an existing snapshot by ARN at create time (cross-account/cross-region shares). Mutually exclusive with `snapshotIdentifier`. |
+| `snapshotClusterIdentifier` | `string` | — | The cluster the source snapshot was taken from -- disambiguates shared snapshot NAMEs. Only meaningful with `snapshotIdentifier`. |
+| `ownerAccount` | `string` | — | The AWS account that owns the source snapshot, for cross-account restores. Only meaningful alongside a restore source. |
+| `preferredMaintenanceWindow` | `string` | AWS assigned | Weekly UTC maintenance window. Format: `ddd:hh:mi-ddd:hh:mi` (e.g., `sat:03:00-sat:04:00`). |
+| `allowVersionUpgrade` | `bool` | `true` | Permits AWS to apply engine version upgrades during the maintenance window. |
+| `maintenanceTrackName` | `string` | AWS default (`current`) | Cluster maintenance track: `current` (latest approved release), `trailing` (one release behind), or a named track inherited from a snapshot restore. |
 | `applyImmediately` | `bool` | `false` | When `true`, modifications apply immediately instead of during the next maintenance window. |
 | `logging` | `object` | — | Audit logging configuration. See sub-fields below. |
 | `logging.logDestinationType` | `string` | — | Where audit logs are delivered. `"s3"` or `"cloudwatch"`. Required when `logging` is set. |
 | `logging.s3BucketName` | `string` | — | S3 bucket for log delivery. Required when `logDestinationType` is `"s3"`. |
 | `logging.s3KeyPrefix` | `string` | — | Prefix for log objects in the S3 bucket. |
 | `logging.logExports` | `string[]` | `[]` | Log types to export: `connectionlog`, `useractivitylog`, `userlog`. Required when `logDestinationType` is `"cloudwatch"`. |
-| `clusterParameterGroupName` | `string` | — | Name of an existing parameter group to associate. Ignored when inline `parameters` are provided. |
-| `parameters` | `AwsRedshiftClusterParameter[]` | `[]` | Inline parameters (family: `redshift-1.0`). Each entry has `name` and `value`. Common parameters: `require_ssl`, `enable_user_activity_logging`, `max_concurrency_scaling_clusters`. |
+| `snapshotCopy` | `object` | — | Cross-region snapshot copy for disaster recovery. See sub-fields below. |
+| `snapshotCopy.destinationRegion` | `string` | — | The region snapshots are copied to. Required when `snapshotCopy` is set. |
+| `snapshotCopy.retentionPeriod` | `int32` | AWS default (`7`) | Days copied automated snapshots are retained in the destination region, 1-35. |
+| `snapshotCopy.manualSnapshotRetentionPeriod` | `int32` | AWS default (indefinite) | Days copied manual snapshots are retained: 1-3653, or `-1` for indefinite. |
+| `snapshotCopy.snapshotCopyGrantName` | `string` | — | Snapshot copy grant for KMS-encrypted clusters (required by AWS in that case). |
+| `clusterParameterGroupName` | `string` | — | Name of an existing parameter group to associate. Mutually exclusive with inline `parameters`. |
+| `parameters` | `AwsRedshiftClusterParameter[]` | `[]` | Inline parameters managed as a dedicated group. Each entry has `name` and `value`. Common parameters: `require_ssl`, `enable_user_activity_logging`, `max_concurrency_scaling_clusters`. |
+| `parameterGroupFamily` | `string` | `redshift-1.0` | Parameter-group family for the managed group: `redshift-1.0` (accepted everywhere) or `redshift-2.0` (the Redshift patch 2.0 generation). Only meaningful alongside `parameters`. |
 
 ## Examples
 
 ### Single-Node Development Cluster
 
-A minimal single-node cluster for development and testing. Uses dc2.large for low cost, skips the final snapshot, and retains automated snapshots for 1 day:
+A minimal single-node cluster for development and testing. Uses ra3.large (the smallest orderable class), skips the final snapshot, and retains automated snapshots for 1 day:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
@@ -121,15 +131,13 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AwsRedshiftCluster.dev-warehouse
 spec:
   region: us-west-2
-  nodeType: dc2.large
+  nodeType: ra3.large
   numberOfNodes: 1
-  databaseName: dev
   masterUsername: admin
   manageMasterPassword: true
   subnetIds:
     - value: "<private-subnet-id-az1>"
     - value: "<private-subnet-id-az2>"
-  encrypted: true
   skipFinalSnapshot: true
   automatedSnapshotRetentionPeriod: 1
 ```
@@ -254,9 +262,8 @@ After deployment, the following outputs are available in `status.outputs`:
 | `dnsName` | `string` | The DNS hostname of the cluster (without port), for use in connection strings |
 | `databaseName` | `string` | The name of the default database in the cluster |
 | `port` | `int32` | The TCP port on which the cluster accepts connections |
-| `subnetGroupName` | `string` | The name of the Redshift subnet group (only when created by this component) |
-| `securityGroupId` | `string` | The ID of the managed security group (only when created by this component) |
-| `parameterGroupName` | `string` | The name of the parameter group (only when created by this component) |
+| `subnetGroupName` | `string` | The name of the Redshift subnet group in use (managed or referenced) |
+| `parameterGroupName` | `string` | The name of the parameter group in use (managed or referenced) |
 | `masterPasswordSecretArn` | `string` | The ARN of the Secrets Manager secret containing the master password (only when `manageMasterPassword` is `true`) |
 
 ## Related Components

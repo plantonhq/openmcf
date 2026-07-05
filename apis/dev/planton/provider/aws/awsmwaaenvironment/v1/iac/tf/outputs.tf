@@ -33,7 +33,17 @@ output "status" {
   value       = aws_mwaa_environment.this.status
 }
 
-output "security_group_id" {
-  description = "ID of the managed security group (if created)"
-  value       = length(aws_security_group.environment) > 0 ? aws_security_group.environment[0].id : ""
+output "created_at" {
+  description = "Timestamp when the environment was created"
+  value       = aws_mwaa_environment.this.created_at
+}
+
+output "database_vpc_endpoint_service" {
+  description = "VPC endpoint service name for the metadata database (used with endpoint_management = CUSTOMER)"
+  value       = aws_mwaa_environment.this.database_vpc_endpoint_service
+}
+
+output "webserver_vpc_endpoint_service" {
+  description = "VPC endpoint service name for the webserver (used with endpoint_management = CUSTOMER; empty when PUBLIC_ONLY)"
+  value       = aws_mwaa_environment.this.webserver_vpc_endpoint_service
 }

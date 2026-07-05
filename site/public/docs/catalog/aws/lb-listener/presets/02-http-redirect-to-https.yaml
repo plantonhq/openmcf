@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListener
+metadata:
+  name: http-redirect
+spec:
+  region: <aws-region>
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: <alb-resource-name>
+      fieldPath: status.outputs.load_balancer_arn
+  port: 80
+  protocol: HTTP
+  defaultActions:
+    - type: redirect
+      redirect:
+        statusCode: HTTP_301
+        protocol: HTTPS
+        port: "443"

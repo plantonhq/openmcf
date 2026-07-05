@@ -5,9 +5,9 @@ Pulumi module for provisioning AWS MSK (Managed Streaming for Apache Kafka) clus
 ## Overview
 
 This module creates:
-- An MSK Cluster with configurable brokers, encryption, authentication, logging, and monitoring.
-- A managed EC2 Security Group with Kafka (9092-9098) and ZooKeeper (2181-2182) ingress rules (conditional — only when `securityGroupIds` or `allowedCidrBlocks` are provided).
+- An MSK Cluster with configurable brokers, encryption, authentication, connectivity, logging, and monitoring. The referenced `securityGroupIds` (required, ≥1) attach directly to the broker network interfaces; ingress rules live on those first-class security-group nodes, never on a module-managed shadow group.
 - An inline MSK Configuration from `serverProperties` (conditional — only when the map is non-empty).
+- SCRAM secret associations (one per ARN in `scramSecretArns`) and a cluster policy (from `clusterPolicy`) — folded satellites in `module/satellites.go`.
 
 ## Usage
 
@@ -44,7 +44,7 @@ The stack input is an `AwsMskClusterStackInput` protobuf message containing:
 
 ### Outputs
 
-The module exports 15 stack outputs (see `module/outputs.go` for keys). Access them via `pulumi stack output`:
+The module exports 17 stack outputs (see `module/outputs.go` for keys). Access them via `pulumi stack output`:
 
 ```bash
 pulumi stack output cluster_arn
@@ -59,9 +59,9 @@ pulumi stack output zookeeper_connect_string_tls
 | `main.go` | Entry point — loads stack input, runs Pulumi program |
 | `module/main.go` | Orchestrator — resource creation flow + output exports |
 | `module/locals.go` | Locals initialization (labels, resolved target) |
-| `module/security_group.go` | Managed security group + ingress rules |
 | `module/configuration.go` | Inline MSK Configuration from server_properties |
 | `module/cluster.go` | MSK Cluster resource creation |
+| `module/satellites.go` | SCRAM secret associations + cluster policy |
 | `module/outputs.go` | Output key constants |
 
 ## Prerequisites

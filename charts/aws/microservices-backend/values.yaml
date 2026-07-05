@@ -36,6 +36,11 @@ params:
     description: "Private-subnet egress strategy: single (one shared NAT gateway), per_az (one NAT gateway per AZ), or none (no outbound internet from private subnets)"
     value: single
 
+  - name: s3EndpointEnabled
+    description: Create a free S3 gateway endpoint so private-subnet S3 traffic bypasses the NAT gateway and stays off the internet
+    type: bool
+    value: true
+
   - name: domain_name
     description: Route 53 Hosted-Zone domain
     value: example.com

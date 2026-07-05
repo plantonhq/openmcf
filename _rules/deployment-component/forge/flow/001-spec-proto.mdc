@@ -94,3 +94,25 @@ PROACTIVE SENSITIVE-FIELD IDENTIFICATION (MANDATORY STEP)
   is what makes that secure-by-default behavior automatic for every consumer.
 - Authority for the option semantics: the `sensitive` / `sensitive_exempt_reason` field
   comments in `dev/planton/shared/options/options.proto`.
+
+PROACTIVE CREATE-TIME-REQUIRED IDENTIFICATION (MANDATORY STEP)
+- The Terraform provider's schema flags are NOT the authority on what the cloud
+  API requires at create time. SDKv2 marks many attributes `Optional+Computed`
+  because the API echoes a value back after creation -- yet the underlying
+  `Create*` call rejects the request when the field is absent (a master/admin
+  username on a database is the classic case: no provider `Required` flag, no
+  default, and a hard 400 at create). Every offline gate passes without the
+  field; only a live deploy catches it.
+- While authoring the schema, review every field the provider marks
+  `Optional+Computed` and ask: "Does the cloud API's Create call actually
+  require this, with no server-side default?" Check the provider resource's
+  Create function (which request fields it always sends) and the API's own
+  required parameters -- not just the schema flags.
+- Flag such fields for a required-or-derived validation (the CEL itself is
+  added in rule 002): plainly required when the resource is always created
+  fresh, or required-unless-derived when create modes exist that inherit the
+  value from a source (restores, replicas, imports). The field comment must
+  state the requirement and name the derivation sources so the constraint is
+  explainable from the spec alone.
+- The goal: a manifest that AWS would reject at deploy time must already fail
+  `validate-manifest` in seconds, with a message naming the missing field.

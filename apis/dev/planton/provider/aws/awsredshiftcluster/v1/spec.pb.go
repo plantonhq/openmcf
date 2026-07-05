@@ -24,111 +24,224 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsRedshiftClusterSpec defines the desired state of an Amazon Redshift data warehouse cluster.
-// Redshift is a petabyte-scale columnar data warehouse optimized for analytical queries (OLAP)
-// on structured and semi-structured data using standard SQL.
+// AwsRedshiftClusterSpec defines an Amazon Redshift provisioned cluster --
+// a petabyte-scale columnar data warehouse for analytical (OLAP) SQL
+// workloads over structured and semi-structured data.
+//
+// The cluster identifier comes from metadata.name. Subnets, security
+// groups, IAM roles, KMS keys, and Elastic IPs compose by reference --
+// this cluster never creates or mutates resources that deserve to be
+// their own nodes. Ingress rules belong on the referenced
+// AwsSecurityGroup nodes, never inside this cluster.
+//
+// Audit logging and cross-region snapshot copy are cluster settings with
+// no identity of their own (AWS keys both by the cluster identifier), so
+// they are folded in as sub-messages rather than modeled as standalone
+// kinds. Redshift Serverless is a different product (namespaces +
+// workgroups, no cluster) and is deliberately not modeled here.
 type AwsRedshiftClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the resource will be created.
-	// Example: "us-west-2", "eu-west-1"
+	// The AWS region the cluster is created in. Must match the region of
+	// the subnets, security groups, and KMS keys it references.
+	// Example: "us-west-2", "eu-west-1".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// node_type determines the compute and storage capacity of each node.
-	// Common types: dc2.large (dense compute SSD), ra3.xlplus / ra3.4xlarge / ra3.16xlarge
-	// (managed storage with automatic data tiering between SSD and S3).
-	// RA3 nodes are recommended for most workloads due to decoupled compute and storage.
-	NodeType string `protobuf:"bytes,2,opt,name=node_type,json=nodeType,proto3" json:"node_type,omitempty"`
-	// number_of_nodes determines the cluster topology.
-	// 1 = single-node (leader and compute combined); >1 = multi-node (separate leader + compute nodes).
-	// Multi-node clusters are required for production workloads.
-	NumberOfNodes *int32 `protobuf:"varint,3,opt,name=number_of_nodes,json=numberOfNodes,proto3,oneof" json:"number_of_nodes,omitempty"`
-	// database_name is the name of the first database created in the cluster.
-	// 1-64 characters, lowercase alphanumeric and underscores only, must start with a letter or underscore.
-	DatabaseName *string `protobuf:"bytes,4,opt,name=database_name,json=databaseName,proto3,oneof" json:"database_name,omitempty"`
-	// master_username is the admin user for the cluster. Required for new clusters.
-	// 1-128 characters, must start with a letter.
-	MasterUsername *string `protobuf:"bytes,5,opt,name=master_username,json=masterUsername,proto3,oneof" json:"master_username,omitempty"`
-	// master_password is the admin password (8-64 chars, at least one uppercase, one lowercase, one digit).
-	// Mutually exclusive with manage_master_password.
-	MasterPassword string `protobuf:"bytes,6,opt,name=master_password,json=masterPassword,proto3" json:"master_password,omitempty"`
-	// manage_master_password delegates password lifecycle to AWS Secrets Manager.
-	// When true, AWS generates, rotates, and stores the password automatically.
-	// Recommended for production. Mutually exclusive with master_password.
-	ManageMasterPassword bool `protobuf:"varint,7,opt,name=manage_master_password,json=manageMasterPassword,proto3" json:"manage_master_password,omitempty"`
-	// master_password_secret_kms_key_id encrypts the Secrets Manager secret holding the managed password.
-	// Only applicable when manage_master_password is true.
-	MasterPasswordSecretKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=master_password_secret_kms_key_id,json=masterPasswordSecretKmsKeyId,proto3" json:"master_password_secret_kms_key_id,omitempty"`
-	// port for client connections. Redshift default is 5439. Range: 1115-65535.
-	Port *int32 `protobuf:"varint,9,opt,name=port,proto3,oneof" json:"port,omitempty"`
-	// subnet_ids for automatic Redshift subnet group creation.
-	// Provide at least two subnets in distinct Availability Zones for high availability.
-	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,10,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
-	// cluster_subnet_group_name uses an existing Redshift subnet group instead of creating one from subnet_ids.
-	ClusterSubnetGroupName *v1.StringValueOrRef `protobuf:"bytes,11,opt,name=cluster_subnet_group_name,json=clusterSubnetGroupName,proto3" json:"cluster_subnet_group_name,omitempty"`
-	// security_group_ids triggers creation of a managed security group with ingress rules
-	// allowing traffic from these source security groups on the cluster port.
-	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,12,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// allowed_cidr_blocks triggers creation of a managed security group with ingress rules
-	// allowing traffic from these IPv4 CIDR ranges on the cluster port.
-	AllowedCidrBlocks []string `protobuf:"bytes,13,rep,name=allowed_cidr_blocks,json=allowedCidrBlocks,proto3" json:"allowed_cidr_blocks,omitempty"`
-	// associate_security_group_ids are existing security groups attached directly to the cluster
-	// (alongside the managed security group, if one is created from security_group_ids/allowed_cidr_blocks).
-	AssociateSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,14,rep,name=associate_security_group_ids,json=associateSecurityGroupIds,proto3" json:"associate_security_group_ids,omitempty"`
-	// vpc_id is required when security_group_ids or allowed_cidr_blocks are provided,
-	// as the managed security group must be created within a specific VPC.
-	VpcId *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
-	// publicly_accessible controls whether the cluster has a public IP and can be accessed from outside the VPC.
-	PubliclyAccessible bool `protobuf:"varint,16,opt,name=publicly_accessible,json=publiclyAccessible,proto3" json:"publicly_accessible,omitempty"`
-	// enhanced_vpc_routing forces all COPY and UNLOAD traffic between the cluster and data repositories
-	// through the VPC, enabling VPC flow logs and other network security controls.
-	EnhancedVpcRouting bool `protobuf:"varint,17,opt,name=enhanced_vpc_routing,json=enhancedVpcRouting,proto3" json:"enhanced_vpc_routing,omitempty"`
-	// multi_az enables Multi-AZ deployment for automatic failover to a standby in a different AZ.
-	// Requires RA3 node types (ra3.xlplus, ra3.4xlarge, ra3.16xlarge).
-	MultiAz bool `protobuf:"varint,18,opt,name=multi_az,json=multiAz,proto3" json:"multi_az,omitempty"`
-	// encrypted enables at-rest encryption for the cluster data.
-	// AWS defaults to true. Uses the AWS-managed Redshift service key unless kms_key_id is specified.
+	// Subnets for the cluster's Redshift subnet group. Provide at least
+	// two subnets in DISTINCT availability zones so the cluster (and a
+	// Multi-AZ standby, if enabled) has somewhere to land. Reference
+	// AwsSubnet subnet_id outputs or pass literal subnet IDs. The module
+	// manages the subnet group itself (pure glue: a named list of
+	// subnets); alternatively point cluster_subnet_group_name at an
+	// existing group. Changing the subnet group replaces the cluster.
+	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
+	// Name of an existing Redshift subnet group to place the cluster in,
+	// instead of providing subnet_ids. Changing the subnet group replaces
+	// the cluster.
+	ClusterSubnetGroupName *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=cluster_subnet_group_name,json=clusterSubnetGroupName,proto3" json:"cluster_subnet_group_name,omitempty"`
+	// Security groups attached to the cluster (the cluster's
+	// vpc_security_group_ids). Empty uses the VPC's default security
+	// group (the AWS default). Reference AwsSecurityGroup
+	// security_group_id outputs or pass literal SG IDs -- warehouse
+	// ingress rules (e.g. port 5439 from your BI tooling) belong on the
+	// referenced AwsSecurityGroup node, never inside this cluster.
+	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	// Pin the cluster to one availability zone. Empty lets AWS place it
+	// -- preferred. Changing the zone on a live cluster requires
+	// availability_zone_relocation_enabled; without relocation the pin is
+	// create-time only.
+	AvailabilityZone string `protobuf:"bytes,5,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
+	// Allow the cluster to be relocated to another availability zone
+	// during outages or on demand -- zero data loss, brief
+	// unavailability. Requires RA3 node types and a cluster port in the
+	// ranges 5431-5455 or 8191-8215 (an AWS relocation constraint).
+	// Mutually exclusive with multi_az: relocation recovers by moving the
+	// single cluster, Multi-AZ recovers by failing over to a standby.
+	AvailabilityZoneRelocationEnabled bool `protobuf:"varint,6,opt,name=availability_zone_relocation_enabled,json=availabilityZoneRelocationEnabled,proto3" json:"availability_zone_relocation_enabled,omitempty"`
+	// Give the cluster a public IP so it can be reached from outside the
+	// VPC. Off by default -- warehouses almost always stay private behind
+	// VPC routing (and Query Editor / private BI reach them fine).
+	PubliclyAccessible bool `protobuf:"varint,7,opt,name=publicly_accessible,json=publiclyAccessible,proto3" json:"publicly_accessible,omitempty"`
+	// A static public IPv4 address for the cluster's leader node.
+	// Requires publicly_accessible. Reference an AwsElasticIp public_ip
+	// output or pass a literal Elastic IP ADDRESS (Redshift takes the IP
+	// itself, not an allocation ID).
+	ElasticIp *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=elastic_ip,json=elasticIp,proto3" json:"elastic_ip,omitempty"`
+	// Force all COPY and UNLOAD traffic between the cluster and data
+	// repositories (S3, DynamoDB, ...) through the VPC instead of the
+	// public internet -- enabling VPC flow logs, endpoints, and other
+	// network controls to see and govern warehouse data movement.
+	EnhancedVpcRouting bool `protobuf:"varint,9,opt,name=enhanced_vpc_routing,json=enhancedVpcRouting,proto3" json:"enhanced_vpc_routing,omitempty"`
+	// The port the cluster accepts connections on. 0 keeps the AWS
+	// default (5439). Redshift accepts 1115-65535; if
+	// availability_zone_relocation_enabled is on, AWS additionally
+	// requires the port to be within 5431-5455 or 8191-8215.
+	Port int32 `protobuf:"varint,10,opt,name=port,proto3" json:"port,omitempty"`
+	// The compute/storage class of every node. RA3 classes (ra3.large,
+	// ra3.xlplus, ra3.4xlarge, ra3.16xlarge) decouple compute from
+	// managed storage that tiers between SSD and S3 automatically -- the
+	// right call for nearly all new clusters and the only family that
+	// supports multi_az and availability-zone relocation. DC2 classes
+	// (dc2.large, dc2.8xlarge) are the legacy dense-compute family with
+	// node-local SSD only. Resizing to a different class is an in-place
+	// (but access-interrupting) classic/elastic resize, never a replace.
+	NodeType string `protobuf:"bytes,11,opt,name=node_type,json=nodeType,proto3" json:"node_type,omitempty"`
+	// How many nodes the cluster runs. 0 keeps the AWS default (1, a
+	// single-node cluster where leader and compute share one node).
+	// 2+ creates a multi-node cluster with a dedicated leader --
+	// required for production and for multi_az. Resize is in-place.
+	NumberOfNodes int32 `protobuf:"varint,12,opt,name=number_of_nodes,json=numberOfNodes,proto3" json:"number_of_nodes,omitempty"`
+	// The Redshift engine version. Empty keeps the AWS default ("1.0" --
+	// the only version family Redshift has ever shipped); actual engine
+	// patches ride maintenance_track_name and allow_version_upgrade.
+	ClusterVersion string `protobuf:"bytes,13,opt,name=cluster_version,json=clusterVersion,proto3" json:"cluster_version,omitempty"`
+	// The name of the first database created in the cluster. Empty keeps
+	// the AWS default ("dev"). 1-64 lowercase alphanumeric/underscore
+	// characters.
+	DatabaseName string `protobuf:"bytes,14,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
+	// The admin username. Required for a brand-new cluster -- AWS has no
+	// default and rejects a blank value at CreateCluster. Only clusters
+	// restored from a snapshot leave it empty and inherit the source's
+	// credentials. Create-time only -- changing it replaces the cluster.
+	MasterUsername string `protobuf:"bytes,15,opt,name=master_username,json=masterUsername,proto3" json:"master_username,omitempty"`
+	// Let AWS manage the admin password in Secrets Manager: AWS
+	// generates it, stores it, rotates it on schedule, and no secret ever
+	// touches this manifest or the IaC state. The managed secret's ARN is
+	// exported as the master_password_secret_arn output. Mutually
+	// exclusive with master_password -- and the recommended posture.
+	ManageMasterPassword bool `protobuf:"varint,16,opt,name=manage_master_password,json=manageMasterPassword,proto3" json:"manage_master_password,omitempty"`
+	// The admin password, supplied directly (8-64 chars with at least one
+	// uppercase letter, one lowercase letter, and one digit). Stored in
+	// IaC state -- prefer manage_master_password, which keeps the secret
+	// in Secrets Manager entirely. Mutually exclusive with
+	// manage_master_password.
+	MasterPassword string `protobuf:"bytes,17,opt,name=master_password,json=masterPassword,proto3" json:"master_password,omitempty"`
+	// The KMS key that encrypts the Secrets Manager secret holding the
+	// managed admin password. Empty uses the AWS-managed
+	// aws/secretsmanager key. Only meaningful with
+	// manage_master_password. Reference an AwsKmsKey key_arn output or
+	// pass a literal key ARN.
+	MasterPasswordSecretKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,18,opt,name=master_password_secret_kms_key_id,json=masterPasswordSecretKmsKeyId,proto3" json:"master_password_secret_kms_key_id,omitempty"`
+	// Encrypt cluster storage at rest. AWS defaults new clusters to
+	// encrypted, and this spec keeps that default -- set false only for
+	// a deliberate, exceptional reason. Toggling encryption on a live
+	// cluster is an in-place but long-running migration.
 	Encrypted *bool `protobuf:"varint,19,opt,name=encrypted,proto3,oneof" json:"encrypted,omitempty"`
-	// kms_key_id is the ARN of a customer-managed KMS key for cluster encryption.
-	// Requires encrypted to be true. If omitted, AWS uses the default Redshift service key.
+	// The KMS key for cluster storage encryption when encrypted is true.
+	// Empty uses the AWS-managed Redshift service key. Reference an
+	// AwsKmsKey key_arn output or pass a literal key ARN.
 	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,20,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
-	// iam_roles attaches IAM roles to the cluster for accessing other AWS services
-	// (S3, DynamoDB, Glue Data Catalog, etc.) during COPY, UNLOAD, and Spectrum queries.
-	// Maximum 10 roles per cluster.
-	IamRoles []*v1.StringValueOrRef `protobuf:"bytes,21,rep,name=iam_roles,json=iamRoles,proto3" json:"iam_roles,omitempty"`
-	// default_iam_role_arn is the IAM role used by default when SQL commands access AWS services
-	// without explicitly specifying a role (e.g., unqualified COPY/UNLOAD).
-	DefaultIamRoleArn *v1.StringValueOrRef `protobuf:"bytes,22,opt,name=default_iam_role_arn,json=defaultIamRoleArn,proto3" json:"default_iam_role_arn,omitempty"`
-	// automated_snapshot_retention_period is the number of days to retain automated cluster snapshots.
-	// 0 disables automated snapshots. Maximum: 35.
-	AutomatedSnapshotRetentionPeriod *int32 `protobuf:"varint,23,opt,name=automated_snapshot_retention_period,json=automatedSnapshotRetentionPeriod,proto3,oneof" json:"automated_snapshot_retention_period,omitempty"`
-	// skip_final_snapshot controls whether a final manual snapshot is created before cluster deletion.
-	// Set to true only for ephemeral development/test clusters.
-	SkipFinalSnapshot bool `protobuf:"varint,24,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3" json:"skip_final_snapshot,omitempty"`
-	// final_snapshot_identifier is the name for the final snapshot created on deletion.
-	// Required when skip_final_snapshot is false.
-	FinalSnapshotIdentifier string `protobuf:"bytes,25,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
-	// preferred_maintenance_window is the weekly UTC time range for system maintenance.
-	// Format: ddd:hh:mi-ddd:hh:mi (e.g., "sat:03:00-sat:04:00").
+	// Run a Multi-AZ deployment: compute in two availability zones with
+	// automatic failover and a single endpoint. Requires RA3 node types
+	// and a multi-node cluster. Mutually exclusive with
+	// availability_zone_relocation_enabled.
+	MultiAz bool `protobuf:"varint,21,opt,name=multi_az,json=multiAz,proto3" json:"multi_az,omitempty"`
+	// IAM roles the cluster assumes to access other AWS services during
+	// COPY, UNLOAD, CREATE EXTERNAL FUNCTION, and Redshift Spectrum
+	// queries (S3, DynamoDB, Glue, Lambda, ...). AWS allows up to 10
+	// associated roles. Reference AwsIamRole role_arn outputs or pass
+	// literal role ARNs.
+	IamRoles []*v1.StringValueOrRef `protobuf:"bytes,22,rep,name=iam_roles,json=iamRoles,proto3" json:"iam_roles,omitempty"`
+	// The IAM role assumed when a SQL command does not name one
+	// explicitly (e.g. COPY ... IAM_ROLE default). Must also be present
+	// in iam_roles. Reference an AwsIamRole role_arn output or pass a
+	// literal role ARN.
+	DefaultIamRoleArn *v1.StringValueOrRef `protobuf:"bytes,23,opt,name=default_iam_role_arn,json=defaultIamRoleArn,proto3" json:"default_iam_role_arn,omitempty"`
+	// Days automated snapshots are retained, 0-35. 0 disables automated
+	// snapshots entirely (not recommended); unset keeps the AWS default
+	// (1 day). Production warehouses typically want 7+.
+	AutomatedSnapshotRetentionPeriod *int32 `protobuf:"varint,24,opt,name=automated_snapshot_retention_period,json=automatedSnapshotRetentionPeriod,proto3,oneof" json:"automated_snapshot_retention_period,omitempty"`
+	// Days MANUAL snapshots are retained: 1-3653, or -1 to retain
+	// indefinitely. 0 keeps the AWS default (-1, indefinite). Applies to
+	// new manual snapshots taken after the change.
+	ManualSnapshotRetentionPeriod int32 `protobuf:"varint,25,opt,name=manual_snapshot_retention_period,json=manualSnapshotRetentionPeriod,proto3" json:"manual_snapshot_retention_period,omitempty"`
+	// The weekly maintenance window in UTC, format
+	// "ddd:hh24:mi-ddd:hh24:mi" (e.g. "sat:03:00-sat:04:00"). Empty lets
+	// AWS assign one.
 	PreferredMaintenanceWindow string `protobuf:"bytes,26,opt,name=preferred_maintenance_window,json=preferredMaintenanceWindow,proto3" json:"preferred_maintenance_window,omitempty"`
-	// allow_version_upgrade permits AWS to automatically apply major engine version upgrades
-	// during the maintenance window.
-	AllowVersionUpgrade *bool `protobuf:"varint,27,opt,name=allow_version_upgrade,json=allowVersionUpgrade,proto3,oneof" json:"allow_version_upgrade,omitempty"`
-	// maintenance_track_name determines the cluster maintenance version track.
-	// "current" applies the latest approved version; "trailing" uses the previous major version.
-	MaintenanceTrackName string `protobuf:"bytes,28,opt,name=maintenance_track_name,json=maintenanceTrackName,proto3" json:"maintenance_track_name,omitempty"`
-	// apply_immediately controls whether modifications are applied immediately or deferred
-	// to the next maintenance window.
+	// The maintenance track the cluster follows. Empty keeps the AWS
+	// default ("current" -- the latest approved release). "trailing"
+	// stays one release behind; a snapshot restore can also land on a
+	// named preview/source track inherited from its source cluster.
+	MaintenanceTrackName string `protobuf:"bytes,27,opt,name=maintenance_track_name,json=maintenanceTrackName,proto3" json:"maintenance_track_name,omitempty"`
+	// Permit engine version upgrades during the maintenance window. AWS
+	// defaults this to true; disable only when upgrade timing must be
+	// controlled manually.
+	AllowVersionUpgrade *bool `protobuf:"varint,28,opt,name=allow_version_upgrade,json=allowVersionUpgrade,proto3,oneof" json:"allow_version_upgrade,omitempty"`
+	// Apply modifications immediately instead of waiting for the next
+	// maintenance window. Immediate changes can interrupt connections;
+	// deferred changes wait quietly. AWS defaults to deferred.
 	ApplyImmediately bool `protobuf:"varint,29,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
-	// logging configures audit logging for the cluster.
-	// Redshift can send connection, user activity, and user logs to S3 or CloudWatch Logs.
-	Logging *AwsRedshiftClusterLogging `protobuf:"bytes,30,opt,name=logging,proto3" json:"logging,omitempty"`
-	// cluster_parameter_group_name associates an existing Redshift parameter group with the cluster.
-	// Ignored when inline parameters are provided (a new group is created instead).
-	ClusterParameterGroupName string `protobuf:"bytes,31,opt,name=cluster_parameter_group_name,json=clusterParameterGroupName,proto3" json:"cluster_parameter_group_name,omitempty"`
-	// parameters creates an inline parameter group (family: redshift-1.0) with these parameters.
-	// Common parameters: require_ssl, enable_user_activity_logging, max_concurrency_scaling_clusters.
-	Parameters    []*AwsRedshiftClusterParameter `protobuf:"bytes,32,rep,name=parameters,proto3" json:"parameters,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Skip the final snapshot when the cluster is deleted. When false
+	// (the safe default), final_snapshot_identifier must be set -- AWS
+	// refuses to delete without knowing the snapshot name.
+	SkipFinalSnapshot bool `protobuf:"varint,30,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3" json:"skip_final_snapshot,omitempty"`
+	// The name for the final snapshot taken on deletion. Required when
+	// skip_final_snapshot is false.
+	FinalSnapshotIdentifier string `protobuf:"bytes,31,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
+	// Restore the cluster from an existing snapshot by NAME at create
+	// time. Create-time only; mutually exclusive with snapshot_arn. The
+	// restored cluster inherits the snapshot's credentials, so
+	// master_username stays empty.
+	SnapshotIdentifier string `protobuf:"bytes,32,opt,name=snapshot_identifier,json=snapshotIdentifier,proto3" json:"snapshot_identifier,omitempty"`
+	// Restore the cluster from an existing snapshot by ARN at create
+	// time -- the shape cross-account/cross-region snapshot shares use.
+	// Create-time only; mutually exclusive with snapshot_identifier.
+	SnapshotArn string `protobuf:"bytes,33,opt,name=snapshot_arn,json=snapshotArn,proto3" json:"snapshot_arn,omitempty"`
+	// The name of the cluster the source snapshot was taken from.
+	// Required by AWS only when the snapshot name alone is ambiguous
+	// (shared snapshots). Only meaningful alongside snapshot_identifier.
+	SnapshotClusterIdentifier string `protobuf:"bytes,34,opt,name=snapshot_cluster_identifier,json=snapshotClusterIdentifier,proto3" json:"snapshot_cluster_identifier,omitempty"`
+	// The AWS account that owns the source snapshot, for restoring from
+	// a snapshot shared by another account. Only meaningful alongside a
+	// restore source.
+	OwnerAccount string `protobuf:"bytes,35,opt,name=owner_account,json=ownerAccount,proto3" json:"owner_account,omitempty"`
+	// Audit logging for the cluster -- connection attempts, user
+	// activity, and user changes delivered to S3 or CloudWatch Logs. A
+	// cluster setting keyed by the cluster itself (folded, never a
+	// standalone node).
+	Logging *AwsRedshiftClusterLogging `protobuf:"bytes,36,opt,name=logging,proto3" json:"logging,omitempty"`
+	// Cross-region disaster recovery: automatically copy this cluster's
+	// snapshots to another region. A cluster setting keyed by the
+	// cluster itself (folded, never a standalone node).
+	SnapshotCopy *AwsRedshiftClusterSnapshotCopy `protobuf:"bytes,37,opt,name=snapshot_copy,json=snapshotCopy,proto3" json:"snapshot_copy,omitempty"`
+	// The name of an existing cluster parameter group to use. Mutually
+	// exclusive with `parameters` -- either bring your own group or let
+	// the module manage one from inline parameters.
+	ClusterParameterGroupName string `protobuf:"bytes,38,opt,name=cluster_parameter_group_name,json=clusterParameterGroupName,proto3" json:"cluster_parameter_group_name,omitempty"`
+	// Cluster-level engine parameters (e.g. "require_ssl",
+	// "enable_user_activity_logging", "wlm_json_configuration"), managed
+	// as a dedicated parameter group owned by this cluster (the group is
+	// glue -- a named parameter list -- so it stays folded). Mutually
+	// exclusive with cluster_parameter_group_name.
+	Parameters []*AwsRedshiftClusterParameter `protobuf:"bytes,39,rep,name=parameters,proto3" json:"parameters,omitempty"`
+	// The parameter-group family for the managed group created from
+	// `parameters`. Empty keeps "redshift-1.0" -- the long-standing
+	// family AWS accepts on every cluster. AWS introduced "redshift-2.0"
+	// with the Redshift patch 2.0 generation (new clusters' default
+	// group is default.redshift-2.0); set it here when the managed group
+	// should track that family. Only meaningful alongside `parameters`.
+	ParameterGroupFamily string `protobuf:"bytes,40,opt,name=parameter_group_family,json=parameterGroupFamily,proto3" json:"parameter_group_family,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *AwsRedshiftClusterSpec) Reset() {
@@ -168,62 +281,6 @@ func (x *AwsRedshiftClusterSpec) GetRegion() string {
 	return ""
 }
 
-func (x *AwsRedshiftClusterSpec) GetNodeType() string {
-	if x != nil {
-		return x.NodeType
-	}
-	return ""
-}
-
-func (x *AwsRedshiftClusterSpec) GetNumberOfNodes() int32 {
-	if x != nil && x.NumberOfNodes != nil {
-		return *x.NumberOfNodes
-	}
-	return 0
-}
-
-func (x *AwsRedshiftClusterSpec) GetDatabaseName() string {
-	if x != nil && x.DatabaseName != nil {
-		return *x.DatabaseName
-	}
-	return ""
-}
-
-func (x *AwsRedshiftClusterSpec) GetMasterUsername() string {
-	if x != nil && x.MasterUsername != nil {
-		return *x.MasterUsername
-	}
-	return ""
-}
-
-func (x *AwsRedshiftClusterSpec) GetMasterPassword() string {
-	if x != nil {
-		return x.MasterPassword
-	}
-	return ""
-}
-
-func (x *AwsRedshiftClusterSpec) GetManageMasterPassword() bool {
-	if x != nil {
-		return x.ManageMasterPassword
-	}
-	return false
-}
-
-func (x *AwsRedshiftClusterSpec) GetMasterPasswordSecretKmsKeyId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.MasterPasswordSecretKmsKeyId
-	}
-	return nil
-}
-
-func (x *AwsRedshiftClusterSpec) GetPort() int32 {
-	if x != nil && x.Port != nil {
-		return *x.Port
-	}
-	return 0
-}
-
 func (x *AwsRedshiftClusterSpec) GetSubnetIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.SubnetIds
@@ -245,25 +302,18 @@ func (x *AwsRedshiftClusterSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AwsRedshiftClusterSpec) GetAllowedCidrBlocks() []string {
+func (x *AwsRedshiftClusterSpec) GetAvailabilityZone() string {
 	if x != nil {
-		return x.AllowedCidrBlocks
+		return x.AvailabilityZone
 	}
-	return nil
+	return ""
 }
 
-func (x *AwsRedshiftClusterSpec) GetAssociateSecurityGroupIds() []*v1.StringValueOrRef {
+func (x *AwsRedshiftClusterSpec) GetAvailabilityZoneRelocationEnabled() bool {
 	if x != nil {
-		return x.AssociateSecurityGroupIds
+		return x.AvailabilityZoneRelocationEnabled
 	}
-	return nil
-}
-
-func (x *AwsRedshiftClusterSpec) GetVpcId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.VpcId
-	}
-	return nil
+	return false
 }
 
 func (x *AwsRedshiftClusterSpec) GetPubliclyAccessible() bool {
@@ -273,6 +323,13 @@ func (x *AwsRedshiftClusterSpec) GetPubliclyAccessible() bool {
 	return false
 }
 
+func (x *AwsRedshiftClusterSpec) GetElasticIp() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ElasticIp
+	}
+	return nil
+}
+
 func (x *AwsRedshiftClusterSpec) GetEnhancedVpcRouting() bool {
 	if x != nil {
 		return x.EnhancedVpcRouting
@@ -280,11 +337,67 @@ func (x *AwsRedshiftClusterSpec) GetEnhancedVpcRouting() bool {
 	return false
 }
 
-func (x *AwsRedshiftClusterSpec) GetMultiAz() bool {
+func (x *AwsRedshiftClusterSpec) GetPort() int32 {
 	if x != nil {
-		return x.MultiAz
+		return x.Port
+	}
+	return 0
+}
+
+func (x *AwsRedshiftClusterSpec) GetNodeType() string {
+	if x != nil {
+		return x.NodeType
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetNumberOfNodes() int32 {
+	if x != nil {
+		return x.NumberOfNodes
+	}
+	return 0
+}
+
+func (x *AwsRedshiftClusterSpec) GetClusterVersion() string {
+	if x != nil {
+		return x.ClusterVersion
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetDatabaseName() string {
+	if x != nil {
+		return x.DatabaseName
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetMasterUsername() string {
+	if x != nil {
+		return x.MasterUsername
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetManageMasterPassword() bool {
+	if x != nil {
+		return x.ManageMasterPassword
 	}
 	return false
+}
+
+func (x *AwsRedshiftClusterSpec) GetMasterPassword() string {
+	if x != nil {
+		return x.MasterPassword
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetMasterPasswordSecretKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.MasterPasswordSecretKmsKeyId
+	}
+	return nil
 }
 
 func (x *AwsRedshiftClusterSpec) GetEncrypted() bool {
@@ -299,6 +412,13 @@ func (x *AwsRedshiftClusterSpec) GetKmsKeyId() *v1.StringValueOrRef {
 		return x.KmsKeyId
 	}
 	return nil
+}
+
+func (x *AwsRedshiftClusterSpec) GetMultiAz() bool {
+	if x != nil {
+		return x.MultiAz
+	}
+	return false
 }
 
 func (x *AwsRedshiftClusterSpec) GetIamRoles() []*v1.StringValueOrRef {
@@ -322,6 +442,41 @@ func (x *AwsRedshiftClusterSpec) GetAutomatedSnapshotRetentionPeriod() int32 {
 	return 0
 }
 
+func (x *AwsRedshiftClusterSpec) GetManualSnapshotRetentionPeriod() int32 {
+	if x != nil {
+		return x.ManualSnapshotRetentionPeriod
+	}
+	return 0
+}
+
+func (x *AwsRedshiftClusterSpec) GetPreferredMaintenanceWindow() string {
+	if x != nil {
+		return x.PreferredMaintenanceWindow
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetMaintenanceTrackName() string {
+	if x != nil {
+		return x.MaintenanceTrackName
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetAllowVersionUpgrade() bool {
+	if x != nil && x.AllowVersionUpgrade != nil {
+		return *x.AllowVersionUpgrade
+	}
+	return false
+}
+
+func (x *AwsRedshiftClusterSpec) GetApplyImmediately() bool {
+	if x != nil {
+		return x.ApplyImmediately
+	}
+	return false
+}
+
 func (x *AwsRedshiftClusterSpec) GetSkipFinalSnapshot() bool {
 	if x != nil {
 		return x.SkipFinalSnapshot
@@ -336,37 +491,44 @@ func (x *AwsRedshiftClusterSpec) GetFinalSnapshotIdentifier() string {
 	return ""
 }
 
-func (x *AwsRedshiftClusterSpec) GetPreferredMaintenanceWindow() string {
+func (x *AwsRedshiftClusterSpec) GetSnapshotIdentifier() string {
 	if x != nil {
-		return x.PreferredMaintenanceWindow
+		return x.SnapshotIdentifier
 	}
 	return ""
 }
 
-func (x *AwsRedshiftClusterSpec) GetAllowVersionUpgrade() bool {
-	if x != nil && x.AllowVersionUpgrade != nil {
-		return *x.AllowVersionUpgrade
-	}
-	return false
-}
-
-func (x *AwsRedshiftClusterSpec) GetMaintenanceTrackName() string {
+func (x *AwsRedshiftClusterSpec) GetSnapshotArn() string {
 	if x != nil {
-		return x.MaintenanceTrackName
+		return x.SnapshotArn
 	}
 	return ""
 }
 
-func (x *AwsRedshiftClusterSpec) GetApplyImmediately() bool {
+func (x *AwsRedshiftClusterSpec) GetSnapshotClusterIdentifier() string {
 	if x != nil {
-		return x.ApplyImmediately
+		return x.SnapshotClusterIdentifier
 	}
-	return false
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetOwnerAccount() string {
+	if x != nil {
+		return x.OwnerAccount
+	}
+	return ""
 }
 
 func (x *AwsRedshiftClusterSpec) GetLogging() *AwsRedshiftClusterLogging {
 	if x != nil {
 		return x.Logging
+	}
+	return nil
+}
+
+func (x *AwsRedshiftClusterSpec) GetSnapshotCopy() *AwsRedshiftClusterSnapshotCopy {
+	if x != nil {
+		return x.SnapshotCopy
 	}
 	return nil
 }
@@ -385,20 +547,34 @@ func (x *AwsRedshiftClusterSpec) GetParameters() []*AwsRedshiftClusterParameter 
 	return nil
 }
 
-// AwsRedshiftClusterLogging configures audit logging for the Redshift cluster.
-// Redshift supports two log destinations: S3 buckets (traditional) and CloudWatch Logs (modern).
+func (x *AwsRedshiftClusterSpec) GetParameterGroupFamily() string {
+	if x != nil {
+		return x.ParameterGroupFamily
+	}
+	return ""
+}
+
+// AwsRedshiftClusterLogging delivers the cluster's audit logs --
+// connection attempts, executed queries, and user DDL changes -- to S3
+// or CloudWatch Logs.
 type AwsRedshiftClusterLogging struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// log_destination_type specifies where audit logs are delivered.
-	// "s3" writes logs to an S3 bucket; "cloudwatch" streams logs to CloudWatch Logs.
+	// Where audit logs are delivered: "s3" writes log files to an S3
+	// bucket (the bucket needs a policy granting the Redshift service
+	// write access); "cloudwatch" streams them to CloudWatch Logs --
+	// the modern destination with retention, metric filters, and
+	// subscriptions.
 	LogDestinationType string `protobuf:"bytes,1,opt,name=log_destination_type,json=logDestinationType,proto3" json:"log_destination_type,omitempty"`
-	// s3_bucket_name is the S3 bucket for audit log delivery. Required when log_destination_type is "s3".
+	// The S3 bucket audit logs are written to. Required when
+	// log_destination_type is "s3".
 	S3BucketName string `protobuf:"bytes,2,opt,name=s3_bucket_name,json=s3BucketName,proto3" json:"s3_bucket_name,omitempty"`
-	// s3_key_prefix is an optional prefix for log objects within the S3 bucket.
+	// An optional key prefix for log objects within the S3 bucket.
 	S3KeyPrefix string `protobuf:"bytes,3,opt,name=s3_key_prefix,json=s3KeyPrefix,proto3" json:"s3_key_prefix,omitempty"`
-	// log_exports specifies which audit log types to export.
-	// Valid values: "connectionlog" (connection attempts), "useractivitylog" (SQL queries),
-	// "userlog" (user DDL changes). Required when log_destination_type is "cloudwatch".
+	// Which audit log types to export: "connectionlog" (connection
+	// attempts), "useractivitylog" (every executed query -- requires the
+	// enable_user_activity_logging cluster parameter), "userlog" (user
+	// create/alter/drop events). Required for "cloudwatch"; ignored for
+	// "s3" (S3 delivery always carries all three).
 	LogExports    []string `protobuf:"bytes,4,rep,name=log_exports,json=logExports,proto3" json:"log_exports,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -462,14 +638,98 @@ func (x *AwsRedshiftClusterLogging) GetLogExports() []string {
 	return nil
 }
 
-// AwsRedshiftClusterParameter represents a key-value pair for a Redshift parameter group.
-// The parameter group family is always "redshift-1.0".
+// AwsRedshiftClusterSnapshotCopy automatically copies the cluster's
+// snapshots to another AWS region for disaster recovery. Changing the
+// destination region tears the copy configuration down and re-enables
+// it against the new region.
+type AwsRedshiftClusterSnapshotCopy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The region snapshots are copied to. Must differ from the cluster's
+	// own region. Required.
+	DestinationRegion string `protobuf:"bytes,1,opt,name=destination_region,json=destinationRegion,proto3" json:"destination_region,omitempty"`
+	// Days copied AUTOMATED snapshots are retained in the destination
+	// region, 1-35. 0 keeps the AWS default (7).
+	RetentionPeriod int32 `protobuf:"varint,2,opt,name=retention_period,json=retentionPeriod,proto3" json:"retention_period,omitempty"`
+	// Days copied MANUAL snapshots are retained in the destination
+	// region: 1-3653, or -1 to retain indefinitely. 0 keeps the AWS
+	// default (-1, indefinite).
+	ManualSnapshotRetentionPeriod int32 `protobuf:"varint,3,opt,name=manual_snapshot_retention_period,json=manualSnapshotRetentionPeriod,proto3" json:"manual_snapshot_retention_period,omitempty"`
+	// The snapshot copy grant that lets Redshift encrypt copied
+	// snapshots with a KMS key in the destination region. Required by
+	// AWS when the cluster is KMS-encrypted; irrelevant otherwise.
+	SnapshotCopyGrantName string `protobuf:"bytes,4,opt,name=snapshot_copy_grant_name,json=snapshotCopyGrantName,proto3" json:"snapshot_copy_grant_name,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftClusterSnapshotCopy) Reset() {
+	*x = AwsRedshiftClusterSnapshotCopy{}
+	mi := &file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftClusterSnapshotCopy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftClusterSnapshotCopy) ProtoMessage() {}
+
+func (x *AwsRedshiftClusterSnapshotCopy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftClusterSnapshotCopy.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftClusterSnapshotCopy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsRedshiftClusterSnapshotCopy) GetDestinationRegion() string {
+	if x != nil {
+		return x.DestinationRegion
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSnapshotCopy) GetRetentionPeriod() int32 {
+	if x != nil {
+		return x.RetentionPeriod
+	}
+	return 0
+}
+
+func (x *AwsRedshiftClusterSnapshotCopy) GetManualSnapshotRetentionPeriod() int32 {
+	if x != nil {
+		return x.ManualSnapshotRetentionPeriod
+	}
+	return 0
+}
+
+func (x *AwsRedshiftClusterSnapshotCopy) GetSnapshotCopyGrantName() string {
+	if x != nil {
+		return x.SnapshotCopyGrantName
+	}
+	return ""
+}
+
+// AwsRedshiftClusterParameter is one cluster-level engine parameter,
+// applied through the module-managed parameter group (family
+// redshift-1.0 unless parameter_group_family selects another).
 type AwsRedshiftClusterParameter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// name of the parameter (e.g., "require_ssl", "enable_user_activity_logging",
-	// "max_concurrency_scaling_clusters", "wlm_json_configuration").
+	// The parameter name (e.g. "require_ssl",
+	// "enable_user_activity_logging", "max_concurrency_scaling_clusters",
+	// "wlm_json_configuration"). Required.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// value of the parameter.
+	// The parameter value. Required.
 	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -477,7 +737,7 @@ type AwsRedshiftClusterParameter struct {
 
 func (x *AwsRedshiftClusterParameter) Reset() {
 	*x = AwsRedshiftClusterParameter{}
-	mi := &file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -489,7 +749,7 @@ func (x *AwsRedshiftClusterParameter) String() string {
 func (*AwsRedshiftClusterParameter) ProtoMessage() {}
 
 func (x *AwsRedshiftClusterParameter) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -502,7 +762,7 @@ func (x *AwsRedshiftClusterParameter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsRedshiftClusterParameter.ProtoReflect.Descriptor instead.
 func (*AwsRedshiftClusterParameter) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsRedshiftClusterParameter) GetName() string {
@@ -523,52 +783,69 @@ var File_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/aws/awsredshiftcluster/v1/spec.proto\x12.dev.planton.provider.aws.awsredshiftcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf1\x1a\n" +
+	"9dev/planton/provider/aws/awsredshiftcluster/v1/spec.proto\x12.dev.planton.provider.aws.awsredshiftcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbb0\n" +
 	"\x16AwsRedshiftClusterSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12#\n" +
-	"\tnode_type\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bnodeType\x129\n" +
-	"\x0fnumber_of_nodes\x18\x03 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\rnumberOfNodes\x88\x01\x01\x121\n" +
-	"\rdatabase_name\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03devH\x01R\fdatabaseName\x88\x01\x01\x127\n" +
-	"\x0fmaster_username\x18\x05 \x01(\tB\t\x8a\xa6\x1d\x05adminH\x02R\x0emasterUsername\x88\x01\x01\x12-\n" +
-	"\x0fmaster_password\x18\x06 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0emasterPassword\x12>\n" +
-	"\x16manage_master_password\x18\a \x01(\bB\b\x92\xa6\x1d\x04trueR\x14manageMasterPassword\x12\x9c\x01\n" +
-	"!master_password_secret_kms_key_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1cmasterPasswordSecretKmsKeyId\x12-\n" +
-	"\x04port\x18\t \x01(\x05B\x14\xbaH\t\x1a\a\x18\xff\xff\x03(\xdb\b\x8a\xa6\x1d\x045439H\x03R\x04port\x88\x01\x01\x12t\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12m\n" +
-	"\x19cluster_subnet_group_name\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x16clusterSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\xa1\x01\n" +
-	"\x13allowed_cidr_blocks\x18\r \x03(\tBq\xbaHn\x92\x01k\x18\x01\"gre2c^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$R\x11allowedCidrBlocks\x12\x9e\x01\n" +
-	"\x1cassociate_security_group_ids\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x19associateSecurityGroupIds\x12i\n" +
-	"\x06vpc_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12/\n" +
-	"\x13publicly_accessible\x18\x10 \x01(\bR\x12publiclyAccessible\x120\n" +
-	"\x14enhanced_vpc_routing\x18\x11 \x01(\bR\x12enhancedVpcRouting\x12\x19\n" +
-	"\bmulti_az\x18\x12 \x01(\bR\amultiAz\x12+\n" +
-	"\tencrypted\x18\x13 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\tencrypted\x88\x01\x01\x12q\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12m\n" +
+	"\x19cluster_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x16clusterSubnetGroupName\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12+\n" +
+	"\x11availability_zone\x18\x05 \x01(\tR\x10availabilityZone\x12O\n" +
+	"$availability_zone_relocation_enabled\x18\x06 \x01(\bR!availabilityZoneRelocationEnabled\x12/\n" +
+	"\x13publicly_accessible\x18\a \x01(\bR\x12publiclyAccessible\x12t\n" +
 	"\n" +
-	"kms_key_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12q\n" +
-	"\tiam_roles\x18\x15 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12\x85\x01\n" +
-	"\x14default_iam_role_arn\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11defaultIamRoleArn\x12b\n" +
-	"#automated_snapshot_retention_period\x18\x17 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\x00\x8a\xa6\x1d\x011H\x05R automatedSnapshotRetentionPeriod\x88\x01\x01\x12.\n" +
-	"\x13skip_final_snapshot\x18\x18 \x01(\bR\x11skipFinalSnapshot\x12:\n" +
-	"\x19final_snapshot_identifier\x18\x19 \x01(\tR\x17finalSnapshotIdentifier\x12\xc7\x01\n" +
-	"\x1cpreferred_maintenance_window\x18\x1a \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x12A\n" +
-	"\x15allow_version_upgrade\x18\x1b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x06R\x13allowVersionUpgrade\x88\x01\x01\x12Q\n" +
-	"\x16maintenance_track_name\x18\x1c \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\acurrentR\btrailingR\x14maintenanceTrackName\x12+\n" +
-	"\x11apply_immediately\x18\x1d \x01(\bR\x10applyImmediately\x12c\n" +
-	"\alogging\x18\x1e \x01(\v2I.dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterLoggingR\alogging\x12?\n" +
-	"\x1ccluster_parameter_group_name\x18\x1f \x01(\tR\x19clusterParameterGroupName\x12k\n" +
+	"elastic_ip\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x99\x02\x92\xd4a\x18status.outputs.public_ipR\telasticIp\x120\n" +
+	"\x14enhanced_vpc_routing\x18\t \x01(\bR\x12enhancedVpcRouting\x12\x12\n" +
+	"\x04port\x18\n" +
+	" \x01(\x05R\x04port\x12#\n" +
+	"\tnode_type\x18\v \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bnodeType\x12&\n" +
+	"\x0fnumber_of_nodes\x18\f \x01(\x05R\rnumberOfNodes\x12'\n" +
+	"\x0fcluster_version\x18\r \x01(\tR\x0eclusterVersion\x12#\n" +
+	"\rdatabase_name\x18\x0e \x01(\tR\fdatabaseName\x12'\n" +
+	"\x0fmaster_username\x18\x0f \x01(\tR\x0emasterUsername\x12>\n" +
+	"\x16manage_master_password\x18\x10 \x01(\bB\b\x92\xa6\x1d\x04trueR\x14manageMasterPassword\x12-\n" +
+	"\x0fmaster_password\x18\x11 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0emasterPassword\x12\x9c\x01\n" +
+	"!master_password_secret_kms_key_id\x18\x12 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1cmasterPasswordSecretKmsKeyId\x12+\n" +
+	"\tencrypted\x18\x13 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\tencrypted\x88\x01\x01\x12q\n" +
 	"\n" +
-	"parameters\x18  \x03(\v2K.dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterParameterR\n" +
-	"parameters:\xed\x03\xbaH\xe9\x03\x1a\x9f\x01\n" +
-	"\x19password_mutual_exclusion\x12Amaster_password cannot be set when manage_master_password is true\x1a?this.manage_master_password ? this.master_password == \"\" : true\x1a\x97\x01\n" +
-	"\x10subnets_or_group\x12=provide either subnet_ids (>= 2) or cluster_subnet_group_name\x1aD(this.subnet_ids.size() >= 2) || has(this.cluster_subnet_group_name)\x1a\xaa\x01\n" +
-	"\x17final_snapshot_required\x12Gfinal_snapshot_identifier is required when skip_final_snapshot is false\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != \"\"B\x12\n" +
-	"\x10_number_of_nodesB\x10\n" +
-	"\x0e_database_nameB\x12\n" +
-	"\x10_master_usernameB\a\n" +
-	"\x05_portB\f\n" +
+	"kms_key_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x19\n" +
+	"\bmulti_az\x18\x15 \x01(\bR\amultiAz\x12q\n" +
+	"\tiam_roles\x18\x16 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12\x85\x01\n" +
+	"\x14default_iam_role_arn\x18\x17 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11defaultIamRoleArn\x12b\n" +
+	"#automated_snapshot_retention_period\x18\x18 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\x00\x8a\xa6\x1d\x011H\x01R automatedSnapshotRetentionPeriod\x88\x01\x01\x12G\n" +
+	" manual_snapshot_retention_period\x18\x19 \x01(\x05R\x1dmanualSnapshotRetentionPeriod\x12\xc7\x01\n" +
+	"\x1cpreferred_maintenance_window\x18\x1a \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x124\n" +
+	"\x16maintenance_track_name\x18\x1b \x01(\tR\x14maintenanceTrackName\x12A\n" +
+	"\x15allow_version_upgrade\x18\x1c \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x13allowVersionUpgrade\x88\x01\x01\x12+\n" +
+	"\x11apply_immediately\x18\x1d \x01(\bR\x10applyImmediately\x12.\n" +
+	"\x13skip_final_snapshot\x18\x1e \x01(\bR\x11skipFinalSnapshot\x12:\n" +
+	"\x19final_snapshot_identifier\x18\x1f \x01(\tR\x17finalSnapshotIdentifier\x12/\n" +
+	"\x13snapshot_identifier\x18  \x01(\tR\x12snapshotIdentifier\x12!\n" +
+	"\fsnapshot_arn\x18! \x01(\tR\vsnapshotArn\x12>\n" +
+	"\x1bsnapshot_cluster_identifier\x18\" \x01(\tR\x19snapshotClusterIdentifier\x12#\n" +
+	"\rowner_account\x18# \x01(\tR\fownerAccount\x12c\n" +
+	"\alogging\x18$ \x01(\v2I.dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterLoggingR\alogging\x12s\n" +
+	"\rsnapshot_copy\x18% \x01(\v2N.dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSnapshotCopyR\fsnapshotCopy\x12?\n" +
+	"\x1ccluster_parameter_group_name\x18& \x01(\tR\x19clusterParameterGroupName\x12k\n" +
+	"\n" +
+	"parameters\x18' \x03(\v2K.dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterParameterR\n" +
+	"parameters\x124\n" +
+	"\x16parameter_group_family\x18( \x01(\tR\x14parameterGroupFamily:\xc9\x18\xbaH\xc5\x18\x1a\xb1\x01\n" +
+	"\x10subnets_or_group\x12Wprovide at least two subnet_ids (distinct AZs) or an existing cluster_subnet_group_name\x1aD(this.subnet_ids.size() >= 2) || has(this.cluster_subnet_group_name)\x1a\x99\x01\n" +
+	"\n" +
+	"port_range\x12Nport must be between 1115 and 65535 when set -- 0 keeps the AWS default (5439)\x1a;this.port == 0 || (this.port >= 1115 && this.port <= 65535)\x1a\xd0\x01\n" +
+	"\x15number_of_nodes_range\x12^number_of_nodes must be between 1 and 128 when set -- 0 keeps the AWS default (1, single-node)\x1aWthis.number_of_nodes == 0 || (this.number_of_nodes >= 1 && this.number_of_nodes <= 128)\x1a\xb8\x01\n" +
+	"\x14password_xor_managed\x12_master_password cannot be set when manage_master_password is true -- pick one password strategy\x1a?this.manage_master_password ? this.master_password == '' : true\x1a\x90\x02\n" +
+	"'master_username_required_unless_derived\x12\x8b\x01master_username is required for a new cluster -- AWS rejects a blank username; only snapshot restores inherit credentials from their source\x1aWthis.master_username != '' || this.snapshot_identifier != '' || this.snapshot_arn != ''\x1a\xfa\x01\n" +
+	"\x17relocation_xor_multi_az\x12\x9f\x01availability_zone_relocation_enabled and multi_az are mutually exclusive -- relocation moves the single cluster between zones, Multi-AZ fails over to a standby\x1a=!(this.availability_zone_relocation_enabled && this.multi_az)\x1a\xb5\x01\n" +
+	"\x1aelastic_ip_requires_public\x12delastic_ip requires publicly_accessible -- a private cluster has no public IP to bind the address to\x1a1!has(this.elastic_ip) || this.publicly_accessible\x1a\xdf\x02\n" +
+	"\x1fmanual_snapshot_retention_range\x12\x7fmanual_snapshot_retention_period must be -1 (indefinite) or between 1 and 3653 when set -- 0 keeps the AWS default (indefinite)\x1a\xba\x01this.manual_snapshot_retention_period == 0 || this.manual_snapshot_retention_period == -1 || (this.manual_snapshot_retention_period >= 1 && this.manual_snapshot_retention_period <= 3653)\x1a\x83\x02\n" +
+	",final_snapshot_id_required_when_not_skipping\x12\x8a\x01final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the cluster without a final snapshot name\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != ''\x1a\xa9\x01\n" +
+	"\x13snapshot_id_xor_arn\x12Wsnapshot_identifier and snapshot_arn are mutually exclusive create-time restore sources\x1a9this.snapshot_identifier == '' || this.snapshot_arn == ''\x1a\xf1\x01\n" +
+	"%snapshot_cluster_requires_snapshot_id\x12~snapshot_cluster_identifier is only meaningful alongside snapshot_identifier -- it disambiguates a snapshot NAME, never an ARN\x1aHthis.snapshot_cluster_identifier == '' || this.snapshot_identifier != ''\x1a\xda\x01\n" +
+	"\x1eowner_account_requires_restore\x12aowner_account is only meaningful alongside a restore source (snapshot_identifier or snapshot_arn)\x1aUthis.owner_account == '' || this.snapshot_identifier != '' || this.snapshot_arn != ''\x1a\xe4\x01\n" +
+	"!own_parameters_xor_existing_group\x12wparameters and cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group\x1aFthis.cluster_parameter_group_name == '' || this.parameters.size() == 0\x1a\xd0\x01\n" +
+	"\x1afamily_requires_parameters\x12qparameter_group_family is only meaningful alongside inline parameters -- an existing group carries its own family\x1a?this.parameter_group_family == '' || this.parameters.size() > 0B\f\n" +
 	"\n" +
 	"_encryptedB&\n" +
 	"$_automated_snapshot_retention_periodB\x18\n" +
@@ -581,7 +858,14 @@ const file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDesc = "
 	"\vlog_exports\x18\x04 \x03(\tB5\xbaH2\x92\x01/\x18\x01\"+r)R\rconnectionlogR\x0fuseractivitylogR\auserlogR\n" +
 	"logExports:\xe3\x02\xbaH\xdf\x02\x1a\x98\x01\n" +
 	"\x12s3_bucket_required\x12<s3_bucket_name is required when log_destination_type is 's3'\x1aDthis.log_destination_type == 's3' ? this.s3_bucket_name != '' : true\x1a\xc1\x01\n" +
-	"\x1bcloudwatch_exports_required\x12Rlog_exports must have at least one entry when log_destination_type is 'cloudwatch'\x1aNthis.log_destination_type == 'cloudwatch' ? this.log_exports.size() > 0 : true\"W\n" +
+	"\x1bcloudwatch_exports_required\x12Rlog_exports must have at least one entry when log_destination_type is 'cloudwatch'\x1aNthis.log_destination_type == 'cloudwatch' ? this.log_exports.size() > 0 : true\"\xb0\x06\n" +
+	"\x1eAwsRedshiftClusterSnapshotCopy\x125\n" +
+	"\x12destination_region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11destinationRegion\x12)\n" +
+	"\x10retention_period\x18\x02 \x01(\x05R\x0fretentionPeriod\x12G\n" +
+	" manual_snapshot_retention_period\x18\x03 \x01(\x05R\x1dmanualSnapshotRetentionPeriod\x127\n" +
+	"\x18snapshot_copy_grant_name\x18\x04 \x01(\tR\x15snapshotCopyGrantName:\xa9\x04\xbaH\xa5\x04\x1a\xc4\x01\n" +
+	"\x14copy_retention_range\x12Qretention_period must be between 1 and 35 when set -- 0 keeps the AWS default (7)\x1aYthis.retention_period == 0 || (this.retention_period >= 1 && this.retention_period <= 35)\x1a\xdb\x02\n" +
+	"\x1bcopy_manual_retention_range\x12\x7fmanual_snapshot_retention_period must be -1 (indefinite) or between 1 and 3653 when set -- 0 keeps the AWS default (indefinite)\x1a\xba\x01this.manual_snapshot_retention_period == 0 || this.manual_snapshot_retention_period == -1 || (this.manual_snapshot_retention_period >= 1 && this.manual_snapshot_retention_period <= 3653)\"W\n" +
 	"\x1bAwsRedshiftClusterParameter\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05valueB\x85\x03\n" +
@@ -599,25 +883,26 @@ func file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDescGZIP(
 	return file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_goTypes = []any{
-	(*AwsRedshiftClusterSpec)(nil),      // 0: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec
-	(*AwsRedshiftClusterLogging)(nil),   // 1: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterLogging
-	(*AwsRedshiftClusterParameter)(nil), // 2: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterParameter
-	(*v1.StringValueOrRef)(nil),         // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsRedshiftClusterSpec)(nil),         // 0: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec
+	(*AwsRedshiftClusterLogging)(nil),      // 1: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterLogging
+	(*AwsRedshiftClusterSnapshotCopy)(nil), // 2: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSnapshotCopy
+	(*AwsRedshiftClusterParameter)(nil),    // 3: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterParameter
+	(*v1.StringValueOrRef)(nil),            // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_depIdxs = []int32{
-	3,  // 0: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.master_password_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 1: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 2: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.cluster_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 3: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 4: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.associate_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 5: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 6: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 7: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.iam_roles:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 8: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.default_iam_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 9: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.logging:type_name -> dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterLogging
-	2,  // 10: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.parameters:type_name -> dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterParameter
+	4,  // 0: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 1: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.cluster_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 2: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 3: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.elastic_ip:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 4: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.master_password_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 5: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 6: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.iam_roles:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 7: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.default_iam_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 8: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.logging:type_name -> dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterLogging
+	2,  // 9: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.snapshot_copy:type_name -> dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSnapshotCopy
+	3,  // 10: dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.parameters:type_name -> dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterParameter
 	11, // [11:11] is the sub-list for method output_type
 	11, // [11:11] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
@@ -637,7 +922,7 @@ func file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

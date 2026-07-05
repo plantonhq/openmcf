@@ -1,6 +1,6 @@
 ---
-title: "Aurora MySQL Cluster"
-description: "This preset creates a production-ready Aurora MySQL cluster with the same security and resilience defaults as the PostgreSQL preset: managed password, encrypted storage, deletion protection, and..."
+title: "Aurora MySQL (Provisioned)"
+description: "This preset creates a production-shaped Aurora MySQL cluster: one writer and one reader on shared cluster storage, an AWS-managed master password, encrypted storage, deletion protection, seven days..."
 type: "preset"
 rank: "02"
 presetSlug: "02-aurora-mysql"
@@ -11,34 +11,33 @@ icon: "package"
 order: 2
 ---
 
-# Aurora MySQL Cluster
+# Aurora MySQL (Provisioned)
 
-This preset creates a production-ready Aurora MySQL cluster with the same security and resilience defaults as the PostgreSQL preset: managed password, encrypted storage, deletion protection, and 7-day backups. Error and slow query logs are exported to CloudWatch for operational visibility.
+This preset creates a production-shaped Aurora MySQL cluster: one writer and one reader on shared cluster storage, an AWS-managed master password, encrypted storage, deletion protection, seven days of continuous backup, a 24-hour backtrack window, and Performance Insights.
 
 ## When to Use
 
-- Production relational databases using MySQL-compatible SQL
-- Applications migrating from MySQL or MariaDB to Aurora
-- Workloads benefiting from Aurora's MySQL-compatible engine (up to 5x throughput over standard MySQL)
+- Production MySQL workloads with steady, predictable capacity needs
+- Applications that want Aurora's in-place rewind (backtrack) as an "undo" for bad writes
+- Read-heavy MySQL workloads that benefit from a reader endpoint
 
 ## Key Configuration Choices
 
-- **Aurora MySQL 8.0** (`engine: aurora-mysql`, `engineVersion: "8.0.mysql_aurora.3.05.2"`) -- MySQL 8.0 compatible; update to latest minor version
-- **Managed password** (`manageMasterUserPassword: true`) -- Password stored and rotated in Secrets Manager
-- **CloudWatch logs** (`enabledCloudwatchLogsExports: [error, slowquery]`) -- Error logs for debugging, slow query logs for performance optimization
-- **Same production defaults** as PostgreSQL preset: encrypted storage, deletion protection, 7-day backups, final snapshot
+- **Managed master password** (`manageMasterUserPassword: true`) -- AWS generates, stores, and rotates the credential in Secrets Manager; the secret's ARN is exported as `master_user_secret_arn`.
+- **Backtrack window** (`backtrackWindowSeconds: 86400`) -- rewinds the cluster in place, no restore and no new endpoint; Aurora MySQL only, and only enableable at create time -- which is why the preset carries it from day one.
+- **Writer + reader instances** (`instances`) -- each entry is its own managed resource; the reader is the failover target (`promotionTier: 1`).
+- **Encrypted storage + deletion safety** -- the same create-time encryption and two-step deletion posture as every production preset.
+- **MySQL log export** -- `error` and `slowquery` logs stream to CloudWatch Logs.
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<security-group-id>` | Security group allowing database port (3306) from application tier | AWS EC2 console or `AwsSecurityGroup` status outputs |
-| `<database-name>` | Name of the initial database to create | Your application configuration |
-| `<final-snapshot-name>` | Identifier for the final snapshot | Your naming convention |
+| `subnet-replace-with-private-az1` | Private subnet in the first Availability Zone | `AwsSubnet` status outputs or the AWS VPC console |
+| `subnet-replace-with-private-az2` | Private subnet in the second Availability Zone | `AwsSubnet` status outputs or the AWS VPC console |
+| `sg-replace-with-database-sg` | Security group allowing the database port from the application tier | `AwsSecurityGroup` status outputs or the AWS EC2 console |
 
 ## Related Presets
 
-- **01-aurora-postgresql** -- Use instead for PostgreSQL-compatible workloads
-- **03-aurora-serverless-v2** -- Use instead for variable traffic patterns with auto-scaling compute
+- **01-aurora-postgresql** -- The same shape for PostgreSQL-compatible workloads
+- **03-aurora-serverless-v2** -- Use instead when traffic is variable or spiky and capacity should track demand

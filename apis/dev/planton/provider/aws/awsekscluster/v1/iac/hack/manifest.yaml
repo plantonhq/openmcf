@@ -5,8 +5,15 @@ metadata:
 spec:
   region: us-west-2
   subnetIds:
-    - value: subnet-aaa111
-    - value: subnet-bbb222
+    - value: subnet-0123456789abcdef0
+    - value: subnet-0123456789abcdef1
   clusterRoleArn:
     value: arn:aws:iam::123456789012:role/EksClusterServiceRole
-  version: "1.27"
+  version: "1.31"
+  endpointPrivateAccess: true
+  accessConfig:
+    authenticationMode: API
+  enabledClusterLogTypes:
+    - audit
+    - authenticator
+  upgradeSupportType: STANDARD

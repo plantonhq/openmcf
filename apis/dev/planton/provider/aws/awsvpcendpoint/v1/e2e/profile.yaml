@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsvpcendpoint
+spec:
+  # A VPC endpoint under live E2E: the harness deploys the AwsVpc + two-AZ
+  # AwsSubnet prerequisites, runs deploy -> DescribeVpcEndpoints verify ->
+  # destroy -> verify-destroyed on both provisioners. Two scenarios cover the
+  # two dominant endpoint types: an S3 GATEWAY endpoint attached to the VPC's
+  # default route table (free; creates in seconds) and an STS INTERFACE
+  # endpoint on the subnet pair (billed hourly, but ephemeral; ENI provisioning
+  # makes it the slower of the two at a few minutes each way). The VPC/subnet
+  # prerequisites dominate the runtime.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

@@ -157,6 +157,828 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsIamPolicy: flat scalar outputs from both engines (policy arn/id/name)
+			// must each land on the StackOutputs proto -- policy_arn is what role/user
+			// attachments and permissions boundaries reference.
+			name: "AwsIamPolicy",
+			kind: cloudresourcekind.CloudResourceKind_AwsIamPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_arn":  "arn:aws:iam::123456789012:policy/s3-read-only",
+				"policy_id":   "ANPAEXAMPLEID12345678",
+				"policy_name": "s3-read-only",
+			},
+			mustPopulate: []string{"policy_arn", "policy_id", "policy_name"},
+		},
+		{
+			// AwsIamInstanceProfile: flat scalar outputs from both engines (profile
+			// arn/name/id and the carried role's name) must each land on the
+			// StackOutputs proto -- instance_profile_arn is what EC2-shaped resources
+			// reference.
+			name: "AwsIamInstanceProfile",
+			kind: cloudresourcekind.CloudResourceKind_AwsIamInstanceProfile,
+			rawOutputs: map[string]interface{}{
+				"instance_profile_arn":  "arn:aws:iam::123456789012:instance-profile/web-server",
+				"instance_profile_name": "web-server",
+				"instance_profile_id":   "AIPAEXAMPLEID12345678",
+				"role_name":             "web-server-role",
+			},
+			mustPopulate: []string{
+				"instance_profile_arn", "instance_profile_name",
+				"instance_profile_id", "role_name",
+			},
+		},
+		{
+			// AwsIamRole: flat scalar outputs from both engines (role arn/name/id)
+			// must each land on the StackOutputs proto. Guards the removal of the
+			// role's former instance-profile outputs: EC2 delivery now composes
+			// through AwsIamInstanceProfile, so the role emits only role-shaped
+			// outputs.
+			name: "AwsIamRole",
+			kind: cloudresourcekind.CloudResourceKind_AwsIamRole,
+			rawOutputs: map[string]interface{}{
+				"role_arn":  "arn:aws:iam::123456789012:role/lambda-exec",
+				"role_name": "lambda-exec",
+				"role_id":   "AROAEXAMPLEID12345678",
+			},
+			mustPopulate: []string{"role_arn", "role_name", "role_id"},
+		},
+		{
+			// AwsIamUser: flat scalar outputs from both engines (user arn/name/id,
+			// access key id + base64 secret, console url) must each land on the
+			// StackOutputs proto. The secret is base64-encoded by BOTH engines so the
+			// emitted values are byte-identical.
+			name: "AwsIamUser",
+			kind: cloudresourcekind.CloudResourceKind_AwsIamUser,
+			rawOutputs: map[string]interface{}{
+				"user_arn":          "arn:aws:iam::123456789012:user/ci-deploy",
+				"user_name":         "ci-deploy",
+				"user_id":           "AIDAEXAMPLEID12345678",
+				"access_key_id":     "AKIAEXAMPLEID1234567",
+				"secret_access_key": "c2VjcmV0LWtleS1tYXRlcmlhbA==",
+				"console_url":       "https://signin.aws.amazon.com/console",
+			},
+			mustPopulate: []string{
+				"user_arn", "user_name", "user_id",
+				"access_key_id", "secret_access_key", "console_url",
+			},
+		},
+		{
+			// AwsAlb: flat scalar outputs from both engines (arn/name/dns
+			// name/hosted zone id/arn suffix) must each land on the StackOutputs
+			// proto -- load_balancer_arn is what listeners attach through, the DNS
+			// pair is what Route53 alias records consume, and arn_suffix is the
+			// CloudWatch LoadBalancer dimension request-count autoscaling scopes on.
+			name: "AwsAlb",
+			kind: cloudresourcekind.CloudResourceKind_AwsAlb,
+			rawOutputs: map[string]interface{}{
+				"load_balancer_arn":            "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/demo/50dc6c495c0c9188",
+				"load_balancer_name":           "demo",
+				"load_balancer_dns_name":       "demo-1234567890.us-west-2.elb.amazonaws.com",
+				"load_balancer_hosted_zone_id": "Z1H1FL5HABSF5",
+				"arn_suffix":                   "app/demo/50dc6c495c0c9188",
+			},
+			mustPopulate: []string{
+				"load_balancer_arn", "load_balancer_name",
+				"load_balancer_dns_name", "load_balancer_hosted_zone_id",
+				"arn_suffix",
+			},
+		},
+		{
+			// AwsNlb: the same four load-balancer scalars as AwsAlb. Guards the
+			// load-balancer-only output shape: the NLB emits no listener or target
+			// group outputs because those are first-class kinds with their own
+			// outputs.
+			name: "AwsNlb",
+			kind: cloudresourcekind.CloudResourceKind_AwsNlb,
+			rawOutputs: map[string]interface{}{
+				"load_balancer_arn":            "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/net/demo/50dc6c495c0c9188",
+				"load_balancer_name":           "demo",
+				"load_balancer_dns_name":       "demo-1234567890.elb.us-west-2.amazonaws.com",
+				"load_balancer_hosted_zone_id": "Z18D5FSROUN65G",
+			},
+			mustPopulate: []string{
+				"load_balancer_arn", "load_balancer_name",
+				"load_balancer_dns_name", "load_balancer_hosted_zone_id",
+			},
+		},
+		{
+			// AwsLbTargetGroup: flat scalar outputs from both engines (arn, the
+			// possibly-truncated name, and the CloudWatch arn_suffix) must each land
+			// on the StackOutputs proto -- target_group_arn is what listener forward
+			// actions, ECS services, and ASG attachments reference.
+			name: "AwsLbTargetGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsLbTargetGroup,
+			rawOutputs: map[string]interface{}{
+				"target_group_arn":  "arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/api/943f017f100becff",
+				"target_group_name": "api",
+				"arn_suffix":        "targetgroup/api/943f017f100becff",
+			},
+			mustPopulate: []string{"target_group_arn", "target_group_name", "arn_suffix"},
+		},
+		{
+			// AwsLbListener: a single flat output -- listener_arn is what listener
+			// rules attach through.
+			name: "AwsLbListener",
+			kind: cloudresourcekind.CloudResourceKind_AwsLbListener,
+			rawOutputs: map[string]interface{}{
+				"listener_arn": "arn:aws:elasticloadbalancing:us-west-2:123456789012:listener/app/demo/50dc6c495c0c9188/f2f7dc8efc522ab2",
+			},
+			mustPopulate: []string{"listener_arn"},
+		},
+		{
+			// AwsLbListenerRule: the rule ARN plus the AWS-assigned priority.
+			// Priority is emitted as a STRING by both engines (Terraform's tostring
+			// and the Pulumi module's strconv conversion) so the shapes stay
+			// byte-identical -- this case guards that contract.
+			name: "AwsLbListenerRule",
+			kind: cloudresourcekind.CloudResourceKind_AwsLbListenerRule,
+			rawOutputs: map[string]interface{}{
+				"rule_arn": "arn:aws:elasticloadbalancing:us-west-2:123456789012:listener-rule/app/demo/50dc6c495c0c9188/f2f7dc8efc522ab2/9683b2d02a6cabee",
+				"priority": "10",
+			},
+			mustPopulate: []string{"rule_arn", "priority"},
+		},
+		{
+			// AwsEcsTaskDefinition: the revision-carrying ARN is the handle ECS
+			// services reference (each new revision changes it and rolls the
+			// service); revision is an int64 proto field fed from numeric engine
+			// outputs, guarding the numeric-to-int64 flattening.
+			name: "AwsEcsTaskDefinition",
+			kind: cloudresourcekind.CloudResourceKind_AwsEcsTaskDefinition,
+			rawOutputs: map[string]interface{}{
+				"task_definition_arn":  "arn:aws:ecs:us-west-2:123456789012:task-definition/api:7",
+				"arn_without_revision": "arn:aws:ecs:us-west-2:123456789012:task-definition/api",
+				"family":               "api",
+				"revision":             float64(7),
+				"log_group_name":       "/ecs/api",
+				"log_group_arn":        "arn:aws:logs:us-west-2:123456789012:log-group:/ecs/api",
+			},
+			mustPopulate: []string{
+				"task_definition_arn", "arn_without_revision", "family",
+				"revision", "log_group_name", "log_group_arn",
+			},
+		},
+		{
+			// AwsEcsService: flat scalar outputs -- the service ARN encodes both
+			// the cluster and service names (the E2E verifier's key), and the
+			// cluster/task-definition ARNs are republished resolved references.
+			name: "AwsEcsService",
+			kind: cloudresourcekind.CloudResourceKind_AwsEcsService,
+			rawOutputs: map[string]interface{}{
+				"service_arn":         "arn:aws:ecs:us-west-2:123456789012:service/prod/api",
+				"service_name":        "api",
+				"cluster_arn":         "arn:aws:ecs:us-west-2:123456789012:cluster/prod",
+				"task_definition_arn": "arn:aws:ecs:us-west-2:123456789012:task-definition/api:7",
+			},
+			mustPopulate: []string{
+				"service_arn", "service_name", "cluster_arn", "task_definition_arn",
+			},
+		},
+		{
+			// AwsLaunchTemplate: the template id/arn plus the two version numbers.
+			// latest_version and default_version are int64 proto fields fed from
+			// numeric engine outputs (Terraform's number, Pulumi's IntOutput) --
+			// this case guards that numeric outputs flatten onto int64 fields.
+			name: "AwsLaunchTemplate",
+			kind: cloudresourcekind.CloudResourceKind_AwsLaunchTemplate,
+			rawOutputs: map[string]interface{}{
+				"launch_template_id":  "lt-0123456789abcdef0",
+				"launch_template_arn": "arn:aws:ec2:us-west-2:123456789012:launch-template/lt-0123456789abcdef0",
+				"latest_version":      float64(3),
+				"default_version":     float64(3),
+			},
+			mustPopulate: []string{"launch_template_id", "launch_template_arn", "latest_version", "default_version"},
+		},
+		{
+			// AwsAutoScalingGroup: flat scalar outputs -- the group name is the
+			// CloudWatch dimension and ECS capacity-provider handle; the ARN scopes
+			// IAM policies and EventBridge rules.
+			name: "AwsAutoScalingGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup,
+			rawOutputs: map[string]interface{}{
+				"autoscaling_group_name": "web",
+				"autoscaling_group_arn":  "arn:aws:autoscaling:us-west-2:123456789012:autoScalingGroup:uuid:autoScalingGroupName/web",
+			},
+			mustPopulate: []string{"autoscaling_group_name", "autoscaling_group_arn"},
+		},
+		{
+			// AwsEksAddon: flat scalar outputs -- the ARN keys the E2E verifier
+			// (it encodes cluster and add-on names); addon_version reports the
+			// resolved AWS default when the spec pinned nothing.
+			name: "AwsEksAddon",
+			kind: cloudresourcekind.CloudResourceKind_AwsEksAddon,
+			rawOutputs: map[string]interface{}{
+				"addon_arn":     "arn:aws:eks:us-west-2:123456789012:addon/platform/vpc-cni/9ac7ab21-1a2b",
+				"addon_name":    "vpc-cni",
+				"addon_version": "v1.18.1-eksbuild.3",
+			},
+			mustPopulate: []string{"addon_arn", "addon_name", "addon_version"},
+		},
+		{
+			// AwsEksFargateProfile: flat scalar outputs -- the ARN keys the E2E
+			// verifier (it encodes cluster and profile names); status is ACTIVE
+			// after a successful create.
+			name: "AwsEksFargateProfile",
+			kind: cloudresourcekind.CloudResourceKind_AwsEksFargateProfile,
+			rawOutputs: map[string]interface{}{
+				"fargate_profile_arn":  "arn:aws:eks:us-west-2:123456789012:fargateprofile/platform/serverless/9ac7ab21-1a2b",
+				"fargate_profile_name": "serverless",
+				"status":               "ACTIVE",
+			},
+			mustPopulate: []string{"fargate_profile_arn", "fargate_profile_name", "status"},
+		},
+		{
+			// AwsEksAccessEntry: flat scalar outputs -- the entry ARN keys the E2E
+			// verifier (it encodes the cluster and the principal identity), and the
+			// resolved principal ARN is what downstream references consume.
+			name: "AwsEksAccessEntry",
+			kind: cloudresourcekind.CloudResourceKind_AwsEksAccessEntry,
+			rawOutputs: map[string]interface{}{
+				"access_entry_arn": "arn:aws:eks:us-west-2:123456789012:access-entry/platform/role/123456789012/TeamViewerRole/9ac7ab21-1a2b",
+				"principal_arn":    "arn:aws:iam::123456789012:role/TeamViewerRole",
+			},
+			mustPopulate: []string{"access_entry_arn", "principal_arn"},
+		},
+		{
+			// AwsVpcEndpoint: the endpoint id keys the E2E verifier; prefix_list_id
+			// is the gateway-endpoint route/security-group handle; dns_name +
+			// hosted_zone_id compose Route53 aliases to interface endpoints; and
+			// network_interface_ids guards list outputs flattening onto a repeated
+			// string field.
+			name: "AwsVpcEndpoint",
+			kind: cloudresourcekind.CloudResourceKind_AwsVpcEndpoint,
+			rawOutputs: map[string]interface{}{
+				"vpc_endpoint_id":       "vpce-0123456789abcdef0",
+				"arn":                   "arn:aws:ec2:us-west-2:123456789012:vpc-endpoint/vpce-0123456789abcdef0",
+				"state":                 "available",
+				"prefix_list_id":        "pl-68a54001",
+				"dns_name":              "vpce-0123456789abcdef0-abcd1234.sts.us-west-2.vpce.amazonaws.com",
+				"hosted_zone_id":        "Z1K56Z6FNPJRR",
+				"network_interface_ids": []interface{}{"eni-0123456789abcdef0", "eni-0f9e8d7c6b5a43210"},
+			},
+			mustPopulate: []string{
+				"vpc_endpoint_id", "arn", "state", "prefix_list_id",
+				"dns_name", "hosted_zone_id", "network_interface_ids",
+			},
+		},
+		{
+			// AwsRdsCluster: the identifier keys the E2E verifier; endpoint +
+			// reader_endpoint are the connection handles downstream references
+			// consume; master_user_secret_arn carries the AWS-managed credential
+			// handle; and instance_endpoints guards list outputs flattening onto a
+			// repeated string field (the folded per-name cluster instances).
+			name: "AwsRdsCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsRdsCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_identifier":              "orders-db",
+				"arn":                             "arn:aws:rds:us-west-2:123456789012:cluster:orders-db",
+				"cluster_resource_id":             "cluster-ABCDEFGHIJKL01234",
+				"endpoint":                        "orders-db.cluster-abc123.us-west-2.rds.amazonaws.com",
+				"reader_endpoint":                 "orders-db.cluster-ro-abc123.us-west-2.rds.amazonaws.com",
+				"port":                            5432,
+				"hosted_zone_id":                  "Z1PVIF0B656C1W",
+				"engine_version_actual":           "16.4",
+				"master_user_secret_arn":          "arn:aws:secretsmanager:us-west-2:123456789012:secret:rds!cluster-abc-def",
+				"db_subnet_group_name":            "orders-db",
+				"db_cluster_parameter_group_name": "default.aurora-postgresql16",
+				"instance_endpoints":              []interface{}{"orders-db-writer.abc123.us-west-2.rds.amazonaws.com"},
+			},
+			mustPopulate: []string{
+				"cluster_identifier", "arn", "cluster_resource_id", "endpoint",
+				"reader_endpoint", "port", "hosted_zone_id", "engine_version_actual",
+				"master_user_secret_arn", "db_subnet_group_name",
+				"db_cluster_parameter_group_name", "instance_endpoints",
+			},
+		},
+		{
+			// AwsRdsInstance: the identifier keys the E2E verifier; endpoint is
+			// address:port while address is the bare hostname (both are real AWS
+			// attributes downstream references consume differently); resource_id is
+			// the durable handle for IAM auth policies and point-in-time restores.
+			name: "AwsRdsInstance",
+			kind: cloudresourcekind.CloudResourceKind_AwsRdsInstance,
+			rawOutputs: map[string]interface{}{
+				"instance_identifier":    "billing-db",
+				"arn":                    "arn:aws:rds:us-west-2:123456789012:db:billing-db",
+				"resource_id":            "db-ABCDEFGHIJKL01234",
+				"endpoint":               "billing-db.abc123.us-west-2.rds.amazonaws.com:5432",
+				"address":                "billing-db.abc123.us-west-2.rds.amazonaws.com",
+				"port":                   5432,
+				"hosted_zone_id":         "Z1PVIF0B656C1W",
+				"engine_version_actual":  "16.4",
+				"master_user_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:rds!db-abc-def",
+				"db_subnet_group_name":   "billing-db",
+			},
+			mustPopulate: []string{
+				"instance_identifier", "arn", "resource_id", "endpoint", "address",
+				"port", "hosted_zone_id", "engine_version_actual",
+				"master_user_secret_arn", "db_subnet_group_name",
+			},
+		},
+		{
+			name: "AwsElasticacheUser",
+			kind: cloudresourcekind.CloudResourceKind_AwsElasticacheUser,
+			rawOutputs: map[string]interface{}{
+				"user_id":   "app-cache-user",
+				"arn":       "arn:aws:elasticache:us-west-2:123456789012:user:app-cache-user",
+				"user_name": "app-cache-user",
+			},
+			mustPopulate: []string{"user_id", "arn", "user_name"},
+		},
+		{
+			name: "AwsElasticacheUserGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsElasticacheUserGroup,
+			rawOutputs: map[string]interface{}{
+				"user_group_id": "app-cache-group",
+				"arn":           "arn:aws:elasticache:us-west-2:123456789012:usergroup:app-cache-group",
+			},
+			mustPopulate: []string{"user_group_id", "arn"},
+		},
+		{
+			name: "AwsRedisElasticache",
+			kind: cloudresourcekind.CloudResourceKind_AwsRedisElasticache,
+			rawOutputs: map[string]interface{}{
+				"replication_group_id":           "orders-cache",
+				"primary_endpoint_address":       "orders-cache.abc123.usw2.cache.amazonaws.com",
+				"reader_endpoint_address":        "orders-cache-ro.abc123.usw2.cache.amazonaws.com",
+				"configuration_endpoint_address": "",
+				"arn":                            "arn:aws:elasticache:us-west-2:123456789012:replicationgroup:orders-cache",
+				"port":                           6379,
+				"subnet_group_name":              "orders-cache",
+				"parameter_group_name":           "orders-cache-custom",
+				"engine_version_actual":          "7.1.0",
+			},
+			mustPopulate: []string{
+				"replication_group_id", "primary_endpoint_address", "reader_endpoint_address",
+				"arn", "port", "subnet_group_name", "parameter_group_name", "engine_version_actual",
+			},
+		},
+		{
+			name: "AwsMemcachedElasticache",
+			kind: cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache,
+			rawOutputs: map[string]interface{}{
+				"cluster_id":             "session-cache",
+				"cluster_address":        "session-cache.abc123.cfg.usw2.cache.amazonaws.com",
+				"configuration_endpoint": "session-cache.abc123.cfg.usw2.cache.amazonaws.com:11211",
+				"arn":                    "arn:aws:elasticache:us-west-2:123456789012:cluster:session-cache",
+				"port":                   11211,
+				"subnet_group_name":      "session-cache",
+				"parameter_group_name":   "session-cache-custom",
+			},
+			mustPopulate: []string{
+				"cluster_id", "cluster_address", "configuration_endpoint",
+				"arn", "port", "subnet_group_name", "parameter_group_name",
+			},
+		},
+		{
+			name: "AwsServerlessElasticache",
+			kind: cloudresourcekind.CloudResourceKind_AwsServerlessElasticache,
+			rawOutputs: map[string]interface{}{
+				"arn":                     "arn:aws:elasticache:us-west-2:123456789012:serverlesscache:orders-srvless",
+				"endpoint_address":        "orders-srvless-abc123.serverless.usw2.cache.amazonaws.com",
+				"endpoint_port":           6379,
+				"reader_endpoint_address": "orders-srvless-abc123-ro.serverless.usw2.cache.amazonaws.com",
+				"reader_endpoint_port":    6380,
+				"full_engine_version":     "7.1.0",
+				"name":                    "orders-srvless",
+			},
+			mustPopulate: []string{
+				"arn", "endpoint_address", "endpoint_port", "reader_endpoint_address",
+				"reader_endpoint_port", "full_engine_version", "name",
+			},
+		},
+		{
+			// AwsDocumentDb: the identifier keys the E2E verifier; endpoint +
+			// reader_endpoint are the connection handles downstream references
+			// consume; master_user_secret_arn carries the AWS-managed credential
+			// handle; and instance_endpoints guards list outputs flattening onto a
+			// repeated string field (the folded per-name cluster instances).
+			name: "AwsDocumentDb",
+			kind: cloudresourcekind.CloudResourceKind_AwsDocumentDb,
+			rawOutputs: map[string]interface{}{
+				"cluster_identifier":              "catalog-docdb",
+				"arn":                             "arn:aws:rds:us-west-2:123456789012:cluster:catalog-docdb",
+				"cluster_resource_id":             "cluster-ABCDEFGHIJKL01234",
+				"endpoint":                        "catalog-docdb.cluster-abc123.us-west-2.docdb.amazonaws.com",
+				"reader_endpoint":                 "catalog-docdb.cluster-ro-abc123.us-west-2.docdb.amazonaws.com",
+				"port":                            27017,
+				"hosted_zone_id":                  "ZNKXH85TT8WVW",
+				"engine_version_actual":           "5.0.0",
+				"master_user_secret_arn":          "arn:aws:secretsmanager:us-west-2:123456789012:secret:rds!cluster-abc-def",
+				"db_subnet_group_name":            "catalog-docdb",
+				"db_cluster_parameter_group_name": "default.docdb5.0",
+				"instance_endpoints":              []interface{}{"catalog-docdb-writer.abc123.us-west-2.docdb.amazonaws.com"},
+			},
+			mustPopulate: []string{
+				"cluster_identifier", "arn", "cluster_resource_id", "endpoint",
+				"reader_endpoint", "port", "hosted_zone_id", "engine_version_actual",
+				"master_user_secret_arn", "db_subnet_group_name",
+				"db_cluster_parameter_group_name", "instance_endpoints",
+			},
+		},
+		{
+			// AwsNeptuneCluster: the identifier keys the E2E verifier; the
+			// cluster_resource_id is the durable handle IAM database-auth policies
+			// scope to; and instance_endpoints guards list outputs flattening onto
+			// a repeated string field. This case also guards the Terraform module's
+			// first-ever outputs.tf (its absence was a live cross-engine parity bug).
+			name: "AwsNeptuneCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsNeptuneCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_identifier":                   "knowledge-graph",
+				"arn":                                  "arn:aws:rds:us-west-2:123456789012:cluster:knowledge-graph",
+				"cluster_resource_id":                  "cluster-ABCDEFGHIJKL01234",
+				"endpoint":                             "knowledge-graph.cluster-abc123.us-west-2.neptune.amazonaws.com",
+				"reader_endpoint":                      "knowledge-graph.cluster-ro-abc123.us-west-2.neptune.amazonaws.com",
+				"port":                                 8182,
+				"hosted_zone_id":                       "Z2T2AVZR3PGPQK",
+				"engine_version_actual":                "1.4.5.1",
+				"neptune_subnet_group_name":            "knowledge-graph",
+				"neptune_cluster_parameter_group_name": "default.neptune1.4",
+				"instance_endpoints":                   []interface{}{"knowledge-graph-writer.abc123.us-west-2.neptune.amazonaws.com"},
+			},
+			mustPopulate: []string{
+				"cluster_identifier", "arn", "cluster_resource_id", "endpoint",
+				"reader_endpoint", "port", "hosted_zone_id", "engine_version_actual",
+				"neptune_subnet_group_name", "neptune_cluster_parameter_group_name",
+				"instance_endpoints",
+			},
+		},
+		{
+			// AwsRedshiftCluster: the identifier keys the E2E verifier; endpoint +
+			// dns_name are the connection handles downstream references consume;
+			// cluster_namespace_arn is the data-sharing/Data-API handle; and
+			// master_password_secret_arn carries the AWS-managed credential handle.
+			name: "AwsRedshiftCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsRedshiftCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_identifier":         "analytics-warehouse",
+				"cluster_arn":                "arn:aws:redshift:us-west-2:123456789012:cluster:analytics-warehouse",
+				"cluster_namespace_arn":      "arn:aws:redshift:us-west-2:123456789012:namespace:abc12345-6789-0abc-def1-234567890abc",
+				"endpoint":                   "analytics-warehouse.abc123.us-west-2.redshift.amazonaws.com:5439",
+				"dns_name":                   "analytics-warehouse.abc123.us-west-2.redshift.amazonaws.com",
+				"database_name":              "analytics",
+				"port":                       5439,
+				"subnet_group_name":          "analytics-warehouse",
+				"parameter_group_name":       "analytics-warehouse",
+				"master_password_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:redshift!analytics-abc",
+			},
+			mustPopulate: []string{
+				"cluster_identifier", "cluster_arn", "cluster_namespace_arn",
+				"endpoint", "dns_name", "database_name", "port",
+				"subnet_group_name", "parameter_group_name",
+				"master_password_secret_arn",
+			},
+		},
+		{
+			// AwsRedshiftServerlessNamespace: namespace_name is the join key
+			// workgroups attach with (downstream references resolve against
+			// stack outputs, never metadata); admin_password_secret_arn
+			// carries the AWS-managed credential handle.
+			name: "AwsRedshiftServerlessNamespace",
+			kind: cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace,
+			rawOutputs: map[string]interface{}{
+				"namespace_name":            "analytics-data",
+				"namespace_id":              "abc12345-6789-0abc-def1-234567890abc",
+				"arn":                       "arn:aws:redshift-serverless:us-west-2:123456789012:namespace/abc12345-6789-0abc-def1-234567890abc",
+				"db_name":                   "analytics",
+				"admin_password_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:redshift!analytics-data-admin-abc",
+			},
+			mustPopulate: []string{
+				"namespace_name", "namespace_id", "arn", "db_name",
+				"admin_password_secret_arn",
+			},
+		},
+		{
+			// AwsRedshiftServerlessWorkgroup: workgroup_name keys the E2E
+			// verifier and the credentials API; endpoint_address + port are
+			// the connection handles downstream references consume.
+			name: "AwsRedshiftServerlessWorkgroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessWorkgroup,
+			rawOutputs: map[string]interface{}{
+				"workgroup_name":   "analytics-compute",
+				"workgroup_id":     "def67890-1234-5abc-def6-789012345def",
+				"arn":              "arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/def67890-1234-5abc-def6-789012345def",
+				"endpoint_address": "analytics-compute.123456789012.us-west-2.redshift-serverless.amazonaws.com",
+				"port":             5439,
+			},
+			mustPopulate: []string{
+				"workgroup_name", "workgroup_id", "arn", "endpoint_address",
+				"port",
+			},
+		},
+		{
+			// AwsDynamodb: table_name/table_arn are the join keys IAM policies
+			// and application config consume; stream_arn is what Lambda
+			// event-source mappings attach to when streams are enabled.
+			name: "AwsDynamodb",
+			kind: cloudresourcekind.CloudResourceKind_AwsDynamodb,
+			rawOutputs: map[string]interface{}{
+				"table_name":   "orders",
+				"table_arn":    "arn:aws:dynamodb:us-west-2:123456789012:table/orders",
+				"table_id":     "orders",
+				"stream_arn":   "arn:aws:dynamodb:us-west-2:123456789012:table/orders/stream/2026-07-04T00:00:00.000",
+				"stream_label": "2026-07-04T00:00:00.000",
+			},
+			mustPopulate: []string{
+				"table_name", "table_arn", "table_id", "stream_arn",
+				"stream_label",
+			},
+		},
+		{
+			// AwsMskCluster: cluster_arn keys the E2E verifier and IAM
+			// policies; the bootstrap_brokers_* family carries the
+			// per-listener connection strings clients consume (each engine
+			// emits every variant, empty when the listener is off); and
+			// configuration_arn surfaces the module-managed configuration
+			// folded from server_properties.
+			name: "AwsMskCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsMskCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_arn":                                   "arn:aws:kafka:us-west-2:123456789012:cluster/orders-streaming/abc12345-6789-0abc-def1-234567890abc-2",
+				"cluster_name":                                  "orders-streaming",
+				"cluster_uuid":                                  "abc12345-6789-0abc-def1-234567890abc-2",
+				"current_version":                               "K3AEGXETSR30VB",
+				"bootstrap_brokers":                             "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9092",
+				"bootstrap_brokers_tls":                         "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9094",
+				"bootstrap_brokers_sasl_iam":                    "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9098",
+				"bootstrap_brokers_sasl_scram":                  "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9096",
+				"bootstrap_brokers_public_tls":                  "b-1-public.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9194",
+				"bootstrap_brokers_public_sasl_iam":             "b-1-public.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9198",
+				"bootstrap_brokers_public_sasl_scram":           "b-1-public.orders.abc123.c2.kafka.us-west-2.amazonaws.com:9196",
+				"bootstrap_brokers_vpc_connectivity_tls":        "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:14001",
+				"bootstrap_brokers_vpc_connectivity_sasl_iam":   "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:14003",
+				"bootstrap_brokers_vpc_connectivity_sasl_scram": "b-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:14002",
+				"zookeeper_connect_string":                      "z-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:2181",
+				"zookeeper_connect_string_tls":                  "z-1.orders.abc123.c2.kafka.us-west-2.amazonaws.com:2182",
+				"configuration_arn":                             "arn:aws:kafka:us-west-2:123456789012:configuration/orders-streaming/def67890-1234-5abc-def6-789012345def-3",
+			},
+			mustPopulate: []string{
+				"cluster_arn", "cluster_name", "cluster_uuid", "current_version",
+				"bootstrap_brokers", "bootstrap_brokers_tls",
+				"bootstrap_brokers_sasl_iam", "bootstrap_brokers_sasl_scram",
+				"bootstrap_brokers_public_tls", "bootstrap_brokers_public_sasl_iam",
+				"bootstrap_brokers_public_sasl_scram",
+				"bootstrap_brokers_vpc_connectivity_tls",
+				"bootstrap_brokers_vpc_connectivity_sasl_iam",
+				"bootstrap_brokers_vpc_connectivity_sasl_scram",
+				"zookeeper_connect_string", "zookeeper_connect_string_tls",
+				"configuration_arn",
+			},
+		},
+		{
+			// AwsMskServerlessCluster: cluster_arn keys the E2E verifier and
+			// the kafka-cluster:* IAM policies clients need;
+			// bootstrap_brokers_sasl_iam is the only connection string
+			// serverless MSK exposes (SASL/IAM is its sole auth scheme).
+			name: "AwsMskServerlessCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsMskServerlessCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_arn":                "arn:aws:kafka:us-west-2:123456789012:cluster/events-kafka/abc12345-6789-0abc-def1-234567890abc-s1",
+				"cluster_name":               "events-kafka",
+				"cluster_uuid":               "abc12345-6789-0abc-def1-234567890abc-s1",
+				"bootstrap_brokers_sasl_iam": "boot-abc123.c1.kafka-serverless.us-west-2.amazonaws.com:9098",
+			},
+			mustPopulate: []string{
+				"cluster_arn", "cluster_name", "cluster_uuid",
+				"bootstrap_brokers_sasl_iam",
+			},
+		},
+		{
+			// AwsSecurityGroup: security_group_id is the join key every
+			// attach-shaped kind references; security_group_arn is the form
+			// IAM policy conditions expect; owner_id enables cross-account
+			// rule references (<owner_id>/<group_id>).
+			name: "AwsSecurityGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsSecurityGroup,
+			rawOutputs: map[string]interface{}{
+				"security_group_id":  "sg-0123456789abcdef0",
+				"security_group_arn": "arn:aws:ec2:us-west-2:123456789012:security-group/sg-0123456789abcdef0",
+				"owner_id":           "123456789012",
+			},
+			mustPopulate: []string{
+				"security_group_id", "security_group_arn", "owner_id",
+			},
+		},
+		{
+			// AwsLambda: function_name keys the E2E verifier; function_arn is
+			// the join key for event-source mappings and IAM policies; invoke_arn
+			// is what API Gateway integrations consume.
+			name: "AwsLambda",
+			kind: cloudresourcekind.CloudResourceKind_AwsLambda,
+			rawOutputs: map[string]interface{}{
+				"function_arn":   "arn:aws:lambda:us-west-2:123456789012:function:planton-oss-e2e-lambda-smoke",
+				"function_name":  "planton-oss-e2e-lambda-smoke",
+				"invoke_arn":     "arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:123456789012:function:planton-oss-e2e-lambda-smoke/invocations",
+				"qualified_arn":  "",
+				"version":        "",
+				"function_url":   "",
+				"alias_arns":     map[string]interface{}{},
+				"log_group_name": "/aws/lambda/planton-oss-e2e-lambda-smoke",
+			},
+			mustPopulate: []string{
+				"function_arn", "function_name", "invoke_arn", "log_group_name",
+			},
+		},
+		{
+			// AwsKmsKey: key_id keys the E2E verifier; key_arn is the join key
+			// encryption-at-rest fields reference; alias_names carries the human-
+			// friendly addresses SDK callers may use instead of the key ID.
+			name: "AwsKmsKey",
+			kind: cloudresourcekind.CloudResourceKind_AwsKmsKey,
+			rawOutputs: map[string]interface{}{
+				"key_id":      "12345678-1234-1234-1234-123456789012",
+				"key_arn":     "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+				"alias_names": []interface{}{"alias/planton-oss-e2e-kms-smoke"},
+			},
+			mustPopulate: []string{
+				"key_id", "key_arn", "alias_names",
+			},
+		},
+		{
+			// AwsSqsQueue: queue_url is the SQS API handle; queue_arn is the
+			// IAM/cross-service join key (DLQ targets, SNS subscriptions,
+			// Lambda event source mappings); queue_name keys the E2E verifier.
+			name: "AwsSqsQueue",
+			kind: cloudresourcekind.CloudResourceKind_AwsSqsQueue,
+			rawOutputs: map[string]interface{}{
+				"queue_url":  "https://sqs.us-west-2.amazonaws.com/123456789012/planton-oss-e2e-sqs-smoke",
+				"queue_arn":  "arn:aws:sqs:us-west-2:123456789012:planton-oss-e2e-sqs-smoke",
+				"queue_name": "planton-oss-e2e-sqs-smoke",
+			},
+			mustPopulate: []string{
+				"queue_url", "queue_arn", "queue_name",
+			},
+		},
+		{
+			// AwsSnsTopic: topic_arn is the subscription/EventBridge join key;
+			// topic_name keys the E2E verifier; owner and beginning_archive_time
+			// surface FIFO archive metadata when enabled.
+			name: "AwsSnsTopic",
+			kind: cloudresourcekind.CloudResourceKind_AwsSnsTopic,
+			rawOutputs: map[string]interface{}{
+				"topic_arn":              "arn:aws:sns:us-west-2:123456789012:planton-oss-e2e-sns-smoke",
+				"topic_name":             "planton-oss-e2e-sns-smoke",
+				"owner":                  "123456789012",
+				"beginning_archive_time": "2026-07-04T12:00:00Z",
+			},
+			mustPopulate: []string{
+				"topic_arn", "topic_name", "owner", "beginning_archive_time",
+			},
+		},
+		{
+			// AwsSnsSubscription: subscription_arn is the AWS identity and
+			// unsubscribe handle; owner_id supports cross-account wiring;
+			// pending_confirmation and confirmation_was_authenticated surface
+			// the HTTP/email handshake lifecycle.
+			name: "AwsSnsSubscription",
+			kind: cloudresourcekind.CloudResourceKind_AwsSnsSubscription,
+			rawOutputs: map[string]interface{}{
+				"subscription_arn":               "arn:aws:sns:us-west-2:123456789012:planton-oss-e2e-sns-smoke:01234567-89ab-cdef-0123-456789abcdef",
+				"owner_id":                       "123456789012",
+				"pending_confirmation":           true,
+				"confirmation_was_authenticated": true,
+			},
+			mustPopulate: []string{
+				"subscription_arn", "owner_id",
+				"pending_confirmation", "confirmation_was_authenticated",
+			},
+		},
+		{
+			// AwsEventBridgeBus: bus_name keys the E2E verifier and rule
+			// event_bus_name references; bus_arn is the IAM/cross-account
+			// join key.
+			name: "AwsEventBridgeBus",
+			kind: cloudresourcekind.CloudResourceKind_AwsEventBridgeBus,
+			rawOutputs: map[string]interface{}{
+				"bus_name": "planton-oss-e2e-eventbridge-bus-smoke",
+				"bus_arn":  "arn:aws:events:us-west-2:123456789012:event-bus/planton-oss-e2e-eventbridge-bus-smoke",
+			},
+			mustPopulate: []string{
+				"bus_name", "bus_arn",
+			},
+		},
+		{
+			// AwsEventBridgeRule: rule_arn is the IAM/monitoring join key;
+			// rule_name keys the E2E verifier and EventBridge API calls.
+			name: "AwsEventBridgeRule",
+			kind: cloudresourcekind.CloudResourceKind_AwsEventBridgeRule,
+			rawOutputs: map[string]interface{}{
+				"rule_arn":  "arn:aws:events:us-west-2:123456789012:rule/planton-oss-e2e-eventbridge-bus-smoke/planton-oss-e2e-rule-smoke",
+				"rule_name": "planton-oss-e2e-rule-smoke",
+			},
+			mustPopulate: []string{
+				"rule_arn", "rule_name",
+			},
+		},
+		{
+			// AwsLambdaEventSourceMapping: uuid keys the E2E verifier;
+			// mapping_arn and function_arn are the join keys downstream
+			// automation consumes; state surfaces the last observed lifecycle.
+			name: "AwsLambdaEventSourceMapping",
+			kind: cloudresourcekind.CloudResourceKind_AwsLambdaEventSourceMapping,
+			rawOutputs: map[string]interface{}{
+				"uuid":         "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+				"mapping_arn":  "arn:aws:lambda:us-west-2:123456789012:event-source-mapping:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+				"function_arn": "arn:aws:lambda:us-west-2:123456789012:function:planton-oss-e2e-lambda-smoke",
+				"state":        "Enabled",
+			},
+			mustPopulate: []string{
+				"uuid", "mapping_arn", "function_arn", "state",
+			},
+		},
+		{
+			// AwsMwaaEnvironment: environment_name keys the E2E verifier;
+			// webserver_url is the operator's handle on the Airflow UI; the
+			// two *_vpc_endpoint_service outputs are what CUSTOMER endpoint
+			// management composes AwsVpcEndpoint nodes against.
+			name: "AwsMwaaEnvironment",
+			kind: cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment,
+			rawOutputs: map[string]interface{}{
+				"environment_arn":                "arn:aws:airflow:us-west-2:123456789012:environment/prod-airflow",
+				"environment_name":               "prod-airflow",
+				"webserver_url":                  "abc123de-f456-7890-abcd-ef1234567890.c2.us-west-2.airflow.amazonaws.com",
+				"airflow_version":                "2.10.1",
+				"service_role_arn":               "arn:aws:iam::123456789012:role/aws-service-role/airflow.amazonaws.com/AWSServiceRoleForAmazonMWAA",
+				"environment_class":              "mw1.medium",
+				"status":                         "AVAILABLE",
+				"created_at":                     "2026-07-04T12:00:00Z",
+				"database_vpc_endpoint_service":  "com.amazonaws.vpce.us-west-2.vpce-svc-0123456789abcdef0",
+				"webserver_vpc_endpoint_service": "com.amazonaws.vpce.us-west-2.vpce-svc-0fedcba9876543210",
+			},
+			mustPopulate: []string{
+				"environment_arn", "environment_name", "webserver_url",
+				"airflow_version", "service_role_arn", "environment_class",
+				"status", "created_at", "database_vpc_endpoint_service",
+				"webserver_vpc_endpoint_service",
+			},
+		},
+		{
+			// AwsOpenSearchDomain: domain_name keys the E2E verifier;
+			// endpoint + dashboard_endpoint are the connection handles
+			// downstream references consume; the *_v2 trio carries the
+			// dual-stack endpoint surface added this session.
+			name: "AwsOpenSearchDomain",
+			kind: cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain,
+			rawOutputs: map[string]interface{}{
+				"domain_id":                         "123456789012/search-logs",
+				"domain_name":                       "search-logs",
+				"domain_arn":                        "arn:aws:es:us-west-2:123456789012:domain/search-logs",
+				"endpoint":                          "search-search-logs-abc123.us-west-2.es.amazonaws.com",
+				"dashboard_endpoint":                "search-search-logs-abc123.us-west-2.es.amazonaws.com/_dashboards",
+				"endpoint_v2":                       "search-logs-abc123.us-west-2.aos.amazonaws.com",
+				"dashboard_endpoint_v2":             "search-logs-abc123.us-west-2.aos.amazonaws.com/_dashboards",
+				"domain_endpoint_v2_hosted_zone_id": "Z1H1FL5HABSF5",
+			},
+			mustPopulate: []string{
+				"domain_id", "domain_name", "domain_arn", "endpoint",
+				"dashboard_endpoint", "endpoint_v2", "dashboard_endpoint_v2",
+				"domain_endpoint_v2_hosted_zone_id",
+			},
+		},
+		{
+			// AwsEc2Instance: instance_id is the join key target groups
+			// register; the address quartet carries the connection surface
+			// (public values empty for private-only instances -- both
+			// engines emit them regardless).
+			name: "AwsEc2Instance",
+			kind: cloudresourcekind.CloudResourceKind_AwsEc2Instance,
+			rawOutputs: map[string]interface{}{
+				"instance_id":                  "i-0123456789abcdef0",
+				"arn":                          "arn:aws:ec2:us-west-2:123456789012:instance/i-0123456789abcdef0",
+				"instance_state":               "running",
+				"availability_zone":            "us-west-2a",
+				"private_ip":                   "10.0.1.15",
+				"private_dns":                  "ip-10-0-1-15.us-west-2.compute.internal",
+				"public_ip":                    "",
+				"public_dns":                   "",
+				"primary_network_interface_id": "eni-0123456789abcdef0",
+			},
+			mustPopulate: []string{
+				"instance_id", "arn", "instance_state", "availability_zone",
+				"private_ip", "private_dns", "primary_network_interface_id",
+			},
+		},
+		{
+			// AwsEcsCluster: cluster_arn is the join key AwsEcsService
+			// references; capacity_provider_names is the strategy
+			// vocabulary (built-ins plus folded EC2 providers) and
+			// capacity_provider_arns the folded providers' identities --
+			// both list outputs, guarding list flattening.
+			name: "AwsEcsCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsEcsCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_name":            "prod-apps",
+				"cluster_arn":             "arn:aws:ecs:us-west-2:123456789012:cluster/prod-apps",
+				"capacity_provider_names": []interface{}{"FARGATE", "FARGATE_SPOT", "general-purpose"},
+				"capacity_provider_arns":  []interface{}{"arn:aws:ecs:us-west-2:123456789012:capacity-provider/general-purpose"},
+			},
+			mustPopulate: []string{
+				"cluster_name", "cluster_arn", "capacity_provider_names",
+				"capacity_provider_arns",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the
@@ -551,6 +1373,53 @@ func TestStackOutputsConformance(t *testing.T) {
 				"errors":     []interface{}{},
 			},
 			mustPopulate: []string{"status"},
+		},
+		{
+			// AwsCertManagerCert: cert_arn is the join key every TLS consumer
+			// references (listeners, CloudFront, Cognito, OpenSearch, Client
+			// VPN); domain_validation_records guards the repeated-message
+			// shape external-DNS users consume to create their validation
+			// CNAMEs; status is what the E2E verifier keys on (a no-zone cert
+			// rests in PENDING_VALIDATION).
+			name: "AwsCertManagerCert",
+			kind: cloudresourcekind.CloudResourceKind_AwsCertManagerCert,
+			rawOutputs: map[string]interface{}{
+				"cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012",
+				"status":   "PENDING_VALIDATION",
+				"domain_validation_records": []interface{}{
+					map[string]interface{}{
+						"domain_name":  "example.com",
+						"record_name":  "_3839f23e624907e70b9e.example.com.",
+						"record_type":  "CNAME",
+						"record_value": "_632077f7a35f9d.mhbtsbpdnt.acm-validations.aws.",
+					},
+				},
+				"not_before":       "",
+				"not_after":        "",
+				"certificate_type": "AMAZON_ISSUED",
+			},
+			mustPopulate: []string{
+				"cert_arn", "status", "certificate_type", "domain_validation_records",
+			},
+		},
+		{
+			// AwsCloudFront: distribution_id keys the E2E verifier and
+			// invalidation requests; domain_name + hosted_zone_id are what
+			// Route53 alias records compose against; distribution_arn is the
+			// WAF-association join key.
+			name: "AwsCloudFront",
+			kind: cloudresourcekind.CloudResourceKind_AwsCloudFront,
+			rawOutputs: map[string]interface{}{
+				"distribution_id":  "E2ABCDEF123456",
+				"distribution_arn": "arn:aws:cloudfront::123456789012:distribution/E2ABCDEF123456",
+				"domain_name":      "d123abc456def.cloudfront.net",
+				"hosted_zone_id":   "Z2FDTNDATAQYW2",
+				"status":           "Deployed",
+			},
+			mustPopulate: []string{
+				"distribution_id", "distribution_arn", "domain_name",
+				"hosted_zone_id", "status",
+			},
 		},
 	}
 

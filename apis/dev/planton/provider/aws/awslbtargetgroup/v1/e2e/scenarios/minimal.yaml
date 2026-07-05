@@ -1,0 +1,39 @@
+# Minimal AwsLbTargetGroup scenario: an ALB-family HTTP target group for IP
+# targets (the ECS/EKS shape) with an explicit health check. vpcId is a
+# value_from reference to the AwsVpc prerequisite (declared via
+# prerequisites: [AwsVpc] in the kind registry); the harness deploys that VPC
+# first and resolves the reference before the group is applied. Full metadata
+# is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsLbTargetGroup
+metadata:
+  name: planton-oss-e2e-lbtg-smoke
+  id: planton-oss-e2e-lbtg-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awslbtargetgroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  targetType: ip
+  port: 8080
+  protocol: HTTP
+  deregistrationDelaySeconds: 30
+  healthCheck:
+    protocol: HTTP
+    path: /healthz
+    healthyThreshold: 3
+    unhealthyThreshold: 3
+    intervalSeconds: 15
+    timeoutSeconds: 5
+    matcher: "200-299"

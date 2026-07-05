@@ -9,32 +9,33 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals acts like Terraform “locals”, grouping derived values
-// that the rest of the module re‑uses.
 type Locals struct {
 	AwsEc2Instance *awsec2instancev1.AwsEc2Instance
-	AwsTags        map[string]string
+
+	// InstanceName is metadata.name. EC2 instances have no name argument
+	// -- the Name tag IS the instance's display identity -- so both
+	// engines carry metadata.name in the Name tag and a manifest deploys
+	// identically on either.
+	InstanceName string
+
+	AwsTags map[string]string
 }
 
-// initializeLocals converts the stack‑input into Locals.
-func initializeLocals(ctx *pulumi.Context, stackInput *awsec2instancev1.AwsEc2InstanceStackInput) *Locals {
-	locals := &Locals{
-		AwsEc2Instance: stackInput.Target,
-	}
+func initializeLocals(_ *pulumi.Context, stackInput *awsec2instancev1.AwsEc2InstanceStackInput) *Locals {
+	locals := &Locals{}
+	locals.AwsEc2Instance = stackInput.Target
 
-	// Base tags (always present)
+	metadata := stackInput.Target.Metadata
+	locals.InstanceName = metadata.Name
+
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
-		awstagkeys.Environment:  locals.AwsEc2Instance.Metadata.Env,
-		awstagkeys.Name:         locals.AwsEc2Instance.Metadata.Name,
-		awstagkeys.Organization: locals.AwsEc2Instance.Metadata.Org,
+		awstagkeys.Name:         metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
-		awstagkeys.ResourceId:   locals.AwsEc2Instance.Metadata.Id,
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
 		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsEc2Instance.String(),
-	}
-
-	// Merge user‑supplied tags (override on collision)
-	for k, v := range locals.AwsEc2Instance.Spec.Tags {
-		locals.AwsTags[k] = v
+		awstagkeys.ResourceId:   metadata.Id,
 	}
 
 	return locals

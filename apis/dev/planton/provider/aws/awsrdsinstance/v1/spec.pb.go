@@ -24,49 +24,263 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsRdsInstanceSpec defines the minimal configuration to create a single AWS RDS DB instance
-// (engines like postgres, mysql, mariadb, oracle, sqlserver). It focuses on essential 80/20 fields
-// for networking, engine selection, instance sizing, and credentials. Validations are intentionally
-// omitted in this rule; a later rule will add them.
+// AwsRdsInstanceSpec defines a single RDS DB instance: a standalone
+// database server (postgres, mysql, mariadb, oracle-*, sqlserver-*) with
+// its own EBS-backed storage -- optionally Multi-AZ with a synchronous
+// standby, or a read replica of another instance.
+//
+// This is the classic single-node RDS shape. For Aurora's shared-storage
+// clusters (and Multi-AZ DB clusters of mysql/postgres), use
+// AwsRdsCluster instead -- cluster members are modeled there, never here.
+//
+// The instance identifier comes from metadata.name. Security groups,
+// subnets, KMS keys, and the monitoring role compose by reference --
+// database ingress rules belong on the referenced AwsSecurityGroup node,
+// never inside this instance.
 type AwsRdsInstanceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the resource will be created.
-	// Example: "us-west-2", "eu-west-1"
+	// The AWS region the instance is created in. Must match the region of
+	// the subnets, security groups, and KMS keys it references.
+	// Example: "us-west-2", "eu-west-1".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// Subnets for the DB subnet group. Provide at least two private subnets for high availability.
-	// Alternatively, provide an existing DB subnet group name via db_subnet_group_name.
+	// Subnets for the instance's DB subnet group. Provide at least two
+	// subnets in DISTINCT availability zones -- AWS requires the subnet
+	// group to cover two AZs even for a single-AZ instance. Reference
+	// AwsSubnet subnet_id outputs or pass literal subnet IDs. The module
+	// manages the subnet group itself (pure glue); alternatively point
+	// db_subnet_group_name at an existing group.
 	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
-	// Name of an existing DB subnet group to use instead of specifying subnet_ids.
+	// Name of an existing DB subnet group to place the instance in,
+	// instead of providing subnet_ids.
 	DbSubnetGroupName *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=db_subnet_group_name,json=dbSubnetGroupName,proto3" json:"db_subnet_group_name,omitempty"`
-	// Security groups to associate with the instance's network interface.
+	// Security groups attached to the instance. Empty uses the VPC's
+	// default security group (the AWS default). Reference AwsSecurityGroup
+	// security_group_id outputs or pass literal SG IDs.
 	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// Database engine (e.g., "postgres", "mysql", "mariadb", "oracle-se2", "sqlserver-ex").
+	// The database engine: "postgres", "mysql", "mariadb", "oracle-ee",
+	// "oracle-se2", "sqlserver-ex", "sqlserver-web", "sqlserver-se",
+	// "sqlserver-ee", and license-included/CDB variants. Required for a
+	// new instance (a read replica inherits it from the source). Changing
+	// the engine replaces the instance.
 	Engine string `protobuf:"bytes,5,opt,name=engine,proto3" json:"engine,omitempty"`
-	// Desired engine version (e.g., "14.10" for Postgres, or a version string appropriate to the engine).
+	// The engine version, e.g. "16.4" (postgres) or "8.0.39" (mysql).
+	// Leave empty to let AWS pick the engine's current default version --
+	// an empty pin never goes stale. Minor upgrades apply in place; major
+	// upgrades additionally need allow_major_version_upgrade.
 	EngineVersion string `protobuf:"bytes,6,opt,name=engine_version,json=engineVersion,proto3" json:"engine_version,omitempty"`
-	// Instance class (size), e.g., "db.t3.micro", "db.m6g.large".
+	// The instance class (compute size), e.g. "db.t4g.micro",
+	// "db.m6g.large". Required.
 	InstanceClass string `protobuf:"bytes,7,opt,name=instance_class,json=instanceClass,proto3" json:"instance_class,omitempty"`
-	// Allocated storage size in GiB for the primary storage.
+	// Provisioned storage in GiB. Required for a new instance (read
+	// replicas and snapshot restores inherit the source's storage).
+	// Growing it applies in place; shrinking requires a new instance.
 	AllocatedStorageGb int32 `protobuf:"varint,8,opt,name=allocated_storage_gb,json=allocatedStorageGb,proto3" json:"allocated_storage_gb,omitempty"`
-	// Enable storage encryption for the instance.
-	StorageEncrypted bool `protobuf:"varint,9,opt,name=storage_encrypted,json=storageEncrypted,proto3" json:"storage_encrypted,omitempty"`
-	// Customer-managed KMS key ARN/alias for storage encryption when enabled.
-	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
-	// Master user credentials. When using platform-managed secrets, a later rule will define validations.
-	Username string `protobuf:"bytes,11,opt,name=username,proto3" json:"username,omitempty"`
-	Password string `protobuf:"bytes,12,opt,name=password,proto3" json:"password,omitempty"`
-	// Database port.
-	Port int32 `protobuf:"varint,13,opt,name=port,proto3" json:"port,omitempty"`
-	// Whether the instance has a public IP address.
-	PubliclyAccessible bool `protobuf:"varint,14,opt,name=publicly_accessible,json=publiclyAccessible,proto3" json:"publicly_accessible,omitempty"`
-	// Whether to deploy the instance in Multi-AZ mode.
-	MultiAz bool `protobuf:"varint,15,opt,name=multi_az,json=multiAz,proto3" json:"multi_az,omitempty"`
-	// Optional parameter group name to associate with the instance.
-	ParameterGroupName string `protobuf:"bytes,16,opt,name=parameter_group_name,json=parameterGroupName,proto3" json:"parameter_group_name,omitempty"`
-	// Optional option group name to associate with the instance (for certain engines).
-	OptionGroupName string `protobuf:"bytes,17,opt,name=option_group_name,json=optionGroupName,proto3" json:"option_group_name,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Storage autoscaling ceiling in GiB. When set above
+	// allocated_storage_gb, RDS grows storage automatically as the
+	// database approaches capacity -- the cheap insurance against
+	// disk-full outages. 0 disables autoscaling.
+	MaxAllocatedStorageGb int32 `protobuf:"varint,9,opt,name=max_allocated_storage_gb,json=maxAllocatedStorageGb,proto3" json:"max_allocated_storage_gb,omitempty"`
+	// The EBS storage type: "gp3" (the modern default -- baseline
+	// 3000 IOPS/125 MiB/s, independently tunable), "gp2" (legacy
+	// burst-credit SSD), "io1"/"io2" (provisioned-IOPS for
+	// latency-critical workloads), or "standard" (magnetic, legacy).
+	// Empty keeps the AWS default.
+	StorageType string `protobuf:"bytes,10,opt,name=storage_type,json=storageType,proto3" json:"storage_type,omitempty"`
+	// Provisioned IOPS. Required for io1/io2; optional for gp3 to raise
+	// it above the 3000 baseline. 0 keeps the storage type's default.
+	Iops int32 `protobuf:"varint,11,opt,name=iops,proto3" json:"iops,omitempty"`
+	// Storage throughput in MiB/s, gp3 only, to raise it above the 125
+	// baseline. 0 keeps the default.
+	StorageThroughput int32 `protobuf:"varint,12,opt,name=storage_throughput,json=storageThroughput,proto3" json:"storage_throughput,omitempty"`
+	// Use a dedicated EBS volume for database logs instead of sharing the
+	// data volume -- steadier I/O for audit-heavy or WAL-heavy workloads.
+	DedicatedLogVolume bool `protobuf:"varint,13,opt,name=dedicated_log_volume,json=dedicatedLogVolume,proto3" json:"dedicated_log_volume,omitempty"`
+	// Encrypt instance storage at rest. Strongly recommended -- and
+	// create-time only: an unencrypted instance cannot be encrypted later
+	// (requires a snapshot-restore migration). Read replicas inherit the
+	// source's encryption.
+	StorageEncrypted bool `protobuf:"varint,14,opt,name=storage_encrypted,json=storageEncrypted,proto3" json:"storage_encrypted,omitempty"`
+	// The KMS key for storage encryption when storage_encrypted is true.
+	// Empty uses the AWS-managed aws/rds key. Reference an AwsKmsKey
+	// key_arn output or pass a literal key ARN. Create-time only.
+	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	// The name of the initial database AWS creates. Empty creates no
+	// database. Create-time only. Not supported by SQL Server.
+	DbName string `protobuf:"bytes,16,opt,name=db_name,json=dbName,proto3" json:"db_name,omitempty"`
+	// The master username. Required for a brand-new instance -- AWS has
+	// no default and rejects a blank value at CreateDBInstance. Only
+	// instances that inherit credentials from a source (a read replica,
+	// a snapshot restore, or a point-in-time restore) leave it empty.
+	// Avoid the engine's reserved names (e.g. "rdsadmin"). Create-time
+	// only -- changing it replaces the instance.
+	Username string `protobuf:"bytes,17,opt,name=username,proto3" json:"username,omitempty"`
+	// Let AWS manage the master password in Secrets Manager: AWS
+	// generates it, stores it, rotates it on schedule, and no secret ever
+	// touches this manifest or the IaC state. The managed secret's ARN is
+	// exported as the master_user_secret_arn output. Mutually exclusive
+	// with password -- and the recommended posture.
+	ManageMasterUserPassword bool `protobuf:"varint,18,opt,name=manage_master_user_password,json=manageMasterUserPassword,proto3" json:"manage_master_user_password,omitempty"`
+	// The KMS key that encrypts the AWS-managed master-user secret (only
+	// meaningful with manage_master_user_password). Empty uses the
+	// account's default aws/secretsmanager key. Reference an AwsKmsKey
+	// key_arn output or pass a literal key ARN.
+	MasterUserSecretKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,19,opt,name=master_user_secret_kms_key_id,json=masterUserSecretKmsKeyId,proto3" json:"master_user_secret_kms_key_id,omitempty"`
+	// The master password, supplied directly. Stored in IaC state --
+	// prefer manage_master_user_password, which keeps the secret in
+	// Secrets Manager entirely. Mutually exclusive with
+	// manage_master_user_password.
+	Password string `protobuf:"bytes,20,opt,name=password,proto3" json:"password,omitempty"`
+	// The port the instance accepts connections on. 0 keeps the engine
+	// default (5432 postgres, 3306 mysql/mariadb, 1521 oracle, 1433
+	// sqlserver).
+	Port int32 `protobuf:"varint,21,opt,name=port,proto3" json:"port,omitempty"`
+	// Deploy a synchronous standby replica in a second AZ with automatic
+	// failover -- the single most important availability knob on a
+	// production instance. (For a Multi-AZ CLUSTER with readable
+	// standbys, use AwsRdsCluster with a community engine instead.)
+	MultiAz bool `protobuf:"varint,22,opt,name=multi_az,json=multiAz,proto3" json:"multi_az,omitempty"`
+	// Pin a single-AZ instance to one availability zone. Empty lets AWS
+	// place it. Cannot be combined with multi_az.
+	AvailabilityZone string `protobuf:"bytes,23,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
+	// Give the instance a public IP. Requires public subnets; keep false
+	// for anything production-shaped.
+	PubliclyAccessible bool `protobuf:"varint,24,opt,name=publicly_accessible,json=publiclyAccessible,proto3" json:"publicly_accessible,omitempty"`
+	// The network stack: "IPV4" (AWS default when unset) or "DUAL" for
+	// dual-stack IPv4+IPv6.
+	NetworkType string `protobuf:"bytes,25,opt,name=network_type,json=networkType,proto3" json:"network_type,omitempty"`
+	// Make this instance a read replica of the given source: a source
+	// instance identifier (same region) or ARN (cross-region). Engine,
+	// storage, and credentials are inherited from the source. Promote to
+	// a standalone instance by clearing the field.
+	ReplicateSourceDb string `protobuf:"bytes,26,opt,name=replicate_source_db,json=replicateSourceDb,proto3" json:"replicate_source_db,omitempty"`
+	// Replica behavior, Oracle only: "open-read-only" (a queryable
+	// replica) or "mounted" (a running-but-closed disaster-recovery
+	// target). Empty keeps the AWS default (open-read-only).
+	ReplicaMode string `protobuf:"bytes,27,opt,name=replica_mode,json=replicaMode,proto3" json:"replica_mode,omitempty"`
+	// Restore from an existing DB snapshot (name or ARN) at create time.
+	// Create-time only; mutually exclusive with restore_to_point_in_time
+	// and replicate_source_db.
+	SnapshotIdentifier string `protobuf:"bytes,28,opt,name=snapshot_identifier,json=snapshotIdentifier,proto3" json:"snapshot_identifier,omitempty"`
+	// Restore from another instance's continuous backup at create time --
+	// point-in-time recovery as a first-class create shape. Create-time
+	// only; mutually exclusive with snapshot_identifier and
+	// replicate_source_db.
+	RestoreToPointInTime *AwsRdsInstanceRestoreToPointInTime `protobuf:"bytes,29,opt,name=restore_to_point_in_time,json=restoreToPointInTime,proto3" json:"restore_to_point_in_time,omitempty"`
+	// Days automated backups are retained, 0-35. 0 disables automated
+	// backups (and point-in-time recovery) -- production instances want
+	// 7+. Note: a MySQL-family read-replica source needs retention > 0.
+	BackupRetentionPeriod int32 `protobuf:"varint,30,opt,name=backup_retention_period,json=backupRetentionPeriod,proto3" json:"backup_retention_period,omitempty"`
+	// The daily backup window in UTC, format "hh24:mi-hh24:mi" (e.g.
+	// "04:00-05:00"). Empty lets AWS assign one. Must not overlap the
+	// maintenance window.
+	BackupWindow string `protobuf:"bytes,31,opt,name=backup_window,json=backupWindow,proto3" json:"backup_window,omitempty"`
+	// The weekly maintenance window in UTC, format
+	// "ddd:hh24:mi-ddd:hh24:mi" (e.g. "sun:05:00-sun:06:00"). Empty lets
+	// AWS assign one.
+	MaintenanceWindow string `protobuf:"bytes,32,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
+	// Copy the instance's tags onto automated and manual snapshots.
+	CopyTagsToSnapshot bool `protobuf:"varint,33,opt,name=copy_tags_to_snapshot,json=copyTagsToSnapshot,proto3" json:"copy_tags_to_snapshot,omitempty"`
+	// Remove automated backups immediately when the instance is deleted.
+	// AWS defaults this to true; set false to retain the backups for the
+	// remainder of their retention window after deletion -- the last line
+	// of defense against a mistaken teardown.
+	DeleteAutomatedBackups *bool `protobuf:"varint,34,opt,name=delete_automated_backups,json=deleteAutomatedBackups,proto3,oneof" json:"delete_automated_backups,omitempty"`
+	// Skip the final snapshot when the instance is deleted. When false
+	// (the safe default), final_snapshot_identifier must be set -- AWS
+	// refuses to delete without knowing the snapshot name.
+	SkipFinalSnapshot bool `protobuf:"varint,35,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3" json:"skip_final_snapshot,omitempty"`
+	// The name for the final snapshot taken on deletion. Required when
+	// skip_final_snapshot is false.
+	FinalSnapshotIdentifier string `protobuf:"bytes,36,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
+	// Refuse deletion of the instance while enabled. Turn this on for
+	// anything holding data you cannot recreate.
+	DeletionProtection bool `protobuf:"varint,37,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
+	// Map IAM identities to database users -- connect with short-lived
+	// IAM auth tokens instead of passwords. MySQL and PostgreSQL engines.
+	IamDatabaseAuthenticationEnabled bool `protobuf:"varint,38,opt,name=iam_database_authentication_enabled,json=iamDatabaseAuthenticationEnabled,proto3" json:"iam_database_authentication_enabled,omitempty"`
+	// Database log types to export to CloudWatch Logs. Valid types vary
+	// by engine: postgres exports "postgresql"/"upgrade"/"iam-db-auth-error";
+	// mysql/mariadb export "audit"/"error"/"general"/"slowquery"/
+	// "iam-db-auth-error"; oracle exports "alert"/"audit"/"listener"/
+	// "trace"/"oemagent"; sqlserver exports "agent"/"error".
+	EnabledCloudwatchLogsExports []string `protobuf:"bytes,39,rep,name=enabled_cloudwatch_logs_exports,json=enabledCloudwatchLogsExports,proto3" json:"enabled_cloudwatch_logs_exports,omitempty"`
+	// Performance Insights: per-query performance telemetry. Free at the
+	// default 7-day retention -- worth enabling on almost everything.
+	PerformanceInsightsEnabled bool `protobuf:"varint,40,opt,name=performance_insights_enabled,json=performanceInsightsEnabled,proto3" json:"performance_insights_enabled,omitempty"`
+	// The KMS key encrypting Performance Insights data. Empty uses the
+	// AWS default. Reference an AwsKmsKey key_arn output or pass a
+	// literal key ARN. Cannot change after Performance Insights is first
+	// enabled.
+	PerformanceInsightsKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,41,opt,name=performance_insights_kms_key_id,json=performanceInsightsKmsKeyId,proto3" json:"performance_insights_kms_key_id,omitempty"`
+	// Days of Performance Insights history: 7 (free tier), 731 (2
+	// years), or any multiple of 31 in between. 0 keeps the AWS default
+	// (7).
+	PerformanceInsightsRetentionPeriod int32 `protobuf:"varint,42,opt,name=performance_insights_retention_period,json=performanceInsightsRetentionPeriod,proto3" json:"performance_insights_retention_period,omitempty"`
+	// Enhanced Monitoring granularity in seconds: 1, 5, 10, 15, 30, or
+	// 60. 0 disables (the AWS default). OS-level metrics (CPU per
+	// process, memory, disk) streamed to CloudWatch Logs -- requires
+	// monitoring_role_arn.
+	MonitoringInterval int32 `protobuf:"varint,43,opt,name=monitoring_interval,json=monitoringInterval,proto3" json:"monitoring_interval,omitempty"`
+	// The IAM role Enhanced Monitoring publishes through (needs the
+	// AmazonRDSEnhancedMonitoringRole managed policy). Required by AWS
+	// when monitoring_interval is set. Reference an AwsIamRole role_arn
+	// output or pass a literal ARN.
+	MonitoringRoleArn *v1.StringValueOrRef `protobuf:"bytes,44,opt,name=monitoring_role_arn,json=monitoringRoleArn,proto3" json:"monitoring_role_arn,omitempty"`
+	// CloudWatch Database Insights tier: "standard" (free, included) or
+	// "advanced" (paid fleet-level analysis; requires Performance
+	// Insights with 465+ day retention). Empty keeps the AWS default
+	// (standard).
+	DatabaseInsightsMode string `protobuf:"bytes,45,opt,name=database_insights_mode,json=databaseInsightsMode,proto3" json:"database_insights_mode,omitempty"`
+	// The DB parameter group to associate. Empty keeps the engine default
+	// group. A literal name -- parameter groups have no standalone
+	// Planton kind (a named parameter list is configuration, not
+	// infrastructure).
+	ParameterGroupName string `protobuf:"bytes,46,opt,name=parameter_group_name,json=parameterGroupName,proto3" json:"parameter_group_name,omitempty"`
+	// The option group to associate (engine features like Oracle TDE or
+	// SQL Server native backup). Empty keeps the engine default. A
+	// literal name.
+	OptionGroupName string `protobuf:"bytes,47,opt,name=option_group_name,json=optionGroupName,proto3" json:"option_group_name,omitempty"`
+	// Microsoft Active Directory domain join, for Windows/Kerberos
+	// authentication (SQL Server, and Kerberos auth on MySQL/PostgreSQL/
+	// Oracle).
+	ActiveDirectory *AwsRdsInstanceActiveDirectory `protobuf:"bytes,48,opt,name=active_directory,json=activeDirectory,proto3" json:"active_directory,omitempty"`
+	// The license model, for engines that carry one: "license-included",
+	// "bring-your-own-license", or "general-public-license". Empty keeps
+	// the engine default.
+	LicenseModel string `protobuf:"bytes,49,opt,name=license_model,json=licenseModel,proto3" json:"license_model,omitempty"`
+	// The character set for Oracle and SQL Server instances (e.g.
+	// "AL32UTF8"). Create-time only. Empty keeps the engine default.
+	CharacterSetName string `protobuf:"bytes,50,opt,name=character_set_name,json=characterSetName,proto3" json:"character_set_name,omitempty"`
+	// The national character set (NCHAR) for Oracle instances. Create-time
+	// only. Empty keeps the engine default.
+	NcharCharacterSetName string `protobuf:"bytes,51,opt,name=nchar_character_set_name,json=ncharCharacterSetName,proto3" json:"nchar_character_set_name,omitempty"`
+	// The time zone, SQL Server only (e.g. "GMT Standard Time").
+	// Create-time only.
+	Timezone string `protobuf:"bytes,52,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	// The CA certificate bundle for the instance (e.g.
+	// "rds-ca-rsa2048-g1"). Empty keeps the AWS default bundle.
+	CaCertIdentifier string `protobuf:"bytes,53,opt,name=ca_cert_identifier,json=caCertIdentifier,proto3" json:"ca_cert_identifier,omitempty"`
+	// Use RDS Blue/Green Deployments for updates: RDS provisions a
+	// synchronized green copy, applies the change there, and switches
+	// over in under a minute -- near-zero-downtime engine upgrades and
+	// parameter changes. MySQL, MariaDB, and PostgreSQL; not compatible
+	// with read replicas of this instance being modified in the same
+	// operation.
+	BlueGreenUpdateEnabled bool `protobuf:"varint,54,opt,name=blue_green_update_enabled,json=blueGreenUpdateEnabled,proto3" json:"blue_green_update_enabled,omitempty"`
+	// Apply minor engine version patches automatically during the
+	// maintenance window. AWS defaults this to true; disable only when
+	// patch timing must be controlled manually.
+	AutoMinorVersionUpgrade *bool `protobuf:"varint,55,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3,oneof" json:"auto_minor_version_upgrade,omitempty"`
+	// Permit engine_version changes that cross a major version. Off (the
+	// default) guards against an accidental major upgrade hidden in a
+	// version bump.
+	AllowMajorVersionUpgrade bool `protobuf:"varint,56,opt,name=allow_major_version_upgrade,json=allowMajorVersionUpgrade,proto3" json:"allow_major_version_upgrade,omitempty"`
+	// Apply modifications immediately instead of waiting for the next
+	// maintenance window. Immediate changes can interrupt connections;
+	// deferred changes wait quietly. AWS defaults to deferred.
+	ApplyImmediately bool `protobuf:"varint,57,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwsRdsInstanceSpec) Reset() {
@@ -155,6 +369,41 @@ func (x *AwsRdsInstanceSpec) GetAllocatedStorageGb() int32 {
 	return 0
 }
 
+func (x *AwsRdsInstanceSpec) GetMaxAllocatedStorageGb() int32 {
+	if x != nil {
+		return x.MaxAllocatedStorageGb
+	}
+	return 0
+}
+
+func (x *AwsRdsInstanceSpec) GetStorageType() string {
+	if x != nil {
+		return x.StorageType
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetIops() int32 {
+	if x != nil {
+		return x.Iops
+	}
+	return 0
+}
+
+func (x *AwsRdsInstanceSpec) GetStorageThroughput() int32 {
+	if x != nil {
+		return x.StorageThroughput
+	}
+	return 0
+}
+
+func (x *AwsRdsInstanceSpec) GetDedicatedLogVolume() bool {
+	if x != nil {
+		return x.DedicatedLogVolume
+	}
+	return false
+}
+
 func (x *AwsRdsInstanceSpec) GetStorageEncrypted() bool {
 	if x != nil {
 		return x.StorageEncrypted
@@ -169,11 +418,32 @@ func (x *AwsRdsInstanceSpec) GetKmsKeyId() *v1.StringValueOrRef {
 	return nil
 }
 
+func (x *AwsRdsInstanceSpec) GetDbName() string {
+	if x != nil {
+		return x.DbName
+	}
+	return ""
+}
+
 func (x *AwsRdsInstanceSpec) GetUsername() string {
 	if x != nil {
 		return x.Username
 	}
 	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetManageMasterUserPassword() bool {
+	if x != nil {
+		return x.ManageMasterUserPassword
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetMasterUserSecretKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.MasterUserSecretKmsKeyId
+	}
+	return nil
 }
 
 func (x *AwsRdsInstanceSpec) GetPassword() string {
@@ -190,6 +460,20 @@ func (x *AwsRdsInstanceSpec) GetPort() int32 {
 	return 0
 }
 
+func (x *AwsRdsInstanceSpec) GetMultiAz() bool {
+	if x != nil {
+		return x.MultiAz
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetAvailabilityZone() string {
+	if x != nil {
+		return x.AvailabilityZone
+	}
+	return ""
+}
+
 func (x *AwsRdsInstanceSpec) GetPubliclyAccessible() bool {
 	if x != nil {
 		return x.PubliclyAccessible
@@ -197,11 +481,151 @@ func (x *AwsRdsInstanceSpec) GetPubliclyAccessible() bool {
 	return false
 }
 
-func (x *AwsRdsInstanceSpec) GetMultiAz() bool {
+func (x *AwsRdsInstanceSpec) GetNetworkType() string {
 	if x != nil {
-		return x.MultiAz
+		return x.NetworkType
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetReplicateSourceDb() string {
+	if x != nil {
+		return x.ReplicateSourceDb
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetReplicaMode() string {
+	if x != nil {
+		return x.ReplicaMode
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetSnapshotIdentifier() string {
+	if x != nil {
+		return x.SnapshotIdentifier
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetRestoreToPointInTime() *AwsRdsInstanceRestoreToPointInTime {
+	if x != nil {
+		return x.RestoreToPointInTime
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceSpec) GetBackupRetentionPeriod() int32 {
+	if x != nil {
+		return x.BackupRetentionPeriod
+	}
+	return 0
+}
+
+func (x *AwsRdsInstanceSpec) GetBackupWindow() string {
+	if x != nil {
+		return x.BackupWindow
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetMaintenanceWindow() string {
+	if x != nil {
+		return x.MaintenanceWindow
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetCopyTagsToSnapshot() bool {
+	if x != nil {
+		return x.CopyTagsToSnapshot
 	}
 	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetDeleteAutomatedBackups() bool {
+	if x != nil && x.DeleteAutomatedBackups != nil {
+		return *x.DeleteAutomatedBackups
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetSkipFinalSnapshot() bool {
+	if x != nil {
+		return x.SkipFinalSnapshot
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetFinalSnapshotIdentifier() string {
+	if x != nil {
+		return x.FinalSnapshotIdentifier
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetDeletionProtection() bool {
+	if x != nil {
+		return x.DeletionProtection
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetIamDatabaseAuthenticationEnabled() bool {
+	if x != nil {
+		return x.IamDatabaseAuthenticationEnabled
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetEnabledCloudwatchLogsExports() []string {
+	if x != nil {
+		return x.EnabledCloudwatchLogsExports
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceSpec) GetPerformanceInsightsEnabled() bool {
+	if x != nil {
+		return x.PerformanceInsightsEnabled
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetPerformanceInsightsKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.PerformanceInsightsKmsKeyId
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceSpec) GetPerformanceInsightsRetentionPeriod() int32 {
+	if x != nil {
+		return x.PerformanceInsightsRetentionPeriod
+	}
+	return 0
+}
+
+func (x *AwsRdsInstanceSpec) GetMonitoringInterval() int32 {
+	if x != nil {
+		return x.MonitoringInterval
+	}
+	return 0
+}
+
+func (x *AwsRdsInstanceSpec) GetMonitoringRoleArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.MonitoringRoleArn
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceSpec) GetDatabaseInsightsMode() string {
+	if x != nil {
+		return x.DatabaseInsightsMode
+	}
+	return ""
 }
 
 func (x *AwsRdsInstanceSpec) GetParameterGroupName() string {
@@ -218,33 +642,377 @@ func (x *AwsRdsInstanceSpec) GetOptionGroupName() string {
 	return ""
 }
 
+func (x *AwsRdsInstanceSpec) GetActiveDirectory() *AwsRdsInstanceActiveDirectory {
+	if x != nil {
+		return x.ActiveDirectory
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceSpec) GetLicenseModel() string {
+	if x != nil {
+		return x.LicenseModel
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetCharacterSetName() string {
+	if x != nil {
+		return x.CharacterSetName
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetNcharCharacterSetName() string {
+	if x != nil {
+		return x.NcharCharacterSetName
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetCaCertIdentifier() string {
+	if x != nil {
+		return x.CaCertIdentifier
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetBlueGreenUpdateEnabled() bool {
+	if x != nil {
+		return x.BlueGreenUpdateEnabled
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetAutoMinorVersionUpgrade() bool {
+	if x != nil && x.AutoMinorVersionUpgrade != nil {
+		return *x.AutoMinorVersionUpgrade
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetAllowMajorVersionUpgrade() bool {
+	if x != nil {
+		return x.AllowMajorVersionUpgrade
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetApplyImmediately() bool {
+	if x != nil {
+		return x.ApplyImmediately
+	}
+	return false
+}
+
+// AwsRdsInstanceActiveDirectory joins the instance to a Microsoft Active
+// Directory for Windows/Kerberos authentication. Two shapes: an
+// AWS-managed directory (domain + domain_iam_role_name) or a
+// self-managed AD (domain_fqdn + domain_ou + domain_auth_secret_arn +
+// domain_dns_ips) -- the two sets are mutually exclusive.
+type AwsRdsInstanceActiveDirectory struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The directory ID of an AWS Managed Microsoft AD (d-...). Pairs with
+	// domain_iam_role_name.
+	Domain string `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
+	// The IAM role RDS uses to join the AWS-managed directory (needs the
+	// AmazonRDSDirectoryServiceAccess managed policy). Required with
+	// domain.
+	DomainIamRoleName string `protobuf:"bytes,2,opt,name=domain_iam_role_name,json=domainIamRoleName,proto3" json:"domain_iam_role_name,omitempty"`
+	// The fully qualified domain name of a self-managed Active Directory
+	// (e.g. "corp.example.com").
+	DomainFqdn string `protobuf:"bytes,3,opt,name=domain_fqdn,json=domainFqdn,proto3" json:"domain_fqdn,omitempty"`
+	// The organizational unit DN within the self-managed AD where the
+	// computer account is created.
+	DomainOu string `protobuf:"bytes,4,opt,name=domain_ou,json=domainOu,proto3" json:"domain_ou,omitempty"`
+	// The ARN of the Secrets Manager secret holding the self-managed AD
+	// join credentials. An ARN reference, not the secret itself.
+	DomainAuthSecretArn string `protobuf:"bytes,5,opt,name=domain_auth_secret_arn,json=domainAuthSecretArn,proto3" json:"domain_auth_secret_arn,omitempty"`
+	// Exactly two DNS server IPs inside the self-managed AD.
+	DomainDnsIps  []string `protobuf:"bytes,6,rep,name=domain_dns_ips,json=domainDnsIps,proto3" json:"domain_dns_ips,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRdsInstanceActiveDirectory) Reset() {
+	*x = AwsRdsInstanceActiveDirectory{}
+	mi := &file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsInstanceActiveDirectory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsInstanceActiveDirectory) ProtoMessage() {}
+
+func (x *AwsRdsInstanceActiveDirectory) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsInstanceActiveDirectory.ProtoReflect.Descriptor instead.
+func (*AwsRdsInstanceActiveDirectory) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsRdsInstanceActiveDirectory) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceActiveDirectory) GetDomainIamRoleName() string {
+	if x != nil {
+		return x.DomainIamRoleName
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceActiveDirectory) GetDomainFqdn() string {
+	if x != nil {
+		return x.DomainFqdn
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceActiveDirectory) GetDomainOu() string {
+	if x != nil {
+		return x.DomainOu
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceActiveDirectory) GetDomainAuthSecretArn() string {
+	if x != nil {
+		return x.DomainAuthSecretArn
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceActiveDirectory) GetDomainDnsIps() []string {
+	if x != nil {
+		return x.DomainDnsIps
+	}
+	return nil
+}
+
+// AwsRdsInstanceRestoreToPointInTime creates the instance from another
+// instance's continuous backup. Every field is create-time only.
+type AwsRdsInstanceRestoreToPointInTime struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The source instance identifier. Exactly one source field must be
+	// set.
+	SourceDbInstanceIdentifier string `protobuf:"bytes,1,opt,name=source_db_instance_identifier,json=sourceDbInstanceIdentifier,proto3" json:"source_db_instance_identifier,omitempty"`
+	// The source instance's immutable resource ID (resource_id output) --
+	// survives identifier renames and points at deleted instances'
+	// retained backups.
+	SourceDbiResourceId string `protobuf:"bytes,2,opt,name=source_dbi_resource_id,json=sourceDbiResourceId,proto3" json:"source_dbi_resource_id,omitempty"`
+	// The ARN of a retained automated backup to restore from (for
+	// instances already deleted).
+	SourceDbInstanceAutomatedBackupsArn string `protobuf:"bytes,3,opt,name=source_db_instance_automated_backups_arn,json=sourceDbInstanceAutomatedBackupsArn,proto3" json:"source_db_instance_automated_backups_arn,omitempty"`
+	// The UTC timestamp to restore to, RFC3339 (e.g.
+	// "2026-07-01T09:45:00Z"). Mutually exclusive with
+	// use_latest_restorable_time.
+	RestoreTime string `protobuf:"bytes,4,opt,name=restore_time,json=restoreTime,proto3" json:"restore_time,omitempty"`
+	// Restore to the most recent recoverable moment. Mutually exclusive
+	// with restore_time.
+	UseLatestRestorableTime bool `protobuf:"varint,5,opt,name=use_latest_restorable_time,json=useLatestRestorableTime,proto3" json:"use_latest_restorable_time,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AwsRdsInstanceRestoreToPointInTime) Reset() {
+	*x = AwsRdsInstanceRestoreToPointInTime{}
+	mi := &file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsInstanceRestoreToPointInTime) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsInstanceRestoreToPointInTime) ProtoMessage() {}
+
+func (x *AwsRdsInstanceRestoreToPointInTime) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsInstanceRestoreToPointInTime.ProtoReflect.Descriptor instead.
+func (*AwsRdsInstanceRestoreToPointInTime) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsRdsInstanceRestoreToPointInTime) GetSourceDbInstanceIdentifier() string {
+	if x != nil {
+		return x.SourceDbInstanceIdentifier
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceRestoreToPointInTime) GetSourceDbiResourceId() string {
+	if x != nil {
+		return x.SourceDbiResourceId
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceRestoreToPointInTime) GetSourceDbInstanceAutomatedBackupsArn() string {
+	if x != nil {
+		return x.SourceDbInstanceAutomatedBackupsArn
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceRestoreToPointInTime) GetRestoreTime() string {
+	if x != nil {
+		return x.RestoreTime
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceRestoreToPointInTime) GetUseLatestRestorableTime() bool {
+	if x != nil {
+		return x.UseLatestRestorableTime
+	}
+	return false
+}
+
 var File_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5dev/planton/provider/aws/awsrdsinstance/v1/spec.proto\x12*dev.planton.provider.aws.awsrdsinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb0\t\n" +
+	"5dev/planton/provider/aws/awsrdsinstance/v1/spec.proto\x12*dev.planton.provider.aws.awsrdsinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfdC\n" +
 	"\x12AwsRdsInstanceSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
 	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12c\n" +
 	"\x14db_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x11dbSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x1f\n" +
-	"\x06engine\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06engine\x12.\n" +
-	"\x0eengine_version\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\rengineVersion\x125\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x16\n" +
+	"\x06engine\x18\x05 \x01(\tR\x06engine\x12%\n" +
+	"\x0eengine_version\x18\x06 \x01(\tR\rengineVersion\x125\n" +
 	"\x0einstance_class\x18\a \x01(\tB\x0e\xbaH\vr\t\x10\x012\x05^db\\.R\rinstanceClass\x129\n" +
-	"\x14allocated_storage_gb\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\x12allocatedStorageGb\x12+\n" +
-	"\x11storage_encrypted\x18\t \x01(\bR\x10storageEncrypted\x12q\n" +
+	"\x14allocated_storage_gb\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x12allocatedStorageGb\x12@\n" +
+	"\x18max_allocated_storage_gb\x18\t \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x15maxAllocatedStorageGb\x12I\n" +
+	"\fstorage_type\x18\n" +
+	" \x01(\tB&\xbaH#\xd8\x01\x01r\x1eR\x03gp2R\x03gp3R\x03io1R\x03io2R\bstandardR\vstorageType\x12\x1b\n" +
+	"\x04iops\x18\v \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04iops\x126\n" +
+	"\x12storage_throughput\x18\f \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x11storageThroughput\x120\n" +
+	"\x14dedicated_log_volume\x18\r \x01(\bR\x12dedicatedLogVolume\x125\n" +
+	"\x11storage_encrypted\x18\x0e \x01(\bB\b\x92\xa6\x1d\x04trueR\x10storageEncrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12#\n" +
-	"\busername\x18\v \x01(\tB\a\xbaH\x04r\x02\x10\x01R\busername\x12'\n" +
-	"\bpassword\x18\f \x01(\tB\v\xbaH\x04r\x02\x10\x01\xa0\xa6\x1d\x01R\bpassword\x12\x1f\n" +
-	"\x04port\x18\r \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12/\n" +
-	"\x13publicly_accessible\x18\x0e \x01(\bR\x12publiclyAccessible\x12\x19\n" +
-	"\bmulti_az\x18\x0f \x01(\bR\amultiAz\x120\n" +
-	"\x14parameter_group_name\x18\x10 \x01(\tR\x12parameterGroupName\x12*\n" +
-	"\x11option_group_name\x18\x11 \x01(\tR\x0foptionGroupName:\x93\x01\xbaH\x8f\x01\x1a\x8c\x01\n" +
-	"\x10subnets_or_group\x127Provide either subnet_ids (>=2) or db_subnet_group_name\x1a?(this.subnet_ids.size() >= 2) || has(this.db_subnet_group_name)B\xe9\x02\n" +
+	"kms_key_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x17\n" +
+	"\adb_name\x18\x10 \x01(\tR\x06dbName\x12\x1a\n" +
+	"\busername\x18\x11 \x01(\tR\busername\x12G\n" +
+	"\x1bmanage_master_user_password\x18\x12 \x01(\bB\b\x92\xa6\x1d\x04trueR\x18manageMasterUserPassword\x12\x94\x01\n" +
+	"\x1dmaster_user_secret_kms_key_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x18masterUserSecretKmsKeyId\x12 \n" +
+	"\bpassword\x18\x14 \x01(\tB\x04\xa0\xa6\x1d\x01R\bpassword\x12\x1f\n" +
+	"\x04port\x18\x15 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12\x19\n" +
+	"\bmulti_az\x18\x16 \x01(\bR\amultiAz\x12+\n" +
+	"\x11availability_zone\x18\x17 \x01(\tR\x10availabilityZone\x12/\n" +
+	"\x13publicly_accessible\x18\x18 \x01(\bR\x12publiclyAccessible\x12!\n" +
+	"\fnetwork_type\x18\x19 \x01(\tR\vnetworkType\x12.\n" +
+	"\x13replicate_source_db\x18\x1a \x01(\tR\x11replicateSourceDb\x12!\n" +
+	"\freplica_mode\x18\x1b \x01(\tR\vreplicaMode\x12/\n" +
+	"\x13snapshot_identifier\x18\x1c \x01(\tR\x12snapshotIdentifier\x12\x86\x01\n" +
+	"\x18restore_to_point_in_time\x18\x1d \x01(\v2N.dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceRestoreToPointInTimeR\x14restoreToPointInTime\x12A\n" +
+	"\x17backup_retention_period\x18\x1e \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x15backupRetentionPeriod\x12l\n" +
+	"\rbackup_window\x18\x1f \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\fbackupWindow\x12\xb4\x01\n" +
+	"\x12maintenance_window\x18  \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x121\n" +
+	"\x15copy_tags_to_snapshot\x18! \x01(\bR\x12copyTagsToSnapshot\x12G\n" +
+	"\x18delete_automated_backups\x18\" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x16deleteAutomatedBackups\x88\x01\x01\x12.\n" +
+	"\x13skip_final_snapshot\x18# \x01(\bR\x11skipFinalSnapshot\x12:\n" +
+	"\x19final_snapshot_identifier\x18$ \x01(\tR\x17finalSnapshotIdentifier\x12/\n" +
+	"\x13deletion_protection\x18% \x01(\bR\x12deletionProtection\x12M\n" +
+	"#iam_database_authentication_enabled\x18& \x01(\bR iamDatabaseAuthenticationEnabled\x12\xe1\x01\n" +
+	"\x1fenabled_cloudwatch_logs_exports\x18' \x03(\tB\x99\x01\xbaH\x95\x01\x92\x01\x91\x01\x18\x01\"\x8c\x01r\x89\x01R\x05agentR\x05alertR\x05auditR\bdiag.logR\x05errorR\ageneralR\x11iam-db-auth-errorR\blistenerR\n" +
+	"notify.logR\boemagentR\n" +
+	"postgresqlR\tslowqueryR\x05traceR\aupgradeR\x1cenabledCloudwatchLogsExports\x12@\n" +
+	"\x1cperformance_insights_enabled\x18( \x01(\bR\x1aperformanceInsightsEnabled\x12\x99\x01\n" +
+	"\x1fperformance_insights_kms_key_id\x18) \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1bperformanceInsightsKmsKeyId\x12Q\n" +
+	"%performance_insights_retention_period\x18* \x01(\x05R\"performanceInsightsRetentionPeriod\x12/\n" +
+	"\x13monitoring_interval\x18+ \x01(\x05R\x12monitoringInterval\x12\x84\x01\n" +
+	"\x13monitoring_role_arn\x18, \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11monitoringRoleArn\x124\n" +
+	"\x16database_insights_mode\x18- \x01(\tR\x14databaseInsightsMode\x120\n" +
+	"\x14parameter_group_name\x18. \x01(\tR\x12parameterGroupName\x12*\n" +
+	"\x11option_group_name\x18/ \x01(\tR\x0foptionGroupName\x12t\n" +
+	"\x10active_directory\x180 \x01(\v2I.dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceActiveDirectoryR\x0factiveDirectory\x12#\n" +
+	"\rlicense_model\x181 \x01(\tR\flicenseModel\x12,\n" +
+	"\x12character_set_name\x182 \x01(\tR\x10characterSetName\x127\n" +
+	"\x18nchar_character_set_name\x183 \x01(\tR\x15ncharCharacterSetName\x12\x1a\n" +
+	"\btimezone\x184 \x01(\tR\btimezone\x12,\n" +
+	"\x12ca_cert_identifier\x185 \x01(\tR\x10caCertIdentifier\x129\n" +
+	"\x19blue_green_update_enabled\x186 \x01(\bR\x16blueGreenUpdateEnabled\x12J\n" +
+	"\x1aauto_minor_version_upgrade\x187 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x17autoMinorVersionUpgrade\x88\x01\x01\x12=\n" +
+	"\x1ballow_major_version_upgrade\x188 \x01(\bR\x18allowMajorVersionUpgrade\x12+\n" +
+	"\x11apply_immediately\x189 \x01(\bR\x10applyImmediately:\xc0$\xbaH\xbc$\x1a\xa7\x01\n" +
+	"\x10subnets_or_group\x12Rprovide at least two subnet_ids (distinct AZs) or an existing db_subnet_group_name\x1a?(this.subnet_ids.size() >= 2) || has(this.db_subnet_group_name)\x1a\xa7\x02\n" +
+	"\x1eengine_required_unless_derived\x12\x87\x01engine is required unless the instance derives it from a source (replicate_source_db, snapshot_identifier, or restore_to_point_in_time)\x1a{this.engine != '' || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)\x1a\xc0\x02\n" +
+	"\x1fstorage_required_unless_derived\x12\x92\x01allocated_storage_gb is required unless storage is inherited from a source (replicate_source_db, snapshot_identifier, or restore_to_point_in_time)\x1a\x87\x01this.allocated_storage_gb > 0 || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)\x1a\xb4\x01\n" +
+	"\x14password_xor_managed\x12]password cannot be set when manage_master_user_password is true -- pick one password strategy\x1a=this.manage_master_user_password ? this.password == '' : true\x1a\xc9\x02\n" +
+	" username_required_unless_derived\x12\xa5\x01username is required for a new instance -- AWS rejects a blank username; only read replicas and snapshot/point-in-time restores inherit credentials from their source\x1a}this.username != '' || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)\x1a\x84\x02\n" +
+	",final_snapshot_id_required_when_not_skipping\x12\x8b\x01final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the instance without a final snapshot name\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != ''\x1a\xbf\x01\n" +
+	"#multi_az_excludes_availability_zone\x12favailability_zone cannot be pinned on a Multi-AZ instance -- AWS places the primary and standby itself\x1a0!(this.multi_az && this.availability_zone != '')\x1a\x8b\x02\n" +
+	"\x11one_create_source\x12lreplicate_source_db, snapshot_identifier, and restore_to_point_in_time are mutually exclusive create sources\x1a\x87\x01(this.replicate_source_db != '' ? 1 : 0) + (this.snapshot_identifier != '' ? 1 : 0) + (has(this.restore_to_point_in_time) ? 1 : 0) <= 1\x1a\x96\x02\n" +
+	"\x1creplica_inherits_credentials\x12\x80\x01username, password, and manage_master_user_password cannot be set on a read replica -- credentials are inherited from the source\x1asthis.replicate_source_db == '' || (this.username == '' && this.password == '' && !this.manage_master_user_password)\x1a\xa1\x01\n" +
+	"\x1dreplica_mode_requires_replica\x12Ereplica_mode only applies to a read replica (replicate_source_db set)\x1a9this.replica_mode == '' || this.replicate_source_db != ''\x1a\xa0\x01\n" +
+	"\x12replica_mode_valid\x12;replica_mode must be 'open-read-only' or 'mounted' when set\x1aMthis.replica_mode == '' || this.replica_mode in ['open-read-only', 'mounted']\x1a\xcf\x01\n" +
+	"\x1bblue_green_not_with_replica\x12kblue_green_update_enabled cannot be combined with replicate_source_db -- Blue/Green manages replicas itself\x1aC!(this.blue_green_update_enabled && this.replicate_source_db != '')\x1a\xe4\x01\n" +
+	"\x1bmax_storage_above_allocated\x12dmax_allocated_storage_gb must exceed allocated_storage_gb to enable storage autoscaling (0 disables)\x1a_this.max_allocated_storage_gb == 0 || this.max_allocated_storage_gb > this.allocated_storage_gb\x1a\x90\x01\n" +
+	"&iops_requires_provisioned_storage_type\x12(iops applies to io1, io2, or gp3 storage\x1a<this.iops == 0 || this.storage_type in ['io1', 'io2', 'gp3']\x1a\x84\x01\n" +
+	"\x16throughput_is_gp3_only\x12.storage_throughput only applies to gp3 storage\x1a:this.storage_throughput == 0 || this.storage_type == 'gp3'\x1a\xce\x02\n" +
+	"\x12pi_retention_valid\x12fperformance_insights_retention_period must be 7, 731, or a multiple of 31 (month granularity) when set\x1a\xcf\x01this.performance_insights_retention_period == 0 || this.performance_insights_retention_period == 7 || this.performance_insights_retention_period == 731 || this.performance_insights_retention_period % 31 == 0\x1a\x9d\x01\n" +
+	"\x19monitoring_interval_valid\x12Imonitoring_interval must be 0 (disabled), 1, 5, 10, 15, 30, or 60 seconds\x1a5this.monitoring_interval in [0, 1, 5, 10, 15, 30, 60]\x1a\xdc\x01\n" +
+	"&monitoring_role_required_with_interval\x12rmonitoring_role_arn is required when monitoring_interval is set -- Enhanced Monitoring publishes through that role\x1a>this.monitoring_interval == 0 || has(this.monitoring_role_arn)\x1a\xbe\x01\n" +
+	"\x1cdatabase_insights_mode_valid\x12@database_insights_mode must be 'standard' or 'advanced' when set\x1a\\this.database_insights_mode == '' || this.database_insights_mode in ['standard', 'advanced']\x1a\x86\x01\n" +
+	"\x12network_type_valid\x12.network_type must be 'IPV4' or 'DUAL' when set\x1a@this.network_type == '' || this.network_type in ['IPV4', 'DUAL']\x1a\xfb\x01\n" +
+	"\x13license_model_valid\x12hlicense_model must be 'license-included', 'bring-your-own-license', or 'general-public-license' when set\x1azthis.license_model == '' || this.license_model in ['license-included', 'bring-your-own-license', 'general-public-license']B\x1b\n" +
+	"\x19_delete_automated_backupsB\x1d\n" +
+	"\x1b_auto_minor_version_upgrade\"\xbd\a\n" +
+	"\x1dAwsRdsInstanceActiveDirectory\x12\x16\n" +
+	"\x06domain\x18\x01 \x01(\tR\x06domain\x12/\n" +
+	"\x14domain_iam_role_name\x18\x02 \x01(\tR\x11domainIamRoleName\x12\x1f\n" +
+	"\vdomain_fqdn\x18\x03 \x01(\tR\n" +
+	"domainFqdn\x12\x1b\n" +
+	"\tdomain_ou\x18\x04 \x01(\tR\bdomainOu\x123\n" +
+	"\x16domain_auth_secret_arn\x18\x05 \x01(\tR\x13domainAuthSecretArn\x12$\n" +
+	"\x0edomain_dns_ips\x18\x06 \x03(\tR\fdomainDnsIps:\xb9\x05\xbaH\xb5\x05\x1a\xf4\x02\n" +
+	"\x18managed_xor_self_managed\x12\xa2\x01use either the AWS-managed shape (domain + domain_iam_role_name) or the self-managed shape (domain_fqdn/domain_ou/domain_auth_secret_arn/domain_dns_ips), not both\x1a\xb2\x01(this.domain == '' && this.domain_iam_role_name == '') || (this.domain_fqdn == '' && this.domain_ou == '' && this.domain_auth_secret_arn == '' && this.domain_dns_ips.size() == 0)\x1a\xac\x01\n" +
+	"\x15managed_pair_together\x12Ydomain and domain_iam_role_name are required together for the AWS-managed directory shape\x1a8(this.domain == '') == (this.domain_iam_role_name == '')\x1a\x8c\x01\n" +
+	"\x1aself_managed_dns_ips_count\x123self-managed AD requires exactly two domain_dns_ips\x1a9this.domain_fqdn == '' || this.domain_dns_ips.size() == 2\"\xb2\x06\n" +
+	"\"AwsRdsInstanceRestoreToPointInTime\x12A\n" +
+	"\x1dsource_db_instance_identifier\x18\x01 \x01(\tR\x1asourceDbInstanceIdentifier\x123\n" +
+	"\x16source_dbi_resource_id\x18\x02 \x01(\tR\x13sourceDbiResourceId\x12U\n" +
+	"(source_db_instance_automated_backups_arn\x18\x03 \x01(\tR#sourceDbInstanceAutomatedBackupsArn\x12!\n" +
+	"\frestore_time\x18\x04 \x01(\tR\vrestoreTime\x12;\n" +
+	"\x1ause_latest_restorable_time\x18\x05 \x01(\bR\x17useLatestRestorableTime:\xdc\x03\xbaH\xd8\x03\x1a\xbb\x02\n" +
+	"\x12exactly_one_source\x12}exactly one of source_db_instance_identifier, source_dbi_resource_id, or source_db_instance_automated_backups_arn must be set\x1a\xa5\x01(this.source_db_instance_identifier != '' ? 1 : 0) + (this.source_dbi_resource_id != '' ? 1 : 0) + (this.source_db_instance_automated_backups_arn != '' ? 1 : 0) == 1\x1a\x97\x01\n" +
+	"\x10exactly_one_time\x12Eexactly one of restore_time or use_latest_restorable_time must be set\x1a<(this.restore_time != '') != this.use_latest_restorable_timeB\xe9\x02\n" +
 	".com.dev.planton.provider.aws.awsrdsinstance.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdsinstance/v1;awsrdsinstancev1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awsrdsinstance.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awsrdsinstance\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awsrdsinstance\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awsrdsinstance::V1b\x06proto3"
 
 var (
@@ -259,21 +1027,28 @@ func file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDescGZIP() []
 	return file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_goTypes = []any{
-	(*AwsRdsInstanceSpec)(nil),  // 0: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec
-	(*v1.StringValueOrRef)(nil), // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsRdsInstanceSpec)(nil),                 // 0: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec
+	(*AwsRdsInstanceActiveDirectory)(nil),      // 1: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceActiveDirectory
+	(*AwsRdsInstanceRestoreToPointInTime)(nil), // 2: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceRestoreToPointInTime
+	(*v1.StringValueOrRef)(nil),                // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.db_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 0: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 1: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.db_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 2: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 3: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 4: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.master_user_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 5: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.restore_to_point_in_time:type_name -> dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceRestoreToPointInTime
+	3, // 6: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.performance_insights_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 7: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.monitoring_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 8: dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.active_directory:type_name -> dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceActiveDirectory
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_init() }
@@ -281,13 +1056,14 @@ func file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_init() {
 	if File_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

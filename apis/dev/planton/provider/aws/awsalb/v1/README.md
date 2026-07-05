@@ -1,63 +1,86 @@
-# AwsAlb
+# Overview
 
-The **AwsAlb** resource provides a standardized way to provision and manage AWS Application Load Balancers (ALBs) through Planton. It simplifies ALB configuration by focusing on essential fields while providing flexibility for common networking, SSL, and DNS requirements.
+The AwsAlb API resource provisions an AWS Application Load Balancer: the
+Layer-7 entry point that terminates HTTP/HTTPS and hands requests to the
+routing graph.
 
-## Spec Fields (80/20)
+## Why We Created This API Resource
 
-### Essential Fields (80% Use Case)
+The load balancer carries no routing configuration -- that is deliberate. In
+AWS's own model, an ELBv2 load balancer is shared, slow-changing
+infrastructure, while ports, certificates, and per-service routes churn with
+every deployment. Planton mirrors that split with four composable kinds:
 
-- **subnets**: List of subnet IDs where the ALB will be created (minimum 2 required for high availability across multiple Availability Zones). Use private subnets for internal ALBs or public subnets for internet-facing ALBs.
-- **security_groups**: List of security group IDs to attach to the ALB for controlling inbound/outbound traffic.
-- **internal**: Boolean flag indicating whether the ALB is internal (true) or internet-facing (false). Defaults to false for internet-facing.
-- **ssl.enabled**: Boolean to enable SSL/TLS termination on the ALB.
-- **ssl.certificate_arn**: ARN of the AWS Certificate Manager certificate to use for HTTPS listeners (required when ssl.enabled is true).
+- **`AwsAlb`** (this component) owns what is truly load-balancer-wide:
+  placement (two or more subnets, internal vs. internet-facing), security
+  groups, and the HTTP behavior knobs AWS models as load balancer attributes.
+- **`AwsLbListener`** attaches to the ALB by ARN and owns a port, its TLS
+  material, and the default action.
+- **`AwsLbListenerRule`** attaches to a listener and owns one service's
+  routing conditions.
+- **`AwsLbTargetGroup`** receives the traffic.
 
-### Advanced Fields (20% Use Case)
+Deploying a new service means creating a target group and a rule -- never
+editing the shared ALB. Rotating a certificate edits one listener. The ALB
+manifest itself only changes when placement or HTTP-wide behavior changes,
+which keeps the blast radius of every edit exactly as small as the intent
+behind it.
 
-- **delete_protection_enabled**: Boolean to enable deletion protection, preventing accidental deletion of the ALB.
-- **idle_timeout_seconds**: Connection idle timeout in seconds (AWS default is 60 seconds if omitted).
-- **dns.enabled**: Boolean to enable automatic Route53 DNS record creation for the ALB.
-- **dns.route53_zone_id**: Route53 Hosted Zone ID where DNS records will be created (required when dns.enabled is true).
-- **dns.hostnames**: List of domain names (e.g., ["app.example.com", "api.example.com"]) that will point to the ALB's DNS name.
+## Key Features
 
-## Stack Outputs
+### Placement and Security
 
-After provisioning, the AwsAlb resource provides the following outputs:
+- **Multi-AZ by construction**: at least two subnets in different
+  Availability Zones are required -- the AWS minimum, enforced at the API
+  layer rather than discovered at deploy time.
+- **Scheme selection**: internet-facing (default) or internal
+  (`internal: true`); changing the scheme replaces the load balancer, so the
+  spec documents it as immutable.
+- **Security groups by reference**: attach `AwsSecurityGroup` outputs (or
+  literal IDs) that open exactly the listener ports.
+- **IP address family**: `ipv4`, `dualstack`, or
+  `dualstack-without-public-ipv4` to serve IPv6 clients without paying for
+  public IPv4.
 
-- **alb_arn**: The ARN of the created Application Load Balancer.
-- **alb_dns_name**: The DNS name assigned by AWS for accessing the ALB.
-- **alb_zone_id**: The Route53 zone ID of the ALB (useful for creating alias records).
+### HTTP Behavior Attributes
 
-## How It Works
+- **Timeouts**: idle timeout (1-4000 s) and client keep-alive (60-604800 s).
+- **Protocol posture**: HTTP/2 toggle (tri-state -- unset keeps the AWS
+  default), desync mitigation mode (`monitor`/`defensive`/`strictest`), and
+  dropping invalid request headers for header-smuggling hardening.
+- **Header handling**: X-Forwarded-For processing mode, client-port
+  propagation, Host-header preservation, and injection of the negotiated TLS
+  version/cipher toward targets.
+- **Availability calls**: WAF fail-open (availability vs. security when an
+  attached WAF is unreachable) and ARC zonal shift.
 
-When you define an AwsAlb resource, Planton:
+### Observability
 
-1. **Creates the ALB**: Provisions an Application Load Balancer in the specified subnets with the configured security groups.
-2. **Configures Networking**: Sets up the ALB as either internet-facing or internal based on the `internal` flag.
-3. **Applies Security**: Attaches security groups to control traffic flow to and from the ALB.
-4. **Enables SSL (Optional)**: If SSL is enabled, configures HTTPS listeners with the specified certificate.
-5. **Manages DNS (Optional)**: If DNS is enabled, creates Route53 A/AAAA records pointing the specified hostnames to the ALB.
-6. **Sets Advanced Options**: Applies deletion protection and idle timeout settings as configured.
+- **Three S3 log streams**: access logs (one entry per request), connection
+  logs (TLS handshake details -- where negotiation failures that never become
+  requests show up), and health-check logs (per-probe results), each with its
+  own bucket and prefix.
 
-The resource uses Pulumi or Terraform under the hood (depending on your stack configuration) to provision all necessary AWS resources consistently and reliably.
+### DNS
 
-## Use Cases
+- **Route53 alias records**: point hostnames at the ALB with alias A records,
+  which work at the zone apex, cost nothing per query, and inherit the ALB's
+  health.
 
-### Internet-Facing Web Application
-Deploy a public-facing ALB with SSL termination for a web application accessible from the internet.
+## Benefits
 
-### Internal Microservices
-Create an internal ALB for routing traffic between microservices within a private VPC, without exposing services to the internet.
+- **Stable shared infrastructure**: services come and go through listeners,
+  rules, and target groups; the ALB and its ARN stay put.
+- **Composability**: subnets, security groups, log buckets, and the Route53
+  zone are all `valueFrom` references, so the architecture graph shows what
+  the ALB depends on.
+- **AWS defaults preserved**: only explicitly set attributes are sent to AWS;
+  everything else keeps its AWS default instead of a module opinion.
+- **Consistency**: identical behavior across Terraform and Pulumi.
 
-### Multi-Domain Hosting
-Use DNS configuration to map multiple domain names to a single ALB, ideal for hosting multiple applications or environments.
+## Stack outputs
 
-### High Availability Architecture
-Leverage multi-subnet deployment (required minimum of 2) to ensure ALB availability across multiple Availability Zones.
-
-## References
-
-- [AWS Application Load Balancer Documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html)
-- [AWS ALB Best Practices](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancer-best-practices.html)
-- [AWS Certificate Manager](https://docs.aws.amazon.com/acm/)
-- [Route53 DNS Management](https://docs.aws.amazon.com/route53/)
+- `load_balancer_arn`: ARN of the ALB (what `AwsLbListener` resources attach through)
+- `load_balancer_name`: final name assigned to the ALB (metadata.name, truncated to AWS's 32-character limit when necessary)
+- `load_balancer_dns_name`: DNS name assigned by AWS
+- `load_balancer_hosted_zone_id`: Route53 hosted zone ID for the ALB's DNS entry, for alias records

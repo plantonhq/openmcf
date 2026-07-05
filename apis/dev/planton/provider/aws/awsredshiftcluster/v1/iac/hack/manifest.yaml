@@ -1,16 +1,13 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsRedshiftCluster
 metadata:
-  name: test-redshift
+  name: awsredshiftcluster-demo
 spec:
   region: us-west-2
-  nodeType: dc2.large
-  numberOfNodes: 1
-  databaseName: dev
-  masterUsername: admin
-  manageMasterPassword: true
   subnetIds:
-    - value: "<private-subnet-id-az1>"
-    - value: "<private-subnet-id-az2>"
-  encrypted: true
+    - value: subnet-0a1b2c3d4e5f60001
+    - value: subnet-0a1b2c3d4e5f60002
+  nodeType: ra3.large
+  masterUsername: hackadmin
+  manageMasterPassword: true
   skipFinalSnapshot: true

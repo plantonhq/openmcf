@@ -1,0 +1,16 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsEksAccessEntry
+metadata:
+  name: awseksaccessentry-demo
+spec:
+  region: us-west-2
+  clusterName:
+    value: awsekscluster-demo
+  principalArn:
+    value: arn:aws:iam::123456789012:role/TeamViewerRole
+  kubernetesGroups:
+    - platform-viewers
+  policyAssociations:
+    - policyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy
+      accessScope:
+        type: cluster

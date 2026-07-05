@@ -4,13 +4,16 @@ output "topic_arn" {
 }
 
 output "topic_name" {
-  description = "The name of the SNS topic."
+  description = "The name of the SNS topic (includes .fifo suffix for FIFO topics)."
   value       = aws_sns_topic.this.name
 }
 
-output "subscription_arns" {
-  description = "Map of subscription name to subscription ARN."
-  value = {
-    for key, sub in aws_sns_topic_subscription.this : key => sub.arn
-  }
+output "owner" {
+  description = "The AWS account ID that owns the topic."
+  value       = aws_sns_topic.this.owner
+}
+
+output "beginning_archive_time" {
+  description = "Timestamp from which archived messages are replayable (empty unless a FIFO archive policy is active)."
+  value       = aws_sns_topic.this.beginning_archive_time
 }

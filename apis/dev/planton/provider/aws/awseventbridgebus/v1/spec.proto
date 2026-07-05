@@ -4,6 +4,7 @@ package dev.planton.provider.aws.awseventbridgebus.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "google/protobuf/struct.proto";
 
 // AwsEventBridgeBusSpec defines the desired configuration for an AWS EventBridge
 // custom event bus.
@@ -86,6 +87,18 @@ message AwsEventBridgeBusSpec {
   // event delivery logs to CloudWatch Logs. Useful for debugging event
   // routing, monitoring delivery failures, and auditing event traffic.
   AwsEventBridgeBusLogConfig log_config = 6;
+
+  // ---------------------------------------------------------------------------
+  // Access policy
+  // ---------------------------------------------------------------------------
+
+  // Resource-based policy for the event bus. Controls which AWS principals
+  // (accounts, organizations, or roles) may put events onto this bus —
+  // the mechanism behind cross-account event ingestion. Expressed as a
+  // standard IAM policy document structure; one policy per bus (statements
+  // express per-account/per-org grants). When unset, only the owning
+  // account can put events.
+  google.protobuf.Struct resource_policy = 7;
 
   // ---------------------------------------------------------------------------
   // CEL validations

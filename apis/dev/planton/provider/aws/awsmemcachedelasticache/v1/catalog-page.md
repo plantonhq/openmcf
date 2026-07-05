@@ -1,14 +1,14 @@
 # AWS Memcached ElastiCache
 
-Deploys a fully managed AWS ElastiCache cluster running the Memcached engine with automatic subnet group and parameter group management. Memcached provides a simple, high-throughput distributed cache using consistent hashing across nodes, with no replication, no persistence, and no authentication — security relies entirely on VPC network isolation.
+Deploys a fully managed AWS ElastiCache cluster running the Memcached engine with automatic or bring-your-own subnet group and parameter group management. Memcached provides a simple, high-throughput distributed cache using consistent hashing across nodes, with no replication, no persistence, and no authentication — security relies entirely on VPC network isolation.
 
 ## What Gets Created
 
 When you deploy an AwsMemcachedElasticache resource, Planton provisions:
 
 - **ElastiCache Memcached Cluster** — an `aws_elasticache_cluster` with the `memcached` engine, placed in the specified subnets with attached security groups
-- **Subnet Group** — created automatically when `subnetIds` are provided, grouping the subnets for cluster node placement
-- **Parameter Group** — created automatically when `parameters` are provided along with a `parameterGroupFamily`, enabling custom Memcached engine tuning
+- **Subnet Group** — created when `subnetIds` are provided, or attach an existing group via `subnetGroupName`
+- **Parameter Group** — created when `parameters` are provided along with a `parameterGroupFamily`, or attach an existing group via `parameterGroupName`
 
 ## Prerequisites
 
@@ -57,22 +57,26 @@ This creates a single-node Memcached cluster on port 11211 in the specified subn
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `region` | `string` | AWS region where the ElastiCache cluster will be deployed (e.g., `"us-west-2"`, `"us-east-1"`). | Required |
-| `engineVersion` | `string` | Memcached engine version. Uses three-part versioning (e.g., `"1.6.22"`, `"1.6.17"`, `"1.5.16"`). Transit encryption requires `1.6.12` or later. | Required |
 | `nodeType` | `string` | ElastiCache node type determining CPU, memory, and network capacity. Examples: `cache.t3.micro` (dev), `cache.r7g.large` (production). Changing this forces cluster recreation. | Required |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `engineVersion` | `string` | AWS default | Memcached engine version (e.g., `"1.6.22"`, `"1.6.17"`). Leave empty for AWS default. Transit encryption requires `1.6.12` or later. |
 | `numCacheNodes` | `int` | `1` | Number of cache nodes in the cluster (1–40). Keys are distributed across nodes via consistent hashing. |
 | `azMode` | `string` | `"single-az"` | AZ distribution mode. `"single-az"` places all nodes in one AZ. `"cross-az"` distributes across AZs (requires `numCacheNodes` > 1). |
 | `port` | `int` | `11211` | Port the cluster accepts connections on. ForceNew — changing this destroys and recreates the cluster. |
 | `transitEncryptionEnabled` | `bool` | `false` | Enable TLS encryption for all client connections. Requires engine version `1.6.12` or later. Memcached does not support encryption at rest. |
-| `subnetIds` | `StringValueOrRef[]` | `[]` | Subnet IDs for the ElastiCache subnet group. Provide subnets in at least two AZs when using `cross-az` mode. Can reference AwsVpc resources via `valueFrom`. |
+| `subnetIds` | `StringValueOrRef[]` | `[]` | Subnet IDs for the ElastiCache subnet group. Mutually exclusive with `subnetGroupName`. |
+| `subnetGroupName` | `string` | — | Existing ElastiCache subnet group (bring-your-own). **ForceNew**. |
 | `securityGroupIds` | `StringValueOrRef[]` | `[]` | VPC security groups to attach to the cluster nodes. Can reference AwsSecurityGroup resources via `valueFrom`. |
+| `networkType` | `string` | `ipv4` | IP addressing: `ipv4`, `ipv6`, `dual_stack`. **ForceNew**. |
+| `ipDiscovery` | `string` | — | DNS discovery address family: `ipv4` or `ipv6`. Meaningful with dual-stack. |
 | `parameterGroupFamily` | `string` | — | Parameter group family (e.g., `"memcached1.6"`, `"memcached1.5"`). Required when `parameters` is provided. |
 | `parameters[].name` | `string` | — | Parameter name (e.g., `"chunk_size"`, `"binding_protocol"`). |
 | `parameters[].value` | `string` | — | Parameter value (e.g., `"96"`, `"auto"`). |
+| `parameterGroupName` | `string` | — | Existing parameter group (bring-your-own). Mutually exclusive with `parameters`. |
 | `maintenanceWindow` | `string` | AWS-assigned | Weekly maintenance window in UTC. Format: `"ddd:hh24:mi-ddd:hh24:mi"` (e.g., `"sun:05:00-sun:06:00"`). |
 | `applyImmediately` | `bool` | `false` | Apply changes immediately instead of waiting for the next maintenance window. May cause brief downtime. |
 | `autoMinorVersionUpgrade` | `bool` | `false` | Automatically apply minor engine version upgrades during maintenance windows. Recommended: `true`. |

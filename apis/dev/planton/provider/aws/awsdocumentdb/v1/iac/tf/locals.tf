@@ -1,54 +1,43 @@
 locals {
-  # Stable resource ID from metadata
-  resource_id = (
-    (var.metadata.id != null && var.metadata.id != "")
-    ? var.metadata.id
-    : var.metadata.name
-  )
+  # The cluster identifier is metadata.name -- create-only in AWS, and the
+  # basis both engines share so a manifest deploys identically on either.
+  cluster_identifier = var.metadata.name
 
-  # Base labels/tags
-  base_tags = {
-    "planton.org/resource"      = "true"
-    "planton.org/resource-id"   = local.resource_id
-    "planton.org/resource-kind" = "AwsDocumentDb"
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsDocumentDb"
+    "planton.ai/resource-id"   = var.metadata.id
   }
 
-  org_tag = (
-    (var.metadata.org != null && var.metadata.org != "")
-    ? { "planton.org/organization" = var.metadata.org }
-    : {}
+  # A subnet group is managed here only when the spec brings raw subnets;
+  # an existing group name short-circuits it. The group itself is pure
+  # glue (a named list of subnets), which is why it stays inside this
+  # module instead of being its own node.
+  manage_subnet_group = var.spec.db_subnet_group_name == "" && length(var.spec.subnet_ids) > 0
+
+  # A cluster parameter group is managed here only for inline parameters.
+  # Bringing an existing group name and inline parameters are mutually
+  # exclusive (CEL-enforced).
+  manage_parameter_group = length(var.spec.parameters) > 0
+
+  # The parameter-group family is derived from the pinned engine_version:
+  # "5.0.0" -> docdb5.0. DocumentDB families are keyed by major.minor --
+  # AWS's own family naming, not a convention of ours. The slice is
+  # bounded because locals evaluate eagerly even when the family is
+  # unused: an unpinned engine_version (valid whenever there are no
+  # inline parameters -- CEL ties the two together) must not error here.
+  engine_version_parts = split(".", var.spec.engine_version)
+  engine_family        = "docdb${join(".", slice(local.engine_version_parts, 0, min(2, length(local.engine_version_parts))))}"
+
+  # The parameter group the cluster actually uses: the managed group, an
+  # explicitly referenced existing group, or null for the engine default.
+  effective_cluster_parameter_group = (
+    local.manage_parameter_group ? aws_docdb_cluster_parameter_group.this[0].name :
+    var.spec.db_cluster_parameter_group_name != "" ? var.spec.db_cluster_parameter_group_name :
+    null
   )
-
-  env_tag = (
-    (var.metadata.env != null && var.metadata.env != "")
-    ? { "planton.org/environment" = var.metadata.env }
-    : {}
-  )
-
-  final_tags = merge(local.base_tags, local.org_tag, local.env_tag)
-
-  # Networking
-  safe_subnet_ids       = [for s in coalesce(try(var.spec.subnets, []), []) : s.value if s.value != null && s.value != ""]
-  has_subnet_ids        = length(local.safe_subnet_ids) >= 2
-  subnet_group_name_var = try(var.spec.db_subnet_group.value, "")
-  need_subnet_group     = local.has_subnet_ids && local.subnet_group_name_var == ""
-
-  # Security groups
-  ingress_sg_ids      = [for s in coalesce(try(var.spec.security_groups, []), []) : s.value if s.value != null && s.value != ""]
-  allowed_cidrs       = coalesce(try(var.spec.allowed_cidrs, []), [])
-  need_managed_sg     = length(local.ingress_sg_ids) > 0 || length(local.allowed_cidrs) > 0
-  vpc_id              = try(var.spec.vpc.value, null)
-
-  # Parameters
-  parameters                   = coalesce(try(var.spec.cluster_parameters, []), [])
-  need_cluster_parameter_group = length(local.parameters) > 0
-
-  # Engine settings
-  engine_version = coalesce(try(var.spec.engine_version, ""), "5.0.0")
-  port           = coalesce(try(var.spec.port, 0), 27017)
-  instance_count = coalesce(try(var.spec.instance_count, 0), 1)
-  instance_class = coalesce(try(var.spec.instance_class, ""), "db.r6g.large")
-
-  # Engine family for parameter group (docdb5.0, docdb4.0, etc.)
-  engine_family = "docdb${substr(local.engine_version, 0, 3)}"
 }

@@ -1,8 +1,11 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: aiml_options landed in 6.15.0, identity_center_options
+      # in 6.20.0, and the aiml serverless_vector_acceleration block this module
+      # emits arrived in 6.31.0 -- the newest argument in use.
+      version = ">= 6.31.0"
     }
   }
 }

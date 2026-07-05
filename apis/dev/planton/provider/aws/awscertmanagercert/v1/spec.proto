@@ -6,28 +6,58 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// AwsCertManagerCertSpec defines the fields needed to provision a public SSL certificate
-// via AWS Certificate Manager (ACM) using DNS validation. We explicitly split the primary
-// domain from any alternate domains for clarity.
+// AwsCertManagerCertSpec defines an AWS Certificate Manager (ACM)
+// certificate in any of ACM's three creation modes:
+//
+//   1. REQUESTED (Amazon-issued) -- ACM issues a public certificate for
+//      domains you prove ownership of, via DNS or EMAIL validation. This
+//      is the default mode and what almost every TLS-fronting AWS
+//      service (ALB/NLB listeners, CloudFront, API Gateway, Cognito,
+//      OpenSearch) consumes. Set primary_domain_name.
+//   2. IMPORTED -- bring your own certificate material (issued by an
+//      external CA) and let ACM distribute it to integrated services.
+//      Set the imported block.
+//   3. PRIVATE (ACM-PCA) -- ACM issues a certificate from your AWS
+//      Private Certificate Authority, with no public validation. Set
+//      primary_domain_name together with certificate_authority_arn.
+//
+// Exactly one of primary_domain_name / imported drives the mode; CEL
+// rules keep the arms honest so a manifest cannot mix them.
+//
+// ACM certificates have no name in AWS -- identity is the generated
+// ARN. metadata.name drives the Name identity tag, and consumers
+// compose with this certificate by referencing its cert_arn output.
+//
+// Renewal: Amazon-issued certificates renew automatically as long as
+// the validation DNS records stay in place (one more reason DNS
+// validation is the recommended method). Imported certificates never
+// auto-renew -- re-import new material before expiry.
 message AwsCertManagerCertSpec {
-  // The AWS region where the ACM certificate will be created.
-  // Example: "us-west-2", "eu-west-1"
+  // The AWS region the certificate is created in. Regional services
+  // (ALB, API Gateway, OpenSearch, ...) require the certificate in
+  // their own region. CloudFront is the notable exception: it only
+  // accepts certificates from "us-east-1", regardless of where the
+  // distribution's origins live.
+  // Example: "us-west-2", "eu-west-1".
   string region = 1 [(buf.validate.field).string.min_len = 1];
 
-  // primaryDomainName is a required field representing the main (apex or wildcard) domain name.
-  // Examples include "example.com" or "*.example.com" (wildcard).
-  // This domain will be set as the 'DomainName' in the AWS ACM certificate.
-  //
-  // The pattern enforces a domain-like structure, allowing an optional wildcard prefix.
-  // The string is mandatory, so users must always supply a primary domain.
+  // The main domain the certificate covers -- an apex ("example.com"),
+  // a subdomain ("app.example.com"), or a wildcard ("*.example.com",
+  // which covers one label level only). Setting this selects the
+  // requested (Amazon-issued) mode, or the private mode when
+  // certificate_authority_arn is also set. Leave empty only for
+  // imported certificates (ACM derives their domains from the
+  // certificate body).
   string primary_domain_name = 2 [
-    (buf.validate.field).required = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {pattern: "^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$"}
   ];
 
-  // alternateDomainNames is an optional list of Subject Alternative Names (SANs) for the certificate.
-  // Each entry must follow the same pattern as primary_domain_name and cannot contain duplicates.
-  // Primary domain should not be added to this list.
+  // Additional domains (Subject Alternative Names) the certificate
+  // covers, each validated independently. A common pairing is the apex
+  // plus its wildcard ("example.com" + "*.example.com") so one
+  // certificate serves both the bare domain and every subdomain. Do
+  // not repeat primary_domain_name here -- ACM already includes it.
   repeated string alternate_domain_names = 3 [
     (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.items = {
@@ -35,20 +65,14 @@ message AwsCertManagerCertSpec {
     }
   ];
 
-  // route53_hosted_zone_id is the identifier of the Route53 hosted zone
-  // where DNS validation records will be created automatically.
-  // Must be a public hosted zone matching the domain names.
-  // Example: "Z123456ABCXYZ".
-  dev.planton.shared.foreignkey.v1.StringValueOrRef route53_hosted_zone_id = 4 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRoute53Zone,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
-  ];
-
-  // validation_method indicates how ACM verifies domain ownership.
-  // By default, DNS is recommended.
-  optional string validation_method = 5 [
-    (dev.planton.shared.options.default) = "DNS",
+  // How ACM verifies domain ownership for requested certificates:
+  // "DNS" (recommended -- a CNAME record per domain, kept in place so
+  // renewals are fully automatic) or "EMAIL" (approval mail to the
+  // domain's WHOIS/admin addresses; renewal requires re-approval every
+  // time, so prefer DNS). Empty keeps DNS. Not applicable to imported
+  // or private certificates.
+  string validation_method = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       in: [
         "DNS",
@@ -56,4 +80,173 @@ message AwsCertManagerCertSpec {
       ]
     }
   ];
+
+  // Per-domain overrides for where the validation request is sent.
+  // The classic use is EMAIL-validating a subdomain at its parent:
+  // validating "app.example.com" by mailing the owners of
+  // "example.com". Rarely needed with DNS validation.
+  repeated AwsCertManagerCertValidationOption validation_options = 5;
+
+  // The key algorithm for the certificate's key pair, create-time
+  // immutable: "RSA_2048" (the default -- universally compatible),
+  // "RSA_3072", "RSA_4096", "EC_prime256v1" (smaller/faster TLS
+  // handshakes; check client compatibility), "EC_secp384r1", or
+  // "EC_secp521r1". Empty keeps the ACM default (RSA_2048). Not
+  // applicable to imported certificates (the algorithm is baked into
+  // the imported key material).
+  string key_algorithm = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "RSA_2048",
+        "RSA_3072",
+        "RSA_4096",
+        "EC_prime256v1",
+        "EC_secp384r1",
+        "EC_secp521r1"
+      ]
+    }
+  ];
+
+  // The Route53 public hosted zone where DNS validation records are
+  // created automatically. When set (DNS validation only), the module
+  // creates the validation CNAMEs in this zone and -- unless
+  // wait_for_validation is false -- waits for the certificate to be
+  // ISSUED before finishing. When unset, the certificate is created in
+  // PENDING_VALIDATION and the required records are exported as the
+  // domain_validation_records output for you to create in your
+  // external DNS; the deployment does not wait. The zone must be
+  // authoritative for every domain on the certificate.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef route53_hosted_zone_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRoute53Zone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Whether the deployment waits for the certificate to reach ISSUED
+  // after creating the validation records (DNS validation with
+  // route53_hosted_zone_id only -- issuance typically lands within a
+  // few minutes). Set false to create the certificate and records
+  // without blocking; downstream resources that require an ISSUED
+  // certificate (CloudFront, listeners) will then fail until issuance
+  // completes, so keep the default unless you are staging DNS ahead of
+  // time. Ignored when the module does not manage the validation
+  // records.
+  optional bool wait_for_validation = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // Certificate options for Amazon-issued (requested and private)
+  // certificates.
+  AwsCertManagerCertOptions options = 9;
+
+  // Bring-your-own certificate material issued by an external CA.
+  // Setting this block selects the imported mode: ACM stores and
+  // distributes the certificate but never renews it -- re-import new
+  // material before expiry (updates re-import in place, keeping the
+  // same ARN so consumers are undisturbed).
+  AwsCertManagerCertImported imported = 10;
+
+  // The ARN of an AWS Private Certificate Authority (ACM-PCA).
+  // Setting this together with primary_domain_name selects the
+  // private mode: the CA issues the certificate directly, no public
+  // validation happens, and validation_method must stay unset.
+  // Private certificates are for internal TLS (service meshes,
+  // internal ALBs) where clients trust your private root.
+  string certificate_authority_arn = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^arn:aws[a-zA-Z-]*:acm-pca:[a-z0-9-]+:[0-9]{12}:certificate-authority/.+$"}
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  // Exactly one creation mode: a domain (requested/private) or imported material.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_creation_mode"
+    message: "set exactly one of primary_domain_name (requested or private certificate) or imported (bring-your-own certificate material)"
+    expression: "(this.primary_domain_name != '') != has(this.imported)"
+  };
+
+  // The imported arm carries everything ACM needs inside the certificate body;
+  // every issuance-time knob is meaningless (and rejected by AWS) with it.
+  option (buf.validate.message).cel = {
+    id: "imported_excludes_issuance_fields"
+    message: "imported certificates derive their domains, algorithm, and options from the certificate material -- remove alternate_domain_names, validation_method, validation_options, key_algorithm, options, certificate_authority_arn, and route53_hosted_zone_id"
+    expression: "!has(this.imported) || (this.alternate_domain_names.size() == 0 && this.validation_method == '' && this.validation_options.size() == 0 && this.key_algorithm == '' && !has(this.options) && this.certificate_authority_arn == '' && !has(this.route53_hosted_zone_id))"
+  };
+
+  // Private-CA issuance performs no public validation at all.
+  option (buf.validate.message).cel = {
+    id: "private_ca_excludes_validation"
+    message: "private (ACM-PCA) certificates are issued without public validation -- remove validation_method, validation_options, and route53_hosted_zone_id when certificate_authority_arn is set"
+    expression: "this.certificate_authority_arn == '' || (this.validation_method == '' && this.validation_options.size() == 0 && !has(this.route53_hosted_zone_id))"
+  };
+
+  // Automated Route53 validation records only exist for DNS validation.
+  option (buf.validate.message).cel = {
+    id: "route53_zone_requires_dns_validation"
+    message: "route53_hosted_zone_id automates DNS validation records -- it cannot be combined with validation_method EMAIL"
+    expression: "!has(this.route53_hosted_zone_id) || this.validation_method == '' || this.validation_method == 'DNS'"
+  };
+}
+
+// A per-domain override of where ACM sends the validation request.
+message AwsCertManagerCertValidationOption {
+  // The certificate domain this override applies to (the primary
+  // domain or one of the alternate domains).
+  string domain_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The domain the validation request is sent to -- must be the
+  // domain itself or one of its ancestors. Example: validate
+  // "app.example.com" via "example.com".
+  string validation_domain = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// Options for Amazon-issued (requested and private) certificates.
+message AwsCertManagerCertOptions {
+  // Whether the certificate is recorded in public Certificate
+  // Transparency logs: "ENABLED" (the ACM default -- browsers
+  // increasingly require CT-logged certificates, so keep it unless
+  // you must hide internal hostnames) or "DISABLED". Empty keeps
+  // ENABLED.
+  string certificate_transparency_logging_preference = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // Whether the certificate's private key may be exported ("ENABLED"
+  // or "DISABLED", the ACM default). Exportable public certificates
+  // let you run the same certificate on non-AWS infrastructure, and
+  // incur an additional AWS charge per certificate. Empty keeps
+  // DISABLED.
+  string export = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+}
+
+// Bring-your-own certificate material for the imported mode.
+message AwsCertManagerCertImported {
+  // The PEM-encoded certificate. Public material, not a secret.
+  string certificate_body = 1 [(buf.validate.field).required = true];
+
+  // The PEM-encoded, unencrypted private key matching the certificate.
+  string private_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The PEM-encoded intermediate/root chain, if the issuing CA is not
+  // already trusted by AWS. Optional for certificates issued by
+  // well-known public CAs. Public material, not a secret.
+  string certificate_chain = 3;
 }

@@ -8,200 +8,96 @@ componentName: "awsecscluster"
 
 # AWS ECS Cluster
 
-Deploys an AWS ECS cluster configured for Fargate workloads with optional capacity provider strategies, CloudWatch Container Insights, and ECS Exec auditing. The component handles capacity provider attachment and default strategy configuration for cost-optimized task placement.
+Deploys an Amazon ECS cluster through one declarative manifest: the scheduling boundary for services and tasks, its capacity (Fargate built-ins, EC2 capacity providers wrapping auto-scaling groups, or a blend), and cluster-wide posture -- Container Insights, ECS Exec auditing, Fargate storage encryption, and the Service Connect default namespace.
 
 ## What Gets Created
 
 When you deploy an AwsEcsCluster resource, Planton provisions:
 
-- **ECS Cluster** — an `ecs.Cluster` resource with the specified name, optional Container Insights setting, and optional ECS Exec configuration
-- **Cluster Capacity Providers** — an `ecs.ClusterCapacityProviders` resource (created only when `capacityProviders` is specified) that attaches FARGATE and/or FARGATE_SPOT providers with an optional default strategy defining base/weight distribution
+- **ECS Cluster** — keyed by `metadata.name`, with Container Insights, exec auditing, managed-storage encryption, and Service Connect defaults
+- **EC2 Capacity Providers** — from `ec2CapacityProviders`, one per entry, each wrapping a referenced auto-scaling group with ECS-managed scaling and draining
+- **Capacity Provider Association** — one association putting the union of Fargate built-ins and EC2 provider names onto the cluster, together with the default strategy
+
+The cluster itself is free -- only the tasks and instances it schedules cost money. All resources are tagged with Planton metadata (organization, environment, resource kind, resource ID).
 
 ## Prerequisites
 
 - **AWS credentials** configured via environment variables or Planton provider config
-- **An existing VPC and subnets** if you plan to deploy ECS services into this cluster (the cluster itself does not require networking)
-- **A KMS key** if enabling encrypted ECS Exec sessions
-- **A CloudWatch log group** or **S3 bucket** if using OVERRIDE logging for ECS Exec
+- **An auto-scaling group** (only for EC2 capacity) — reference an `AwsAutoScalingGroup` whose launch template uses an ECS-optimized AMI joining this cluster via user data
+- **A KMS key** (optional) — reference an `AwsKmsKey` for exec-session or Fargate storage encryption
+- **A Cloud Map namespace** (optional) — for Service Connect defaults
 
 ## Quick Start
 
-Create a file `ecs-cluster.yaml`:
+Create a file `cluster.yaml`:
 
 ```yaml
 apiVersion: aws.planton.dev/v1
 kind: AwsEcsCluster
 metadata:
   name: my-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsEcsCluster.my-cluster
 spec:
-  region: us-east-1
+  region: us-west-2
+  containerInsights: enhanced
+  capacityProviders:
+    - FARGATE
+    - FARGATE_SPOT
+  defaultCapacityProviderStrategy:
+    - capacityProvider: FARGATE
+      base: 1
+      weight: 1
+    - capacityProvider: FARGATE_SPOT
+      weight: 4
 ```
 
 Deploy:
 
 ```shell
-planton apply -f ecs-cluster.yaml
+planton apply -f cluster.yaml
 ```
 
-This creates a basic ECS cluster with no capacity providers attached and Container Insights disabled. Services deployed into this cluster will need to specify their own launch type.
+This creates a serverless cluster where one task is guaranteed On-Demand and ~80% of scaled capacity rides Fargate Spot.
 
 ## Configuration Reference
 
-### Required Fields
+### Observability
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `region` | `string` | — | The AWS region where the ECS cluster will be created (e.g., `us-east-1`). |
+| Field | Type | Description |
+|-------|------|-------------|
+| `containerInsights` | `string` | `enabled` (task/service metrics), `enhanced` (container-level observability with automatic dashboards -- the production posture), or `disabled`. Unset keeps the account default. |
 
-### Optional Fields
+### Capacity
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enableContainerInsights` | `bool` | `false` | Enables CloudWatch Container Insights for cluster-level monitoring. Recommended for production (incurs CloudWatch costs). |
-| `capacityProviders` | `string[]` | `[]` | Capacity providers to attach. Valid values: `FARGATE`, `FARGATE_SPOT`. Items must be unique. |
-| `defaultCapacityProviderStrategy` | `CapacityProviderStrategy[]` | `[]` | Base/weight distribution for tasks across capacity providers. See sub-fields below. |
-| `defaultCapacityProviderStrategy[].capacityProvider` | `string` | — | Name of the capacity provider. Valid values: `FARGATE`, `FARGATE_SPOT`. |
-| `defaultCapacityProviderStrategy[].base` | `int32` | `0` | Minimum number of tasks guaranteed on this provider. Must be >= 0. |
-| `defaultCapacityProviderStrategy[].weight` | `int32` | — | Relative weight for scaling beyond the base. Must be > 0. |
-| `executeCommandConfiguration.logging` | `enum` | `LOGGING_UNSPECIFIED` | Logging behavior for ECS Exec. Valid values: `LOGGING_UNSPECIFIED` (exec disabled), `DEFAULT`, `NONE`, `OVERRIDE`. |
-| `executeCommandConfiguration.kmsKeyId` | `string` | `""` | KMS key ID for encrypting exec session data. |
-| `executeCommandConfiguration.logConfiguration.cloudWatchLogGroupName` | `string` | `""` | CloudWatch log group for exec audit logs. Only used when logging is `OVERRIDE`. |
-| `executeCommandConfiguration.logConfiguration.cloudWatchEncryptionEnabled` | `bool` | `false` | Encrypt CloudWatch logs using the specified KMS key. |
-| `executeCommandConfiguration.logConfiguration.s3BucketName` | `string` | `""` | S3 bucket for exec audit logs. Only used when logging is `OVERRIDE`. |
-| `executeCommandConfiguration.logConfiguration.s3KeyPrefix` | `string` | `""` | S3 key prefix for organizing exec log files. |
-| `executeCommandConfiguration.logConfiguration.s3EncryptionEnabled` | `bool` | `false` | Encrypt S3 logs using the specified KMS key. |
+| Field | Type | Description |
+|-------|------|-------------|
+| `capacityProviders` | `string[]` | The AWS-managed serverless built-ins to associate: `FARGATE` and/or `FARGATE_SPOT`. EC2 capacity is defined separately below; both sets associate onto the cluster together. |
+| `ec2CapacityProviders` | `object[]` | Per-name EC2 capacity providers. Each entry: `name` (what services put in a strategy; may not start with `aws`/`ecs`/`fargate`), `autoScalingGroupArn` (reference an `AwsAutoScalingGroup`'s `autoscaling_group_arn` output), `managedScaling`, `managedTerminationProtection`, `managedDraining`. |
+| `ec2CapacityProviders[].managedScaling` | `object` | ECS drives the group's desired count: `status` (`ENABLED`/`DISABLED`), `targetCapacity` (1-100% utilization target -- 80 keeps headroom for instant placement), `minimumScalingStepSize`/`maximumScalingStepSize`, `instanceWarmupPeriodSeconds`. |
+| `ec2CapacityProviders[].managedTerminationProtection` | `string` | `ENABLED` protects instances running tasks from scale-in -- requires the group's own new-instance scale-in protection. |
+| `ec2CapacityProviders[].managedDraining` | `string` | `ENABLED` (AWS default) drains tasks gracefully off terminating instances. |
+| `defaultCapacityProviderStrategy` | `object[]` | What ECS uses when a service names no strategy: `capacityProvider` (any associated name), `base` (guaranteed tasks; only one entry may set non-zero), `weight` (relative share beyond bases). Validated against the associated set. |
 
-## Examples
+### Cluster-Wide Posture
 
-### Fargate-Only Cluster with Container Insights
-
-A production cluster using only on-demand Fargate capacity with monitoring enabled:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsEcsCluster
-metadata:
-  name: prod-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEcsCluster.prod-cluster
-spec:
-  region: us-east-1
-  enableContainerInsights: true
-  capacityProviders:
-    - FARGATE
-```
-
-### Cost-Optimized Cluster with Spot Capacity
-
-A cluster that uses 20% on-demand Fargate for baseline stability and 80% Fargate Spot for cost savings on scaled tasks:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsEcsCluster
-metadata:
-  name: cost-optimized-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEcsCluster.cost-optimized-cluster
-spec:
-  region: us-east-1
-  enableContainerInsights: true
-  capacityProviders:
-    - FARGATE
-    - FARGATE_SPOT
-  defaultCapacityProviderStrategy:
-    - capacityProvider: FARGATE
-      base: 1
-      weight: 1
-    - capacityProvider: FARGATE_SPOT
-      base: 0
-      weight: 4
-```
-
-### Cluster with ECS Exec and Default Logging
-
-Enables ECS Exec for debugging containers with AWS-managed logging:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsEcsCluster
-metadata:
-  name: debug-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsEcsCluster.debug-cluster
-spec:
-  region: us-east-1
-  enableContainerInsights: true
-  capacityProviders:
-    - FARGATE
-  executeCommandConfiguration:
-    logging: DEFAULT
-```
-
-### Full-Featured Cluster with Custom Exec Logging
-
-Production cluster with Spot capacity, Container Insights, and ECS Exec audit logs sent to both CloudWatch and S3 with KMS encryption:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsEcsCluster
-metadata:
-  name: full-cluster
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEcsCluster.full-cluster
-spec:
-  region: us-east-1
-  enableContainerInsights: true
-  capacityProviders:
-    - FARGATE
-    - FARGATE_SPOT
-  defaultCapacityProviderStrategy:
-    - capacityProvider: FARGATE
-      base: 1
-      weight: 1
-    - capacityProvider: FARGATE_SPOT
-      base: 0
-      weight: 3
-  executeCommandConfiguration:
-    logging: OVERRIDE
-    kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-efgh-5678
-    logConfiguration:
-      cloudWatchLogGroupName: /ecs/exec-audit
-      cloudWatchEncryptionEnabled: true
-      s3BucketName: my-ecs-exec-logs
-      s3KeyPrefix: exec-sessions/
-      s3EncryptionEnabled: true
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `executeCommandConfiguration` | `object` | ECS Exec auditing: `logging` (`DEFAULT` = task's own log config, `OVERRIDE` = the explicit destinations below, `NONE` = unaudited), `logConfiguration` (CloudWatch group and/or S3 bucket, with encryption requirements), `kmsKeyId` (ref -- encrypts session traffic). |
+| `managedStorageConfiguration` | `object` | Customer-managed KMS keys: `fargateEphemeralStorageKmsKeyId` (the key policy must grant the Fargate service principal) and `kmsKeyId`. |
+| `serviceConnectNamespaceArn` | `string` | The Cloud Map namespace ARN Service Connect uses by default for services in this cluster. |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+|--------|-------------|
+| `cluster_name` | The cluster name (mirrors `metadata.name`) |
+| `cluster_arn` | The join key — `AwsEcsService.cluster_arn` references it |
+| `capacity_provider_names` | The full strategy vocabulary: built-ins plus folded EC2 provider names |
+| `capacity_provider_arns` | The EC2 capacity providers' ARNs (empty for Fargate-only clusters) |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_name` | `string` | Name of the created ECS cluster |
-| `cluster_arn` | `string` | ARN of the created ECS cluster |
-| `cluster_capacity_providers` | `string[]` | List of capacity providers associated with the cluster (exported per-index) |
+## Related Resources
 
-## Related Components
-
-- [AwsEcsService](/docs/catalog/aws/ecs-service) — deploys Fargate services into this cluster
-- [AwsAlb](/docs/catalog/aws/alb) — provides load balancing for services running in the cluster
-- [AwsVpc](/docs/catalog/aws/vpc) — provides the network infrastructure for ECS services
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides encryption keys for ECS Exec session data
+- [AWS ECS Service](/docs/catalog/aws/ecs-service) — the long-running workloads scheduled into this cluster
+- [AWS ECS Task Definition](/docs/catalog/aws/ecs-task-definition) — the container blueprints those services run
+- [AWS Auto Scaling Group](/docs/catalog/aws/auto-scaling-group) — the instance fleet behind an EC2 capacity provider
+- [AWS Launch Template](/docs/catalog/aws/launch-template) — the instance shape that fleet launches from
+- [AWS KMS Key](/docs/catalog/aws/kms-key) — exec-session and Fargate storage encryption

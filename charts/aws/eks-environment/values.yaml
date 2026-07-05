@@ -42,8 +42,8 @@ params:
   value: eks-demo
 
 - name: cluster_version
-  description: Kubernetes version (e.g. 1.29)
-  value: "1.29"
+  description: Kubernetes version (e.g. 1.31)
+  value: "1.31"
 
 - name: disable_public_endpoint
   description: Private endpoint
@@ -109,6 +109,10 @@ params:
   value: true
 
 # ─── Kubernetes add‑ons ───────────────────────────────────────────────
+- name: coreAddonsEnabled
+  description: Manage the core EKS add-ons (vpc-cni, kube-proxy, coredns) as first-class AWS-managed add-ons instead of the cluster's bootstrap copies
+  type: bool
+  value: true
 - name: certManagerEnabled
   type: bool
   value: true

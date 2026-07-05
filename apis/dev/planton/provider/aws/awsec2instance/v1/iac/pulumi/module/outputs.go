@@ -1,13 +1,13 @@
 package module
 
-// Pulumi stack‑output keys expected by AwsEc2InstanceStackOutputs.
 const (
-	OpInstanceId         = "instance_id"
-	OpPrivateIp          = "private_ip"
-	OpPrivateDnsName     = "private_dns_name"
-	OpAvailabilityZone   = "availability_zone"
-	OpInstanceProfileArn = "instance_profile_arn"
-
-	OpSshPrivateKey = "ssh_private_key"
-	OpSshPublicKey  = "ssh_public_key"
+	OpInstanceId                = "instance_id"
+	OpArn                       = "arn"
+	OpInstanceState             = "instance_state"
+	OpAvailabilityZone          = "availability_zone"
+	OpPrivateIp                 = "private_ip"
+	OpPrivateDns                = "private_dns"
+	OpPublicIp                  = "public_ip"
+	OpPublicDns                 = "public_dns"
+	OpPrimaryNetworkInterfaceId = "primary_network_interface_id"
 )

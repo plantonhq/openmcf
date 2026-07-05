@@ -107,6 +107,12 @@ message AwsServerlessElasticacheSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
   ];
 
+  // IP addressing for the cache's VPC endpoints. Values: "ipv4" (default),
+  // "ipv6", "dual_stack". ForceNew — changing the network type destroys and
+  // recreates the cache. Dual-stack requires subnets with both IPv4 and
+  // IPv6 CIDRs.
+  string network_type = 11;
+
   // ---------------------------------------------------------------------------
   // Encryption
   // ---------------------------------------------------------------------------
@@ -114,7 +120,7 @@ message AwsServerlessElasticacheSpec {
   // Customer-managed KMS key ARN for at-rest encryption. When set, ElastiCache
   // Serverless uses this key instead of the AWS-managed key. ForceNew —
   // changing this destroys and recreates the cache.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 11 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 12 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
@@ -125,22 +131,33 @@ message AwsServerlessElasticacheSpec {
 
   // Daily automatic snapshot time in UTC. Format: "HH:mm" (e.g., "05:00").
   // Only valid for Redis/Valkey engines. Memcached has no persistence.
-  string daily_snapshot_time = 12;
+  string daily_snapshot_time = 13;
 
   // Number of days to retain automatic snapshots. Range: 0–35. 0 disables
   // snapshots. Only valid for Redis/Valkey engines.
-  int32 snapshot_retention_limit = 13 [(buf.validate.field).int32 = {
+  int32 snapshot_retention_limit = 14 [(buf.validate.field).int32 = {
     gte: 0
     lte: 35
   }];
+
+  // ARNs of existing ElastiCache snapshots to seed the new cache from — the
+  // migration path from a node-based Redis/Valkey cluster to serverless
+  // (snapshot the cluster, restore here). Create-time-only; only valid for
+  // Redis/Valkey engines.
+  repeated string snapshot_arns_to_restore = 15;
 
   // ---------------------------------------------------------------------------
   // Authentication (Redis/Valkey only)
   // ---------------------------------------------------------------------------
 
-  // Redis ACL user group ID for fine-grained access control. Only valid for
-  // Redis/Valkey engines. Memcached has no authentication mechanism.
-  string user_group_id = 14;
+  // RBAC user group controlling fine-grained access
+  // (AwsElasticacheUser/AwsElasticacheUserGroup). Serverless caches accept
+  // exactly one group. Only valid for Redis/Valkey engines — Memcached has
+  // no authentication mechanism.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_group_id = 16 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticacheUserGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_group_id"
+  ];
 
   // ---------------------------------------------------------------------------
   // CEL validations
@@ -184,8 +201,22 @@ message AwsServerlessElasticacheSpec {
   // user_group_id is only valid for Redis/Valkey.
   option (buf.validate.message).cel = {
     id: "user_group_engine_guard"
-    message: "user_group_id is only valid for redis or valkey engines"
-    expression: "this.user_group_id == '' || this.engine in ['redis', 'valkey']"
+    message: "user_group_id is only valid for redis or valkey engines — Memcached has no authentication mechanism"
+    expression: "!has(this.user_group_id) || this.engine in ['redis', 'valkey']"
+  };
+
+  // snapshot_arns_to_restore is only valid for Redis/Valkey.
+  option (buf.validate.message).cel = {
+    id: "snapshot_restore_engine_guard"
+    message: "snapshot_arns_to_restore is only valid for redis or valkey engines — Memcached has no persistence to restore"
+    expression: "this.snapshot_arns_to_restore.size() == 0 || this.engine in ['redis', 'valkey']"
+  };
+
+  // network_type valid values.
+  option (buf.validate.message).cel = {
+    id: "network_type_valid_values"
+    message: "network_type must be 'ipv4', 'ipv6', or 'dual_stack' when set"
+    expression: "this.network_type == '' || this.network_type in ['ipv4', 'ipv6', 'dual_stack']"
   };
 
   // data_storage_min_gb must be at least 1 when set (non-zero).

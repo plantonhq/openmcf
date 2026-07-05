@@ -1,70 +1,51 @@
 # AwsCertManagerCert
 
-The **AwsCertManagerCert** resource provides a standardized way to provision and manage SSL/TLS certificates through AWS Certificate Manager (ACM) using DNS validation. It simplifies certificate management by automating DNS validation records in Route53 and supporting both single and multi-domain certificates.
+The **AwsCertManagerCert** resource provisions an AWS Certificate Manager (ACM) certificate in any of ACM's three creation modes — requested (Amazon-issued), imported (bring-your-own material), or private (issued by an ACM Private CA) — and, for DNS-validated certificates whose zone lives in Route53, automates the validation records and the issuance wait.
 
-## Spec Fields (80/20)
+## Creation Modes
 
-### Essential Fields (80% Use Case)
+- **Requested (the default)** — ACM issues a public certificate for domains you prove ownership of, via `DNS` (recommended) or `EMAIL` validation. Set `primary_domain_name` (plus any `alternate_domain_names`). Amazon-issued certificates renew automatically as long as the validation records stay in place.
+- **Imported** — bring certificate material issued by an external CA and let ACM distribute it to integrated services. Set the `imported` block (`certificate_body`, `private_key`, optional `certificate_chain`). Imported certificates never auto-renew; re-importing new material before expiry updates in place and keeps the same ARN.
+- **Private (ACM-PCA)** — your AWS Private Certificate Authority issues the certificate directly, with no public validation. Set `primary_domain_name` together with `certificate_authority_arn`.
 
-- **primary_domain_name**: The main domain name for the certificate (e.g., "example.com" or "*.example.com" for wildcard). This is required and serves as the primary Subject name on the certificate.
-- **route53_hosted_zone_id**: The Route53 Hosted Zone ID where DNS validation records will be automatically created. Must be a public hosted zone that matches the domain names. This is required for DNS validation.
+Exactly one of `primary_domain_name` / `imported` drives the mode; validation rules keep the arms honest so a manifest cannot mix them.
 
-### Advanced Fields (20% Use Case)
+## DNS Validation: Managed or External
 
-- **alternate_domain_names**: Optional list of Subject Alternative Names (SANs) to include on the certificate. Each domain must be unique and follow the same format as the primary domain (supports wildcards). The primary domain should not be duplicated in this list.
-- **validation_method**: Method for domain ownership verification. Options are "DNS" (default and recommended) or "EMAIL". DNS validation is preferred as it automates the validation process through Route53.
+- **Managed (Route53)** — set `route53_hosted_zone_id` (a literal zone ID or a reference to an `AwsRoute53Zone`). The module creates the validation CNAMEs in the zone and, unless `wait_for_validation` is `false`, waits for the certificate to reach `ISSUED`.
+- **External DNS** — leave `route53_hosted_zone_id` unset. The certificate is created in `PENDING_VALIDATION` and the exact records to create are exported as the `domain_validation_records` stack output. Once you create them, ACM issues — and keeps renewing — automatically.
+
+## Key Spec Fields
+
+- **`region`** — where the certificate lives. Regional consumers (ALB, API Gateway, OpenSearch) need it in their own region; **CloudFront only accepts certificates from `us-east-1`**.
+- **`primary_domain_name`** / **`alternate_domain_names`** — the domains covered; wildcards (`*.example.com`) cover one label level. A common pairing is the apex plus its wildcard.
+- **`validation_method`** — `DNS` (recommended; renewals are automatic) or `EMAIL` (re-approval on every renewal). Empty keeps DNS.
+- **`key_algorithm`** — `RSA_2048` (default), `RSA_3072`, `RSA_4096`, `EC_prime256v1`, `EC_secp384r1`, `EC_secp521r1`. Create-time immutable.
+- **`options`** — Certificate Transparency logging preference (`ENABLED`/`DISABLED`) and exportability (`export: ENABLED` allows exporting the private key for use off-AWS, at an additional AWS charge).
+- **`validation_options`** — per-domain overrides of where the validation request is sent (e.g. EMAIL-validating a subdomain at its parent domain).
 
 ## Stack Outputs
 
-After provisioning, the AwsCertManagerCert resource provides the following outputs:
+- **`cert_arn`** — the join key every TLS consumer references (load-balancer listeners, CloudFront, Cognito, OpenSearch, Client VPN).
+- **`status`** — `PENDING_VALIDATION` until ownership is proven, then `ISSUED`.
+- **`domain_validation_records`** — the DNS records proving ownership (create these in external DNS when the module does not manage them; keep them in place so renewals stay automatic).
+- **`not_before`** / **`not_after`** — the validity window; `not_after` is the re-import deadline for imported certificates.
+- **`certificate_type`** — `AMAZON_ISSUED`, `IMPORTED`, or `PRIVATE`.
 
-- **cert_arn**: The Amazon Resource Name (ARN) of the created certificate, used to reference the certificate in other AWS resources like ALBs, CloudFront distributions, or API Gateways.
-- **validation_status**: Current status of the certificate validation (e.g., "PENDING_VALIDATION", "ISSUED").
-- **domain_validation_records**: Details of the DNS validation records created in Route53.
+## Deliberately Not Modeled
 
-## How It Works
-
-When you define an AwsCertManagerCert resource, Planton:
-
-1. **Requests Certificate**: Creates an SSL/TLS certificate in AWS Certificate Manager for the specified primary domain and any alternate domains.
-2. **Validates Ownership**: Automatically creates DNS validation records (CNAME records) in the specified Route53 hosted zone to prove domain ownership.
-3. **Waits for Issuance**: Monitors the certificate status until AWS validates ownership and issues the certificate.
-4. **Manages Lifecycle**: Handles certificate renewal automatically—ACM certificates are valid for 13 months and renew automatically if DNS validation records remain in place.
-
-The DNS validation approach is preferred because it's automated, doesn't require manual intervention, and supports wildcard certificates.
-
-## Use Cases
-
-### Wildcard Certificate for Subdomains
-Create a single wildcard certificate (*.example.com) to secure all subdomains under your primary domain.
-
-### Multi-Domain Certificate
-Issue one certificate covering multiple distinct domains (e.g., example.com, api.example.com, www.example.com) to simplify certificate management.
-
-### CloudFront and ALB SSL
-Provision certificates for use with CloudFront distributions (requires us-east-1 region) or Application Load Balancers in any region.
-
-### Automated Certificate Management
-Leverage ACM's automatic renewal and Route53 DNS validation for zero-touch certificate lifecycle management.
+- **Terraform's `early_renewal_duration`** — a provisioner-side trigger for ACM's managed renewal; renewal automation belongs to ACM itself, not the resource shape.
+- **Write-only private-key arms** (`private_key_wo`) — the `imported.private_key` field is marked sensitive and handled by the platform's secret machinery; a second write-only arm would be redundant surface.
 
 ## Important Notes
 
-### DNS Validation Requirements
-- The Route53 hosted zone must be publicly accessible and match the domain names.
-- DNS validation records are automatically created as CNAME records in the hosted zone.
-- Wildcard certificates (*.example.com) require DNS validation; email validation is not supported for wildcards.
-
-### Regional Considerations
-- For CloudFront distributions, certificates must be created in the us-east-1 region.
-- For other services (ALB, API Gateway), create certificates in the same region as the service.
-
-### Certificate Renewal
-- ACM certificates automatically renew every 13 months if DNS validation records remain in Route53.
-- No action required for renewal as long as validation records are not deleted.
+- Wildcard certificates require DNS validation; EMAIL validation does not support them.
+- The Route53 zone must be authoritative for **every** domain on the certificate.
+- A certificate swap is create-before-destroy: the replacement is issued before the old ARN is released, so consumers holding the reference are never left dangling.
 
 ## References
 
 - [AWS Certificate Manager Documentation](https://docs.aws.amazon.com/acm/)
 - [DNS Validation for ACM Certificates](https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html)
-- [ACM Certificate Characteristics](https://docs.aws.amazon.com/acm/latest/userguide/acm-certificate.html)
-- [Route53 DNS Management](https://docs.aws.amazon.com/route53/)
+- [Importing Certificates into ACM](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html)
+- [AWS Private Certificate Authority](https://docs.aws.amazon.com/privateca/)

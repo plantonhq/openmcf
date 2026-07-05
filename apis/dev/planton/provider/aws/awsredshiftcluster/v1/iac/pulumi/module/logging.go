@@ -7,47 +7,42 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// redshiftLogging creates a Redshift Logging resource when spec.Logging is configured.
-func redshiftLogging(
-	ctx *pulumi.Context,
-	locals *Locals,
-	provider *aws.Provider,
-	cluster *redshift.Cluster,
-) error {
+// clusterLogging configures audit logging -- a cluster setting keyed by
+// the cluster identifier (AWS EnableLogging/DisableLogging), not a
+// resource with its own identity, which is why it is folded into this
+// module rather than modeled as a standalone node. Attaching it after
+// cluster creation is the supported ordering.
+func clusterLogging(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, createdCluster *redshift.Cluster) error {
 	spec := locals.AwsRedshiftCluster.Spec
-	if spec == nil || spec.Logging == nil {
+	if spec.Logging == nil {
 		return nil
 	}
 
-	loggingSpec := spec.Logging
-
 	args := &redshift.LoggingArgs{
-		ClusterIdentifier: cluster.ClusterIdentifier,
+		ClusterIdentifier:  createdCluster.ClusterIdentifier,
+		LogDestinationType: pulumi.String(spec.Logging.LogDestinationType),
 	}
 
-	if loggingSpec.LogDestinationType != "" {
-		args.LogDestinationType = pulumi.String(loggingSpec.LogDestinationType)
+	// S3 delivery needs the bucket (with a policy granting the Redshift
+	// service write access); CloudWatch delivery needs the export list.
+	// The spec's CEL rules enforce each destination's requirement.
+	if spec.Logging.S3BucketName != "" {
+		args.BucketName = pulumi.String(spec.Logging.S3BucketName)
+	}
+	if spec.Logging.S3KeyPrefix != "" {
+		args.S3KeyPrefix = pulumi.String(spec.Logging.S3KeyPrefix)
+	}
+	if len(spec.Logging.LogExports) > 0 {
+		logExports := pulumi.StringArray{}
+		for _, logExport := range spec.Logging.LogExports {
+			logExports = append(logExports, pulumi.String(logExport))
+		}
+		args.LogExports = logExports
 	}
 
-	if loggingSpec.S3BucketName != "" {
-		args.BucketName = pulumi.String(loggingSpec.S3BucketName)
+	if _, err := redshift.NewLogging(ctx, "logging", args,
+		pulumi.Provider(provider), pulumi.DependsOn([]pulumi.Resource{createdCluster})); err != nil {
+		return errors.Wrap(err, "failed to enable audit logging")
 	}
-
-	if loggingSpec.S3KeyPrefix != "" {
-		args.S3KeyPrefix = pulumi.String(loggingSpec.S3KeyPrefix)
-	}
-
-	if len(loggingSpec.LogExports) > 0 {
-		args.LogExports = pulumi.ToStringArray(loggingSpec.LogExports)
-	}
-
-	_, err := redshift.NewLogging(ctx, "cluster-logging", args,
-		pulumi.Provider(provider),
-		pulumi.DependsOn([]pulumi.Resource{cluster}),
-	)
-	if err != nil {
-		return errors.Wrap(err, "create redshift logging")
-	}
-
 	return nil
 }

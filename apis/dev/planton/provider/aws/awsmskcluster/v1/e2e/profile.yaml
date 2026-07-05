@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsmskcluster
+spec:
+  # An MSK cluster under E2E: the harness deploys the AwsVpc -> AwsSubnet
+  # trio -> AwsSecurityGroup prerequisite chain (brokers must attach at
+  # least one referenced group at creation; the embedded shadow-group
+  # shape was retired this session), then runs the lifecycle against a
+  # two-broker kafka.t3.small SASL/IAM cluster with a folded
+  # server_properties configuration. Verification is Kafka
+  # DescribeClusterV2 keyed on the cluster ARN.
+  #
+  # deferred: per the session-018 decision both engines were validated
+  # offline only -- tofu init/validate/plan and pulumi preview against
+  # the hack manifest -- with no live provision lane (MSK cluster
+  # creation runs 25-40 minutes each way per engine). The scenario,
+  # prerequisite chain, and verifier are live-ready; flip to green after
+  # the first full deploy -> verify -> destroy run on both provisioners.
+  tier: 1
+  status: deferred
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 120

@@ -1,10 +1,10 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsOpenSearchDomain
 metadata:
-  name: awsopensearchdomain-demo
+  name: awsos-demo
 spec:
   region: us-west-2
-  engineVersion: "OpenSearch_2.11"
+  engineVersion: "OpenSearch_2.17"
   clusterConfig:
     instanceType: r6g.large.search
     instanceCount: 3
@@ -21,11 +21,11 @@ spec:
   nodeToNodeEncryptionEnabled: true
   vpcOptions:
     subnetIds:
-      - value: "<private-subnet-id-az1>"
-      - value: "<private-subnet-id-az2>"
-      - value: "<private-subnet-id-az3>"
+      - value: subnet-0aaa1111bbb222333
+      - value: subnet-0bbb2222ccc333444
+      - value: subnet-0ccc3333ddd444555
     securityGroupIds:
-      - value: "<security-group-id>"
+      - value: sg-0abc1234def567890
   domainEndpointOptions:
     enforceHttps: true
     tlsSecurityPolicy: "Policy-Min-TLS-1-2-PFS-2023-10"
@@ -34,5 +34,11 @@ spec:
     internalUserDatabaseEnabled: true
     masterUserName: admin
     masterUserPassword:
-      value: "<master-password>"
-  autoTuneEnabled: true
+      value: "Sup3r$ecret!"
+  autoTuneOptions:
+    desiredState: ENABLED
+    useOffPeakWindow: true
+  offPeakWindowOptions:
+    enabled: true
+    windowStartHour: 23
+    windowStartMinute: 30

@@ -1,10 +1,13 @@
 terraform {
-  required_version = ">= 1.0"
-
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: the v6 line is where aws_redshift_cluster's
+      # encrypted defaults to true, publicly_accessible defaults to
+      # false, and the inline logging/snapshot_copy blocks gave way to
+      # the standalone aws_redshift_logging and aws_redshift_snapshot_copy
+      # resources this module uses.
+      version = ">= 6.0.0"
     }
   }
 }

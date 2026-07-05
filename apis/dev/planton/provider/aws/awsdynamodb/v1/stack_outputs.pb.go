@@ -21,18 +21,24 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsDynamodbStackOutputs captures observable identifiers from a DynamoDB table.
+// AwsDynamodbStackOutputs captures the observable identifiers of a
+// DynamoDB table after provisioning.
 type AwsDynamodbStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Table name
+	// The table name -- what SDK calls, IAM policy resources, and
+	// application configuration reference.
 	TableName string `protobuf:"bytes,1,opt,name=table_name,json=tableName,proto3" json:"table_name,omitempty"`
-	// Table ARN
+	// The table ARN -- the join key for IAM policies, resource policies,
+	// and cross-service integrations.
 	TableArn string `protobuf:"bytes,2,opt,name=table_arn,json=tableArn,proto3" json:"table_arn,omitempty"`
-	// Provider-assigned table ID (if available)
+	// The provider-assigned table identifier.
 	TableId string `protobuf:"bytes,3,opt,name=table_id,json=tableId,proto3" json:"table_id,omitempty"`
-	// Stream ARN when streams are enabled
+	// The DynamoDB Streams ARN -- what Lambda event-source mappings and
+	// other stream consumers attach to. Empty when streams are disabled.
 	StreamArn string `protobuf:"bytes,4,opt,name=stream_arn,json=streamArn,proto3" json:"stream_arn,omitempty"`
-	// Stream label when streams are enabled
+	// The stream label (a per-stream timestamp qualifier); combined with
+	// the account and table name it uniquely identifies the stream.
+	// Empty when streams are disabled.
 	StreamLabel   string `protobuf:"bytes,5,opt,name=stream_label,json=streamLabel,proto3" json:"stream_label,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

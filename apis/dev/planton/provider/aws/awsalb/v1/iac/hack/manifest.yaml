@@ -7,3 +7,16 @@ spec:
   subnets:
     - value: subnet-12345678
     - value: subnet-12345679
+  # Behavior attributes deliberately exercise the tri-state bool
+  # (http2Enabled), the enum-validated strings, and the log-delivery object
+  # so the fixture proves the full variable contract, not just the scalars.
+  internal: false
+  ipAddressType: ipv4
+  idleTimeoutSeconds: 120
+  http2Enabled: true
+  desyncMitigationMode: defensive
+  xffHeaderProcessingMode: append
+  accessLogs:
+    bucket:
+      value: demo-alb-logs-bucket
+    prefix: alb/demo

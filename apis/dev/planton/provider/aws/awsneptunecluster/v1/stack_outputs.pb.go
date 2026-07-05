@@ -21,38 +21,43 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsNeptuneClusterStackOutputs captures observable identifiers and endpoints
-// from the Neptune cluster deployment.
+// AwsNeptuneClusterStackOutputs captures the observable identifiers and
+// connection endpoints of the Neptune cluster after deployment.
 type AwsNeptuneClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The primary writer endpoint for the Neptune cluster.
-	// Applications send Gremlin/SPARQL queries to this endpoint for read-write operations.
-	ClusterEndpoint string `protobuf:"bytes,1,opt,name=cluster_endpoint,json=clusterEndpoint,proto3" json:"cluster_endpoint,omitempty"`
-	// The reader endpoint for load-balanced read traffic across replica instances.
-	// Distributes read-only queries across all available replicas.
-	ClusterReaderEndpoint string `protobuf:"bytes,2,opt,name=cluster_reader_endpoint,json=clusterReaderEndpoint,proto3" json:"cluster_reader_endpoint,omitempty"`
-	// The AWS identifier of the Neptune cluster.
-	ClusterId string `protobuf:"bytes,3,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
-	// The Amazon Resource Name (ARN) of the Neptune cluster.
-	ClusterArn string `protobuf:"bytes,4,opt,name=cluster_arn,json=clusterArn,proto3" json:"cluster_arn,omitempty"`
-	// The internal AWS resource identifier for the Neptune cluster.
-	ClusterResourceId string `protobuf:"bytes,5,opt,name=cluster_resource_id,json=clusterResourceId,proto3" json:"cluster_resource_id,omitempty"`
-	// The port on which the Neptune cluster accepts connections.
-	ClusterPort int32 `protobuf:"varint,6,opt,name=cluster_port,json=clusterPort,proto3" json:"cluster_port,omitempty"`
-	// The name of the Neptune subnet group associated with the cluster
-	// (only populated when the module creates the subnet group).
-	DbSubnetGroupName string `protobuf:"bytes,7,opt,name=db_subnet_group_name,json=dbSubnetGroupName,proto3" json:"db_subnet_group_name,omitempty"`
-	// The security group ID associated with the cluster
-	// (only populated when the module creates the security group).
-	SecurityGroupId string `protobuf:"bytes,8,opt,name=security_group_id,json=securityGroupId,proto3" json:"security_group_id,omitempty"`
-	// The cluster parameter group name in use by the cluster
-	// (only populated when the module creates the parameter group).
-	ClusterParameterGroupName string `protobuf:"bytes,9,opt,name=cluster_parameter_group_name,json=clusterParameterGroupName,proto3" json:"cluster_parameter_group_name,omitempty"`
-	// The Route 53 hosted zone ID for the cluster endpoint.
-	// Useful for creating CNAME or alias records.
-	HostedZoneId  string `protobuf:"bytes,10,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The cluster identifier (e.g. "knowledge-graph").
+	ClusterIdentifier string `protobuf:"bytes,1,opt,name=cluster_identifier,json=clusterIdentifier,proto3" json:"cluster_identifier,omitempty"`
+	// The Amazon Resource Name of the cluster.
+	Arn string `protobuf:"bytes,2,opt,name=arn,proto3" json:"arn,omitempty"`
+	// The immutable cluster resource ID (cluster-...). Survives
+	// identifier renames -- the durable handle for CloudWatch dimensions
+	// and IAM database authentication policies.
+	ClusterResourceId string `protobuf:"bytes,3,opt,name=cluster_resource_id,json=clusterResourceId,proto3" json:"cluster_resource_id,omitempty"`
+	// The writer endpoint -- send Gremlin/openCypher/SPARQL queries here
+	// for reads and writes.
+	Endpoint string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The reader endpoint -- load-balances read-only queries across the
+	// cluster's reader instances.
+	ReaderEndpoint string `protobuf:"bytes,5,opt,name=reader_endpoint,json=readerEndpoint,proto3" json:"reader_endpoint,omitempty"`
+	// The port the cluster accepts connections on.
+	Port int32 `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
+	// The Route53 hosted zone ID of the cluster endpoints, for DNS alias
+	// records.
+	HostedZoneId string `protobuf:"bytes,7,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
+	// The resolved engine version actually running (meaningful when the
+	// spec leaves engine_version to the AWS default).
+	EngineVersionActual string `protobuf:"bytes,8,opt,name=engine_version_actual,json=engineVersionActual,proto3" json:"engine_version_actual,omitempty"`
+	// The name of the Neptune subnet group the cluster runs in.
+	NeptuneSubnetGroupName string `protobuf:"bytes,9,opt,name=neptune_subnet_group_name,json=neptuneSubnetGroupName,proto3" json:"neptune_subnet_group_name,omitempty"`
+	// The name of the cluster parameter group in use (module-managed or
+	// the referenced existing group).
+	NeptuneClusterParameterGroupName string `protobuf:"bytes,10,opt,name=neptune_cluster_parameter_group_name,json=neptuneClusterParameterGroupName,proto3" json:"neptune_cluster_parameter_group_name,omitempty"`
+	// Per-instance endpoints of the cluster's folded instances, ordered
+	// as declared in spec.instances. Empty for headless shapes (restores,
+	// replicas, and global-cluster members created without instances).
+	InstanceEndpoints []string `protobuf:"bytes,11,rep,name=instance_endpoints,json=instanceEndpoints,proto3" json:"instance_endpoints,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AwsNeptuneClusterStackOutputs) Reset() {
@@ -85,30 +90,16 @@ func (*AwsNeptuneClusterStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsneptunecluster_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AwsNeptuneClusterStackOutputs) GetClusterEndpoint() string {
+func (x *AwsNeptuneClusterStackOutputs) GetClusterIdentifier() string {
 	if x != nil {
-		return x.ClusterEndpoint
+		return x.ClusterIdentifier
 	}
 	return ""
 }
 
-func (x *AwsNeptuneClusterStackOutputs) GetClusterReaderEndpoint() string {
+func (x *AwsNeptuneClusterStackOutputs) GetArn() string {
 	if x != nil {
-		return x.ClusterReaderEndpoint
-	}
-	return ""
-}
-
-func (x *AwsNeptuneClusterStackOutputs) GetClusterId() string {
-	if x != nil {
-		return x.ClusterId
-	}
-	return ""
-}
-
-func (x *AwsNeptuneClusterStackOutputs) GetClusterArn() string {
-	if x != nil {
-		return x.ClusterArn
+		return x.Arn
 	}
 	return ""
 }
@@ -120,32 +111,25 @@ func (x *AwsNeptuneClusterStackOutputs) GetClusterResourceId() string {
 	return ""
 }
 
-func (x *AwsNeptuneClusterStackOutputs) GetClusterPort() int32 {
+func (x *AwsNeptuneClusterStackOutputs) GetEndpoint() string {
 	if x != nil {
-		return x.ClusterPort
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterStackOutputs) GetReaderEndpoint() string {
+	if x != nil {
+		return x.ReaderEndpoint
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterStackOutputs) GetPort() int32 {
+	if x != nil {
+		return x.Port
 	}
 	return 0
-}
-
-func (x *AwsNeptuneClusterStackOutputs) GetDbSubnetGroupName() string {
-	if x != nil {
-		return x.DbSubnetGroupName
-	}
-	return ""
-}
-
-func (x *AwsNeptuneClusterStackOutputs) GetSecurityGroupId() string {
-	if x != nil {
-		return x.SecurityGroupId
-	}
-	return ""
-}
-
-func (x *AwsNeptuneClusterStackOutputs) GetClusterParameterGroupName() string {
-	if x != nil {
-		return x.ClusterParameterGroupName
-	}
-	return ""
 }
 
 func (x *AwsNeptuneClusterStackOutputs) GetHostedZoneId() string {
@@ -155,25 +139,52 @@ func (x *AwsNeptuneClusterStackOutputs) GetHostedZoneId() string {
 	return ""
 }
 
+func (x *AwsNeptuneClusterStackOutputs) GetEngineVersionActual() string {
+	if x != nil {
+		return x.EngineVersionActual
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterStackOutputs) GetNeptuneSubnetGroupName() string {
+	if x != nil {
+		return x.NeptuneSubnetGroupName
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterStackOutputs) GetNeptuneClusterParameterGroupName() string {
+	if x != nil {
+		return x.NeptuneClusterParameterGroupName
+	}
+	return ""
+}
+
+func (x *AwsNeptuneClusterStackOutputs) GetInstanceEndpoints() []string {
+	if x != nil {
+		return x.InstanceEndpoints
+	}
+	return nil
+}
+
 var File_dev_planton_provider_aws_awsneptunecluster_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsneptunecluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/aws/awsneptunecluster/v1/stack_outputs.proto\x12-dev.planton.provider.aws.awsneptunecluster.v1\"\xd9\x03\n" +
-	"\x1dAwsNeptuneClusterStackOutputs\x12)\n" +
-	"\x10cluster_endpoint\x18\x01 \x01(\tR\x0fclusterEndpoint\x126\n" +
-	"\x17cluster_reader_endpoint\x18\x02 \x01(\tR\x15clusterReaderEndpoint\x12\x1d\n" +
-	"\n" +
-	"cluster_id\x18\x03 \x01(\tR\tclusterId\x12\x1f\n" +
-	"\vcluster_arn\x18\x04 \x01(\tR\n" +
-	"clusterArn\x12.\n" +
-	"\x13cluster_resource_id\x18\x05 \x01(\tR\x11clusterResourceId\x12!\n" +
-	"\fcluster_port\x18\x06 \x01(\x05R\vclusterPort\x12/\n" +
-	"\x14db_subnet_group_name\x18\a \x01(\tR\x11dbSubnetGroupName\x12*\n" +
-	"\x11security_group_id\x18\b \x01(\tR\x0fsecurityGroupId\x12?\n" +
-	"\x1ccluster_parameter_group_name\x18\t \x01(\tR\x19clusterParameterGroupName\x12$\n" +
-	"\x0ehosted_zone_id\x18\n" +
-	" \x01(\tR\fhostedZoneIdB\x86\x03\n" +
+	"Adev/planton/provider/aws/awsneptunecluster/v1/stack_outputs.proto\x12-dev.planton.provider.aws.awsneptunecluster.v1\"\xfd\x03\n" +
+	"\x1dAwsNeptuneClusterStackOutputs\x12-\n" +
+	"\x12cluster_identifier\x18\x01 \x01(\tR\x11clusterIdentifier\x12\x10\n" +
+	"\x03arn\x18\x02 \x01(\tR\x03arn\x12.\n" +
+	"\x13cluster_resource_id\x18\x03 \x01(\tR\x11clusterResourceId\x12\x1a\n" +
+	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12'\n" +
+	"\x0freader_endpoint\x18\x05 \x01(\tR\x0ereaderEndpoint\x12\x12\n" +
+	"\x04port\x18\x06 \x01(\x05R\x04port\x12$\n" +
+	"\x0ehosted_zone_id\x18\a \x01(\tR\fhostedZoneId\x122\n" +
+	"\x15engine_version_actual\x18\b \x01(\tR\x13engineVersionActual\x129\n" +
+	"\x19neptune_subnet_group_name\x18\t \x01(\tR\x16neptuneSubnetGroupName\x12N\n" +
+	"$neptune_cluster_parameter_group_name\x18\n" +
+	" \x01(\tR neptuneClusterParameterGroupName\x12-\n" +
+	"\x12instance_endpoints\x18\v \x03(\tR\x11instanceEndpointsB\x86\x03\n" +
 	"1com.dev.planton.provider.aws.awsneptunecluster.v1B\x11StackOutputsProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsneptunecluster/v1;awsneptuneclusterv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Aws.Awsneptunecluster.V1\xca\x02-Dev\\Planton\\Provider\\Aws\\Awsneptunecluster\\V1\xe2\x029Dev\\Planton\\Provider\\Aws\\Awsneptunecluster\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Aws::Awsneptunecluster::V1b\x06proto3"
 
 var (

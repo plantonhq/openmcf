@@ -3,9 +3,8 @@ package module
 import (
 	"strconv"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
-
 	awskmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awskmskey/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -15,16 +14,20 @@ type Locals struct {
 	AwsTags   map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *awskmskeyv1.AwsKmsKeyStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *awskmskeyv1.AwsKmsKeyStackInput) *Locals {
 	locals := &Locals{}
 	locals.AwsKmsKey = stackInput.Target
 
+	metadata := stackInput.Target.Metadata
+
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
-		awstagkeys.Organization: locals.AwsKmsKey.Metadata.Org,
-		awstagkeys.Environment:  locals.AwsKmsKey.Metadata.Env,
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
 		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsKmsKey.String(),
-		awstagkeys.ResourceId:   locals.AwsKmsKey.Metadata.Id,
+		awstagkeys.ResourceId:   metadata.Id,
 	}
 
 	return locals

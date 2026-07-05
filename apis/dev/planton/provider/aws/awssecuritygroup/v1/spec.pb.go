@@ -23,7 +23,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsSecurityGroupSpec defines the primary configuration for creating an AWS EC2 Security Group in a specified VPC.
+// AwsSecurityGroupSpec defines an AWS EC2 Security Group in a specified VPC.
+// A security group is a stateful virtual firewall attached to network
+// interfaces: return traffic for an allowed connection is automatically
+// permitted, so rules only describe the initiating direction. Rules are
+// authored inline on the group -- they live and die with it -- and other
+// resources compose onto the group by referencing its exported
+// security_group_id.
 type AwsSecurityGroupSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
@@ -31,20 +37,32 @@ type AwsSecurityGroupSpec struct {
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// vpc_id is the ID of the VPC where this Security Group will be created.
 	// Example: "vpc-12345abcde"
-	// This field is required because every Security Group must belong to one VPC.
+	// Required: every security group belongs to exactly one VPC.
+	// ForceNew: changing the VPC forces group replacement.
 	VpcId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
-	// description provides a short explanation of this Security Group’s purpose.
-	// This field is required by AWS and cannot be modified once created without a replacement.
+	// description provides a short explanation of this Security Group's purpose.
+	// Required by AWS. ForceNew: AWS does not allow editing a group description
+	// in place, so changing it forces group replacement.
 	// Example: "Allows inbound HTTP and SSH for web tier"
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	// ingress_rules define the inbound traffic rules for this Security Group.
+	// ingress defines the inbound traffic rules for this Security Group.
 	// If empty, inbound traffic is fully restricted (deny all).
 	Ingress []*SecurityGroupRule `protobuf:"bytes,4,rep,name=ingress,proto3" json:"ingress,omitempty"`
-	// egress_rules define the outbound traffic rules for this Security Group.
-	// If empty, AWS defaults to allow all outbound traffic unless configured otherwise.
-	Egress        []*SecurityGroupRule `protobuf:"bytes,5,rep,name=egress,proto3" json:"egress,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// egress defines the outbound traffic rules for this Security Group.
+	// If empty, ALL outbound traffic is denied: the module revokes the allow-all
+	// egress rule AWS adds to every new group, so the manifest is the complete
+	// statement of what the group permits. Add an explicit all-traffic egress
+	// rule (protocol "-1", 0.0.0.0/0) to restore the AWS default behavior.
+	Egress []*SecurityGroupRule `protobuf:"bytes,5,rep,name=egress,proto3" json:"egress,omitempty"`
+	// revoke_rules_on_delete forcibly revokes this group's rules (and rules in
+	// OTHER groups that reference this one) before deleting the group. Without
+	// it, deleting a group that is still referenced by another group's rules
+	// fails with a DependencyViolation. Enable for groups that are referenced
+	// cross-group (e.g. an app tier referenced by a database tier) so teardown
+	// never requires manual rule surgery. Safe to toggle in place.
+	RevokeRulesOnDelete bool `protobuf:"varint,6,opt,name=revoke_rules_on_delete,json=revokeRulesOnDelete,proto3" json:"revoke_rules_on_delete,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AwsSecurityGroupSpec) Reset() {
@@ -112,21 +130,32 @@ func (x *AwsSecurityGroupSpec) GetEgress() []*SecurityGroupRule {
 	return nil
 }
 
-// SecurityGroupRule represents a single inbound or outbound rule in the Security Group.
-// For ingress, fill in sources (cidrs or source_security_group_ids).
-// For egress, fill in destinations (cidrs or destination_security_group_ids).
+func (x *AwsSecurityGroupSpec) GetRevokeRulesOnDelete() bool {
+	if x != nil {
+		return x.RevokeRulesOnDelete
+	}
+	return false
+}
+
+// SecurityGroupRule represents a single inbound or outbound rule in the
+// Security Group. Each rule must name at least one source (ingress) or
+// destination (egress): CIDR blocks, managed prefix lists, other security
+// groups, or the group itself (self_reference).
 type SecurityGroupRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// protocol indicates the protocol for the rule.
-	// Common values: "tcp", "udp", "icmp", or "-1" (all protocols).
+	// Common values: "tcp", "udp", "icmp", "icmpv6", or "-1" (all protocols).
+	// IANA protocol numbers are also accepted.
 	Protocol string `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// from_port is the starting port in the range.
-	// For single-port rules, from_port == to_port.
-	// Use 0 when specifying all ports (with protocol = -1) or for ICMP types.
+	// from_port is the starting port in the range. For single-port rules,
+	// from_port == to_port. For ICMP/ICMPv6, from_port is the ICMP TYPE
+	// (-1 means all types). For all-protocol rules (protocol "-1"), both ports
+	// must be 0.
 	FromPort int32 `protobuf:"varint,2,opt,name=from_port,json=fromPort,proto3" json:"from_port,omitempty"`
-	// to_port is the ending port in the range.
-	// For single-port rules, to_port == from_port.
-	// Use 0 when specifying all ports (with protocol = -1) or for ICMP codes.
+	// to_port is the ending port in the range. For single-port rules,
+	// to_port == from_port. For ICMP/ICMPv6, to_port is the ICMP CODE
+	// (-1 means all codes). For all-protocol rules (protocol "-1"), both ports
+	// must be 0.
 	ToPort int32 `protobuf:"varint,3,opt,name=to_port,json=toPort,proto3" json:"to_port,omitempty"`
 	// ipv4_cidrs is the list of IPv4 CIDR blocks allowed (ingress) or targeted (egress).
 	// Examples: "10.0.0.0/16", "0.0.0.0/0"
@@ -142,12 +171,21 @@ type SecurityGroupRule struct {
 	// destination_security_group_ids is the list of Security Group IDs that receive traffic (for egress).
 	// Useful for restricting outbound traffic to specific groups. Can reference other AwsSecurityGroup resources.
 	DestinationSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,7,rep,name=destination_security_group_ids,json=destinationSecurityGroupIds,proto3" json:"destination_security_group_ids,omitempty"`
+	// prefix_list_ids is the list of managed prefix list IDs allowed (ingress)
+	// or targeted (egress). Example: "pl-63a5400a". Managed prefix lists name a
+	// set of CIDRs by a stable ID: AWS-managed lists cover services like S3 and
+	// DynamoDB gateway endpoints (so an egress rule can target "the S3 service"
+	// instead of hardcoding its CIDRs), and customer-managed lists let network
+	// teams maintain shared CIDR sets (office ranges, partner networks) that
+	// many groups reference without copying.
+	PrefixListIds []string `protobuf:"bytes,8,rep,name=prefix_list_ids,json=prefixListIds,proto3" json:"prefix_list_ids,omitempty"`
 	// self_reference indicates whether to allow traffic from/to the same Security Group.
-	// This is equivalent to referencing the group’s own ID.
-	SelfReference bool `protobuf:"varint,8,opt,name=self_reference,json=selfReference,proto3" json:"self_reference,omitempty"`
-	// rule_description is an optional explanation of this specific rule,
-	// aiding in clarity and maintenance. Max 255 chars recommended.
-	Description   string `protobuf:"bytes,9,opt,name=description,proto3" json:"description,omitempty"`
+	// This is equivalent to referencing the group's own ID -- the standard pattern
+	// for intra-cluster traffic (nodes of one cluster talking to each other).
+	SelfReference bool `protobuf:"varint,9,opt,name=self_reference,json=selfReference,proto3" json:"self_reference,omitempty"`
+	// description is an optional explanation of this specific rule,
+	// aiding in clarity and maintenance. Max 255 chars.
+	Description   string `protobuf:"bytes,10,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -231,6 +269,13 @@ func (x *SecurityGroupRule) GetDestinationSecurityGroupIds() []*v1.StringValueOr
 	return nil
 }
 
+func (x *SecurityGroupRule) GetPrefixListIds() []string {
+	if x != nil {
+		return x.PrefixListIds
+	}
+	return nil
+}
+
 func (x *SecurityGroupRule) GetSelfReference() bool {
 	if x != nil {
 		return x.SelfReference
@@ -249,27 +294,31 @@ var File_dev_planton_provider_aws_awssecuritygroup_v1_spec_proto protoreflect.Fi
 
 const file_dev_planton_provider_aws_awssecuritygroup_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/aws/awssecuritygroup/v1/spec.proto\x12,dev.planton.provider.aws.awssecuritygroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe3\x03\n" +
+	"7dev/planton/provider/aws/awssecuritygroup/v1/spec.proto\x12,dev.planton.provider.aws.awssecuritygroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x98\x04\n" +
 	"\x14AwsSecurityGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
 	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x84\x01\n" +
 	"\vdescription\x18\x03 \x01(\tBb\xbaH_\xba\x01Y\n" +
 	"\x18description_length_check\x12*Description must not exceed 255 characters\x1a\x11size(this) <= 255\xc8\x01\x01R\vdescription\x12Y\n" +
 	"\aingress\x18\x04 \x03(\v2?.dev.planton.provider.aws.awssecuritygroup.v1.SecurityGroupRuleR\aingress\x12W\n" +
-	"\x06egress\x18\x05 \x03(\v2?.dev.planton.provider.aws.awssecuritygroup.v1.SecurityGroupRuleR\x06egress\"\xa0\x05\n" +
+	"\x06egress\x18\x05 \x03(\v2?.dev.planton.provider.aws.awssecuritygroup.v1.SecurityGroupRuleR\x06egress\x123\n" +
+	"\x16revoke_rules_on_delete\x18\x06 \x01(\bR\x13revokeRulesOnDelete\"\xe9\a\n" +
 	"\x11SecurityGroupRule\x12\"\n" +
-	"\bprotocol\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x12\x1b\n" +
-	"\tfrom_port\x18\x02 \x01(\x05R\bfromPort\x12\x17\n" +
-	"\ato_port\x18\x03 \x01(\x05R\x06toPort\x12\x1d\n" +
+	"\bprotocol\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x121\n" +
+	"\tfrom_port\x18\x02 \x01(\x05B\x14\xbaH\x11\x1a\x0f\x18\xff\xff\x03(\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01R\bfromPort\x12-\n" +
+	"\ato_port\x18\x03 \x01(\x05B\x14\xbaH\x11\x1a\x0f\x18\xff\xff\x03(\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01R\x06toPort\x12\x1d\n" +
 	"\n" +
 	"ipv4_cidrs\x18\x04 \x03(\tR\tipv4Cidrs\x12\x1d\n" +
 	"\n" +
 	"ipv6_cidrs\x18\x05 \x03(\tR\tipv6Cidrs\x12\x98\x01\n" +
 	"\x19source_security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x16sourceSecurityGroupIds\x12\xa2\x01\n" +
-	"\x1edestination_security_group_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x1bdestinationSecurityGroupIds\x12%\n" +
-	"\x0eself_reference\x18\b \x01(\bR\rselfReference\x12\x8b\x01\n" +
-	"\vdescription\x18\t \x01(\tBi\xbaHf\xba\x01c\n" +
-	"\x1drule_description_length_check\x12/Rule description must not exceed 255 characters\x1a\x11size(this) <= 255R\vdescriptionB\xf7\x02\n" +
+	"\x1edestination_security_group_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x1bdestinationSecurityGroupIds\x12D\n" +
+	"\x0fprefix_list_ids\x18\b \x03(\tB\x1c\xbaH\x19\x92\x01\x16\x18\x01\"\x12r\x102\x0e^pl-[0-9a-f]+$R\rprefixListIds\x12%\n" +
+	"\x0eself_reference\x18\t \x01(\bR\rselfReference\x12\x8b\x01\n" +
+	"\vdescription\x18\n" +
+	" \x01(\tBi\xbaHf\xba\x01c\n" +
+	"\x1drule_description_length_check\x12/Rule description must not exceed 255 characters\x1a\x11size(this) <= 255R\vdescription:\xd4\x01\xbaH\xd0\x01\x1a\xcd\x01\n" +
+	"\x17all_protocol_ports_zero\x12Kwhen protocol is '-1' (all protocols), from_port and to_port must both be 0\x1ae(this.protocol == '-1' || this.protocol == 'all') ? (this.from_port == 0 && this.to_port == 0) : trueB\xf7\x02\n" +
 	"0com.dev.planton.provider.aws.awssecuritygroup.v1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssecuritygroup/v1;awssecuritygroupv1\xa2\x02\x05DPPAA\xaa\x02,Dev.Planton.Provider.Aws.Awssecuritygroup.V1\xca\x02,Dev\\Planton\\Provider\\Aws\\Awssecuritygroup\\V1\xe2\x028Dev\\Planton\\Provider\\Aws\\Awssecuritygroup\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Aws::Awssecuritygroup::V1b\x06proto3"
 
 var (

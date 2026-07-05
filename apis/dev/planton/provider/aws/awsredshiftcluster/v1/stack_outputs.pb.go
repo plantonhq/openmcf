@@ -21,34 +21,38 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsRedshiftClusterStackOutputs captures observable identifiers and endpoints from a deployed
-// Amazon Redshift cluster. These outputs enable downstream resources to connect to the cluster,
-// reference it in IAM policies, and integrate with monitoring and data pipeline workflows.
+// AwsRedshiftClusterStackOutputs captures the observable identifiers and
+// connection endpoints of the Redshift cluster after deployment.
 type AwsRedshiftClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// cluster_identifier is the unique identifier of the Redshift cluster.
+	// The cluster identifier (e.g. "analytics-warehouse").
 	ClusterIdentifier string `protobuf:"bytes,1,opt,name=cluster_identifier,json=clusterIdentifier,proto3" json:"cluster_identifier,omitempty"`
-	// cluster_arn is the Amazon Resource Name of the cluster, used for IAM policies and cross-service references.
+	// The Amazon Resource Name of the cluster, for IAM policies and
+	// cross-service references.
 	ClusterArn string `protobuf:"bytes,2,opt,name=cluster_arn,json=clusterArn,proto3" json:"cluster_arn,omitempty"`
-	// cluster_namespace_arn is the namespace ARN, used for Redshift data sharing and Redshift Serverless integration.
+	// The namespace ARN of the cluster, used by Redshift data sharing and
+	// the Redshift Data API.
 	ClusterNamespaceArn string `protobuf:"bytes,3,opt,name=cluster_namespace_arn,json=clusterNamespaceArn,proto3" json:"cluster_namespace_arn,omitempty"`
-	// endpoint is the connection endpoint in "address:port" format for SQL client connections.
+	// The connection endpoint in "address:port" form, for SQL client
+	// connection strings.
 	Endpoint string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	// dns_name is the DNS hostname of the cluster (without port), for use in connection strings.
+	// The DNS hostname of the cluster's leader node (without port), for
+	// building connection strings and DNS alias records.
 	DnsName string `protobuf:"bytes,5,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
-	// database_name is the name of the default database in the cluster.
+	// The name of the first database in the cluster.
 	DatabaseName string `protobuf:"bytes,6,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
-	// port is the TCP port on which the cluster accepts connections.
+	// The port the cluster accepts connections on.
 	Port int32 `protobuf:"varint,7,opt,name=port,proto3" json:"port,omitempty"`
-	// subnet_group_name is the name of the Redshift subnet group, if one was created by this component.
+	// The name of the Redshift subnet group the cluster runs in
+	// (module-managed from subnet_ids or the referenced existing group).
 	SubnetGroupName string `protobuf:"bytes,8,opt,name=subnet_group_name,json=subnetGroupName,proto3" json:"subnet_group_name,omitempty"`
-	// security_group_id is the ID of the managed security group, if one was created by this component.
-	SecurityGroupId string `protobuf:"bytes,9,opt,name=security_group_id,json=securityGroupId,proto3" json:"security_group_id,omitempty"`
-	// parameter_group_name is the name of the parameter group, if one was created by this component.
-	ParameterGroupName string `protobuf:"bytes,10,opt,name=parameter_group_name,json=parameterGroupName,proto3" json:"parameter_group_name,omitempty"`
-	// master_password_secret_arn is the ARN of the Secrets Manager secret containing the master password.
-	// Only populated when manage_master_password is true.
-	MasterPasswordSecretArn string `protobuf:"bytes,11,opt,name=master_password_secret_arn,json=masterPasswordSecretArn,proto3" json:"master_password_secret_arn,omitempty"`
+	// The name of the cluster parameter group in use (module-managed from
+	// inline parameters or the referenced existing group).
+	ParameterGroupName string `protobuf:"bytes,9,opt,name=parameter_group_name,json=parameterGroupName,proto3" json:"parameter_group_name,omitempty"`
+	// The ARN of the AWS-managed admin-password secret in Secrets
+	// Manager. Populated only when manage_master_password is true -- the
+	// handle applications use to fetch credentials at runtime.
+	MasterPasswordSecretArn string `protobuf:"bytes,10,opt,name=master_password_secret_arn,json=masterPasswordSecretArn,proto3" json:"master_password_secret_arn,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -139,13 +143,6 @@ func (x *AwsRedshiftClusterStackOutputs) GetSubnetGroupName() string {
 	return ""
 }
 
-func (x *AwsRedshiftClusterStackOutputs) GetSecurityGroupId() string {
-	if x != nil {
-		return x.SecurityGroupId
-	}
-	return ""
-}
-
 func (x *AwsRedshiftClusterStackOutputs) GetParameterGroupName() string {
 	if x != nil {
 		return x.ParameterGroupName
@@ -164,7 +161,7 @@ var File_dev_planton_provider_aws_awsredshiftcluster_v1_stack_outputs_proto prot
 
 const file_dev_planton_provider_aws_awsredshiftcluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/aws/awsredshiftcluster/v1/stack_outputs.proto\x12.dev.planton.provider.aws.awsredshiftcluster.v1\"\xdb\x03\n" +
+	"Bdev/planton/provider/aws/awsredshiftcluster/v1/stack_outputs.proto\x12.dev.planton.provider.aws.awsredshiftcluster.v1\"\xaf\x03\n" +
 	"\x1eAwsRedshiftClusterStackOutputs\x12-\n" +
 	"\x12cluster_identifier\x18\x01 \x01(\tR\x11clusterIdentifier\x12\x1f\n" +
 	"\vcluster_arn\x18\x02 \x01(\tR\n" +
@@ -174,11 +171,10 @@ const file_dev_planton_provider_aws_awsredshiftcluster_v1_stack_outputs_proto_ra
 	"\bdns_name\x18\x05 \x01(\tR\adnsName\x12#\n" +
 	"\rdatabase_name\x18\x06 \x01(\tR\fdatabaseName\x12\x12\n" +
 	"\x04port\x18\a \x01(\x05R\x04port\x12*\n" +
-	"\x11subnet_group_name\x18\b \x01(\tR\x0fsubnetGroupName\x12*\n" +
-	"\x11security_group_id\x18\t \x01(\tR\x0fsecurityGroupId\x120\n" +
-	"\x14parameter_group_name\x18\n" +
-	" \x01(\tR\x12parameterGroupName\x12;\n" +
-	"\x1amaster_password_secret_arn\x18\v \x01(\tR\x17masterPasswordSecretArnB\x8d\x03\n" +
+	"\x11subnet_group_name\x18\b \x01(\tR\x0fsubnetGroupName\x120\n" +
+	"\x14parameter_group_name\x18\t \x01(\tR\x12parameterGroupName\x12;\n" +
+	"\x1amaster_password_secret_arn\x18\n" +
+	" \x01(\tR\x17masterPasswordSecretArnB\x8d\x03\n" +
 	"2com.dev.planton.provider.aws.awsredshiftcluster.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftcluster/v1;awsredshiftclusterv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awsredshiftcluster.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awsredshiftcluster\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awsredshiftcluster\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awsredshiftcluster::V1b\x06proto3"
 
 var (

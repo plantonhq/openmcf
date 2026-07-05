@@ -33,7 +33,7 @@ This preset creates a minimal Global Accelerator that accepts TCP traffic on por
 
 | Placeholder | Description | Where to Find |
 |-------------|-------------|---------------|
-| `arn:aws:elasticloadbalancing:...` | ARN of the ALB, NLB, EIP, or EC2 instance to route traffic to | AWS Console, CLI, or the `status.outputs` of an `AwsAlb` or `AwsNetworkLoadBalancer` resource |
+| `arn:aws:elasticloadbalancing:...` | ARN of the ALB, NLB, EIP, or EC2 instance to route traffic to | AWS Console, CLI, or the `status.outputs` of an `AwsAlb` or `AwsNlb` resource |
 
 ## Related Presets
 

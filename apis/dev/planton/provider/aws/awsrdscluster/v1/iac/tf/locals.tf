@@ -1,57 +1,50 @@
 locals {
-  # Stable resource ID from metadata
-  resource_id = (
-    (var.metadata.id != null && var.metadata.id != "")
-    ? var.metadata.id
-    : var.metadata.name
-  )
+  # The cluster identifier is metadata.name -- create-only in AWS, and the
+  # basis both engines share so a manifest deploys identically on either.
+  cluster_identifier = var.metadata.name
 
-  # Base labels
-  base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "aws_rds_cluster"
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsRdsCluster"
+    "planton.ai/resource-id"   = var.metadata.id
   }
 
-  org_label = (
-    (var.metadata.org != null && var.metadata.org != "")
-    ? { "organization" = var.metadata.org }
-    : {}
-  )
+  # A subnet group is managed here only when the spec brings raw subnets;
+  # an existing group name short-circuits it. The group itself is pure
+  # glue (a named list of subnets), which is why it stays inside this
+  # module instead of being its own node.
+  manage_subnet_group = var.spec.db_subnet_group_name == "" && length(var.spec.subnet_ids) > 0
 
-  env_label = (
-    (var.metadata.env != null && try(var.metadata.env, "") != "")
-    ? { "environment" = var.metadata.env }
-    : {}
-  )
+  # A cluster parameter group is managed here only for inline parameters.
+  # Bringing an existing group name and inline parameters are mutually
+  # exclusive (CEL-enforced).
+  manage_parameter_group = length(var.spec.parameters) > 0
 
-  final_labels = merge(local.base_labels, local.org_label, local.env_label)
-
-  # Networking
-  safe_subnet_ids = [for s in coalesce(try(var.spec.subnet_ids, []), []) : s.value]
-  has_subnet_ids  = length(local.safe_subnet_ids) >= 2
-  subnet_group_name_from_var = try(var.spec.db_subnet_group_name.value, "")
-  need_subnet_group = local.has_subnet_ids && local.subnet_group_name_from_var == ""
-
-  # Security groups
-  ingress_sg_ids        = [for s in coalesce(try(var.spec.security_group_ids, []), []) : s.value]
-  associate_sg_ids      = [for s in coalesce(try(var.spec.associate_security_group_ids, []), []) : s.value]
-  allowed_cidr_blocks   = coalesce(try(var.spec.allowed_cidr_blocks, []), [])
-  need_managed_sg       = length(local.ingress_sg_ids) > 0 || length(local.allowed_cidr_blocks) > 0
-  vpc_id                = try(var.spec.vpc_id.value, null)
-
-  # Parameters
-  parameters = coalesce(try(var.spec.parameters, []), [])
-  need_cluster_parameter_group = length(local.parameters) > 0 || try(var.spec.db_cluster_parameter_group_name, "") == ""
-
-  # Engine family derivation for parameter group family
-  engine        = var.spec.engine
-  engine_version = var.spec.engine_version
+  # The parameter-group family is derived from engine + engine_version
+  # (inline parameters require a pinned version, CEL-enforced, so the
+  # derivation never sees an empty string):
+  #   aurora-postgresql 16.4                -> aurora-postgresql16
+  #   postgres          16.4                -> postgres16
+  #   aurora-mysql      8.0.mysql_aurora... -> aurora-mysql8.0
+  #   mysql             8.0.39              -> mysql8.0
+  # PostgreSQL families are keyed by major version; MySQL families by
+  # major.minor -- AWS's own family naming, not a convention of ours.
   engine_family = (
-    startswith(local.engine, "aurora-mysql") ? "aurora-mysql${split(".", local.engine_version)[0]}" : (
-    startswith(local.engine, "aurora-postgresql") ? "aurora-postgresql${split(".", local.engine_version)[0]}" : ""
-    )
+    var.spec.engine == "aurora-postgresql" ? "aurora-postgresql${split(".", var.spec.engine_version)[0]}" :
+    var.spec.engine == "postgres" ? "postgres${split(".", var.spec.engine_version)[0]}" :
+    var.spec.engine == "aurora-mysql" ? "aurora-mysql${join(".", slice(split(".", var.spec.engine_version), 0, 2))}" :
+    "mysql${join(".", slice(split(".", var.spec.engine_version), 0, 2))}"
+  )
+
+  # The parameter group the cluster actually uses: the managed group, an
+  # explicitly referenced existing group, or null for the engine default.
+  effective_cluster_parameter_group = (
+    local.manage_parameter_group ? aws_rds_cluster_parameter_group.this[0].name :
+    var.spec.db_cluster_parameter_group_name != "" ? var.spec.db_cluster_parameter_group_name :
+    null
   )
 }
-
-

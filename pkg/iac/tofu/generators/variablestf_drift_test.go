@@ -33,6 +33,7 @@ var migratedKinds = []string{
 	"AwsAlb",
 	"AwsCertManagerCert",
 	"AwsEcsService",
+	"AwsEcsTaskDefinition",
 	// AWS networking primitives already on the modern schema, brought under the
 	// guard so they cannot regress.
 	"AwsVpc",
@@ -40,6 +41,66 @@ var migratedKinds = []string{
 	"AwsInternetGateway",
 	"AwsNatGateway",
 	"AwsElasticIp",
+	// EC2 fleet compute kinds, generator-owned from the day they were forged.
+	"AwsLaunchTemplate",
+	"AwsAutoScalingGroup",
+	// EKS control plane + managed node group, migrated off the legacy
+	// hand-written contract together.
+	"AwsEksCluster",
+	"AwsEksNodeGroup",
+	// EKS satellites, generator-owned from the day they were forged.
+	"AwsEksAddon",
+	"AwsEksFargateProfile",
+	"AwsEksAccessEntry",
+	// Networking fast-follow, generator-owned from the day it was forged.
+	"AwsVpcEndpoint",
+	// RDS pair, migrated off the legacy hand-written contracts together.
+	"AwsRdsCluster",
+	"AwsRdsInstance",
+	// ElastiCache family (Session 013): RBAC kinds + three cache kinds, migrated
+	// off the legacy type = any contracts together.
+	"AwsElasticacheUser",
+	"AwsElasticacheUserGroup",
+	"AwsRedisElasticache",
+	"AwsMemcachedElasticache",
+	"AwsServerlessElasticache",
+	// Aurora-shaped siblings (Session 014), migrated off the legacy
+	// hand-written contracts together.
+	"AwsDocumentDb",
+	"AwsNeptuneCluster",
+	// Redshift, migrated off the legacy hand-written contract.
+	"AwsRedshiftCluster",
+	// Redshift Serverless pair, generator-owned from the day it was forged.
+	"AwsRedshiftServerlessNamespace",
+	"AwsRedshiftServerlessWorkgroup",
+	// DynamoDB, migrated off the legacy hand-written contract.
+	"AwsDynamodb",
+	// Streaming + search depth pass: MSK migrated off its legacy hand-written
+	// contract, OpenSearch off its legacy type = any contract.
+	"AwsMskCluster",
+	"AwsOpenSearchDomain",
+	// EC2 instance, migrated off its legacy hand-written contract.
+	"AwsEc2Instance",
+	// MWAA, migrated off its legacy hand-written contract.
+	"AwsMwaaEnvironment",
+	// MSK Serverless, generator-owned from the day it was forged.
+	"AwsMskServerlessCluster",
+	// Lambda + KMS depth pass: both migrated off legacy hand-written
+	// contracts; the event source mapping generator-owned from the day
+	// it was forged.
+	"AwsLambda",
+	"AwsKmsKey",
+	"AwsLambdaEventSourceMapping",
+	// Edge pair: CloudFront migrated off its legacy hand-written contract
+	// (ACM was already enrolled and regenerated with its rebuilt spec).
+	"AwsCloudFront",
+	// Messaging + eventing depth pass: SQS, SNS topic/subscription, and
+	// EventBridge bus/rule, generator-owned from the day they were forged.
+	"AwsSqsQueue",
+	"AwsSnsTopic",
+	"AwsSnsSubscription",
+	"AwsEventBridgeBus",
+	"AwsEventBridgeRule",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

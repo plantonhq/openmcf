@@ -1,36 +1,75 @@
 # Overview
 
-The **AWS AWS EKS Cluster API Resource** provides a consistent and standardized interface for deploying and managing Amazon Elastic Kubernetes Service (EKS) clusters within our infrastructure. This resource simplifies the orchestration of Kubernetes clusters on AWS, allowing users to run containerized applications at scale without the complexity of manual setup and configuration.
+The AwsEksCluster API resource provisions an EKS cluster CONTROL PLANE:
+the managed Kubernetes API server, etcd, and the cluster-level posture --
+networking exposure, authentication mode, secrets encryption,
+control-plane logging, upgrade policy, and (optionally) EKS Auto Mode.
 
-## Purpose
+## Why We Created This API Resource
 
-We developed this API resource to streamline the deployment and management of AWS EKS clusters. By offering a unified interface, it reduces the complexity involved in setting up Kubernetes environments on AWS, enabling users to:
+The cluster is deliberately only the control plane. Modeling it that way
+-- compute attaches as separate `AwsEksNodeGroup` nodes, IAM trust flows
+through referenced roles and the exported OIDC issuer -- lets you:
 
-- **Easily Deploy AWS EKS Clusters**: Quickly provision EKS clusters in specified AWS regions.
-- **Customize Cluster Settings**: Configure cluster parameters such as region, VPC, and worker node management modes.
-- **Integrate Seamlessly**: Utilize existing AWS credentials and integrate with other AWS services.
-- **Focus on Applications**: Allow developers to concentrate on deploying applications rather than managing infrastructure.
+- **Operate the control plane and the fleets independently**: upgrade the
+  control plane first, then roll each node pool on its own schedule; add
+  and remove pools without ever touching the cluster resource.
+- **Keep identity honest**: the cluster role is a referenced `AwsIamRole`
+  that carries its own `AmazonEKSClusterPolicy` -- the cluster never
+  reaches into a role it merely references. IRSA wires up by pointing an
+  `AwsIamOidcProvider` at the exported `oidc_issuer_url`.
+- **Choose the compute model explicitly**: explicit node groups, or EKS
+  Auto Mode (AWS provisions compute, storage, and load balancing itself)
+  -- one honest toggle, not three blocks to keep in lockstep.
 
 ## Key Features
 
-- **Consistent Interface**: Aligns with our existing APIs for deploying open-source software, microservices, and cloud infrastructure.
-- **Simplified Deployment**: Automates the provisioning of EKS clusters, including optional creation of VPCs if not specified.
-- **Flexible Configuration**: Supports specifying AWS regions, VPC IDs, and worker node management modes.
-- **Scalability**: Leverages AWS EKS to manage Kubernetes clusters that can scale to meet application demands.
-- **Integration**: Works seamlessly with other AWS services and existing infrastructure components.
+### Networking Exposure
 
-## Use Cases
+- **Endpoint pair**: independent public/private API endpoint toggles,
+  with `public_access_cidrs` to scope a public endpoint down.
+- **Control-plane egress mode**: route control-plane egress through your
+  VPC (inspection/firewall architectures) or isolate it.
+- **Address families**: `ipv4` or `ipv6` pod/service networking with a
+  custom service CIDR.
 
-- **Container Orchestration**: Deploy and manage containerized applications using Kubernetes on AWS.
-- **Microservices Architecture**: Run microservices workloads with the flexibility and scalability of Kubernetes.
-- **Hybrid Deployments**: Integrate on-premises Kubernetes deployments with cloud-based EKS clusters.
-- **Development and Testing**: Provide scalable and consistent environments for development and testing purposes.
+### Security Posture
 
-## Future Enhancements
+- **Access entries** (`authentication_mode: API`) -- the modern access
+  model; IAM principals granted access as first-class EKS resources.
+- **Envelope encryption** of Kubernetes secrets with a referenced
+  `AwsKmsKey` (a one-way door, documented as such).
+- **Granular control-plane logs**: choose exactly which of the five log
+  types stream to CloudWatch (audit and authenticator carry the most
+  signal per dollar).
+- **Deletion protection** for shared/production control planes.
 
-As this resource is currently in a partial implementation phase, future updates will include:
+### Lifecycle
 
-- **Advanced Configuration Options**: Support for node groups, IAM roles, and networking configurations.
-- **Enhanced Security Features**: Integration with AWS IAM and security policies for cluster and node management.
-- **Monitoring and Logging**: Improved support for cluster monitoring and logging using AWS CloudWatch and other tools.
-- **Comprehensive Documentation**: Expanded usage examples, best practices, and troubleshooting guides.
+- **Upgrade support tier**: standard schedule or extended support (with
+  its surcharge) -- an explicit, reviewable choice.
+- **Zonal shift** for automatic traffic movement away from an impaired
+  availability zone.
+- **EKS Auto Mode**: AWS-managed compute, block storage, and load
+  balancing -- the all-or-nothing trio expressed as one toggle.
+
+## Benefits
+
+- **Composability**: subnets, roles, security groups, and the KMS key
+  attach through `valueFrom` references, and downstream nodes
+  (`AwsEksNodeGroup`, `AwsIamOidcProvider`) compose onto this cluster's
+  outputs.
+- **Impossible states are unrepresentable**: Auto Mode's three AWS
+  settings move together by construction; immutable fields and one-way
+  doors are called out on the fields themselves.
+- **Consistency**: identical behavior across Terraform and Pulumi.
+
+## Stack outputs
+
+- `endpoint`: Kubernetes API server URL
+- `cluster_ca_certificate`: base64 cluster CA (kubeconfig)
+- `cluster_security_group_id`: the EKS-managed control-plane security group
+- `oidc_issuer_url`: the IRSA trust anchor (feed an `AwsIamOidcProvider`)
+- `cluster_arn`: cluster ARN (IAM policies, access entries)
+- `name`: cluster name (what node groups reference)
+- `platform_version`: EKS platform revision (e.g. `eks.12`)

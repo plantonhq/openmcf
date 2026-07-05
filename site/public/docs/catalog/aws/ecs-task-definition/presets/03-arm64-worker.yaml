@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsEcsTaskDefinition
+metadata:
+  name: <worker-name>
+spec:
+  region: <aws-region>
+  cpu: 256
+  memory: 512
+  runtimePlatform:
+    cpuArchitecture: ARM64
+  executionRole:
+    valueFrom:
+      kind: AwsIamRole
+      name: <execution-role-resource-name>
+      fieldPath: status.outputs.role_arn
+  taskRole:
+    valueFrom:
+      kind: AwsIamRole
+      name: <task-role-resource-name>
+      fieldPath: status.outputs.role_arn
+  containers:
+    - name: worker
+      image: <account-id>.dkr.ecr.<aws-region>.amazonaws.com/<repository>:<tag>
+      environment:
+        QUEUE_URL: <sqs-queue-url>
+      stopTimeoutSeconds: 120

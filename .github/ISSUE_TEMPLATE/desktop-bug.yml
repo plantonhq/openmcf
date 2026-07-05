@@ -1,0 +1,45 @@
+name: Desktop bug report
+description: Something went wrong in the Planton desktop app
+title: "[Desktop] "
+labels: ["desktop", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this — every report makes Planton better.
+        Fill in what you can; partial reports are welcome too.
+  - type: textarea
+    id: what-were-you-doing
+    attributes:
+      label: What were you doing?
+      description: The action you were taking when things went wrong.
+      placeholder: e.g. Deploying an S3 bucket from the cloud catalog to my AWS account
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected to see instead.
+      placeholder: e.g. The deploy screen showed "stack job failed" with no further detail; I expected the bucket to be created
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: App version, operating system, and update channel (Settings shows all three).
+      placeholder: |
+        App Version: 0.4.2
+        OS: macOS 15.5 (Apple Silicon)
+        Update Channel: stable
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Paste any error messages, stack traces, or log excerpts here. Please remove anything sensitive (tokens, keys, account IDs) before pasting.
+      render: text
+    validations:
+      required: false

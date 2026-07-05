@@ -41,8 +41,17 @@ type AwsOpenSearchDomainStackOutputs struct {
 	// The endpoint for OpenSearch Dashboards (the visualization and management UI).
 	// Format: endpoint + "/_dashboards".
 	DashboardEndpoint string `protobuf:"bytes,5,opt,name=dashboard_endpoint,json=dashboardEndpoint,proto3" json:"dashboard_endpoint,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The dual-stack (IPv4 + IPv6) V2 domain endpoint that works with both
+	// ip_address_type settings. Populated for domains created or migrated onto
+	// the V2 endpoint format.
+	EndpointV2 string `protobuf:"bytes,6,opt,name=endpoint_v2,json=endpointV2,proto3" json:"endpoint_v2,omitempty"`
+	// The OpenSearch Dashboards endpoint on the dual-stack V2 domain endpoint.
+	DashboardEndpointV2 string `protobuf:"bytes,7,opt,name=dashboard_endpoint_v2,json=dashboardEndpointV2,proto3" json:"dashboard_endpoint_v2,omitempty"`
+	// The Route 53 hosted zone ID to alias when pointing DNS records at the V2
+	// domain endpoint.
+	DomainEndpointV2HostedZoneId string `protobuf:"bytes,8,opt,name=domain_endpoint_v2_hosted_zone_id,json=domainEndpointV2HostedZoneId,proto3" json:"domain_endpoint_v2_hosted_zone_id,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *AwsOpenSearchDomainStackOutputs) Reset() {
@@ -110,11 +119,32 @@ func (x *AwsOpenSearchDomainStackOutputs) GetDashboardEndpoint() string {
 	return ""
 }
 
+func (x *AwsOpenSearchDomainStackOutputs) GetEndpointV2() string {
+	if x != nil {
+		return x.EndpointV2
+	}
+	return ""
+}
+
+func (x *AwsOpenSearchDomainStackOutputs) GetDashboardEndpointV2() string {
+	if x != nil {
+		return x.DashboardEndpointV2
+	}
+	return ""
+}
+
+func (x *AwsOpenSearchDomainStackOutputs) GetDomainEndpointV2HostedZoneId() string {
+	if x != nil {
+		return x.DomainEndpointV2HostedZoneId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_aws_awsopensearchdomain_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsopensearchdomain_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/aws/awsopensearchdomain/v1/stack_outputs.proto\x12/dev.planton.provider.aws.awsopensearchdomain.v1\"\xc9\x01\n" +
+	"Cdev/planton/provider/aws/awsopensearchdomain/v1/stack_outputs.proto\x12/dev.planton.provider.aws.awsopensearchdomain.v1\"\xe7\x02\n" +
 	"\x1fAwsOpenSearchDomainStackOutputs\x12\x1b\n" +
 	"\tdomain_id\x18\x01 \x01(\tR\bdomainId\x12\x1f\n" +
 	"\vdomain_name\x18\x02 \x01(\tR\n" +
@@ -122,7 +152,11 @@ const file_dev_planton_provider_aws_awsopensearchdomain_v1_stack_outputs_proto_r
 	"\n" +
 	"domain_arn\x18\x03 \x01(\tR\tdomainArn\x12\x1a\n" +
 	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12-\n" +
-	"\x12dashboard_endpoint\x18\x05 \x01(\tR\x11dashboardEndpointB\x94\x03\n" +
+	"\x12dashboard_endpoint\x18\x05 \x01(\tR\x11dashboardEndpoint\x12\x1f\n" +
+	"\vendpoint_v2\x18\x06 \x01(\tR\n" +
+	"endpointV2\x122\n" +
+	"\x15dashboard_endpoint_v2\x18\a \x01(\tR\x13dashboardEndpointV2\x12G\n" +
+	"!domain_endpoint_v2_hosted_zone_id\x18\b \x01(\tR\x1cdomainEndpointV2HostedZoneIdB\x94\x03\n" +
 	"3com.dev.planton.provider.aws.awsopensearchdomain.v1B\x11StackOutputsProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsopensearchdomain/v1;awsopensearchdomainv1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Aws.Awsopensearchdomain.V1\xca\x02/Dev\\Planton\\Provider\\Aws\\Awsopensearchdomain\\V1\xe2\x02;Dev\\Planton\\Provider\\Aws\\Awsopensearchdomain\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Aws::Awsopensearchdomain::V1b\x06proto3"
 
 var (

@@ -1,0 +1,41 @@
+# Minimal AwsLbListenerRule scenario: a path-based forward rule on the
+# AwsLbListener prerequisite, forwarding to the AwsLbTargetGroup prerequisite
+# (deployed transitively through the listener's own prerequisite chain). Both
+# references resolve against deployed prerequisites -- the listener at the
+# top level, the target group inside the forward action's nested list. Full
+# metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListenerRule
+metadata:
+  name: planton-oss-e2e-lblr-smoke
+  id: planton-oss-e2e-lblr-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awslblistenerrule
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  listenerArn:
+    valueFrom:
+      kind: AwsLbListener
+      name: planton-oss-e2e-lbl-prereq
+      fieldPath: status.outputs.listener_arn
+  priority: 10
+  conditions:
+    - pathPattern:
+        values:
+          - /api/*
+  actions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: planton-oss-e2e-lbtg-prereq
+                fieldPath: status.outputs.target_group_arn

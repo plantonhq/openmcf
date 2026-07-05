@@ -273,7 +273,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [AwsAlb](/docs/catalog/aws/awsalb) — common endpoint type for HTTP/HTTPS workloads behind the accelerator
-- [AwsNetworkLoadBalancer](/docs/catalog/aws/awsnetworkloadbalancer) — common endpoint type for Layer 4 workloads
+- [AwsNlb](/docs/catalog/aws/awsnlb) — common endpoint type for Layer 4 workloads
 - [AwsElasticIp](/docs/catalog/aws/awselasticip) — provides static IP endpoints for direct server routing
 - [AwsS3Bucket](/docs/catalog/aws/awss3bucket) — stores flow logs when flow log delivery is enabled
 - [AwsRoute53Zone](/docs/catalog/aws/awsroute53zone) — create alias records pointing custom domains to the accelerator DNS name

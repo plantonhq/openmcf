@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsdynamodb
+spec:
+  # A DynamoDB table under live E2E: the harness runs deploy ->
+  # DescribeTable verify -> destroy -> verify-destroyed on both
+  # provisioners. The table is a true leaf (no prerequisites) and the
+  # scenario runs on-demand billing with zero data, so a full lane
+  # completes in minutes at negligible cost. The scenario exercises the
+  # folded satellites live (resource policy + contributor insights
+  # materialize as their own provider resources) alongside a GSI, TTL,
+  # streams, PITR, and SSE. Deliberately not in the live scenario:
+  # multi-region replicas (cross-region create/destroy adds ~10 minutes
+  # and proves no additional wiring) and the Kinesis streaming
+  # destination (it would force a prerequisite edge onto a kind that
+  # has none) -- both paths are proven by CEL spec tests and the
+  # offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awseksaddon
+spec:
+  # An EKS managed add-on under live E2E: deploy -> DescribeAddon verify ->
+  # destroy -> verify-destroyed on both provisioners. The add-on itself
+  # installs in a couple of minutes, but every run rides the full
+  # VPC -> subnets -> roles -> cluster prerequisite chain (~15 minutes to
+  # stand up, ~10 to tear down), so the timeout is sized for the chain.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

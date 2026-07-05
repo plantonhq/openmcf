@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awseksnodegroup
+spec:
+  # A managed node group under live E2E: the harness first stands up the
+  # full prerequisite chain (VPC -> two-AZ subnets -> IAM roles -> EKS
+  # control plane, ~15 minutes of which is the control plane), then
+  # deploys a ZERO-CAPACITY node group -- AWS validates the cluster/role/
+  # subnet wiring and creates the backing Auto Scaling group without ever
+  # launching an instance. Timeout is sized for the chain plus both
+  # teardowns.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 75

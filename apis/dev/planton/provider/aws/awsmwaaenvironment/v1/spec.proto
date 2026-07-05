@@ -10,6 +10,13 @@ import "dev/planton/shared/options/options.proto";
 // MWAA is a fully managed orchestration service that provisions Apache Airflow environments,
 // handling scheduler, worker, and webserver infrastructure so teams can author, schedule,
 // and monitor data pipelines using Airflow DAGs stored in Amazon S3.
+//
+// Network ingress is composed, never embedded: the environment attaches the
+// referenced security_group_ids directly, and the rules MWAA needs -- a
+// self-referencing all-traffic ingress rule for component intercommunication,
+// HTTPS (443) ingress for Airflow UI access, and outbound egress -- live on
+// those first-class AwsSecurityGroup nodes where they can be shared, audited,
+// and evolved independently of the environment.
 message AwsMwaaEnvironmentSpec {
   // The AWS region where the resource will be created.
   // Example: "us-west-2", "eu-west-1"
@@ -85,7 +92,7 @@ message AwsMwaaEnvironmentSpec {
 
   // --- VPC Networking ---
   // MWAA creates VPC endpoints in the customer's VPC for the webserver, scheduler, and
-  // metadata database. Security groups control traffic to these endpoints.
+  // metadata database. The attached security groups control traffic to these endpoints.
 
   // subnet_ids are the private VPC subnets where MWAA creates network interfaces.
   // Requires exactly 2 subnets in different Availability Zones. Must be private subnets
@@ -96,38 +103,17 @@ message AwsMwaaEnvironmentSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // security_group_ids are source security groups allowed to reach the MWAA VPC endpoints.
-  // When provided (along with vpc_id), a managed security group is created with:
-  //   - Self-referencing inbound rule (all traffic) for MWAA component intercommunication
-  //   - Ingress on port 443 (HTTPS) from these source security groups for Airflow UI access
-  //   - Full egress to allow outbound connectivity
+  // security_group_ids are the security groups ATTACHED to the MWAA VPC
+  // endpoints -- they define what can reach the environment. AWS requires at
+  // least one. The referenced AwsSecurityGroup must carry a self-referencing
+  // all-traffic ingress rule (MWAA components communicate with each other
+  // through it), HTTPS (443) ingress from whatever should reach the Airflow
+  // UI, and egress for outbound connectivity. Unlike subnets, the attached
+  // groups can be changed in place after creation.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 14 [
+    (buf.validate.field).repeated.min_items = 1,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
-  ];
-
-  // allowed_cidr_blocks are IPv4 CIDR ranges allowed to reach the MWAA VPC endpoints on port 443.
-  // When provided (along with vpc_id), a managed security group is created with ingress rules
-  // permitting HTTPS traffic from these CIDRs.
-  repeated string allowed_cidr_blocks = 15 [
-    (buf.validate.field).repeated.items.string.pattern = "^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$",
-    (buf.validate.field).repeated.unique = true
-  ];
-
-  // associate_security_group_ids are existing security groups attached directly to the
-  // MWAA environment alongside the managed security group (if created).
-  // Use this when you already have a security group configured for MWAA's self-referencing
-  // pattern and want to attach it directly without managed SG creation.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef associate_security_group_ids = 16 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
-  ];
-
-  // vpc_id is the VPC in which to create the managed security group.
-  // Required when security_group_ids or allowed_cidr_blocks are provided.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 17 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 
   // --- Encryption ---
@@ -136,7 +122,7 @@ message AwsMwaaEnvironmentSpec {
   // (metadata database, DAG logs, SQS queue, web server logs).
   // If omitted, AWS uses the default aws/airflow service key.
   // ForceNew: changing the KMS key forces environment replacement.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 18 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 15 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
@@ -150,7 +136,7 @@ message AwsMwaaEnvironmentSpec {
   // "mw1.large": 4 vCPU, 8 GB (large workloads).
   // "mw1.xlarge": 8 vCPU, 16 GB (very large workloads).
   // "mw1.2xlarge": 16 vCPU, 32 GB (maximum capacity).
-  string environment_class = 19 [
+  string environment_class = 16 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       in: [
@@ -167,21 +153,21 @@ message AwsMwaaEnvironmentSpec {
   // min_workers is the minimum number of Celery workers for auto-scaling.
   // Range: >= 1. Workers process DAG tasks. MWAA scales between min_workers and max_workers
   // based on task queue depth. Default: 1.
-  int32 min_workers = 20 [
+  int32 min_workers = 17 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32.gte = 1
   ];
 
   // max_workers is the maximum number of Celery workers for auto-scaling.
   // Range: >= 1. Must be >= min_workers. Default: 10.
-  int32 max_workers = 21 [
+  int32 max_workers = 18 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32.gte = 1
   ];
 
   // min_webservers is the minimum number of Airflow webservers.
   // Range: 2-5 (1 for mw1.micro). Default: 2.
-  int32 min_webservers = 22 [
+  int32 min_webservers = 19 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32 = {
       gte: 1
@@ -191,7 +177,7 @@ message AwsMwaaEnvironmentSpec {
 
   // max_webservers is the maximum number of Airflow webservers.
   // Range: 2-5 (1 for mw1.micro). Must be >= min_webservers. Default: 2.
-  int32 max_webservers = 23 [
+  int32 max_webservers = 20 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32 = {
       gte: 1
@@ -201,7 +187,9 @@ message AwsMwaaEnvironmentSpec {
 
   // schedulers is the number of Airflow schedulers.
   // Range: 2-5. Default: 2. More schedulers improve DAG parsing and scheduling throughput.
-  int32 schedulers = 24 [
+  // Note: stricter than AWS (which accepts any count); the 2-5 window is the
+  // supported range for Airflow 2.x on standard environment classes.
+  int32 schedulers = 21 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32 = {
       gte: 2
@@ -214,7 +202,7 @@ message AwsMwaaEnvironmentSpec {
   // webserver_access_mode controls how the Airflow web UI is accessed.
   // "PRIVATE_ONLY" (default): accessible only within the VPC via VPC endpoint.
   // "PUBLIC_ONLY": accessible over the internet with IAM-based login.
-  optional string webserver_access_mode = 25 [
+  optional string webserver_access_mode = 22 [
     (buf.validate.field).string = {
       in: [
         "PRIVATE_ONLY",
@@ -226,9 +214,11 @@ message AwsMwaaEnvironmentSpec {
 
   // endpoint_management controls who manages the VPC endpoints for the environment.
   // "SERVICE" (default): AWS creates and manages VPC endpoints automatically.
-  // "CUSTOMER": you create and manage VPC endpoints yourself (advanced, <5% adoption).
+  // "CUSTOMER": you create and manage VPC endpoints yourself against the
+  // database_vpc_endpoint_service and webserver_vpc_endpoint_service stack
+  // outputs (advanced, <5% adoption).
   // ForceNew: changing this forces environment replacement.
-  string endpoint_management = 26 [
+  string endpoint_management = 23 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       in: [
@@ -245,21 +235,21 @@ message AwsMwaaEnvironmentSpec {
   // Each module can be independently enabled with its own log level.
   // CloudWatch Logs groups are auto-created by MWAA in the format:
   // /aws/mwaa/{environment-name}/{module-name}
-  AwsMwaaEnvironmentLoggingConfiguration logging_configuration = 27;
+  AwsMwaaEnvironmentLoggingConfiguration logging_configuration = 24;
 
   // --- Maintenance ---
 
   // weekly_maintenance_window_start is the preferred start time for weekly maintenance.
   // Format: "DAY:HH:MM" in UTC (e.g., "TUE:03:30", "SUN:00:00").
   // During maintenance, MWAA may apply patches or updates. If omitted, AWS selects a window.
-  string weekly_maintenance_window_start = 28;
+  string weekly_maintenance_window_start = 25;
 
   // --- Operations ---
 
   // worker_replacement_strategy controls how workers are replaced during environment updates.
   // "FORCED": replaces workers immediately (faster updates, may interrupt running tasks).
   // "GRACEFUL": waits for running tasks to complete before replacing workers (slower, no data loss).
-  string worker_replacement_strategy = 29 [
+  string worker_replacement_strategy = 26 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       in: [
@@ -287,18 +277,6 @@ message AwsMwaaEnvironmentSpec {
     id: "dag_s3_path_no_leading_slash"
     message: "dag_s3_path must be a relative path (must not start with '/')"
     expression: "!this.dag_s3_path.startsWith('/')"
-  };
-
-  option (buf.validate.message).cel = {
-    id: "vpc_id_required_for_managed_sg"
-    message: "vpc_id is required when security_group_ids or allowed_cidr_blocks are provided for managed security group creation"
-    expression: "(this.security_group_ids.size() > 0 || this.allowed_cidr_blocks.size() > 0) ? has(this.vpc_id) : true"
-  };
-
-  option (buf.validate.message).cel = {
-    id: "security_coverage_required"
-    message: "at least one of vpc_id (for managed SG) or associate_security_group_ids must be provided for MWAA VPC endpoint security"
-    expression: "has(this.vpc_id) || this.associate_security_group_ids.size() > 0"
   };
 }
 

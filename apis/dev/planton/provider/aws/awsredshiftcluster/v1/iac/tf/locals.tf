@@ -1,35 +1,37 @@
 locals {
+  # The cluster identifier is metadata.name -- create-only in AWS, and the
+  # basis both engines share so a manifest deploys identically on either.
   cluster_identifier = var.metadata.name
 
-  tags = {
-    "planton.dev/resource"      = "true"
-    "planton.dev/organization"  = var.metadata.org
-    "planton.dev/environment"   = var.metadata.env
-    "planton.dev/resource-kind" = "AwsRedshiftCluster"
-    "planton.dev/resource-id"   = var.metadata.id
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = var.metadata.name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsRedshiftCluster"
+    "planton.ai/resource-id"   = var.metadata.id
   }
 
-  # Determine cluster type based on node count.
-  cluster_type = var.spec.number_of_nodes > 1 ? "multi-node" : "single-node"
+  # A subnet group is managed here only when the spec brings raw subnets;
+  # an existing group name short-circuits it. The group itself is pure
+  # glue (a named list of subnets), which is why it stays inside this
+  # module instead of being its own node.
+  manage_subnet_group = var.spec.cluster_subnet_group_name == "" && length(var.spec.subnet_ids) > 0
 
-  # Networking conditionals.
-  create_subnet_group   = length(var.spec.subnet_ids) >= 2
-  create_security_group = length(var.spec.security_group_ids) > 0 || length(var.spec.allowed_cidr_blocks) > 0
+  # A parameter group is managed here only for inline parameters.
+  # Bringing an existing group name and inline parameters are mutually
+  # exclusive (CEL-enforced). Unlike the RDS-shaped kinds there is no
+  # family derivation from an engine version -- the family is
+  # redshift-1.0 unless parameter_group_family selects another.
+  manage_parameter_group = length(var.spec.parameters) > 0
 
-  # Combine managed SG (if created) with explicitly associated SGs.
-  all_security_group_ids = concat(
-    local.create_security_group ? [aws_security_group.this[0].id] : [],
-    var.spec.associate_security_group_ids
+  # The parameter group the cluster actually uses: the managed group, an
+  # explicitly referenced existing group, or null for the Redshift
+  # default group of the cluster's generation.
+  effective_parameter_group = (
+    local.manage_parameter_group ? aws_redshift_parameter_group.this[0].name :
+    var.spec.cluster_parameter_group_name != "" ? var.spec.cluster_parameter_group_name :
+    null
   )
-
-  # Parameter group conditionals.
-  create_parameter_group = length(var.spec.parameters) > 0
-  effective_parameter_group_name = (
-    local.create_parameter_group
-    ? aws_redshift_parameter_group.this[0].name
-    : var.spec.cluster_parameter_group_name != "" ? var.spec.cluster_parameter_group_name : null
-  )
-
-  # Logging conditional.
-  create_logging = var.spec.logging != null
 }

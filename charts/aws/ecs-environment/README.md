@@ -20,21 +20,32 @@ Chart manifests live in the [`templates`](templates) directory; every tunable va
 | **Elastic Container Registry (ECR) Repo**        | Yes            | —                          |
 | **ECS Cluster (Fargate + Spot)**                 | Yes            | —                          |
 | **Application Load Balancer (ALB)**              | Yes            | —                          |
+| **ALB Listener(s)**                              | Yes            | HTTPS pair vs plain HTTP via `httpsEnabled` |
 | **ACM Certificate (DNS‑validated)**              | *No*           | `httpsEnabled`             |
-| **ECS Service (+ Task Def)**                     | Yes            | —                          |
+| **ECS Task Definition**                          | Yes            | —                          |
+| **LB Target Group**                              | Yes            | —                          |
+| **LB Listener Rule (host‑based)**                | Yes            | —                          |
+| **ECS Service**                                  | Yes            | —                          |
 | **IAM Task‑Execution Role**                      | Yes            | —                          |
+
+The service composes onto first‑class routing nodes: an **`AwsLbTargetGroup`**
+the service registers task IPs into, and an **`AwsLbListenerRule`** that
+host‑routes the shared listener's traffic into that group. Deploys travel
+through the graph — registering a new **`AwsEcsTaskDefinition`** revision
+(a new image tag) rolls the service automatically.
 
 ### How the `httpsEnabled` flag works
 
 * `httpsEnabled: true` →
 
     * Renders an **`AwsCertManagerCert`** resource.
-    * Adds an `ssl:` block (certificate ARN) to the ALB spec.
-    * Configures the ECS service listener to **443**.
+    * Creates an **`AwsLbListener`** on **443** (HTTPS, certificate‑terminated) plus an
+      **`AwsLbListener`** on **80** that permanently redirects to HTTPS.
+    * Attaches the service's **`AwsLbListenerRule`** to the **443** listener.
 * `httpsEnabled: false` →
 
-    * Omits the certificate and `ssl:` configuration.
-    * Sets the listener to plain **80**.
+    * Omits the certificate; creates a single plain‑HTTP **`AwsLbListener`** on **80**.
+    * Attaches the service's **`AwsLbListenerRule`** to the **80** listener.
 
 ---
 

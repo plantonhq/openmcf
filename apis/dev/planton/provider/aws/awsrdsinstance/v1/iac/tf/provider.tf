@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      source = "hashicorp/aws"
+      # Floor, not a cap: dedicated_log_volume, database_insights_mode,
+      # and the self-managed Active Directory arguments are late-v5
+      # additions -- the v6 floor keeps the module on the modern major
+      # where the whole modeled surface is present.
+      version = ">= 6.0.0"
     }
   }
 }

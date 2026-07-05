@@ -5,9 +5,9 @@ Terraform module for provisioning AWS MSK (Managed Streaming for Apache Kafka) c
 ## Overview
 
 This module creates:
-- An MSK Cluster (`aws_msk_cluster`) with configurable brokers, encryption, authentication, logging, and monitoring.
-- A managed Security Group (`aws_security_group`) with ingress rules on Kafka ports (9092-9098) and ZooKeeper ports (2181-2182) — conditional on `security_group_ids` or `allowed_cidr_blocks` being provided.
+- An MSK Cluster (`aws_msk_cluster`) with configurable brokers, encryption, authentication, connectivity, logging, and monitoring. The referenced `security_group_ids` (required, ≥1) attach directly to the broker network interfaces; ingress rules live on those first-class security-group nodes, never on a module-managed shadow group.
 - An inline MSK Configuration (`aws_msk_configuration`) from `server_properties` — conditional on the map being non-empty.
+- SCRAM secret associations (`aws_msk_single_scram_secret_association`, one per ARN in `scram_secret_arns`) and a cluster policy (`aws_msk_cluster_policy` from `cluster_policy`) — folded satellites in `satellites.tf`.
 
 ## Usage
 
@@ -31,6 +31,7 @@ module "msk" {
     number_of_broker_nodes = 3
     instance_type          = "kafka.m5.large"
     subnet_ids             = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+    security_group_ids     = ["sg-0abc1234"]
 
     authentication = {
       sasl_iam_enabled = true
@@ -70,25 +71,28 @@ See `variables.tf` for the complete type definition of `spec`, including all opt
 | `bootstrap_brokers_public_tls` | Public TLS broker endpoints |
 | `bootstrap_brokers_public_sasl_iam` | Public SASL/IAM broker endpoints |
 | `bootstrap_brokers_public_sasl_scram` | Public SASL/SCRAM broker endpoints |
-| `zookeeper_connect_string` | ZooKeeper plaintext endpoints |
-| `zookeeper_connect_string_tls` | ZooKeeper TLS endpoints |
-| `security_group_id` | Managed SG ID (empty if not created) |
+| `bootstrap_brokers_vpc_connectivity_tls` | PrivateLink mTLS broker endpoints |
+| `bootstrap_brokers_vpc_connectivity_sasl_iam` | PrivateLink SASL/IAM broker endpoints |
+| `bootstrap_brokers_vpc_connectivity_sasl_scram` | PrivateLink SASL/SCRAM broker endpoints |
+| `zookeeper_connect_string` | ZooKeeper plaintext endpoints (empty on KRaft-mode clusters) |
+| `zookeeper_connect_string_tls` | ZooKeeper TLS endpoints (empty on KRaft-mode clusters) |
 | `configuration_arn` | Inline config ARN (empty if not created) |
 
 ## File Structure
 
 | File | Purpose |
 |------|---------|
-| `provider.tf` | AWS provider configuration (hashicorp/aws ~> 5.0) |
-| `variables.tf` | Input variable definitions with full type constraints |
-| `locals.tf` | Tags, ingress condition, server_properties serialization |
-| `main.tf` | All resource definitions (SG, configuration, cluster) |
-| `outputs.tf` | 15 output definitions |
+| `provider.tf` | AWS provider configuration (hashicorp/aws >= 6.41) |
+| `variables.tf` | Generator-owned input variable definitions (do not edit by hand) |
+| `locals.tf` | Tags, configuration condition, server_properties serialization |
+| `cluster.tf` | MSK Configuration + MSK Cluster resources |
+| `satellites.tf` | SCRAM secret associations + cluster policy |
+| `outputs.tf` | 17 output definitions |
 
 ## Prerequisites
 
-- Terraform 1.5+
-- AWS provider ~> 5.0
+- Terraform 1.5+ / OpenTofu
+- AWS provider >= 6.41
 - AWS credentials (via provider config or ambient)
 
 ## Related

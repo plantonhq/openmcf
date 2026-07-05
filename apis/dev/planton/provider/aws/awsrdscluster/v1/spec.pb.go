@@ -24,87 +24,299 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsRdsClusterSpec defines the specification required to deploy an AWS RDS DB Cluster
-// (commonly Amazon Aurora MySQL/PostgreSQL, or Multi-AZ DB Cluster). It focuses on
-// the cluster-level configuration. Instance-level settings (class, monitoring, etc.)
-// are modeled separately by instance resources.
+// AwsRdsClusterSpec defines an RDS DB cluster: an Aurora MySQL/PostgreSQL
+// cluster (provisioned or Serverless v2), an Aurora Serverless v1 cluster,
+// or a Multi-AZ RDS cluster for the community mysql/postgres engines.
+//
+// The cluster is the shared-storage brain -- endpoints, credentials,
+// backups, encryption, and engine lifecycle live here. The compute that
+// serves queries is the `instances` list: each entry materializes as its
+// own DB instance inside the cluster (a writer plus any readers). Cluster
+// instances are sub-resources of exactly one cluster and are referenced by
+// nothing else, so they are folded into this spec rather than modeled as a
+// standalone kind; both IaC modules manage each entry as its own provider
+// resource keyed by name, so adding or removing a reader is an in-place
+// update, never a cluster replacement. Aurora Serverless v1
+// (engine_mode: serverless) and Multi-AZ RDS clusters
+// (db_cluster_instance_class) are the two shapes where AWS itself manages
+// the compute and `instances` stays empty.
+//
+// The cluster identifier comes from metadata.name. Security groups,
+// subnets, KMS keys, and IAM roles compose by reference -- this cluster
+// never creates or mutates resources that deserve to be their own nodes.
 type AwsRdsClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the resource will be created.
-	// Example: "us-west-2", "eu-west-1"
+	// The AWS region the cluster is created in. Must match the region of
+	// the subnets, security groups, and KMS keys it references.
+	// Example: "us-west-2", "eu-west-1".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// subnet_ids is the list of subnet IDs used by the DB subnet group for the cluster.
-	// Provide at least two subnets in distinct Availability Zones for high availability.
+	// Subnets for the cluster's DB subnet group. Provide at least two
+	// subnets in DISTINCT availability zones -- AWS rejects a subnet group
+	// that covers fewer than two AZs. Reference AwsSubnet subnet_id outputs
+	// or pass literal subnet IDs. The module manages the subnet group
+	// itself (pure glue: a named list of subnets); alternatively point
+	// db_subnet_group_name at an existing group.
 	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
-	// Optional name of an existing DB subnet group to use instead of providing subnet_ids.
+	// Name of an existing DB subnet group to place the cluster in, instead
+	// of providing subnet_ids. Changing the subnet group replaces the
+	// cluster.
 	DbSubnetGroupName *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=db_subnet_group_name,json=dbSubnetGroupName,proto3" json:"db_subnet_group_name,omitempty"`
-	// vpc_security_group_ids are additional security groups attached to the cluster.
+	// Security groups attached to the cluster. Empty uses the VPC's
+	// default security group (the AWS default). Reference AwsSecurityGroup
+	// security_group_id outputs or pass literal SG IDs -- database ingress
+	// rules belong on the referenced AwsSecurityGroup node, never inside
+	// this cluster.
 	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// allowed_cidr_blocks are IPv4 CIDRs to allow ingress to the cluster SG (if created/managed here).
-	// Example: "10.0.0.0/16", "0.0.0.0/0"
-	AllowedCidrBlocks []string `protobuf:"bytes,5,rep,name=allowed_cidr_blocks,json=allowedCidrBlocks,proto3" json:"allowed_cidr_blocks,omitempty"`
-	// associate_security_group_ids lists existing SGs to associate (alongside any created/managed SG).
-	AssociateSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=associate_security_group_ids,json=associateSecurityGroupIds,proto3" json:"associate_security_group_ids,omitempty"`
-	// database_name is the name of the initial database to create in the cluster.
-	DatabaseName string `protobuf:"bytes,7,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
-	// manage_master_user_password, when true, lets RDS manage the master user password in AWS Secrets Manager.
-	ManageMasterUserPassword bool `protobuf:"varint,8,opt,name=manage_master_user_password,json=manageMasterUserPassword,proto3" json:"manage_master_user_password,omitempty"`
-	// master_user_secret_kms_key_id is the KMS key identifier (ARN/alias) for encrypting the managed secret.
-	MasterUserSecretKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=master_user_secret_kms_key_id,json=masterUserSecretKmsKeyId,proto3" json:"master_user_secret_kms_key_id,omitempty"`
-	// username is the master database user name.
-	Username *string `protobuf:"bytes,10,opt,name=username,proto3,oneof" json:"username,omitempty"`
-	// password is the master user password. Cannot be set when manage_master_user_password is true.
-	Password string `protobuf:"bytes,11,opt,name=password,proto3" json:"password,omitempty"`
-	// port on which the cluster accepts connections.
-	Port int32 `protobuf:"varint,12,opt,name=port,proto3" json:"port,omitempty"`
-	// engine for the cluster. Examples: "aurora-mysql", "aurora-postgresql".
-	Engine string `protobuf:"bytes,13,opt,name=engine,proto3" json:"engine,omitempty"`
-	// engine_version to deploy. Example: "8.0.mysql_aurora.3.05.2" or "14.6" for Aurora PostgreSQL.
-	EngineVersion string `protobuf:"bytes,14,opt,name=engine_version,json=engineVersion,proto3" json:"engine_version,omitempty"`
-	// storage_encrypted indicates whether to enable storage encryption for the cluster.
-	StorageEncrypted bool `protobuf:"varint,15,opt,name=storage_encrypted,json=storageEncrypted,proto3" json:"storage_encrypted,omitempty"`
-	// kms_key_id KMS key ARN to use for storage encryption when storage_encrypted is true.
-	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,16,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
-	// enabled_cloudwatch_logs_exports lists database logs to export to CloudWatch Logs.
-	// Aurora MySQL: [audit, error, general, slowquery]
-	// Aurora PostgreSQL: [postgresql, upgrade]
-	EnabledCloudwatchLogsExports []string `protobuf:"bytes,17,rep,name=enabled_cloudwatch_logs_exports,json=enabledCloudwatchLogsExports,proto3" json:"enabled_cloudwatch_logs_exports,omitempty"`
-	// deletion_protection prevents accidental deletion.
-	DeletionProtection bool `protobuf:"varint,18,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
-	// preferred_maintenance_window in UTC, format 'ddd:hh24:mi-ddd:hh24:mi'.
-	PreferredMaintenanceWindow string `protobuf:"bytes,19,opt,name=preferred_maintenance_window,json=preferredMaintenanceWindow,proto3" json:"preferred_maintenance_window,omitempty"`
-	// backup_retention_period in days (> 0 to enable automated backups).
-	BackupRetentionPeriod int32 `protobuf:"varint,20,opt,name=backup_retention_period,json=backupRetentionPeriod,proto3" json:"backup_retention_period,omitempty"`
-	// preferred_backup_window in UTC, format 'hh24:mi-hh24:mi'. Must not overlap maintenance window.
-	PreferredBackupWindow string `protobuf:"bytes,21,opt,name=preferred_backup_window,json=preferredBackupWindow,proto3" json:"preferred_backup_window,omitempty"`
-	// copy_tags_to_snapshot copies tags from the cluster to snapshots.
-	CopyTagsToSnapshot bool `protobuf:"varint,22,opt,name=copy_tags_to_snapshot,json=copyTagsToSnapshot,proto3" json:"copy_tags_to_snapshot,omitempty"`
-	// skip_final_snapshot controls whether a final snapshot is created before cluster deletion.
-	SkipFinalSnapshot bool `protobuf:"varint,23,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3" json:"skip_final_snapshot,omitempty"`
-	// final_snapshot_identifier is the identifier to use for the final snapshot when skip_final_snapshot is false.
-	FinalSnapshotIdentifier string `protobuf:"bytes,24,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
-	// iam_database_authentication_enabled enables mapping of IAM users/roles to database logins.
-	IamDatabaseAuthenticationEnabled bool `protobuf:"varint,25,opt,name=iam_database_authentication_enabled,json=iamDatabaseAuthenticationEnabled,proto3" json:"iam_database_authentication_enabled,omitempty"`
-	// enable_http_endpoint enables the Data API for Aurora Serverless (where supported).
-	EnableHttpEndpoint bool `protobuf:"varint,26,opt,name=enable_http_endpoint,json=enableHttpEndpoint,proto3" json:"enable_http_endpoint,omitempty"`
-	// serverless_v2_scaling controls Aurora Serverless v2 capacity scaling (if supported by engine/engine_version).
-	ServerlessV2Scaling *AwsRdsClusterServerlessV2ScalingConfiguration `protobuf:"bytes,27,opt,name=serverless_v2_scaling,json=serverlessV2Scaling,proto3" json:"serverless_v2_scaling,omitempty"`
-	// snapshot_identifier creates the cluster from the specified snapshot, when provided.
-	SnapshotIdentifier string `protobuf:"bytes,28,opt,name=snapshot_identifier,json=snapshotIdentifier,proto3" json:"snapshot_identifier,omitempty"`
-	// replication_source_identifier creates a read replica of another cluster when provided (ARN or identifier).
-	ReplicationSourceIdentifier string `protobuf:"bytes,29,opt,name=replication_source_identifier,json=replicationSourceIdentifier,proto3" json:"replication_source_identifier,omitempty"`
-	// db_cluster_parameter_group_name is the cluster-level parameter group to associate.
-	DbClusterParameterGroupName string `protobuf:"bytes,30,opt,name=db_cluster_parameter_group_name,json=dbClusterParameterGroupName,proto3" json:"db_cluster_parameter_group_name,omitempty"`
-	// cluster-level parameters to apply (depends on DB family).
-	Parameters []*AwsRdsClusterParameter `protobuf:"bytes,31,rep,name=parameters,proto3" json:"parameters,omitempty"`
-	// vpc_id for the cluster networking context (optional; generally derivable from subnet_ids/subnet group).
-	VpcId *v1.StringValueOrRef `protobuf:"bytes,32,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
-	// Optional engine mode. For Aurora Serverless v1 use "serverless"; otherwise "provisioned".
-	EngineMode string `protobuf:"bytes,33,opt,name=engine_mode,json=engineMode,proto3" json:"engine_mode,omitempty"`
-	// storage_type for Aurora (if supported): "aurora" or "aurora-iopt1".
-	StorageType   string `protobuf:"bytes,34,opt,name=storage_type,json=storageType,proto3" json:"storage_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Availability zones Aurora replicates storage across. Leave empty and
+	// AWS picks three zones automatically -- the right call almost always,
+	// because this list is create-time-only and a later change replaces the
+	// cluster. Not applicable to Multi-AZ RDS clusters (AWS chooses).
+	AvailabilityZones []string `protobuf:"bytes,5,rep,name=availability_zones,json=availabilityZones,proto3" json:"availability_zones,omitempty"`
+	// The network stack of the cluster: "IPV4" (AWS default when unset) or
+	// "DUAL" for dual-stack IPv4+IPv6. Requires subnets with IPv6 CIDRs
+	// for "DUAL".
+	NetworkType string `protobuf:"bytes,6,opt,name=network_type,json=networkType,proto3" json:"network_type,omitempty"`
+	// The port the cluster accepts connections on. 0 keeps the engine
+	// default (3306 for MySQL-family, 5432 for PostgreSQL-family).
+	Port int32 `protobuf:"varint,7,opt,name=port,proto3" json:"port,omitempty"`
+	// The database engine. Aurora engines ("aurora-mysql",
+	// "aurora-postgresql") use shared cluster storage with `instances`
+	// compute; community engines ("mysql", "postgres") create a Multi-AZ
+	// RDS cluster and require db_cluster_instance_class +
+	// allocated_storage_gb + iops. Changing the engine replaces the
+	// cluster.
+	Engine string `protobuf:"bytes,8,opt,name=engine,proto3" json:"engine,omitempty"`
+	// The engine version, e.g. "8.0.mysql_aurora.3.08.0" (Aurora MySQL)
+	// or "16.4" (Aurora PostgreSQL). Leave empty to let AWS pick the
+	// engine's current default version -- an empty pin never goes stale.
+	// Minor upgrades apply in place; major upgrades additionally need
+	// allow_major_version_upgrade.
+	EngineVersion string `protobuf:"bytes,9,opt,name=engine_version,json=engineVersion,proto3" json:"engine_version,omitempty"`
+	// How the engine provisions compute. Empty or "provisioned" (the AWS
+	// default) covers both classic provisioned instances AND Aurora
+	// Serverless v2 (Serverless v2 is provisioned mode + a
+	// serverless_v2_scaling block + "db.serverless" instances).
+	// "serverless" selects the legacy Aurora Serverless v1 engine mode,
+	// where AWS owns the compute and serverless_v1_scaling applies.
+	// Changing the mode replaces the cluster.
+	EngineMode string `protobuf:"bytes,10,opt,name=engine_mode,json=engineMode,proto3" json:"engine_mode,omitempty"`
+	// Extended support posture when the engine version leaves standard
+	// support: "open-source-rds-extended-support" (AWS default -- paid
+	// extended support kicks in automatically) or
+	// "open-source-rds-extended-support-disabled" (the cluster must be
+	// upgraded before end of standard support; opts out of the extra
+	// cost).
+	EngineLifecycleSupport string `protobuf:"bytes,11,opt,name=engine_lifecycle_support,json=engineLifecycleSupport,proto3" json:"engine_lifecycle_support,omitempty"`
+	// The DB instances that serve this cluster's queries -- one writer
+	// (lowest promotion tier) plus any number of readers. Each entry is
+	// managed as its own provider resource keyed by `name`, so scaling
+	// readers in and out never touches the cluster. Empty is only valid
+	// for the two shapes where AWS owns the compute: Aurora Serverless v1
+	// (engine_mode "serverless") and Multi-AZ RDS clusters
+	// (db_cluster_instance_class set) -- an Aurora provisioned cluster
+	// with no instances stores data but cannot serve a single query.
+	Instances []*AwsRdsClusterInstance `protobuf:"bytes,12,rep,name=instances,proto3" json:"instances,omitempty"`
+	// Aurora Serverless v2 capacity bounds. Requires provisioned engine
+	// mode and instances of class "db.serverless" -- each such instance
+	// scales independently within these bounds. min_capacity 0 enables
+	// automatic pause (scale-to-zero) after seconds_until_auto_pause of
+	// idleness.
+	ServerlessV2Scaling *AwsRdsClusterServerlessV2Scaling `protobuf:"bytes,13,opt,name=serverless_v2_scaling,json=serverlessV2Scaling,proto3" json:"serverless_v2_scaling,omitempty"`
+	// Aurora Serverless v1 autoscaling configuration. Only valid with
+	// engine_mode "serverless" (the legacy serverless offering) -- prefer
+	// Serverless v2 for new designs.
+	ServerlessV1Scaling *AwsRdsClusterServerlessV1Scaling `protobuf:"bytes,14,opt,name=serverless_v1_scaling,json=serverlessV1Scaling,proto3" json:"serverless_v1_scaling,omitempty"`
+	// The instance class for a Multi-AZ RDS cluster (community
+	// mysql/postgres engines), e.g. "db.m6gd.large". Setting it selects
+	// the Multi-AZ cluster shape: AWS manages one writer and two readers
+	// internally, `instances` stays empty, and allocated_storage_gb + iops
+	// are required.
+	DbClusterInstanceClass string `protobuf:"bytes,15,opt,name=db_cluster_instance_class,json=dbClusterInstanceClass,proto3" json:"db_cluster_instance_class,omitempty"`
+	// Provisioned storage in GiB for a Multi-AZ RDS cluster. Not
+	// applicable to Aurora (Aurora storage grows automatically).
+	AllocatedStorageGb int32 `protobuf:"varint,16,opt,name=allocated_storage_gb,json=allocatedStorageGb,proto3" json:"allocated_storage_gb,omitempty"`
+	// Provisioned IOPS for a Multi-AZ RDS cluster (required by AWS for
+	// io1/io2/gp3 cluster storage). Not applicable to Aurora.
+	Iops int32 `protobuf:"varint,17,opt,name=iops,proto3" json:"iops,omitempty"`
+	// The storage type. Aurora engines: "" (standard, billed per I/O) or
+	// "aurora-iopt1" (I/O-Optimized, up to ~40% cheaper for I/O-heavy
+	// workloads, switchable once per 30 days). Multi-AZ RDS clusters:
+	// "io1", "io2", or "gp3".
+	StorageType string `protobuf:"bytes,18,opt,name=storage_type,json=storageType,proto3" json:"storage_type,omitempty"`
+	// The name of the initial database AWS creates in the cluster. Empty
+	// creates no database (create one from SQL later). Create-time only.
+	DatabaseName string `protobuf:"bytes,19,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
+	// The master username. Required for a brand-new cluster -- AWS has no
+	// default and rejects a blank value at CreateDBCluster. Only clusters
+	// that inherit credentials from a source (snapshot restore,
+	// point-in-time restore, a replication source, or joining an existing
+	// global database as a secondary) leave it empty. Avoid the engine's
+	// reserved names (e.g. "rdsadmin"). Create-time only -- changing it
+	// replaces the cluster.
+	MasterUsername string `protobuf:"bytes,20,opt,name=master_username,json=masterUsername,proto3" json:"master_username,omitempty"`
+	// Let AWS manage the master password in Secrets Manager: AWS
+	// generates it, stores it, rotates it on schedule, and no secret ever
+	// touches this manifest or the IaC state. The managed secret's ARN is
+	// exported as the master_user_secret_arn output. Mutually exclusive
+	// with master_password -- and the recommended posture.
+	ManageMasterUserPassword bool `protobuf:"varint,21,opt,name=manage_master_user_password,json=manageMasterUserPassword,proto3" json:"manage_master_user_password,omitempty"`
+	// The KMS key that encrypts the AWS-managed master-user secret (only
+	// meaningful with manage_master_user_password). Empty uses the
+	// account's default aws/secretsmanager key. Reference an AwsKmsKey
+	// key_arn output or pass a literal key ARN.
+	MasterUserSecretKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,22,opt,name=master_user_secret_kms_key_id,json=masterUserSecretKmsKeyId,proto3" json:"master_user_secret_kms_key_id,omitempty"`
+	// The master password, supplied directly. Stored in IaC state --
+	// prefer manage_master_user_password, which keeps the secret in
+	// Secrets Manager entirely. Mutually exclusive with
+	// manage_master_user_password.
+	MasterPassword string `protobuf:"bytes,23,opt,name=master_password,json=masterPassword,proto3" json:"master_password,omitempty"`
+	// Encrypt cluster storage at rest. Strongly recommended -- and
+	// create-time only: an unencrypted cluster cannot be encrypted later
+	// (requires a snapshot-restore migration).
+	StorageEncrypted bool `protobuf:"varint,24,opt,name=storage_encrypted,json=storageEncrypted,proto3" json:"storage_encrypted,omitempty"`
+	// The KMS key for storage encryption when storage_encrypted is true.
+	// Empty uses the AWS-managed aws/rds key. Reference an AwsKmsKey
+	// key_arn output or pass a literal key ARN. Create-time only.
+	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,25,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	// Days automated backups are retained, 1-35. 0 keeps the AWS default
+	// (1 day). Aurora backups are continuous -- this window bounds
+	// point-in-time recovery, so production clusters typically want 7+.
+	BackupRetentionPeriod int32 `protobuf:"varint,26,opt,name=backup_retention_period,json=backupRetentionPeriod,proto3" json:"backup_retention_period,omitempty"`
+	// The daily backup window in UTC, format "hh24:mi-hh24:mi" (e.g.
+	// "04:00-05:00"). Empty lets AWS assign one. Must not overlap the
+	// maintenance window.
+	PreferredBackupWindow string `protobuf:"bytes,27,opt,name=preferred_backup_window,json=preferredBackupWindow,proto3" json:"preferred_backup_window,omitempty"`
+	// The weekly maintenance window in UTC, format
+	// "ddd:hh24:mi-ddd:hh24:mi" (e.g. "sun:05:00-sun:06:00"). Empty lets
+	// AWS assign one.
+	PreferredMaintenanceWindow string `protobuf:"bytes,28,opt,name=preferred_maintenance_window,json=preferredMaintenanceWindow,proto3" json:"preferred_maintenance_window,omitempty"`
+	// Copy the cluster's tags onto automated and manual snapshots.
+	CopyTagsToSnapshot bool `protobuf:"varint,29,opt,name=copy_tags_to_snapshot,json=copyTagsToSnapshot,proto3" json:"copy_tags_to_snapshot,omitempty"`
+	// Remove automated backups immediately when the cluster is deleted.
+	// AWS defaults this to true; set false to retain the backups for the
+	// remainder of their retention window after deletion -- the last line
+	// of defense against a mistaken teardown.
+	DeleteAutomatedBackups *bool `protobuf:"varint,30,opt,name=delete_automated_backups,json=deleteAutomatedBackups,proto3,oneof" json:"delete_automated_backups,omitempty"`
+	// Skip the final snapshot when the cluster is deleted. When false
+	// (the safe default), final_snapshot_identifier must be set -- AWS
+	// refuses to delete without knowing the snapshot name.
+	SkipFinalSnapshot bool `protobuf:"varint,31,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3" json:"skip_final_snapshot,omitempty"`
+	// The name for the final snapshot taken on deletion. Required when
+	// skip_final_snapshot is false.
+	FinalSnapshotIdentifier string `protobuf:"bytes,32,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
+	// Refuse deletion of the cluster while enabled. Turn this on for
+	// anything holding data you cannot recreate -- deletion then requires
+	// an explicit two-step (disable, delete).
+	DeletionProtection bool `protobuf:"varint,33,opt,name=deletion_protection,json=deletionProtection,proto3" json:"deletion_protection,omitempty"`
+	// Aurora MySQL backtrack window in seconds, 0-259200 (72 hours).
+	// Backtrack rewinds the cluster in place (no restore, no new
+	// endpoint) -- the fastest "undo" for fat-fingered writes. 0 disables.
+	// Aurora MySQL only; enabling on an existing cluster is not supported
+	// by AWS.
+	BacktrackWindowSeconds int32 `protobuf:"varint,34,opt,name=backtrack_window_seconds,json=backtrackWindowSeconds,proto3" json:"backtrack_window_seconds,omitempty"`
+	// Map IAM identities to database users -- connect with short-lived
+	// IAM auth tokens instead of passwords.
+	IamDatabaseAuthenticationEnabled bool `protobuf:"varint,35,opt,name=iam_database_authentication_enabled,json=iamDatabaseAuthenticationEnabled,proto3" json:"iam_database_authentication_enabled,omitempty"`
+	// IAM roles the cluster assumes for engine features that reach into
+	// other AWS services (S3 import/export, Lambda invocation, Comprehend
+	// /SageMaker for ML functions). Reference AwsIamRole role_arn outputs
+	// or pass literal ARNs -- the roles own their policies; this cluster
+	// only associates them.
+	IamRoles []*v1.StringValueOrRef `protobuf:"bytes,36,rep,name=iam_roles,json=iamRoles,proto3" json:"iam_roles,omitempty"`
+	// Enable the RDS Data API: SQL over HTTPS with IAM auth, no
+	// persistent connections -- the natural fit for Lambda and other
+	// connection-averse callers. Aurora PostgreSQL and Aurora MySQL
+	// (Serverless v2 / provisioned), plus Serverless v1.
+	EnableHttpEndpoint bool `protobuf:"varint,37,opt,name=enable_http_endpoint,json=enableHttpEndpoint,proto3" json:"enable_http_endpoint,omitempty"`
+	// Database log types to export to CloudWatch Logs. MySQL family
+	// ("aurora-mysql", "mysql"): "audit", "error", "general", "slowquery".
+	// PostgreSQL family ("aurora-postgresql", "postgres"): "postgresql",
+	// "upgrade". Both families also accept "iam-db-auth-error", and
+	// Multi-AZ RDS clusters accept "instance".
+	EnabledCloudwatchLogsExports []string `protobuf:"bytes,38,rep,name=enabled_cloudwatch_logs_exports,json=enabledCloudwatchLogsExports,proto3" json:"enabled_cloudwatch_logs_exports,omitempty"`
+	// Cluster-level Performance Insights (per-query performance
+	// telemetry). On Aurora, per-instance settings in `instances` can
+	// override this. Free at the default 7-day retention.
+	PerformanceInsightsEnabled bool `protobuf:"varint,39,opt,name=performance_insights_enabled,json=performanceInsightsEnabled,proto3" json:"performance_insights_enabled,omitempty"`
+	// The KMS key encrypting Performance Insights data. Empty uses the
+	// AWS default. Reference an AwsKmsKey key_arn output or pass a
+	// literal key ARN. Cannot change after Performance Insights is first
+	// enabled.
+	PerformanceInsightsKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,40,opt,name=performance_insights_kms_key_id,json=performanceInsightsKmsKeyId,proto3" json:"performance_insights_kms_key_id,omitempty"`
+	// Days of Performance Insights history: 7 (free tier), 731 (2 years),
+	// or any multiple of 31 in between. 0 keeps the AWS default (7).
+	PerformanceInsightsRetentionPeriod int32 `protobuf:"varint,41,opt,name=performance_insights_retention_period,json=performanceInsightsRetentionPeriod,proto3" json:"performance_insights_retention_period,omitempty"`
+	// Enhanced Monitoring granularity in seconds: 1, 5, 10, 15, 30, or
+	// 60. 0 disables (the AWS default). OS-level metrics (CPU per
+	// process, memory, disk) streamed to CloudWatch Logs -- requires
+	// monitoring_role_arn.
+	MonitoringInterval int32 `protobuf:"varint,42,opt,name=monitoring_interval,json=monitoringInterval,proto3" json:"monitoring_interval,omitempty"`
+	// The IAM role Enhanced Monitoring publishes through (needs the
+	// AmazonRDSEnhancedMonitoringRole managed policy). Required by AWS
+	// when monitoring_interval is set. Reference an AwsIamRole role_arn
+	// output or pass a literal ARN.
+	MonitoringRoleArn *v1.StringValueOrRef `protobuf:"bytes,43,opt,name=monitoring_role_arn,json=monitoringRoleArn,proto3" json:"monitoring_role_arn,omitempty"`
+	// CloudWatch Database Insights tier: "standard" (free, included) or
+	// "advanced" (paid fleet-level analysis; requires Performance
+	// Insights with 465+ day retention). Empty keeps the AWS default
+	// (standard).
+	DatabaseInsightsMode string `protobuf:"bytes,44,opt,name=database_insights_mode,json=databaseInsightsMode,proto3" json:"database_insights_mode,omitempty"`
+	// Restore the cluster from an existing cluster snapshot (name or ARN)
+	// at create time. Create-time only; mutually exclusive with
+	// restore_to_point_in_time.
+	SnapshotIdentifier string `protobuf:"bytes,45,opt,name=snapshot_identifier,json=snapshotIdentifier,proto3" json:"snapshot_identifier,omitempty"`
+	// Clone or restore this cluster from another cluster's continuous
+	// backup at create time -- point-in-time recovery as a first-class
+	// create shape. Create-time only; mutually exclusive with
+	// snapshot_identifier.
+	RestoreToPointInTime *AwsRdsClusterRestoreToPointInTime `protobuf:"bytes,46,opt,name=restore_to_point_in_time,json=restoreToPointInTime,proto3" json:"restore_to_point_in_time,omitempty"`
+	// Make this cluster a cross-region (or cross-account) read replica of
+	// the given source cluster ARN. Promote by clearing the field.
+	ReplicationSourceIdentifier string `protobuf:"bytes,47,opt,name=replication_source_identifier,json=replicationSourceIdentifier,proto3" json:"replication_source_identifier,omitempty"`
+	// The region of the replication source, required by AWS when creating
+	// an encrypted cross-region replica (it scopes the KMS re-encryption).
+	// Create-time only.
+	SourceRegion string `protobuf:"bytes,48,opt,name=source_region,json=sourceRegion,proto3" json:"source_region,omitempty"`
+	// Join an Aurora Global Database: the identifier of the
+	// aws_rds_global_cluster this cluster participates in. The first
+	// cluster joined becomes the global writer; clusters added afterwards
+	// become read-only secondaries.
+	GlobalClusterIdentifier string `protobuf:"bytes,49,opt,name=global_cluster_identifier,json=globalClusterIdentifier,proto3" json:"global_cluster_identifier,omitempty"`
+	// Let secondary-region endpoints accept writes and forward them to
+	// the global writer (Aurora Global Database only). Apps in secondary
+	// regions get a single connection string for reads AND writes.
+	EnableGlobalWriteForwarding bool `protobuf:"varint,50,opt,name=enable_global_write_forwarding,json=enableGlobalWriteForwarding,proto3" json:"enable_global_write_forwarding,omitempty"`
+	// Let reader instances in THIS cluster accept writes and forward them
+	// to the writer -- one endpoint for the whole cluster without a
+	// client-side split. Aurora MySQL 3.04+ / Aurora PostgreSQL 16.4+.
+	EnableLocalWriteForwarding bool `protobuf:"varint,51,opt,name=enable_local_write_forwarding,json=enableLocalWriteForwarding,proto3" json:"enable_local_write_forwarding,omitempty"`
+	// The name of an existing cluster parameter group to use. Mutually
+	// exclusive with `parameters` -- either bring your own group or let
+	// the module manage one from inline parameters.
+	DbClusterParameterGroupName string `protobuf:"bytes,52,opt,name=db_cluster_parameter_group_name,json=dbClusterParameterGroupName,proto3" json:"db_cluster_parameter_group_name,omitempty"`
+	// Cluster-level engine parameters, managed as a dedicated parameter
+	// group owned by this cluster (the group is glue -- a named parameter
+	// list -- so it stays folded). Mutually exclusive with
+	// db_cluster_parameter_group_name.
+	Parameters []*AwsRdsClusterParameter `protobuf:"bytes,53,rep,name=parameters,proto3" json:"parameters,omitempty"`
+	// The name of the DB (instance-level) parameter group applied to
+	// cluster instances DURING a major engine version upgrade. Only
+	// consulted when engine_version changes across a major version.
+	DbInstanceParameterGroupName string `protobuf:"bytes,54,opt,name=db_instance_parameter_group_name,json=dbInstanceParameterGroupName,proto3" json:"db_instance_parameter_group_name,omitempty"`
+	// The CA certificate bundle for the cluster's instances (e.g.
+	// "rds-ca-rsa2048-g1"). Empty keeps the AWS default bundle.
+	CaCertificateIdentifier string `protobuf:"bytes,55,opt,name=ca_certificate_identifier,json=caCertificateIdentifier,proto3" json:"ca_certificate_identifier,omitempty"`
+	// Apply modifications immediately instead of waiting for the next
+	// maintenance window. Immediate changes can interrupt connections
+	// (e.g. scaling); deferred changes wait quietly. AWS defaults to
+	// deferred.
+	ApplyImmediately bool `protobuf:"varint,56,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
+	// Permit engine_version changes that cross a major version. Off (the
+	// default) guards against an accidental major upgrade hidden in a
+	// version bump.
+	AllowMajorVersionUpgrade bool `protobuf:"varint,57,opt,name=allow_major_version_upgrade,json=allowMajorVersionUpgrade,proto3" json:"allow_major_version_upgrade,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *AwsRdsClusterSpec) Reset() {
@@ -165,51 +377,16 @@ func (x *AwsRdsClusterSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AwsRdsClusterSpec) GetAllowedCidrBlocks() []string {
+func (x *AwsRdsClusterSpec) GetAvailabilityZones() []string {
 	if x != nil {
-		return x.AllowedCidrBlocks
+		return x.AvailabilityZones
 	}
 	return nil
 }
 
-func (x *AwsRdsClusterSpec) GetAssociateSecurityGroupIds() []*v1.StringValueOrRef {
+func (x *AwsRdsClusterSpec) GetNetworkType() string {
 	if x != nil {
-		return x.AssociateSecurityGroupIds
-	}
-	return nil
-}
-
-func (x *AwsRdsClusterSpec) GetDatabaseName() string {
-	if x != nil {
-		return x.DatabaseName
-	}
-	return ""
-}
-
-func (x *AwsRdsClusterSpec) GetManageMasterUserPassword() bool {
-	if x != nil {
-		return x.ManageMasterUserPassword
-	}
-	return false
-}
-
-func (x *AwsRdsClusterSpec) GetMasterUserSecretKmsKeyId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.MasterUserSecretKmsKeyId
-	}
-	return nil
-}
-
-func (x *AwsRdsClusterSpec) GetUsername() string {
-	if x != nil && x.Username != nil {
-		return *x.Username
-	}
-	return ""
-}
-
-func (x *AwsRdsClusterSpec) GetPassword() string {
-	if x != nil {
-		return x.Password
+		return x.NetworkType
 	}
 	return ""
 }
@@ -235,6 +412,104 @@ func (x *AwsRdsClusterSpec) GetEngineVersion() string {
 	return ""
 }
 
+func (x *AwsRdsClusterSpec) GetEngineMode() string {
+	if x != nil {
+		return x.EngineMode
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetEngineLifecycleSupport() string {
+	if x != nil {
+		return x.EngineLifecycleSupport
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetInstances() []*AwsRdsClusterInstance {
+	if x != nil {
+		return x.Instances
+	}
+	return nil
+}
+
+func (x *AwsRdsClusterSpec) GetServerlessV2Scaling() *AwsRdsClusterServerlessV2Scaling {
+	if x != nil {
+		return x.ServerlessV2Scaling
+	}
+	return nil
+}
+
+func (x *AwsRdsClusterSpec) GetServerlessV1Scaling() *AwsRdsClusterServerlessV1Scaling {
+	if x != nil {
+		return x.ServerlessV1Scaling
+	}
+	return nil
+}
+
+func (x *AwsRdsClusterSpec) GetDbClusterInstanceClass() string {
+	if x != nil {
+		return x.DbClusterInstanceClass
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetAllocatedStorageGb() int32 {
+	if x != nil {
+		return x.AllocatedStorageGb
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterSpec) GetIops() int32 {
+	if x != nil {
+		return x.Iops
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterSpec) GetStorageType() string {
+	if x != nil {
+		return x.StorageType
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetDatabaseName() string {
+	if x != nil {
+		return x.DatabaseName
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetMasterUsername() string {
+	if x != nil {
+		return x.MasterUsername
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetManageMasterUserPassword() bool {
+	if x != nil {
+		return x.ManageMasterUserPassword
+	}
+	return false
+}
+
+func (x *AwsRdsClusterSpec) GetMasterUserSecretKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.MasterUserSecretKmsKeyId
+	}
+	return nil
+}
+
+func (x *AwsRdsClusterSpec) GetMasterPassword() string {
+	if x != nil {
+		return x.MasterPassword
+	}
+	return ""
+}
+
 func (x *AwsRdsClusterSpec) GetStorageEncrypted() bool {
 	if x != nil {
 		return x.StorageEncrypted
@@ -247,27 +522,6 @@ func (x *AwsRdsClusterSpec) GetKmsKeyId() *v1.StringValueOrRef {
 		return x.KmsKeyId
 	}
 	return nil
-}
-
-func (x *AwsRdsClusterSpec) GetEnabledCloudwatchLogsExports() []string {
-	if x != nil {
-		return x.EnabledCloudwatchLogsExports
-	}
-	return nil
-}
-
-func (x *AwsRdsClusterSpec) GetDeletionProtection() bool {
-	if x != nil {
-		return x.DeletionProtection
-	}
-	return false
-}
-
-func (x *AwsRdsClusterSpec) GetPreferredMaintenanceWindow() string {
-	if x != nil {
-		return x.PreferredMaintenanceWindow
-	}
-	return ""
 }
 
 func (x *AwsRdsClusterSpec) GetBackupRetentionPeriod() int32 {
@@ -284,9 +538,23 @@ func (x *AwsRdsClusterSpec) GetPreferredBackupWindow() string {
 	return ""
 }
 
+func (x *AwsRdsClusterSpec) GetPreferredMaintenanceWindow() string {
+	if x != nil {
+		return x.PreferredMaintenanceWindow
+	}
+	return ""
+}
+
 func (x *AwsRdsClusterSpec) GetCopyTagsToSnapshot() bool {
 	if x != nil {
 		return x.CopyTagsToSnapshot
+	}
+	return false
+}
+
+func (x *AwsRdsClusterSpec) GetDeleteAutomatedBackups() bool {
+	if x != nil && x.DeleteAutomatedBackups != nil {
+		return *x.DeleteAutomatedBackups
 	}
 	return false
 }
@@ -305,11 +573,32 @@ func (x *AwsRdsClusterSpec) GetFinalSnapshotIdentifier() string {
 	return ""
 }
 
+func (x *AwsRdsClusterSpec) GetDeletionProtection() bool {
+	if x != nil {
+		return x.DeletionProtection
+	}
+	return false
+}
+
+func (x *AwsRdsClusterSpec) GetBacktrackWindowSeconds() int32 {
+	if x != nil {
+		return x.BacktrackWindowSeconds
+	}
+	return 0
+}
+
 func (x *AwsRdsClusterSpec) GetIamDatabaseAuthenticationEnabled() bool {
 	if x != nil {
 		return x.IamDatabaseAuthenticationEnabled
 	}
 	return false
+}
+
+func (x *AwsRdsClusterSpec) GetIamRoles() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.IamRoles
+	}
+	return nil
 }
 
 func (x *AwsRdsClusterSpec) GetEnableHttpEndpoint() bool {
@@ -319,11 +608,53 @@ func (x *AwsRdsClusterSpec) GetEnableHttpEndpoint() bool {
 	return false
 }
 
-func (x *AwsRdsClusterSpec) GetServerlessV2Scaling() *AwsRdsClusterServerlessV2ScalingConfiguration {
+func (x *AwsRdsClusterSpec) GetEnabledCloudwatchLogsExports() []string {
 	if x != nil {
-		return x.ServerlessV2Scaling
+		return x.EnabledCloudwatchLogsExports
 	}
 	return nil
+}
+
+func (x *AwsRdsClusterSpec) GetPerformanceInsightsEnabled() bool {
+	if x != nil {
+		return x.PerformanceInsightsEnabled
+	}
+	return false
+}
+
+func (x *AwsRdsClusterSpec) GetPerformanceInsightsKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.PerformanceInsightsKmsKeyId
+	}
+	return nil
+}
+
+func (x *AwsRdsClusterSpec) GetPerformanceInsightsRetentionPeriod() int32 {
+	if x != nil {
+		return x.PerformanceInsightsRetentionPeriod
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterSpec) GetMonitoringInterval() int32 {
+	if x != nil {
+		return x.MonitoringInterval
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterSpec) GetMonitoringRoleArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.MonitoringRoleArn
+	}
+	return nil
+}
+
+func (x *AwsRdsClusterSpec) GetDatabaseInsightsMode() string {
+	if x != nil {
+		return x.DatabaseInsightsMode
+	}
+	return ""
 }
 
 func (x *AwsRdsClusterSpec) GetSnapshotIdentifier() string {
@@ -333,11 +664,46 @@ func (x *AwsRdsClusterSpec) GetSnapshotIdentifier() string {
 	return ""
 }
 
+func (x *AwsRdsClusterSpec) GetRestoreToPointInTime() *AwsRdsClusterRestoreToPointInTime {
+	if x != nil {
+		return x.RestoreToPointInTime
+	}
+	return nil
+}
+
 func (x *AwsRdsClusterSpec) GetReplicationSourceIdentifier() string {
 	if x != nil {
 		return x.ReplicationSourceIdentifier
 	}
 	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetSourceRegion() string {
+	if x != nil {
+		return x.SourceRegion
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetGlobalClusterIdentifier() string {
+	if x != nil {
+		return x.GlobalClusterIdentifier
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterSpec) GetEnableGlobalWriteForwarding() bool {
+	if x != nil {
+		return x.EnableGlobalWriteForwarding
+	}
+	return false
+}
+
+func (x *AwsRdsClusterSpec) GetEnableLocalWriteForwarding() bool {
+	if x != nil {
+		return x.EnableLocalWriteForwarding
+	}
+	return false
 }
 
 func (x *AwsRdsClusterSpec) GetDbClusterParameterGroupName() string {
@@ -354,43 +720,467 @@ func (x *AwsRdsClusterSpec) GetParameters() []*AwsRdsClusterParameter {
 	return nil
 }
 
-func (x *AwsRdsClusterSpec) GetVpcId() *v1.StringValueOrRef {
+func (x *AwsRdsClusterSpec) GetDbInstanceParameterGroupName() string {
 	if x != nil {
-		return x.VpcId
-	}
-	return nil
-}
-
-func (x *AwsRdsClusterSpec) GetEngineMode() string {
-	if x != nil {
-		return x.EngineMode
+		return x.DbInstanceParameterGroupName
 	}
 	return ""
 }
 
-func (x *AwsRdsClusterSpec) GetStorageType() string {
+func (x *AwsRdsClusterSpec) GetCaCertificateIdentifier() string {
 	if x != nil {
-		return x.StorageType
+		return x.CaCertificateIdentifier
 	}
 	return ""
 }
 
-// AwsRdsClusterParameter represents a cluster parameter to apply via the DB cluster parameter group.
+func (x *AwsRdsClusterSpec) GetApplyImmediately() bool {
+	if x != nil {
+		return x.ApplyImmediately
+	}
+	return false
+}
+
+func (x *AwsRdsClusterSpec) GetAllowMajorVersionUpgrade() bool {
+	if x != nil {
+		return x.AllowMajorVersionUpgrade
+	}
+	return false
+}
+
+// AwsRdsClusterInstance is one DB instance inside the cluster -- the unit
+// of compute. The instance with the lowest promotion tier that is
+// available becomes the writer; all others serve reads from the shared
+// cluster storage. Engine and version are inherited from the cluster.
+type AwsRdsClusterInstance struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Instance name, unique within the cluster. Becomes part of the AWS
+	// instance identifier and the key both IaC engines manage the
+	// provider resource by -- renaming an entry replaces that instance
+	// (the others are untouched). Required.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The instance class: a provisioned class like "db.r6g.large", or
+	// "db.serverless" for an Aurora Serverless v2 instance that scales
+	// within the cluster's serverless_v2_scaling bounds. Required.
+	InstanceClass string `protobuf:"bytes,2,opt,name=instance_class,json=instanceClass,proto3" json:"instance_class,omitempty"`
+	// Failover priority, 0-15 (lower is promoted first). Give the
+	// largest readers tier 0/1 so a failover lands on capacity that can
+	// absorb the write load. 0 is the AWS default.
+	PromotionTier int32 `protobuf:"varint,3,opt,name=promotion_tier,json=promotionTier,proto3" json:"promotion_tier,omitempty"`
+	// Pin the instance to one availability zone. Empty lets AWS place it
+	// -- preferred, since AWS spreads instances across the cluster's
+	// zones automatically. Create-time only.
+	AvailabilityZone string `protobuf:"bytes,4,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
+	// Give the instance a public IP. Requires public subnets; keep false
+	// for anything production-shaped.
+	PubliclyAccessible bool `protobuf:"varint,5,opt,name=publicly_accessible,json=publiclyAccessible,proto3" json:"publicly_accessible,omitempty"`
+	// The DB (instance-level) parameter group for this instance. Empty
+	// keeps the engine default group.
+	DbParameterGroupName string `protobuf:"bytes,6,opt,name=db_parameter_group_name,json=dbParameterGroupName,proto3" json:"db_parameter_group_name,omitempty"`
+	// Apply minor engine version patches automatically during the
+	// maintenance window. AWS defaults this to true; disable only when
+	// patch timing must be controlled manually.
+	AutoMinorVersionUpgrade *bool `protobuf:"varint,7,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3,oneof" json:"auto_minor_version_upgrade,omitempty"`
+	// Per-instance Performance Insights override. Unset inherits the
+	// cluster-level setting.
+	PerformanceInsightsEnabled *bool `protobuf:"varint,8,opt,name=performance_insights_enabled,json=performanceInsightsEnabled,proto3,oneof" json:"performance_insights_enabled,omitempty"`
+	// Enhanced Monitoring granularity for this instance in seconds: 1,
+	// 5, 10, 15, 30, or 60. 0 disables. Uses the cluster's
+	// monitoring_role_arn.
+	MonitoringInterval int32 `protobuf:"varint,9,opt,name=monitoring_interval,json=monitoringInterval,proto3" json:"monitoring_interval,omitempty"`
+	// The CA certificate bundle for this instance (e.g.
+	// "rds-ca-rsa2048-g1"). Empty keeps the AWS default.
+	CaCertIdentifier string `protobuf:"bytes,10,opt,name=ca_cert_identifier,json=caCertIdentifier,proto3" json:"ca_cert_identifier,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AwsRdsClusterInstance) Reset() {
+	*x = AwsRdsClusterInstance{}
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsClusterInstance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsClusterInstance) ProtoMessage() {}
+
+func (x *AwsRdsClusterInstance) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsClusterInstance.ProtoReflect.Descriptor instead.
+func (*AwsRdsClusterInstance) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsRdsClusterInstance) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterInstance) GetInstanceClass() string {
+	if x != nil {
+		return x.InstanceClass
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterInstance) GetPromotionTier() int32 {
+	if x != nil {
+		return x.PromotionTier
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterInstance) GetAvailabilityZone() string {
+	if x != nil {
+		return x.AvailabilityZone
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterInstance) GetPubliclyAccessible() bool {
+	if x != nil {
+		return x.PubliclyAccessible
+	}
+	return false
+}
+
+func (x *AwsRdsClusterInstance) GetDbParameterGroupName() string {
+	if x != nil {
+		return x.DbParameterGroupName
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterInstance) GetAutoMinorVersionUpgrade() bool {
+	if x != nil && x.AutoMinorVersionUpgrade != nil {
+		return *x.AutoMinorVersionUpgrade
+	}
+	return false
+}
+
+func (x *AwsRdsClusterInstance) GetPerformanceInsightsEnabled() bool {
+	if x != nil && x.PerformanceInsightsEnabled != nil {
+		return *x.PerformanceInsightsEnabled
+	}
+	return false
+}
+
+func (x *AwsRdsClusterInstance) GetMonitoringInterval() int32 {
+	if x != nil {
+		return x.MonitoringInterval
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterInstance) GetCaCertIdentifier() string {
+	if x != nil {
+		return x.CaCertIdentifier
+	}
+	return ""
+}
+
+// AwsRdsClusterServerlessV2Scaling bounds Aurora Serverless v2 capacity in
+// ACUs (each ACU is ~2 GiB of memory with matching CPU). Applies to every
+// "db.serverless" instance in the cluster.
+type AwsRdsClusterServerlessV2Scaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Minimum ACUs, 0-256 in 0.5 steps. 0 enables automatic pause: the
+	// instance suspends after seconds_until_auto_pause of idleness and
+	// costs nothing while paused (storage still billed) -- resumed on the
+	// next connection in ~15 seconds. Dev/test clusters want 0; latency-
+	// sensitive production wants >= 0.5 to never pause.
+	MinCapacity float64 `protobuf:"fixed64,1,opt,name=min_capacity,json=minCapacity,proto3" json:"min_capacity,omitempty"`
+	// Maximum ACUs, 1-256. The hard spend/performance ceiling per
+	// instance. Required.
+	MaxCapacity float64 `protobuf:"fixed64,2,opt,name=max_capacity,json=maxCapacity,proto3" json:"max_capacity,omitempty"`
+	// Seconds of idleness before an instance auto-pauses, 300-86400.
+	// Only meaningful when min_capacity is 0. 0 keeps the AWS default
+	// (300 -- five minutes).
+	SecondsUntilAutoPause int32 `protobuf:"varint,3,opt,name=seconds_until_auto_pause,json=secondsUntilAutoPause,proto3" json:"seconds_until_auto_pause,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AwsRdsClusterServerlessV2Scaling) Reset() {
+	*x = AwsRdsClusterServerlessV2Scaling{}
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsClusterServerlessV2Scaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsClusterServerlessV2Scaling) ProtoMessage() {}
+
+func (x *AwsRdsClusterServerlessV2Scaling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsClusterServerlessV2Scaling.ProtoReflect.Descriptor instead.
+func (*AwsRdsClusterServerlessV2Scaling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsRdsClusterServerlessV2Scaling) GetMinCapacity() float64 {
+	if x != nil {
+		return x.MinCapacity
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterServerlessV2Scaling) GetMaxCapacity() float64 {
+	if x != nil {
+		return x.MaxCapacity
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterServerlessV2Scaling) GetSecondsUntilAutoPause() int32 {
+	if x != nil {
+		return x.SecondsUntilAutoPause
+	}
+	return 0
+}
+
+// AwsRdsClusterServerlessV1Scaling configures legacy Aurora Serverless v1
+// autoscaling (engine_mode "serverless"). Capacity moves in whole-ACU
+// power-of-two steps managed entirely by AWS.
+type AwsRdsClusterServerlessV1Scaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Pause compute after seconds_until_auto_pause of idleness. AWS
+	// defaults this to true -- the cost model Serverless v1 exists for.
+	AutoPause *bool `protobuf:"varint,1,opt,name=auto_pause,json=autoPause,proto3,oneof" json:"auto_pause,omitempty"`
+	// Minimum ACUs (whole units, engine-specific valid set). 0 keeps the
+	// AWS default (1).
+	MinCapacity int32 `protobuf:"varint,2,opt,name=min_capacity,json=minCapacity,proto3" json:"min_capacity,omitempty"`
+	// Maximum ACUs (whole units). 0 keeps the AWS default (16).
+	MaxCapacity int32 `protobuf:"varint,3,opt,name=max_capacity,json=maxCapacity,proto3" json:"max_capacity,omitempty"`
+	// Seconds of idleness before pausing, 300-86400. 0 keeps the AWS
+	// default (300).
+	SecondsUntilAutoPause int32 `protobuf:"varint,4,opt,name=seconds_until_auto_pause,json=secondsUntilAutoPause,proto3" json:"seconds_until_auto_pause,omitempty"`
+	// Seconds a scaling operation waits for a safe scaling point before
+	// timeout_action applies, 60-600. 0 keeps the AWS default (300).
+	SecondsBeforeTimeout int32 `protobuf:"varint,5,opt,name=seconds_before_timeout,json=secondsBeforeTimeout,proto3" json:"seconds_before_timeout,omitempty"`
+	// What happens when scaling times out: "RollbackCapacityChange" (AWS
+	// default -- keep current capacity) or "ForceApplyCapacityChange"
+	// (scale anyway, dropping connections that block it).
+	TimeoutAction string `protobuf:"bytes,6,opt,name=timeout_action,json=timeoutAction,proto3" json:"timeout_action,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRdsClusterServerlessV1Scaling) Reset() {
+	*x = AwsRdsClusterServerlessV1Scaling{}
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsClusterServerlessV1Scaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsClusterServerlessV1Scaling) ProtoMessage() {}
+
+func (x *AwsRdsClusterServerlessV1Scaling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsClusterServerlessV1Scaling.ProtoReflect.Descriptor instead.
+func (*AwsRdsClusterServerlessV1Scaling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsRdsClusterServerlessV1Scaling) GetAutoPause() bool {
+	if x != nil && x.AutoPause != nil {
+		return *x.AutoPause
+	}
+	return false
+}
+
+func (x *AwsRdsClusterServerlessV1Scaling) GetMinCapacity() int32 {
+	if x != nil {
+		return x.MinCapacity
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterServerlessV1Scaling) GetMaxCapacity() int32 {
+	if x != nil {
+		return x.MaxCapacity
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterServerlessV1Scaling) GetSecondsUntilAutoPause() int32 {
+	if x != nil {
+		return x.SecondsUntilAutoPause
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterServerlessV1Scaling) GetSecondsBeforeTimeout() int32 {
+	if x != nil {
+		return x.SecondsBeforeTimeout
+	}
+	return 0
+}
+
+func (x *AwsRdsClusterServerlessV1Scaling) GetTimeoutAction() string {
+	if x != nil {
+		return x.TimeoutAction
+	}
+	return ""
+}
+
+// AwsRdsClusterRestoreToPointInTime creates the cluster from another
+// cluster's continuous backup -- a point-in-time restore or a fast clone.
+// Every field is create-time only.
+type AwsRdsClusterRestoreToPointInTime struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The source cluster identifier (name or ARN). Exactly one of
+	// source_cluster_identifier or source_cluster_resource_id must be
+	// set.
+	SourceClusterIdentifier string `protobuf:"bytes,1,opt,name=source_cluster_identifier,json=sourceClusterIdentifier,proto3" json:"source_cluster_identifier,omitempty"`
+	// The source cluster's immutable resource ID (cluster_resource_id
+	// output) -- survives identifier renames and points at deleted
+	// clusters' retained backups. Exactly one of the two source fields
+	// must be set.
+	SourceClusterResourceId string `protobuf:"bytes,2,opt,name=source_cluster_resource_id,json=sourceClusterResourceId,proto3" json:"source_cluster_resource_id,omitempty"`
+	// The UTC timestamp to restore to, RFC3339 (e.g.
+	// "2026-07-01T09:45:00Z"). Mutually exclusive with
+	// use_latest_restorable_time.
+	RestoreToTime string `protobuf:"bytes,3,opt,name=restore_to_time,json=restoreToTime,proto3" json:"restore_to_time,omitempty"`
+	// Restore to the most recent recoverable moment. Mutually exclusive
+	// with restore_to_time.
+	UseLatestRestorableTime bool `protobuf:"varint,4,opt,name=use_latest_restorable_time,json=useLatestRestorableTime,proto3" json:"use_latest_restorable_time,omitempty"`
+	// "full-copy" (independent storage, AWS default) or "copy-on-write"
+	// (an Aurora fast clone -- shares storage with the source and only
+	// pays for divergence; ideal for prod-data staging environments).
+	RestoreType   string `protobuf:"bytes,5,opt,name=restore_type,json=restoreType,proto3" json:"restore_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRdsClusterRestoreToPointInTime) Reset() {
+	*x = AwsRdsClusterRestoreToPointInTime{}
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsClusterRestoreToPointInTime) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsClusterRestoreToPointInTime) ProtoMessage() {}
+
+func (x *AwsRdsClusterRestoreToPointInTime) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsClusterRestoreToPointInTime.ProtoReflect.Descriptor instead.
+func (*AwsRdsClusterRestoreToPointInTime) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsRdsClusterRestoreToPointInTime) GetSourceClusterIdentifier() string {
+	if x != nil {
+		return x.SourceClusterIdentifier
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterRestoreToPointInTime) GetSourceClusterResourceId() string {
+	if x != nil {
+		return x.SourceClusterResourceId
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterRestoreToPointInTime) GetRestoreToTime() string {
+	if x != nil {
+		return x.RestoreToTime
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterRestoreToPointInTime) GetUseLatestRestorableTime() bool {
+	if x != nil {
+		return x.UseLatestRestorableTime
+	}
+	return false
+}
+
+func (x *AwsRdsClusterRestoreToPointInTime) GetRestoreType() string {
+	if x != nil {
+		return x.RestoreType
+	}
+	return ""
+}
+
+// AwsRdsClusterParameter is one cluster-level engine parameter, applied
+// through the module-managed cluster parameter group.
 type AwsRdsClusterParameter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// apply_method is either "immediate" (default) or "pending-reboot".
-	ApplyMethod string `protobuf:"bytes,1,opt,name=apply_method,json=applyMethod,proto3" json:"apply_method,omitempty"`
-	// name of the parameter.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// value of the parameter.
-	Value         string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	// The parameter name (e.g. "max_connections",
+	// "rds.force_ssl"). Required.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The parameter value. Required.
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// When the change lands: "immediate" (AWS default -- dynamic
+	// parameters apply now) or "pending-reboot" (static parameters wait
+	// for the next instance reboot).
+	ApplyMethod   string `protobuf:"bytes,3,opt,name=apply_method,json=applyMethod,proto3" json:"apply_method,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsRdsClusterParameter) Reset() {
 	*x = AwsRdsClusterParameter{}
-	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -402,7 +1192,7 @@ func (x *AwsRdsClusterParameter) String() string {
 func (*AwsRdsClusterParameter) ProtoMessage() {}
 
 func (x *AwsRdsClusterParameter) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -415,14 +1205,7 @@ func (x *AwsRdsClusterParameter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsRdsClusterParameter.ProtoReflect.Descriptor instead.
 func (*AwsRdsClusterParameter) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *AwsRdsClusterParameter) GetApplyMethod() string {
-	if x != nil {
-		return x.ApplyMethod
-	}
-	return ""
+	return file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AwsRdsClusterParameter) GetName() string {
@@ -439,122 +1222,157 @@ func (x *AwsRdsClusterParameter) GetValue() string {
 	return ""
 }
 
-// AwsRdsClusterServerlessV2ScalingConfiguration configures Aurora Serverless v2 capacity scaling.
-type AwsRdsClusterServerlessV2ScalingConfiguration struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// min_capacity is the minimum ACU.
-	MinCapacity float64 `protobuf:"fixed64,1,opt,name=min_capacity,json=minCapacity,proto3" json:"min_capacity,omitempty"`
-	// max_capacity is the maximum ACU.
-	MaxCapacity   float64 `protobuf:"fixed64,2,opt,name=max_capacity,json=maxCapacity,proto3" json:"max_capacity,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AwsRdsClusterServerlessV2ScalingConfiguration) Reset() {
-	*x = AwsRdsClusterServerlessV2ScalingConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AwsRdsClusterServerlessV2ScalingConfiguration) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AwsRdsClusterServerlessV2ScalingConfiguration) ProtoMessage() {}
-
-func (x *AwsRdsClusterServerlessV2ScalingConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[2]
+func (x *AwsRdsClusterParameter) GetApplyMethod() string {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.ApplyMethod
 	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AwsRdsClusterServerlessV2ScalingConfiguration.ProtoReflect.Descriptor instead.
-func (*AwsRdsClusterServerlessV2ScalingConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *AwsRdsClusterServerlessV2ScalingConfiguration) GetMinCapacity() float64 {
-	if x != nil {
-		return x.MinCapacity
-	}
-	return 0
-}
-
-func (x *AwsRdsClusterServerlessV2ScalingConfiguration) GetMaxCapacity() float64 {
-	if x != nil {
-		return x.MaxCapacity
-	}
-	return 0
+	return ""
 }
 
 var File_dev_planton_provider_aws_awsrdscluster_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/aws/awsrdscluster/v1/spec.proto\x12)dev.planton.provider.aws.awsrdscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\x1e\n" +
+	"4dev/planton/provider/aws/awsrdscluster/v1/spec.proto\x12)dev.planton.provider.aws.awsrdscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xccQ\n" +
 	"\x11AwsRdsClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
 	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12c\n" +
 	"\x14db_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x11dbSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\xa1\x01\n" +
-	"\x13allowed_cidr_blocks\x18\x05 \x03(\tBq\xbaHn\x92\x01k\x18\x01\"gre2c^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$R\x11allowedCidrBlocks\x12\x9e\x01\n" +
-	"\x1cassociate_security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x19associateSecurityGroupIds\x12#\n" +
-	"\rdatabase_name\x18\a \x01(\tR\fdatabaseName\x12G\n" +
-	"\x1bmanage_master_user_password\x18\b \x01(\bB\b\x92\xa6\x1d\x04trueR\x18manageMasterUserPassword\x12\x94\x01\n" +
-	"\x1dmaster_user_secret_kms_key_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x18masterUserSecretKmsKeyId\x12+\n" +
-	"\busername\x18\n" +
-	" \x01(\tB\n" +
-	"\x8a\xa6\x1d\x06masterH\x00R\busername\x88\x01\x01\x12 \n" +
-	"\bpassword\x18\v \x01(\tB\x04\xa0\xa6\x1d\x01R\bpassword\x12\x1f\n" +
-	"\x04port\x18\f \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12\x1e\n" +
-	"\x06engine\x18\r \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06engine\x12-\n" +
-	"\x0eengine_version\x18\x0e \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rengineVersion\x12+\n" +
-	"\x11storage_encrypted\x18\x0f \x01(\bR\x10storageEncrypted\x12q\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12-\n" +
+	"\x12availability_zones\x18\x05 \x03(\tR\x11availabilityZones\x12!\n" +
+	"\fnetwork_type\x18\x06 \x01(\tR\vnetworkType\x12\x1f\n" +
+	"\x04port\x18\a \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12R\n" +
+	"\x06engine\x18\b \x01(\tB:\xbaH7\xc8\x01\x01r2R\faurora-mysqlR\x11aurora-postgresqlR\x05mysqlR\bpostgresR\x06engine\x12%\n" +
+	"\x0eengine_version\x18\t \x01(\tR\rengineVersion\x12\x1f\n" +
+	"\vengine_mode\x18\n" +
+	" \x01(\tR\n" +
+	"engineMode\x128\n" +
+	"\x18engine_lifecycle_support\x18\v \x01(\tR\x16engineLifecycleSupport\x12^\n" +
+	"\tinstances\x18\f \x03(\v2@.dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterInstanceR\tinstances\x12\x7f\n" +
+	"\x15serverless_v2_scaling\x18\r \x01(\v2K.dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV2ScalingR\x13serverlessV2Scaling\x12\x7f\n" +
+	"\x15serverless_v1_scaling\x18\x0e \x01(\v2K.dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV1ScalingR\x13serverlessV1Scaling\x129\n" +
+	"\x19db_cluster_instance_class\x18\x0f \x01(\tR\x16dbClusterInstanceClass\x129\n" +
+	"\x14allocated_storage_gb\x18\x10 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x12allocatedStorageGb\x12\x1b\n" +
+	"\x04iops\x18\x11 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04iops\x12P\n" +
+	"\fstorage_type\x18\x12 \x01(\tB-\xbaH*\xd8\x01\x01r%R\x06auroraR\faurora-iopt1R\x03io1R\x03io2R\x03gp3R\vstorageType\x12#\n" +
+	"\rdatabase_name\x18\x13 \x01(\tR\fdatabaseName\x12'\n" +
+	"\x0fmaster_username\x18\x14 \x01(\tR\x0emasterUsername\x12G\n" +
+	"\x1bmanage_master_user_password\x18\x15 \x01(\bB\b\x92\xa6\x1d\x04trueR\x18manageMasterUserPassword\x12\x94\x01\n" +
+	"\x1dmaster_user_secret_kms_key_id\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x18masterUserSecretKmsKeyId\x12-\n" +
+	"\x0fmaster_password\x18\x17 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0emasterPassword\x125\n" +
+	"\x11storage_encrypted\x18\x18 \x01(\bB\b\x92\xa6\x1d\x04trueR\x10storageEncrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12O\n" +
-	"\x1fenabled_cloudwatch_logs_exports\x18\x11 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x1cenabledCloudwatchLogsExports\x12/\n" +
-	"\x13deletion_protection\x18\x12 \x01(\bR\x12deletionProtection\x12\xc3\x01\n" +
-	"\x1cpreferred_maintenance_window\x18\x13 \x01(\tB\x80\x01\xbaH}r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x12A\n" +
-	"\x17backup_retention_period\x18\x14 \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x15backupRetentionPeriod\x12|\n" +
-	"\x17preferred_backup_window\x18\x15 \x01(\tBD\xbaHAr?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x15preferredBackupWindow\x121\n" +
-	"\x15copy_tags_to_snapshot\x18\x16 \x01(\bR\x12copyTagsToSnapshot\x12.\n" +
-	"\x13skip_final_snapshot\x18\x17 \x01(\bR\x11skipFinalSnapshot\x12:\n" +
-	"\x19final_snapshot_identifier\x18\x18 \x01(\tR\x17finalSnapshotIdentifier\x12M\n" +
-	"#iam_database_authentication_enabled\x18\x19 \x01(\bR iamDatabaseAuthenticationEnabled\x120\n" +
-	"\x14enable_http_endpoint\x18\x1a \x01(\bR\x12enableHttpEndpoint\x12\x8c\x01\n" +
-	"\x15serverless_v2_scaling\x18\x1b \x01(\v2X.dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV2ScalingConfigurationR\x13serverlessV2Scaling\x12/\n" +
-	"\x13snapshot_identifier\x18\x1c \x01(\tR\x12snapshotIdentifier\x12B\n" +
-	"\x1dreplication_source_identifier\x18\x1d \x01(\tR\x1breplicationSourceIdentifier\x12D\n" +
-	"\x1fdb_cluster_parameter_group_name\x18\x1e \x01(\tR\x1bdbClusterParameterGroupName\x12a\n" +
+	"kms_key_id\x18\x19 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12A\n" +
+	"\x17backup_retention_period\x18\x1a \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x15backupRetentionPeriod\x12\x7f\n" +
+	"\x17preferred_backup_window\x18\x1b \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x15preferredBackupWindow\x12\xc7\x01\n" +
+	"\x1cpreferred_maintenance_window\x18\x1c \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x121\n" +
+	"\x15copy_tags_to_snapshot\x18\x1d \x01(\bR\x12copyTagsToSnapshot\x12G\n" +
+	"\x18delete_automated_backups\x18\x1e \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x16deleteAutomatedBackups\x88\x01\x01\x12.\n" +
+	"\x13skip_final_snapshot\x18\x1f \x01(\bR\x11skipFinalSnapshot\x12:\n" +
+	"\x19final_snapshot_identifier\x18  \x01(\tR\x17finalSnapshotIdentifier\x12/\n" +
+	"\x13deletion_protection\x18! \x01(\bR\x12deletionProtection\x12E\n" +
+	"\x18backtrack_window_seconds\x18\" \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\xe9\x0f(\x00R\x16backtrackWindowSeconds\x12M\n" +
+	"#iam_database_authentication_enabled\x18# \x01(\bR iamDatabaseAuthenticationEnabled\x12q\n" +
+	"\tiam_roles\x18$ \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x120\n" +
+	"\x14enable_http_endpoint\x18% \x01(\bR\x12enableHttpEndpoint\x12O\n" +
+	"\x1fenabled_cloudwatch_logs_exports\x18& \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x1cenabledCloudwatchLogsExports\x12@\n" +
+	"\x1cperformance_insights_enabled\x18' \x01(\bR\x1aperformanceInsightsEnabled\x12\x99\x01\n" +
+	"\x1fperformance_insights_kms_key_id\x18( \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1bperformanceInsightsKmsKeyId\x12Q\n" +
+	"%performance_insights_retention_period\x18) \x01(\x05R\"performanceInsightsRetentionPeriod\x12/\n" +
+	"\x13monitoring_interval\x18* \x01(\x05R\x12monitoringInterval\x12\x84\x01\n" +
+	"\x13monitoring_role_arn\x18+ \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11monitoringRoleArn\x124\n" +
+	"\x16database_insights_mode\x18, \x01(\tR\x14databaseInsightsMode\x12/\n" +
+	"\x13snapshot_identifier\x18- \x01(\tR\x12snapshotIdentifier\x12\x84\x01\n" +
+	"\x18restore_to_point_in_time\x18. \x01(\v2L.dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterRestoreToPointInTimeR\x14restoreToPointInTime\x12B\n" +
+	"\x1dreplication_source_identifier\x18/ \x01(\tR\x1breplicationSourceIdentifier\x12#\n" +
+	"\rsource_region\x180 \x01(\tR\fsourceRegion\x12:\n" +
+	"\x19global_cluster_identifier\x181 \x01(\tR\x17globalClusterIdentifier\x12C\n" +
+	"\x1eenable_global_write_forwarding\x182 \x01(\bR\x1benableGlobalWriteForwarding\x12A\n" +
+	"\x1denable_local_write_forwarding\x183 \x01(\bR\x1aenableLocalWriteForwarding\x12D\n" +
+	"\x1fdb_cluster_parameter_group_name\x184 \x01(\tR\x1bdbClusterParameterGroupName\x12a\n" +
 	"\n" +
-	"parameters\x18\x1f \x03(\v2A.dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterParameterR\n" +
-	"parameters\x12i\n" +
-	"\x06vpc_id\x18  \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x1f\n" +
-	"\vengine_mode\x18! \x01(\tR\n" +
-	"engineMode\x12A\n" +
-	"\fstorage_type\x18\" \x01(\tB\x1e\xbaH\x1b\xd8\x01\x01r\x16R\x06auroraR\faurora-iopt1R\vstorageType:\xa5\b\xbaH\xa1\b\x1a\xbf\x01\n" +
-	",final_snapshot_id_required_when_not_skipping\x12Gfinal_snapshot_identifier must be set when skip_final_snapshot is false\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != \"\"\x1a\x8c\x01\n" +
-	"\x10subnets_or_group\x127Provide either subnet_ids (>=2) or db_subnet_group_name\x1a?(this.subnet_ids.size() >= 2) || has(this.db_subnet_group_name)\x1a\x9b\x01\n" +
-	"\x19password_mutual_exclusion\x12?password cannot be set when manage_master_user_password is true\x1a=this.manage_master_user_password ? this.password == \"\" : true\x1a\xb2\x01\n" +
-	"\x13engine_mode_allowed\x12:engine_mode, if set, must be 'serverless' or 'provisioned'\x1a_this.engine_mode == \"\" || this.engine_mode == \"serverless\" || this.engine_mode == \"provisioned\"\x1a\xfa\x02\n" +
-	"\x19logs_exports_match_engine\x128enabled_cloudwatch_logs_exports must match engine family\x1a\xa2\x02this.engine.startsWith(\"aurora-mysql\") ? this.enabled_cloudwatch_logs_exports.all(x, x == \"audit\" || x == \"error\" || x == \"general\" || x == \"slowquery\") : (this.engine.startsWith(\"aurora-postgresql\") ? this.enabled_cloudwatch_logs_exports.all(x, x == \"postgresql\" || x == \"upgrade\") : true)B\v\n" +
-	"\t_username\"e\n" +
-	"\x16AwsRdsClusterParameter\x12!\n" +
-	"\fapply_method\x18\x01 \x01(\tR\vapplyMethod\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\tR\x05value\"\xa9\x02\n" +
-	"-AwsRdsClusterServerlessV2ScalingConfiguration\x121\n" +
-	"\fmin_capacity\x18\x01 \x01(\x01B\x0e\xbaH\v\x12\t!\x00\x00\x00\x00\x00\x00\x00\x00R\vminCapacity\x12!\n" +
-	"\fmax_capacity\x18\x02 \x01(\x01R\vmaxCapacity:\xa1\x01\xbaH\x9d\x01\x1a\x9a\x01\n" +
-	"\x1cserverless_v2_scaling_bounds\x126max_capacity must be >= min_capacity when both are set\x1aBthis.max_capacity == 0.0 || this.max_capacity >= this.min_capacityB\xe2\x02\n" +
+	"parameters\x185 \x03(\v2A.dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterParameterR\n" +
+	"parameters\x12F\n" +
+	" db_instance_parameter_group_name\x186 \x01(\tR\x1cdbInstanceParameterGroupName\x12:\n" +
+	"\x19ca_certificate_identifier\x187 \x01(\tR\x17caCertificateIdentifier\x12+\n" +
+	"\x11apply_immediately\x188 \x01(\bR\x10applyImmediately\x12=\n" +
+	"\x1ballow_major_version_upgrade\x189 \x01(\bR\x18allowMajorVersionUpgrade:\xa8/\xbaH\xa4/\x1a\xa7\x01\n" +
+	"\x10subnets_or_group\x12Rprovide at least two subnet_ids (distinct AZs) or an existing db_subnet_group_name\x1a?(this.subnet_ids.size() >= 2) || has(this.db_subnet_group_name)\x1a\xc2\x01\n" +
+	"\x14password_xor_managed\x12dmaster_password cannot be set when manage_master_user_password is true -- pick one password strategy\x1aDthis.manage_master_user_password ? this.master_password == '' : true\x1a\xa9\x03\n" +
+	"'master_username_required_unless_derived\x12\xc4\x01master_username is required for a new cluster -- AWS rejects a blank username; only snapshot/point-in-time restores, replicas, and global-database secondaries inherit credentials from their source\x1a\xb6\x01this.master_username != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time) || this.replication_source_identifier != '' || this.global_cluster_identifier != ''\x1a\x83\x02\n" +
+	",final_snapshot_id_required_when_not_skipping\x12\x8a\x01final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the cluster without a final snapshot name\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != ''\x1a\xda\x01\n" +
+	"\x11engine_mode_valid\x12xengine_mode must be 'provisioned' or 'serverless' when set (Serverless v2 uses provisioned mode + serverless_v2_scaling)\x1aKthis.engine_mode == '' || this.engine_mode in ['provisioned', 'serverless']\x1a\xb2\x01\n" +
+	"\x1eserverless_mode_is_aurora_only\x12Iengine_mode 'serverless' (Aurora Serverless v1) requires an Aurora engine\x1aEthis.engine_mode != 'serverless' || this.engine.startsWith('aurora-')\x1a\xb0\x01\n" +
+	"#v1_scaling_requires_serverless_mode\x12Cserverless_v1_scaling only applies when engine_mode is 'serverless'\x1aD!has(this.serverless_v1_scaling) || this.engine_mode == 'serverless'\x1a\x84\x02\n" +
+	"$v2_scaling_requires_provisioned_mode\x12\x95\x01serverless_v2_scaling requires provisioned engine mode (Serverless v2 is provisioned mode with db.serverless instances), not engine_mode 'serverless'\x1aD!has(this.serverless_v2_scaling) || this.engine_mode != 'serverless'\x1a\xc8\x01\n" +
+	" instances_not_with_serverless_v1\x12dinstances cannot be set with engine_mode 'serverless' -- Aurora Serverless v1 manages compute itself\x1a>this.engine_mode != 'serverless' || this.instances.size() == 0\x1a\xe1\x01\n" +
+	"#instances_not_with_multi_az_cluster\x12vinstances cannot be set with db_cluster_instance_class -- a Multi-AZ RDS cluster manages its writer and readers itself\x1aBthis.db_cluster_instance_class == '' || this.instances.size() == 0\x1a\xff\x01\n" +
+	"$multi_az_cluster_is_community_engine\x12\x88\x01db_cluster_instance_class (Multi-AZ RDS cluster) requires engine 'mysql' or 'postgres' -- Aurora clusters size compute through instances\x1aLthis.db_cluster_instance_class == '' || this.engine in ['mysql', 'postgres']\x1a\xb1\x02\n" +
+	"$community_engine_is_multi_az_cluster\x12\x82\x01engine 'mysql' or 'postgres' creates a Multi-AZ RDS cluster and requires db_cluster_instance_class, allocated_storage_gb, and iops\x1a\x83\x01!(this.engine in ['mysql', 'postgres']) || (this.db_cluster_instance_class != '' && this.allocated_storage_gb > 0 && this.iops > 0)\x1a\xe6\x01\n" +
+	"\x14aurora_storage_types\x12sAurora engines use storage_type '' (standard) or 'aurora-iopt1'; io1/io2/gp3 are Multi-AZ RDS cluster storage types\x1aY!this.engine.startsWith('aurora-') || this.storage_type in ['', 'aurora', 'aurora-iopt1']\x1a\xcb\x01\n" +
+	"\x1emulti_az_cluster_storage_types\x12NMulti-AZ RDS clusters (mysql/postgres) use storage_type 'io1', 'io2', or 'gp3'\x1aY!(this.engine in ['mysql', 'postgres']) || this.storage_type in ['', 'io1', 'io2', 'gp3']\x1a\x9a\x01\n" +
+	"\x1ebacktrack_is_aurora_mysql_only\x123backtrack_window_seconds is an Aurora MySQL feature\x1aCthis.backtrack_window_seconds == 0 || this.engine == 'aurora-mysql'\x1a\xfc\x03\n" +
+	"\x1flog_exports_match_engine_family\x12\xc9\x01MySQL-family log types are audit/error/general/slowquery (plus iam-db-auth-error and, on Multi-AZ RDS clusters, instance); PostgreSQL-family are postgresql/upgrade (plus iam-db-auth-error and instance)\x1a\x8c\x02this.engine.endsWith('mysql') ? this.enabled_cloudwatch_logs_exports.all(x, x in ['audit', 'error', 'general', 'slowquery', 'iam-db-auth-error', 'instance']) : this.enabled_cloudwatch_logs_exports.all(x, x in ['postgresql', 'upgrade', 'iam-db-auth-error', 'instance'])\x1a\xce\x02\n" +
+	"\x12pi_retention_valid\x12fperformance_insights_retention_period must be 7, 731, or a multiple of 31 (month granularity) when set\x1a\xcf\x01this.performance_insights_retention_period == 0 || this.performance_insights_retention_period == 7 || this.performance_insights_retention_period == 731 || this.performance_insights_retention_period % 31 == 0\x1a\x9d\x01\n" +
+	"\x19monitoring_interval_valid\x12Imonitoring_interval must be 0 (disabled), 1, 5, 10, 15, 30, or 60 seconds\x1a5this.monitoring_interval in [0, 1, 5, 10, 15, 30, 60]\x1a\xdc\x01\n" +
+	"&monitoring_role_required_with_interval\x12rmonitoring_role_arn is required when monitoring_interval is set -- Enhanced Monitoring publishes through that role\x1a>this.monitoring_interval == 0 || has(this.monitoring_role_arn)\x1a\xbe\x01\n" +
+	"\x1cdatabase_insights_mode_valid\x12@database_insights_mode must be 'standard' or 'advanced' when set\x1a\\this.database_insights_mode == '' || this.database_insights_mode in ['standard', 'advanced']\x1a\xc8\x01\n" +
+	"\x1asnapshot_xor_point_in_time\x12csnapshot_identifier and restore_to_point_in_time are mutually exclusive create-time restore sources\x1aEthis.snapshot_identifier == '' || !has(this.restore_to_point_in_time)\x1a\xea\x01\n" +
+	"!own_parameters_xor_existing_group\x12zparameters and db_cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group\x1aIthis.db_cluster_parameter_group_name == '' || this.parameters.size() == 0\x1a\xee\x01\n" +
+	"!parameters_require_engine_version\x12\x8e\x01inline parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine\x1a8this.parameters.size() == 0 || this.engine_version != ''\x1a\x86\x01\n" +
+	"\x12network_type_valid\x12.network_type must be 'IPV4' or 'DUAL' when set\x1a@this.network_type == '' || this.network_type in ['IPV4', 'DUAL']\x1a\xb9\x02\n" +
+	"\x1eengine_lifecycle_support_valid\x12{engine_lifecycle_support must be 'open-source-rds-extended-support' or 'open-source-rds-extended-support-disabled' when set\x1a\x99\x01this.engine_lifecycle_support == '' || this.engine_lifecycle_support in ['open-source-rds-extended-support', 'open-source-rds-extended-support-disabled']B\x1b\n" +
+	"\x19_delete_automated_backups\"\xa9\x06\n" +
+	"\x15AwsRdsClusterInstance\x12/\n" +
+	"\x04name\x18\x01 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x132\x11^[a-z][a-z0-9-]*$R\x04name\x126\n" +
+	"\x0einstance_class\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^db\\.R\rinstanceClass\x120\n" +
+	"\x0epromotion_tier\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x0f(\x00R\rpromotionTier\x12+\n" +
+	"\x11availability_zone\x18\x04 \x01(\tR\x10availabilityZone\x12/\n" +
+	"\x13publicly_accessible\x18\x05 \x01(\bR\x12publiclyAccessible\x125\n" +
+	"\x17db_parameter_group_name\x18\x06 \x01(\tR\x14dbParameterGroupName\x12J\n" +
+	"\x1aauto_minor_version_upgrade\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17autoMinorVersionUpgrade\x88\x01\x01\x12E\n" +
+	"\x1cperformance_insights_enabled\x18\b \x01(\bH\x01R\x1aperformanceInsightsEnabled\x88\x01\x01\x12/\n" +
+	"\x13monitoring_interval\x18\t \x01(\x05R\x12monitoringInterval\x12,\n" +
+	"\x12ca_cert_identifier\x18\n" +
+	" \x01(\tR\x10caCertIdentifier:\xad\x01\xbaH\xa9\x01\x1a\xa6\x01\n" +
+	"\"instance_monitoring_interval_valid\x12Imonitoring_interval must be 0 (disabled), 1, 5, 10, 15, 30, or 60 seconds\x1a5this.monitoring_interval in [0, 1, 5, 10, 15, 30, 60]B\x1d\n" +
+	"\x1b_auto_minor_version_upgradeB\x1f\n" +
+	"\x1d_performance_insights_enabled\"\xf4\x05\n" +
+	" AwsRdsClusterServerlessV2Scaling\x12:\n" +
+	"\fmin_capacity\x18\x01 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00p@)\x00\x00\x00\x00\x00\x00\x00\x00R\vminCapacity\x12=\n" +
+	"\fmax_capacity\x18\x02 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00p@)\x00\x00\x00\x00\x00\x00\xf0?R\vmaxCapacity\x127\n" +
+	"\x18seconds_until_auto_pause\x18\x03 \x01(\x05R\x15secondsUntilAutoPause:\x9b\x04\xbaH\x97\x04\x1aw\n" +
+	"\x11v2_bounds_ordered\x12:max_capacity must be greater than or equal to min_capacity\x1a&this.max_capacity >= this.min_capacity\x1a\xe7\x01\n" +
+	"\x18auto_pause_seconds_range\x12Sseconds_until_auto_pause must be between 300 (5 minutes) and 86400 (1 day) when set\x1avthis.seconds_until_auto_pause == 0 || (this.seconds_until_auto_pause >= 300 && this.seconds_until_auto_pause <= 86400)\x1a\xb1\x01\n" +
+	"\x1cauto_pause_requires_zero_min\x12Qseconds_until_auto_pause only applies when min_capacity is 0 (auto-pause enabled)\x1a>this.seconds_until_auto_pause == 0 || this.min_capacity == 0.0\"\x83\t\n" +
+	" AwsRdsClusterServerlessV1Scaling\x12,\n" +
+	"\n" +
+	"auto_pause\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\tautoPause\x88\x01\x01\x12!\n" +
+	"\fmin_capacity\x18\x02 \x01(\x05R\vminCapacity\x12!\n" +
+	"\fmax_capacity\x18\x03 \x01(\x05R\vmaxCapacity\x127\n" +
+	"\x18seconds_until_auto_pause\x18\x04 \x01(\x05R\x15secondsUntilAutoPause\x124\n" +
+	"\x16seconds_before_timeout\x18\x05 \x01(\x05R\x14secondsBeforeTimeout\x12%\n" +
+	"\x0etimeout_action\x18\x06 \x01(\tR\rtimeoutAction:\xc5\x06\xbaH\xc1\x06\x1a\xbd\x01\n" +
+	"\x11v1_bounds_ordered\x12Lmax_capacity must be greater than or equal to min_capacity when both are set\x1aZthis.min_capacity == 0 || this.max_capacity == 0 || this.max_capacity >= this.min_capacity\x1a\xd6\x01\n" +
+	"\x1bv1_auto_pause_seconds_range\x12?seconds_until_auto_pause must be between 300 and 86400 when set\x1avthis.seconds_until_auto_pause == 0 || (this.seconds_until_auto_pause >= 300 && this.seconds_until_auto_pause <= 86400)\x1a\xc5\x01\n" +
+	"\x18v1_timeout_seconds_range\x12:seconds_before_timeout must be between 60 and 600 when set\x1amthis.seconds_before_timeout == 0 || (this.seconds_before_timeout >= 60 && this.seconds_before_timeout <= 600)\x1a\xdd\x01\n" +
+	"\x17v1_timeout_action_valid\x12Vtimeout_action must be 'RollbackCapacityChange' or 'ForceApplyCapacityChange' when set\x1ajthis.timeout_action == '' || this.timeout_action in ['RollbackCapacityChange', 'ForceApplyCapacityChange']B\r\n" +
+	"\v_auto_pause\"\xae\x06\n" +
+	"!AwsRdsClusterRestoreToPointInTime\x12:\n" +
+	"\x19source_cluster_identifier\x18\x01 \x01(\tR\x17sourceClusterIdentifier\x12;\n" +
+	"\x1asource_cluster_resource_id\x18\x02 \x01(\tR\x17sourceClusterResourceId\x12&\n" +
+	"\x0frestore_to_time\x18\x03 \x01(\tR\rrestoreToTime\x12;\n" +
+	"\x1ause_latest_restorable_time\x18\x04 \x01(\bR\x17useLatestRestorableTime\x12!\n" +
+	"\frestore_type\x18\x05 \x01(\tR\vrestoreType:\x87\x04\xbaH\x83\x04\x1a\xbb\x01\n" +
+	"\x12exactly_one_source\x12Rexactly one of source_cluster_identifier or source_cluster_resource_id must be set\x1aQ(this.source_cluster_identifier != '') != (this.source_cluster_resource_id != '')\x1a\x9d\x01\n" +
+	"\x10exactly_one_time\x12Hexactly one of restore_to_time or use_latest_restorable_time must be set\x1a?(this.restore_to_time != '') != this.use_latest_restorable_time\x1a\xa2\x01\n" +
+	"\x12restore_type_valid\x12<restore_type must be 'full-copy' or 'copy-on-write' when set\x1aNthis.restore_type == '' || this.restore_type in ['full-copy', 'copy-on-write']\"\xa3\x02\n" +
+	"\x16AwsRdsClusterParameter\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12!\n" +
+	"\fapply_method\x18\x03 \x01(\tR\vapplyMethod:\xab\x01\xbaH\xa7\x01\x1a\xa4\x01\n" +
+	"\x12apply_method_valid\x12=apply_method must be 'immediate' or 'pending-reboot' when set\x1aOthis.apply_method == '' || this.apply_method in ['immediate', 'pending-reboot']B\xe2\x02\n" +
 	"-com.dev.planton.provider.aws.awsrdscluster.v1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdscluster/v1;awsrdsclusterv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsrdscluster.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsrdscluster\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsrdscluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsrdscluster::V1b\x06proto3"
 
 var (
@@ -569,28 +1387,35 @@ func file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescGZIP() []b
 	return file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_goTypes = []any{
-	(*AwsRdsClusterSpec)(nil),                             // 0: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec
-	(*AwsRdsClusterParameter)(nil),                        // 1: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterParameter
-	(*AwsRdsClusterServerlessV2ScalingConfiguration)(nil), // 2: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV2ScalingConfiguration
-	(*v1.StringValueOrRef)(nil),                           // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsRdsClusterSpec)(nil),                 // 0: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec
+	(*AwsRdsClusterInstance)(nil),             // 1: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterInstance
+	(*AwsRdsClusterServerlessV2Scaling)(nil),  // 2: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV2Scaling
+	(*AwsRdsClusterServerlessV1Scaling)(nil),  // 3: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV1Scaling
+	(*AwsRdsClusterRestoreToPointInTime)(nil), // 4: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterRestoreToPointInTime
+	(*AwsRdsClusterParameter)(nil),            // 5: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterParameter
+	(*v1.StringValueOrRef)(nil),               // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.db_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 3: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.associate_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 4: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.master_user_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 5: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 6: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.serverless_v2_scaling:type_name -> dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV2ScalingConfiguration
-	1, // 7: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.parameters:type_name -> dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterParameter
-	3, // 8: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	6,  // 0: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 1: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.db_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 2: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 3: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.instances:type_name -> dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterInstance
+	2,  // 4: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.serverless_v2_scaling:type_name -> dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV2Scaling
+	3,  // 5: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.serverless_v1_scaling:type_name -> dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterServerlessV1Scaling
+	6,  // 6: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.master_user_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 7: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 8: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.iam_roles:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 9: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.performance_insights_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 10: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.monitoring_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 11: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.restore_to_point_in_time:type_name -> dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterRestoreToPointInTime
+	5,  // 12: dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.parameters:type_name -> dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterParameter
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_init() }
@@ -599,13 +1424,15 @@ func file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_init() {
 		return
 	}
 	file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

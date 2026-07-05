@@ -1,29 +1,45 @@
-# Spot Cost-Optimized Node Group
+# Spot Cost-Optimized Pool
 
-This preset creates an EKS managed node group using Spot instances for up to 70% cost savings compared to on-demand. The `node-lifecycle: spot` label enables workload targeting via node selectors or tolerations, so only fault-tolerant workloads land on these nodes.
+This preset runs an interruptible batch/burst pool on Spot capacity at a
+steep discount, with the two Spot survival practices built in: several
+similar instance types for pool diversity, and a taint so only
+interruption-tolerant workloads schedule onto it.
 
 ## When to Use
 
-- Stateless or fault-tolerant workloads that can handle Spot interruptions (web servers, batch jobs, CI/CD runners)
-- Cost-sensitive environments where reducing compute spend is a priority
-- Mixed node group strategies: pair with an on-demand node group for critical workloads
+- Batch jobs, CI runners, queue workers, and other retry-friendly
+  workloads
+- Burst capacity alongside an On-Demand base pool
 
 ## Key Configuration Choices
 
-- **Spot instances** (`capacityType: spot`) -- Up to 70% cheaper than on-demand; AWS may reclaim instances with 2-minute notice
-- **t3.large** (`instanceType`) -- 2 vCPUs, 8 GiB RAM; larger than the on-demand preset to provide headroom for Spot availability
-- **2-10 nodes** (`scaling`) -- Wider scaling range to accommodate Spot capacity fluctuations
-- **Spot label** (`labels: {node-lifecycle: spot}`) -- Enables Kubernetes scheduling decisions based on node lifecycle type
+- **Three similar `instanceTypes`** -- Spot interruptions hit one
+  capacity pool at a time; diversity keeps the fleet alive when one pool
+  is reclaimed
+- **`capacityType: spot`** -- typically 60-90% cheaper than On-Demand
+- **The `node-lifecycle=spot` taint + matching label** -- workloads must
+  tolerate the taint to land here, so a Spot reclaim never takes down a
+  pod that could not handle it
+- **`minSize: 0`** -- the pool scales to nothing when idle
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<eks-cluster-name>` | Name of the EKS cluster | `AwsEksCluster` metadata name |
-| `<node-role-arn>` | IAM role ARN with EKS worker node policies | AWS IAM console or `AwsIamRole` status outputs |
-| `<private-subnet-id-az1>` | Private subnet in the first Availability Zone | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id-az2>` | Private subnet in the second Availability Zone | AWS VPC console or `AwsVpc` status outputs |
+| `<node-group-name>` | Name for the pool | Your naming convention (e.g., `batch-spot`) |
+| `<aws-region>` | AWS region code (e.g., `us-west-2`) | Your deployment region |
+| `<cluster-resource-name>` | Name of the AwsEksCluster resource | Your cluster manifest's `metadata.name` |
+| `<node-role-resource-name>` | Name of the AwsIamRole with the worker policies | Your role manifest's `metadata.name` |
+| `<private-subnet-a/b-resource-name>` | Names of two AwsSubnet resources in different AZs | Your subnet manifests' `metadata.name` |
+
+## Common Additions
+
+- `nodeRepairConfig.enabled: true` to auto-replace unhealthy survivors
+- A cluster autoscaler (or Karpenter) to drive `desiredSize` from queue
+  depth instead of a fixed count
 
 ## Related Presets
 
-- **01-on-demand-general** -- Use instead for workloads that cannot tolerate Spot interruptions
+- **01-on-demand-general** -- the predictable-capacity workhorse pool
+- **03-launch-template** -- custom launch mechanics for either capacity
+  type

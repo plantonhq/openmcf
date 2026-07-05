@@ -8,8 +8,14 @@ import "dev/planton/shared/options/options.proto";
 
 // AwsMskClusterSpec defines the desired state of an Amazon MSK (Managed Streaming for Apache Kafka) cluster.
 // MSK is a fully managed service that provisions, configures, and maintains Apache Kafka clusters,
-// handling broker infrastructure, ZooKeeper coordination, and storage so teams can focus on producing
-// and consuming streaming data rather than operating Kafka infrastructure.
+// handling broker infrastructure, coordination (ZooKeeper or KRaft, depending on the Kafka version),
+// and storage so teams can focus on producing and consuming streaming data rather than operating
+// Kafka infrastructure.
+//
+// Network ingress is composed, never embedded: brokers attach the referenced
+// security_group_ids directly, and the ingress rules that open the Kafka/ZooKeeper
+// ports live on those first-class AwsSecurityGroup nodes where they can be shared,
+// audited, and evolved independently of the cluster.
 message AwsMskClusterSpec {
   // The AWS region where the resource will be created.
   // Example: "us-west-2", "eu-west-1"
@@ -19,12 +25,16 @@ message AwsMskClusterSpec {
 
   // kafka_version is the Apache Kafka version for all brokers in the cluster.
   // Examples: "3.6.0", "3.5.1", "3.4.0", "2.8.1".
-  // Upgrades are applied via rolling restart; downgrades force cluster replacement.
+  // Upgrades are applied in place via rolling restart (an UpdateClusterKafkaVersion
+  // operation); a version DOWNGRADE cannot be performed in place and forces cluster
+  // replacement.
   string kafka_version = 2 [(buf.validate.field).required = true];
 
   // number_of_broker_nodes is the total number of Kafka broker nodes in the cluster.
   // Must be a multiple of the number of subnets provided in subnet_ids so that
-  // brokers are evenly distributed across Availability Zones.
+  // brokers are evenly distributed across Availability Zones. Broker count can be
+  // INCREASED in place (an UpdateBrokerCount operation); AWS does not support
+  // decreasing the broker count.
   int32 number_of_broker_nodes = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).int32.gte = 1
@@ -33,12 +43,17 @@ message AwsMskClusterSpec {
   // instance_type determines the compute and memory capacity of each broker node.
   // Standard types: kafka.m5.large, kafka.m5.xlarge, kafka.m5.2xlarge, kafka.m5.4xlarge.
   // Graviton types: kafka.m7g.large, kafka.m7g.xlarge (better price-performance).
-  // Small/dev types: kafka.t3.small.
+  // Express brokers: express.m7g.large and up (AWS-managed storage, faster scaling,
+  // intelligent rebalancing -- see rebalancing_status).
+  // Small/dev types: kafka.t3.small (no tiered storage, no public access, no
+  // provisioned throughput).
+  // Updatable in place: changing the instance type is a rolling UpdateBrokerType
+  // operation, not a replacement.
   string instance_type = 4 [(buf.validate.field).required = true];
 
   // --- Networking ---
-  // All networking fields in broker_node_group_info are ForceNew in the AWS provider.
-  // Changing subnets or the security group list after creation forces cluster replacement.
+  // Subnets and security groups are create-time (ForceNew) in the AWS provider:
+  // changing either list after creation forces cluster replacement.
 
   // subnet_ids are the VPC subnets where broker nodes are placed.
   // Brokers are distributed round-robin across subnets. The number of broker nodes
@@ -50,42 +65,67 @@ message AwsMskClusterSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // security_group_ids are source security groups allowed to reach brokers on Kafka and ZooKeeper ports.
-  // When provided (along with vpc_id), a managed security group is created with ingress rules
-  // permitting TCP traffic from these source security groups on ports 9092-9098 (Kafka) and 2181-2182 (ZooKeeper).
+  // security_group_ids are the security groups ATTACHED to the broker network
+  // interfaces -- they define what can reach the brokers. Ingress rules for the
+  // Kafka listener ports (9092 plaintext, 9094 TLS, 9096 SASL/SCRAM, 9098
+  // SASL/IAM) and ZooKeeper (2181-2182) belong on these referenced
+  // AwsSecurityGroup nodes.
+  // ForceNew: adding or removing entries after creation forces cluster replacement.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 6 [
+    (buf.validate.field).repeated.min_items = 1,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
   ];
 
-  // allowed_cidr_blocks are IPv4 CIDR ranges allowed to reach brokers.
-  // When provided (along with vpc_id), a managed security group is created with ingress rules
-  // permitting TCP traffic from these CIDRs on ports 9092-9098 (Kafka) and 2181-2182 (ZooKeeper).
-  repeated string allowed_cidr_blocks = 7 [
-    (buf.validate.field).repeated.items.string.pattern = "^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$",
-    (buf.validate.field).repeated.unique = true
+  // --- Connectivity ---
+
+  // public_access_type controls whether the cluster is reachable from the public internet.
+  // "DISABLED" (default): brokers are only reachable within the VPC.
+  // "SERVICE_PROVIDED_EIPS": AWS assigns public IPs to brokers.
+  // AWS only allows turning public access ON for an EXISTING cluster: creation always
+  // starts DISABLED, and the provider applies SERVICE_PROVIDED_EIPS as a follow-up
+  // connectivity update. Public access also requires real client authentication
+  // (SASL/IAM, SASL/SCRAM, or mTLS -- unauthenticated must be off) and TLS-only
+  // client_broker_encryption.
+  string public_access_type = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DISABLED",
+        "SERVICE_PROVIDED_EIPS"
+      ]
+    }
   ];
 
-  // associate_security_group_ids are existing security groups attached directly to the cluster
-  // alongside the managed security group (if one is created from security_group_ids/allowed_cidr_blocks).
-  // IMPORTANT: The broker_node_group_info.security_groups field in AWS is ForceNew.
-  // Adding or removing entries here after cluster creation forces cluster replacement.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef associate_security_group_ids = 8 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
-  ];
+  // vpc_connectivity enables multi-VPC private connectivity (AWS PrivateLink) so
+  // clients in OTHER VPCs or accounts connect to the brokers without peering or
+  // public exposure. Enable at least one authentication scheme here; each scheme
+  // requires the same scheme to be enabled in `authentication` (an IAM-only
+  // cluster cannot offer SCRAM over PrivateLink). AWS activates PrivateLink
+  // connectivity as a follow-up update after the cluster is created; the consumer
+  // side (an aws_msk_vpc_connection in the client VPC) is a separate surface.
+  AwsMskClusterVpcConnectivity vpc_connectivity = 8;
 
-  // vpc_id is the VPC in which to create the managed security group.
-  // Required when security_group_ids or allowed_cidr_blocks are provided.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 9 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  // network_type selects the IP addressing of the broker network interfaces.
+  // "IPV4" (default): IPv4-only.
+  // "DUAL": dual-stack IPv4 + IPv6 (requires dual-stack subnets).
+  // One-way: AWS only supports updating IPV4 -> DUAL; going back forces replacement.
+  string network_type = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "IPV4",
+        "DUAL"
+      ]
+    }
   ];
 
   // --- Storage ---
 
   // ebs_volume_size_gib is the size of the EBS volume per broker, in GiB.
   // Range: 1-16384. If omitted, AWS uses the instance-type-specific default.
+  // Volume size can be increased in place (an UpdateBrokerStorage operation).
+  // Not applicable to express.* instance types (AWS manages Express broker storage).
   optional int32 ebs_volume_size_gib = 10 [
     (buf.validate.field).int32.gte = 1,
     (buf.validate.field).int32.lte = 16384
@@ -103,10 +143,11 @@ message AwsMskClusterSpec {
     (buf.validate.field).int32.lte = 2375
   ];
 
-  // storage_mode controls data storage strategy.
+  // storage_mode controls the data storage strategy.
   // "LOCAL" (default): all data on broker EBS volumes.
-  // "TIERED": hot data on EBS, warm data automatically offloaded to S3 for cost optimization.
-  // Tiered storage requires Kafka 2.8.2.tiered+ and supported instance types.
+  // "TIERED": hot data on EBS, warm data automatically offloaded to low-cost storage.
+  // Tiered storage requires Kafka 2.8.2.tiered+ and supported instance types
+  // (not kafka.t3.small). One-way: moving TIERED -> LOCAL forces cluster replacement.
   string storage_mode = 13 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
@@ -153,33 +194,56 @@ message AwsMskClusterSpec {
   // If no authentication is configured, the cluster accepts unauthenticated connections.
   AwsMskClusterAuthentication authentication = 17;
 
+  // scram_secret_arns are AWS Secrets Manager secret ARNs associated with the
+  // cluster for SASL/SCRAM username/password authentication. Each secret holds a
+  // {"username": ..., "password": ...} JSON document, MUST be named with the
+  // AmazonMSK_ prefix, and MUST be encrypted with a customer-managed KMS key
+  // (AWS rejects secrets on the default aws/secretsmanager key). Associations are
+  // a cluster-keyed setting (added/removed in place); the secrets themselves are
+  // managed outside this resource.
+  repeated string scram_secret_arns = 18 [
+    (buf.validate.field).repeated.items.string.pattern = "^arn:aws[a-zA-Z-]*:secretsmanager:[a-z0-9-]+:\\d{12}:secret:AmazonMSK_.+$",
+    (buf.validate.field).repeated.unique = true,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Secrets Manager secret ARNs (references resolved by MSK at authentication time), never secret material"
+  ];
+
+  // --- Resource policy ---
+
+  // cluster_policy is a resource-based IAM policy attached to the cluster, as a
+  // JSON document -- the mechanism behind cross-account PrivateLink access
+  // (granting kafka:CreateVpcConnection and the Get*ForVpcConnection actions to
+  // consumer principals). A cluster setting keyed by the cluster ARN, updated in
+  // place.
+  string cluster_policy = 19;
+
   // --- Configuration ---
 
   // configuration_arn is the ARN of an externally managed MSK Configuration resource.
   // MSK Configurations hold Apache Kafka server.properties overrides (e.g., replication factor,
   // min ISR, log retention). Mutually exclusive with server_properties.
-  string configuration_arn = 18;
+  string configuration_arn = 20;
 
   // configuration_revision is the revision number of the external MSK Configuration.
   // Required when configuration_arn is set. Must be >= 1.
-  int32 configuration_revision = 19 [
+  int32 configuration_revision = 21 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32.gte = 1
   ];
 
   // server_properties defines Apache Kafka server.properties overrides as key-value pairs.
-  // When provided, an inline MSK Configuration resource is created and associated with the cluster.
-  // Common properties: auto.create.topics.enable, default.replication.factor, min.insync.replicas,
-  // num.partitions, log.retention.hours, log.retention.bytes.
+  // When provided, a module-managed MSK Configuration resource is created and associated
+  // with the cluster (the folded shape; bring an existing one via configuration_arn).
+  // Common properties: auto.create.topics.enable, default.replication.factor,
+  // min.insync.replicas, num.partitions, log.retention.hours, log.retention.bytes.
   // Mutually exclusive with configuration_arn.
-  map<string, string> server_properties = 20;
+  map<string, string> server_properties = 22;
 
   // --- Logging ---
 
   // logging configures broker log delivery to one or more destinations.
   // All three destinations (CloudWatch Logs, Kinesis Data Firehose, S3) can be
   // enabled simultaneously for different operational workflows.
-  AwsMskClusterLogging logging = 21;
+  AwsMskClusterLogging logging = 23;
 
   // --- Monitoring ---
 
@@ -188,7 +252,7 @@ message AwsMskClusterSpec {
   // "PER_BROKER": adds per-broker metrics.
   // "PER_TOPIC_PER_BROKER": adds per-topic-per-broker metrics.
   // "PER_TOPIC_PER_PARTITION": most granular, adds per-partition metrics.
-  string enhanced_monitoring = 22 [
+  string enhanced_monitoring = 24 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       in: [
@@ -203,25 +267,25 @@ message AwsMskClusterSpec {
   // jmx_exporter_enabled enables the Prometheus JMX Exporter on all brokers.
   // When enabled, JMX metrics are available on port 11001 for Prometheus scraping.
   // Provides detailed JVM and Kafka broker metrics.
-  bool jmx_exporter_enabled = 23;
+  bool jmx_exporter_enabled = 25;
 
   // node_exporter_enabled enables the Prometheus Node Exporter on all brokers.
   // When enabled, host-level metrics (CPU, memory, disk, network) are available
   // on port 11002 for Prometheus scraping.
-  bool node_exporter_enabled = 24;
+  bool node_exporter_enabled = 26;
 
-  // --- Connectivity ---
+  // --- Express-broker rebalancing ---
 
-  // public_access_type controls whether the cluster is reachable from the public internet.
-  // "DISABLED" (default): brokers are only reachable within the VPC.
-  // "SERVICE_PROVIDED_EIPS": AWS assigns Elastic IPs to brokers for public access.
-  // Public access requires specific authentication (SASL/IAM or SASL/SCRAM) and TLS encryption.
-  string public_access_type = 25 [
+  // rebalancing_status controls intelligent rebalancing on Express-broker clusters
+  // (instance_type express.*): MSK automatically redistributes partitions when
+  // brokers are added or removed. "ACTIVE" (the AWS default for Express clusters)
+  // or "PAUSED". Not applicable to standard kafka.* instance types.
+  string rebalancing_status = 27 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       in: [
-        "DISABLED",
-        "SERVICE_PROVIDED_EIPS"
+        "ACTIVE",
+        "PAUSED"
       ]
     }
   ];
@@ -245,6 +309,36 @@ message AwsMskClusterSpec {
     message: "configuration_revision is required (>= 1) when configuration_arn is set"
     expression: "this.configuration_arn != '' ? this.configuration_revision >= 1 : true"
   };
+
+  option (buf.validate.message).cel = {
+    id: "scram_secrets_require_scram_auth"
+    message: "scram_secret_arns requires authentication.sasl_scram_enabled to be true"
+    expression: "this.scram_secret_arns.size() > 0 ? (has(this.authentication) && this.authentication.sasl_scram_enabled) : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vpc_connectivity_iam_requires_cluster_iam"
+    message: "vpc_connectivity.sasl_iam_enabled requires authentication.sasl_iam_enabled on the cluster"
+    expression: "(has(this.vpc_connectivity) && this.vpc_connectivity.sasl_iam_enabled) ? (has(this.authentication) && this.authentication.sasl_iam_enabled) : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vpc_connectivity_scram_requires_cluster_scram"
+    message: "vpc_connectivity.sasl_scram_enabled requires authentication.sasl_scram_enabled on the cluster"
+    expression: "(has(this.vpc_connectivity) && this.vpc_connectivity.sasl_scram_enabled) ? (has(this.authentication) && this.authentication.sasl_scram_enabled) : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vpc_connectivity_tls_requires_cluster_tls"
+    message: "vpc_connectivity.tls_enabled requires authentication.tls_enabled on the cluster"
+    expression: "(has(this.vpc_connectivity) && this.vpc_connectivity.tls_enabled) ? (has(this.authentication) && this.authentication.tls_enabled) : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "public_access_requires_authenticated_tls"
+    message: "public access requires TLS-only client_broker_encryption and at least one of SASL/IAM, SASL/SCRAM, or mTLS authentication with unauthenticated disabled"
+    expression: "this.public_access_type == 'SERVICE_PROVIDED_EIPS' ? (has(this.authentication) && !this.authentication.unauthenticated && (this.authentication.sasl_iam_enabled || this.authentication.sasl_scram_enabled || this.authentication.tls_enabled) && (!has(this.client_broker_encryption) || this.client_broker_encryption == 'TLS')) : true"
+  };
 }
 
 // AwsMskClusterAuthentication configures client authentication methods for the MSK cluster.
@@ -259,7 +353,7 @@ message AwsMskClusterAuthentication {
   // sasl_scram_enabled enables SASL/SCRAM-SHA-512 authentication.
   // Clients authenticate with username/password stored in AWS Secrets Manager.
   // Useful for non-AWS clients that cannot use IAM. Brokers listen on port 9096.
-  // Secrets must be associated with the cluster via aws_msk_scram_secret_association.
+  // Associate the credential secrets via scram_secret_arns on the spec.
   bool sasl_scram_enabled = 2;
 
   // tls_enabled enables mutual TLS (mTLS) authentication.
@@ -276,6 +370,27 @@ message AwsMskClusterAuthentication {
   // Not recommended for production. Useful for development or when network-level
   // security (VPC + security groups) provides sufficient access control.
   bool unauthenticated = 5;
+
+  option (buf.validate.message).cel = {
+    id: "tls_requires_certificate_authorities"
+    message: "tls_certificate_authority_arns is required when tls_enabled is true"
+    expression: "this.tls_enabled ? this.tls_certificate_authority_arns.size() > 0 : true"
+  };
+}
+
+// AwsMskClusterVpcConnectivity configures multi-VPC private connectivity (PrivateLink)
+// authentication schemes. At least one scheme must be enabled for PrivateLink access
+// to be usable, and each enabled scheme must also be enabled in the cluster's own
+// `authentication` (CEL-enforced on the spec).
+message AwsMskClusterVpcConnectivity {
+  // sasl_iam_enabled offers SASL/IAM authentication to PrivateLink clients.
+  bool sasl_iam_enabled = 1;
+
+  // sasl_scram_enabled offers SASL/SCRAM authentication to PrivateLink clients.
+  bool sasl_scram_enabled = 2;
+
+  // tls_enabled offers mutual TLS authentication to PrivateLink clients.
+  bool tls_enabled = 3;
 }
 
 // AwsMskClusterLogging configures broker log delivery destinations.

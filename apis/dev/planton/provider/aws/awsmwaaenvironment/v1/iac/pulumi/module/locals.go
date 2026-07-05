@@ -1,26 +1,40 @@
 package module
 
 import (
+	"strconv"
+
 	awsmwaaenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmwaaenvironment/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Locals struct {
 	AwsMwaaEnvironment *awsmwaaenvironmentv1.AwsMwaaEnvironment
-	Labels             map[string]string
+
+	// EnvironmentName is metadata.name -- create-only in AWS (ForceNew), and
+	// the basis both engines share so a manifest deploys identically on
+	// either.
+	EnvironmentName string
+
+	AwsTags map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, in *awsmwaaenvironmentv1.AwsMwaaEnvironmentStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *awsmwaaenvironmentv1.AwsMwaaEnvironmentStackInput) *Locals {
 	locals := &Locals{}
+	locals.AwsMwaaEnvironment = stackInput.Target
 
-	locals.AwsMwaaEnvironment = in.Target
+	metadata := stackInput.Target.Metadata
+	locals.EnvironmentName = metadata.Name
 
-	locals.Labels = map[string]string{
-		"planton.org/resource":      "true",
-		"planton.org/organization":  locals.AwsMwaaEnvironment.Metadata.Org,
-		"planton.org/environment":   locals.AwsMwaaEnvironment.Metadata.Env,
-		"planton.org/resource-kind": "AwsMwaaEnvironment",
-		"planton.org/resource-id":   locals.AwsMwaaEnvironment.Metadata.Id,
+	// Resource-identity tags match the Terraform module key-for-key.
+	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
+		awstagkeys.Resource:     strconv.FormatBool(true),
+		awstagkeys.Organization: metadata.Org,
+		awstagkeys.Environment:  metadata.Env,
+		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment.String(),
+		awstagkeys.ResourceId:   metadata.Id,
 	}
 
 	return locals

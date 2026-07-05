@@ -1,0 +1,25 @@
+# AwsS3Bucket install profile used as a prerequisite by composed components
+# (declared via the scenario's e2e-prerequisites annotation). A versioned
+# bucket: consumers that stage artifacts in S3 (MWAA DAG sources and
+# similar) require versioning enabled, and it is harmless for consumers
+# that only need a bucket ARN to reference. forceDestroy lets teardown
+# remove a non-empty bucket cleanly. Full metadata is supplied for
+# tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsS3Bucket
+metadata:
+  name: planton-oss-e2e-awss3bucket-prereq
+  id: planton-oss-e2e-awss3bucket-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3bucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  versioningEnabled: true
+  forceDestroy: true

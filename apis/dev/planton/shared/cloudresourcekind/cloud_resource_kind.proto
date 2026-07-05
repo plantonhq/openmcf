@@ -107,10 +107,14 @@ enum CloudResourceKind {
   }];
 
   // 200–399: AWS resources
+  // AwsSubnet is a prerequisite because an ALB requires at least two subnets
+  // in different availability zones -- the spec's subnet references must
+  // resolve before the load balancer can be created.
   AwsAlb = 200 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsalb"
+    prerequisites: [AwsSubnet]
   }];
   AwsCertManagerCert = 201 [(kind_meta) = {
     provider: aws
@@ -138,16 +142,32 @@ enum CloudResourceKind {
     id_prefix: "ecsclu"
     container_kind: true
   }];
+  // AwsEcsCluster, AwsEcsTaskDefinition, and AwsSubnet are prerequisites
+  // because a service schedules a referenced task-definition revision into
+  // a referenced live cluster and places task network interfaces into
+  // referenced subnets -- all three references must resolve first.
   AwsEcsService = 206 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "ecssvc"
+    prerequisites: [
+      AwsEcsCluster,
+      AwsEcsTaskDefinition,
+      AwsSubnet
+    ]
   }];
+  // AwsSubnet and AwsIamRole are prerequisites because the control plane
+  // attaches its network interfaces into referenced subnets and assumes a
+  // referenced cluster role that must already carry AmazonEKSClusterPolicy.
   AwsEksCluster = 207 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "eks"
     container_kind: true
+    prerequisites: [
+      AwsSubnet,
+      AwsIamRole
+    ]
   }];
   AwsIamRole = 208 [(kind_meta) = {
     provider: aws
@@ -158,16 +178,19 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "lambda"
+    prerequisites: [AwsIamRole]
   }];
   AwsRdsCluster = 210 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "rdsclu"
+    prerequisites: [AwsSubnet]
   }];
   AwsRdsInstance = 211 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "rdsins"
+    prerequisites: [AwsSubnet]
   }];
   AwsRoute53Zone = 212 [(kind_meta) = {
     provider: aws
@@ -179,15 +202,22 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "s3bkt"
   }];
-  AwsSecretsManager = 214 [(kind_meta) = {
+  // AwsVpc is a prerequisite because a target group's health checks and
+  // target registrations live inside one VPC -- the spec's vpc_id reference
+  // must resolve before the group can be created.
+  AwsLbTargetGroup = 214 [(kind_meta) = {
     provider: aws
     version: v1
-    id_prefix: "awssm"
+    id_prefix: "lbtg"
+    prerequisites: [AwsVpc]
   }];
+  // AwsVpc is a prerequisite because every security group is created in a
+  // VPC; the E2E install profile resolves vpc_id against the VPC prerequisite.
   AwsSecurityGroup = 215 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awssg"
+    prerequisites: [AwsVpc]
   }];
   AwsVpc = 216 [(kind_meta) = {
     provider: aws
@@ -195,10 +225,18 @@ enum CloudResourceKind {
     id_prefix: "awsvpc"
     container_kind: true
   }];
+  // AwsEksCluster is a prerequisite because nodes register with a live
+  // control plane; AwsIamRole and AwsSubnet back the node role and worker
+  // subnet references.
   AwsEksNodeGroup = 217 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "eksng"
+    prerequisites: [
+      AwsEksCluster,
+      AwsIamRole,
+      AwsSubnet
+    ]
   }];
   AwsIamUser = 218 [(kind_meta) = {
     provider: aws
@@ -224,16 +262,20 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "docdb"
+    prerequisites: [AwsSubnet]
   }];
   AwsRoute53DnsRecord = 223 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "r53rec"
   }];
+  // AwsS3Bucket is a prerequisite because the object set's bucket reference
+  // is required -- objects cannot exist without the bucket that holds them.
   AwsS3ObjectSet = 224 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "s3objs"
+    prerequisites: [AwsS3Bucket]
   }];
   AwsSqsQueue = 225 [(kind_meta) = {
     provider: aws
@@ -260,6 +302,104 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "oidcp"
   }];
+  AwsIamPolicy = 230 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "iampol"
+  }];
+  // AwsIamRole is a prerequisite because an instance profile is a wrapper that
+  // must contain a role to be useful -- the profile's spec requires a role
+  // reference, so the role must be deployed first.
+  AwsIamInstanceProfile = 231 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "iamip"
+    prerequisites: [AwsIamRole]
+  }];
+  // AwsAlb and AwsLbTargetGroup are prerequisites because a listener is an
+  // attachment point on a load balancer and its default action almost always
+  // forwards to a target group -- both references must resolve before the
+  // listener can be created.
+  AwsLbListener = 232 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lbl"
+    prerequisites: [
+      AwsAlb,
+      AwsLbTargetGroup
+    ]
+  }];
+  // AwsLbListener is a prerequisite because a rule only exists as an
+  // attachment on a listener -- the listener_arn reference must resolve
+  // before the rule can be created.
+  AwsLbListenerRule = 233 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lblr"
+    prerequisites: [AwsLbListener]
+  }];
+  AwsLaunchTemplate = 234 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lt"
+  }];
+  // AwsSubnet and AwsLaunchTemplate are prerequisites because a group
+  // cannot exist without subnets to place capacity in and a launch
+  // template to launch from -- the spec's subnets and launch_template
+  // references must resolve before the group can be created.
+  AwsAutoScalingGroup = 235 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "asg"
+    prerequisites: [
+      AwsSubnet,
+      AwsLaunchTemplate
+    ]
+  }];
+  // AwsEksCluster is a prerequisite because an add-on installs onto a live
+  // control plane -- the spec's cluster_name reference must resolve before
+  // the add-on can be created.
+  AwsEksAddon = 236 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "eksaddon"
+    prerequisites: [AwsEksCluster]
+  }];
+  // AwsEksCluster, AwsIamRole, and AwsSubnet are prerequisites because a
+  // Fargate profile attaches to a live control plane, runs pods as a
+  // referenced pod-execution role, and launches them into referenced
+  // private subnets -- all three references must resolve first.
+  AwsEksFargateProfile = 237 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "eksfp"
+    prerequisites: [
+      AwsEksCluster,
+      AwsIamRole,
+      AwsSubnet
+    ]
+  }];
+  // AwsEksCluster and AwsIamRole are prerequisites because an access entry
+  // grants a referenced IAM principal access to a live control plane --
+  // both references must resolve before the entry can be created.
+  AwsEksAccessEntry = 238 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "eksae"
+    prerequisites: [
+      AwsEksCluster,
+      AwsIamRole
+    ]
+  }];
+  // AwsIamRole is a prerequisite because the kind's default posture --
+  // Fargate with the awslogs logging default -- is rejected by AWS at
+  // registration time without an execution role the agent can assume.
+  AwsEcsTaskDefinition = 239 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "ecstd"
+    prerequisites: [AwsIamRole]
+  }];
   AwsHttpApiGateway = 240 [(kind_meta) = {
     provider: aws
     version: v1
@@ -270,10 +410,60 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awssfn"
   }];
+  // AwsVpcEndpoint's composed E2E scenarios reference the AwsVpc
+  // prerequisite's outputs (vpc_id + default_route_table_id for gateway
+  // endpoints) and the AwsSubnet pair's subnet_id outputs (interface
+  // endpoints), so both are genuine deploy-order prerequisites.
+  AwsVpcEndpoint = 242 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "vpce"
+    prerequisites: [
+      AwsVpc,
+      AwsSubnet
+    ]
+  }];
+  AwsElasticacheUser = 243 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "ecuser"
+  }];
+  // AwsElasticacheUser is a genuine prerequisite: AWS refuses to create a
+  // user group that does not contain a user named "default", so a group's
+  // composed E2E scenario must resolve a deployed user's outputs.
+  AwsElasticacheUserGroup = 244 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "ecug"
+    prerequisites: [AwsElasticacheUser]
+  }];
+  AwsRedshiftServerlessNamespace = 245 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "rsns"
+  }];
+  // The namespace is a genuine prerequisite: a workgroup attaches to
+  // exactly one namespace by name at create time, so its composed E2E
+  // scenario must resolve a deployed namespace's outputs. AwsSubnet is a
+  // prerequisite because Redshift Serverless requires the workgroup's
+  // subnets to span three availability zones.
+  AwsRedshiftServerlessWorkgroup = 246 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "rswg"
+    prerequisites: [
+      AwsRedshiftServerlessNamespace,
+      AwsSubnet
+    ]
+  }];
+  // AwsSubnet is a prerequisite because the module builds an ElastiCache
+  // subnet group from referenced subnets -- the spec's subnet references
+  // must resolve before the replication group can deploy.
   AwsRedisElasticache = 250 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsredis"
+    prerequisites: [AwsSubnet]
   }];
   AwsOpenSearchDomain = 251 [(kind_meta) = {
     provider: aws
@@ -284,16 +474,22 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsmemcached"
+    prerequisites: [AwsSubnet]
   }];
   AwsServerlessElasticache = 253 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsslselc"
+    prerequisites: [AwsSubnet]
   }];
-  AwsNetworkLoadBalancer = 280 [(kind_meta) = {
+  // AwsSubnet is a prerequisite because an NLB requires at least one subnet
+  // mapping -- the spec's subnet references must resolve before the load
+  // balancer can be created.
+  AwsNlb = 280 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsnlb"
+    prerequisites: [AwsSubnet]
   }];
   AwsElasticIp = 281 [(kind_meta) = {
     provider: aws
@@ -458,6 +654,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsrs"
+    prerequisites: [AwsSubnet]
   }];
 
   // AI/ML
@@ -495,10 +692,17 @@ enum CloudResourceKind {
   }];
 
   // Workflow / Orchestration
+  // AwsSubnet and AwsSecurityGroup are prerequisites because the environment's
+  // network interfaces are placed in referenced private subnets and AWS
+  // requires at least one attached security group at creation.
   AwsMwaaEnvironment = 340 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsmwaa"
+    prerequisites: [
+      AwsSubnet,
+      AwsSecurityGroup
+    ]
   }];
 
   // Graph Database
@@ -506,6 +710,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsnep"
+    prerequisites: [AwsSubnet]
   }];
 
   // In-Memory Database
@@ -516,10 +721,50 @@ enum CloudResourceKind {
   }];
 
   // Streaming
+  // AwsSubnet and AwsSecurityGroup are prerequisites because brokers are
+  // placed in referenced subnets and AWS requires at least one attached
+  // security group at creation.
   AwsMskCluster = 350 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsmsk"
+    prerequisites: [
+      AwsSubnet,
+      AwsSecurityGroup
+    ]
+  }];
+
+  // AwsSubnet is a prerequisite because the serverless cluster's network
+  // interfaces are placed in referenced subnets (security groups are optional
+  // -- AWS attaches the VPC default group when none are referenced).
+  AwsMskServerlessCluster = 351 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsmsksl"
+    prerequisites: [AwsSubnet]
+  }];
+
+  // AwsLambda is a prerequisite because a mapping cannot exist without the
+  // function it invokes (a required reference). Event sources (SQS, Kinesis,
+  // DynamoDB, MSK) are optional composition -- scenarios declare them via the
+  // e2e-prerequisites annotation rather than taxing every consumer's chain.
+  AwsLambdaEventSourceMapping = 352 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "lambdaesm"
+    prerequisites: [AwsLambda]
+  }];
+
+  // AwsSnsTopic is a prerequisite because a subscription cannot exist without
+  // the topic it subscribes to (a required reference). Endpoints (SQS queues,
+  // Lambda functions, Firehose streams) are optional composition -- scenarios
+  // declare them via the e2e-prerequisites annotation rather than taxing
+  // every consumer's chain.
+  AwsSnsSubscription = 353 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awssnssub"
+    prerequisites: [AwsSnsTopic]
   }];
 
   // 400–599: Azure resources
@@ -1097,7 +1342,7 @@ enum CloudResourceKind {
   KubernetesPerconaMysqlOperator = 834 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8sprcnpgop"
+    id_prefix: "k8sprcnmysqlop"
   }];
   KubernetesHarbor = 835 [(kind_meta) = {
     provider: kubernetes

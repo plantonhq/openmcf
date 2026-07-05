@@ -1,0 +1,24 @@
+# AwsEcsCluster install profile used as a prerequisite by composed
+# components (the ECS service chain). A Fargate cluster is free until tasks
+# run, so the fixture attaches both Fargate capacity providers and enables
+# nothing else -- consumers bring their own task definitions and services.
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsEcsCluster
+metadata:
+  name: planton-oss-e2e-ecs-cluster-prereq
+  id: planton-oss-e2e-ecs-cluster-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsecscluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  capacityProviders:
+    - FARGATE
+    - FARGATE_SPOT

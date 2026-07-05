@@ -18,4 +18,9 @@ output "load_balancer_hosted_zone_id" {
   value       = aws_lb.this.zone_id
 }
 
+output "arn_suffix" {
+  description = "The ARN suffix (app/<name>/<id>) -- the CloudWatch LoadBalancer dimension alarms and request-count autoscaling policies scope on"
+  value       = aws_lb.this.arn_suffix
+}
+
 

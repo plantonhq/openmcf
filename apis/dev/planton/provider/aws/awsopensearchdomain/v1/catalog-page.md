@@ -13,7 +13,7 @@ When you deploy an AwsOpenSearchDomain resource, Planton provisions:
 - **VPC Endpoints** (when `vpcOptions` is set) — ENIs deployed into specified subnets with security groups controlling inbound/outbound traffic on port 443; the domain is not publicly accessible
 - **Fine-Grained Access Control** (when `advancedSecurityOptions.enabled` is true) — internal user database or IAM-based authentication with role-based index-level permissions
 - **Log Publishing** (when `logPublishingOptions` is set) — CloudWatch Logs delivery for index slow logs, search slow logs, application logs, and audit logs
-- **Auto-Tune** (when `autoTuneEnabled` is true) — automatic JVM heap, disk I/O, and performance setting optimization based on cluster metrics
+- **Auto-Tune** (when `autoTuneOptions.desiredState` is `ENABLED`) — automatic JVM heap, disk I/O, and performance setting optimization based on cluster metrics, with optional maintenance schedules or off-peak-window alignment
 
 ## Prerequisites
 
@@ -111,7 +111,7 @@ This creates a single-node OpenSearch 2.11 domain with 20 GB gp3 storage, encryp
 | `logPublishingOptions[].cloudwatchLogGroupArn` | `string` | — | CloudWatch Logs log group ARN. Can reference via `valueFrom`. |
 | `logPublishingOptions[].enabled` | `bool` | `true` | Whether this log publishing option is active. |
 | `accessPolicies` | `object` | — | IAM-based access policy document (JSON object). Controls who can access the domain and its indices. |
-| `autoTuneEnabled` | `bool` | `false` | Enable Auto-Tune to optimize JVM heap, disk I/O, and other settings. |
+| `autoTuneOptions` | `object` | — | Auto-Tune configuration: `desiredState` (`ENABLED`/`DISABLED`), `maintenanceSchedules`, `rollbackOnDisable`, `useOffPeakWindow`. Not supported on t2/t3 instance types. |
 | `autoSoftwareUpdateEnabled` | `bool` | `false` | Enable automatic service software updates during the off-peak window. |
 | `ipAddressType` | `string` | `ipv4` | IP address type: `ipv4` or `dualstack`. Changing from `dualstack` to `ipv4` forces recreation. |
 | `advancedOptions` | `map<string,string>` | `{}` | Low-level key-value configuration options (e.g., `rest.action.multi.allow_explicit_index`). |
@@ -161,7 +161,8 @@ spec:
   domainEndpointOptions:
     enforceHttps: true
     tlsSecurityPolicy: Policy-Min-TLS-1-2-PFS-2023-10
-  autoTuneEnabled: true
+  autoTuneOptions:
+    desiredState: ENABLED
 ```
 
 ### Fine-Grained Access Control with Internal User Database
@@ -237,7 +238,8 @@ spec:
   encryptAtRestEnabled: true
   kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-5678
   nodeToNodeEncryptionEnabled: true
-  autoTuneEnabled: true
+  autoTuneOptions:
+    desiredState: ENABLED
   autoSoftwareUpdateEnabled: true
 ```
 
@@ -311,6 +313,9 @@ After deployment, the following outputs are available in `status.outputs`:
 | `domain_arn` | `string` | Amazon Resource Name of the domain, used in IAM policies and cross-service permissions |
 | `endpoint` | `string` | Domain endpoint for index, search, and data upload requests. For VPC domains this is a VPC endpoint; for public domains it is internet-accessible |
 | `dashboard_endpoint` | `string` | OpenSearch Dashboards UI endpoint (`endpoint/_dashboards`) |
+| `endpoint_v2` | `string` | Dual-stack (IPv4 + IPv6) V2 domain endpoint |
+| `dashboard_endpoint_v2` | `string` | Dashboards endpoint on the dual-stack V2 domain endpoint |
+| `domain_endpoint_v2_hosted_zone_id` | `string` | Route 53 hosted zone ID for aliasing DNS records at the V2 endpoint |
 
 ## Related Components
 

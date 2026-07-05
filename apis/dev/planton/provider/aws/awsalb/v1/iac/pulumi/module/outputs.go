@@ -7,4 +7,5 @@ const (
 	OpAlbName         = "load_balancer_name"
 	OpAlbDnsName      = "load_balancer_dns_name"
 	OpAlbHostedZoneId = "load_balancer_hosted_zone_id"
+	OpAlbArnSuffix    = "arn_suffix"
 )

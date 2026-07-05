@@ -201,8 +201,10 @@ type AwsBatchComputeResources struct {
 	// BEST_FIT_PROGRESSIVE.
 	AllocationStrategy string `protobuf:"bytes,8,opt,name=allocation_strategy,json=allocationStrategy,proto3" json:"allocation_strategy,omitempty"`
 	// instance_role is the ARN of the IAM instance profile for EC2 instances.
-	// Required for EC2 and SPOT types. The instance profile grants the ECS agent
-	// on each instance permission to communicate with AWS Batch and ECS.
+	// Required for EC2 and SPOT types. Reference an AwsIamInstanceProfile's
+	// instance_profile_arn output (the profile wraps the role that grants the
+	// ECS agent on each instance permission to communicate with AWS Batch and
+	// ECS), or pass a literal ARN.
 	InstanceRole *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=instance_role,json=instanceRole,proto3" json:"instance_role,omitempty"`
 	// ec2_key_pair is the name of an EC2 key pair for SSH access to instances.
 	// Only applicable for EC2 and SPOT types. Optional — omit if SSH access
@@ -365,17 +367,17 @@ func (x *AwsBatchComputeResources) GetResourceTags() map[string]string {
 	return nil
 }
 
-// AwsBatchLaunchTemplate references an EC2 launch template by ID or name.
-// Exactly one of launch_template_id or launch_template_name must be provided.
+// AwsBatchLaunchTemplate references the EC2 launch template Batch launches
+// compute instances from.
 type AwsBatchLaunchTemplate struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// launch_template_id is the ID of the launch template.
-	LaunchTemplateId string `protobuf:"bytes,1,opt,name=launch_template_id,json=launchTemplateId,proto3" json:"launch_template_id,omitempty"`
-	// launch_template_name is the name of the launch template.
-	LaunchTemplateName string `protobuf:"bytes,2,opt,name=launch_template_name,json=launchTemplateName,proto3" json:"launch_template_name,omitempty"`
+	// launch_template_id identifies the launch template. Reference an
+	// AwsLaunchTemplate's launch_template_id output or pass a literal
+	// template ID ("lt-...").
+	LaunchTemplateId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=launch_template_id,json=launchTemplateId,proto3" json:"launch_template_id,omitempty"`
 	// version is the launch template version. If omitted, the default version
 	// of the launch template is used.
-	Version       string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	Version       string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -410,18 +412,11 @@ func (*AwsBatchLaunchTemplate) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AwsBatchLaunchTemplate) GetLaunchTemplateId() string {
+func (x *AwsBatchLaunchTemplate) GetLaunchTemplateId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.LaunchTemplateId
 	}
-	return ""
-}
-
-func (x *AwsBatchLaunchTemplate) GetLaunchTemplateName() string {
-	if x != nil {
-		return x.LaunchTemplateName
-	}
-	return ""
+	return nil
 }
 
 func (x *AwsBatchLaunchTemplate) GetVersion() string {
@@ -863,7 +858,7 @@ const file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_raw
 	"\x12security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12%\n" +
 	"\x0einstance_types\x18\a \x03(\tR\rinstanceTypes\x12\x87\x01\n" +
 	"\x13allocation_strategy\x18\b \x01(\tBV\xbaHS\xd8\x01\x01rNR\x14BEST_FIT_PROGRESSIVER\x17SPOT_CAPACITY_OPTIMIZEDR\x1dSPOT_PRICE_CAPACITY_OPTIMIZEDR\x12allocationStrategy\x12\x85\x01\n" +
-	"\rinstance_role\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xd0\x01\x92\xd4a#status.outputs.instance_profile_arnR\finstanceRole\x12 \n" +
+	"\rinstance_role\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe7\x01\x92\xd4a#status.outputs.instance_profile_arnR\finstanceRole\x12 \n" +
 	"\fec2_key_pair\x18\n" +
 	" \x01(\tR\n" +
 	"ec2KeyPair\x125\n" +
@@ -879,12 +874,10 @@ const file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_raw
 	"!spot_fleet_role_required_for_spot\x12>spot_iam_fleet_role is required for SPOT compute resource type\x1a4this.type != 'SPOT' || has(this.spot_iam_fleet_role)B\f\n" +
 	"\n" +
 	"_min_vcpusB\x11\n" +
-	"\x0f_bid_percentage\"\xde\x02\n" +
-	"\x16AwsBatchLaunchTemplate\x12,\n" +
-	"\x12launch_template_id\x18\x01 \x01(\tR\x10launchTemplateId\x120\n" +
-	"\x14launch_template_name\x18\x02 \x01(\tR\x12launchTemplateName\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\tR\aversion:\xc9\x01\xbaH\xc5\x01\x1a\xc2\x01\n" +
-	"\x1alaunch_template_id_or_name\x12Jexactly one of launch_template_id or launch_template_name must be provided\x1aX(this.launch_template_id != '' ? 1 : 0) + (this.launch_template_name != '' ? 1 : 0) == 1\"e\n" +
+	"\x0f_bid_percentage\"\xc7\x01\n" +
+	"\x16AwsBatchLaunchTemplate\x12\x92\x01\n" +
+	"\x12launch_template_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x01\x92\xd4a!status.outputs.launch_template_idR\x10launchTemplateId\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\"e\n" +
 	"\x18AwsBatchEc2Configuration\x12\x1d\n" +
 	"\n" +
 	"image_type\x18\x01 \x01(\tR\timageType\x12*\n" +
@@ -956,13 +949,14 @@ var file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_depId
 	2,  // 9: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeResources.launch_template:type_name -> dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchLaunchTemplate
 	3,  // 10: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeResources.ec2_configurations:type_name -> dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchEc2Configuration
 	9,  // 11: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeResources.resource_tags:type_name -> dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeResources.ResourceTagsEntry
-	6,  // 12: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchJobQueue.job_state_time_limit_actions:type_name -> dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchJobStateTimeLimitAction
-	8,  // 13: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchSchedulingPolicy.share_distributions:type_name -> dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchShareDistribution
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	10, // 12: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchLaunchTemplate.launch_template_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 13: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchJobQueue.job_state_time_limit_actions:type_name -> dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchJobStateTimeLimitAction
+	8,  // 14: dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchSchedulingPolicy.share_distributions:type_name -> dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchShareDistribution
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_init() }

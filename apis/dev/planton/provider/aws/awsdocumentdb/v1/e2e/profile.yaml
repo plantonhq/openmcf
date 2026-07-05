@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsdocumentdb
+spec:
+  # A DocumentDB cluster under live E2E: the harness deploys the AwsVpc +
+  # two-AZ AwsSubnet prerequisites (a DB subnet group must span two AZs),
+  # runs deploy -> DocumentDB DescribeDBClusters verify -> destroy ->
+  # verify-destroyed on both provisioners. The scenario is a single
+  # db.t4g.medium instance (DocumentDB's smallest provisioned class) with
+  # the AWS-managed master password: it proves the folded per-name instance
+  # materialization AND the managed-credential path on the cheapest
+  # provisioned footprint. Instance provisioning dominates the runtime at
+  # roughly ten minutes each way per engine.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

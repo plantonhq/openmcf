@@ -85,7 +85,7 @@ var _ = ginkgo.Describe("AwsRedisElasticacheSpec validations", func() {
 	})
 
 	ginkgo.It("accepts user_group_ids authentication", func() {
-		spec.UserGroupIds = []string{"my-user-group"}
+		spec.UserGroupIds = []*foreignkeyv1.StringValueOrRef{strRef("my-user-group")}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -298,7 +298,7 @@ var _ = ginkgo.Describe("AwsRedisElasticacheSpec validations", func() {
 
 	ginkgo.It("fails when both auth_token and user_group_ids are set", func() {
 		spec.AuthToken = strRef("my-secret-auth-token-at-least-16-chars")
-		spec.UserGroupIds = []string{"my-user-group"}
+		spec.UserGroupIds = []*foreignkeyv1.StringValueOrRef{strRef("my-user-group")}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})

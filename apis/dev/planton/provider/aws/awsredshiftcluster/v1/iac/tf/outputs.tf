@@ -1,54 +1,49 @@
 output "cluster_identifier" {
-  description = "Unique identifier of the Redshift cluster"
+  description = "The cluster identifier -- the handle Redshift APIs and the console use."
   value       = aws_redshift_cluster.this.cluster_identifier
 }
 
 output "cluster_arn" {
-  description = "ARN of the Redshift cluster"
+  description = "The cluster's Amazon Resource Name, for IAM policies and cross-service references."
   value       = aws_redshift_cluster.this.arn
 }
 
 output "cluster_namespace_arn" {
-  description = "Namespace ARN for data sharing and Redshift Serverless integration"
+  description = "The namespace ARN of the cluster, used by Redshift data sharing and the Redshift Data API."
   value       = aws_redshift_cluster.this.cluster_namespace_arn
 }
 
 output "endpoint" {
-  description = "Connection endpoint in address:port format"
+  description = "The connection endpoint in address:port form, for SQL client connection strings."
   value       = aws_redshift_cluster.this.endpoint
 }
 
 output "dns_name" {
-  description = "DNS hostname of the cluster (without port)"
+  description = "The DNS hostname of the cluster's leader node (without port), for connection strings and DNS alias records."
   value       = aws_redshift_cluster.this.dns_name
 }
 
 output "database_name" {
-  description = "Name of the default database"
+  description = "The name of the first database in the cluster."
   value       = aws_redshift_cluster.this.database_name
 }
 
 output "port" {
-  description = "TCP port for client connections"
+  description = "The port the cluster accepts connections on."
   value       = aws_redshift_cluster.this.port
 }
 
 output "subnet_group_name" {
-  description = "Name of the managed Redshift subnet group (empty if not created)"
-  value       = local.create_subnet_group ? aws_redshift_subnet_group.this[0].name : ""
-}
-
-output "security_group_id" {
-  description = "ID of the managed security group (empty if not created)"
-  value       = local.create_security_group ? aws_security_group.this[0].id : ""
+  description = "The Redshift subnet group the cluster runs in (managed here or referenced)."
+  value       = try(coalesce(aws_redshift_cluster.this.cluster_subnet_group_name, ""), "")
 }
 
 output "parameter_group_name" {
-  description = "Name of the managed parameter group (empty if not created)"
-  value       = local.create_parameter_group ? aws_redshift_parameter_group.this[0].name : ""
+  description = "The parameter group in use (managed inline group, referenced group, or the Redshift default)."
+  value       = try(coalesce(aws_redshift_cluster.this.cluster_parameter_group_name, ""), "")
 }
 
 output "master_password_secret_arn" {
-  description = "ARN of the Secrets Manager secret containing the master password (empty when manage_master_password is false)"
-  value       = try(aws_redshift_cluster.this.master_password_secret_arn, "")
+  description = "The ARN of the AWS-managed admin-password secret in Secrets Manager (only when manage_master_password is true) -- the handle applications use to fetch credentials at runtime."
+  value       = try(coalesce(aws_redshift_cluster.this.master_password_secret_arn, ""), "")
 }

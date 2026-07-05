@@ -7,22 +7,28 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the main entry point for the Pulumi module.
-// It reads the AwsEcsServiceStackInput, initializes locals, configures
-// an AWS provider, then calls the service(...) function.
+// Resources creates the ECS service and, when configured, its folded
+// Application Auto Scaling target and policies.
 func Resources(ctx *pulumi.Context, stackInput *awsecsservicev1.AwsEcsServiceStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	// Build the AWS provider from the stack input via the shared builder, which resolves
-	// the right credential mechanism (static keys, keyless web identity, or ambient chain).
+	// Build the AWS provider from the stack input via the shared builder, which
+	// resolves the right credential mechanism (static keys, keyless web identity,
+	// or ambient chain).
 	provider, err := pulumiawsprovider.Get(ctx, stackInput.ProviderConfig, locals.AwsEcsService.Spec.Region)
 	if err != nil {
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	// Call the service(...) function to create the AWS ECS Service resource.
-	if err := ecsService(ctx, locals, provider); err != nil {
+	createdService, err := ecsService(ctx, locals, provider)
+	if err != nil {
 		return errors.Wrap(err, "failed to create aws ecs service resource")
+	}
+
+	if locals.AwsEcsService.Spec.Autoscaling != nil {
+		if err := autoscaling(ctx, locals, provider, createdService); err != nil {
+			return errors.Wrap(err, "failed to configure service autoscaling")
+		}
 	}
 
 	return nil

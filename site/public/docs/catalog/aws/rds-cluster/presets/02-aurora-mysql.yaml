@@ -5,21 +5,36 @@ metadata:
 spec:
   region: us-west-2
   subnetIds:
-    - value: "<private-subnet-id-az1>"
-    - value: "<private-subnet-id-az2>"
+    - value: subnet-replace-with-private-az1
+    - value: subnet-replace-with-private-az2
   securityGroupIds:
-    - value: "<security-group-id>"
+    - value: sg-replace-with-database-sg
   engine: aurora-mysql
-  engineVersion: "8.0.mysql_aurora.3.05.2"
-  databaseName: <database-name>
-  manageMasterUserPassword: true  # recommended_default from spec
-  username: master  # default from spec
-  storageEncrypted: true
+  # Empty engineVersion would keep the AWS default; pinning is the
+  # production posture so upgrades are deliberate.
+  engineVersion: "8.0.mysql_aurora.3.08.0"
+  databaseName: appdb
+  masterUsername: dbadmin # AWS has no default master username -- pick one (avoid reserved names like rdsadmin)
+  manageMasterUserPassword: true # recommended_default -- AWS generates, stores, and rotates the password in Secrets Manager
+  storageEncrypted: true # recommended_default -- create-time-only, cannot be enabled later
   deletionProtection: true
   backupRetentionPeriod: 7
   skipFinalSnapshot: false
-  finalSnapshotIdentifier: <final-snapshot-name>
+  finalSnapshotIdentifier: my-aurora-mysql-final
+  copyTagsToSnapshot: true
+  # In-place rewind for fat-fingered writes -- Aurora MySQL only, and
+  # only enableable at create time (24-hour window here).
+  backtrackWindowSeconds: 86400
   enabledCloudwatchLogsExports:
     - error
     - slowquery
-  copyTagsToSnapshot: true
+  performanceInsightsEnabled: true # free at the default 7-day retention
+  # The compute serving queries: one writer plus one reader for
+  # high availability.
+  instances:
+    - name: writer
+      instanceClass: db.r6g.large
+      promotionTier: 0
+    - name: reader-1
+      instanceClass: db.r6g.large
+      promotionTier: 1

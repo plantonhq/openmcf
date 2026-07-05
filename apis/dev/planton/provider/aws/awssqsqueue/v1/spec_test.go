@@ -238,4 +238,82 @@ var _ = ginkgo.Describe("AwsSqsQueueSpec validations", func() {
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
+
+	// -------------------------------------------------------------------------
+	// Redrive allow policy
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an allowAll redrive allow policy", func() {
+		spec.RedriveAllowPolicy = &AwsSqsQueueRedriveAllowPolicy{
+			RedrivePermission: "allowAll",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a denyAll redrive allow policy", func() {
+		spec.RedriveAllowPolicy = &AwsSqsQueueRedriveAllowPolicy{
+			RedrivePermission: "denyAll",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a byQueue redrive allow policy with source queues", func() {
+		spec.RedriveAllowPolicy = &AwsSqsQueueRedriveAllowPolicy{
+			RedrivePermission: "byQueue",
+			SourceQueueArns: []*foreignkeyv1.StringValueOrRef{
+				strRef("arn:aws:sqs:us-east-1:123456789012:orders"),
+				strRef("arn:aws:sqs:us-east-1:123456789012:payments"),
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when redrive_permission has an invalid value", func() {
+		spec.RedriveAllowPolicy = &AwsSqsQueueRedriveAllowPolicy{
+			RedrivePermission: "someQueues",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when redrive_permission is missing", func() {
+		spec.RedriveAllowPolicy = &AwsSqsQueueRedriveAllowPolicy{}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when byQueue has no source queues", func() {
+		spec.RedriveAllowPolicy = &AwsSqsQueueRedriveAllowPolicy{
+			RedrivePermission: "byQueue",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when allowAll carries source queues", func() {
+		spec.RedriveAllowPolicy = &AwsSqsQueueRedriveAllowPolicy{
+			RedrivePermission: "allowAll",
+			SourceQueueArns: []*foreignkeyv1.StringValueOrRef{
+				strRef("arn:aws:sqs:us-east-1:123456789012:orders"),
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when byQueue exceeds 10 source queues", func() {
+		arns := make([]*foreignkeyv1.StringValueOrRef, 0, 11)
+		for i := 0; i < 11; i++ {
+			arns = append(arns, strRef("arn:aws:sqs:us-east-1:123456789012:src"))
+		}
+		spec.RedriveAllowPolicy = &AwsSqsQueueRedriveAllowPolicy{
+			RedrivePermission: "byQueue",
+			SourceQueueArns:   arns,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
 })

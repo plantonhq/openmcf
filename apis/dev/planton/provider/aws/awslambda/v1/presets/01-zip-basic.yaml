@@ -4,14 +4,16 @@ metadata:
   name: my-zip-lambda
 spec:
   region: <aws-region>
-  functionName: <function-name>
-  roleArn:
-    value: "<lambda-execution-role-arn>"
-  runtime: nodejs18.x
+  role_arn:
+    valueFrom:
+      kind: AwsIamRole
+      name: <execution-role-name>
+      fieldPath: status.outputs.role_arn
+  runtime: nodejs22.x
   handler: index.handler
-  memoryMb: 256
-  timeoutSeconds: 30
-  codeSourceType: CODE_SOURCE_TYPE_S3
+  memory_size_mb: 256
+  timeout_seconds: 30
   s3:
-    bucket: <deployment-bucket>
+    bucket:
+      value: <deployment-bucket>
     key: <deployment-package-key>

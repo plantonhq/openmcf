@@ -7,41 +7,40 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// parameterGroup creates a Redshift Parameter Group when inline parameters are provided.
-func parameterGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*redshift.ParameterGroup, error) {
+// clusterParameterGroup manages a parameter group only when the spec
+// carries inline parameters -- a named parameter list is configuration
+// owned by exactly this cluster, not a composable node. The family
+// defaults to redshift-1.0 (accepted on every cluster);
+// parameter_group_family selects the redshift-2.0 generation when the
+// group should track it.
+func clusterParameterGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*redshift.ParameterGroup, error) {
 	spec := locals.AwsRedshiftCluster.Spec
-	if spec == nil {
-		return nil, nil
-	}
-
-	if spec.ClusterParameterGroupName != "" && len(spec.Parameters) == 0 {
-		return nil, nil
-	}
-
 	if len(spec.Parameters) == 0 {
 		return nil, nil
 	}
 
-	var params redshift.ParameterGroupParameterArrayInput
-	var paramsArr redshift.ParameterGroupParameterArray
-	for _, p := range spec.Parameters {
-		paramsArr = append(paramsArr, &redshift.ParameterGroupParameterArgs{
-			Name:  pulumi.String(p.Name),
-			Value: pulumi.String(p.Value),
+	parameters := redshift.ParameterGroupParameterArray{}
+	for _, parameter := range spec.Parameters {
+		parameters = append(parameters, &redshift.ParameterGroupParameterArgs{
+			Name:  pulumi.String(parameter.Name),
+			Value: pulumi.String(parameter.Value),
 		})
 	}
-	params = paramsArr
 
-	args := &redshift.ParameterGroupArgs{
-		Name:       pulumi.Sprintf("%s-params", locals.AwsRedshiftCluster.Metadata.Id),
-		Family:     pulumi.String("redshift-1.0"),
-		Tags:       pulumi.ToStringMap(locals.Labels),
-		Parameters: params,
+	family := "redshift-1.0"
+	if spec.ParameterGroupFamily != "" {
+		family = spec.ParameterGroupFamily
 	}
 
-	pg, err := redshift.NewParameterGroup(ctx, "cluster-parameter-group", args, pulumi.Provider(provider))
+	createdParameterGroup, err := redshift.NewParameterGroup(ctx, "parameter-group",
+		&redshift.ParameterGroupArgs{
+			Name:       pulumi.String(locals.ClusterIdentifier),
+			Family:     pulumi.String(family),
+			Parameters: parameters,
+			Tags:       pulumi.ToStringMap(locals.AwsTags),
+		}, pulumi.Provider(provider))
 	if err != nil {
-		return nil, errors.Wrap(err, "create parameter group")
+		return nil, errors.Wrap(err, "failed to create Redshift parameter group")
 	}
-	return pg, nil
+	return createdParameterGroup, nil
 }
