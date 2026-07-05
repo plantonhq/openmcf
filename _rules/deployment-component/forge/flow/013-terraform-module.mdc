@@ -187,6 +187,13 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   `count = enabled ? (var.spec.block.sub != null ? 1 : 0) : 0`. Before
   finishing, sweep the module for `&&`/`||` whose operands dereference a
   possibly-null object.
+- **`can()` does NOT null-guard either.** `can(o.s3_origin) && o.s3_origin.attr`
+  still errors when `s3_origin` is null: `can(o.s3_origin)` returns true (the
+  expression evaluates fine, to null), and then the second operand dereferences
+  null. The robust idiom for nested access behind a possibly-null parent is
+  `try(obj.attr, default)` -- `try(o.s3_origin.create_oac, false)` is both the
+  null guard and the default in one expression, and works in `for` filters,
+  `for_each`, and resource arguments alike.
 - Example:
   ```hcl
   # CORRECT: Planton guarantees content_type is populated (default: application/octet-stream)
