@@ -1,6 +1,8 @@
 package module
 
 import (
+	"encoding/json"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/kinesis"
@@ -27,6 +29,13 @@ func stream(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 		args.ShardCount = pulumi.IntPtr(int(spec.ShardCount))
 	}
 
+	// Warm throughput -- pre-provisioned burst capacity for ON_DEMAND
+	// streams; mutually exclusive with shard_count (spec CEL mirrors the
+	// provider's own rule).
+	if spec.WarmThroughputMibPs > 0 {
+		args.WarmThroughputMibPs = pulumi.IntPtr(int(spec.WarmThroughputMibPs))
+	}
+
 	// -------------------------------------------------------------------
 	// Data retention (only set when non-zero to let AWS use defaults)
 	// -------------------------------------------------------------------
@@ -45,13 +54,14 @@ func stream(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 
 	// -------------------------------------------------------------------
-	// Max record size
-	//
-	// DEFERRED: max_record_size_in_kib is defined in the spec but is not
-	// available in the pinned Pulumi AWS SDK v7.3.0. This field was added
-	// in a newer SDK version. The spec retains the field for forward
-	// compatibility; it will be wired when the SDK dependency is upgraded.
+	// Max record size -- Kinesis 10 MiB large-record support. In-place
+	// update; needs the kinesis:UpdateMaxRecordSize IAM permission on the
+	// deploying principal.
 	// -------------------------------------------------------------------
+
+	if spec.MaxRecordSizeInKib > 0 {
+		args.MaxRecordSizeInKib = pulumi.IntPtr(int(spec.MaxRecordSizeInKib))
+	}
 
 	// -------------------------------------------------------------------
 	// Enhanced shard-level monitoring
@@ -80,6 +90,24 @@ func stream(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	s, err := kinesis.NewStream(ctx, locals.Target.Metadata.Name, args, pulumi.Provider(provider))
 	if err != nil {
 		return errors.Wrap(err, "failed to create Kinesis stream")
+	}
+
+	// Resource-based access policy -- AWS models this as a separate API
+	// keyed by the stream ARN (one policy per stream), folded into the spec
+	// because it has no identity of its own. The primary use is
+	// cross-account producer/consumer grants without role assumption.
+	if spec.ResourcePolicy != nil {
+		policyJSON, err := json.Marshal(spec.ResourcePolicy.AsMap())
+		if err != nil {
+			return errors.Wrap(err, "failed to serialize resource policy")
+		}
+		_, err = kinesis.NewResourcePolicy(ctx, "resource-policy", &kinesis.ResourcePolicyArgs{
+			ResourceArn: s.Arn,
+			Policy:      pulumi.String(policyJSON),
+		}, pulumi.Provider(provider))
+		if err != nil {
+			return errors.Wrap(err, "failed to create Kinesis resource policy")
+		}
 	}
 
 	// Export outputs matching AwsKinesisStreamStackOutputs.

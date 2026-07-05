@@ -222,11 +222,17 @@ const (
 	CloudResourceKind_AwsCloudwatchLogGroup            CloudResourceKind = 310
 	CloudResourceKind_AwsCloudwatchAlarm               CloudResourceKind = 311
 	CloudResourceKind_AwsKinesisStream                 CloudResourceKind = 260
-	CloudResourceKind_AwsKinesisFirehose               CloudResourceKind = 261
-	CloudResourceKind_AwsKinesisStreamConsumer         CloudResourceKind = 262
-	CloudResourceKind_AwsAthenaWorkgroup               CloudResourceKind = 263
-	CloudResourceKind_AwsGlueCatalogDatabase           CloudResourceKind = 264
-	CloudResourceKind_AwsRedshiftCluster               CloudResourceKind = 265
+	// Every Firehose destination requires an S3 configuration (the primary
+	// target for extended_s3; the failed/all-document backup for the rest)
+	// and an IAM role Firehose assumes to write to it, so both are hard
+	// deploy prerequisites.
+	CloudResourceKind_AwsKinesisFirehose CloudResourceKind = 261
+	// A consumer registers against exactly one stream and cannot exist
+	// without it.
+	CloudResourceKind_AwsKinesisStreamConsumer CloudResourceKind = 262
+	CloudResourceKind_AwsAthenaWorkgroup       CloudResourceKind = 263
+	CloudResourceKind_AwsGlueCatalogDatabase   CloudResourceKind = 264
+	CloudResourceKind_AwsRedshiftCluster       CloudResourceKind = 265
 	// AI/ML
 	CloudResourceKind_AwsSagemakerDomain CloudResourceKind = 270
 	// Containers
@@ -1728,7 +1734,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xe9\x98\x01\n" +
+	"\x02v1\x10\x01*\xf3\x98\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1814,9 +1820,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\fAwsWafWebAcl\x10\xad\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awswaf\x12-\n" +
 	"\x15AwsCloudwatchLogGroup\x10\xb6\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawscwlg\x12)\n" +
 	"\x12AwsCloudwatchAlarm\x10\xb7\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscwa\x12'\n" +
-	"\x10AwsKinesisStream\x10\x84\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskin\x12)\n" +
-	"\x12AwsKinesisFirehose\x10\x85\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskfh\x122\n" +
-	"\x18AwsKinesisStreamConsumer\x10\x86\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawskincon\x12)\n" +
+	"\x10AwsKinesisStream\x10\x84\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskin\x12/\n" +
+	"\x12AwsKinesisFirehose\x10\x85\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awskfh:\x04\xd5\x01\xd0\x01\x126\n" +
+	"\x18AwsKinesisStreamConsumer\x10\x86\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawskincon:\x02\x84\x02\x12)\n" +
 	"\x12AwsAthenaWorkgroup\x10\x87\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsath\x12.\n" +
 	"\x16AwsGlueCatalogDatabase\x10\x88\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsglue\x12,\n" +
 	"\x12AwsRedshiftCluster\x10\x89\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awsrs:\x02\x9c\x02\x12(\n" +

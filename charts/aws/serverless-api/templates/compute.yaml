@@ -24,16 +24,15 @@ metadata:
       type: uses
 {% endif %}
 spec:
-  functionName: "{{ values.lambda_function_name }}"
+  region: "{{ values.aws_region }}"
   roleArn:
     valueFrom:
       kind: AwsIamRole
       name: "{{ values.lambda_function_name }}-execution-role"
       fieldPath: status.outputs.role_arn
-  memoryMb: {{ values.lambda_memory_mb }}
+  memorySizeMb: {{ values.lambda_memory_mb }}
   timeoutSeconds: {{ values.lambda_timeout_seconds }}
-  codeSourceType: "{{ values.lambda_code_source_type }}"
-{% if values.lambda_code_source_type == "CODE_SOURCE_TYPE_IMAGE" %}
+{% if values.lambda_code_source == "image" %}
   imageUri: "{{ values.lambda_image_uri }}"
 {% else %}
   runtime: "{{ values.lambda_runtime }}"
@@ -67,6 +66,7 @@ metadata:
       name: "{{ values.api_name }}-access-logs"
       type: uses
 spec:
+  region: "{{ values.aws_region }}"
   description: "{{ values.api_description }}"
   corsConfiguration:
     allowOrigins:

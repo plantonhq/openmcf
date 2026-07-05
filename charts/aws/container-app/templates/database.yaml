@@ -6,9 +6,12 @@ metadata:
   name: "{{ values.dynamodb_table_name }}"
   group: database
 spec:
-  tableName: "{{ values.dynamodb_table_name }}"
+  region: "{{ values.aws_region }}"
   billingMode: PAY_PER_REQUEST
-  hashKey:
-    name: "{{ values.dynamodb_hash_key }}"
-    type: S
+  attributeDefinitions:
+    - name: "{{ values.dynamodb_hash_key }}"
+      type: S
+  keySchema:
+    - attributeName: "{{ values.dynamodb_hash_key }}"
+      keyType: HASH
 {% endif %}

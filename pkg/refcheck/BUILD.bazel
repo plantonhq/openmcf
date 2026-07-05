@@ -2,7 +2,10 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "refcheck",
-    srcs = ["analyze.go"],
+    srcs = [
+        "analyze.go",
+        "resolve.go",
+    ],
     importpath = "github.com/plantonhq/planton/pkg/refcheck",
     visibility = ["//visibility:public"],
     deps = [

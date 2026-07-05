@@ -12,9 +12,8 @@ metadata:
   id: planton-oss-e2e-awss3bucket-smoke
   org: planton-oss
   env: e2e
-  # The AWS Terraform module declares all metadata attributes as required (unlike
-  # the newer auth0 modules, which mark them optional), so a scenario must supply
-  # the full set. The managed-by label also tags the bucket for orphan cleanup.
+  # Full metadata is supplied so the bucket carries complete identity tags;
+  # the managed-by label also tags the bucket for orphan cleanup.
   labels:
     managed-by: planton-e2e
     e2e-component: awss3bucket

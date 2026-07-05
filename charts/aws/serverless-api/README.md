@@ -67,13 +67,15 @@ Layer 2 (dep Lambda): AwsHttpApiGateway
 
 | Parameter | Description | Default | Required |
 |-----------|-------------|---------|----------|
+| **Region** | | | |
+| `aws_region` | AWS region for every resource | `us-east-1` | Yes |
 | **Lambda** | | | |
 | `lambda_function_name` | Function name | `api-handler` | Yes |
-| `lambda_code_source_type` | `CODE_SOURCE_TYPE_IMAGE` or `CODE_SOURCE_TYPE_S3` | `CODE_SOURCE_TYPE_IMAGE` | Yes |
-| `lambda_image_uri` | ECR image URI (for IMAGE type) | `""` | When IMAGE |
-| `lambda_s3_bucket` | S3 bucket with code zip (for S3 type) | `""` | When S3 |
-| `lambda_s3_key` | S3 object key for code zip (for S3 type) | `""` | When S3 |
-| `lambda_runtime` | Runtime (for S3 type, e.g., `nodejs20.x`) | `nodejs20.x` | When S3 |
+| `lambda_code_source` | `image` (ECR container image) or `s3` (zip archive) | `image` | Yes |
+| `lambda_image_uri` | ECR image URI (when `image`) | `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:latest` | When `image` |
+| `lambda_s3_bucket` | S3 bucket with code zip (when `s3`) | `my-artifacts-bucket` | When `s3` |
+| `lambda_s3_key` | S3 object key for code zip (when `s3`) | `lambda/api-handler.zip` | When `s3` |
+| `lambda_runtime` | Runtime (when `s3`, e.g., `nodejs20.x`) | `nodejs20.x` | When `s3` |
 | `lambda_handler` | Handler (for S3 type, e.g., `index.handler`) | `index.handler` | When S3 |
 | `lambda_memory_mb` | Memory in MB (128-10240) | `256` | Yes |
 | `lambda_timeout_seconds` | Timeout in seconds (1-900) | `30` | Yes |
@@ -104,7 +106,7 @@ databaseEnabled: true
 messagingEnabled: false
 notificationsEnabled: false
 authEnabled: false
-lambda_code_source_type: CODE_SOURCE_TYPE_IMAGE
+lambda_code_source: image
 lambda_image_uri: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:latest
 ```
 
@@ -115,14 +117,14 @@ databaseEnabled: true
 messagingEnabled: true
 notificationsEnabled: true
 authEnabled: true
-lambda_code_source_type: CODE_SOURCE_TYPE_IMAGE
+lambda_code_source: image
 lambda_image_uri: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:latest
 ```
 
 ### S3 Zip Deployment
 
 ```yaml
-lambda_code_source_type: CODE_SOURCE_TYPE_S3
+lambda_code_source: s3
 lambda_s3_bucket: my-deployments-bucket
 lambda_s3_key: api-handler/v1.0.0.zip
 lambda_runtime: python3.12

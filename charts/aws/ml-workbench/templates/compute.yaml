@@ -1,5 +1,6 @@
-{% if values.vpcEnabled | bool %}
-# AWS network foundation for the ML workbench (only created when vpcEnabled).
+# AWS network foundation for the ML workbench. SageMaker domains always live
+# in a VPC -- vpcEnabled only controls whether app traffic is confined to it
+# (VpcOnly) or may reach the internet directly (PublicInternetOnly).
 #
 # One public and one private subnet per Availability Zone. The SageMaker domain
 # runs in the private subnets and reaches the internet outbound-only through a
@@ -222,7 +223,6 @@ spec:
       protocol: "-1"
       ipv4Cidrs:
         - 0.0.0.0/0
-{% endif %}
 ---
 apiVersion: aws.planton.dev/v1
 kind: AwsSagemakerDomain
@@ -233,15 +233,12 @@ metadata:
     - kind: AwsIamRole
       name: "{{ values.sagemaker_domain_name }}-execution-role"
       type: uses
-{% if values.vpcEnabled | bool %}
     - kind: AwsVpc
       name: "{{ values.sagemaker_domain_name }}-vpc"
       type: uses
-{% endif %}
 spec:
   region: "{{ values.aws_region }}"
   authMode: "{{ values.auth_mode }}"
-{% if values.vpcEnabled | bool %}
   vpcId:
     valueFrom:
       kind: AwsVpc
@@ -256,6 +253,10 @@ spec:
         kind: AwsSubnet
         name: "{{ values.sagemaker_domain_name }}-private-2"
         fieldPath: status.outputs.subnet_id
+{% if values.vpcEnabled | bool %}
+  appNetworkAccessType: VpcOnly
+{% else %}
+  appNetworkAccessType: PublicInternetOnly
 {% endif %}
   defaultUserSettings:
     executionRoleArn:

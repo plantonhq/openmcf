@@ -5,6 +5,7 @@ metadata:
   name: "{{ values.bus_name }}"
   group: messaging
 spec:
+  region: "{{ values.aws_region }}"
   description: "{{ values.bus_description }}"
 ---
 apiVersion: aws.planton.dev/v1
@@ -13,6 +14,7 @@ metadata:
   name: "{{ values.dlq_name }}"
   group: messaging
 spec:
+  region: "{{ values.aws_region }}"
   fifoQueue: false
   messageRetentionSeconds: 1209600
 ---
@@ -26,6 +28,7 @@ metadata:
       name: "{{ values.dlq_name }}"
       type: uses
 spec:
+  region: "{{ values.aws_region }}"
   fifoQueue: false
   visibilityTimeoutSeconds: {{ values.processing_queue_visibility_timeout }}
   messageRetentionSeconds: 345600
@@ -43,5 +46,6 @@ kind: AwsSnsTopic
 metadata:
   name: "{{ values.sns_topic_name }}"
   group: messaging
-spec: {}
+spec:
+  region: "{{ values.aws_region }}"
 {% endif %}

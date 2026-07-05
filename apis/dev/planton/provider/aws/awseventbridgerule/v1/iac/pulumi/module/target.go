@@ -3,8 +3,8 @@ package module
 import (
 	"fmt"
 
-	awseventbridgerulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseventbridgerule/v1"
 	"github.com/pkg/errors"
+	awseventbridgerulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseventbridgerule/v1"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/cloudwatch"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"

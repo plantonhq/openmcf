@@ -5,6 +5,7 @@ metadata:
   name: "{{ values.glue_database_name }}"
   group: analytics
 spec:
+  region: "{{ values.aws_region }}"
   description: "{{ values.glue_database_description }}"
   locationUri: "s3://{{ values.s3_bucket_name }}/raw/"
 ---
@@ -21,6 +22,7 @@ metadata:
       name: "{{ values.glue_database_name }}"
       type: uses
 spec:
+  region: "{{ values.aws_region }}"
   resultConfiguration:
     outputLocation: "s3://{{ values.s3_bucket_name }}/athena-results/"
     encryptionOption: SSE_S3

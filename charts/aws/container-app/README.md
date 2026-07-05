@@ -51,9 +51,10 @@ Layer 1 (dep IAM):   AwsAppRunnerService
 |-----------|-------------|---------|----------|
 | **Service** | | | |
 | `service_name` | App Runner service name | `my-app` | Yes |
+| `aws_region` | AWS region for every resource | `us-east-1` | Yes |
 | **Container** | | | |
 | `ecr_repo_name` | ECR repository name | `my-app` | Yes |
-| `image_uri` | Full ECR image URI with tag | `""` | Yes |
+| `image_uri` | Full ECR image URI with tag | `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest` | Yes |
 | `container_port` | Port the container listens on | `8080` | Yes |
 | **Sizing** | | | |
 | `cpu` | CPU units (256, 512, 1024, 2048, 4096) | `1024` | Yes |

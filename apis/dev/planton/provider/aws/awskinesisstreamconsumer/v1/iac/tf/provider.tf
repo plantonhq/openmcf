@@ -1,8 +1,10 @@
 terraform {
   required_providers {
     aws = {
+      # Floor 6.2.0: consumer tags landed there (aws_kinesis_resource_policy
+      # predates the v6 line).
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.2.0"
     }
   }
 }

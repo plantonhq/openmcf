@@ -12,6 +12,7 @@ metadata:
       name: "{{ values.processing_queue_name }}"
       type: uses
 spec:
+  region: "{{ values.aws_region }}"
   eventBusName:
     valueFrom:
       kind: AwsEventBridgeBus

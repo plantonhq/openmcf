@@ -235,3 +235,48 @@ spec:
         Principal:
           Service: lambda.amazonaws.com
         Action: sts:AssumeRole
+---
+# Firehose delivery role: trusts firehose.amazonaws.com and carries the S3
+# write permissions every Firehose destination needs (extended_s3 targets
+# and the failed/all-document backup for the other destinations). Scoped to
+# the shared bucket fixture, which firehose scenarios compose as their
+# destination.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-firehose-delivery-role
+  id: planton-oss-e2e-firehose-delivery-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for Firehose S3 delivery
+  inlinePolicies:
+    firehoseS3DeliveryE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:AbortMultipartUpload
+            - s3:GetBucketLocation
+            - s3:GetObject
+            - s3:ListBucket
+            - s3:ListBucketMultipartUploads
+            - s3:PutObject
+          Resource:
+            - arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq
+            - arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq/*
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: firehose.amazonaws.com
+        Action: sts:AssumeRole

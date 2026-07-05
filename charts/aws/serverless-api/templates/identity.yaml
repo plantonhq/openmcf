@@ -5,6 +5,7 @@ metadata:
   name: "{{ values.lambda_function_name }}-execution-role"
   group: identity
 spec:
+  region: "{{ values.aws_region }}"
   description: Execution role for the {{ values.lambda_function_name }} Lambda function
   path: /service-role/
   trustPolicy:

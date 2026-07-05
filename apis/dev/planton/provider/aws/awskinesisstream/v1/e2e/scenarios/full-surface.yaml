@@ -1,0 +1,55 @@
+# Full-surface AwsKinesisStream scenario: ON_DEMAND mode with extended
+# retention, KMS encryption via the AWS-managed Kinesis key (no KMS
+# prerequisite needed), the 10 MiB large-record surface (maxRecordSizeInKib
+# above the 1 MiB default), shard-level enhanced monitoring, warm throughput
+# (this session's new pre-provisioned-burst field -- billed per MiB/s-hour,
+# so 2 MiB/s for a minutes-long lane costs pennies), and the folded resource
+# policy (its own provider resource, so the satellite materializes live).
+# The policy grants same-account DescribeStreamSummary only, and its
+# aws:PrincipalAccount condition value carries a literal ${...} sequence --
+# proving the tfvars template-introducer escaping end to end, the same trick
+# the DynamoDB lane uses. forceNew fields are all set at create, so the lane
+# is a single deploy -> verify -> destroy pass.
+#
+# Deliberately not composed here: a customer-managed KMS key (the
+# AWS-managed alias proves the same encryption wiring without a
+# prerequisite) and PROVISIONED mode (shard_count is proven by spec tests
+# and conflicts with the warm-throughput arm under test).
+apiVersion: aws.planton.dev/v1
+kind: AwsKinesisStream
+metadata:
+  name: planton-oss-e2e-awskinesisstream-full
+  id: planton-oss-e2e-awskinesisstream-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskinesisstream
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  streamMode: ON_DEMAND
+  retentionPeriodHours: 48
+  kmsKeyId:
+    value: alias/aws/kinesis
+  maxRecordSizeInKib: 2048
+  shardLevelMetrics:
+    - IncomingBytes
+    - IteratorAgeMilliseconds
+  enforceConsumerDeletion: true
+  warmThroughputMibPs: 2
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowOwnAccountDescribe
+        Effect: Allow
+        Principal:
+          AWS: "*"
+        Action: kinesis:DescribeStreamSummary
+        Resource: "*"
+        Condition:
+          StringEquals:
+            aws:PrincipalAccount: "${aws:ResourceAccount}"

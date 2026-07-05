@@ -1,4 +1,12 @@
 params:
+- name: aws_region
+  description: AWS region for every resource
+  value: us-east-1
+
 - name: bucket_name
   description: Name of the S3 bucket for Pulumi state backend (e.g., my-org-pulumi-state-backend)
   value: my-org-pulumi-state-backend
+
+- name: table_name
+  description: Name of the DynamoDB table for Terraform state locking
+  value: terraform-state-lock

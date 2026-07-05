@@ -1,0 +1,55 @@
+# AwsKinesisFirehose chain scenario: a Direct PUT delivery stream landing in
+# the shared S3 bucket fixture via the extended_s3 destination -- the most
+# common Firehose shape (~60% of delivery streams). Both registry
+# prerequisites (AwsS3Bucket, AwsIamRole -- every destination needs an S3
+# target and a role Firehose assumes to write to it) install first; the
+# role profile's firehose-delivery document trusts firehose.amazonaws.com
+# and is scoped to the fixture bucket, so the references resolve with no
+# scenario-level annotation. The scenario exercises SSE with the AWS-owned
+# CMK (Direct PUT only -- the arm a Kinesis source would forbid), GZIP
+# compression, tightened buffering hints, and Firehose !{...} prefix
+# expressions (a second template-syntax class flowing through both engines'
+# variable plumbing). No records are ever put, so the lane cost is the
+# create/delete cycle alone.
+#
+# Deliberately not composed here: the Kinesis stream source (it only swaps
+# the ingestion edge and would force a stream+read-role chain onto the
+# lane), Lambda processing, dynamic partitioning, and format conversion --
+# all proven by CEL spec tests and the offline gate. The other three
+# destinations each need live external infrastructure (an OpenSearch
+# domain, an HTTPS receiver, a Redshift cluster) and are covered by spec
+# tests per the approved audit-only scope.
+apiVersion: aws.planton.dev/v1
+kind: AwsKinesisFirehose
+metadata:
+  name: planton-oss-e2e-awskfh-s3
+  id: planton-oss-e2e-awskfh-s3
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskinesisfirehose
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  sseEnabled: true
+  extendedS3:
+    bucketArn:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awss3bucket-prereq
+        fieldPath: status.outputs.bucket_arn
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-firehose-delivery-role
+        fieldPath: status.outputs.role_arn
+    prefix: "firehose/year=!{timestamp:yyyy}/month=!{timestamp:MM}/"
+    errorOutputPrefix: "firehose-errors/!{firehose:error-output-type}/"
+    compressionFormat: GZIP
+    buffering:
+      intervalInSeconds: 60
+      sizeInMbs: 1

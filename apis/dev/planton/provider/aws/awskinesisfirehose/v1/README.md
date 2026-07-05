@@ -251,15 +251,18 @@ The following fields require replacing the entire delivery stream if changed:
 1. **Direct PUT** (default) — Applications call PutRecord/PutRecordBatch APIs
 2. **Kinesis Data Stream** — Firehose reads from an existing stream with automatic checkpointing
 
-### Deliberate v1 Omissions
+### Deliberate Omissions
 
 | Feature | Reason |
 |---------|--------|
-| Splunk destination | Requires HEC token management and Splunk-specific config. <15% usage. |
-| Amazon OpenSearch Serverless destination | Separate destination type in AWS API. Can add in v2. |
-| MSK (Managed Kafka) source | Requires Kafka-specific consumer group config. Can add in v2. |
-| Secrets Manager for Redshift credentials | Additional dependency; direct credentials cover most use cases in v1. |
-| Multiple processors (AppendDelimiter, MetadataExtraction) | Lambda covers 95%+ of transformation needs. |
+| Splunk destination | Requires HEC token management and Splunk-specific config; revisit on concrete pull. |
+| Snowflake destination | Requires Snowflake account/key-pair credential surface; revisit on concrete pull. |
+| Iceberg (S3 Tables) destination | A newer table-format surface with its own catalog coupling; revisit on concrete pull. |
+| Legacy Elasticsearch destination | Superseded by the OpenSearch destination for new streams. |
+| Amazon OpenSearch Serverless destination | Separate destination type in the AWS API; revisit on concrete pull. |
+| MSK (Managed Kafka) source | Requires Kafka-specific consumer group config; revisit on concrete pull. |
+| Secrets Manager for HTTP/Redshift credentials | Additional dependency; direct credentials cover the common cases today. |
+| Multiple processors (AppendDelimiter, MetadataExtraction) | Lambda covers the overwhelming majority of transformation needs. |
 | Custom prefix expressions via spec | Prefix expressions are set directly in the `prefix` string field. |
 
 ## Related Resources

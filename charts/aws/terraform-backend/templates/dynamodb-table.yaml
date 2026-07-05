@@ -4,6 +4,7 @@ kind: AwsDynamodb
 metadata:
   name: "{{ values.table_name }}"
 spec:
+  region: "{{ values.aws_region }}"
   billingMode: PROVISIONED
   provisionedThroughput:
     readCapacityUnits: 5

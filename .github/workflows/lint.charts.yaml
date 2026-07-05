@@ -1,15 +1,22 @@
 # =============================================================================
-# Infra Chart Structure Guard
+# Infra Chart Guards
 # =============================================================================
-# Fails the PR if any infra chart under charts/<provider>/<name>/ is structurally
-# incomplete: missing Chart.yaml, values.yaml (with a params block), or a
-# non-empty templates/ directory, or a Chart.yaml missing the InfraChart identity.
+# Two gates run on every chart change:
 #
-# This enforces the chart project contract (Chart.yaml + values.yaml + templates/)
-# that downstream discovery, loading, and the released catalog bundle depend on,
-# catching a structurally broken chart at PR time. Deep render/validation is the
-# authoritative Platform build's job and is intentionally not duplicated here.
-# See hack/guards/ensure_chart_structure.sh.
+# 1. Structure guard -- fails the PR if any infra chart under
+#    charts/<provider>/<name>/ is structurally incomplete: missing Chart.yaml,
+#    values.yaml (with a params block), or a non-empty templates/ directory, or
+#    a Chart.yaml missing the InfraChart identity. This enforces the chart
+#    project contract that downstream discovery, loading, and the released
+#    catalog bundle depend on. See hack/guards/ensure_chart_structure.sh.
+#
+# 2. Offline render validation -- builds the CLI from this checkout and runs
+#    `planton chart validate` over the AWS charts: every template is rendered
+#    (defaults plus each bool toggle flipped), and every rendered manifest must
+#    load against the local kind registry, pass protovalidate, and have all its
+#    valueFrom references resolve. This makes proto/chart drift unshippable at
+#    PR time. Scoped to charts/aws; the authoritative Platform build remains
+#    the engine-of-record gate for publishing.
 # =============================================================================
 
 name: lint.charts
@@ -19,6 +26,7 @@ on:
     paths:
       - 'charts/**'
       - 'hack/guards/ensure_chart_structure.sh'
+      - 'pkg/infrachart/**'
       - '.github/workflows/lint.charts.yaml'
   push:
     branches:
@@ -26,6 +34,7 @@ on:
     paths:
       - 'charts/**'
       - 'hack/guards/ensure_chart_structure.sh'
+      - 'pkg/infrachart/**'
       - '.github/workflows/lint.charts.yaml'
 
 permissions:
@@ -41,3 +50,22 @@ jobs:
 
       - name: Verify chart structure
         run: bash ./hack/guards/ensure_chart_structure.sh
+
+  chart-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build CLI
+        run: go build -o /tmp/planton .
+
+      - name: Validate AWS charts offline
+        run: /tmp/planton chart validate --all charts/aws

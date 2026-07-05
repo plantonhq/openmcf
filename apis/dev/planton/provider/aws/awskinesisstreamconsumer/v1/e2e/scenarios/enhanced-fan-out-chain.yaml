@@ -1,0 +1,46 @@
+# AwsKinesisStreamConsumer chain scenario: register one enhanced fan-out
+# consumer against the shared stream fixture. AwsKinesisStream is the kind's
+# registry prerequisite (a consumer cannot exist without its stream), so the
+# harness installs the stream first and the streamArn reference resolves
+# against its captured outputs. The folded resource policy -- its own
+# provider resource keyed by the consumer ARN -- is exercised live with a
+# same-account grant of the two enhanced-fan-out read actions; its
+# aws:PrincipalAccount condition value carries a literal ${...} sequence,
+# re-proving the tfvars template-introducer escaping on this kind's module.
+# The consumer registers in seconds and holds no data, so the lane cost is
+# the stream fixture alone.
+apiVersion: aws.planton.dev/v1
+kind: AwsKinesisStreamConsumer
+metadata:
+  name: planton-oss-e2e-awskincon-chain
+  id: planton-oss-e2e-awskincon-chain
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskinesisstreamconsumer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  streamArn:
+    valueFrom:
+      kind: AwsKinesisStream
+      name: planton-oss-e2e-awskinesisstream-prereq
+      fieldPath: status.outputs.stream_arn
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowOwnAccountEnhancedFanOut
+        Effect: Allow
+        Principal:
+          AWS: "*"
+        Action:
+          - kinesis:DescribeStreamConsumer
+          - kinesis:SubscribeToShard
+        Resource: "*"
+        Condition:
+          StringEquals:
+            aws:PrincipalAccount: "${aws:ResourceAccount}"
