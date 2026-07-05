@@ -1,286 +1,59 @@
 # AwsCloudFront
 
-AWS CloudFront is a global content delivery network (CDN) that accelerates the delivery of static and dynamic content to users worldwide. This resource provisions a CloudFront distribution with a minimal 80/20 configuration: origins, default origin selection, optional custom domain aliases with ACM certificate, price class, and default root object.
+The **AwsCloudFront** resource provisions an Amazon CloudFront distribution — the global CDN front door that terminates TLS at the edge, caches responses close to viewers, and routes requests to one or more origins (S3 buckets, load balancers, API endpoints, or anything HTTP-addressable).
 
-The **AwsCloudFront** API provides an opinionated, simplified interface that covers the most common production use cases while eliminating configuration complexity and common pitfalls.
+## The Model
 
-## Overview
+The spec mirrors CloudFront's own composition:
 
-CloudFront sits at the edge of your application architecture, serving as:
-- **Performance Accelerator**: Caching content at 400+ global edge locations for sub-100ms latency
-- **Security Gateway**: Integrates with AWS WAF and Shield for DDoS protection and threat filtering
-- **Cost Optimizer**: Free data transfer from AWS origins (S3, ALB, EC2) to CloudFront edges
-- **Global HTTP/HTTPS Frontend**: HTTPS enforcement, custom domain support, and HTTP/2 by default
+- **`origins`** declare WHERE content comes from. Each origin carries a user-chosen `originId` (the stable handle behaviors target) and one origin-type arm: `s3Origin` (REST endpoint, pair with origin access control), `customOrigin` (anything HTTP — load balancers, APIs, S3 *website* endpoints), or `vpcOrigin` (a provisioned CloudFront VPC origin reaching private resources with zero public exposure).
+- **`originGroups`** compose two origins into a primary/failover pair; behaviors can target a group's ID exactly like an origin's.
+- **`defaultCacheBehavior`** (plus path-matched **`orderedCacheBehaviors`**, first match wins) declares HOW requests are matched, cached, and forwarded — protocol policy, methods, compression, edge functions, and the caching configuration.
+- **`viewerCertificate`** + **`aliases`** put the distribution on your own domain.
 
-This resource is ideal for:
-- Static websites hosted on S3 (React, Vue, Next.js builds)
-- API acceleration via ALB or API Gateway origins
-- Multi-origin CDN architectures (static assets from S3, dynamic content from ALB)
+Validation proves every behavior target and origin-group member resolves to a declared origin, so a dangling reference is caught at manifest time instead of at deploy time.
 
-## Spec Fields
+## Private S3 Origins: Origin Access Control
 
-### `enabled` (bool)
-Whether the CloudFront distribution is enabled and actively serving traffic.
-- **Default**: Typically set to `true` for production
-- **Use Case**: Set to `false` to temporarily disable the distribution without deleting it (useful for maintenance windows)
+The modern way to front S3 is an **Origin Access Control** — CloudFront signs origin requests with SigV4 so the bucket stays fully private. Set `s3Origin.createOriginAccessControl: true` and the module provisions and attaches the OAC; then allow the distribution's ARN in the bucket policy (`cloudfront.amazonaws.com` principal with an `AWS:SourceArn` condition on the `distribution_arn` output). An existing OAC can be attached by ID, and an existing legacy Origin Access Identity path is accepted (never created — OAC supersedes it).
 
-### `aliases` ([]string, optional)
-Custom domain names (CNAMEs) for the distribution, such as `cdn.example.com` or `www.example.com`.
-- **Format**: Must be valid fully-qualified domain names (FQDNs)
-- **Validation**: Each alias must be unique within the array
-- **Requirement**: When aliases are set, `certificate_arn` **must** be provided
-- **DNS Setup**: After deploying, create a Route53 CNAME or Alias record pointing your custom domain to the CloudFront `domain_name` output
+## Caching: Two Generations
 
-**Example**:
-```yaml
-aliases:
-  - cdn.example.com
-  - assets.example.com
-```
+Each behavior chooses exactly one caching generation:
 
-### `certificate_arn` (string, optional but required with aliases)
-The ARN of an AWS Certificate Manager (ACM) certificate **in the us-east-1 region**.
-- **Critical Requirement**: CloudFront requires certificates to be in `us-east-1`, regardless of your origin's region
-- **Format**: `arn:aws:acm:us-east-1:123456789012:certificate/<uuid>`
-- **Validation**: The ARN pattern is enforced at the API level to catch the us-east-1 requirement before deployment
-- **How to Create**: Request a public certificate in ACM us-east-1 for your domain, validate it via DNS or email
+- **Modern (recommended)** — `cachePolicyId` (+ `originRequestPolicyId`, `responseHeadersPolicyId`). AWS ships managed policies covering most cases: `Managed-CachingOptimized` (`658327ea-f89d-4fab-a63d-7e88639e58f6`) for static content, `Managed-CachingDisabled` (`4135ea2d-6df8-44a3-9df3-4b5a84be39ad`) for APIs, and origin-request policy `Managed-AllViewer` (`216adef6-5c7f-47e4-b989-5492eafa07d3`) to forward everything.
+- **Legacy** — the inline `forwardedValues` block with per-behavior TTLs. Kept for existing configurations; mutually exclusive with a cache policy.
 
-**Example**:
-```yaml
-certificateArn: arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012
-```
+## Edge Compute
 
-### `price_class` (enum)
-Determines which edge locations CloudFront uses, impacting both performance and cost.
+- **CloudFront Functions** (`functionAssociations`) — sub-millisecond JavaScript at every edge, viewer-request/viewer-response only. The lightweight choice for URL rewrites, redirects, and header manipulation.
+- **Lambda@Edge** (`lambdaFunctionAssociations`) — full Lambda at regional edges, all four event types. Requires a numbered function VERSION ARN in us-east-1.
 
-**Options**:
-- **`PRICE_CLASS_100`** (recommended default): North America, Europe, Israel
-  - Lowest cost
-  - Ideal for applications serving primarily NA/EU users
-  - ~70% of global internet users covered
-- **`PRICE_CLASS_200`**: All locations in 100, plus Asia (excluding mainland China), Middle East, Africa
-  - Moderate cost increase (~30% more than 100)
-  - Better latency for Asian and African users
-- **`PRICE_CLASS_ALL`**: All global edge locations including South America, Australia, New Zealand
-  - Highest cost
-  - Best global performance
+## Custom Domains
 
-**Cost Impact**: Price classes can reduce CloudFront costs by 40-60% for regionally-focused applications.
+Set `aliases` plus `viewerCertificate` with the ACM arm (a `StringValueOrRef` to an `AwsCertManagerCert` — the certificate **must live in us-east-1** and cover every alias) or the legacy IAM arm. SNI-only serving and the `TLSv1.2_2021` protocol floor are the defaults. Point DNS at the distribution with Route53 alias records built from the `domain_name` and `hosted_zone_id` outputs.
 
-**Example**:
-```yaml
-priceClass: PRICE_CLASS_100
-```
+## Everything Else
 
-### `origins` ([]Origin, required)
-List of origins (backend servers or S3 buckets) that CloudFront fetches content from.
-
-Each origin includes:
-- **`domain_name`** (string, required): DNS name of the origin
-  - For S3: `bucket-name.s3.amazonaws.com` or `bucket-name.s3-website.region.amazonaws.com`
-  - For ALB: `my-alb-1234567890.us-west-2.elb.amazonaws.com`
-  - For custom: any valid domain or IP
-- **`origin_path`** (string, optional): Prefix path appended to all requests to this origin
-  - Example: `/assets` would prepend `/assets` to every request (viewer requests `/logo.png`, CloudFront fetches `/assets/logo.png` from origin)
-- **`is_default`** (bool, required): Marks this origin as the default target for all requests
-  - **Validation**: Exactly one origin must be marked as default
-
-**Minimal Example (Single S3 Origin)**:
-```yaml
-origins:
-  - domainName: my-bucket.s3.amazonaws.com
-    isDefault: true
-```
-
-**Multi-Origin Example**:
-```yaml
-origins:
-  - domainName: my-static-bucket.s3.amazonaws.com
-    originPath: /assets
-    isDefault: true
-  - domainName: api.example.com
-    isDefault: false
-```
-
-### `default_root_object` (string, optional)
-The object CloudFront returns when a user requests the root URL (e.g., `https://example.com/`).
-- **Common Value**: `index.html` (for static websites)
-- **Behavior**: If omitted, CloudFront forwards requests to `/` directly to the origin
-- **Format**: Must be a valid filename (alphanumeric, dashes, underscores, dots)
-
-**Example**:
-```yaml
-defaultRootObject: index.html
-```
-
-## Validation Rules
-
-The API enforces several critical validations to prevent common misconfigurations:
-
-1. **Aliases Require Certificate**
-   - If `aliases` is non-empty, `certificate_arn` must be provided
-   - Prevents the "can't use custom domain without HTTPS certificate" error
-
-2. **Certificate Must Be in us-east-1**
-   - The `certificate_arn` pattern validation enforces the `us-east-1` region
-   - Catches this gotcha at validation time, not deploy-time
-
-3. **Exactly One Default Origin**
-   - The `origins` array must contain exactly one origin with `is_default: true`
-   - Prevents ambiguity about which origin to use for requests
-
-4. **Unique Aliases**
-   - All aliases in the `aliases` array must be unique
-   - Prevents configuration errors and AWS API rejections
-
-5. **Enum Enforcement**
-   - `price_class` must be one of the defined enum values
-   - Invalid values are rejected at validation time
+- **`customErrorResponses`** — replace origin errors with custom pages (e.g. map S3's 403-for-missing-object to a 404, or to `200 /index.html` for SPAs) and control error caching.
+- **`geoRestriction`** — allow or deny viewers by country.
+- **`logging`** — standard access logs to an S3 bucket (the bucket needs ACLs enabled).
+- **`webAclId`** — a CLOUDFRONT-scope WAF Web ACL by ARN (referenceable from an `AwsWafWebAcl`).
+- **`priceClass`** — the cost/latency dial (`PriceClass_All` default, `PriceClass_200`, `PriceClass_100`).
+- **`httpVersion`** / **`isIpv6Enabled`** — protocol surface (`http2and3` is the safe way to adopt HTTP/3; IPv6 costs nothing).
+- **`enableAdditionalMetrics`** — CloudWatch additional metrics (cache hit rate, origin latency, per-status error rates).
+- **`enabled`** / **`waitForDeployment`** / **`retainOnDelete`** — operational knobs; deploys propagate to every edge location (typically 5-15 minutes).
 
 ## Stack Outputs
 
-After deployment, the following outputs are available for use in DNS configuration, automation, or dependent resources:
+| Output | Description |
+|--------|-------------|
+| `distribution_id` | What invalidation requests and monitoring key on |
+| `distribution_arn` | The WAF-association and bucket-policy join key |
+| `domain_name` | The `d123abc.cloudfront.net` target for DNS |
+| `hosted_zone_id` | CloudFront's global Route53 zone (`Z2FDTNDATAQYW2`), exported so alias records compose without hardcoding |
+| `status` | `Deployed` or `InProgress` |
 
-### `distribution_id` (string)
-The CloudFront distribution ID (e.g., `E2QWRUHAPOMQZL`).
-- **Use Case**: Triggering cache invalidations via `aws cloudfront create-invalidation --distribution-id <id>`
-- **Use Case**: Referencing the distribution in AWS Console or other infrastructure
+## Deliberately Not Modeled (candidate kinds on demand)
 
-### `domain_name` (string)
-The CloudFront-assigned domain name (e.g., `d123abc.cloudfront.net`).
-- **Use Case**: Creating DNS CNAME or Alias records pointing to this domain
-- **Use Case**: Testing the distribution before associating custom domains
-
-### `hosted_zone_id` (string)
-The Route53 hosted zone ID for CloudFront distributions (always `Z2FDTNDATAQYW2`).
-- **Use Case**: Creating Route53 Alias records for the apex domain (e.g., `example.com` instead of `www.example.com`)
-- **Why It's Constant**: All CloudFront distributions use this same hosted zone ID—it's an AWS global constant
-
-**Example Route53 Alias Record**:
-```hcl
-resource "aws_route53_record" "cdn" {
-  zone_id = var.my_hosted_zone_id
-  name    = "cdn.example.com"
-  type    = "A"
-  
-  alias {
-    name                   = aws_cloudfront_distribution.main.domain_name
-    zone_id                = aws_cloudfront_distribution.main.hosted_zone_id  # Z2FDTNDATAQYW2
-    evaluate_target_health = false
-  }
-}
-```
-
-## How It Works
-
-This module can be provisioned with either Pulumi or Terraform via the Planton CLI:
-
-1. **Define Your Manifest**: Create a YAML file conforming to the `AwsCloudFront` API
-2. **Validate**: `planton validate --manifest manifest.yaml`
-3. **Deploy**: 
-   - Pulumi: `planton pulumi up --manifest manifest.yaml --stack org/project/stack`
-   - Terraform: `planton terraform apply --manifest manifest.yaml --stack org/project/stack`
-
-The CLI serializes your manifest into a protobuf `AwsCloudFrontStackInput`, injects provider credentials from the stack configuration, and invokes the chosen IaC backend. The IaC module (Pulumi or Terraform) provisions the CloudFront distribution and returns structured outputs.
-
-## Common Patterns
-
-### Static Website from S3
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsCloudFront
-metadata:
-  name: my-website-cdn
-spec:
-  enabled: true
-  priceClass: PRICE_CLASS_100
-  origins:
-    - domainName: my-website-bucket.s3.amazonaws.com
-      isDefault: true
-  defaultRootObject: index.html
-```
-
-### Static Website with Custom Domain
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsCloudFront
-metadata:
-  name: my-website-cdn
-spec:
-  enabled: true
-  aliases:
-    - www.example.com
-  certificateArn: arn:aws:acm:us-east-1:123456789012:certificate/abcd-1234-efgh-5678
-  priceClass: PRICE_CLASS_100
-  origins:
-    - domainName: my-website-bucket.s3.amazonaws.com
-      isDefault: true
-  defaultRootObject: index.html
-```
-
-### Multi-Origin (Static Assets + API)
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsCloudFront
-metadata:
-  name: multi-origin-cdn
-spec:
-  enabled: true
-  aliases:
-    - app.example.com
-  certificateArn: arn:aws:acm:us-east-1:123456789012:certificate/abcd-1234-efgh-5678
-  priceClass: PRICE_CLASS_100
-  origins:
-    - domainName: static-assets.s3.amazonaws.com
-      originPath: /assets
-      isDefault: true
-    - domainName: api-alb-1234567890.us-west-2.elb.amazonaws.com
-      isDefault: false
-  defaultRootObject: index.html
-```
-
-## Common Troubleshooting
-
-### "Invalid viewer certificate" error
-**Cause**: The ACM certificate is not in `us-east-1`.
-**Solution**: Create or import your certificate in the `us-east-1` region, regardless of where your origin is located.
-
-### "403 Forbidden" from S3 origin
-**Cause**: The S3 bucket policy doesn't grant CloudFront read access.
-**Solution**: Add a bucket policy allowing the CloudFront distribution's service principal or OAI to read objects. (Note: This implementation uses custom origin config; for OAC, see the Pulumi or Terraform modules directly.)
-
-### Cache not updating after deployment
-**Cause**: Cached content hasn't expired yet.
-**Best Practice**: Use file versioning (content-hashed filenames like `app.a1b2c3d4.js`) instead of cache invalidation. Only `index.html` should have a short TTL.
-**Quick Fix**: Create a cache invalidation: `aws cloudfront create-invalidation --distribution-id <id> --paths "/*"`
-
-### High costs
-**Cause**: Using `PRICE_CLASS_ALL` when serving primarily NA/EU users.
-**Solution**: Switch to `PRICE_CLASS_100` to reduce costs by 40-60%.
-
-## Security Best Practices
-
-1. **Always Use HTTPS**: This module enforces `redirect-to-https` by default
-2. **Enable AWS WAF**: Integrate WAF for protection against SQL injection, XSS, and DDoS attacks (not exposed in this 80/20 API; configure separately)
-3. **Private S3 Buckets**: Never make S3 buckets public—use Origin Access Control (OAC) or bucket policies
-4. **Certificate Validation**: Use DNS validation for ACM certificates for automated renewal
-5. **Geo-Restrictions**: If required, configure geo-blocking via CloudFront settings (advanced use case, not in 80/20 API)
-
-## References
-
-- **CloudFront Distributions**: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-working-with.html
-- **Price Classes**: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PriceClass.html
-- **ACM Certificates for CloudFront**: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cnames-and-https-requirements.html
-- **Origin Access Control (OAC)**: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html
-- **Cache Invalidation Best Practices**: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html
-
-## Design Philosophy
-
-This resource implements the **80/20 principle**: it exposes the 20% of CloudFront configuration that covers 80% of production use cases. Advanced features like Lambda@Edge, origin failover groups, custom error responses, and path-based cache behaviors are intentionally omitted to reduce complexity.
-
-For advanced use cases, you can:
-- Use the Pulumi or Terraform modules directly (in `iac/pulumi/` or `iac/tf/`)
-- Extend the protobuf spec in a future API version
-- Compose multiple `AwsCloudFront` resources for different distributions
-
-See `docs/README.md` for the comprehensive research behind these design decisions.
+Cache/origin-request/response-headers policies, CloudFront Functions, key groups and public keys (signed URLs), VPC origins, real-time log configurations, field-level encryption profiles, continuous-deployment policies, the multi-tenant distribution family, anycast IP lists, and mTLS trust stores each have independent lifecycles and are candidate first-class kinds. The spec carries their IDs/ARNs today, so future kinds compose with zero rework.

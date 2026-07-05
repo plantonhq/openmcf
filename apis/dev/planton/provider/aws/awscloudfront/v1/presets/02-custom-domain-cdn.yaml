@@ -3,12 +3,30 @@ kind: AwsCloudFront
 metadata:
   name: my-custom-domain-cdn
 spec:
-  region: <aws-region>
-  enabled: true
+  region: us-east-1
   aliases:
-    - <your-cdn-domain.com>
-  certificateArn: <acm-certificate-arn-us-east-1>
-  priceClass: PRICE_CLASS_200  # US, Canada, Europe, Asia, Middle East, Africa
+    - <cdn.example.com>
+  viewerCertificate:
+    # The ACM certificate MUST live in us-east-1 (CloudFront's global
+    # requirement) and cover every alias above.
+    acmCertificateArn:
+      valueFrom:
+        kind: AwsCertManagerCert
+        name: <certificate-resource-name>
+        fieldPath: status.outputs.cert_arn
   origins:
-    - domainName: <origin-domain-name>
-      isDefault: true
+    - originId: s3-site
+      domainName: <bucket-name>.s3.<bucket-region>.amazonaws.com
+      s3Origin:
+        createOriginAccessControl: true
+  defaultCacheBehavior:
+    targetOriginId: s3-site
+    viewerProtocolPolicy: redirect-to-https
+    compress: true
+    # Managed-CachingOptimized: the AWS managed cache policy for static
+    # content.
+    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+  defaultRootObject: index.html
+  # Dual-stack: serve IPv6 viewers too (create AAAA alias records alongside
+  # the A records).
+  isIpv6Enabled: true
