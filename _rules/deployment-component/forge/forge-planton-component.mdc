@@ -343,6 +343,16 @@ repeated `StringValueOrRef` fields both resolve, refs nested inside (repeated)
 spec messages resolve too, and a repeated list can mix literals with
 references.
 
+**Install manifests declare their own composed fixtures the same way.** The
+resolver also reads the `planton.dev/e2e-prerequisites` annotation on each
+prerequisite's OWN install manifest (recursively, cycle-checked) and orders
+those fixtures BEFORE the declaring kind — so when a dependency's install
+manifest references sibling fixtures via `valueFrom` (the zip-backed Lambda
+scenario referencing the S3 object-set fixture that stages its code), the
+chain deploys in resolvable order with no per-consumer wiring. Put the
+annotation on the install manifest that carries the references; consumers of
+that kind inherit the ordering automatically.
+
 **Multi-instance prerequisites.** A prerequisite install profile
 (`e2e/prerequisite.yaml`) may carry multiple `---`-separated documents of the
 kind when real topologies need more than one instance — e.g. a load balancer
