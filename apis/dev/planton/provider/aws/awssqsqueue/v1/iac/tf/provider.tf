@@ -1,8 +1,11 @@
 terraform {
   required_providers {
     aws = {
+      # v6 family floor: every attribute this module renders (incl.
+      # redrive_allow_policy) long predates 6.0, so the floor is the family
+      # baseline rather than a feature-driven minimum.
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.0.0"
     }
   }
 }

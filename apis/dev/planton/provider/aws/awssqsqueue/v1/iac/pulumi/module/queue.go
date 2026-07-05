@@ -70,6 +70,29 @@ func queue(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*sqs.Qu
 		args.RedrivePolicy = pulumi.String(string(policyJSON))
 	}
 
+	// Redrive ALLOW policy — the permission side of the dead-letter
+	// relationship: which source queues may point at THIS queue as their DLQ.
+	// sourceQueueArns is only accepted alongside the byQueue mode, so it is
+	// emitted conditionally (AWS rejects allowAll/denyAll documents that carry
+	// the key).
+	if spec.RedriveAllowPolicy != nil {
+		allowPolicy := map[string]interface{}{
+			"redrivePermission": spec.RedriveAllowPolicy.RedrivePermission,
+		}
+		if spec.RedriveAllowPolicy.RedrivePermission == "byQueue" {
+			sourceArns := make([]string, 0, len(spec.RedriveAllowPolicy.SourceQueueArns))
+			for _, ref := range spec.RedriveAllowPolicy.SourceQueueArns {
+				sourceArns = append(sourceArns, ref.GetValue())
+			}
+			allowPolicy["sourceQueueArns"] = sourceArns
+		}
+		allowJSON, err := json.Marshal(allowPolicy)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to serialize redrive allow policy")
+		}
+		args.RedriveAllowPolicy = pulumi.String(string(allowJSON))
+	}
+
 	// -------------------------------------------------------------------
 	// Encryption
 	// -------------------------------------------------------------------
