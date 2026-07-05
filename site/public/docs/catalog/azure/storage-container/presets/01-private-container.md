@@ -48,7 +48,7 @@ Scope a data-plane grant to just this container:
 scope:
   valueFrom:
     kind: AzureStorageContainer
-    name: app-uploads
+    name: my-app-uploads
     fieldPath: status.outputs.container_id
 roleDefinitionName: Storage Blob Data Contributor
 ```

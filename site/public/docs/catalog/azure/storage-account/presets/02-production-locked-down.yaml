@@ -1,7 +1,7 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
-  name: prod-storage
+  name: my-prod-storage
 spec:
   region: <azure-region>
   resourceGroup:

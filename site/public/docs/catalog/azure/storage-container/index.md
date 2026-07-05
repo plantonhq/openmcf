@@ -39,7 +39,7 @@ spec:
   storageAccountId:
     valueFrom:
       kind: AzureStorageAccount
-      name: app-storage
+      name: my-app-storage
       fieldPath: status.outputs.storage_account_id
   containerName: uploads
 ```

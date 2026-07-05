@@ -1,7 +1,7 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
-  name: analytics-lake
+  name: my-analytics-lake
 spec:
   region: <azure-region>
   resourceGroup:

@@ -51,6 +51,6 @@ Add containers and bind app services through the account's outputs:
 storageAccountId:
   valueFrom:
     kind: AzureStorageAccount
-    name: app-storage
+    name: my-app-storage
     fieldPath: status.outputs.storage_account_id
 ```

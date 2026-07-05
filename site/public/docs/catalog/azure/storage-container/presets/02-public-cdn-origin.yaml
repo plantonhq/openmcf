@@ -1,7 +1,7 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureStorageContainer
 metadata:
-  name: public-assets
+  name: my-public-assets
 spec:
   storageAccountId:
     valueFrom:

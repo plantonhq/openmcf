@@ -1,7 +1,7 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureStorageContainer
 metadata:
-  name: tenant-data
+  name: my-tenant-data
 spec:
   storageAccountId:
     valueFrom:
