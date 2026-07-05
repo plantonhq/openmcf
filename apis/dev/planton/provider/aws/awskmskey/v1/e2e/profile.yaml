@@ -11,19 +11,13 @@ spec:
   # shapes, and custom key policies -- all proven by CEL spec tests and the
   # offline gate.
   #
-  # deferred: both engines are validated offline only -- tofu init +
-  # validate, spec/CEL tests, outputs conformance, and Pulumi module
-  # compile -- with no live provision lane yet (plan/preview lanes also
-  # not run: no usable AWS credentials were reachable). The scenario and
-  # verifier are live-ready; flip to green after the first full deploy ->
-  # verify -> destroy run on both provisioners.
+  # green: both engines have passed the full live lane -- deploy ->
+  # DescribeKey verify -> destroy -> verify-destroyed (Pulumi ~74s,
+  # Terraform ~44s) -- on top of the standing offline gate (tofu init +
+  # validate, spec/CEL tests, outputs conformance, Pulumi module compile).
   tier: 1
-  status: deferred
+  status: green
   validated_provisioners:
     - pulumi
     - terraform
   timeout_minutes: 20
-  deferred_reason: >-
-    Live lane deferred until AWS credentials are restored. Offline gate green
-    (tofu init + validate, spec/CEL tests, outputs conformance, Pulumi module
-    compile); scenario and verifier live-ready.

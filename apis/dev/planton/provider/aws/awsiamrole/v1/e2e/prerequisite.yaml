@@ -218,6 +218,16 @@ spec:
   description: Planton E2E prerequisite role for Lambda function execution
   managedPolicyArns:
     - value: arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  inlinePolicies:
+    sqsWorkerE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource: "*"
   trustPolicy:
     Version: "2012-10-17"
     Statement:

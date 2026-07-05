@@ -448,6 +448,24 @@ func TestAwsSecurityGroup_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awssecuritygroup", "terraform")
 }
 
+// --- AWS CloudFront (placeholder-origin distribution on the default certificate; true leaf, slow edge propagation) ---
+
+func TestAwsCloudFront_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudfront", "pulumi")
+}
+func TestAwsCloudFront_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudfront", "terraform")
+}
+
+// --- AWS Certificate Manager (no-zone requested certificate resting in PENDING_VALIDATION; true leaf) ---
+
+func TestAwsCertManagerCert_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscertmanagercert", "pulumi")
+}
+func TestAwsCertManagerCert_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscertmanagercert", "terraform")
+}
+
 // --- AWS KMS Key (symmetric key with one alias; true leaf) ---
 
 func TestAwsKmsKey_Pulumi(t *testing.T) {

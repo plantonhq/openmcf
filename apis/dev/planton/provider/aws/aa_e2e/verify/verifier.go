@@ -24,10 +24,22 @@ type Verifier interface {
 	VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error
 }
 
+// OutputsVerifier inspects the full stack output map when a single string id is
+// insufficient (e.g. AwsS3ObjectSet verifies HeadObject per key in object_etags).
+type OutputsVerifier interface {
+	Verifier
+	VerifyExistsFromOutputs(ctx context.Context, cfg aws.Config, outputs map[string]interface{}, region string) error
+	VerifyAbsentFromOutputs(ctx context.Context, cfg aws.Config, outputs map[string]interface{}, region string) error
+}
+
 // verifiers maps a component name to its verifier. New AWS components register
 // here as they are forged; today it carries the S3 walking-skeleton only.
 var verifiers = map[string]Verifier{
+	"awscertmanagercert":             &acmCertificateVerifier{},
+	"awscloudfront":                  &cloudFrontDistributionVerifier{},
+	"awssqsqueue":                    &sqsQueueVerifier{},
 	"awss3bucket":                    &s3Verifier{},
+	"awss3objectset":                 &s3ObjectSetVerifier{},
 	"awssubnet":                      &subnetVerifier{},
 	"awsvpc":                         &vpcVerifier{},
 	"awsinternetgateway":             &internetGatewayVerifier{},

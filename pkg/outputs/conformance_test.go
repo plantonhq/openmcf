@@ -1298,6 +1298,53 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 			mustPopulate: []string{"status"},
 		},
+		{
+			// AwsCertManagerCert: cert_arn is the join key every TLS consumer
+			// references (listeners, CloudFront, Cognito, OpenSearch, Client
+			// VPN); domain_validation_records guards the repeated-message
+			// shape external-DNS users consume to create their validation
+			// CNAMEs; status is what the E2E verifier keys on (a no-zone cert
+			// rests in PENDING_VALIDATION).
+			name: "AwsCertManagerCert",
+			kind: cloudresourcekind.CloudResourceKind_AwsCertManagerCert,
+			rawOutputs: map[string]interface{}{
+				"cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012",
+				"status":   "PENDING_VALIDATION",
+				"domain_validation_records": []interface{}{
+					map[string]interface{}{
+						"domain_name":  "example.com",
+						"record_name":  "_3839f23e624907e70b9e.example.com.",
+						"record_type":  "CNAME",
+						"record_value": "_632077f7a35f9d.mhbtsbpdnt.acm-validations.aws.",
+					},
+				},
+				"not_before":       "",
+				"not_after":        "",
+				"certificate_type": "AMAZON_ISSUED",
+			},
+			mustPopulate: []string{
+				"cert_arn", "status", "certificate_type", "domain_validation_records",
+			},
+		},
+		{
+			// AwsCloudFront: distribution_id keys the E2E verifier and
+			// invalidation requests; domain_name + hosted_zone_id are what
+			// Route53 alias records compose against; distribution_arn is the
+			// WAF-association join key.
+			name: "AwsCloudFront",
+			kind: cloudresourcekind.CloudResourceKind_AwsCloudFront,
+			rawOutputs: map[string]interface{}{
+				"distribution_id":  "E2ABCDEF123456",
+				"distribution_arn": "arn:aws:cloudfront::123456789012:distribution/E2ABCDEF123456",
+				"domain_name":      "d123abc456def.cloudfront.net",
+				"hosted_zone_id":   "Z2FDTNDATAQYW2",
+				"status":           "Deployed",
+			},
+			mustPopulate: []string{
+				"distribution_id", "distribution_arn", "domain_name",
+				"hosted_zone_id", "status",
+			},
+		},
 	}
 
 	for _, tc := range cases {

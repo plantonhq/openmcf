@@ -91,6 +91,9 @@ var migratedKinds = []string{
 	"AwsLambda",
 	"AwsKmsKey",
 	"AwsLambdaEventSourceMapping",
+	// Edge pair: CloudFront migrated off its legacy hand-written contract
+	// (ACM was already enrolled and regenerated with its rebuilt spec).
+	"AwsCloudFront",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

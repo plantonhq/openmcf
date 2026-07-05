@@ -97,6 +97,7 @@ func Resources(ctx *pulumi.Context, stackInput *awss3objectsetv1.AwsS3ObjectSetS
 	}
 
 	// Export outputs
+	ctx.Export(OpBucketID, pulumi.String(bucketName))
 	ctx.Export(OpObjectEtags, etagMap)
 	ctx.Export(OpObjectVersionIds, versionIdMap)
 

@@ -24,6 +24,9 @@ const (
 // AwsS3ObjectSetStackOutputs captures observable outputs from the S3 object upload operations.
 type AwsS3ObjectSetStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// The bucket the objects were uploaded to. Carried for downstream
+	// references and for E2E verification (HeadObject per key).
+	BucketId string `protobuf:"bytes,3,opt,name=bucket_id,json=bucketId,proto3" json:"bucket_id,omitempty"`
 	// Map of object key to its ETag (content hash).
 	// The ETag changes when the object content changes, useful for cache invalidation.
 	ObjectEtags map[string]string `protobuf:"bytes,1,rep,name=object_etags,json=objectEtags,proto3" json:"object_etags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -64,6 +67,13 @@ func (*AwsS3ObjectSetStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
+func (x *AwsS3ObjectSetStackOutputs) GetBucketId() string {
+	if x != nil {
+		return x.BucketId
+	}
+	return ""
+}
+
 func (x *AwsS3ObjectSetStackOutputs) GetObjectEtags() map[string]string {
 	if x != nil {
 		return x.ObjectEtags
@@ -82,8 +92,9 @@ var File_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto protoref
 
 const file_dev_planton_provider_aws_awss3objectset_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awss3objectset/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awss3objectset.v1\"\xaa\x03\n" +
-	"\x1aAwsS3ObjectSetStackOutputs\x12z\n" +
+	">dev/planton/provider/aws/awss3objectset/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awss3objectset.v1\"\xc7\x03\n" +
+	"\x1aAwsS3ObjectSetStackOutputs\x12\x1b\n" +
+	"\tbucket_id\x18\x03 \x01(\tR\bbucketId\x12z\n" +
 	"\fobject_etags\x18\x01 \x03(\v2W.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectEtagsEntryR\vobjectEtags\x12\x8a\x01\n" +
 	"\x12object_version_ids\x18\x02 \x03(\v2\\.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetStackOutputs.ObjectVersionIdsEntryR\x10objectVersionIds\x1a>\n" +
 	"\x10ObjectEtagsEntry\x12\x10\n" +

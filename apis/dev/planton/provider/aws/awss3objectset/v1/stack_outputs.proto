@@ -4,6 +4,10 @@ package dev.planton.provider.aws.awss3objectset.v1;
 
 // AwsS3ObjectSetStackOutputs captures observable outputs from the S3 object upload operations.
 message AwsS3ObjectSetStackOutputs {
+  // The bucket the objects were uploaded to. Carried for downstream
+  // references and for E2E verification (HeadObject per key).
+  string bucket_id = 3;
+
   // Map of object key to its ETag (content hash).
   // The ETag changes when the object content changes, useful for cache invalidation.
   map<string, string> object_etags = 1;
