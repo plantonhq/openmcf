@@ -191,11 +191,13 @@ message GcpRegionNetworkEndpointGroupCloudRun {
 // Cloud Functions target for a SERVERLESS NEG. Set function, or url_mask to
 // derive the function from the request URL — at least one is required.
 message GcpRegionNetworkEndpointGroupCloudFunction {
-  // The Cloud Functions function name to route to (case-sensitive). Modeled as
-  // a reference for future composition, though today it is provided as a
-  // literal name (GcpCloudFunction does not yet export a bare function-name
-  // output). GCP resolves endpoints at serving time. Immutable.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef function = 1;
+  // The Cloud Functions function name to route to (case-sensitive). Accepts
+  // a literal name or a reference to a GcpCloudFunction resource. GCP
+  // resolves endpoints at serving time. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef function = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudFunction,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
 
   // A URL template that parses the function name out of each request URL — for
   // routing many functions from one NEG. Immutable.

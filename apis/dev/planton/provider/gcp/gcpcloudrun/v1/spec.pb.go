@@ -2102,8 +2102,8 @@ type GcpCloudRunVpcAccess struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Serverless VPC Access connector to route egress through — the legacy
 	// mechanism, still required for some org constraints. Full resource name
-	// (projects/*/locations/*/connectors/*) or a connector name in the
-	// service's project/region.
+	// (projects/*/locations/*/connectors/*) or a reference to a
+	// GcpServerlessVpcConnector resource.
 	Connector *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
 	// Direct VPC egress: instances get IPs in the subnetwork and reach VPC
 	// resources with no connector infrastructure. The subnetwork needs free
@@ -2532,9 +2532,9 @@ const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"\x03tag\x18\x04 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x03tag:\x8d\x02\xbaH\x89\x02\x1a\x86\x02\n" +
 	"\x1ftraffic.revision_type_coherence\x12>REVISION targets must name a revision; LATEST targets must not\x1a\xa2\x01(this.type == 'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION' && this.revision != '') || (this.type != 'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION' && this.revision == '')B\n" +
 	"\n" +
-	"\b_percent\"\xb5\x04\n" +
-	"\x14GcpCloudRunVpcAccess\x12P\n" +
-	"\tconnector\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\tconnector\x12s\n" +
+	"\b_percent\"\xd8\x04\n" +
+	"\x14GcpCloudRunVpcAccess\x12s\n" +
+	"\tconnector\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd1\x05\x92\xd4a\x18status.outputs.self_linkR\tconnector\x12s\n" +
 	"\x12network_interfaces\x18\x02 \x03(\v2D.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNetworkInterfaceR\x11networkInterfaces\x12D\n" +
 	"\x06egress\x18\x03 \x01(\tB,\xbaH)\xd8\x01\x01r$R\x00R\vALL_TRAFFICR\x13PRIVATE_RANGES_ONLYR\x06egress:\x8f\x02\xbaH\x8b\x02\x1a\x88\x02\n" +
 	"#vpc_access.connector_xor_interfaces\x12Yuse direct VPC egress (network_interfaces) or a Serverless VPC Access connector, not both\x1a\x85\x01!(((has(this.connector.value) && this.connector.value != '') || has(this.connector.value_from)) && size(this.network_interfaces) > 0)\"\xd1\x02\n" +

@@ -259,6 +259,7 @@ import (
 	gcpredisinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpredisinstance/v1"
 	gcpregionnetworkendpointgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpregionnetworkendpointgroup/v1"
 	gcprouternatv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1"
+	gcpserverlessvpcconnectorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserverlessvpcconnector/v1"
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
 	gcpservicenetworkingconnectionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1"
 	gcpspannerbackupschedulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerbackupschedule/v1"
@@ -735,6 +736,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpRedisInstance:                &gcpredisinstancev1.GcpRedisInstance{},
 	cloudresourcekind.CloudResourceKind_GcpRegionNetworkEndpointGroup:   &gcpregionnetworkendpointgroupv1.GcpRegionNetworkEndpointGroup{},
 	cloudresourcekind.CloudResourceKind_GcpRouterNat:                    &gcprouternatv1.GcpRouterNat{},
+	cloudresourcekind.CloudResourceKind_GcpServerlessVpcConnector:       &gcpserverlessvpcconnectorv1.GcpServerlessVpcConnector{},
 	cloudresourcekind.CloudResourceKind_GcpServiceAccount:               &gcpserviceaccountv1.GcpServiceAccount{},
 	cloudresourcekind.CloudResourceKind_GcpServiceNetworkingConnection:  &gcpservicenetworkingconnectionv1.GcpServiceNetworkingConnection{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerBackupSchedule:        &gcpspannerbackupschedulev1.GcpSpannerBackupSchedule{},

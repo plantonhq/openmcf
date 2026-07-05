@@ -732,6 +732,45 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"table_id", "self_link", "project", "dataset_id", "type", "location", "creation_time"},
 		},
 		{
+			// GcpServerlessVpcConnector: the short connector name, the fully
+			// qualified path serverless workloads attach to, the reconciled
+			// state, and the plain region name.
+			name: "GcpServerlessVpcConnector",
+			kind: cloudresourcekind.CloudResourceKind_GcpServerlessVpcConnector,
+			rawOutputs: map[string]interface{}{
+				"name":      "svc-egress",
+				"self_link": "projects/prod-project/locations/us-central1/connectors/svc-egress",
+				"state":     "READY",
+				"region":    "us-central1",
+			},
+			mustPopulate: []string{"name", "self_link", "state", "region"},
+		},
+		{
+			// GcpCloudFunction: the fully qualified function path, the bare
+			// name serverless NEGs reference, both serving URLs, the
+			// underlying Cloud Run service, runtime identity, state,
+			// environment, and update time (eventarc trigger empty for HTTP
+			// functions).
+			name: "GcpCloudFunction",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudFunction,
+			rawOutputs: map[string]interface{}{
+				"function_id":           "projects/prod-project/locations/us-central1/functions/hello-api",
+				"function_url":          "https://us-central1-prod-project.cloudfunctions.net/hello-api",
+				"service_account_email": "fn-runtime@prod-project.iam.gserviceaccount.com",
+				"state":                 "ACTIVE",
+				"cloud_run_service_id":  "projects/prod-project/locations/us-central1/services/hello-api",
+				"eventarc_trigger_id":   "",
+				"name":                  "hello-api",
+				"uri":                   "https://hello-api-abc123-uc.a.run.app",
+				"environment":           "GEN_2",
+				"update_time":           "2026-07-05T12:00:00Z",
+			},
+			mustPopulate: []string{
+				"function_id", "function_url", "service_account_email", "state",
+				"cloud_run_service_id", "name", "uri", "environment", "update_time",
+			},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

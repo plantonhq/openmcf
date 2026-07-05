@@ -308,6 +308,22 @@ slowest resources in the harness: a control-plane create runs 10-25 minutes and
 a destroy 5-10, per scenario per engine — budget **≥150m** when batching the
 GKE cluster scenarios across both engines.
 
+**Test-side data staging (kinds whose deploy needs pre-existing object bytes):**
+Some resources cannot apply until a blob already exists in cloud storage — Gen
+2 Cloud Functions read their source from GCS at deploy time, and object bytes
+cannot be expressed as IaC. The runner has no hook between prerequisite deploy
+and the scenario apply, and `valueFrom` resolution only touches
+`StringValueOrRef` fields (not plain-string bucket/object paths). The pattern is:
+check in a minimal source tree under `v1/e2e/fixtures/`, and in the test
+entrypoint (before calling the runner) zip it and upload to a run-scoped bucket
+whose name uses the same engine-scoped `${E2E_RUN_ID}` expansion the runner
+applies (`runner.EngineScopedRunID`). Register cleanup on the test handle — the
+harness `Teardown` is a no-op by design. See `e2e/gcp/gcp_test.go`
+`stageCloudFunctionSource` and `gcpcloudfunction/v1/e2e/scenarios/*.yaml`.
+Serverless VPC Access connectors are slow: budget **≥15m per connector scenario**
+(CREATING → READY is typically 5-10 minutes). Cloud Functions Gen 2 deploys
+(including Cloud Build) need **≥20m per scenario**.
+
 ## Build Tag Isolation
 
 All E2E test files use `//go:build e2e`. This means:

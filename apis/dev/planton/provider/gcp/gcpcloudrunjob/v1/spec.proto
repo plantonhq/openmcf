@@ -420,8 +420,13 @@ message GcpCloudRunJobVpcAccess {
     expression: "!(((has(this.connector.value) && this.connector.value != '') || has(this.connector.value_from)) && size(this.network_interfaces) > 0)"
   };
 
-  // Serverless VPC Access connector (legacy mechanism).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef connector = 1;
+  // Serverless VPC Access connector (legacy mechanism). Full resource name
+  // (projects/*/locations/*/connectors/*) or a reference to a
+  // GcpServerlessVpcConnector resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef connector = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServerlessVpcConnector,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
 
   // Direct VPC egress: tasks get IPs in the subnetwork.
   repeated GcpCloudRunJobNetworkInterface network_interfaces = 2;

@@ -29,6 +29,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/alloydb/v1"
 	"google.golang.org/api/bigquery/v2"
+	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
@@ -39,6 +40,7 @@ import (
 	"google.golang.org/api/spanner/v1"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
+	"google.golang.org/api/vpcaccess/v1"
 )
 
 // Harness manages the GCP E2E test lifecycle.
@@ -128,6 +130,14 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create bigquery client")
 	}
+	vpcAccessService, err := vpcaccess.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create vpcaccess client")
+	}
+	cloudFunctionsService, err := cloudfunctions.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create cloudfunctions client")
+	}
 
 	gotProject, err := crmService.Projects.Get(project).Context(ctx).Do()
 	if err != nil {
@@ -151,6 +161,8 @@ func (h *Harness) Setup(ctx context.Context) error {
 		DNS:       dnsService,
 		Spanner:   spannerService,
 		BigQuery:  bigQueryService,
+		VpcAccess: vpcAccessService,
+		Functions: cloudFunctionsService,
 	}
 	return nil
 }

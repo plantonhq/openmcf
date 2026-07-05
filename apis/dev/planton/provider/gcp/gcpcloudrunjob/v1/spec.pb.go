@@ -1236,7 +1236,9 @@ func (x *GcpCloudRunJobVolumeMount) GetMountPath() string {
 // GcpCloudRunJobVpcAccess routes task OUTBOUND traffic into a VPC.
 type GcpCloudRunJobVpcAccess struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Serverless VPC Access connector (legacy mechanism).
+	// Serverless VPC Access connector (legacy mechanism). Full resource name
+	// (projects/*/locations/*/connectors/*) or a reference to a
+	// GcpServerlessVpcConnector resource.
 	Connector *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
 	// Direct VPC egress: tasks get IPs in the subnetwork.
 	NetworkInterfaces []*GcpCloudRunJobNetworkInterface `protobuf:"bytes,2,rep,name=network_interfaces,json=networkInterfaces,proto3" json:"network_interfaces,omitempty"`
@@ -1584,9 +1586,9 @@ const file_dev_planton_provider_gcp_gcpcloudrunjob_v1_spec_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12.\n" +
 	"\n" +
-	"mount_path\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^/.*$R\tmountPath\"\xbe\x04\n" +
-	"\x17GcpCloudRunJobVpcAccess\x12P\n" +
-	"\tconnector\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\tconnector\x12y\n" +
+	"mount_path\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^/.*$R\tmountPath\"\xe1\x04\n" +
+	"\x17GcpCloudRunJobVpcAccess\x12s\n" +
+	"\tconnector\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd1\x05\x92\xd4a\x18status.outputs.self_linkR\tconnector\x12y\n" +
 	"\x12network_interfaces\x18\x02 \x03(\v2J.dev.planton.provider.gcp.gcpcloudrunjob.v1.GcpCloudRunJobNetworkInterfaceR\x11networkInterfaces\x12D\n" +
 	"\x06egress\x18\x03 \x01(\tB,\xbaH)\xd8\x01\x01r$R\x00R\vALL_TRAFFICR\x13PRIVATE_RANGES_ONLYR\x06egress:\x8f\x02\xbaH\x8b\x02\x1a\x88\x02\n" +
 	"#vpc_access.connector_xor_interfaces\x12Yuse direct VPC egress (network_interfaces) or a Serverless VPC Access connector, not both\x1a\x85\x01!(((has(this.connector.value) && this.connector.value != '') || has(this.connector.value_from)) && size(this.network_interfaces) > 0)\"\xd4\x02\n" +

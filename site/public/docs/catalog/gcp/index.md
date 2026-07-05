@@ -57,6 +57,7 @@ The following GCP resources can be deployed using Planton:
 - [Region Network Endpoint Group](/docs/catalog/gcp/region-network-endpoint-group)
 - [Regional Address](/docs/catalog/gcp/regional-address)
 - [Router NAT](/docs/catalog/gcp/router-nat)
+- [Serverless VPC Access Connector](/docs/catalog/gcp/serverless-vpc-access-connector)
 - [Service Account](/docs/catalog/gcp/service-account)
 - [Service Networking Connection](/docs/catalog/gcp/service-networking-connection)
 - [Spanner Backup Schedule](/docs/catalog/gcp/spanner-backup-schedule)

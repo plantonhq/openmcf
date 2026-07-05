@@ -11,6 +11,8 @@
 package gcp
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -22,6 +24,7 @@ import (
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
+	gcpstorage "google.golang.org/api/storage/v1"
 )
 
 var (
@@ -414,6 +417,29 @@ func TestGcpBigQueryTable_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpbigquerytable", "terraform")
 }
 
+// GcpServerlessVpcConnector scenarios (network-placement /28 carve +
+// subnet-placement against a dedicated /28 subnetwork prerequisite).
+func TestGcpServerlessVpcConnector_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpserverlessvpcconnector", "pulumi")
+}
+func TestGcpServerlessVpcConnector_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpserverlessvpcconnector", "terraform")
+}
+
+// GcpCloudFunction scenarios (public HTTP function + connector-egress
+// composition). Gen 2 functions need real source in GCS before the apply,
+// and the runner has no hook between prerequisite deploy and the scenario
+// apply — so the source zip is staged by the test entrypoint first (see
+// stageCloudFunctionSource).
+func TestGcpCloudFunction_Pulumi(t *testing.T) {
+	stageCloudFunctionSource(t, "pulumi")
+	runAllScenariosForComponent(t, "gcpcloudfunction", "pulumi")
+}
+func TestGcpCloudFunction_Terraform(t *testing.T) {
+	stageCloudFunctionSource(t, "terraform")
+	runAllScenariosForComponent(t, "gcpcloudfunction", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
@@ -503,4 +529,92 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// stageCloudFunctionSource zips the checked-in function source fixture and
+// uploads it to a run-scoped GCS bucket BEFORE the runner starts — Gen 2
+// functions cannot deploy without a real source archive, object bytes cannot
+// be expressed as IaC, and the runner has no hook between prerequisite deploy
+// and the scenario apply. The bucket name reproduces the runner's
+// engine-scoped run-id expansion so the scenarios' ${E2E_RUN_ID} tokens land
+// exactly on the staged path. Cleanup is registered on the test (the harness
+// Teardown is a no-op by design).
+func stageCloudFunctionSource(t *testing.T, engine string) {
+	t.Helper()
+	ctx := context.Background()
+
+	// Must mirror the values in gcpcloudfunction/v1/e2e/scenarios/*.yaml.
+	bucketName := "planton-oss-e2e-cldfunc-src-" + runner.EngineScopedRunID(runID, engine)
+	const objectName = "functions/hello.zip"
+
+	// GOOGLE_PROJECT is exported by the harness Setup (which TestMain runs
+	// before any test), so it is always the project the scenarios deploy into.
+	project := os.Getenv("GOOGLE_PROJECT")
+	if project == "" {
+		t.Fatal("GOOGLE_PROJECT not set — harness Setup should have exported it")
+	}
+
+	fixtureDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "gcp",
+		"gcpcloudfunction", "v1", "e2e", "fixtures", "function-source")
+	zipBytes, err := zipDirectory(fixtureDir)
+	if err != nil {
+		t.Fatalf("failed to zip function source fixture: %v", err)
+	}
+
+	storageService, err := gcpstorage.NewService(ctx)
+	if err != nil {
+		t.Fatalf("failed to create storage client for source staging: %v", err)
+	}
+
+	if _, err := storageService.Buckets.Insert(project, &gcpstorage.Bucket{Name: bucketName}).Context(ctx).Do(); err != nil {
+		t.Fatalf("failed to create staging bucket %s: %v", bucketName, err)
+	}
+	t.Cleanup(func() {
+		// Best-effort: the object must go before the bucket can.
+		if err := storageService.Objects.Delete(bucketName, objectName).Do(); err != nil {
+			t.Logf("warning: failed to delete staged object %s/%s: %v", bucketName, objectName, err)
+		}
+		if err := storageService.Buckets.Delete(bucketName).Do(); err != nil {
+			t.Logf("warning: failed to delete staging bucket %s: %v", bucketName, err)
+		}
+	})
+
+	if _, err := storageService.Objects.Insert(bucketName, &gcpstorage.Object{Name: objectName}).
+		Media(bytes.NewReader(zipBytes)).Context(ctx).Do(); err != nil {
+		t.Fatalf("failed to upload source zip to %s/%s: %v", bucketName, objectName, err)
+	}
+
+	t.Logf("staged function source at gs://%s/%s (%d bytes)", bucketName, objectName, len(zipBytes))
+}
+
+// zipDirectory zips every regular file in dir at the archive root — the shape
+// buildpacks expect (main.py / requirements.txt at the top level).
+func zipDirectory(dir string) ([]byte, error) {
+	var buf bytes.Buffer
+	zipWriter := zip.NewWriter(&buf)
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		fileWriter, err := zipWriter.Create(entry.Name())
+		if err != nil {
+			return nil, err
+		}
+		if _, err := fileWriter.Write(content); err != nil {
+			return nil, err
+		}
+	}
+	if err := zipWriter.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

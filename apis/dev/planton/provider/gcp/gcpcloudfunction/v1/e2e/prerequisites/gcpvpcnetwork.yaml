@@ -1,0 +1,20 @@
+# Consumer-scoped GcpVpcNetwork for the Cloud Function → connector chain.
+# Cloud-side network names carry ${E2E_RUN_ID}; metadata.name stays fixed
+# for FK resolution.
+apiVersion: gcp.planton.dev/v1
+kind: GcpVpcNetwork
+metadata:
+  name: planton-oss-e2e-gcpvpcnetwork-prereq
+  id: planton-oss-e2e-gcpvpcnetwork-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvpcnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  networkName: planton-oss-e2e-cldfunc-vpc-${E2E_RUN_ID}
+  autoCreateSubnetworks: false

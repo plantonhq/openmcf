@@ -817,9 +817,12 @@ message GcpCloudRunVpcAccess {
 
   // Serverless VPC Access connector to route egress through — the legacy
   // mechanism, still required for some org constraints. Full resource name
-  // (projects/*/locations/*/connectors/*) or a connector name in the
-  // service's project/region.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef connector = 1;
+  // (projects/*/locations/*/connectors/*) or a reference to a
+  // GcpServerlessVpcConnector resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef connector = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServerlessVpcConnector,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
 
   // Direct VPC egress: instances get IPs in the subnetwork and reach VPC
   // resources with no connector infrastructure. The subnetwork needs free

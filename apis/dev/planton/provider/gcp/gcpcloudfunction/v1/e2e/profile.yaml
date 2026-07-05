@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpcloudfunction
+spec:
+  # Two scenarios: a public HTTP function from staged GCS source, and the
+  # same function routing egress through the GcpServerlessVpcConnector
+  # prerequisite chain (the live FK-composition proof). Budget generously:
+  # each deploy runs a real Cloud Build (~2-4 minutes) and the prerequisite
+  # chain includes a connector (~3-5 minutes each way).
+  #
+  # SOURCE STAGING: Gen 2 functions cannot deploy without a real source
+  # archive in GCS, and prerequisites deploy inside the runner with no hook
+  # before the scenario apply — so the test entrypoint zips
+  # e2e/fixtures/function-source/ and stages it in a run-scoped bucket
+  # BEFORE the runner starts. The scenarios' ${E2E_RUN_ID} bucket tokens
+  # land on that staged path.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

@@ -293,10 +293,9 @@ func (x *GcpRegionNetworkEndpointGroupCloudRun) GetUrlMask() string {
 // derive the function from the request URL — at least one is required.
 type GcpRegionNetworkEndpointGroupCloudFunction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Cloud Functions function name to route to (case-sensitive). Modeled as
-	// a reference for future composition, though today it is provided as a
-	// literal name (GcpCloudFunction does not yet export a bare function-name
-	// output). GCP resolves endpoints at serving time. Immutable.
+	// The Cloud Functions function name to route to (case-sensitive). Accepts
+	// a literal name or a reference to a GcpCloudFunction resource. GCP
+	// resolves endpoints at serving time. Immutable.
 	Function *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=function,proto3" json:"function,omitempty"`
 	// A URL template that parses the function name out of each request URL — for
 	// routing many functions from one NEG. Immutable.
@@ -503,9 +502,9 @@ const file_dev_planton_provider_gcp_gcpregionnetworkendpointgroup_v1_spec_proto_
 	"\aservice\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xdb\x04\x92\xd4a\x1bstatus.outputs.service_nameR\aservice\x12\x1a\n" +
 	"\x03tag\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x03tag\x12#\n" +
 	"\burl_mask\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\aurlMask:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
-	"\x1dcloud_run_service_or_url_mask\x128a cloud_run block must set service or url_mask (or both)\x1a(has(this.service) || this.url_mask != ''\"\xbb\x02\n" +
-	"*GcpRegionNetworkEndpointGroupCloudFunction\x12N\n" +
-	"\bfunction\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\bfunction\x12#\n" +
+	"\x1dcloud_run_service_or_url_mask\x128a cloud_run block must set service or url_mask (or both)\x1a(has(this.service) || this.url_mask != ''\"\xd9\x02\n" +
+	"*GcpRegionNetworkEndpointGroupCloudFunction\x12l\n" +
+	"\bfunction\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xda\x04\x92\xd4a\x13status.outputs.nameR\bfunction\x12#\n" +
 	"\burl_mask\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\aurlMask:\x97\x01\xbaH\x93\x01\x1a\x90\x01\n" +
 	"#cloud_function_function_or_url_mask\x12>a cloud_function block must set function or url_mask (or both)\x1a)has(this.function) || this.url_mask != ''\"\x95\x01\n" +
 	"&GcpRegionNetworkEndpointGroupAppEngine\x12\"\n" +

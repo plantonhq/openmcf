@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/alloydb/v1"
 	"google.golang.org/api/bigquery/v2"
+	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
@@ -26,6 +27,7 @@ import (
 	"google.golang.org/api/spanner/v1"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
+	"google.golang.org/api/vpcaccess/v1"
 )
 
 // Services carries the resolved test project and the shared API clients every
@@ -46,6 +48,8 @@ type Services struct {
 	DNS       *dns.Service
 	Spanner   *spanner.Service
 	BigQuery  *bigquery.Service
+	VpcAccess *vpcaccess.Service
+	Functions *cloudfunctions.Service
 }
 
 // Verifier checks a single component's GCP resource for existence/absence.
@@ -102,6 +106,8 @@ var verifiers = map[string]Verifier{
 	"gcpspannerbackupschedule":        &spannerBackupScheduleVerifier{},
 	"gcpbigquerydataset":              &bigQueryDatasetVerifier{},
 	"gcpbigquerytable":                &bigQueryTableVerifier{},
+	"gcpserverlessvpcconnector":       &serverlessVpcConnectorVerifier{},
+	"gcpcloudfunction":                &cloudFunctionVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

@@ -722,6 +722,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "cldfunc"
+    prerequisites: [GcpServerlessVpcConnector]
   }];
   GcpCloudRun = 603 [(kind_meta) = {
     provider: gcp
@@ -1084,6 +1085,15 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "cldrunjob"
+  }];
+  GcpServerlessVpcConnector = 721 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvpcconn"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork
+    ]
   }];
 
   // 800–999: Kubernetes resources

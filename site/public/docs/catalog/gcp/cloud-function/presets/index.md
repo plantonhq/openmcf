@@ -8,14 +8,18 @@ provider: "gcp"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-http-trigger"
+  - slug: "01-http-api"
     rank: "01"
-    title: "HTTP-Triggered Cloud Function"
-    excerpt: "This preset creates a Gen 2 Cloud Function invoked via HTTP requests. It uses all recommended defaults: 256 MiB memory, 60-second timeout, scale-to-zero, and authenticated access. Source code is..."
+    title: "HTTP API — basic"
+    excerpt: "A public HTTPS endpoint for webhooks, small REST APIs, and glue code. The source lives as a versioned zip in GCS ([GcpGcsBucket](/docs/catalog/gcp/gcpgcsbucket)) — shipping a new deploy is uploading..."
   - slug: "02-pubsub-event"
     rank: "02"
-    title: "Pub/Sub Event-Driven Cloud Function"
-    excerpt: "This preset creates a Gen 2 Cloud Function triggered by Pub/Sub messages. It processes one event at a time per instance, uses internal-only ingress (no public HTTP endpoint), and does not retry..."
+    title: "Pub/Sub event processor"
+    excerpt: "An event-driven worker consuming a Pub/Sub topic ([GcpPubSubTopic](/docs/catalog/gcp/gcppubsubtopic)) through Eventarc. Ingress is locked to internal traffic — nothing about an event consumer needs a..."
+  - slug: "03-private-vpc-egress"
+    rank: "03"
+    title: "Private VPC egress — database-backed function"
+    excerpt: "The composed private-networking pattern: the function routes egress through a [GcpServerlessVpcConnector](/docs/catalog/gcp/gcpserverlessvpcconnector) to reach a private-IP database (Cloud SQL..."
 ---
 
 # Cloud Function Presets
