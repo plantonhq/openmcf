@@ -796,6 +796,82 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsSqsQueue: queue_url is the SQS API handle; queue_arn is the
+			// IAM/cross-service join key (DLQ targets, SNS subscriptions,
+			// Lambda event source mappings); queue_name keys the E2E verifier.
+			name: "AwsSqsQueue",
+			kind: cloudresourcekind.CloudResourceKind_AwsSqsQueue,
+			rawOutputs: map[string]interface{}{
+				"queue_url":  "https://sqs.us-west-2.amazonaws.com/123456789012/planton-oss-e2e-sqs-smoke",
+				"queue_arn":  "arn:aws:sqs:us-west-2:123456789012:planton-oss-e2e-sqs-smoke",
+				"queue_name": "planton-oss-e2e-sqs-smoke",
+			},
+			mustPopulate: []string{
+				"queue_url", "queue_arn", "queue_name",
+			},
+		},
+		{
+			// AwsSnsTopic: topic_arn is the subscription/EventBridge join key;
+			// topic_name keys the E2E verifier; owner and beginning_archive_time
+			// surface FIFO archive metadata when enabled.
+			name: "AwsSnsTopic",
+			kind: cloudresourcekind.CloudResourceKind_AwsSnsTopic,
+			rawOutputs: map[string]interface{}{
+				"topic_arn":              "arn:aws:sns:us-west-2:123456789012:planton-oss-e2e-sns-smoke",
+				"topic_name":             "planton-oss-e2e-sns-smoke",
+				"owner":                  "123456789012",
+				"beginning_archive_time": "2026-07-04T12:00:00Z",
+			},
+			mustPopulate: []string{
+				"topic_arn", "topic_name", "owner", "beginning_archive_time",
+			},
+		},
+		{
+			// AwsSnsSubscription: subscription_arn is the AWS identity and
+			// unsubscribe handle; owner_id supports cross-account wiring;
+			// pending_confirmation and confirmation_was_authenticated surface
+			// the HTTP/email handshake lifecycle.
+			name: "AwsSnsSubscription",
+			kind: cloudresourcekind.CloudResourceKind_AwsSnsSubscription,
+			rawOutputs: map[string]interface{}{
+				"subscription_arn":               "arn:aws:sns:us-west-2:123456789012:planton-oss-e2e-sns-smoke:01234567-89ab-cdef-0123-456789abcdef",
+				"owner_id":                       "123456789012",
+				"pending_confirmation":           true,
+				"confirmation_was_authenticated": true,
+			},
+			mustPopulate: []string{
+				"subscription_arn", "owner_id",
+				"pending_confirmation", "confirmation_was_authenticated",
+			},
+		},
+		{
+			// AwsEventBridgeBus: bus_name keys the E2E verifier and rule
+			// event_bus_name references; bus_arn is the IAM/cross-account
+			// join key.
+			name: "AwsEventBridgeBus",
+			kind: cloudresourcekind.CloudResourceKind_AwsEventBridgeBus,
+			rawOutputs: map[string]interface{}{
+				"bus_name": "planton-oss-e2e-eventbridge-bus-smoke",
+				"bus_arn":  "arn:aws:events:us-west-2:123456789012:event-bus/planton-oss-e2e-eventbridge-bus-smoke",
+			},
+			mustPopulate: []string{
+				"bus_name", "bus_arn",
+			},
+		},
+		{
+			// AwsEventBridgeRule: rule_arn is the IAM/monitoring join key;
+			// rule_name keys the E2E verifier and EventBridge API calls.
+			name: "AwsEventBridgeRule",
+			kind: cloudresourcekind.CloudResourceKind_AwsEventBridgeRule,
+			rawOutputs: map[string]interface{}{
+				"rule_arn":  "arn:aws:events:us-west-2:123456789012:rule/planton-oss-e2e-eventbridge-bus-smoke/planton-oss-e2e-rule-smoke",
+				"rule_name": "planton-oss-e2e-rule-smoke",
+			},
+			mustPopulate: []string{
+				"rule_arn", "rule_name",
+			},
+		},
+		{
 			// AwsLambdaEventSourceMapping: uuid keys the E2E verifier;
 			// mapping_arn and function_arn are the join keys downstream
 			// automation consumes; state surfaces the last observed lifecycle.

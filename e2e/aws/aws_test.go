@@ -493,6 +493,51 @@ func TestAwsLambdaEventSourceMapping_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awslambdaeventsourcemapping", "terraform")
 }
 
+// --- AWS SQS Queue (FIFO queue, full FIFO delivery surface) ---
+
+func TestAwsSqsQueue_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssqsqueue", "pulumi")
+}
+func TestAwsSqsQueue_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssqsqueue", "terraform")
+}
+
+// --- AWS SNS Topic (standard topic with tracing + policy struct) ---
+
+func TestAwsSnsTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssnstopic", "pulumi")
+}
+func TestAwsSnsTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssnstopic", "terraform")
+}
+
+// --- AWS SNS Subscription (topic registry prerequisite + composed SQS queue) ---
+
+func TestAwsSnsSubscription_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssnssubscription", "pulumi")
+}
+func TestAwsSnsSubscription_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssnssubscription", "terraform")
+}
+
+// --- AWS EventBridge Bus (custom bus with log_config + composed DLQ) ---
+
+func TestAwsEventBridgeBus_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgebus", "pulumi")
+}
+func TestAwsEventBridgeBus_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgebus", "terraform")
+}
+
+// --- AWS EventBridge Rule (event-pattern rule on custom bus + SQS target) ---
+
+func TestAwsEventBridgeRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgerule", "pulumi")
+}
+func TestAwsEventBridgeRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgerule", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

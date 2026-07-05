@@ -94,6 +94,13 @@ var migratedKinds = []string{
 	// Edge pair: CloudFront migrated off its legacy hand-written contract
 	// (ACM was already enrolled and regenerated with its rebuilt spec).
 	"AwsCloudFront",
+	// Messaging + eventing depth pass: SQS, SNS topic/subscription, and
+	// EventBridge bus/rule, generator-owned from the day they were forged.
+	"AwsSqsQueue",
+	"AwsSnsTopic",
+	"AwsSnsSubscription",
+	"AwsEventBridgeBus",
+	"AwsEventBridgeRule",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed
