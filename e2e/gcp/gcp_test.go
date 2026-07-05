@@ -397,6 +397,23 @@ func TestGcpSpannerBackupSchedule_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpspannerbackupschedule", "terraform")
 }
 
+// GcpBigQueryDataset scenarios (minimal US dataset + explicit access ACL).
+func TestGcpBigQueryDataset_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbigquerydataset", "pulumi")
+}
+func TestGcpBigQueryDataset_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbigquerydataset", "terraform")
+}
+
+// GcpBigQueryTable scenarios (dataset prerequisite + partitioned native table
+// + literal-SELECT view).
+func TestGcpBigQueryTable_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbigquerytable", "pulumi")
+}
+func TestGcpBigQueryTable_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbigquerytable", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

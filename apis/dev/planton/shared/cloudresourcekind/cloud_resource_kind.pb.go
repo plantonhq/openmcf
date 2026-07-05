@@ -245,6 +245,7 @@ const (
 	CloudResourceKind_GcpBigQueryDataset            CloudResourceKind = 650
 	CloudResourceKind_GcpDataprocCluster            CloudResourceKind = 651
 	CloudResourceKind_GcpDataprocVirtualCluster     CloudResourceKind = 652
+	CloudResourceKind_GcpBigQueryTable              CloudResourceKind = 653
 	CloudResourceKind_GcpPubSubTopic                CloudResourceKind = 660
 	CloudResourceKind_GcpPubSubSubscription         CloudResourceKind = 661
 	CloudResourceKind_GcpCloudTasksQueue            CloudResourceKind = 662
@@ -698,6 +699,7 @@ var (
 		650:  "GcpBigQueryDataset",
 		651:  "GcpDataprocCluster",
 		652:  "GcpDataprocVirtualCluster",
+		653:  "GcpBigQueryTable",
 		660:  "GcpPubSubTopic",
 		661:  "GcpPubSubSubscription",
 		662:  "GcpCloudTasksQueue",
@@ -1131,6 +1133,7 @@ var (
 		"GcpBigQueryDataset":                      650,
 		"GcpDataprocCluster":                      651,
 		"GcpDataprocVirtualCluster":               652,
+		"GcpBigQueryTable":                        653,
 		"GcpPubSubTopic":                          660,
 		"GcpPubSubSubscription":                   661,
 		"GcpCloudTasksQueue":                      662,
@@ -1659,7 +1662,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xfc\x99\x01\n" +
+	"\x02v1\x10\x01*\xab\x9a\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1839,7 +1842,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x18GcpSpannerBackupSchedule\x10\x81\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpsbs:\x04\xf9\x04\xfa\x04\x12*\n" +
 	"\x12GcpBigQueryDataset\x10\x8a\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpbqds\x12)\n" +
 	"\x12GcpDataprocCluster\x10\x8b\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdpc\x120\n" +
-	"\x19GcpDataprocVirtualCluster\x10\x8c\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdvc\x12%\n" +
+	"\x19GcpDataprocVirtualCluster\x10\x8c\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdvc\x12-\n" +
+	"\x10GcpBigQueryTable\x10\x8d\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpbqtbl:\x02\x8a\x05\x12%\n" +
 	"\x0eGcpPubSubTopic\x10\x94\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcppst\x12,\n" +
 	"\x15GcpPubSubSubscription\x10\x95\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcppss\x12(\n" +
 	"\x12GcpCloudTasksQueue\x10\x96\x05\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcptq\x12+\n" +

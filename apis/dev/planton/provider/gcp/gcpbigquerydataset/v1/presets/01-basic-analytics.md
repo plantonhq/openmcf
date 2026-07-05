@@ -26,9 +26,10 @@ for development, prototyping, or workloads without specific compliance requireme
 
 ## How to Use
 
-1. Replace `<project-id>` with your GCP project ID
-2. Replace `<your_dataset_id>` with a descriptive name (letters, numbers, underscores only)
-3. Optionally change `location` to a specific region for data residency
+1. Replace `datasetId` with a descriptive name (letters, numbers, underscores only)
+2. Optionally change `location` to a specific region for data residency
+3. `projectId` is omitted so the dataset lands in the provider's default
+   project; add a `projectId` value or `valueFrom` ref to target another project
 
 ## Downstream Usage
 

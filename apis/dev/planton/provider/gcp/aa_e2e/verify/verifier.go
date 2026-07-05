@@ -15,6 +15,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/alloydb/v1"
+	"google.golang.org/api/bigquery/v2"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
@@ -44,6 +45,7 @@ type Services struct {
 	AlloyDB   *alloydb.Service
 	DNS       *dns.Service
 	Spanner   *spanner.Service
+	BigQuery  *bigquery.Service
 }
 
 // Verifier checks a single component's GCP resource for existence/absence.
@@ -98,6 +100,8 @@ var verifiers = map[string]Verifier{
 	"gcpspannerinstance":              &spannerInstanceVerifier{},
 	"gcpspannerdatabase":              &spannerDatabaseVerifier{},
 	"gcpspannerbackupschedule":        &spannerBackupScheduleVerifier{},
+	"gcpbigquerydataset":              &bigQueryDatasetVerifier{},
+	"gcpbigquerytable":                &bigQueryTableVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

@@ -6,7 +6,9 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // GcpBigQueryDatasetAccessView identifies a BigQuery view that is granted
-// access to the dataset's data without needing a role assignment.
+// access to the dataset's data. An "authorized view" reads this dataset on
+// behalf of its own readers without those readers needing any role here —
+// the standard pattern for exposing a filtered slice of sensitive data.
 message GcpBigQueryDatasetAccessView {
   // The GCP project that contains the view's dataset.
   string project_id = 1 [(buf.validate.field).required = true];
@@ -14,25 +16,92 @@ message GcpBigQueryDatasetAccessView {
   // The dataset that contains the view.
   string dataset_id = 2 [(buf.validate.field).required = true];
 
-  // The ID of the authorized view (table resource).
+  // The ID of the authorized view (a table resource whose type is VIEW).
   string table_id = 3 [(buf.validate.field).required = true];
 }
 
+// GcpBigQueryDatasetAccessRoutine identifies a BigQuery routine (UDF or
+// stored procedure) that is granted access to the dataset's data. An
+// "authorized routine" can read this dataset when invoked by users who have
+// no direct role here — the routine equivalent of an authorized view.
+message GcpBigQueryDatasetAccessRoutine {
+  // The GCP project that contains the routine's dataset.
+  string project_id = 1 [(buf.validate.field).required = true];
+
+  // The dataset that contains the routine.
+  string dataset_id = 2 [(buf.validate.field).required = true];
+
+  // The ID of the authorized routine.
+  string routine_id = 3 [(buf.validate.field).required = true];
+}
+
+// GcpBigQueryDatasetAccessDataset authorizes another dataset's resources to
+// read this dataset's data ("authorized dataset"). Every view (and, per
+// target_types, other resource types) in the grantee dataset gains read
+// access here — a coarser, lower-maintenance alternative to authorizing
+// views one at a time.
+message GcpBigQueryDatasetAccessDataset {
+  // The GCP project that contains the grantee dataset.
+  string project_id = 1 [(buf.validate.field).required = true];
+
+  // The grantee dataset whose resources are authorized to read this
+  // dataset's data.
+  string dataset_id = 2 [(buf.validate.field).required = true];
+
+  // Which resource types in the grantee dataset receive access.
+  // Currently the BigQuery API supports "VIEWS".
+  repeated string target_types = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        in: ["VIEWS"]
+      }
+    }
+  }];
+}
+
+// GcpBigQueryDatasetAccessCondition attaches an IAM condition to an access
+// entry, making the grant effective only while the condition expression
+// evaluates true (for example, before an expiry timestamp). Supported on
+// principal grants (user/group/domain/special group/IAM member).
+message GcpBigQueryDatasetAccessCondition {
+  // The condition expression in IAM Common Expression Language, e.g.
+  // request.time < timestamp("2030-01-01T00:00:00Z").
+  string expression = 1 [(buf.validate.field).required = true];
+
+  // Optional short title summarizing the condition's purpose.
+  string title = 2;
+
+  // Optional longer description of the condition.
+  string description = 3;
+
+  // Optional string indicating the location of the expression for error
+  // reporting (for example, a file and position in that file).
+  string location = 4;
+}
+
 // GcpBigQueryDatasetAccessEntry defines a single access control entry for
-// the dataset. Each entry grants a role to exactly one identity, or grants
-// a view direct access to the dataset's data.
+// the dataset. Each entry takes exactly ONE of two shapes:
 //
-// Exactly one identity field must be set: user_by_email, group_by_email,
-// domain, special_group, iam_member, or view.
+//   - A principal grant: role + exactly one principal identity
+//     (user_by_email, group_by_email, domain, special_group, or iam_member),
+//     optionally gated by an IAM condition.
 //
-// When view is set, role should be omitted (BigQuery grants the view
-// implicit read access to the underlying data).
+//   - A resource authorization: exactly one of view, routine, or dataset,
+//     with NO role — BigQuery grants the authorized resource implicit read
+//     access to the data.
+//
+// Both shapes are enforced pre-deploy so a malformed entry never reaches
+// the BigQuery API.
 message GcpBigQueryDatasetAccessEntry {
-  // The IAM role to grant. Use basic roles (OWNER, WRITER, READER) or
-  // predefined roles (roles/bigquery.dataOwner, roles/bigquery.dataEditor,
-  // roles/bigquery.dataViewer, etc.).
+  // The role to grant to a principal. Use basic dataset roles (OWNER,
+  // WRITER, READER) or predefined IAM roles (roles/bigquery.dataOwner,
+  // roles/bigquery.dataEditor, roles/bigquery.dataViewer). BigQuery stores
+  // basic and predefined forms interchangeably (OWNER and
+  // roles/bigquery.dataOwner are the same grant).
   //
-  // Required unless view is set.
+  // Required for principal grants; must be omitted for view/routine/dataset
+  // authorizations (those carry implicit read access).
   string role = 1;
 
   // An email address of a Google Account to grant access to.
@@ -56,54 +125,117 @@ message GcpBigQueryDatasetAccessEntry {
   // Examples: "allUsers", "serviceAccount:sa@project.iam.gserviceaccount.com"
   string iam_member = 6;
 
-  // A view that is granted access to the dataset's data.
-  // When set, role is typically omitted.
+  // A view that is authorized to read the dataset's data (no role).
   GcpBigQueryDatasetAccessView view = 7;
+
+  // A routine (UDF / stored procedure) that is authorized to read the
+  // dataset's data (no role).
+  GcpBigQueryDatasetAccessRoutine routine = 8;
+
+  // Another dataset whose resources are authorized to read this dataset's
+  // data (no role).
+  GcpBigQueryDatasetAccessDataset dataset = 9;
+
+  // Optional IAM condition gating a principal grant (for example, a
+  // time-bounded grant). Applies to principal grants only.
+  GcpBigQueryDatasetAccessCondition condition = 10;
+
+  // Every entry names exactly one identity or authorized resource.
+  option (buf.validate.message).cel = {
+    id: "access_exactly_one_identity"
+    expression: "(this.user_by_email != '' ? 1 : 0) + (this.group_by_email != '' ? 1 : 0) + (this.domain != '' ? 1 : 0) + (this.special_group != '' ? 1 : 0) + (this.iam_member != '' ? 1 : 0) + (has(this.view) ? 1 : 0) + (has(this.routine) ? 1 : 0) + (has(this.dataset) ? 1 : 0) == 1"
+    message: "exactly one of user_by_email, group_by_email, domain, special_group, iam_member, view, routine, or dataset must be set"
+  };
+
+  // Principal grants carry a role; resource authorizations must not
+  // (BigQuery grants view/routine/dataset entries implicit read access).
+  option (buf.validate.message).cel = {
+    id: "access_role_coherence"
+    expression: "(has(this.view) || has(this.routine) || has(this.dataset)) ? this.role == '' : this.role != ''"
+    message: "role is required for principal grants and must be omitted for view, routine, and dataset authorizations"
+  };
 }
 
-// GcpBigQueryDatasetSpec defines the configuration for a GCP BigQuery dataset.
+// GcpBigQueryDatasetExternalDatasetReference makes this dataset a read-only
+// projection of an external source (currently AWS Glue databases) through a
+// BigQuery Omni connection, instead of a container for BigQuery-managed
+// tables. Immutable: converting a dataset to or from an external reference
+// recreates it.
+message GcpBigQueryDatasetExternalDatasetReference {
+  // The external source this dataset mirrors, e.g.
+  // aws-glue://arn:aws:glue:us-east1:1234567:database/database1
+  string external_source = 1 [(buf.validate.field).required = true];
+
+  // The connection (with credentials for the external source) used to read
+  // it. Format: projects/{project}/locations/{location}/connections/{id}
+  string connection = 2 [(buf.validate.field).required = true];
+}
+
+// GcpBigQueryDatasetExternalCatalogOptions carries metadata for open-source
+// catalog interoperability (Hive Metastore compatibility), letting engines
+// like Spark read the dataset as if it were a Hive database.
+message GcpBigQueryDatasetExternalCatalogOptions {
+  // Default storage location for tables in this catalog database, e.g.
+  // gs://bucket/path. Maximum 1024 characters.
+  string default_storage_location_uri = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // Hive-database-style key/value parameters (the whole map is limited to
+  // 30 KB by the API).
+  map<string, string> parameters = 2;
+}
+
+// GcpBigQueryDatasetSpec defines the configuration for a GCP BigQuery
+// dataset.
 //
 // A dataset is the top-level container for tables, views, and routines in
-// BigQuery. It controls data location, default table lifecycle, access control,
-// and encryption. Tables within a dataset are typically managed by application
-// code, dbt, or migration scripts -- not IaC -- so this resource focuses on
-// the dataset-level infrastructure boundary.
+// BigQuery. It pins the data's geographic location and owns the defaults
+// every contained table inherits: lifecycle (expiration), encryption
+// (CMEK), collation, and the dataset-level ACL. Tables that infrastructure
+// should own (partitioned fact tables, authorized views, external tables)
+// are first-class GcpBigQueryTable resources that reference this dataset;
+// application-owned schemas (dbt models, migrations) can keep managing
+// their own tables inside the same dataset.
 //
 // Important behavioral notes:
 //
-//   - The dataset_id, location, and is_case_insensitive fields are immutable
-//     after creation. Changing them requires destroying and recreating the dataset.
+//   - dataset_id, location, and is_case_insensitive are IMMUTABLE —
+//     changing any of them recreates the dataset (and everything in it).
 //
-//   - The access field is authoritative: any access entries not included in the
-//     spec will be removed by BigQuery. If you omit access entirely, BigQuery
-//     applies default access (project owners = OWNER, project editors = WRITER,
-//     project viewers = READER).
+//   - The access field is AUTHORITATIVE: the entries listed here become the
+//     dataset's complete ACL, and BigQuery removes anything else. If access
+//     is omitted entirely, BigQuery applies its defaults (project owners =
+//     OWNER, editors = WRITER, viewers = READER). To keep those defaults
+//     alongside custom grants, list them explicitly.
 //
-//   - If delete_contents_on_destroy is false (default) and the dataset contains
-//     tables, destroy operations will fail. Set to true only when you are certain
-//     all contained data can be deleted.
+//   - If delete_contents_on_destroy is false (default) and the dataset
+//     contains tables, destroy fails — the safety net against deleting
+//     data with the container. Set true only when contained data is
+//     intentionally disposable.
 message GcpBigQueryDatasetSpec {
-  // GCP project where the dataset will be created.
+  // The GCP project the dataset is created in. Accepts a literal project ID
+  // or a reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 
-  // Unique identifier for the dataset within the project.
-  // Must contain only letters (upper/lower), numbers, and underscores.
-  // Maximum 1024 characters. Immutable after creation.
-  // Example: "analytics_prod", "raw_events_2024"
+  // Unique identifier for the dataset within the project. Immutable.
+  // Must contain only letters (upper/lower), numbers, and underscores;
+  // maximum 1024 characters. This is the value SQL queries and downstream
+  // tables reference (e.g. SELECT * FROM `project.dataset.table`).
+  // Example: "analytics_prod", "raw_events"
   string dataset_id = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^[0-9A-Za-z_]+$",
     (buf.validate.field).string.max_len = 1024
   ];
 
-  // Geographic location where the dataset and its tables reside.
-  // Use multi-regional locations (e.g., "US", "EU") for maximum availability,
-  // or regional locations (e.g., "us-central1", "europe-west1") for data
-  // residency requirements. Immutable after creation.
+  // Geographic location where the dataset and its tables reside. Immutable
+  // — moving data requires a new dataset and a copy job. Use multi-regional
+  // locations ("US", "EU") for maximum availability, or regional locations
+  // ("us-central1", "europe-west1") for data-residency requirements. Every
+  // table a query joins must live in the same location.
   string location = 3 [(buf.validate.field).required = true];
 
   // User-friendly display name for the dataset.
@@ -112,74 +244,95 @@ message GcpBigQueryDatasetSpec {
   // Description of the dataset's contents or purpose.
   string description = 5;
 
-  // Default lifetime for all tables created in the dataset, in milliseconds.
-  // Tables created in this dataset will be automatically deleted after this
-  // duration from their creation time. Minimum: 3600000 (1 hour).
+  // Labels applied to the dataset for cost attribution and organization.
+  // Merged with Planton's platform labels (which win on key conflicts).
+  map<string, string> labels = 6;
+
+  // Resource Manager tags bound to the dataset, as
+  // "tagKeys-namespaced-name" -> "tagValue short name" pairs (e.g.
+  // "123456789012/environment" -> "production"). Unlike labels, tags
+  // participate in IAM conditions and organization policy.
+  map<string, string> resource_tags = 7;
+
+  // Default lifetime for all NEW tables created in the dataset, in
+  // milliseconds (existing tables keep their expiration). Each table is
+  // deleted this long after its creation time. Minimum: 3600000 (1 hour).
   // If not set (0), tables do not automatically expire.
-  int64 default_table_expiration_ms = 6 [(buf.validate.field).cel = {
+  int64 default_table_expiration_ms = 8 [(buf.validate.field).cel = {
     id: "valid_table_expiration"
     expression: "this == 0 || this >= 3600000"
     message: "default_table_expiration_ms must be 0 (no expiration) or at least 3600000 (1 hour)"
   }];
 
-  // Default expiration for partitions in partitioned tables, in milliseconds.
-  // Applies to all partitioned tables created in this dataset.
-  // If not set (0), partitions do not automatically expire.
-  int64 default_partition_expiration_ms = 7;
+  // Default expiration for partitions in NEW partitioned tables, in
+  // milliseconds. If not set (0), partitions do not automatically expire.
+  int64 default_partition_expiration_ms = 9;
 
-  // Maximum hours of time travel for the dataset (point-in-time snapshots).
-  // Range: 48 to 168 hours (2 to 7 days). Default: 168 (7 days) if not set.
-  // Lower values reduce storage costs; higher values provide longer recovery windows.
-  int32 max_time_travel_hours = 8 [(buf.validate.field).cel = {
+  // Maximum hours of time travel for the dataset (point-in-time recovery
+  // window). Range: 48 to 168 hours (2 to 7 days); GCP defaults to 168
+  // when unset. Lower values reduce storage cost on PHYSICAL billing;
+  // higher values give longer accidental-delete recovery.
+  int32 max_time_travel_hours = 10 [(buf.validate.field).cel = {
     id: "valid_time_travel_hours"
     expression: "this == 0 || (this >= 48 && this <= 168)"
     message: "max_time_travel_hours must be 0 (use default 168) or between 48 and 168"
   }];
 
-  // Whether dataset and table names are treated as case-insensitive.
-  // When true, "MyTable" and "mytable" refer to the same table.
-  // Immutable after creation. Default: false (case-sensitive).
-  bool is_case_insensitive = 9;
+  // Whether dataset and table names are treated as case-insensitive
+  // ("MyTable" and "mytable" become the same table). Immutable.
+  // Default: false (case-sensitive).
+  bool is_case_insensitive = 11;
 
   // Default collation specification for string columns in new tables.
-  // Use "und:ci" for case-insensitive collation, or leave empty for
-  // case-sensitive (default) collation.
-  string default_collation = 10;
+  // "und:ci" makes string comparison case-insensitive; empty keeps the
+  // default case-sensitive collation.
+  string default_collation = 12;
 
   // Storage billing model for the dataset.
-  // "LOGICAL" (default) charges based on logical (uncompressed) bytes.
-  // "PHYSICAL" charges based on physical (compressed) bytes on disk,
-  // which can reduce costs 60-80% for highly compressible data.
-  string storage_billing_model = 11 [(buf.validate.field).cel = {
+  // "LOGICAL" (GCP default) bills on uncompressed bytes; "PHYSICAL" bills
+  // on compressed bytes on disk — often 60-80% cheaper for compressible
+  // data, but time-travel storage is billed too. Switching to PHYSICAL is
+  // allowed once every 14 days.
+  string storage_billing_model = 13 [(buf.validate.field).cel = {
     id: "valid_storage_billing_model"
     expression: "this == '' || this in ['LOGICAL', 'PHYSICAL']"
     message: "storage_billing_model must be LOGICAL or PHYSICAL"
   }];
 
-  // If true, all tables in the dataset are deleted when the dataset is
-  // destroyed. If false (default), destroy fails when the dataset contains
-  // tables, preventing accidental data loss.
-  bool delete_contents_on_destroy = 12;
+  // If true, destroying the dataset also deletes every table in it. If
+  // false (default), destroy fails while the dataset contains tables —
+  // the guard against deleting data with its container.
+  bool delete_contents_on_destroy = 14;
 
-  // Cloud KMS encryption key for default table encryption (CMEK).
-  // All new tables in the dataset will be encrypted with this key unless
-  // they specify their own encryption configuration.
-  // Format: projects/{project}/locations/{location}/keyRings/{keyRing}/cryptoKeys/{key}
-  // If not set, tables are encrypted with Google-managed keys.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 13 [
+  // Cloud KMS key for default table encryption (CMEK). All NEW tables are
+  // encrypted with this key unless they specify their own key. The
+  // BigQuery service agent must hold roles/cloudkms.cryptoKeyEncrypterDecrypter
+  // on the key before the first table is written. Format:
+  // projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+  // If not set, tables use Google-managed encryption.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 15 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
   ];
 
   // Access control entries for the dataset.
   //
-  // This field is authoritative: BigQuery will remove any access entries
-  // not listed here. If omitted entirely, BigQuery applies default access:
-  //   - Project owners: OWNER
-  //   - Project editors: WRITER
-  //   - Project viewers: READER
+  // AUTHORITATIVE: the entries listed here become the dataset's complete
+  // ACL; BigQuery removes anything not listed. If omitted entirely,
+  // BigQuery applies default access (project owners = OWNER, editors =
+  // WRITER, viewers = READER) — list those explicitly to keep them
+  // alongside custom grants.
   //
-  // Each entry grants a role to one identity (user, group, domain,
-  // special group, or IAM member) or grants a view direct data access.
-  repeated GcpBigQueryDatasetAccessEntry access = 14;
+  // Each entry is either a principal grant (role + one identity) or a
+  // resource authorization (view / routine / dataset, no role).
+  repeated GcpBigQueryDatasetAccessEntry access = 16;
+
+  // Makes this dataset a read-only projection of an external source
+  // (e.g. an AWS Glue database) through a BigQuery Omni connection,
+  // instead of a container for BigQuery-managed tables. Immutable.
+  GcpBigQueryDatasetExternalDatasetReference external_dataset_reference = 17;
+
+  // Open-source catalog (Hive Metastore compatibility) metadata, letting
+  // engines like Spark address this dataset as a Hive database.
+  GcpBigQueryDatasetExternalCatalogOptions external_catalog_options = 18;
 }

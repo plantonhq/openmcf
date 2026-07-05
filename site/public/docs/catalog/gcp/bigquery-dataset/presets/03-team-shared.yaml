@@ -3,16 +3,29 @@ kind: GcpBigQueryDataset
 metadata:
   name: my-team-dataset
 spec:
-  projectId:
-    value: "<project-id>"  # e.g., my-gcp-project
-  datasetId: <your_dataset_id>  # e.g., analytics_shared
+  # project_id omitted: falls back to the provider's default project.
+  datasetId: analytics_shared # replace
   location: US
-  friendlyName: "<display name>"  # e.g., Shared Analytics
-  description: "<dataset description>"
+  friendlyName: Shared Analytics
+  description: Team-shared dataset with an explicit, authoritative ACL
+  # The access list is AUTHORITATIVE — it becomes the dataset's complete ACL.
+  # The first entry re-states the project-owners default so it survives.
   access:
     - role: OWNER
       specialGroup: projectOwners
     - role: WRITER
-      groupByEmail: "<editors-group>@example.com"  # e.g., data-engineers@example.com
+      groupByEmail: data-engineers@example.com # replace with your editors group
     - role: READER
-      groupByEmail: "<viewers-group>@example.com"  # e.g., data-analysts@example.com
+      groupByEmail: data-analysts@example.com # replace with your viewers group
+    # Time-bounded contractor access via an IAM condition.
+    - role: READER
+      userByEmail: contractor@example.com # replace
+      condition:
+        title: expires-2027
+        expression: request.time < timestamp("2027-01-01T00:00:00Z")
+    # An authorized view in another dataset reads this data on behalf of its
+    # own readers — no role, implicit read access.
+    - view:
+        projectId: my-gcp-project # replace
+        datasetId: reporting_views
+        tableId: revenue_summary

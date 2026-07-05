@@ -7,3 +7,19 @@ spec:
     value: "test-project"
   datasetId: test_analytics
   location: US
+  friendlyName: Test Analytics
+  description: Hack manifest exercising the dataset surface offline
+  labels:
+    team: platform
+  defaultTableExpirationMs: 86400000
+  maxTimeTravelHours: 96
+  storageBillingModel: PHYSICAL
+  access:
+    - role: OWNER
+      specialGroup: projectOwners
+    - role: READER
+      userByEmail: analyst@example.com
+    - view:
+        projectId: test-project
+        datasetId: shared_views
+        tableId: revenue_summary

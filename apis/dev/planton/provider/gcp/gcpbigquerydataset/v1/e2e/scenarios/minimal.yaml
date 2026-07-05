@@ -1,0 +1,20 @@
+# GcpBigQueryDataset scenario: a minimal US dataset with default access.
+# project_id is deliberately omitted (ambient project). Dataset IDs are
+# underscore-only and delete immediately when empty.
+apiVersion: gcp.planton.dev/v1
+kind: GcpBigQueryDataset
+metadata:
+  name: planton-oss-e2e-gcpbqds-smoke
+  id: planton-oss-e2e-gcpbqds-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbigquerydataset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  datasetId: e2e_bqds_smoke
+  location: US

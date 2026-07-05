@@ -3,11 +3,15 @@ kind: GcpBigQueryDataset
 metadata:
   name: my-encrypted-dataset
 spec:
-  projectId:
-    value: "<project-id>"  # e.g., my-prod-project
-  datasetId: <your_dataset_id>  # e.g., financial_data_prod
-  location: us-central1  # Regional for data residency
-  description: "<dataset description>"
-  storageBillingModel: PHYSICAL
+  # project_id omitted: falls back to the provider's default project.
+  datasetId: financial_data_prod # replace
+  location: us-central1 # regional for data residency; must match the KMS key's location
+  description: CMEK-encrypted dataset for regulated financial data
+  storageBillingModel: PHYSICAL # compressed-byte billing; often 60-80% cheaper
+  # Every new table is encrypted with this key. Grant the BigQuery service
+  # agent cryptoKeyEncrypterDecrypter on the key before the first table write.
   kmsKeyName:
-    value: "<kms-key-name>"  # e.g., projects/my-project/locations/us-central1/keyRings/ring/cryptoKeys/key
+    valueFrom:
+      kind: GcpKmsKey
+      name: my-bq-key # replace with your GcpKmsKey resource name
+      fieldPath: status.outputs.key_id

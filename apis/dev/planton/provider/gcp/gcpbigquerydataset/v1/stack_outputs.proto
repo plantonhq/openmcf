@@ -20,4 +20,13 @@ message GcpBigQueryDatasetStackOutputs {
 
   // The creation time of the dataset in milliseconds since epoch.
   int64 creation_time = 4;
+
+  // Geographic location of the dataset (e.g. "US", "europe-west1").
+  // Every table a query joins must share this location, so downstream
+  // resources read it to co-locate.
+  string location = 5;
+
+  // The dataset's current entity tag, changing on every metadata
+  // modification. Useful for optimistic-concurrency API callers.
+  string etag = 6;
 }

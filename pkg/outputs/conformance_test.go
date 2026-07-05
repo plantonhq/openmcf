@@ -701,6 +701,37 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"schedule_id", "schedule_name"},
 		},
 		{
+			// GcpBigQueryDataset: the short dataset id SQL queries reference,
+			// the self link, resolved project, creation time, location, and etag.
+			name: "GcpBigQueryDataset",
+			kind: cloudresourcekind.CloudResourceKind_GcpBigQueryDataset,
+			rawOutputs: map[string]interface{}{
+				"dataset_id":    "analytics_prod",
+				"self_link":     "https://bigquery.googleapis.com/bigquery/v2/projects/prod-project/datasets/analytics_prod",
+				"project":       "prod-project",
+				"creation_time": int64(1700000000000),
+				"location":      "US",
+				"etag":          "abc123",
+			},
+			mustPopulate: []string{"dataset_id", "self_link", "project", "creation_time", "location", "etag"},
+		},
+		{
+			// GcpBigQueryTable: the short table id, self link, resolved project,
+			// parent dataset, table type, location, and creation time.
+			name: "GcpBigQueryTable",
+			kind: cloudresourcekind.CloudResourceKind_GcpBigQueryTable,
+			rawOutputs: map[string]interface{}{
+				"table_id":      "events_raw",
+				"self_link":     "https://bigquery.googleapis.com/bigquery/v2/projects/prod-project/datasets/analytics_prod/tables/events_raw",
+				"project":       "prod-project",
+				"dataset_id":    "analytics_prod",
+				"type":          "TABLE",
+				"location":      "US",
+				"creation_time": int64(1700000000000),
+			},
+			mustPopulate: []string{"table_id", "self_link", "project", "dataset_id", "type", "location", "creation_time"},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

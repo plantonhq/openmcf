@@ -5,4 +5,6 @@ const (
 	OpSelfLink     = "self_link"
 	OpProject      = "project"
 	OpCreationTime = "creation_time"
+	OpLocation     = "location"
+	OpEtag         = "etag"
 )

@@ -219,6 +219,7 @@ import (
 	gcpbackendbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendbucket/v1"
 	gcpbackendservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1"
 	gcpbigquerydatasetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerydataset/v1"
+	gcpbigquerytablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerytable/v1"
 	gcpbigtableinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtableinstance/v1"
 	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
 	gcpcloudarmorpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudarmorpolicy/v1"
@@ -694,6 +695,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpBackendBucket:                &gcpbackendbucketv1.GcpBackendBucket{},
 	cloudresourcekind.CloudResourceKind_GcpBackendService:               &gcpbackendservicev1.GcpBackendService{},
 	cloudresourcekind.CloudResourceKind_GcpBigQueryDataset:              &gcpbigquerydatasetv1.GcpBigQueryDataset{},
+	cloudresourcekind.CloudResourceKind_GcpBigQueryTable:                &gcpbigquerytablev1.GcpBigQueryTable{},
 	cloudresourcekind.CloudResourceKind_GcpBigtableInstance:             &gcpbigtableinstancev1.GcpBigtableInstance{},
 	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:              &gcpcertmanagercertv1.GcpCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_GcpCloudArmorPolicy:             &gcpcloudarmorpolicyv1.GcpCloudArmorPolicy{},

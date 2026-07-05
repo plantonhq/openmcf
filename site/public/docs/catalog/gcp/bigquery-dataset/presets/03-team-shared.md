@@ -26,6 +26,8 @@ in organizations with defined data team roles.
 - Project owners retain OWNER access
 - A specified group gets WRITER access (can create/modify tables)
 - A specified group gets READER access (read-only)
+- A time-bounded contractor grant via an IAM condition
+- An authorized view in another dataset with implicit read access (no role)
 - Google-managed encryption (default)
 
 ## Configuration
@@ -49,11 +51,11 @@ not listed in the spec. This means:
 
 ## How to Use
 
-1. Replace `<project-id>` with your GCP project ID
-2. Replace `<your_dataset_id>` with a descriptive name
-3. Replace `<editors-group>@example.com` with your data engineering team's Google Group
-4. Replace `<viewers-group>@example.com` with your data analyst team's Google Group
-5. Add `friendlyName` and `description` for discoverability
+1. Replace `datasetId` with a descriptive name
+2. Replace `data-engineers@example.com` with your data engineering team's Google Group
+3. Replace `data-analysts@example.com` with your data analyst team's Google Group
+4. Adjust or remove the condition-gated contractor grant and the authorized-view
+   entry to match your sharing topology
 
 ## Extending Access
 

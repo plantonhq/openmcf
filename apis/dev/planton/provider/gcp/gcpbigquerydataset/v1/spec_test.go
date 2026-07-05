@@ -192,14 +192,106 @@ var _ = ginkgo.Describe("GcpBigQueryDatasetSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Negative Cases ────────────────
-
-	ginkgo.It("should reject when project_id is missing", func() {
+	ginkgo.It("should accept an omitted project_id (ambient project contract)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept user labels and resource tags", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"team": "analytics", "cost-center": "cc-1234"}
+		msg.Spec.ResourceTags = map[string]string{"123456789012/environment": "production"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an iam_member access entry", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{Role: "READER", IamMember: "serviceAccount:etl@my-gcp-project.iam.gserviceaccount.com"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a domain access entry", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{Role: "READER", Domain: "example.com"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept routine-based access (no role)", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{
+				Routine: &GcpBigQueryDatasetAccessRoutine{
+					ProjectId: "my-gcp-project",
+					DatasetId: "shared_udfs",
+					RoutineId: "anonymize",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept authorized-dataset access (no role)", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{
+				Dataset: &GcpBigQueryDatasetAccessDataset{
+					ProjectId:   "my-gcp-project",
+					DatasetId:   "reporting_views",
+					TargetTypes: []string{"VIEWS"},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a principal grant gated by an IAM condition", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{
+				Role:        "READER",
+				UserByEmail: "contractor@example.com",
+				Condition: &GcpBigQueryDatasetAccessCondition{
+					Expression: `request.time < timestamp("2030-01-01T00:00:00Z")`,
+					Title:      "expires-2030",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an external dataset reference", func() {
+		msg := minimal()
+		msg.Spec.ExternalDatasetReference = &GcpBigQueryDatasetExternalDatasetReference{
+			ExternalSource: "aws-glue://arn:aws:glue:us-east-1:123456789012:database/sales",
+			Connection:     "projects/my-gcp-project/locations/aws-us-east-1/connections/glue-conn",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept external catalog options", func() {
+		msg := minimal()
+		msg.Spec.ExternalCatalogOptions = &GcpBigQueryDatasetExternalCatalogOptions{
+			DefaultStorageLocationUri: "gs://my-lakehouse/warehouse",
+			Parameters:                map[string]string{"hive.metastore.database.owner": "spark"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Negative Cases ────────────────
 
 	ginkgo.It("should reject when dataset_id is empty", func() {
 		msg := minimal()
@@ -267,6 +359,118 @@ var _ = ginkgo.Describe("GcpBigQueryDatasetSpec", func() {
 	ginkgo.It("should reject invalid storage_billing_model", func() {
 		msg := minimal()
 		msg.Spec.StorageBillingModel = "INVALID"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an access entry with no identity", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{Role: "READER"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an access entry with two identities", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{Role: "READER", UserByEmail: "a@example.com", GroupByEmail: "g@example.com"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a principal grant without a role", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{UserByEmail: "a@example.com"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a view authorization that also sets a role", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{
+				Role: "READER",
+				View: &GcpBigQueryDatasetAccessView{
+					ProjectId: "p", DatasetId: "d", TableId: "t",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a routine authorization that also sets a role", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{
+				Role: "READER",
+				Routine: &GcpBigQueryDatasetAccessRoutine{
+					ProjectId: "p", DatasetId: "d", RoutineId: "r",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an authorized dataset with empty target_types", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{
+				Dataset: &GcpBigQueryDatasetAccessDataset{
+					ProjectId: "p", DatasetId: "d", TargetTypes: []string{},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an authorized dataset with an invalid target type", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{
+				Dataset: &GcpBigQueryDatasetAccessDataset{
+					ProjectId: "p", DatasetId: "d", TargetTypes: []string{"TABLES"},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an external dataset reference missing the connection", func() {
+		msg := minimal()
+		msg.Spec.ExternalDatasetReference = &GcpBigQueryDatasetExternalDatasetReference{
+			ExternalSource: "aws-glue://arn:aws:glue:us-east-1:123456789012:database/sales",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an IAM condition without an expression", func() {
+		msg := minimal()
+		msg.Spec.Access = []*GcpBigQueryDatasetAccessEntry{
+			{
+				Role:        "READER",
+				UserByEmail: "a@example.com",
+				Condition:   &GcpBigQueryDatasetAccessCondition{Title: "no-expression"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an external catalog storage URI over 1024 characters", func() {
+		msg := minimal()
+		msg.Spec.ExternalCatalogOptions = &GcpBigQueryDatasetExternalCatalogOptions{
+			DefaultStorageLocationUri: "gs://" + strings.Repeat("a", 1024),
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

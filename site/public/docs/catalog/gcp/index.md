@@ -16,6 +16,7 @@ The following GCP resources can be deployed using Planton:
 - [Backend Bucket](/docs/catalog/gcp/backend-bucket)
 - [Backend Service](/docs/catalog/gcp/backend-service)
 - [BigQuery Dataset](/docs/catalog/gcp/bigquery-dataset)
+- [BigQuery Table](/docs/catalog/gcp/bigquery-table)
 - [Bigtable Instance](/docs/catalog/gcp/bigtable-instance)
 - [Certificate Manager Cert](/docs/catalog/gcp/certificate-manager-cert)
 - [Cloud Armor Policy](/docs/catalog/gcp/cloud-armor-policy)
