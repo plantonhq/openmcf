@@ -142,6 +142,17 @@ NOTES
   `StringValueOrRef` spec field arrives pre-resolved as `string` (repeated ones
   as `list(string)`). When updating an older module, conform its `variables.tf`
   to this shape before anything else -- the E2E Terraform run is the proof.
+- **`google.protobuf.Struct` spec fields arrive in tfvars as NESTED OBJECTS,
+  never JSON strings.** The generated contract types them `optional(any)` and
+  the proto->tfvars converter passes the protojson value through verbatim (a
+  real nested object/array/scalar). A module that treats such a field as a
+  string -- `var.spec.policy != "" ? var.spec.policy : null` -- passes
+  `tofu validate` (the variable is `any`) and fails only at live apply with
+  "Inappropriate value for attribute: string required". The correct idiom for
+  every Struct field whose provider argument wants a JSON document:
+  `var.spec.policy != null ? jsonencode(var.spec.policy) : null`. Fields the
+  spec models as raw JSON *strings* (e.g. an SNS `delivery_policy`) keep the
+  string comparison -- check the proto type, not the field name.
 - **User string content passes through the tfvars writer with HCL template
   introducers escaped.** The proto->tfvars converter emits `$${` / `%%{` for
   literal `${` / `%{` inside string values, so fields carrying IAM policy JSON
@@ -186,7 +197,11 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   when `block` is null; nest ternaries there too:
   `count = enabled ? (var.spec.block.sub != null ? 1 : 0) : 0`. Before
   finishing, sweep the module for `&&`/`||` whose operands dereference a
-  possibly-null object.
+  possibly-null object. When MANY flat provider attributes read off one
+  nullable block (per-protocol triads, feature sub-objects), normalize the
+  block to a zero-value object once in `locals.tf` --
+  `try(coalesce(var.spec.block.sub), local.zero)` -- so every attribute
+  expression reads it unconditionally instead of repeating null guards.
 - **`can()` does NOT null-guard either.** `can(o.s3_origin) && o.s3_origin.attr`
   still errors when `s3_origin` is null: `can(o.s3_origin)` returns true (the
   expression evaluates fine, to null), and then the second operand dereferences

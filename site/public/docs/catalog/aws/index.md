@@ -89,6 +89,7 @@ The following AWS resources can be deployed using Planton:
 - [SageMaker Domain](/docs/catalog/aws/sagemaker-domain)
 - [Security Group](/docs/catalog/aws/security-group)
 - [Serverless ElastiCache](/docs/catalog/aws/serverless-elasticache)
+- [SNS Subscription](/docs/catalog/aws/sns-subscription)
 - [SNS Topic](/docs/catalog/aws/sns-topic)
 - [SQS Queue](/docs/catalog/aws/sqs-queue)
 - [Step Functions](/docs/catalog/aws/step-functions)

@@ -16,10 +16,10 @@ presets:
     rank: "02"
     title: "FIFO Topic with Deduplication"
     excerpt: "This preset creates a FIFO SNS topic with content-based deduplication and high-throughput mode (per message group). Designed for workflows that require exactly-once, ordered message delivery."
-  - slug: "03-fanout-to-sqs"
+  - slug: "03-fifo-with-archive"
     rank: "03"
-    title: "Fan-Out to SQS with Filtering"
-    excerpt: "This preset creates a Standard SNS topic with two SQS queue subscriptions, each with a message attribute filter policy. This demonstrates the core SNS fan-out pattern — a single topic distributes..."
+    title: "FIFO Topic with Message Archive"
+    excerpt: "A strictly-ordered FIFO topic that retains 30 days of messages for consumer backfill."
 ---
 
 # SNS Topic Presets
