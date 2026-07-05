@@ -4,20 +4,19 @@ metadata:
   name: my-prod-alloydb
 spec:
   projectId:
-    value: "<gcp-project-id>"
-  clusterName: <cluster-name>
-  location: <gcp-region>
+    value: my-gcp-project-123 # replace with your project ID
+  clusterName: prod-alloydb # replace with your cluster name
+  location: us-central1 # replace with your region
   network:
-    value: "<vpc-network-path>"
-  deletionProtection: true
+    value: projects/my-gcp-project-123/global/networks/prod-vpc # replace with your VPC path
   initialUser:
     user: postgres
-    password: "<secure-password>"
+    password: change-me-immediately # replace before applying
   automatedBackupPolicy:
     enabled: true
     timeBasedRetentionPeriod: "604800s"
   primaryInstance:
-    instanceId: <primary-instance-id>
+    instanceId: prod-primary # replace with your instance ID
     cpuCount: 4
     availabilityType: REGIONAL
     sslMode: ENCRYPTED_ONLY

@@ -1,0 +1,11 @@
+# Public managed zone for an internet-facing domain.
+# DNS records are composed separately via GcpDnsRecord.
+apiVersion: gcp.planton.dev/v1
+kind: GcpDnsZone
+metadata:
+  name: example.com
+spec:
+  projectId:
+    value: my-gcp-project-123
+  visibility: public
+  description: Public authoritative zone for example.com

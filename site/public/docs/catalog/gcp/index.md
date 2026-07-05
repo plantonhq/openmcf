@@ -10,6 +10,8 @@ order: 10
 The following GCP resources can be deployed using Planton:
 
 - [AlloyDB Cluster](/docs/catalog/gcp/alloydb-cluster)
+- [AlloyDB Instance](/docs/catalog/gcp/alloydb-instance)
+- [AlloyDB User](/docs/catalog/gcp/alloydb-user)
 - [Artifact Registry Repo](/docs/catalog/gcp/artifact-registry-repo)
 - [Backend Bucket](/docs/catalog/gcp/backend-bucket)
 - [Backend Service](/docs/catalog/gcp/backend-service)
@@ -20,6 +22,7 @@ The following GCP resources can be deployed using Planton:
 - [Cloud Composer Environment](/docs/catalog/gcp/cloud-composer-environment)
 - [Cloud Function](/docs/catalog/gcp/cloud-function)
 - [Cloud Run](/docs/catalog/gcp/cloud-run)
+- [Cloud Run Job](/docs/catalog/gcp/cloud-run-job)
 - [Cloud Scheduler Job](/docs/catalog/gcp/cloud-scheduler-job)
 - [Cloud SQL](/docs/catalog/gcp/cloud-sql)
 - [Cloud SQL Database](/docs/catalog/gcp/cloud-sql-database)

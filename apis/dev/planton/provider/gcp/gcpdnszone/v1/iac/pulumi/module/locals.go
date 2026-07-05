@@ -15,12 +15,12 @@ type Locals struct {
 	GcpLabels  map[string]string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *gcpdnszonev1.GcpDnsZoneStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *gcpdnszonev1.GcpDnsZoneStackInput) *Locals {
 	locals := &Locals{}
 
 	locals.GcpDnsZone = stackInput.Target
-
 	target := stackInput.Target
+	spec := target.Spec
 
 	locals.GcpLabels = map[string]string{
 		gcplabelkeys.Resource:     strconv.FormatBool(true),
@@ -38,6 +38,10 @@ func initializeLocals(ctx *pulumi.Context, stackInput *gcpdnszonev1.GcpDnsZoneSt
 
 	if target.Metadata.Env != "" {
 		locals.GcpLabels[gcplabelkeys.Environment] = target.Metadata.Env
+	}
+
+	for k, v := range spec.Labels {
+		locals.GcpLabels[k] = v
 	}
 
 	return locals

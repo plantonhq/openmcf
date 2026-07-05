@@ -54,7 +54,10 @@ SEQUENTIAL STEPS
         Reserve angle-bracket placeholders for free-form strings and `value:` wrappers.
       - Fields with `recommended_default` or `default` annotations use the annotated value with a comment
       - Boolean flags set explicitly based on the use case
-      - No unnecessary quotes
+      - No unnecessary quotes -- EXCEPT string values that YAML 1.1 parses as
+        another type: bare `on`/`off`/`yes`/`no` become booleans and break
+        string-typed enum fields (e.g. a DNSSEC state of `on` MUST be `"on"`);
+        quote them and say why in a comment
    
    b) **Create the companion MD file** at `v1/presets/{rank}-{name}.md`:
       - Title (H1)

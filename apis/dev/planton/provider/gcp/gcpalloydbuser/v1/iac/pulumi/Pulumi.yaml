@@ -1,0 +1,4 @@
+name: gcpalloydbuser-pulumi-project
+runtime:
+  name: go
+description: Planton GcpAlloydbUser Pulumi module

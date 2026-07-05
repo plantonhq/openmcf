@@ -591,6 +591,78 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpAlloydbCluster: the fully qualified cluster path (the FK target
+			// instance and user kinds parent by), the short name, and the bundled
+			// primary instance's connection endpoint.
+			name: "GcpAlloydbCluster",
+			kind: cloudresourcekind.CloudResourceKind_GcpAlloydbCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_id":            "projects/my-project/locations/us-central1/clusters/orders-alloydb",
+				"cluster_name":          "orders-alloydb",
+				"primary_instance_ip":   "10.30.0.5",
+				"primary_instance_name": "projects/my-project/locations/us-central1/clusters/orders-alloydb/instances/primary",
+				"database_version":      "POSTGRES_16",
+				"state":                 "READY",
+			},
+			mustPopulate: []string{
+				"cluster_id", "cluster_name", "primary_instance_ip",
+				"primary_instance_name", "database_version", "state",
+			},
+		},
+		{
+			// GcpAlloydbInstance: the fully qualified instance path, its private
+			// connection endpoint, and lifecycle state.
+			name: "GcpAlloydbInstance",
+			kind: cloudresourcekind.CloudResourceKind_GcpAlloydbInstance,
+			rawOutputs: map[string]interface{}{
+				"instance_name": "projects/my-project/locations/us-central1/clusters/orders-alloydb/instances/read-pool",
+				"ip_address":    "10.30.0.7",
+				"state":         "READY",
+			},
+			mustPopulate: []string{"instance_name", "ip_address", "state"},
+		},
+		{
+			// GcpAlloydbUser: the fully qualified user path plus the id and
+			// cluster handles.
+			name: "GcpAlloydbUser",
+			kind: cloudresourcekind.CloudResourceKind_GcpAlloydbUser,
+			rawOutputs: map[string]interface{}{
+				"name":       "projects/my-project/locations/us-central1/clusters/orders-alloydb/users/orders-app",
+				"user_id":    "orders-app",
+				"cluster_id": "projects/my-project/locations/us-central1/clusters/orders-alloydb",
+			},
+			mustPopulate: []string{"name", "user_id", "cluster_id"},
+		},
+		{
+			// GcpDnsZone: the numeric zone id, the zone-name handle GcpDnsRecord
+			// composes against, and the delegated nameserver set.
+			name: "GcpDnsZone",
+			kind: cloudresourcekind.CloudResourceKind_GcpDnsZone,
+			rawOutputs: map[string]interface{}{
+				"zone_id":   "1234567890123456789",
+				"zone_name": "example-com",
+				"nameservers": []interface{}{
+					"ns-cloud-a1.googledomains.com.",
+					"ns-cloud-a2.googledomains.com.",
+				},
+			},
+			mustPopulate: []string{"zone_id", "zone_name", "nameservers"},
+		},
+		{
+			// GcpCloudRunJob: the job-name handle gcloud/Scheduler trigger, the
+			// region, the server-assigned uid, and the latest execution (empty
+			// until first run).
+			name: "GcpCloudRunJob",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudRunJob,
+			rawOutputs: map[string]interface{}{
+				"job_name":                 "nightly-etl",
+				"location":                 "us-central1",
+				"uid":                      "12345678-1234-1234-1234-123456789012",
+				"latest_created_execution": "",
+			},
+			mustPopulate: []string{"job_name", "location", "uid"},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

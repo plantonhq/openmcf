@@ -1,0 +1,16 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpAlloydbUser
+metadata:
+  name: my-ci-runner-user
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  cluster:
+    valueFrom:
+      kind: GcpAlloydbCluster
+      name: my-orders-cluster
+      fieldPath: status.outputs.cluster_id
+  userId: ci-runner@my-gcp-project-123.iam.gserviceaccount.com
+  userType: ALLOYDB_IAM_USER
+  databaseRoles:
+    - alloydbiamuser

@@ -184,11 +184,12 @@ message GcpAlloydbClusterQueryInsightsConfig {
   }];
 
   // Maximum length of the query string stored in insights.
-  // Range: 256-4500. Default: 1024. Longer strings help debug
-  // complex queries but use more storage.
-  int32 query_string_length = 2 [(buf.validate.field).int32 = {
-    gte: 256
-    lte: 4500
+  // Range: 256-4500. 0 means unset — GCP applies its default (1024).
+  // Longer strings help debug complex queries but use more storage.
+  int32 query_string_length = 2 [(buf.validate.field).cel = {
+    id: "query_string_length_range"
+    message: "query_string_length must be between 256 and 4500 (or 0 for the GCP default)"
+    expression: "this == 0 || (this >= 256 && this <= 4500)"
   }];
 
   // Whether to record application tags set via
@@ -199,6 +200,20 @@ message GcpAlloydbClusterQueryInsightsConfig {
   // Whether to record the client IP address for each query.
   // Useful for identifying which application instances generate load.
   bool record_client_address = 4;
+}
+
+// GcpAlloydbClusterPscConfig enables Private Service Connect for the cluster
+// instead of VPC peering via Private Service Access.
+message GcpAlloydbClusterPscConfig {
+  // When true, the cluster is reachable only through PSC endpoints.
+  bool psc_enabled = 1;
+}
+
+// GcpAlloydbClusterSecondaryConfig configures a cross-region DR secondary
+// cluster. Only valid when cluster_type is SECONDARY.
+message GcpAlloydbClusterSecondaryConfig {
+  // Full resource name of the primary cluster this secondary follows.
+  string primary_cluster_name = 1 [(buf.validate.field).string.min_len = 1];
 }
 
 // GcpAlloydbClusterPrimaryInstance defines the configuration for the
@@ -310,12 +325,23 @@ message GcpAlloydbClusterPrimaryInstance {
 //     backup (WAL streaming for point-in-time recovery). Both can be
 //     configured independently with separate CMEK keys.
 //
-//   - deletion_protection defaults to true. You must explicitly set it
-//     to false before destroying a cluster that contains data.
+//   - Connectivity is exactly one of PSA (network_config.network) or PSC
+//     (psc_config.psc_enabled). The provider enforces this mutual exclusion.
 message GcpAlloydbClusterSpec {
+  option (buf.validate.message).cel = {
+    id: "connectivity_psa_xor_psc"
+    message: "set network for Private Service Access OR enable psc_config.psc_enabled — not both, not neither"
+    expression: "(has(this.network) && (has(this.network.value) || has(this.network.value_from)) && !(has(this.psc_config) && this.psc_config.psc_enabled)) || (!(has(this.network) && (has(this.network.value) || has(this.network.value_from))) && has(this.psc_config) && this.psc_config.psc_enabled)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "secondary_requires_secondary_config"
+    message: "cluster_type SECONDARY requires secondary_config.primary_cluster_name"
+    expression: "this.cluster_type != 'SECONDARY' || (has(this.secondary_config) && this.secondary_config.primary_cluster_name != '')"
+  };
+
   // GCP project where the AlloyDB cluster will be created.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
@@ -335,15 +361,34 @@ message GcpAlloydbClusterSpec {
   // Immutable after creation.
   string location = 3 [(buf.validate.field).required = true];
 
-  // VPC network for the cluster's private connectivity. The VPC must have
-  // Private Service Access configured. Expects a VPC network self-link or
-  // resource reference.
+  // VPC network for Private Service Access connectivity, as the relative
+  // resource path "projects/{project}/global/networks/{network}" (the
+  // AlloyDB API rejects full https:// self-link URLs). The VPC must have
+  // Private Service Access configured (compose GcpGlobalAddress +
+  // GcpServiceNetworkingConnection). Mutually exclusive with PSC.
   // Immutable after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef network = 4 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_id"
   ];
+
+  // Private Service Connect configuration. When psc_enabled is true, network
+  // must be unset — the cluster is reachable only through PSC endpoints.
+  GcpAlloydbClusterPscConfig psc_config = 14;
+
+  // Cluster role. PRIMARY (default) is a writable primary; SECONDARY is a
+  // cross-region DR replica that follows a primary cluster.
+  optional string cluster_type = 15 [
+    (dev.planton.shared.options.default) = "PRIMARY",
+    (buf.validate.field).cel = {
+      id: "cluster_type_valid"
+      message: "cluster_type must be PRIMARY or SECONDARY"
+      expression: "this == '' || this in ['PRIMARY', 'SECONDARY']"
+    }
+  ];
+
+  // Required when cluster_type is SECONDARY — names the primary cluster.
+  GcpAlloydbClusterSecondaryConfig secondary_config = 16;
 
   // Name of the allocated IP range for Private Service Access.
   // When set, the cluster uses this specific IP range for its private
@@ -386,14 +431,32 @@ message GcpAlloydbClusterSpec {
   ];
 
   // Preferred maintenance window for system updates.
+  //
+  // NOTE: a cluster-level deletion-protection flag is deliberately not
+  // modeled: the released terraform provider has no such attribute for
+  // AlloyDB (it exists only on the unreleased main line), so modeling it
+  // would create a safety posture one engine cannot honor.
   GcpAlloydbClusterMaintenanceWindow maintenance_window = 12;
-
-  // Whether deletion protection is enabled. When true (the default),
-  // the cluster cannot be destroyed without first setting this to false.
-  // Strongly recommended for production clusters.
-  bool deletion_protection = 13;
 
   // Primary instance configuration. Required -- a cluster without a
   // primary instance cannot serve queries.
-  GcpAlloydbClusterPrimaryInstance primary_instance = 14 [(buf.validate.field).required = true];
+  GcpAlloydbClusterPrimaryInstance primary_instance = 13 [(buf.validate.field).required = true];
+
+  // Unstructured metadata stored on the cluster (annotations, not labels —
+  // not used for billing filtering).
+  map<string, string> annotations = 17;
+
+  // Billing subscription tier: STANDARD (default) or TRIAL. A TRIAL cluster
+  // converts to STANDARD when trial credits end.
+  string subscription_type = 18 [(buf.validate.field).cel = {
+    id: "subscription_type_valid"
+    message: "subscription_type must be TRIAL or STANDARD"
+    expression: "this == '' || this in ['TRIAL', 'STANDARD']"
+  }];
+
+  // When true, a database_version change returns immediately instead of
+  // waiting for the in-place major-version upgrade to finish. The upgrade
+  // continues server-side; use for very large clusters where the wait
+  // exceeds sane IaC timeouts.
+  bool skip_await_major_version_upgrade = 19;
 }

@@ -1,0 +1,4 @@
+name: gcpalloydbinstance-pulumi-project
+runtime:
+  name: go
+description: Planton GcpAlloydbInstance Pulumi module

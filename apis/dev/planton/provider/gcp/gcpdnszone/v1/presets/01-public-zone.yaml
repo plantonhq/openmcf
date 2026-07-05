@@ -1,10 +1,9 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpDnsZone
 metadata:
-  name: my-dns-zone
+  name: example.com
 spec:
   projectId:
-    value: "<gcp-project-id>"
-  iamServiceAccounts:
-    - <cert-manager-sa-email>
-    - <external-dns-sa-email>
+    value: my-gcp-project-123 # replace with your project ID
+  visibility: public
+  description: Public authoritative zone for example.com

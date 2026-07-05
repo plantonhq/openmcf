@@ -1,6 +1,6 @@
 # GCP AlloyDB Cluster
 
-Deploys an AlloyDB cluster with a bundled primary instance, automated and continuous backup policies, optional CMEK encryption at three levels (data, backups, PITR), and VPC-based private networking via Private Service Access. The primary instance is bundled because a cluster without one cannot serve queries.
+Deploys an AlloyDB cluster with a bundled primary instance, automated and continuous backup policies, optional CMEK encryption at three levels (data, backups, PITR), and private connectivity via Private Service Access or Private Service Connect. The primary instance is bundled because a cluster without one cannot serve queries.
 
 ## What Gets Created
 
@@ -15,8 +15,9 @@ When you deploy a GcpAlloydbCluster resource, Planton provisions:
 ## Prerequisites
 
 - **GCP credentials** configured via service account key or Planton provider config
-- **A VPC network** with Private Service Access configured (the network must have a private services connection to `servicenetworking.googleapis.com`)
-- **A GCP project** with the AlloyDB API enabled (`alloydb.googleapis.com`)
+- **Private connectivity** — either a VPC with Private Service Access (`network`) or PSC (`pscConfig.pscEnabled: true`); exactly one mode is required
+- **GcpServiceNetworkingConnection** on the target VPC when using Private Service Access
+- **A GCP project** with the AlloyDB API enabled (`alloydb.googleapis.com`; the module enables it automatically)
 - **A Cloud KMS key** if enabling CMEK encryption (must be in the same region as the cluster)
 
 ## Quick Start
@@ -63,7 +64,8 @@ This creates an AlloyDB cluster with a 2-CPU primary instance in `us-central1`, 
 | `projectId` | `StringValueOrRef` | GCP project where the cluster is created. Can reference a GcpProject resource via `valueFrom`. | Required |
 | `clusterName` | `string` | Name of the AlloyDB cluster. Becomes the GCP resource ID. Immutable after creation. | Pattern: `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`, 2-63 chars |
 | `location` | `string` | GCP region (e.g., `us-central1`). Immutable after creation. | Required |
-| `network` | `StringValueOrRef` | VPC network with Private Service Access. Can reference a GcpVpcNetwork resource via `valueFrom`. Immutable after creation. | Required |
+| `network` | `StringValueOrRef` | VPC network with Private Service Access. Mutually exclusive with `pscConfig`. Can reference GcpVpcNetwork via `valueFrom`. | One of network or PSC |
+| `pscConfig.pscEnabled` | `bool` | Enable Private Service Connect. Mutually exclusive with `network`. | One of network or PSC |
 | `primaryInstance.instanceId` | `string` | Name of the primary instance. Immutable after creation. | Pattern: `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`, 2-63 chars |
 
 ### Optional Fields
@@ -89,7 +91,11 @@ This creates an AlloyDB cluster with a 2-CPU primary instance in `us-central1`, 
 | `kmsKeyName` | `StringValueOrRef` | Google-managed | KMS key for cluster data-at-rest encryption. Immutable. Can reference GcpKmsKey via `valueFrom`. |
 | `maintenanceWindow.day` | `string` | GCP-selected | Day of week: `MONDAY` through `SUNDAY`. |
 | `maintenanceWindow.startHour` | `int` | GCP-selected | UTC hour (0-23) for maintenance start. |
-| `deletionProtection` | `bool` | `true` | Prevents accidental cluster destruction. |
+| `clusterType` | `string` | `PRIMARY` | Cluster role: `PRIMARY` or `SECONDARY` (cross-region DR). |
+| `secondaryConfig.primaryClusterName` | `string` | — | Required when `clusterType` is `SECONDARY`. Full name of the primary cluster. |
+| `annotations` | `map<string,string>` | `{}` | Unstructured metadata on the cluster. |
+| `subscriptionType` | `string` | `STANDARD` | Billing tier: `STANDARD` or `TRIAL`. |
+| `skipAwaitMajorVersionUpgrade` | `bool` | `false` | When `true`, database version upgrades return without waiting for completion. |
 | `primaryInstance.cpuCount` | `int` | — | Number of CPUs. Mutually exclusive with `machineType`. |
 | `primaryInstance.machineType` | `string` | — | Machine type (e.g., `n2-highmem-4`). Mutually exclusive with `cpuCount`. |
 | `primaryInstance.availabilityType` | `string` | GCP default | `ZONAL` or `REGIONAL`. REGIONAL provides automatic failover. |
@@ -106,7 +112,7 @@ This creates an AlloyDB cluster with a 2-CPU primary instance in `us-central1`, 
 
 ### Production HA Cluster
 
-A production-ready cluster with REGIONAL availability, initial user, and deletion protection:
+A production-ready cluster with REGIONAL availability and an initial user:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
@@ -126,7 +132,6 @@ spec:
   network:
     value: projects/prod-project/global/networks/prod-vpc
   databaseVersion: POSTGRES_16
-  deletionProtection: true
   initialUser:
     password: "change-me-immediately"
     user: dbadmin

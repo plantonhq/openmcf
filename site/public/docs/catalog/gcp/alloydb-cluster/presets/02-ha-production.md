@@ -1,6 +1,6 @@
 ---
 title: "HA Production"
-description: "Production-ready AlloyDB cluster with high availability, automated backups with 7-day retention, initial user, deletion protection, and ENCRYPTED_ONLY SSL. Uses 4 CPUs and REGIONAL deployment for..."
+description: "Production-ready AlloyDB cluster with high availability, automated backups with 7-day retention, initial user, and ENCRYPTED_ONLY SSL. Uses 4 CPUs and REGIONAL deployment for automatic failover."
 type: "preset"
 rank: "02"
 presetSlug: "02-ha-production"
@@ -13,7 +13,7 @@ order: 2
 
 # HA Production
 
-Production-ready AlloyDB cluster with high availability, automated backups with 7-day retention, initial user, deletion protection, and ENCRYPTED_ONLY SSL. Uses 4 CPUs and REGIONAL deployment for automatic failover.
+Production-ready AlloyDB cluster with high availability, automated backups with 7-day retention, initial user, and ENCRYPTED_ONLY SSL. Uses 4 CPUs and REGIONAL deployment for automatic failover.
 
 ## Description
 
@@ -23,7 +23,6 @@ This preset provisions a production-ready AlloyDB cluster suitable for applicati
 
 - Production application databases requiring high availability
 - Workloads that need automated backups with a defined retention window
-- Environments where accidental deletion must be prevented
 - Applications that require encrypted client connections (TLS only)
 - Standard production PostgreSQL workloads with moderate compute needs
 
@@ -31,7 +30,6 @@ This preset provisions a production-ready AlloyDB cluster suitable for applicati
 
 - **4 CPUs** — Moderate production capacity; GCP selects the machine family
 - **REGIONAL availability** — Multi-zone deployment with automatic failover
-- **deletion_protection: true** — Prevents accidental cluster destruction
 - **initial_user** — Creates a `postgres` superuser with the specified password for direct database access
 - **automated_backup_policy** — Enabled with 7-day time-based retention (604800 seconds)
 - **ssl_mode: ENCRYPTED_ONLY** — All client connections must use TLS

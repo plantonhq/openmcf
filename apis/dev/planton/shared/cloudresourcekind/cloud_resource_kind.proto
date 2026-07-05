@@ -738,6 +738,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpdns"
+    prerequisites: [GcpVpcNetwork]
   }];
   GcpGcsBucket = 606 [(kind_meta) = {
     provider: gcp
@@ -887,6 +888,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpadb"
+    prerequisites: [GcpServiceNetworkingConnection]
   }];
   GcpRedisInstance = 631 [(kind_meta) = {
     provider: gcp
@@ -930,6 +932,18 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpsqlusr"
     prerequisites: [GcpCloudSql]
+  }];
+  GcpAlloydbInstance = 639 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpadbinst"
+    prerequisites: [GcpAlloydbCluster]
+  }];
+  GcpAlloydbUser = 640 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpadbusr"
+    prerequisites: [GcpAlloydbCluster]
   }];
   GcpBigQueryDataset = 650 [(kind_meta) = {
     provider: gcp
@@ -1047,6 +1061,13 @@ enum CloudResourceKind {
       GcpVpcNetwork,
       GcpSubnetwork
     ]
+  }];
+
+  // 720–729: GCP serverless overflow
+  GcpCloudRunJob = 720 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "cldrunjob"
   }];
 
   // 800–999: Kubernetes resources

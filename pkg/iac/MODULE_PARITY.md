@@ -47,6 +47,14 @@ matching `pulumi/module/*.go`), confirm both sides agree on:
   two resolution paths can disagree (a wildcard-location cluster lookup vs the spec's
   location reference), and the ignored spec field becomes dead config on one engine
   only, which is a spec-feature-coverage defect.
+- **Bridged-provider-only client-side flags.** The Pulumi provider can bridge a
+  NEWER upstream line than the released GA provider the Terraform module pins. A
+  client-side safety flag that exists only on that newer line (e.g. a
+  deletion-protection flag that defaults TRUE) silently changes one engine's
+  lifecycle behavior -- typically blocking destroy on Pulumi while Terraform
+  destroys cleanly. When the released GA schema has no such attribute, explicitly
+  neutralize it in the Pulumi module with a comment explaining why; never let a
+  bridged-only default decide destroy semantics on one engine.
 - **Cross-resource addressing.** Both engines consume the spec's resolved reference
   fields (`StringValueOrRef` arrives as a plain string) to address a parent or sibling
   resource. Never re-discover a parent on one engine via a provider data-source lookup

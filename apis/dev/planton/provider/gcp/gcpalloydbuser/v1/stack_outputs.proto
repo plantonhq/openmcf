@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpalloydbuser.v1;
+
+// GcpAlloydbUserStackOutputs captures values returned after provisioning an
+// AlloyDB user.
+message GcpAlloydbUserStackOutputs {
+  // Fully qualified user resource name.
+  // Format: projects/{project}/locations/{location}/clusters/{cluster}/users/{user}
+  string name = 1;
+
+  // The user_id as stored by AlloyDB.
+  string user_id = 2;
+
+  // Fully qualified cluster resource name this user belongs to.
+  string cluster_id = 3;
+}

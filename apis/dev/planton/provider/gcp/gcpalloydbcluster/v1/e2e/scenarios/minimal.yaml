@@ -1,0 +1,29 @@
+# PSA AlloyDB cluster flagship: consumes the full private-services-access
+# chain the registry installs (VPC → VPC_PEERING range → service networking
+# connection) and provisions a zonal primary instance.
+apiVersion: gcp.planton.dev/v1
+kind: GcpAlloydbCluster
+metadata:
+  name: planton-oss-e2e-gcpadb-minimal
+  id: planton-oss-e2e-gcpadb-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpalloydbcluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName: planton-oss-e2e-adb-${E2E_RUN_ID}
+  location: us-central1
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpc-prereq
+      fieldPath: status.outputs.network_id
+  primaryInstance:
+    instanceId: primary
+    cpuCount: 2
+    availabilityType: ZONAL

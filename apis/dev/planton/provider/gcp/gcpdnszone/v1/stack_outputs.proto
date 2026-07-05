@@ -2,12 +2,17 @@ syntax = "proto3";
 
 package dev.planton.provider.gcp.gcpdnszone.v1;
 
-//gcp-dns-zone stack-outputs
+// GcpDnsZoneStackOutputs captures values returned after provisioning a
+// Cloud DNS managed zone.
 message GcpDnsZoneStackOutputs {
-  // hosted-zone id
+  // Numeric identifier the Cloud DNS API assigns to the managed zone.
   string zone_id = 1;
-  // hosted-zone name
+
+  // Name of the managed zone resource in GCP — the handle GcpDnsRecord
+  // references when creating record sets in this zone.
   string zone_name = 2;
-  // The list of nameservers for the Managed Zone created for the DNS Domain.
+
+  // Nameservers Cloud DNS assigned to the zone. For public zones, configure
+  // these at the domain registrar to delegate the domain.
   repeated string nameservers = 3;
 }

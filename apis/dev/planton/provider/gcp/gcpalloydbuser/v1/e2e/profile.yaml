@@ -1,0 +1,13 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpalloydbuser
+spec:
+  # Composed scenario: deploys the GcpAlloydbCluster prerequisite then creates
+  # a BUILT_IN user on it.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 90

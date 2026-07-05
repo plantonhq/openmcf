@@ -331,6 +331,47 @@ func TestGcpCloudRun_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpcloudrun", "terraform")
 }
 
+// GcpAlloydbCluster scenarios (PSA chain + primary cluster; ~10–20 minutes
+// each). Batch runs need -timeout >= 120m.
+func TestGcpAlloydbCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpalloydbcluster", "pulumi")
+}
+func TestGcpAlloydbCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpalloydbcluster", "terraform")
+}
+
+// GcpAlloydbInstance scenarios (cluster prerequisite + read pool instance).
+func TestGcpAlloydbInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpalloydbinstance", "pulumi")
+}
+func TestGcpAlloydbInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpalloydbinstance", "terraform")
+}
+
+// GcpAlloydbUser scenarios (cluster prerequisite + BUILT_IN user).
+func TestGcpAlloydbUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpalloydbuser", "pulumi")
+}
+func TestGcpAlloydbUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpalloydbuser", "terraform")
+}
+
+// GcpDnsZone scenarios (public and private managed zones).
+func TestGcpDnsZone_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpdnszone", "pulumi")
+}
+func TestGcpDnsZone_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpdnszone", "terraform")
+}
+
+// GcpCloudRunJob scenarios (minimal single-task batch job).
+func TestGcpCloudRunJob_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudrunjob", "pulumi")
+}
+func TestGcpCloudRunJob_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudrunjob", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

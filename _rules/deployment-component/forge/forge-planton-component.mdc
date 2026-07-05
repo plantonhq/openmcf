@@ -133,6 +133,16 @@ This is identified in rule 001 and applied in rule 002. The ratcheting gate
 forged component is not done until the gate is green. Authority: the option comments in
 `dev/planton/shared/options/options.proto`.
 
+FOREIGN-KEY FIELD-PATH FORMAT (verify against the CONSUMING API)
+When wiring `default_kind_field_path` for a network/resource reference, verify which
+address format the consuming API accepts -- GCP APIs are inconsistent. Compute-family
+APIs accept full `https://` self-links, but several service APIs (AlloyDB,
+Service Networking) reject them with "malformed network path" and require the
+relative resource path (`projects/{project}/global/networks/{name}`). Pick the
+producing kind's output that matches (`network_id` vs `network_self_link`) and record
+the expected format in the field comment. A wrong format passes every offline gate and
+fails only at live create.
+
 ## Usage
 
 ```

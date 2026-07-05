@@ -4,40 +4,90 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/alloydb"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*alloydb.Cluster, error) {
 	spec := locals.GcpAlloydbCluster.Spec
 
+	serviceArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("alloydb.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		serviceArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdProjectService, err := projects.NewService(ctx,
+		"alloydb-alloydb.googleapis.com", serviceArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to enable alloydb.googleapis.com api")
+	}
+
 	args := &alloydb.ClusterArgs{
-		ClusterId:          pulumi.String(spec.ClusterName),
-		Location:           pulumi.String(spec.Location),
-		Project:            pulumi.StringPtr(spec.ProjectId.GetValue()),
-		Labels:             pulumi.ToStringMap(locals.GcpLabels),
-		DeletionProtection: pulumi.BoolPtr(spec.DeletionProtection),
+		ClusterId: pulumi.String(spec.ClusterName),
+		Location:  pulumi.String(spec.Location),
+		Labels:    pulumi.ToStringMap(locals.GcpLabels),
+		// The bridged provider carries the beta-only client-side
+		// deletion_protection flag, which defaults TRUE and blocks destroy.
+		// The released GA provider (the Terraform engine) has no such
+		// attribute, so it is explicitly disabled here to keep destroy
+		// semantics identical across engines; deletion safety belongs to
+		// the platform's lifecycle layer, not a provider-local flag.
+		DeletionProtection: pulumi.BoolPtr(false),
 	}
 
-	// Network configuration.
-	networkConfig := &alloydb.ClusterNetworkConfigArgs{
-		Network: pulumi.StringPtr(spec.Network.GetValue()),
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
-	if spec.AllocatedIpRange != "" {
-		networkConfig.AllocatedIpRange = pulumi.StringPtr(spec.AllocatedIpRange)
-	}
-	args.NetworkConfig = networkConfig
 
-	// Database version.
+	if spec.GetSkipAwaitMajorVersionUpgrade() {
+		args.SkipAwaitMajorVersionUpgrade = pulumi.BoolPtr(true)
+	}
+
+	if spec.Network.GetValue() != "" {
+		networkConfig := &alloydb.ClusterNetworkConfigArgs{
+			Network: pulumi.StringPtr(spec.Network.GetValue()),
+		}
+		if spec.AllocatedIpRange != "" {
+			networkConfig.AllocatedIpRange = pulumi.StringPtr(spec.AllocatedIpRange)
+		}
+		args.NetworkConfig = networkConfig
+	}
+
+	if spec.PscConfig != nil && spec.PscConfig.PscEnabled {
+		args.PscConfig = &alloydb.ClusterPscConfigArgs{
+			PscEnabled: pulumi.BoolPtr(true),
+		}
+	}
+
+	if spec.GetClusterType() != "" {
+		args.ClusterType = pulumi.StringPtr(spec.GetClusterType())
+	}
+
+	if spec.SecondaryConfig != nil && spec.SecondaryConfig.PrimaryClusterName != "" {
+		args.SecondaryConfig = &alloydb.ClusterSecondaryConfigArgs{
+			PrimaryClusterName: pulumi.String(spec.SecondaryConfig.PrimaryClusterName),
+		}
+	}
+
+	if len(spec.Annotations) > 0 {
+		args.Annotations = pulumi.ToStringMap(spec.Annotations)
+	}
+
+	if spec.SubscriptionType != "" {
+		args.SubscriptionType = pulumi.StringPtr(spec.SubscriptionType)
+	}
+
 	if spec.DatabaseVersion != "" {
 		args.DatabaseVersion = pulumi.StringPtr(spec.DatabaseVersion)
 	}
 
-	// Display name.
 	if spec.DisplayName != "" {
 		args.DisplayName = pulumi.StringPtr(spec.DisplayName)
 	}
 
-	// Initial user.
 	if spec.InitialUser != nil {
 		initialUserArgs := &alloydb.ClusterInitialUserArgs{
 			Password: pulumi.String(spec.InitialUser.Password),
@@ -48,7 +98,6 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 		args.InitialUser = initialUserArgs
 	}
 
-	// Automated backup policy.
 	if spec.AutomatedBackupPolicy != nil {
 		backupArgs := &alloydb.ClusterAutomatedBackupPolicyArgs{}
 
@@ -62,7 +111,6 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 			backupArgs.Location = pulumi.StringPtr(spec.AutomatedBackupPolicy.Location)
 		}
 
-		// Retention: quantity-based or time-based (mutually exclusive, validated by proto).
 		if spec.AutomatedBackupPolicy.QuantityBasedRetentionCount > 0 {
 			backupArgs.QuantityBasedRetention = &alloydb.ClusterAutomatedBackupPolicyQuantityBasedRetentionArgs{
 				Count: pulumi.IntPtr(int(spec.AutomatedBackupPolicy.QuantityBasedRetentionCount)),
@@ -74,7 +122,6 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 			}
 		}
 
-		// Weekly schedule.
 		if spec.AutomatedBackupPolicy.WeeklySchedule != nil {
 			schedule := spec.AutomatedBackupPolicy.WeeklySchedule
 			scheduleArgs := &alloydb.ClusterAutomatedBackupPolicyWeeklyScheduleArgs{}
@@ -83,7 +130,6 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 				scheduleArgs.DaysOfWeeks = pulumi.ToStringArray(schedule.DaysOfWeek)
 			}
 
-			// Convert start_hour to the TimeOfDay structure GCP expects.
 			scheduleArgs.StartTimes = alloydb.ClusterAutomatedBackupPolicyWeeklyScheduleStartTimeArray{
 				&alloydb.ClusterAutomatedBackupPolicyWeeklyScheduleStartTimeArgs{
 					Hours: pulumi.IntPtr(int(schedule.StartHour)),
@@ -93,7 +139,6 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 			backupArgs.WeeklySchedule = scheduleArgs
 		}
 
-		// Backup encryption.
 		if spec.AutomatedBackupPolicy.EncryptionKmsKeyName != nil && spec.AutomatedBackupPolicy.EncryptionKmsKeyName.GetValue() != "" {
 			backupArgs.EncryptionConfig = &alloydb.ClusterAutomatedBackupPolicyEncryptionConfigArgs{
 				KmsKeyName: pulumi.StringPtr(spec.AutomatedBackupPolicy.EncryptionKmsKeyName.GetValue()),
@@ -103,14 +148,10 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 		args.AutomatedBackupPolicy = backupArgs
 	}
 
-	// Continuous backup config.
 	if spec.ContinuousBackupConfig != nil {
-		continuousArgs := &alloydb.ClusterContinuousBackupConfigArgs{}
-
-		// The enabled field: proto bool defaults to false, so we need to handle
-		// the case where the block is present but enabled is not explicitly set.
-		// In GCP, continuous backup defaults to enabled=true when not specified.
-		continuousArgs.Enabled = pulumi.BoolPtr(spec.ContinuousBackupConfig.Enabled)
+		continuousArgs := &alloydb.ClusterContinuousBackupConfigArgs{
+			Enabled: pulumi.BoolPtr(spec.ContinuousBackupConfig.Enabled),
+		}
 
 		if spec.ContinuousBackupConfig.RecoveryWindowDays > 0 {
 			continuousArgs.RecoveryWindowDays = pulumi.IntPtr(int(spec.ContinuousBackupConfig.RecoveryWindowDays))
@@ -125,14 +166,12 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 		args.ContinuousBackupConfig = continuousArgs
 	}
 
-	// Cluster-level CMEK encryption.
 	if spec.KmsKeyName != nil && spec.KmsKeyName.GetValue() != "" {
 		args.EncryptionConfig = &alloydb.ClusterEncryptionConfigArgs{
 			KmsKeyName: pulumi.StringPtr(spec.KmsKeyName.GetValue()),
 		}
 	}
 
-	// Maintenance window.
 	if spec.MaintenanceWindow != nil {
 		args.MaintenanceUpdatePolicy = &alloydb.ClusterMaintenanceUpdatePolicyArgs{
 			MaintenanceWindows: alloydb.ClusterMaintenanceUpdatePolicyMaintenanceWindowArray{
@@ -146,12 +185,14 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 		}
 	}
 
-	createdCluster, err := alloydb.NewCluster(ctx, "alloydb-cluster", args, pulumi.Provider(gcpProvider))
+	createdCluster, err := alloydb.NewCluster(ctx, "alloydb-cluster", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdProjectService}),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create alloydb cluster")
 	}
 
-	// Export cluster outputs.
 	ctx.Export(OpClusterId, createdCluster.Name)
 	ctx.Export(OpClusterName, pulumi.String(spec.ClusterName))
 	ctx.Export(OpDatabaseVersion, createdCluster.DatabaseVersion)

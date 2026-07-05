@@ -1,0 +1,505 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpcloudrunjob.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpCloudRunJobSpec defines a Cloud Run job (`google_cloud_run_v2_job`) —
+// a run-to-completion container workload that executes a fixed number of
+// parallel tasks and exits. Unlike a Cloud Run service (request-serving,
+// always-on endpoint, traffic splitting), a job is batch-shaped: you define
+// a task template once, then each run (an "execution") stamps out
+// task_count tasks with up to parallelism running concurrently.
+//
+// Jobs share the same container/volume/VPC vocabulary as GcpCloudRun but
+// deliberately omit serving concerns — no ingress, no traffic, no probes.
+// Trigger executions with `gcloud run jobs execute`, Cloud Scheduler, or
+// Eventarc; this resource owns the job definition, not individual runs.
+message GcpCloudRunJobSpec {
+  option (buf.validate.message).cel = {
+    id: "gpu.redundancy_requires_accelerator"
+    message: "gpu_zonal_redundancy_disabled only applies to GPU jobs — set template.node_selector.accelerator"
+    expression: "!this.gpu_zonal_redundancy_disabled || has(this.template) && has(this.template.node_selector)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "parallelism_lte_task_count"
+    message: "parallelism cannot exceed task_count when both are set"
+    expression: "!has(this.parallelism) || !has(this.task_count) || this.parallelism <= this.task_count"
+  };
+
+  // The GCP project the job is created in. Accepts a literal project ID
+  // or a reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Region the job is deployed in, e.g. "us-central1". Immutable.
+  string region = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
+  ];
+
+  // Name of the Cloud Run job in GCP. Immutable. If not specified,
+  // defaults to metadata.name. Must be 1-63 characters: lowercase letters,
+  // digits, and hyphens; starting with a letter.
+  string job_name = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      pattern: "^[a-z]([-a-z0-9]*[a-z0-9])?$"
+      max_len: 63
+    }
+  ];
+
+  // Labels applied to the job object. User labels are shared with
+  // Google's billing system. Keys and values in the `run.googleapis.com`,
+  // `cloud.googleapis.com`, `serving.knative.dev`, and
+  // `autoscaling.knative.dev` namespaces are rejected by the API.
+  map<string, string> labels = 4;
+
+  // Unstructured metadata preserved by external tools. Not queryable.
+  // System namespaces (`run.googleapis.com`, etc.) are rejected on create.
+  map<string, string> annotations = 5;
+
+  // The task template every execution runs: containers, volumes,
+  // networking, hardware, and per-task limits. Required.
+  GcpCloudRunJobTemplate template = 6 [(buf.validate.field).required = true];
+
+  // Desired number of tasks each execution runs (>= 1). Setting 1 means
+  // success of that single task signals execution success. If unset, GCP
+  // defaults to 1.
+  optional int32 task_count = 7 [(buf.validate.field).int32.gte = 1];
+
+  // Maximum tasks running concurrently during an execution (>= 0). Must be
+  // <= task_count when both are set. If 0 or unset, GCP uses the maximum
+  // possible for that run.
+  optional int32 parallelism = 8 [(buf.validate.field).int32.gte = 0];
+
+  // Launch-stage gate for preview Cloud Run features. Set BETA (or ALPHA)
+  // only when the spec uses features GCP rejects at the default GA stage.
+  string launch_stage = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "ALPHA",
+        "BETA",
+        "GA"
+      ]
+    }
+  ];
+
+  // Binary Authorization: only container images that pass the policy's
+  // attestation checks may deploy.
+  GcpCloudRunJobBinaryAuthorization binary_authorization = 10;
+
+  // Opts a GPU job out of zonal redundancy: tasks may run from a single
+  // zone for cheaper GPU capacity. Only meaningful when
+  // template.node_selector is set.
+  bool gpu_zonal_redundancy_disabled = 11;
+
+  // Prevents the job from being destroyed while true. Defaults to true
+  // (matching GCP's posture): a delete fails until this is set to false.
+  optional bool deletion_protection = 12 [(dev.planton.shared.options.default) = "true"];
+}
+
+// GcpCloudRunJobTemplate describes one task: the container(s), volumes,
+// identity, networking, and per-task limits stamped out for every task
+// in an execution.
+message GcpCloudRunJobTemplate {
+  // The containers that make up one task. The first container is the main
+  // worker; additional containers are sidecars sharing the task's network
+  // namespace (localhost) and volumes. Use depends_on for startup ordering.
+  repeated GcpCloudRunJobContainer containers = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Named volumes tasks can mount: Cloud SQL sockets, Secret Manager
+  // material, scratch space, GCS buckets (FUSE), and NFS shares.
+  repeated GcpCloudRunJobVolume volumes = 2;
+
+  // Email of the IAM service account each task runs as. Accepts a literal
+  // email or a reference to a GcpServiceAccount resource. If omitted, the
+  // project's Compute Engine default service account is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // Sandbox generation tasks execute in. GEN2 (recommended) offers full
+  // Linux compatibility (required for GCS/NFS volumes); GEN1 starts faster
+  // with a gVisor-restricted syscall surface.
+  GcpCloudRunJobExecutionEnvironment execution_environment = 4 [(dev.planton.shared.options.recommended_default) = "EXECUTION_ENVIRONMENT_GEN2"];
+
+  // Customer-managed encryption key (CMEK) encrypting deployed container
+  // images. Accepts a full crypto key ID or a reference to a GcpKmsKey
+  // resource. The key must be in the same region as the job.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef encryption_key = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "KMS crypto key resource ID/reference only — never key material"
+  ];
+
+  // Maximum time one task attempt may run before GCP marks it failed, in
+  // seconds (1-86400). If unset, GCP defaults to 600 (10 minutes). Each
+  // retry gets a fresh timeout budget.
+  optional int32 timeout_seconds = 6 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 86400
+  }];
+
+  // Retries per task before marking it failed (>= 0). GCP defaults to 3.
+  // Set 0 for fail-fast batch work with no retries.
+  optional int32 max_retries = 7 [(buf.validate.field).int32.gte = 0];
+
+  // Private networking for OUTBOUND traffic from tasks.
+  GcpCloudRunJobVpcAccess vpc_access = 8;
+
+  // Hardware requirements for GPU batch workloads. Setting an accelerator
+  // (e.g. "nvidia-l4") gives each task one GPU; container resource limits
+  // must meet Cloud Run's GPU minimums (4 CPU / 16Gi recommended).
+  GcpCloudRunJobNodeSelector node_selector = 9;
+}
+
+// GcpCloudRunJobContainer is one container of a task: the worker or a
+// sidecar sharing localhost and volumes with siblings in the same task.
+message GcpCloudRunJobContainer {
+  // Name of the container. Required when the task runs more than one
+  // container (depends_on refers to these names).
+  string name = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      pattern: "^[a-z]([-a-z0-9]*[a-z0-9])?$"
+      max_len: 63
+    }
+  ];
+
+  // Container image URL, e.g. "us-docker.pkg.dev/project/repo/worker:1.0.0".
+  string image = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Entrypoint array — overrides the image's ENTRYPOINT.
+  repeated string command = 3;
+
+  // Arguments to the entrypoint — overrides the image's CMD.
+  repeated string args = 4;
+
+  // Environment variables. Each entry carries either a literal value or a
+  // Secret Manager reference resolved at task start.
+  repeated GcpCloudRunJobEnvVar env = 5;
+
+  // CPU and memory limits for this container.
+  GcpCloudRunJobContainerResources resources = 6;
+
+  // Volumes (declared at the template level) mounted into this container.
+  repeated GcpCloudRunJobVolumeMount volume_mounts = 7;
+
+  // Working directory for the entrypoint.
+  string working_dir = 8;
+
+  // Names of containers this one waits for before starting.
+  repeated string depends_on = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {min_len: 1}
+      }
+    }
+  ];
+}
+
+// GcpCloudRunJobEnvVar is one environment variable: a literal value or a
+// Secret Manager reference, never both.
+message GcpCloudRunJobEnvVar {
+  option (buf.validate.message).cel = {
+    id: "env.value_xor_secret"
+    message: "an environment variable takes a literal value or a Secret Manager reference, not both"
+    expression: "!(this.value != '' && has(this.value_from_secret))"
+  };
+
+  // Variable name, e.g. "BATCH_SIZE". Must not start with a digit.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[A-Za-z_][A-Za-z0-9_.-]*$"}
+  ];
+
+  // Literal value. Never place credentials here — use value_from_secret.
+  string value = 2;
+
+  // Secret Manager reference resolved at task start.
+  GcpCloudRunJobSecretEnvSource value_from_secret = 3;
+}
+
+// GcpCloudRunJobSecretEnvSource points an environment variable at a Secret
+// Manager secret version.
+message GcpCloudRunJobSecretEnvSource {
+  // The secret: a short name or full resource name (projects/*/secrets/*).
+  string secret = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Secret Manager secret NAME/identifier only — the secret material itself never appears in the spec"
+  ];
+
+  // Secret version: a version number or "latest".
+  string version = 2 [(dev.planton.shared.options.recommended_default) = "latest"];
+}
+
+// GcpCloudRunJobContainerResources sets CPU and memory limits for one
+// container in a task.
+message GcpCloudRunJobContainerResources {
+  // CPU limit, e.g. "1", "2", "4", "8" or a fraction like "0.5"/"500m".
+  // GPU tasks need at least "4".
+  string cpu = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^([0-9]+m|[0-9]+(\\.[0-9]+)?)$"}
+  ];
+
+  // Memory limit with unit suffix, e.g. "512Mi", "2Gi", "16Gi".
+  string memory = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^[0-9]+(Ki|Mi|Gi|Ti|K|M|G|T)$"}
+  ];
+}
+
+// GcpCloudRunJobVolume is a named volume with exactly one source.
+message GcpCloudRunJobVolume {
+  // Volume name referenced by volume_mounts entries.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+      max_len: 63
+    }
+  ];
+
+  // The volume's backing source.
+  oneof source {
+    option (buf.validate.oneof).required = true;
+
+    // Cloud SQL Unix sockets under the mount path.
+    GcpCloudRunJobVolumeCloudSql cloud_sql_instance = 2;
+
+    // Secret Manager secret versions exposed as files.
+    GcpCloudRunJobVolumeSecret secret = 3;
+
+    // Ephemeral scratch space, in-memory or disk-backed.
+    GcpCloudRunJobVolumeEmptyDir empty_dir = 4;
+
+    // A GCS bucket mounted via Cloud Storage FUSE (requires GEN2).
+    GcpCloudRunJobVolumeGcs gcs = 5;
+
+    // An NFS share mounted into the task (requires GEN2 and VPC reachability).
+    GcpCloudRunJobVolumeNfs nfs = 6;
+  }
+}
+
+// GcpCloudRunJobVolumeCloudSql exposes Cloud SQL instances as Unix sockets.
+message GcpCloudRunJobVolumeCloudSql {
+  // Cloud SQL instance connection names (project:region:instance).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef instances = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudSql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.connection_name"
+  ];
+}
+
+// GcpCloudRunJobVolumeSecret projects Secret Manager versions as files.
+message GcpCloudRunJobVolumeSecret {
+  // The secret: a short name or full resource name.
+  string secret = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Secret Manager secret NAME/identifier only — the secret material itself never appears in the spec"
+  ];
+
+  // Default Unix permission mode for projected files, in decimal (e.g. 292 = 0444).
+  optional int32 default_mode = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 511
+  }];
+
+  // Which versions land at which relative paths.
+  repeated GcpCloudRunJobVolumeSecretItem items = 3;
+}
+
+// GcpCloudRunJobVolumeSecretItem maps one secret version to one file.
+message GcpCloudRunJobVolumeSecretItem {
+  // Relative path under the volume's mount path.
+  string path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Secret version: a version number or "latest".
+  string version = 2 [(dev.planton.shared.options.recommended_default) = "latest"];
+
+  // Unix permission mode for this file, in decimal.
+  optional int32 mode = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 511
+  }];
+}
+
+// GcpCloudRunJobVolumeEmptyDir is per-task ephemeral scratch space.
+message GcpCloudRunJobVolumeEmptyDir {
+  // Backing medium: MEMORY (default) or DISK.
+  string medium = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "MEMORY",
+        "DISK"
+      ]
+    }
+  ];
+
+  // Capacity limit with unit suffix, e.g. "512Mi", "2Gi".
+  string size_limit = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^[0-9]+(Ki|Mi|Gi|Ti|K|M|G|T)$"}
+  ];
+}
+
+// GcpCloudRunJobVolumeGcs mounts a GCS bucket via Cloud Storage FUSE.
+message GcpCloudRunJobVolumeGcs {
+  // The bucket to mount. Accepts a literal name or a GcpGcsBucket reference.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGcsBucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Mount read-only.
+  bool read_only = 2;
+}
+
+// GcpCloudRunJobVolumeNfs mounts an NFS share (e.g. Filestore).
+message GcpCloudRunJobVolumeNfs {
+  // Hostname or IP of the NFS server.
+  string server = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Exported path on the server, e.g. "/share1".
+  string path = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^/.*$"
+  ];
+
+  // Mount read-only.
+  bool read_only = 3;
+}
+
+// GcpCloudRunJobVolumeMount attaches a declared volume to a container path.
+message GcpCloudRunJobVolumeMount {
+  // Name of a volume declared in template.volumes.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Absolute path in the container. Cloud SQL volumes must mount at "/cloudsql".
+  string mount_path = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^/.*$"
+  ];
+}
+
+// GcpCloudRunJobVpcAccess routes task OUTBOUND traffic into a VPC.
+message GcpCloudRunJobVpcAccess {
+  option (buf.validate.message).cel = {
+    id: "vpc_access.connector_xor_interfaces"
+    message: "use direct VPC egress (network_interfaces) or a Serverless VPC Access connector, not both"
+    expression: "!(((has(this.connector.value) && this.connector.value != '') || has(this.connector.value_from)) && size(this.network_interfaces) > 0)"
+  };
+
+  // Serverless VPC Access connector (legacy mechanism).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef connector = 1;
+
+  // Direct VPC egress: tasks get IPs in the subnetwork.
+  repeated GcpCloudRunJobNetworkInterface network_interfaces = 2;
+
+  // Which egress uses the VPC path: ALL_TRAFFIC or PRIVATE_RANGES_ONLY.
+  string egress = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "ALL_TRAFFIC",
+        "PRIVATE_RANGES_ONLY"
+      ]
+    }
+  ];
+}
+
+// GcpCloudRunJobNetworkInterface places tasks into a VPC subnetwork.
+message GcpCloudRunJobNetworkInterface {
+  // The VPC network. Accepts a literal name or a GcpVpcNetwork reference.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_name"
+  ];
+
+  // The subnetwork tasks draw IPs from. Must be in the job's region.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_name"
+  ];
+
+  // Network tags applied to tasks — how VPC firewall rules select egress.
+  repeated string tags = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {pattern: "^[a-z]([-a-z0-9]*[a-z0-9])?$"}
+      }
+    }
+  ];
+}
+
+// GcpCloudRunJobNodeSelector states the hardware each task needs.
+message GcpCloudRunJobNodeSelector {
+  // GPU accelerator type each task gets, e.g. "nvidia-l4".
+  string accelerator = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// GcpCloudRunJobBinaryAuthorization gates deploys on image attestation.
+message GcpCloudRunJobBinaryAuthorization {
+  option (buf.validate.message).cel = {
+    id: "binary_authorization.default_xor_policy"
+    message: "use the project default policy (use_default) or name a specific policy, not both"
+    expression: "!(this.use_default && this.policy != '')"
+  };
+
+  // Evaluate deploys against the project's default Binary Authorization policy.
+  bool use_default = 1;
+
+  // Evaluate deploys against a specific platform policy.
+  string policy = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Justification recorded when a break-glass deploy bypasses the policy.
+  string breakglass_justification = 3;
+}
+
+// GcpCloudRunJobExecutionEnvironment selects the task sandbox generation.
+enum GcpCloudRunJobExecutionEnvironment {
+  // Unspecified — GCP selects per workload.
+  EXECUTION_ENVIRONMENT_UNSPECIFIED = 0;
+
+  // First generation: gVisor-restricted, no network file systems.
+  EXECUTION_ENVIRONMENT_GEN1 = 1;
+
+  // Second generation: full Linux; required for GCS and NFS volumes.
+  EXECUTION_ENVIRONMENT_GEN2 = 2;
+}

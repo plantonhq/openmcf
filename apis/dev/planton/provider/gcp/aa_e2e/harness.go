@@ -27,9 +27,11 @@ import (
 	"github.com/plantonhq/planton/apis/dev/planton/provider/gcp/aa_e2e/verify"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/alloydb/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
+	"google.golang.org/api/dns/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
@@ -108,6 +110,14 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create run client")
 	}
+	alloyDBService, err := alloydb.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create alloydb client")
+	}
+	dnsService, err := dns.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create dns client")
+	}
 
 	gotProject, err := crmService.Projects.Get(project).Context(ctx).Do()
 	if err != nil {
@@ -127,6 +137,8 @@ func (h *Harness) Setup(ctx context.Context) error {
 		Redis:     redisService,
 		Container: containerService,
 		Run:       runService,
+		AlloyDB:   alloyDBService,
+		DNS:       dnsService,
 	}
 	return nil
 }

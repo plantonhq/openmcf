@@ -14,9 +14,11 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"google.golang.org/api/alloydb/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
+	"google.golang.org/api/dns/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
@@ -38,6 +40,8 @@ type Services struct {
 	Redis     *redis.Service
 	Container *container.Service
 	Run       *run.Service
+	AlloyDB   *alloydb.Service
+	DNS       *dns.Service
 }
 
 // Verifier checks a single component's GCP resource for existence/absence.
@@ -84,6 +88,11 @@ var verifiers = map[string]Verifier{
 	"gcpgkecluster":                   &gkeClusterVerifier{},
 	"gcpgkenodepool":                  &gkeNodePoolVerifier{},
 	"gcpcloudrun":                     &cloudRunVerifier{},
+	"gcpalloydbcluster":               &alloydbClusterVerifier{},
+	"gcpalloydbinstance":              &alloydbInstanceVerifier{},
+	"gcpalloydbuser":                  &alloydbUserVerifier{},
+	"gcpdnszone":                      &dnsZoneVerifier{},
+	"gcpcloudrunjob":                  &cloudRunJobVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

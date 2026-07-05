@@ -213,6 +213,8 @@ import (
 	digitaloceanvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean/digitaloceanvpc/v1"
 	gcpaddressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpaddress/v1"
 	gcpalloydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbcluster/v1"
+	gcpalloydbinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbinstance/v1"
+	gcpalloydbuserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpalloydbuser/v1"
 	gcpartifactregistryrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1"
 	gcpbackendbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendbucket/v1"
 	gcpbackendservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1"
@@ -223,6 +225,7 @@ import (
 	gcpcloudcomposerenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1"
 	gcpcloudfunctionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudfunction/v1"
 	gcpcloudrunv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudrun/v1"
+	gcpcloudrunjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudrunjob/v1"
 	gcpcloudschedulerjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudschedulerjob/v1"
 	gcpcloudsqlv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsql/v1"
 	gcpcloudsqldatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudsqldatabase/v1"
@@ -684,6 +687,8 @@ var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpAddress:                      &gcpaddressv1.GcpAddress{},
 	cloudresourcekind.CloudResourceKind_GcpAlloydbCluster:               &gcpalloydbclusterv1.GcpAlloydbCluster{},
+	cloudresourcekind.CloudResourceKind_GcpAlloydbInstance:              &gcpalloydbinstancev1.GcpAlloydbInstance{},
+	cloudresourcekind.CloudResourceKind_GcpAlloydbUser:                  &gcpalloydbuserv1.GcpAlloydbUser{},
 	cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo:         &gcpartifactregistryrepov1.GcpArtifactRegistryRepo{},
 	cloudresourcekind.CloudResourceKind_GcpBackendBucket:                &gcpbackendbucketv1.GcpBackendBucket{},
 	cloudresourcekind.CloudResourceKind_GcpBackendService:               &gcpbackendservicev1.GcpBackendService{},
@@ -694,6 +699,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment:     &gcpcloudcomposerenvironmentv1.GcpCloudComposerEnvironment{},
 	cloudresourcekind.CloudResourceKind_GcpCloudFunction:                &gcpcloudfunctionv1.GcpCloudFunction{},
 	cloudresourcekind.CloudResourceKind_GcpCloudRun:                     &gcpcloudrunv1.GcpCloudRun{},
+	cloudresourcekind.CloudResourceKind_GcpCloudRunJob:                  &gcpcloudrunjobv1.GcpCloudRunJob{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSchedulerJob:            &gcpcloudschedulerjobv1.GcpCloudSchedulerJob{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSql:                     &gcpcloudsqlv1.GcpCloudSql{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSqlDatabase:             &gcpcloudsqldatabasev1.GcpCloudSqlDatabase{},

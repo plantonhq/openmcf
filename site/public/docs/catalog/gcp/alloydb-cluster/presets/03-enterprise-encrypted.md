@@ -31,7 +31,6 @@ This preset provisions an enterprise-grade AlloyDB cluster for mission-critical 
 
 - **8 CPUs** — Higher production capacity for demanding workloads
 - **REGIONAL availability** — Multi-zone deployment with automatic failover
-- **deletion_protection: true** — Prevents accidental cluster destruction
 - **kms_key_name** — CMEK for cluster data at rest
 - **initial_user** — Creates a `postgres` superuser for database access
 - **automated_backup_policy** — Enabled with 30-day time-based retention (2592000 seconds), CMEK for backup encryption

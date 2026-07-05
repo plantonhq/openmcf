@@ -19,6 +19,11 @@ TOOLS
   option makes `pulumi up` require a prebuilt executable and fail out of the box
   (E2E runs and users invoke the module source directly via the go runtime);
   some older modules carry a stale `binary: ./pulumi` shape -- do not copy it.
+  `Pulumi.yaml` MUST carry the `runtime: name: go` block: a Pulumi.yaml with no
+  `runtime:` at all makes `pulumi up` succeed as a NO-OP -- the deploy "passes"
+  in seconds, creates zero resources, and exports zero outputs, so the failure
+  surfaces only at resource verification. Always sanity-check a first deploy's
+  duration and resource count, not just its exit code.
 
 CRITICAL -- ENTRYPOINT LOCATION (DO NOT REGRESS)
 The entrypoint files MUST be written at the `iac/pulumi/` ROOT, never in a `main/` or
