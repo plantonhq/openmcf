@@ -18,7 +18,7 @@ parity-verified against pulumi-azure v6 (`storage.Container`).
 | `storage_account_id` | `storage_account_id` | The v4/v5-forward ARM-id parent path (the deprecated `storage_account_name` data-plane form is not modeled); single authoritative parent FK, ForceNew |
 | `name` | `container_name` | Required, ForceNew, 3-63 lowercase/digits/hyphens, no consecutive hyphens |
 | `container_access_type` | enum | private (default) / blob / container; azurerm's lowercase wire values |
-| `default_encryption_scope` | same | Plain value until an encryption-scope kind lands (recorded below); ForceNew |
+| `default_encryption_scope` | same | `StringValueOrRef` -> `AzureStorageEncryptionScope.encryption_scope_name` (the scope must live on the same account); ForceNew |
 | `encryption_scope_override_enabled` | same | Optional bool (Azure defaults true when a scope is set); paired-with-scope CEL; ForceNew |
 | `metadata` | `metadata` | Container metadata is NOT Azure tags -- ARM does not support tags on containers, so the platform's identity tags live on the account |
 
@@ -32,10 +32,6 @@ parity-verified against pulumi-azure v6 (`storage.Container`).
 
 ## Recorded Skips (with reasons)
 
-- **`default_encryption_scope` as a plain value** -- encryption scopes
-  are a real standalone Azure resource (many-per-account, referenced
-  here and by ADLS filesystems) scheduled for the storage-data-services
-  session; this field converts to a FK when that kind lands.
 - **Container-level immutability policy + legal hold**
   (`azurerm_storage_container_immutability_policy`) -- a genuine
   standalone resource, but its one-way `locked` state blocks deletion of
@@ -60,6 +56,8 @@ parity-verified against pulumi-azure v6 (`storage.Container`).
 ## Composition
 
 - `storage_account_id` → `AzureStorageAccount.status.outputs.storage_account_id`
+- `default_encryption_scope` → `AzureStorageEncryptionScope.status.outputs.encryption_scope_name`
+  (the scope must live on the same account)
 - `container_id` output ← data-plane role-assignment scopes
   (AzureRoleAssignment with Storage Blob Data roles)
 - `container_name` + the account's `primary_blob_endpoint` ← SDK clients,

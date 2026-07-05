@@ -374,13 +374,51 @@ func TestAzureStorageAccount_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurestorageaccount", "terraform")
 }
 
-// --- Azure storage container (fixture RG -> scenario-local account -> private container) ---
+// --- Azure storage container (fixture RG -> scenario-local account -> private container;
+// plus the composed encryption-scope chain) ---
 
 func TestAzureStorageContainer_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "azurestoragecontainer", "pulumi")
 }
 func TestAzureStorageContainer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurestoragecontainer", "terraform")
+}
+
+// --- Azure storage share (fixture RG -> scenario-local account -> SMB share) ---
+
+func TestAzureStorageShare_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestorageshare", "pulumi")
+}
+func TestAzureStorageShare_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestorageshare", "terraform")
+}
+
+// --- Azure storage queue (fixture RG -> scenario-local account -> work queue) ---
+
+func TestAzureStorageQueue_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragequeue", "pulumi")
+}
+func TestAzureStorageQueue_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragequeue", "terraform")
+}
+
+// --- Azure storage table (fixture RG -> scenario-local account -> entities table with ACL) ---
+
+func TestAzureStorageTable_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragetable", "pulumi")
+}
+func TestAzureStorageTable_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragetable", "terraform")
+}
+
+// --- Azure storage encryption scope (fixture RG -> scenario-local account ->
+// platform-managed scope; destroy verified state-aware: ARM soft-disables scopes) ---
+
+func TestAzureStorageEncryptionScope_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestorageencryptionscope", "pulumi")
+}
+func TestAzureStorageEncryptionScope_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestorageencryptionscope", "terraform")
 }
 
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.

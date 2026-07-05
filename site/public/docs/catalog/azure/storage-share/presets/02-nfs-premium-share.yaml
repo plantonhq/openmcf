@@ -1,0 +1,23 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageShare
+metadata:
+  name: my-nfs-volume
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: <filestorage-account-resource-name>
+      fieldPath: status.outputs.storage_account_id
+  shareName: <share-name>
+  # Premium FileStorage floors at 100 GB and bills the provisioned
+  # capacity whether used or not -- size to the workload's real need.
+  quotaGb: 100
+  # NFS v4.1: POSIX semantics (hard links, chmod) for Linux workloads.
+  # Requires a premium FileStorage account and is reachable only over
+  # private network paths. Fixed at creation.
+  enabledProtocol: NFS
+  # Premium is required -- and the only legal tier -- on FileStorage
+  # accounts.
+  accessTier: PREMIUM
+  metadata:
+    purpose: <workload>

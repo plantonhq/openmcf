@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageShare
+metadata:
+  name: my-partner-drop
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: <storage-account-resource-name>
+      fieldPath: status.outputs.storage_account_id
+  shareName: <share-name>
+  quotaGb: 100
+  # Cool tier: cheapest at rest, priciest per operation -- the right
+  # trade for a drop zone that is written occasionally and read rarely.
+  accessTier: COOL
+  # Stored access policies anchor SAS tokens: shortening or deleting a
+  # policy IMMEDIATELY revokes every token issued against it -- the
+  # revocation lever ad-hoc SAS tokens lack.
+  acls:
+    - id: partner-readers
+      accessPolicies:
+        - permissions: rl
+          start: "<window-start-rfc3339>"
+          expiry: "<window-expiry-rfc3339>"
+    - id: partner-writers
+      accessPolicies:
+        - permissions: rwdl
+          start: "<window-start-rfc3339>"
+          expiry: "<window-expiry-rfc3339>"
+  metadata:
+    purpose: partner-exchange

@@ -114,8 +114,9 @@ type AzureStorageContainerSpec struct {
 	ContainerAccessType AzureStorageContainerAccessType `protobuf:"varint,3,opt,name=container_access_type,json=containerAccessType,proto3,enum=dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerAccessType" json:"container_access_type,omitempty"`
 	// The encryption scope applied to blobs that don't name their own --
 	// sub-account key isolation (e.g. per-tenant keys inside one account).
-	// The scope must already exist on the account. Fixed at creation.
-	DefaultEncryptionScope string `protobuf:"bytes,4,opt,name=default_encryption_scope,json=defaultEncryptionScope,proto3" json:"default_encryption_scope,omitempty"`
+	// References an AzureStorageEncryptionScope's name output; the scope
+	// must live on the SAME account as the container. Fixed at creation.
+	DefaultEncryptionScope *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=default_encryption_scope,json=defaultEncryptionScope,proto3" json:"default_encryption_scope,omitempty"`
 	// Whether individual blob writes may OVERRIDE the default encryption
 	// scope with their own. Azure's default is true; set false to make the
 	// default scope mandatory for every blob in the container. Only
@@ -181,11 +182,11 @@ func (x *AzureStorageContainerSpec) GetContainerAccessType() AzureStorageContain
 	return AzureStorageContainerAccessType_azure_storage_container_access_type_unspecified
 }
 
-func (x *AzureStorageContainerSpec) GetDefaultEncryptionScope() string {
+func (x *AzureStorageContainerSpec) GetDefaultEncryptionScope() *v1.StringValueOrRef {
 	if x != nil {
 		return x.DefaultEncryptionScope
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureStorageContainerSpec) GetEncryptionScopeOverrideEnabled() bool {
@@ -206,19 +207,20 @@ var File_dev_planton_provider_azure_azurestoragecontainer_v1_spec_proto protoref
 
 const file_dev_planton_provider_azure_azurestoragecontainer_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/azure/azurestoragecontainer/v1/spec.proto\x123dev.planton.provider.azure.azurestoragecontainer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbc\t\n" +
+	">dev/planton/provider/azure/azurestoragecontainer/v1/spec.proto\x123dev.planton.provider.azure.azurestoragecontainer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9f\n" +
+	"\n" +
 	"\x19AzureStorageContainerSpec\x12\x92\x01\n" +
 	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xaf\x02\n" +
 	"\x0econtainer_name\x18\x02 \x01(\tB\x87\x02\xbaH\x83\x02\xba\x01\xf6\x01\n" +
 	"\x1dstorage_container_name_format\x12\x8b\x01container_name must be 3-63 lowercase letters, digits, and hyphens, starting and ending with a letter or digit, with no consecutive hyphens\x1aGthis.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$') && !this.contains('--')\xc8\x01\x01r\x04\x10\x03\x18?R\rcontainerName\x12\x88\x01\n" +
-	"\x15container_access_type\x18\x03 \x01(\x0e2T.dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerAccessTypeR\x13containerAccessType\x128\n" +
-	"\x18default_encryption_scope\x18\x04 \x01(\tR\x16defaultEncryptionScope\x12N\n" +
+	"\x15container_access_type\x18\x03 \x01(\x0e2T.dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerAccessTypeR\x13containerAccessType\x12\x9b\x01\n" +
+	"\x18default_encryption_scope\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xee\x03\x92\xd4a$status.outputs.encryption_scope_nameR\x16defaultEncryptionScope\x12N\n" +
 	"!encryption_scope_override_enabled\x18\x05 \x01(\bH\x00R\x1eencryptionScopeOverrideEnabled\x88\x01\x01\x12x\n" +
 	"\bmetadata\x18\x06 \x03(\v2\\.dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe5\x01\xbaH\xe1\x01\x1a\xde\x01\n" +
-	",storage_container_scope_override_needs_scope\x12Yencryption_scope_override_enabled is only meaningful when default_encryption_scope is set\x1aS!has(this.encryption_scope_override_enabled) || this.default_encryption_scope != ''B$\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe4\x01\xbaH\xe0\x01\x1a\xdd\x01\n" +
+	",storage_container_scope_override_needs_scope\x12Yencryption_scope_override_enabled is only meaningful when default_encryption_scope is set\x1aR!has(this.encryption_scope_override_enabled) || has(this.default_encryption_scope)B$\n" +
 	"\"_encryption_scope_override_enabled*|\n" +
 	"\x1fAzureStorageContainerAccessType\x123\n" +
 	"/azure_storage_container_access_type_unspecified\x10\x00\x12\v\n" +
@@ -250,12 +252,13 @@ var file_dev_planton_provider_azure_azurestoragecontainer_v1_spec_proto_goTypes 
 var file_dev_planton_provider_azure_azurestoragecontainer_v1_spec_proto_depIdxs = []int32{
 	3, // 0: dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.storage_account_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 1: dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.container_access_type:type_name -> dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerAccessType
-	2, // 2: dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.metadata:type_name -> dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.MetadataEntry
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 2: dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.default_encryption_scope:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.metadata:type_name -> dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.MetadataEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurestoragecontainer_v1_spec_proto_init() }

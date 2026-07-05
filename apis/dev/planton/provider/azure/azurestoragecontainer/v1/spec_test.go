@@ -70,8 +70,22 @@ var _ = ginkgo.Describe("AzureStorageContainerSpec Validation Tests", func() {
 		ginkgo.It("should accept an encryption scope with an override posture", func() {
 			override := false
 			input := minimalSpec()
-			input.Spec.DefaultEncryptionScope = "tenant42scope"
+			input.Spec.DefaultEncryptionScope = literal("tenant42scope")
 			input.Spec.EncryptionScopeOverrideEnabled = &override
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a valueFrom reference for the encryption scope", func() {
+			input := minimalSpec()
+			input.Spec.DefaultEncryptionScope = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{
+						Kind:      cloudresourcekind.CloudResourceKind_AzureStorageEncryptionScope,
+						Name:      "tenant42-scope",
+						FieldPath: "status.outputs.encryption_scope_name",
+					},
+				},
+			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 

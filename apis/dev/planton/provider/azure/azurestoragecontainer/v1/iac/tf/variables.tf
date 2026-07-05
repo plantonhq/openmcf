@@ -28,7 +28,9 @@ variable "spec" {
     container_access_type = optional(string)
 
     # The encryption scope applied to blobs that don't name their own.
-    # Must already exist on the account. Fixed at creation.
+    # References an AzureStorageEncryptionScope's name output, resolved
+    # to a literal by the platform before the module runs; the scope
+    # must live on the same account. Fixed at creation.
     default_encryption_scope = optional(string)
 
     # Whether blob writes may override the default scope (Azure's

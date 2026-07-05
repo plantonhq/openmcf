@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurestoragequeue
+spec:
+  # The harness deploys the fixture resource group and a SCENARIO-LOCAL
+  # storage account (declared via the extra-prerequisites annotation --
+  # account names are globally unique and Azure briefly holds a
+  # just-deleted name, so the account is never a shared recreate-per-
+  # scenario registry prerequisite), creates the queue, verifies it via
+  # the ARM API (queues have a first-class ARM read proxy under
+  # queueServices/default -- no data-plane client or grant needed),
+  # destroys it, and verifies it is gone -- on both provisioners.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

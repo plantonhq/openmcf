@@ -55,11 +55,13 @@ func Resources(ctx *pulumi.Context, stackInput *azurestoragecontainerv1.AzureSto
 	}
 
 	// Sub-account key isolation: blobs without their own scope encrypt
-	// under this one. Both fields are fixed at creation; the override
-	// flag rides with the scope (Azure's default is true when a scope is
-	// set, so it is presence-guarded rather than defaulted).
-	if spec.DefaultEncryptionScope != "" {
-		containerArgs.DefaultEncryptionScope = pulumi.String(spec.DefaultEncryptionScope)
+	// under this one (a reference to an AzureStorageEncryptionScope's
+	// name, resolved to a literal before the module runs). Both fields
+	// are fixed at creation; the override flag rides with the scope
+	// (Azure's default is true when a scope is set, so it is
+	// presence-guarded rather than defaulted).
+	if spec.DefaultEncryptionScope.GetValue() != "" {
+		containerArgs.DefaultEncryptionScope = pulumi.String(spec.DefaultEncryptionScope.GetValue())
 	}
 	if spec.EncryptionScopeOverrideEnabled != nil {
 		containerArgs.EncryptionScopeOverrideEnabled = pulumi.Bool(spec.GetEncryptionScopeOverrideEnabled())

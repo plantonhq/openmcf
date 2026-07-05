@@ -996,16 +996,39 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azfd"
   }];
-  // No registry prerequisite on AzureStorageAccount: account names are
-  // GLOBALLY unique and Azure holds a just-deleted name, so a
-  // recreate-per-scenario fixture would hang -- container E2E scenarios
-  // declare a scenario-local account fixture instead. Deploy ordering in
+  // --- Storage data services ---
+
+  // None of the storage data-service kinds declares a registry
+  // prerequisite on AzureStorageAccount: account names are GLOBALLY
+  // unique and Azure holds a just-deleted name, so a
+  // recreate-per-scenario fixture would hang -- their E2E scenarios
+  // declare scenario-local account fixtures instead. Deploy ordering in
   // composed environments still flows from the storage_account_id
   // reference itself.
   AzureStorageContainer = 490 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azsc"
+  }];
+  AzureStorageShare = 491 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azshare"
+  }];
+  AzureStorageQueue = 492 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsq"
+  }];
+  AzureStorageTable = 493 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azst"
+  }];
+  AzureStorageEncryptionScope = 494 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azses"
   }];
 
   // 600–799: GCP resources

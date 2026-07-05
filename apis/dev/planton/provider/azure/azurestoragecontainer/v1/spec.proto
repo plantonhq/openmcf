@@ -51,8 +51,12 @@ message AzureStorageContainerSpec {
 
   // The encryption scope applied to blobs that don't name their own --
   // sub-account key isolation (e.g. per-tenant keys inside one account).
-  // The scope must already exist on the account. Fixed at creation.
-  string default_encryption_scope = 4;
+  // References an AzureStorageEncryptionScope's name output; the scope
+  // must live on the SAME account as the container. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef default_encryption_scope = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageEncryptionScope,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.encryption_scope_name"
+  ];
 
   // Whether individual blob writes may OVERRIDE the default encryption
   // scope with their own. Azure's default is true; set false to make the
@@ -69,7 +73,7 @@ message AzureStorageContainerSpec {
   option (buf.validate.message).cel = {
     id: "storage_container_scope_override_needs_scope"
     message: "encryption_scope_override_enabled is only meaningful when default_encryption_scope is set"
-    expression: "!has(this.encryption_scope_override_enabled) || this.default_encryption_scope != ''"
+    expression: "!has(this.encryption_scope_override_enabled) || has(this.default_encryption_scope)"
   };
 }
 

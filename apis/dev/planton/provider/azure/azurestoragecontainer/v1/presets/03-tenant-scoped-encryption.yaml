@@ -11,9 +11,14 @@ spec:
   containerName: <container-name>
   containerAccessType: PRIVATE
   # Blobs written without their own scope encrypt under this one --
-  # per-tenant key isolation inside a shared account. The scope must
-  # already exist on the account. Both fields are fixed at creation.
-  defaultEncryptionScope: <encryption-scope-name>
+  # per-tenant key isolation inside a shared account. References an
+  # AzureStorageEncryptionScope on the SAME account. Both fields are
+  # fixed at creation.
+  defaultEncryptionScope:
+    valueFrom:
+      kind: AzureStorageEncryptionScope
+      name: <encryption-scope-resource-name>
+      fieldPath: status.outputs.encryption_scope_name
   # Make the scope mandatory: individual blob writes cannot override it
   # with a different scope.
   encryptionScopeOverrideEnabled: false

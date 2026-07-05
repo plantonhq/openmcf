@@ -1380,6 +1380,70 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureStorageShare: share_id is the management identity;
+			// rbac_scope_id is the DIFFERENT segment Azure Files data-plane
+			// role assignments scope to; the account/share name pair is
+			// what mount commands and CSI volume definitions consume.
+			name: "AzureStorageShare",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageShare,
+			rawOutputs: map[string]interface{}{
+				"share_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/fileServices/default/shares/team-files",
+				"rbac_scope_id":        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/fileServices/default/fileshares/team-files",
+				"share_name":           "team-files",
+				"storage_account_name": "plantonappstorage",
+			},
+			mustPopulate: []string{
+				"share_id", "rbac_scope_id", "share_name", "storage_account_name",
+			},
+		},
+		{
+			// AzureStorageQueue: queue_id is the scope data-plane role
+			// assignments target for queue-level access; the account/queue
+			// name pair is what SDK clients and Functions queue triggers
+			// consume.
+			name: "AzureStorageQueue",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageQueue,
+			rawOutputs: map[string]interface{}{
+				"queue_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/queueServices/default/queues/work-items",
+				"queue_name":           "work-items",
+				"storage_account_name": "plantonappstorage",
+			},
+			mustPopulate: []string{
+				"queue_id", "queue_name", "storage_account_name",
+			},
+		},
+		{
+			// AzureStorageTable: table_id carries the resource-manager id
+			// from BOTH engines (the addressing parity exception never
+			// touches outputs); the account/table name pair is what SDK
+			// clients and Functions table bindings consume.
+			name: "AzureStorageTable",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageTable,
+			rawOutputs: map[string]interface{}{
+				"table_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/tableServices/default/tables/AppEntities",
+				"table_name":           "AppEntities",
+				"storage_account_name": "plantonappstorage",
+			},
+			mustPopulate: []string{
+				"table_id", "table_name", "storage_account_name",
+			},
+		},
+		{
+			// AzureStorageEncryptionScope: encryption_scope_name is the
+			// seam containers (default_encryption_scope) and ADLS
+			// filesystems reference for sub-account key isolation.
+			name: "AzureStorageEncryptionScope",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageEncryptionScope,
+			rawOutputs: map[string]interface{}{
+				"encryption_scope_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Storage/storageAccounts/plantonappstorage/encryptionScopes/tenant42scope",
+				"encryption_scope_name": "tenant42scope",
+				"storage_account_name":  "plantonappstorage",
+			},
+			mustPopulate: []string{
+				"encryption_scope_id", "encryption_scope_name", "storage_account_name",
+			},
+		},
+		{
 			// AzureKeyVaultCertificate: the secret face
 			// (versionless_secret_id) is the seam TLS terminators
 			// (Application Gateway) consume so renewals propagate; the

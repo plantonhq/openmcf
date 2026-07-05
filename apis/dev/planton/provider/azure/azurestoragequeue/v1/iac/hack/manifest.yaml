@@ -1,0 +1,12 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureStorageQueue
+metadata:
+  name: test-storage-queue
+spec:
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/plantonhackstorage
+  queueName: hack-work-items
+  # Exercises the metadata pass-through.
+  metadata:
+    purpose: hack-validation
+    consumer: worker-pool

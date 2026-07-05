@@ -27,9 +27,8 @@ shared storage account.
 
 ## Key Configuration Choices
 
-- **`defaultEncryptionScope`** -- the scope (created on the account, via
-  the portal/CLI until an encryption-scope kind lands) whose key covers
-  this container's blobs
+- **`defaultEncryptionScope`** -- references an AzureStorageEncryptionScope
+  on the same account; that scope's key covers this container's blobs
 - **`encryptionScopeOverrideEnabled: false`** -- the scope is mandatory;
   a blob write naming a different scope is rejected
 - Both are **fixed at creation** -- key-isolation boundaries should not
@@ -41,5 +40,5 @@ shared storage account.
 | --- | --- | --- |
 | `<storage-account-resource-name>` | The AzureStorageAccount's Planton resource name | Your storage composition |
 | `<container-name>` | 3-63 lowercase letters/digits/hyphens | Your naming convention |
-| `<encryption-scope-name>` | An encryption scope that exists on the account | Your account's encryption scopes |
+| `<encryption-scope-resource-name>` | The AzureStorageEncryptionScope's Planton resource name (must live on the same account) | Your storage composition |
 | `<tenant-id>` | The tenant this container isolates | Your tenancy model |

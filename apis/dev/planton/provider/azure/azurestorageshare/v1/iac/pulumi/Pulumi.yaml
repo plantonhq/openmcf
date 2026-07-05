@@ -1,0 +1,3 @@
+name: azure-storage-share
+runtime: go
+description: Pulumi program for Azure Files storage share

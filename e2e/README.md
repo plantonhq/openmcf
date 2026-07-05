@@ -419,6 +419,19 @@ owns two responsibilities beyond wiring verifiers:
   scenarios should keep purge protection OFF so teardown can actually purge.
   Expect destroys to be slow (a vault purge runs ~10 minutes) and size test
   timeouts accordingly.
+- **Some ARM resources have no true delete — destroy flips a state field and the
+  object stays GETtable, so verify-absent must be STATE-AWARE, not 404-based.**
+  An Azure Storage encryption scope is the canonical case: "delete" PATCHes
+  `properties.state` to `Disabled`, a GET keeps answering 200, and the name stays
+  reserved inside its parent (recreating the same name re-enables it). A plain
+  GET-with-typed-404 probe reports such a resource as still-existing after a
+  clean destroy and fails the run spuriously. Check the provider's own Read/Delete
+  source for state-flip semantics when writing a verifier: if delete is a
+  soft-disable, the verifier must read the state field and treat the disabled
+  value as absent (mirroring the provider's own removed-from-state behavior),
+  and verify-exists should require the ENABLED state, not mere presence. No
+  recycle-bin sweep exists for this class — the object intentionally persists;
+  parent teardown is what actually removes it.
 - **Never let sequential scenarios destroy and recreate the same globally unique
   parent name.** When a kind's registry prerequisite chain deploys a fixture
   whose name is globally unique (an Azure SQL logical server, a Key Vault),

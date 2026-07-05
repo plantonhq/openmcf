@@ -10,7 +10,8 @@ spec:
   # no listing -- the CDN-origin pattern).
   containerAccessType: BLOB
   # Exercises the encryption-scope pair.
-  defaultEncryptionScope: hackscope
+  defaultEncryptionScope:
+    value: hackscope
   encryptionScopeOverrideEnabled: false
   metadata:
     purpose: hack-validation
