@@ -1,0 +1,38 @@
+# AzureMssqlElasticPool install profile used as the fixture by the
+# database pool-attach scenario (declared via its extra-prerequisites
+# annotation). The harness deploys this document (via the pool's Pulumi
+# module) after the fixture server and captures its outputs --
+# elastic_pool_id in particular -- for the pooled database's reference to
+# resolve against.
+#
+# BasicPool at 50 eDTUs is the cheapest pool ARM accepts; per-database
+# max 5 is the Basic per-database ceiling.
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlElasticPool
+metadata:
+  name: planton-oss-e2e-azure-fixture-pool
+  id: planton-oss-e2e-azure-fixture-pool
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremssqlelasticpool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  serverId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sql
+  region: westus3
+  poolName: planton-oss-e2e-fx-pool
+  skuName: BasicPool
+  capacity: 50
+  # BasicPool's ARM ladder requires the explicit pool cap: 50 eDTUs ->
+  # 4.8828125 GB (5000 MB). The Pulumi provider validates this client-side
+  # and treats unset as 0, so DTU pools always set it explicitly.
+  maxSizeGb: 4.8828125
+  perDatabaseSettings:
+    minCapacity: 0
+    maxCapacity: 5

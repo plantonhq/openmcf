@@ -24,10 +24,11 @@ const (
 )
 
 // AzureMssqlServer is the top-level API resource for an Azure SQL Database
-// logical server.
-// Azure SQL Database is a fully managed PaaS database engine that runs on the
-// latest stable SQL Server engine. The logical server is an administrative
-// container for databases, firewall rules, and connection policies.
+// logical server -- the administrative container that carries the login
+// endpoint, SQL and Microsoft Entra authentication, networking posture,
+// the transparent-data-encryption key, auditing, and Microsoft Defender
+// settings. Databases (AzureMssqlDatabase) and elastic pools
+// (AzureMssqlElasticPool) are first-class resources created on the server.
 type AzureMssqlServer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

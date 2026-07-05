@@ -881,13 +881,14 @@ enum CloudResourceKind {
     id_prefix: "azmysql"
     prerequisites: [AzureResourceGroup]
   }];
-  // AzureMssqlServer is a prerequisite because every database lives on a
-  // referenced logical server (the server's resource group is transitive).
+  // The parent logical server is referenced via server_id, not auto-deployed:
+  // E2E scenarios declare their own server fixture (minimal-server.yaml or
+  // the pool-attach chain through AzureMssqlElasticPool) so sequential
+  // subtests never destroy and recreate the same globally unique server_name.
   AzureMssqlDatabase = 435 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azmsqldb"
-    prerequisites: [AzureMssqlServer]
   }];
   // AzureMssqlServer is a prerequisite because every elastic pool lives on
   // a referenced logical server (the server's resource group is transitive).

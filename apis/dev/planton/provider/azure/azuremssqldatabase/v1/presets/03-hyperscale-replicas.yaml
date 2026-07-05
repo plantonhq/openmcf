@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlDatabase
+metadata:
+  name: hyperscale-database
+spec:
+  serverId:
+    valueFrom:
+      kind: AzureMssqlServer
+      name: <server-resource-name>
+      fieldPath: status.outputs.server_id
+  databaseName: <database-name>
+  # Hyperscale: storage grows elastically to 100 TB and compute scales
+  # independently; maxSizeGb is ignored by design.
+  skuName: HS_Gen5_4
+  # Two readable replicas: read-intent connections
+  # (ApplicationIntent=ReadOnly) load-balance across them, and failover
+  # promotes one in seconds.
+  readReplicaCount: 2
+  zoneRedundant: true
+  # Zone-redundant backup storage keeps restores in-region across zone
+  # failures without paired-region replication.
+  storageAccountType: ZONE_REDUNDANT
+  tags:
+    cost-center: <cost-center>

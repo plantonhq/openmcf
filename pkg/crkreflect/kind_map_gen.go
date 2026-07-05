@@ -146,6 +146,8 @@ import (
 	azureloadbalancerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloadbalancer/v1"
 	azureloganalyticsworkspacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloganalyticsworkspace/v1"
 	azuremanageddiskv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanageddisk/v1"
+	azuremssqldatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqldatabase/v1"
+	azuremssqlelasticpoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqlelasticpool/v1"
 	azuremssqlserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremssqlserver/v1"
 	azuremysqlflexibleserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremysqlflexibleserver/v1"
 	azurenatgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurenatgateway/v1"
@@ -604,6 +606,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureLoadBalancer:                     &azureloadbalancerv1.AzureLoadBalancer{},
 	cloudresourcekind.CloudResourceKind_AzureLogAnalyticsWorkspace:            &azureloganalyticsworkspacev1.AzureLogAnalyticsWorkspace{},
 	cloudresourcekind.CloudResourceKind_AzureManagedDisk:                      &azuremanageddiskv1.AzureManagedDisk{},
+	cloudresourcekind.CloudResourceKind_AzureMssqlDatabase:                    &azuremssqldatabasev1.AzureMssqlDatabase{},
+	cloudresourcekind.CloudResourceKind_AzureMssqlElasticPool:                 &azuremssqlelasticpoolv1.AzureMssqlElasticPool{},
 	cloudresourcekind.CloudResourceKind_AzureMssqlServer:                      &azuremssqlserverv1.AzureMssqlServer{},
 	cloudresourcekind.CloudResourceKind_AzureMysqlFlexibleServer:              &azuremysqlflexibleserverv1.AzureMysqlFlexibleServer{},
 	cloudresourcekind.CloudResourceKind_AzureNatGateway:                       &azurenatgatewayv1.AzureNatGateway{},

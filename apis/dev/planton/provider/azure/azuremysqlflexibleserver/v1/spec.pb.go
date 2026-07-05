@@ -24,179 +24,405 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **AzureMysqlFlexibleServerSpec** defines the configuration for creating
-// an Azure Database for MySQL Flexible Server with optional databases and
-// firewall rules.
+// How the server comes into existence.
+type AzureMysqlFlexibleServerCreateMode int32
+
+const (
+	// Not specified: DEFAULT (a fresh, empty server).
+	AzureMysqlFlexibleServerCreateMode_azure_mysql_flexible_server_create_mode_unspecified AzureMysqlFlexibleServerCreateMode = 0
+	// A fresh, empty server (requires sku_name and the admin credentials).
+	AzureMysqlFlexibleServerCreateMode_DEFAULT AzureMysqlFlexibleServerCreateMode = 1
+	// Restore the source server to a point in time, in the same region
+	// (requires source_server_id + point_in_time_restore_time_in_utc).
+	AzureMysqlFlexibleServerCreateMode_POINT_IN_TIME_RESTORE AzureMysqlFlexibleServerCreateMode = 2
+	// A read replica of the source server, asynchronously replicated
+	// (requires source_server_id; SKU/storage left unset inherit the
+	// source's).
+	AzureMysqlFlexibleServerCreateMode_REPLICA AzureMysqlFlexibleServerCreateMode = 3
+	// Restore the source's latest geo-redundant backup into the paired
+	// region (requires source_server_id and geo_redundant_backup_enabled
+	// on the source; takes no timestamp).
+	AzureMysqlFlexibleServerCreateMode_GEO_RESTORE AzureMysqlFlexibleServerCreateMode = 4
+)
+
+// Enum value maps for AzureMysqlFlexibleServerCreateMode.
+var (
+	AzureMysqlFlexibleServerCreateMode_name = map[int32]string{
+		0: "azure_mysql_flexible_server_create_mode_unspecified",
+		1: "DEFAULT",
+		2: "POINT_IN_TIME_RESTORE",
+		3: "REPLICA",
+		4: "GEO_RESTORE",
+	}
+	AzureMysqlFlexibleServerCreateMode_value = map[string]int32{
+		"azure_mysql_flexible_server_create_mode_unspecified": 0,
+		"DEFAULT":               1,
+		"POINT_IN_TIME_RESTORE": 2,
+		"REPLICA":               3,
+		"GEO_RESTORE":           4,
+	}
+)
+
+func (x AzureMysqlFlexibleServerCreateMode) Enum() *AzureMysqlFlexibleServerCreateMode {
+	p := new(AzureMysqlFlexibleServerCreateMode)
+	*p = x
+	return p
+}
+
+func (x AzureMysqlFlexibleServerCreateMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureMysqlFlexibleServerCreateMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureMysqlFlexibleServerCreateMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureMysqlFlexibleServerCreateMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureMysqlFlexibleServerCreateMode.Descriptor instead.
+func (AzureMysqlFlexibleServerCreateMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// Replication role updates (replica promotion).
+type AzureMysqlFlexibleServerReplicationRole int32
+
+const (
+	// Not specified: leave the replication topology as created.
+	AzureMysqlFlexibleServerReplicationRole_azure_mysql_flexible_server_replication_role_unspecified AzureMysqlFlexibleServerReplicationRole = 0
+	// Break replication and promote this replica to a standalone
+	// read-write primary (irreversible).
+	AzureMysqlFlexibleServerReplicationRole_NONE AzureMysqlFlexibleServerReplicationRole = 1
+)
+
+// Enum value maps for AzureMysqlFlexibleServerReplicationRole.
+var (
+	AzureMysqlFlexibleServerReplicationRole_name = map[int32]string{
+		0: "azure_mysql_flexible_server_replication_role_unspecified",
+		1: "NONE",
+	}
+	AzureMysqlFlexibleServerReplicationRole_value = map[string]int32{
+		"azure_mysql_flexible_server_replication_role_unspecified": 0,
+		"NONE": 1,
+	}
+)
+
+func (x AzureMysqlFlexibleServerReplicationRole) Enum() *AzureMysqlFlexibleServerReplicationRole {
+	p := new(AzureMysqlFlexibleServerReplicationRole)
+	*p = x
+	return p
+}
+
+func (x AzureMysqlFlexibleServerReplicationRole) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureMysqlFlexibleServerReplicationRole) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureMysqlFlexibleServerReplicationRole) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureMysqlFlexibleServerReplicationRole) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureMysqlFlexibleServerReplicationRole.Descriptor instead.
+func (AzureMysqlFlexibleServerReplicationRole) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// High availability modes.
+type AzureMysqlFlexibleServerHighAvailabilityMode int32
+
+const (
+	// Not specified -- invalid; choose an explicit mode when the HA block
+	// is present.
+	AzureMysqlFlexibleServerHighAvailabilityMode_azure_mysql_flexible_server_high_availability_mode_unspecified AzureMysqlFlexibleServerHighAvailabilityMode = 0
+	// Standby in a different availability zone: survives zone failure.
+	// The production recommendation.
+	AzureMysqlFlexibleServerHighAvailabilityMode_ZONE_REDUNDANT AzureMysqlFlexibleServerHighAvailabilityMode = 1
+	// Standby in the same zone: faster failover, no zone-level protection.
+	AzureMysqlFlexibleServerHighAvailabilityMode_SAME_ZONE AzureMysqlFlexibleServerHighAvailabilityMode = 2
+)
+
+// Enum value maps for AzureMysqlFlexibleServerHighAvailabilityMode.
+var (
+	AzureMysqlFlexibleServerHighAvailabilityMode_name = map[int32]string{
+		0: "azure_mysql_flexible_server_high_availability_mode_unspecified",
+		1: "ZONE_REDUNDANT",
+		2: "SAME_ZONE",
+	}
+	AzureMysqlFlexibleServerHighAvailabilityMode_value = map[string]int32{
+		"azure_mysql_flexible_server_high_availability_mode_unspecified": 0,
+		"ZONE_REDUNDANT": 1,
+		"SAME_ZONE":      2,
+	}
+)
+
+func (x AzureMysqlFlexibleServerHighAvailabilityMode) Enum() *AzureMysqlFlexibleServerHighAvailabilityMode {
+	p := new(AzureMysqlFlexibleServerHighAvailabilityMode)
+	*p = x
+	return p
+}
+
+func (x AzureMysqlFlexibleServerHighAvailabilityMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureMysqlFlexibleServerHighAvailabilityMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureMysqlFlexibleServerHighAvailabilityMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureMysqlFlexibleServerHighAvailabilityMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureMysqlFlexibleServerHighAvailabilityMode.Descriptor instead.
+func (AzureMysqlFlexibleServerHighAvailabilityMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+// Public-endpoint control.
+type AzureMysqlFlexibleServerPublicNetworkAccess int32
+
+const (
+	// Not specified: Azure derives the value -- ENABLED for a public
+	// server, DISABLED when the server is VNet-injected.
+	AzureMysqlFlexibleServerPublicNetworkAccess_azure_mysql_flexible_server_public_network_access_unspecified AzureMysqlFlexibleServerPublicNetworkAccess = 0
+	// The server accepts connections on its public endpoint, filtered by
+	// firewall_rules.
+	AzureMysqlFlexibleServerPublicNetworkAccess_ENABLED AzureMysqlFlexibleServerPublicNetworkAccess = 1
+	// The server has no public endpoint (reachable only through VNet
+	// injection or private connectivity).
+	AzureMysqlFlexibleServerPublicNetworkAccess_DISABLED AzureMysqlFlexibleServerPublicNetworkAccess = 2
+)
+
+// Enum value maps for AzureMysqlFlexibleServerPublicNetworkAccess.
+var (
+	AzureMysqlFlexibleServerPublicNetworkAccess_name = map[int32]string{
+		0: "azure_mysql_flexible_server_public_network_access_unspecified",
+		1: "ENABLED",
+		2: "DISABLED",
+	}
+	AzureMysqlFlexibleServerPublicNetworkAccess_value = map[string]int32{
+		"azure_mysql_flexible_server_public_network_access_unspecified": 0,
+		"ENABLED":  1,
+		"DISABLED": 2,
+	}
+)
+
+func (x AzureMysqlFlexibleServerPublicNetworkAccess) Enum() *AzureMysqlFlexibleServerPublicNetworkAccess {
+	p := new(AzureMysqlFlexibleServerPublicNetworkAccess)
+	*p = x
+	return p
+}
+
+func (x AzureMysqlFlexibleServerPublicNetworkAccess) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureMysqlFlexibleServerPublicNetworkAccess) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes[3].Descriptor()
+}
+
+func (AzureMysqlFlexibleServerPublicNetworkAccess) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes[3]
+}
+
+func (x AzureMysqlFlexibleServerPublicNetworkAccess) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureMysqlFlexibleServerPublicNetworkAccess.Descriptor instead.
+func (AzureMysqlFlexibleServerPublicNetworkAccess) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+// **AzureMysqlFlexibleServerSpec** defines the configuration for creating an
+// Azure Database for MySQL Flexible Server: Azure's managed MySQL with
+// per-server compute/storage sizing, zone-redundant high availability,
+// Microsoft Entra (Azure AD) administration, customer-managed-key encryption,
+// read replicas, and point-in-time restore.
 //
-// Azure Database for MySQL Flexible Server is a fully managed relational
-// database service designed for granular control over database management and
-// configuration. It offers zone-redundant and same-zone high availability,
-// burstable/general-purpose/memory-optimized compute tiers, and configurable
-// storage with auto-grow.
+// The server is the unit of management -- databases, firewall rules, server
+// parameters, and the Entra administrator are configured on it and live with
+// it, so they are folded into this spec rather than modeled as standalone
+// kinds (none of them has an independent lifecycle or is referenced by
+// anything else).
 //
-// This component bundles the flexible server (`azurerm_mysql_flexible_server`)
-// with its databases (`azurerm_mysql_flexible_database`) and firewall rules
-// (`azurerm_mysql_flexible_server_firewall_rule`) because a server without at
-// least a connection path (firewall rules or VNet integration) and databases
-// has no practical utility. This follows DD03 (Composite Bundling Rules).
+// **Network access** has two mutually exclusive postures, matching Azure's
+// real contract: a public endpoint (with `firewall_rules` as its allowlist)
+// or VNet injection via `delegated_subnet_id` + `private_dns_zone_id`. A
+// VNet-injected server cannot have a public endpoint -- leave
+// `public_network_access` unset and Azure derives DISABLED.
 //
-// **Network access mode** is determined by whether `delegated_subnet_id` is set:
-// - `delegated_subnet_id` set --> **private VNet access** (public access disabled)
-// - `delegated_subnet_id` not set --> **public access** (firewall rules control access)
-// There is no `public_network_access_enabled` boolean; the IaC modules derive this
-// from the presence of `delegated_subnet_id` to eliminate contradiction risk.
+// **Authentication** always includes MySQL password auth (unlike PostgreSQL
+// Flexible Server, it cannot be switched off). Microsoft Entra authentication
+// is additive: declare the single `aad_administrator` (MySQL supports exactly
+// one) backed by a user-assigned identity attached to the server.
 //
-// **Authentication**: Password authentication is used for all connections.
-// Azure Active Directory authentication is not exposed in v1 and can be configured
-// post-deployment via the Azure portal for advanced scenarios.
-//
-// **Versions**: MySQL 5.7, 8.0.21, and 8.4 are supported. The default is "8.0.21"
-// (current production standard). Version 8.4 is the latest GA release with performance
-// improvements. Version 5.7 is approaching EOL and should only be used for legacy
-// migration.
-//
-// **SKU naming convention**: `{TIER}_Standard_{SIZE}` where TIER is:
-// - `B` (Burstable) -- dev/test, e.g., "B_Standard_B1ms", "B_Standard_B2s"
-// - `GP` (General Purpose) -- production, e.g., "GP_Standard_D2ds_v4", "GP_Standard_D4ads_v5"
-// - `MO` (Memory Optimized) -- analytics/caching, e.g., "MO_Standard_E2ds_v4"
-//
-// **ForceNew fields** (changing these destroys and recreates the server):
-// `name`, `administrator_login`, `delegated_subnet_id`, `private_dns_zone_id`,
-// `geo_redundant_backup_enabled`.
-// These are documented prominently because database recreation causes data loss.
+// **Lifecycle modes** (`create_mode`) cover the full server story: a fresh
+// server (DEFAULT), a read replica (REPLICA + `source_server_id`),
+// point-in-time restore (POINT_IN_TIME_RESTORE + the restore timestamp), and
+// cross-region geo-restore of the latest geo-redundant backup (GEO_RESTORE).
+// A replica is promoted to a standalone primary by setting `replication_role`
+// to NONE.
 type AzureMysqlFlexibleServerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure region where the MySQL Flexible Server will be created.
-	// Must match the region of the VNet/subnet if VNet integration is used.
-	// Examples: "eastus", "westus2", "westeurope", "southeastasia".
+	// The Azure region where the server will be created (e.g. "eastus",
+	// "westeurope"). Must match the region of the delegated subnet when the
+	// server is VNet-injected. Changing the region replaces the server.
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The Azure Resource Group where the MySQL Flexible Server will be created.
-	// Can be a literal string or a reference to an AzureResourceGroup output.
+	// The Azure resource group the server will be created in. Can be a
+	// literal resource-group name or a reference to an AzureResourceGroup's
+	// name output. Changing it replaces the server.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
-	// The name of the MySQL Flexible Server.
-	// Must be globally unique across Azure. Used as the server hostname:
-	// `{name}.mysql.database.azure.com`
-	// Allowed characters: lowercase letters, numbers, and hyphens.
-	// Must start with a letter or number. Length: 3 to 63 characters.
+	// The server's name: 3-63 lowercase letters, digits, and hyphens,
+	// starting and ending with a letter or digit -- and GLOBALLY unique
+	// across Azure, because it becomes the server's DNS name
+	// ({name}.mysql.database.azure.com, the fqdn output). Changing the name
+	// replaces the server.
+	ServerName string `protobuf:"bytes,3,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
+	// How the server comes into existence. Unspecified means DEFAULT (a
+	// fresh, empty server). The restore/replica modes consume
+	// source_server_id (and, for point-in-time restore, the restore
+	// timestamp) and are fixed at creation.
+	CreateMode AzureMysqlFlexibleServerCreateMode `protobuf:"varint,4,opt,name=create_mode,json=createMode,proto3,enum=dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCreateMode" json:"create_mode,omitempty"`
+	// For REPLICA, POINT_IN_TIME_RESTORE, and GEO_RESTORE: the ARM ID of the
+	// server to replicate or restore from. References another
+	// AzureMysqlFlexibleServer's server_id output, so a primary-plus-replicas
+	// topology composes in one manifest set. Fixed at creation.
+	SourceServerId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=source_server_id,json=sourceServerId,proto3" json:"source_server_id,omitempty"`
+	// For POINT_IN_TIME_RESTORE only: the RFC-3339 UTC instant to restore
+	// the source server to (e.g. "2026-07-01T08:30:00Z"). Must fall inside
+	// the source's backup retention window. GEO_RESTORE takes no timestamp --
+	// it restores the latest geo-replicated backup. Fixed at creation.
+	PointInTimeRestoreTimeInUtc string `protobuf:"bytes,6,opt,name=point_in_time_restore_time_in_utc,json=pointInTimeRestoreTimeInUtc,proto3" json:"point_in_time_restore_time_in_utc,omitempty"`
+	// Promotion control for a replica. Setting NONE on a server created
+	// with create_mode REPLICA breaks replication and promotes it to a
+	// standalone read-write primary (irreversible). Cannot be set at
+	// creation and has no meaning on non-replica servers.
+	ReplicationRole AzureMysqlFlexibleServerReplicationRole `protobuf:"varint,7,opt,name=replication_role,json=replicationRole,proto3,enum=dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerReplicationRole" json:"replication_role,omitempty"`
+	// The administrator login for MySQL password authentication: 1-32
+	// letters, digits, and underscores. Azure reserves "azure_superuser",
+	// "admin", "administrator", "root", "guest", and "public". Required for
+	// a fresh (DEFAULT) server; a replica or restore inherits the source's
+	// login. The login is fixed once set.
+	AdministratorLogin string `protobuf:"bytes,8,opt,name=administrator_login,json=administratorLogin,proto3" json:"administrator_login,omitempty"`
+	// The administrator password (8-128 characters, from at least three of:
+	// uppercase, lowercase, digits, special characters). Can be a literal
+	// value or a reference to another resource's output. Required for a
+	// fresh (DEFAULT) server; updatable in place.
+	AdministratorPassword *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=administrator_password,json=administratorPassword,proto3" json:"administrator_password,omitempty"`
+	// The MySQL version, using Azure's exact version strings. Unspecified
+	// applies "8.0.21" (Azure's identifier for the MySQL 8.0 series -- the
+	// production standard). In-place upgrade from 5.7 to 8.0.21 is
+	// supported (irreversible); downgrading replaces the server.
 	//
-	// **ForceNew**: Changing this destroys and recreates the server.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The administrator login name for the server.
-	// Cannot be "azure_superuser", "admin", "administrator", "root", "guest", or "public".
-	// Must start with a letter or underscore. Length: 1 to 32 characters.
-	//
-	// **ForceNew**: Changing this destroys and recreates the server.
-	AdministratorLogin string `protobuf:"bytes,4,opt,name=administrator_login,json=administratorLogin,proto3" json:"administrator_login,omitempty"`
-	// The administrator password for the server.
-	// Can be a literal value or a reference to another resource's output
-	// (e.g., a generated random password or a Key Vault secret value).
-	//
-	// Password requirements: 8-128 characters, must contain characters from
-	// at least three of: uppercase, lowercase, digits, special characters.
-	//
-	// This is a polymorphic StringValueOrRef with no default_kind because
-	// the password source varies (literal, chart variable, external secret).
-	AdministratorPassword *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=administrator_password,json=administratorPassword,proto3" json:"administrator_password,omitempty"`
-	// The MySQL major version.
-	// Uses Azure's exact version strings for provider authenticity.
-	//
-	// Valid values: "5.7", "8.0.21", "8.4"
-	// Default: "8.0.21" (current GA production standard)
-	//
-	// - "5.7": Approaching EOL, use only for legacy migration
-	// - "8.0.21": Active, recommended for most production workloads (default)
-	// - "8.4": Latest GA, performance improvements, new features
-	Version *string `protobuf:"bytes,6,opt,name=version,proto3,oneof" json:"version,omitempty"`
-	// The SKU name defining the compute tier and size.
-	// Format: {TIER}_Standard_{SIZE}
-	//
-	// Burstable (dev/test):
-	//
-	//	"B_Standard_B1ms" (1 vCPU, 2 GiB), "B_Standard_B2ms" (2 vCPU, 4 GiB),
-	//	"B_Standard_B4ms" (4 vCPU, 8 GiB), "B_Standard_B8ms" (8 vCPU, 16 GiB)
-	//
-	// General Purpose (production):
-	//
-	//	"GP_Standard_D2ds_v4" (2 vCPU, 8 GiB), "GP_Standard_D4ds_v4" (4 vCPU, 16 GiB),
-	//	"GP_Standard_D8ds_v4" (8 vCPU, 32 GiB), "GP_Standard_D16ds_v4" (16 vCPU, 64 GiB),
-	//	"GP_Standard_D2ads_v5" through "GP_Standard_D64ads_v5"
-	//
-	// Memory Optimized (analytics, caching):
-	//
-	//	"MO_Standard_E2ds_v4" (2 vCPU, 16 GiB) through "MO_Standard_E96ads_v5"
-	SkuName string `protobuf:"bytes,7,opt,name=sku_name,json=skuName,proto3" json:"sku_name,omitempty"`
-	// The storage size in gigabytes.
-	// Range: 20 GB to 16384 GB (16 TB).
-	//
-	// **Cannot be downgraded** -- decreasing storage_size_gb forces server recreation.
-	// Azure validates exact values; the minimum is enforced here.
-	StorageSizeGb int32 `protobuf:"varint,8,opt,name=storage_size_gb,json=storageSizeGb,proto3" json:"storage_size_gb,omitempty"`
-	// Enable storage auto-grow.
-	// When enabled, Azure automatically increases storage when free storage
-	// falls below a threshold. Prevents out-of-storage failures for databases
-	// that grow unpredictably.
-	//
-	// Default: true (MySQL provider default; note this differs from PostgreSQL
-	// where auto-grow defaults to false)
-	AutoGrowEnabled *bool `protobuf:"varint,9,opt,name=auto_grow_enabled,json=autoGrowEnabled,proto3,oneof" json:"auto_grow_enabled,omitempty"`
-	// The ID of a subnet delegated to Microsoft.DBforMySQL/flexibleServers.
-	// When set, the server is deployed with **private VNet access** and
-	// public network access is automatically disabled.
-	//
-	// The subnet must have the delegation `Microsoft.DBforMySQL/flexibleServers`.
-	// Use the AzureSubnet component with a delegation block to create a properly
-	// configured subnet.
-	//
-	// **ForceNew**: Changing this destroys and recreates the server.
-	DelegatedSubnetId *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=delegated_subnet_id,json=delegatedSubnetId,proto3" json:"delegated_subnet_id,omitempty"`
-	// The ID of a private DNS zone for server name resolution within the VNet.
-	// Typically "privatelink.mysql.database.azure.com" for private access.
-	//
-	// When `delegated_subnet_id` is set, providing a private DNS zone enables
-	// VNet-connected clients to resolve the server's FQDN to its private IP.
-	//
-	// **ForceNew**: Changing this destroys and recreates the server.
-	PrivateDnsZoneId *v1.StringValueOrRef `protobuf:"bytes,11,opt,name=private_dns_zone_id,json=privateDnsZoneId,proto3" json:"private_dns_zone_id,omitempty"`
-	// The availability zone for the primary server.
-	// Valid values: "1", "2", "3". If omitted, Azure selects automatically.
-	//
-	// When using ZoneRedundant high availability, the standby is placed in
-	// a different zone from the primary. Set this to control primary placement.
-	Zone string `protobuf:"bytes,12,opt,name=zone,proto3" json:"zone,omitempty"`
-	// High availability configuration.
-	// If this message is present, high availability is enabled.
-	// If omitted, the server runs as a single instance (no HA).
-	//
-	// Burstable SKUs (B_Standard_*) do NOT support high availability.
-	// General Purpose and Memory Optimized SKUs support both modes.
-	HighAvailability *AzureMysqlHighAvailability `protobuf:"bytes,13,opt,name=high_availability,json=highAvailability,proto3" json:"high_availability,omitempty"`
-	// The number of days to retain backups.
-	// Azure performs automatic daily backups. This controls how far back
-	// you can restore using point-in-time restore.
-	// Default: 7 days. Range: 1 to 35 days.
-	BackupRetentionDays *int32 `protobuf:"varint,14,opt,name=backup_retention_days,json=backupRetentionDays,proto3,oneof" json:"backup_retention_days,omitempty"`
-	// Enable geo-redundant backup storage.
-	// When enabled, backup data is replicated to a paired Azure region,
-	// enabling cross-region restore for disaster recovery.
-	//
-	// **ForceNew**: Changing this destroys and recreates the server.
-	// Only available in regions that support geo-redundant storage.
-	// Default: false
-	GeoRedundantBackupEnabled *bool `protobuf:"varint,15,opt,name=geo_redundant_backup_enabled,json=geoRedundantBackupEnabled,proto3,oneof" json:"geo_redundant_backup_enabled,omitempty"`
-	// Databases to create on the server.
-	// Each database is created as a separate `azurerm_mysql_flexible_database`
-	// resource with its own lifecycle.
-	//
-	// If omitted, only the default system databases exist (created by Azure
-	// automatically). Most applications create at least one application database.
-	Databases []*AzureMysqlDatabase `protobuf:"bytes,16,rep,name=databases,proto3" json:"databases,omitempty"`
-	// Firewall rules for public access mode.
-	// Only effective when `delegated_subnet_id` is NOT set (public access mode).
-	// Each rule allows connections from a range of IP addresses.
-	//
-	// To allow all Azure services: start_ip_address = "0.0.0.0", end_ip_address = "0.0.0.0"
-	// To allow a single IP: set both start and end to the same address.
-	FirewallRules []*AzureMysqlFirewallRule `protobuf:"bytes,17,rep,name=firewall_rules,json=firewallRules,proto3" json:"firewall_rules,omitempty"`
+	// - "5.7": approaching end of life -- legacy migrations only
+	// - "8.0.21": the MySQL 8.0 series, recommended for new deployments
+	// - "8.4": the newest supported LTS release
+	Version *string `protobuf:"bytes,10,opt,name=version,proto3,oneof" json:"version,omitempty"`
+	// The compute SKU, as {TIER}_Standard_{SIZE}: B_ (Burstable -- dev/test,
+	// e.g. "B_Standard_B1ms", "B_Standard_B2s"), GP_ (General Purpose --
+	// production, e.g. "GP_Standard_D2ds_v4", "GP_Standard_D4ads_v5"), or
+	// MO_ (Memory Optimized -- analytics/caching, e.g. "MO_Standard_E4ds_v4").
+	// Required for a fresh (DEFAULT) server; a replica left unset inherits
+	// the source's SKU. Resizable in place (brief restart). Burstable SKUs
+	// do not support high availability or read replicas.
+	SkuName string `protobuf:"bytes,11,opt,name=sku_name,json=skuName,proto3" json:"sku_name,omitempty"`
+	// The server's storage profile: capacity, provisioned IOPS or elastic
+	// IOPS scaling, auto-grow, and the slow-query-log placement. Omit to
+	// accept Azure's defaults (20 GiB, auto-grow on, default IOPS for the
+	// size).
+	Storage *AzureMysqlFlexibleServerStorage `protobuf:"bytes,12,opt,name=storage,proto3" json:"storage,omitempty"`
+	// The availability zone for the primary server ("1", "2", or "3").
+	// Unset lets Azure choose. After creation the zone can only change via
+	// a planned failover that swaps primary and standby -- Azure rejects an
+	// independent zone change.
+	Zone string `protobuf:"bytes,13,opt,name=zone,proto3" json:"zone,omitempty"`
+	// High availability: presence enables a standby server with synchronous
+	// replication and automatic failover. Omit for a single-instance
+	// server. Burstable SKUs and replica servers do not support HA.
+	HighAvailability *AzureMysqlFlexibleServerHighAvailability `protobuf:"bytes,14,opt,name=high_availability,json=highAvailability,proto3" json:"high_availability,omitempty"`
+	// The weekly maintenance window for Azure-managed patching. Omit for a
+	// system-managed window (Azure picks an off-peak slot). Presence pins
+	// patching to the declared day and start time.
+	MaintenanceWindow *AzureMysqlFlexibleServerMaintenanceWindow `protobuf:"bytes,15,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
+	// How many days automatic backups are retained (the point-in-time
+	// restore horizon). 1-35; unspecified applies Azure's default of 7.
+	BackupRetentionDays *int32 `protobuf:"varint,16,opt,name=backup_retention_days,json=backupRetentionDays,proto3,oneof" json:"backup_retention_days,omitempty"`
+	// Whether backups are replicated to the paired Azure region, enabling
+	// cross-region GEO_RESTORE for disaster recovery. Azure's default is
+	// false. Fixed at creation.
+	GeoRedundantBackupEnabled bool `protobuf:"varint,17,opt,name=geo_redundant_backup_enabled,json=geoRedundantBackupEnabled,proto3" json:"geo_redundant_backup_enabled,omitempty"`
+	// Whether the server accepts connections on its public endpoint.
+	// Unspecified lets Azure derive it: ENABLED for a public server,
+	// DISABLED when the server is VNet-injected via delegated_subnet_id
+	// (a VNet-injected server cannot have a public endpoint).
+	PublicNetworkAccess AzureMysqlFlexibleServerPublicNetworkAccess `protobuf:"varint,18,opt,name=public_network_access,json=publicNetworkAccess,proto3,enum=dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerPublicNetworkAccess" json:"public_network_access,omitempty"`
+	// For VNet injection (private access): the ARM ID of a subnet delegated
+	// to Microsoft.DBforMySQL/flexibleServers, with no other resources in
+	// it. Requires private_dns_zone_id. Fixed at creation. Use an
+	// AzureSubnet with the matching delegation.
+	DelegatedSubnetId *v1.StringValueOrRef `protobuf:"bytes,19,opt,name=delegated_subnet_id,json=delegatedSubnetId,proto3" json:"delegated_subnet_id,omitempty"`
+	// For VNet injection: the ARM ID of a private DNS zone (conventionally
+	// ending ".mysql.database.azure.com") where the server registers its
+	// private address, so VNet-connected clients resolve the fqdn to the
+	// private IP. Required whenever delegated_subnet_id is set.
+	PrivateDnsZoneId *v1.StringValueOrRef `protobuf:"bytes,20,opt,name=private_dns_zone_id,json=privateDnsZoneId,proto3" json:"private_dns_zone_id,omitempty"`
+	// The user-assigned identities attached to the server, by ARM ID.
+	// MySQL Flexible Server supports user-assigned identities only (no
+	// system-assigned flavor). Required for customer-managed-key encryption
+	// (the unwrapping identity must be attached here) and for the Entra
+	// administrator (aad_administrator.identity_id must be attached here).
+	// Reference AzureUserAssignedIdentity resources so Key Vault grants can
+	// be composed before the server exists.
+	UserAssignedIdentityIds []*v1.StringValueOrRef `protobuf:"bytes,21,rep,name=user_assigned_identity_ids,json=userAssignedIdentityIds,proto3" json:"user_assigned_identity_ids,omitempty"`
+	// Customer-managed-key (CMK) encryption: the server's data is encrypted
+	// with a Key Vault key you own instead of a Microsoft-managed key.
+	// Requires a user-assigned identity (in user_assigned_identity_ids)
+	// that has wrap/unwrap access on the key's vault.
+	CustomerManagedKey *AzureMysqlFlexibleServerCustomerManagedKey `protobuf:"bytes,22,opt,name=customer_managed_key,json=customerManagedKey,proto3" json:"customer_managed_key,omitempty"`
+	// The single Microsoft Entra (Azure AD) administrator of the server --
+	// MySQL Flexible Server supports exactly one (a group can be used to
+	// admit a team). The grant is backed by a user-assigned identity
+	// attached to the server, which Azure uses to validate Entra tokens.
+	AadAdministrator *AzureMysqlFlexibleServerAadAdministrator `protobuf:"bytes,23,opt,name=aad_administrator,json=aadAdministrator,proto3" json:"aad_administrator,omitempty"`
+	// Databases to create on the server, each a separate Azure sub-resource
+	// with its own charset/collation. Most applications declare at least
+	// one database here.
+	Databases []*AzureMysqlFlexibleServerDatabase `protobuf:"bytes,24,rep,name=databases,proto3" json:"databases,omitempty"`
+	// Public-endpoint firewall allowlist: each rule admits a contiguous
+	// IPv4 range. Only meaningful while the server has a public endpoint.
+	// The special rule 0.0.0.0-0.0.0.0 admits Azure-internal services only
+	// (not the internet).
+	FirewallRules []*AzureMysqlFlexibleServerFirewallRule `protobuf:"bytes,25,rep,name=firewall_rules,json=firewallRules,proto3" json:"firewall_rules,omitempty"`
+	// MySQL server parameters to override (e.g. "max_connections",
+	// "slow_query_log", "require_secure_transport"), by parameter name.
+	// Values are applied as user overrides on Azure's per-SKU defaults;
+	// removing an entry resets the parameter to its default. Static
+	// (non-dynamic) parameters need a server restart to take effect --
+	// Azure applies them but reports "pending restart" until one happens.
+	ServerParameters map[string]string `protobuf:"bytes,26,rep,name=server_parameters,json=serverParameters,proto3" json:"server_parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Free-form tags applied to the server, merged over the Planton-derived
+	// resource tags (organization, environment, resource id); a user tag
+	// with the same key wins. Tags are Azure's governance surface -- Azure
+	// Policy enforces them and Microsoft Cost Management groups by them.
+	Tags          map[string]string `protobuf:"bytes,27,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -245,11 +471,39 @@ func (x *AzureMysqlFlexibleServerSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureMysqlFlexibleServerSpec) GetName() string {
+func (x *AzureMysqlFlexibleServerSpec) GetServerName() string {
 	if x != nil {
-		return x.Name
+		return x.ServerName
 	}
 	return ""
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetCreateMode() AzureMysqlFlexibleServerCreateMode {
+	if x != nil {
+		return x.CreateMode
+	}
+	return AzureMysqlFlexibleServerCreateMode_azure_mysql_flexible_server_create_mode_unspecified
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetSourceServerId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SourceServerId
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetPointInTimeRestoreTimeInUtc() string {
+	if x != nil {
+		return x.PointInTimeRestoreTimeInUtc
+	}
+	return ""
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetReplicationRole() AzureMysqlFlexibleServerReplicationRole {
+	if x != nil {
+		return x.ReplicationRole
+	}
+	return AzureMysqlFlexibleServerReplicationRole_azure_mysql_flexible_server_replication_role_unspecified
 }
 
 func (x *AzureMysqlFlexibleServerSpec) GetAdministratorLogin() string {
@@ -280,18 +534,53 @@ func (x *AzureMysqlFlexibleServerSpec) GetSkuName() string {
 	return ""
 }
 
-func (x *AzureMysqlFlexibleServerSpec) GetStorageSizeGb() int32 {
+func (x *AzureMysqlFlexibleServerSpec) GetStorage() *AzureMysqlFlexibleServerStorage {
 	if x != nil {
-		return x.StorageSizeGb
+		return x.Storage
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetZone() string {
+	if x != nil {
+		return x.Zone
+	}
+	return ""
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetHighAvailability() *AzureMysqlFlexibleServerHighAvailability {
+	if x != nil {
+		return x.HighAvailability
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetMaintenanceWindow() *AzureMysqlFlexibleServerMaintenanceWindow {
+	if x != nil {
+		return x.MaintenanceWindow
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetBackupRetentionDays() int32 {
+	if x != nil && x.BackupRetentionDays != nil {
+		return *x.BackupRetentionDays
 	}
 	return 0
 }
 
-func (x *AzureMysqlFlexibleServerSpec) GetAutoGrowEnabled() bool {
-	if x != nil && x.AutoGrowEnabled != nil {
-		return *x.AutoGrowEnabled
+func (x *AzureMysqlFlexibleServerSpec) GetGeoRedundantBackupEnabled() bool {
+	if x != nil {
+		return x.GeoRedundantBackupEnabled
 	}
 	return false
+}
+
+func (x *AzureMysqlFlexibleServerSpec) GetPublicNetworkAccess() AzureMysqlFlexibleServerPublicNetworkAccess {
+	if x != nil {
+		return x.PublicNetworkAccess
+	}
+	return AzureMysqlFlexibleServerPublicNetworkAccess_azure_mysql_flexible_server_public_network_access_unspecified
 }
 
 func (x *AzureMysqlFlexibleServerSpec) GetDelegatedSubnetId() *v1.StringValueOrRef {
@@ -308,89 +597,98 @@ func (x *AzureMysqlFlexibleServerSpec) GetPrivateDnsZoneId() *v1.StringValueOrRe
 	return nil
 }
 
-func (x *AzureMysqlFlexibleServerSpec) GetZone() string {
+func (x *AzureMysqlFlexibleServerSpec) GetUserAssignedIdentityIds() []*v1.StringValueOrRef {
 	if x != nil {
-		return x.Zone
-	}
-	return ""
-}
-
-func (x *AzureMysqlFlexibleServerSpec) GetHighAvailability() *AzureMysqlHighAvailability {
-	if x != nil {
-		return x.HighAvailability
+		return x.UserAssignedIdentityIds
 	}
 	return nil
 }
 
-func (x *AzureMysqlFlexibleServerSpec) GetBackupRetentionDays() int32 {
-	if x != nil && x.BackupRetentionDays != nil {
-		return *x.BackupRetentionDays
+func (x *AzureMysqlFlexibleServerSpec) GetCustomerManagedKey() *AzureMysqlFlexibleServerCustomerManagedKey {
+	if x != nil {
+		return x.CustomerManagedKey
 	}
-	return 0
+	return nil
 }
 
-func (x *AzureMysqlFlexibleServerSpec) GetGeoRedundantBackupEnabled() bool {
-	if x != nil && x.GeoRedundantBackupEnabled != nil {
-		return *x.GeoRedundantBackupEnabled
+func (x *AzureMysqlFlexibleServerSpec) GetAadAdministrator() *AzureMysqlFlexibleServerAadAdministrator {
+	if x != nil {
+		return x.AadAdministrator
 	}
-	return false
+	return nil
 }
 
-func (x *AzureMysqlFlexibleServerSpec) GetDatabases() []*AzureMysqlDatabase {
+func (x *AzureMysqlFlexibleServerSpec) GetDatabases() []*AzureMysqlFlexibleServerDatabase {
 	if x != nil {
 		return x.Databases
 	}
 	return nil
 }
 
-func (x *AzureMysqlFlexibleServerSpec) GetFirewallRules() []*AzureMysqlFirewallRule {
+func (x *AzureMysqlFlexibleServerSpec) GetFirewallRules() []*AzureMysqlFlexibleServerFirewallRule {
 	if x != nil {
 		return x.FirewallRules
 	}
 	return nil
 }
 
-// AzureMysqlHighAvailability defines the high availability configuration
-// for the MySQL Flexible Server.
-//
-// When this message is present on the spec, HA is enabled. Omitting it means
-// the server runs as a single instance.
-type AzureMysqlHighAvailability struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The high availability mode.
-	// Uses Azure's exact API values for provider authenticity.
-	//
-	// Valid values:
-	// - "ZoneRedundant" -- Standby in a different availability zone (recommended for production)
-	// - "SameZone" -- Standby in the same zone as primary (lower latency failover)
-	//
-	// ZoneRedundant provides protection against zone-level failures.
-	// SameZone provides faster failover but no zone-level protection.
-	Mode string `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
-	// The availability zone for the standby server.
-	// Valid values: "1", "2", "3". If omitted, Azure selects automatically.
-	//
-	// Must be different from the primary server's `zone` when using ZoneRedundant mode.
-	// Can only be set during initial creation; updates are not supported.
-	StandbyAvailabilityZone string `protobuf:"bytes,2,opt,name=standby_availability_zone,json=standbyAvailabilityZone,proto3" json:"standby_availability_zone,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+func (x *AzureMysqlFlexibleServerSpec) GetServerParameters() map[string]string {
+	if x != nil {
+		return x.ServerParameters
+	}
+	return nil
 }
 
-func (x *AzureMysqlHighAvailability) Reset() {
-	*x = AzureMysqlHighAvailability{}
+func (x *AzureMysqlFlexibleServerSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// The server's storage profile.
+type AzureMysqlFlexibleServerStorage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The provisioned storage size in GiB, 20-16384. Unspecified applies
+	// Azure's default of 20. Storage only grows -- shrinking replaces the
+	// server.
+	SizeGb *int32 `protobuf:"varint,1,opt,name=size_gb,json=sizeGb,proto3,oneof" json:"size_gb,omitempty"`
+	// Provisioned IOPS, 360-48000 (bounded by the SKU and storage size).
+	// Unspecified applies Azure's default for the storage size. Cannot be
+	// combined with io_scaling_enabled -- elastic scaling manages IOPS
+	// itself.
+	Iops *int32 `protobuf:"varint,2,opt,name=iops,proto3,oneof" json:"iops,omitempty"`
+	// Whether storage grows automatically when free space runs low,
+	// without downtime. Azure's default for MySQL is true (note: the
+	// opposite of PostgreSQL Flexible Server's default).
+	AutoGrowEnabled *bool `protobuf:"varint,3,opt,name=auto_grow_enabled,json=autoGrowEnabled,proto3,oneof" json:"auto_grow_enabled,omitempty"`
+	// Elastic IOPS scaling: Azure scales IOPS up and down automatically
+	// with workload demand instead of holding a provisioned value. Azure's
+	// default is false. Mutually exclusive with iops.
+	IoScalingEnabled bool `protobuf:"varint,4,opt,name=io_scaling_enabled,json=ioScalingEnabled,proto3" json:"io_scaling_enabled,omitempty"`
+	// Whether the slow query log is written to the server's disk (counted
+	// against storage) instead of Azure's default log pipeline. Azure's
+	// default is false; enable only when a compliance regime requires
+	// on-disk logs.
+	LogOnDiskEnabled bool `protobuf:"varint,5,opt,name=log_on_disk_enabled,json=logOnDiskEnabled,proto3" json:"log_on_disk_enabled,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AzureMysqlFlexibleServerStorage) Reset() {
+	*x = AzureMysqlFlexibleServerStorage{}
 	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureMysqlHighAvailability) String() string {
+func (x *AzureMysqlFlexibleServerStorage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureMysqlHighAvailability) ProtoMessage() {}
+func (*AzureMysqlFlexibleServerStorage) ProtoMessage() {}
 
-func (x *AzureMysqlHighAvailability) ProtoReflect() protoreflect.Message {
+func (x *AzureMysqlFlexibleServerStorage) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -402,67 +700,135 @@ func (x *AzureMysqlHighAvailability) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureMysqlHighAvailability.ProtoReflect.Descriptor instead.
-func (*AzureMysqlHighAvailability) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureMysqlFlexibleServerStorage.ProtoReflect.Descriptor instead.
+func (*AzureMysqlFlexibleServerStorage) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AzureMysqlHighAvailability) GetMode() string {
+func (x *AzureMysqlFlexibleServerStorage) GetSizeGb() int32 {
+	if x != nil && x.SizeGb != nil {
+		return *x.SizeGb
+	}
+	return 0
+}
+
+func (x *AzureMysqlFlexibleServerStorage) GetIops() int32 {
+	if x != nil && x.Iops != nil {
+		return *x.Iops
+	}
+	return 0
+}
+
+func (x *AzureMysqlFlexibleServerStorage) GetAutoGrowEnabled() bool {
+	if x != nil && x.AutoGrowEnabled != nil {
+		return *x.AutoGrowEnabled
+	}
+	return false
+}
+
+func (x *AzureMysqlFlexibleServerStorage) GetIoScalingEnabled() bool {
+	if x != nil {
+		return x.IoScalingEnabled
+	}
+	return false
+}
+
+func (x *AzureMysqlFlexibleServerStorage) GetLogOnDiskEnabled() bool {
+	if x != nil {
+		return x.LogOnDiskEnabled
+	}
+	return false
+}
+
+// High availability configuration: a standby server with synchronous
+// replication and automatic failover.
+type AzureMysqlFlexibleServerHighAvailability struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ZONE_REDUNDANT places the standby in a different availability zone
+	// (survives zone failure -- the production recommendation); SAME_ZONE
+	// co-locates it (faster failover, no zone-level protection).
+	Mode AzureMysqlFlexibleServerHighAvailabilityMode `protobuf:"varint,1,opt,name=mode,proto3,enum=dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerHighAvailabilityMode" json:"mode,omitempty"`
+	// The availability zone for the standby ("1", "2", or "3"). Unset lets
+	// Azure choose. For ZONE_REDUNDANT it must differ from the primary's
+	// zone. After creation, zones only change via a planned failover that
+	// swaps zone and standby_availability_zone.
+	StandbyAvailabilityZone string `protobuf:"bytes,2,opt,name=standby_availability_zone,json=standbyAvailabilityZone,proto3" json:"standby_availability_zone,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AzureMysqlFlexibleServerHighAvailability) Reset() {
+	*x = AzureMysqlFlexibleServerHighAvailability{}
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureMysqlFlexibleServerHighAvailability) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureMysqlFlexibleServerHighAvailability) ProtoMessage() {}
+
+func (x *AzureMysqlFlexibleServerHighAvailability) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureMysqlFlexibleServerHighAvailability.ProtoReflect.Descriptor instead.
+func (*AzureMysqlFlexibleServerHighAvailability) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AzureMysqlFlexibleServerHighAvailability) GetMode() AzureMysqlFlexibleServerHighAvailabilityMode {
 	if x != nil {
 		return x.Mode
 	}
-	return ""
+	return AzureMysqlFlexibleServerHighAvailabilityMode_azure_mysql_flexible_server_high_availability_mode_unspecified
 }
 
-func (x *AzureMysqlHighAvailability) GetStandbyAvailabilityZone() string {
+func (x *AzureMysqlFlexibleServerHighAvailability) GetStandbyAvailabilityZone() string {
 	if x != nil {
 		return x.StandbyAvailabilityZone
 	}
 	return ""
 }
 
-// AzureMysqlDatabase defines a database to create on the MySQL Flexible Server.
-// Each database is a separate Azure resource with its own lifecycle, enabling
-// independent management.
-type AzureMysqlDatabase struct {
+// The weekly maintenance window for Azure-managed patching.
+type AzureMysqlFlexibleServerMaintenanceWindow struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the database.
-	// Must be unique within the server.
-	// Must be a valid MySQL identifier.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The character set for the database.
-	// Default: "utf8mb4" (recommended for most applications, supports full Unicode
-	// including emojis and supplementary characters).
-	// Common values: "utf8mb4", "utf8", "latin1".
-	//
-	// Note: The charset comparison is case-insensitive in Azure.
-	Charset *string `protobuf:"bytes,2,opt,name=charset,proto3,oneof" json:"charset,omitempty"`
-	// The collation for the database.
-	// Default: "utf8mb4_0900_ai_ci" (MySQL 8.0+ default, accent-insensitive,
-	// case-insensitive).
-	// For MySQL 5.7: use "utf8mb4_unicode_ci" instead.
-	//
-	// Determines sort order and string comparison behavior.
-	Collation     *string `protobuf:"bytes,3,opt,name=collation,proto3,oneof" json:"collation,omitempty"`
+	// Day of the week: 0 (Sunday) through 6 (Saturday).
+	DayOfWeek int32 `protobuf:"varint,1,opt,name=day_of_week,json=dayOfWeek,proto3" json:"day_of_week,omitempty"`
+	// The window's start hour, 0-23 (UTC).
+	StartHour int32 `protobuf:"varint,2,opt,name=start_hour,json=startHour,proto3" json:"start_hour,omitempty"`
+	// The window's start minute, 0-59.
+	StartMinute   int32 `protobuf:"varint,3,opt,name=start_minute,json=startMinute,proto3" json:"start_minute,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureMysqlDatabase) Reset() {
-	*x = AzureMysqlDatabase{}
-	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[2]
+func (x *AzureMysqlFlexibleServerMaintenanceWindow) Reset() {
+	*x = AzureMysqlFlexibleServerMaintenanceWindow{}
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureMysqlDatabase) String() string {
+func (x *AzureMysqlFlexibleServerMaintenanceWindow) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureMysqlDatabase) ProtoMessage() {}
+func (*AzureMysqlFlexibleServerMaintenanceWindow) ProtoMessage() {}
 
-func (x *AzureMysqlDatabase) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[2]
+func (x *AzureMysqlFlexibleServerMaintenanceWindow) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -473,67 +839,300 @@ func (x *AzureMysqlDatabase) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureMysqlDatabase.ProtoReflect.Descriptor instead.
-func (*AzureMysqlDatabase) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use AzureMysqlFlexibleServerMaintenanceWindow.ProtoReflect.Descriptor instead.
+func (*AzureMysqlFlexibleServerMaintenanceWindow) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *AzureMysqlDatabase) GetName() string {
+func (x *AzureMysqlFlexibleServerMaintenanceWindow) GetDayOfWeek() int32 {
+	if x != nil {
+		return x.DayOfWeek
+	}
+	return 0
+}
+
+func (x *AzureMysqlFlexibleServerMaintenanceWindow) GetStartHour() int32 {
+	if x != nil {
+		return x.StartHour
+	}
+	return 0
+}
+
+func (x *AzureMysqlFlexibleServerMaintenanceWindow) GetStartMinute() int32 {
+	if x != nil {
+		return x.StartMinute
+	}
+	return 0
+}
+
+// Customer-managed-key encryption settings.
+type AzureMysqlFlexibleServerCustomerManagedKey struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Key Vault key that encrypts the server's data, by data-plane key
+	// ID. Defaults to referencing an AzureKeyVaultKey's versionless_id
+	// output so key rotations propagate automatically; pin a versioned ID
+	// only when a compliance regime demands an immutable key version. The
+	// key's vault must have purge protection enabled.
+	KeyVaultKeyId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=key_vault_key_id,json=keyVaultKeyId,proto3" json:"key_vault_key_id,omitempty"`
+	// The user-assigned identity Azure uses to unwrap the key, by ARM ID.
+	// Must be one of the identities in user_assigned_identity_ids, with
+	// wrap/unwrap access on the key's vault (a "Key Vault Crypto Service
+	// Encryption User" role assignment, or the equivalent access policy).
+	PrimaryUserAssignedIdentityId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=primary_user_assigned_identity_id,json=primaryUserAssignedIdentityId,proto3" json:"primary_user_assigned_identity_id,omitempty"`
+	// For geo-redundant backups: the Key Vault key (in the paired region's
+	// vault) that encrypts the geo-replicated backup data. Requires
+	// geo_backup_user_assigned_identity_id.
+	GeoBackupKeyVaultKeyId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=geo_backup_key_vault_key_id,json=geoBackupKeyVaultKeyId,proto3" json:"geo_backup_key_vault_key_id,omitempty"`
+	// The user-assigned identity that unwraps the geo-backup key, by ARM
+	// ID. Required together with geo_backup_key_vault_key_id.
+	GeoBackupUserAssignedIdentityId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=geo_backup_user_assigned_identity_id,json=geoBackupUserAssignedIdentityId,proto3" json:"geo_backup_user_assigned_identity_id,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
+}
+
+func (x *AzureMysqlFlexibleServerCustomerManagedKey) Reset() {
+	*x = AzureMysqlFlexibleServerCustomerManagedKey{}
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureMysqlFlexibleServerCustomerManagedKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureMysqlFlexibleServerCustomerManagedKey) ProtoMessage() {}
+
+func (x *AzureMysqlFlexibleServerCustomerManagedKey) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureMysqlFlexibleServerCustomerManagedKey.ProtoReflect.Descriptor instead.
+func (*AzureMysqlFlexibleServerCustomerManagedKey) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AzureMysqlFlexibleServerCustomerManagedKey) GetKeyVaultKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KeyVaultKeyId
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerCustomerManagedKey) GetPrimaryUserAssignedIdentityId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.PrimaryUserAssignedIdentityId
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerCustomerManagedKey) GetGeoBackupKeyVaultKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.GeoBackupKeyVaultKeyId
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerCustomerManagedKey) GetGeoBackupUserAssignedIdentityId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.GeoBackupUserAssignedIdentityId
+	}
+	return nil
+}
+
+// The server's single Microsoft Entra administrator grant.
+type AzureMysqlFlexibleServerAadAdministrator struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The user-assigned identity (attached to the server via
+	// user_assigned_identity_ids) that Azure uses to read directory
+	// objects when validating Entra logins, by ARM ID.
+	IdentityId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	// The administrator principal's display name as it appears in Entra
+	// (e.g. "dba-team@contoso.com" for a user, the group name for a
+	// group). MySQL uses it as the login name for Entra connections.
+	Login string `protobuf:"bytes,2,opt,name=login,proto3" json:"login,omitempty"`
+	// The ID of the Entra principal being granted the administrator role.
+	// For a user or group this is the directory object ID; for a managed
+	// identity MySQL validates tokens against the identity's CLIENT
+	// (application) ID -- which is why the default reference points at an
+	// AzureUserAssignedIdentity's client_id output, not its principal_id.
+	ObjectId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
+	// The Entra tenant of the administrator principal. Leave unset to use
+	// the deploying credential's tenant -- the correct value for virtually
+	// every deployment.
+	TenantId      *string `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureMysqlFlexibleServerAadAdministrator) Reset() {
+	*x = AzureMysqlFlexibleServerAadAdministrator{}
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureMysqlFlexibleServerAadAdministrator) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureMysqlFlexibleServerAadAdministrator) ProtoMessage() {}
+
+func (x *AzureMysqlFlexibleServerAadAdministrator) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureMysqlFlexibleServerAadAdministrator.ProtoReflect.Descriptor instead.
+func (*AzureMysqlFlexibleServerAadAdministrator) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AzureMysqlFlexibleServerAadAdministrator) GetIdentityId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.IdentityId
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerAadAdministrator) GetLogin() string {
+	if x != nil {
+		return x.Login
+	}
+	return ""
+}
+
+func (x *AzureMysqlFlexibleServerAadAdministrator) GetObjectId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ObjectId
+	}
+	return nil
+}
+
+func (x *AzureMysqlFlexibleServerAadAdministrator) GetTenantId() string {
+	if x != nil && x.TenantId != nil {
+		return *x.TenantId
+	}
+	return ""
+}
+
+// One database on the server, a separate Azure sub-resource. All fields
+// are fixed at creation (changing any replaces the database).
+type AzureMysqlFlexibleServerDatabase struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The database name: 1-64 characters, a valid MySQL schema identifier;
+	// unique within the server.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The database character set. Unspecified applies "utf8mb4" (full
+	// Unicode including supplementary characters -- the right choice for
+	// virtually all applications). Other MySQL charsets (e.g. "latin1",
+	// "utf8mb3") are accepted for legacy migrations.
+	Charset *string `protobuf:"bytes,2,opt,name=charset,proto3,oneof" json:"charset,omitempty"`
+	// The database collation (sort order and string comparison), e.g.
+	// "utf8mb4_0900_ai_ci" (the MySQL 8.0 default), "utf8mb4_unicode_ci"
+	// (for MySQL 5.7), or "utf8mb4_bin".
+	Collation     *string `protobuf:"bytes,3,opt,name=collation,proto3,oneof" json:"collation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureMysqlFlexibleServerDatabase) Reset() {
+	*x = AzureMysqlFlexibleServerDatabase{}
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureMysqlFlexibleServerDatabase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureMysqlFlexibleServerDatabase) ProtoMessage() {}
+
+func (x *AzureMysqlFlexibleServerDatabase) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureMysqlFlexibleServerDatabase.ProtoReflect.Descriptor instead.
+func (*AzureMysqlFlexibleServerDatabase) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AzureMysqlFlexibleServerDatabase) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *AzureMysqlDatabase) GetCharset() string {
+func (x *AzureMysqlFlexibleServerDatabase) GetCharset() string {
 	if x != nil && x.Charset != nil {
 		return *x.Charset
 	}
 	return ""
 }
 
-func (x *AzureMysqlDatabase) GetCollation() string {
+func (x *AzureMysqlFlexibleServerDatabase) GetCollation() string {
 	if x != nil && x.Collation != nil {
 		return *x.Collation
 	}
 	return ""
 }
 
-// AzureMysqlFirewallRule defines a firewall rule for public access mode.
-// Each rule allows connections from a contiguous range of IPv4 addresses.
-type AzureMysqlFirewallRule struct {
+// One public-endpoint firewall rule admitting a contiguous IPv4 range.
+type AzureMysqlFlexibleServerFirewallRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the firewall rule.
-	// Must be unique within the server.
-	// Examples: "allow-office", "allow-azure-services", "allow-dev-machine".
+	// The rule's name: 1-128 letters, digits, hyphens, and underscores;
+	// unique within the server. E.g. "allow-office", "allow-ci".
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The start of the IP address range (inclusive).
-	// Must be a valid IPv4 address.
-	// Use "0.0.0.0" with end "0.0.0.0" to allow all Azure services.
+	// The first IPv4 address of the admitted range (inclusive). Use
+	// 0.0.0.0 for both start and end to admit Azure-internal services.
 	StartIpAddress string `protobuf:"bytes,2,opt,name=start_ip_address,json=startIpAddress,proto3" json:"start_ip_address,omitempty"`
-	// The end of the IP address range (inclusive).
-	// Must be a valid IPv4 address and >= start_ip_address.
-	// Set equal to start_ip_address for a single IP rule.
+	// The last IPv4 address of the admitted range (inclusive). Equal to
+	// start_ip_address for a single-address rule.
 	EndIpAddress  string `protobuf:"bytes,3,opt,name=end_ip_address,json=endIpAddress,proto3" json:"end_ip_address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AzureMysqlFirewallRule) Reset() {
-	*x = AzureMysqlFirewallRule{}
-	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[3]
+func (x *AzureMysqlFlexibleServerFirewallRule) Reset() {
+	*x = AzureMysqlFlexibleServerFirewallRule{}
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureMysqlFirewallRule) String() string {
+func (x *AzureMysqlFlexibleServerFirewallRule) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureMysqlFirewallRule) ProtoMessage() {}
+func (*AzureMysqlFlexibleServerFirewallRule) ProtoMessage() {}
 
-func (x *AzureMysqlFirewallRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[3]
+func (x *AzureMysqlFlexibleServerFirewallRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -544,26 +1143,26 @@ func (x *AzureMysqlFirewallRule) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureMysqlFirewallRule.ProtoReflect.Descriptor instead.
-func (*AzureMysqlFirewallRule) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use AzureMysqlFlexibleServerFirewallRule.ProtoReflect.Descriptor instead.
+func (*AzureMysqlFlexibleServerFirewallRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *AzureMysqlFirewallRule) GetName() string {
+func (x *AzureMysqlFlexibleServerFirewallRule) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *AzureMysqlFirewallRule) GetStartIpAddress() string {
+func (x *AzureMysqlFlexibleServerFirewallRule) GetStartIpAddress() string {
 	if x != nil {
 		return x.StartIpAddress
 	}
 	return ""
 }
 
-func (x *AzureMysqlFirewallRule) GetEndIpAddress() string {
+func (x *AzureMysqlFlexibleServerFirewallRule) GetEndIpAddress() string {
 	if x != nil {
 		return x.EndIpAddress
 	}
@@ -574,57 +1173,128 @@ var File_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto proto
 
 const file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/azure/azuremysqlflexibleserver/v1/spec.proto\x126dev.planton.provider.azure.azuremysqlflexibleserver.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf8\r\n" +
+	"Adev/planton/provider/azure/azuremysqlflexibleserver/v1/spec.proto\x126dev.planton.provider.azure.azuremysqlflexibleserver.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe42\n" +
 	"\x1cAzureMysqlFlexibleServerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xd1\x01\n" +
-	"\x04name\x18\x03 \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\xab\x01\n" +
-	"\x12server_name_format\x12gServer name must start with a letter or number and contain only lowercase letters, numbers, and hyphens\x1a,this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$')\xc8\x01\x01r\x04\x10\x03\x18?R\x04name\x12=\n" +
-	"\x13administrator_login\x18\x04 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18 R\x12administratorLogin\x12u\n" +
-	"\x16administrator_password\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x15administratorPassword\x12\x8a\x01\n" +
-	"\aversion\x18\x06 \x01(\tBk\xbaH^\xba\x01[\n" +
-	"\rversion_valid\x12(version must be one of: 5.7, 8.0.21, 8.4\x1a this in ['5.7', '8.0.21', '8.4']\x8a\xa6\x1d\x068.0.21H\x00R\aversion\x88\x01\x01\x12%\n" +
-	"\bsku_name\x18\a \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\askuName\x122\n" +
-	"\x0fstorage_size_gb\x18\b \x01(\x05B\n" +
-	"\xbaH\a\xc8\x01\x01\x1a\x02(\x14R\rstorageSizeGb\x129\n" +
-	"\x11auto_grow_enabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0fautoGrowEnabled\x88\x01\x01\x12\x85\x01\n" +
-	"\x13delegated_subnet_id\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x11delegatedSubnetId\x12\x82\x01\n" +
-	"\x13private_dns_zone_id\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_idR\x10privateDnsZoneId\x12\x12\n" +
-	"\x04zone\x18\f \x01(\tR\x04zone\x12\x7f\n" +
-	"\x11high_availability\x18\r \x01(\v2R.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlHighAvailabilityR\x10highAvailability\x12G\n" +
-	"\x15backup_retention_days\x18\x0e \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\x01\x8a\xa6\x1d\x017H\x02R\x13backupRetentionDays\x88\x01\x01\x12O\n" +
-	"\x1cgeo_redundant_backup_enabled\x18\x0f \x01(\bB\t\x8a\xa6\x1d\x05falseH\x03R\x19geoRedundantBackupEnabled\x88\x01\x01\x12h\n" +
-	"\tdatabases\x18\x10 \x03(\v2J.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlDatabaseR\tdatabases\x12u\n" +
-	"\x0efirewall_rules\x18\x11 \x03(\v2N.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFirewallRuleR\rfirewallRulesB\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12N\n" +
+	"\vserver_name\x18\x03 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x03\x18?2\x1f^[a-z0-9]([a-z0-9-]*[a-z0-9])?$R\n" +
+	"serverName\x12{\n" +
+	"\vcreate_mode\x18\x04 \x01(\x0e2Z.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCreateModeR\n" +
+	"createMode\x12\x7f\n" +
+	"\x10source_server_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xb2\x03\x92\xd4a\x18status.outputs.server_idR\x0esourceServerId\x12\xb7\x02\n" +
+	"!point_in_time_restore_time_in_utc\x18\x06 \x01(\tB\xee\x01\xbaH\xea\x01\xba\x01\xe6\x01\n" +
+	"\x1amysql_restore_time_rfc3339\x12^point_in_time_restore_time_in_utc must be an RFC-3339 UTC timestamp, e.g. 2026-07-01T08:30:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x1bpointInTimeRestoreTimeInUtc\x12\x8a\x01\n" +
+	"\x10replication_role\x18\a \x01(\x0e2_.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerReplicationRoleR\x0freplicationRole\x12\x84\x03\n" +
+	"\x13administrator_login\x18\b \x01(\tB\xd2\x02\xbaH\xce\x02\xba\x01\xc6\x02\n" +
+	"\x18mysql_admin_login_format\x12\x93\x01administrator_login must contain only letters, digits, and underscores, and cannot be azure_superuser, admin, administrator, root, guest, or public\x1a\x93\x01this == '' || (this.matches('^[a-zA-Z0-9_]+$') && !(this.lowerAscii() in ['azure_superuser', 'admin', 'administrator', 'root', 'guest', 'public']))r\x02\x18 R\x12administratorLogin\x12o\n" +
+	"\x16administrator_password\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x15administratorPassword\x12\x90\x01\n" +
+	"\aversion\x18\n" +
+	" \x01(\tBq\xbaHd\xba\x01a\n" +
+	"\x13mysql_version_valid\x12(version must be one of: 5.7, 8.0.21, 8.4\x1a this in ['5.7', '8.0.21', '8.4']\x8a\xa6\x1d\x068.0.21H\x00R\aversion\x88\x01\x01\x12\x82\x02\n" +
+	"\bsku_name\x18\v \x01(\tB\xe6\x01\xbaH\xe2\x01\xba\x01\xde\x01\n" +
+	"\x15mysql_sku_name_format\x12\x82\x01sku_name must be {TIER}_Standard_{SIZE} where TIER is B, GP, or MO, e.g. B_Standard_B1ms, GP_Standard_D2ds_v4, MO_Standard_E4ds_v4\x1a@this == '' || this.matches('^(B|GP|MO)_Standard_[A-Za-z0-9_]+$')R\askuName\x12q\n" +
+	"\astorage\x18\f \x01(\v2W.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerStorageR\astorage\x12r\n" +
+	"\x04zone\x18\r \x01(\tB^\xbaH[\xba\x01X\n" +
+	"\x10mysql_zone_valid\x12\x1dzone must be \"1\", \"2\", or \"3\"\x1a%this == '' || this in ['1', '2', '3']R\x04zone\x12\x8d\x01\n" +
+	"\x11high_availability\x18\x0e \x01(\v2`.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerHighAvailabilityR\x10highAvailability\x12\x90\x01\n" +
+	"\x12maintenance_window\x18\x0f \x01(\v2a.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerMaintenanceWindowR\x11maintenanceWindow\x12G\n" +
+	"\x15backup_retention_days\x18\x10 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\x01\x8a\xa6\x1d\x017H\x01R\x13backupRetentionDays\x88\x01\x01\x12?\n" +
+	"\x1cgeo_redundant_backup_enabled\x18\x11 \x01(\bR\x19geoRedundantBackupEnabled\x12\x97\x01\n" +
+	"\x15public_network_access\x18\x12 \x01(\x0e2c.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerPublicNetworkAccessR\x13publicNetworkAccess\x12\x85\x01\n" +
+	"\x13delegated_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x11delegatedSubnetId\x12\x82\x01\n" +
+	"\x13private_dns_zone_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_idR\x10privateDnsZoneId\x12\x94\x01\n" +
+	"\x1auser_assigned_identity_ids\x18\x15 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds\x12\x94\x01\n" +
+	"\x14customer_managed_key\x18\x16 \x01(\v2b.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKeyR\x12customerManagedKey\x12\x8d\x01\n" +
+	"\x11aad_administrator\x18\x17 \x01(\v2`.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerAadAdministratorR\x10aadAdministrator\x12v\n" +
+	"\tdatabases\x18\x18 \x03(\v2X.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerDatabaseR\tdatabases\x12\x83\x01\n" +
+	"\x0efirewall_rules\x18\x19 \x03(\v2\\.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerFirewallRuleR\rfirewallRules\x12\xab\x01\n" +
+	"\x11server_parameters\x18\x1a \x03(\v2j.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.ServerParametersEntryB\x12\xbaH\x0f\x9a\x01\f\"\x04r\x02\x10\x01*\x04r\x02\x10\x01R\x10serverParameters\x12r\n" +
+	"\x04tags\x18\x1b \x03(\v2^.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.TagsEntryR\x04tags\x1aC\n" +
+	"\x15ServerParametersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xae\x12\xbaH\xaa\x12\x1a\xf7\x01\n" +
+	" mysql_source_matches_create_mode\x12\x82\x01source_server_id is required for POINT_IN_TIME_RESTORE, REPLICA, and GEO_RESTORE, and must be omitted for a fresh (DEFAULT) server\x1aN(this.create_mode >= 2 && this.create_mode <= 4) == has(this.source_server_id)\x1a\xd8\x02\n" +
+	"&mysql_restore_time_matches_create_mode\x12\xb6\x01point_in_time_restore_time_in_utc is required for POINT_IN_TIME_RESTORE and must be omitted for other create modes (GEO_RESTORE restores the latest geo-backup and takes no timestamp)\x1au(this.create_mode == 2) ? this.point_in_time_restore_time_in_utc != '' : this.point_in_time_restore_time_in_utc == ''\x1a\xc1\x01\n" +
+	"#mysql_replication_role_replica_only\x12ereplication_role (NONE, replica promotion) is only valid on a server created with create_mode REPLICA\x1a3this.replication_role == 0 || this.create_mode == 3\x1a\xbc\x02\n" +
+	"'mysql_default_mode_requires_credentials\x12\x95\x01a fresh (DEFAULT) server requires administrator_login and administrator_password; only replicas and restores may omit them to inherit from the source\x1ay!(this.create_mode == 0 || this.create_mode == 1) || (this.administrator_login != '' && has(this.administrator_password))\x1a\xe5\x01\n" +
+	"#mysql_sku_required_for_default_mode\x12tsku_name is required for a fresh (DEFAULT) server; only replicas and restores may omit it to inherit from the source\x1aH!(this.create_mode == 0 || this.create_mode == 1) || this.sku_name != ''\x1a\xb4\x01\n" +
+	".mysql_vnet_injection_requires_private_dns_zone\x12Adelegated_subnet_id (VNet injection) requires private_dns_zone_id\x1a?!has(this.delegated_subnet_id) || has(this.private_dns_zone_id)\x1a\xf8\x01\n" +
+	"*mysql_vnet_injection_forbids_public_access\x12\x86\x01public_network_access cannot be ENABLED on a VNet-injected server (delegated_subnet_id set); leave it unset and Azure derives DISABLED\x1aA!has(this.delegated_subnet_id) || this.public_network_access != 1\x1a\xb7\x02\n" +
+	")mysql_cmk_requires_user_assigned_identity\x12tcustomer_managed_key requires primary_user_assigned_identity_id and at least one entry in user_assigned_identity_ids\x1a\x93\x01!has(this.customer_managed_key) || (has(this.customer_managed_key.primary_user_assigned_identity_id) && this.user_assigned_identity_ids.size() > 0)\x1a\xfb\x01\n" +
+	"/mysql_aad_admin_requires_user_assigned_identity\x12|aad_administrator requires at least one entry in user_assigned_identity_ids (its identity_id must be attached to the server)\x1aJ!has(this.aad_administrator) || this.user_assigned_identity_ids.size() > 0B\n" +
 	"\n" +
-	"\b_versionB\x14\n" +
-	"\x12_auto_grow_enabledB\x18\n" +
-	"\x16_backup_retention_daysB\x1f\n" +
-	"\x1d_geo_redundant_backup_enabled\"\xdc\x01\n" +
-	"\x1aAzureMysqlHighAvailability\x12\x81\x01\n" +
-	"\x04mode\x18\x01 \x01(\tBm\xbaHj\xba\x01d\n" +
-	"\rha_mode_valid\x12,mode must be one of: ZoneRedundant, SameZone\x1a%this in ['ZoneRedundant', 'SameZone']\xc8\x01\x01R\x04mode\x12:\n" +
-	"\x19standby_availability_zone\x18\x02 \x01(\tR\x17standbyAvailabilityZone\"\xb5\x01\n" +
-	"\x12AzureMysqlDatabase\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12*\n" +
-	"\acharset\x18\x02 \x01(\tB\v\x8a\xa6\x1d\autf8mb4H\x00R\acharset\x88\x01\x01\x129\n" +
-	"\tcollation\x18\x03 \x01(\tB\x16\x8a\xa6\x1d\x12utf8mb4_0900_ai_ciH\x01R\tcollation\x88\x01\x01B\n" +
+	"\b_versionB\x18\n" +
+	"\x16_backup_retention_days\"\xf1\x03\n" +
+	"\x1fAzureMysqlFlexibleServerStorage\x12)\n" +
+	"\asize_gb\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\x80\x01(\x14H\x00R\x06sizeGb\x88\x01\x01\x12%\n" +
+	"\x04iops\x18\x02 \x01(\x05B\f\xbaH\t\x1a\a\x18\x80\xf7\x02(\xe8\x02H\x01R\x04iops\x88\x01\x01\x129\n" +
+	"\x11auto_grow_enabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x0fautoGrowEnabled\x88\x01\x01\x12,\n" +
+	"\x12io_scaling_enabled\x18\x04 \x01(\bR\x10ioScalingEnabled\x12-\n" +
+	"\x13log_on_disk_enabled\x18\x05 \x01(\bR\x10logOnDiskEnabled:\xb8\x01\xbaH\xb4\x01\x1a\xb1\x01\n" +
+	"'mysql_storage_iops_conflicts_io_scaling\x12Yiops cannot be set when io_scaling_enabled is true -- elastic scaling manages IOPS itself\x1a+!has(this.iops) || !this.io_scaling_enabledB\n" +
+	"\n" +
+	"\b_size_gbB\a\n" +
+	"\x05_iopsB\x14\n" +
+	"\x12_auto_grow_enabled\"\xe7\x02\n" +
+	"(AzureMysqlFlexibleServerHighAvailability\x12\x80\x01\n" +
+	"\x04mode\x18\x01 \x01(\x0e2d.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerHighAvailabilityModeB\x06\xbaH\x03\xc8\x01\x01R\x04mode\x12\xb7\x01\n" +
+	"\x19standby_availability_zone\x18\x02 \x01(\tB{\xbaHx\xba\x01u\n" +
+	"\x18mysql_standby_zone_valid\x122standby_availability_zone must be \"1\", \"2\", or \"3\"\x1a%this == '' || this in ['1', '2', '3']R\x17standbyAvailabilityZone\"\xae\x01\n" +
+	")AzureMysqlFlexibleServerMaintenanceWindow\x12)\n" +
+	"\vday_of_week\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x06(\x00R\tdayOfWeek\x12(\n" +
+	"\n" +
+	"start_hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\tstartHour\x12,\n" +
+	"\fstart_minute\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18;(\x00R\vstartMinute\"\xf1\x06\n" +
+	"*AzureMysqlFlexibleServerCustomerManagedKey\x12\x89\x01\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\xa1\x01\n" +
+	"!primary_user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1dprimaryUserAssignedIdentityId\x12\x97\x01\n" +
+	"\x1bgeo_backup_key_vault_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\x16geoBackupKeyVaultKeyId\x12\xa6\x01\n" +
+	"$geo_backup_user_assigned_identity_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1fgeoBackupUserAssignedIdentityId:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
+	"\x12mysql_cmk_geo_pair\x12Ygeo_backup_key_vault_key_id and geo_backup_user_assigned_identity_id must be set together\x1aWhas(this.geo_backup_key_vault_key_id) == has(this.geo_backup_user_assigned_identity_id)\"\x80\x03\n" +
+	"(AzureMysqlFlexibleServerAadAdministrator\x12~\n" +
+	"\videntity_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\n" +
+	"identityId\x12 \n" +
+	"\x05login\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05login\x12x\n" +
+	"\tobject_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x18status.outputs.client_idR\bobjectId\x12*\n" +
+	"\ttenant_id\x18\x04 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\btenantId\x88\x01\x01B\f\n" +
+	"\n" +
+	"_tenant_id\"\xd3\x01\n" +
+	" AzureMysqlFlexibleServerDatabase\x12 \n" +
+	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18@R\x04name\x121\n" +
+	"\acharset\x18\x02 \x01(\tB\x12\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\autf8mb4H\x00R\acharset\x88\x01\x01\x12@\n" +
+	"\tcollation\x18\x03 \x01(\tB\x1d\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\x12utf8mb4_0900_ai_ciH\x01R\tcollation\x88\x01\x01B\n" +
 	"\n" +
 	"\b_charsetB\f\n" +
 	"\n" +
-	"_collation\"\xa0\x01\n" +
-	"\x16AzureMysqlFirewallRule\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x124\n" +
+	"_collation\"\xc3\x01\n" +
+	"$AzureMysqlFlexibleServerFirewallRule\x123\n" +
+	"\x04name\x18\x01 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x17\x10\x01\x18\x80\x012\x10^[a-zA-Z0-9-_]+$R\x04name\x124\n" +
 	"\x10start_ip_address\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\aR\x0estartIpAddress\x120\n" +
+	"\xbaH\a\xc8\x01\x01r\x02x\x01R\x0estartIpAddress\x120\n" +
 	"\x0eend_ip_address\x18\x03 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\aR\fendIpAddressB\xbb\x03\n" +
+	"\xbaH\a\xc8\x01\x01r\x02x\x01R\fendIpAddress*\xa3\x01\n" +
+	"\"AzureMysqlFlexibleServerCreateMode\x127\n" +
+	"3azure_mysql_flexible_server_create_mode_unspecified\x10\x00\x12\v\n" +
+	"\aDEFAULT\x10\x01\x12\x19\n" +
+	"\x15POINT_IN_TIME_RESTORE\x10\x02\x12\v\n" +
+	"\aREPLICA\x10\x03\x12\x0f\n" +
+	"\vGEO_RESTORE\x10\x04*q\n" +
+	"'AzureMysqlFlexibleServerReplicationRole\x12<\n" +
+	"8azure_mysql_flexible_server_replication_role_unspecified\x10\x00\x12\b\n" +
+	"\x04NONE\x10\x01*\x95\x01\n" +
+	",AzureMysqlFlexibleServerHighAvailabilityMode\x12B\n" +
+	">azure_mysql_flexible_server_high_availability_mode_unspecified\x10\x00\x12\x12\n" +
+	"\x0eZONE_REDUNDANT\x10\x01\x12\r\n" +
+	"\tSAME_ZONE\x10\x02*\x8b\x01\n" +
+	"+AzureMysqlFlexibleServerPublicNetworkAccess\x12A\n" +
+	"=azure_mysql_flexible_server_public_network_access_unspecified\x10\x00\x12\v\n" +
+	"\aENABLED\x10\x01\x12\f\n" +
+	"\bDISABLED\x10\x02B\xbb\x03\n" +
 	":com.dev.planton.provider.azure.azuremysqlflexibleserver.v1B\tSpecProtoP\x01Zsgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremysqlflexibleserver/v1;azuremysqlflexibleserverv1\xa2\x02\x05DPPAA\xaa\x026Dev.Planton.Provider.Azure.Azuremysqlflexibleserver.V1\xca\x026Dev\\Planton\\Provider\\Azure\\Azuremysqlflexibleserver\\V1\xe2\x02BDev\\Planton\\Provider\\Azure\\Azuremysqlflexibleserver\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Azure::Azuremysqlflexibleserver::V1b\x06proto3"
 
 var (
@@ -639,27 +1309,56 @@ func file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawD
 	return file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_goTypes = []any{
-	(*AzureMysqlFlexibleServerSpec)(nil), // 0: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec
-	(*AzureMysqlHighAvailability)(nil),   // 1: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlHighAvailability
-	(*AzureMysqlDatabase)(nil),           // 2: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlDatabase
-	(*AzureMysqlFirewallRule)(nil),       // 3: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFirewallRule
-	(*v1.StringValueOrRef)(nil),          // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureMysqlFlexibleServerCreateMode)(0),            // 0: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCreateMode
+	(AzureMysqlFlexibleServerReplicationRole)(0),       // 1: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerReplicationRole
+	(AzureMysqlFlexibleServerHighAvailabilityMode)(0),  // 2: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerHighAvailabilityMode
+	(AzureMysqlFlexibleServerPublicNetworkAccess)(0),   // 3: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerPublicNetworkAccess
+	(*AzureMysqlFlexibleServerSpec)(nil),               // 4: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec
+	(*AzureMysqlFlexibleServerStorage)(nil),            // 5: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerStorage
+	(*AzureMysqlFlexibleServerHighAvailability)(nil),   // 6: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerHighAvailability
+	(*AzureMysqlFlexibleServerMaintenanceWindow)(nil),  // 7: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerMaintenanceWindow
+	(*AzureMysqlFlexibleServerCustomerManagedKey)(nil), // 8: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKey
+	(*AzureMysqlFlexibleServerAadAdministrator)(nil),   // 9: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerAadAdministrator
+	(*AzureMysqlFlexibleServerDatabase)(nil),           // 10: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerDatabase
+	(*AzureMysqlFlexibleServerFirewallRule)(nil),       // 11: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerFirewallRule
+	nil,                         // 12: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.ServerParametersEntry
+	nil,                         // 13: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 1: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.administrator_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 2: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.delegated_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 3: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.private_dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 4: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.high_availability:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlHighAvailability
-	2, // 5: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.databases:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlDatabase
-	3, // 6: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.firewall_rules:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFirewallRule
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	14, // 0: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 1: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.create_mode:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCreateMode
+	14, // 2: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.source_server_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 3: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.replication_role:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerReplicationRole
+	14, // 4: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.administrator_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 5: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.storage:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerStorage
+	6,  // 6: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.high_availability:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerHighAvailability
+	7,  // 7: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.maintenance_window:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerMaintenanceWindow
+	3,  // 8: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.public_network_access:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerPublicNetworkAccess
+	14, // 9: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.delegated_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 10: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.private_dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 11: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 12: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.customer_managed_key:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKey
+	9,  // 13: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.aad_administrator:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerAadAdministrator
+	10, // 14: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.databases:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerDatabase
+	11, // 15: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.firewall_rules:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerFirewallRule
+	12, // 16: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.server_parameters:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.ServerParametersEntry
+	13, // 17: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.tags:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerSpec.TagsEntry
+	2,  // 18: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerHighAvailability.mode:type_name -> dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerHighAvailabilityMode
+	14, // 19: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKey.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 20: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKey.primary_user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 21: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKey.geo_backup_key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 22: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKey.geo_backup_user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 23: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerAadAdministrator.identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 24: dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerAadAdministrator.object_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_init() }
@@ -668,19 +1367,22 @@ func file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_init
 		return
 	}
 	file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   4,
+			NumEnums:      4,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto = out.File

@@ -305,15 +305,29 @@ const (
 	CloudResourceKind_AzurePostgresqlFlexibleServer CloudResourceKind = 430
 	CloudResourceKind_AzureRedisCache               CloudResourceKind = 431
 	CloudResourceKind_AzureCosmosdbAccount          CloudResourceKind = 432
-	CloudResourceKind_AzureMssqlServer              CloudResourceKind = 433
-	CloudResourceKind_AzureMysqlFlexibleServer      CloudResourceKind = 434
-	CloudResourceKind_AzureContainerAppEnvironment  CloudResourceKind = 440
-	CloudResourceKind_AzureContainerApp             CloudResourceKind = 441
-	CloudResourceKind_AzureServicePlan              CloudResourceKind = 442
-	CloudResourceKind_AzureFunctionApp              CloudResourceKind = 443
-	CloudResourceKind_AzureLinuxWebApp              CloudResourceKind = 444
-	CloudResourceKind_AzureLogAnalyticsWorkspace    CloudResourceKind = 450
-	CloudResourceKind_AzureApplicationInsights      CloudResourceKind = 451
+	// AzureResourceGroup is a prerequisite because the logical server is
+	// created inside a referenced resource group.
+	CloudResourceKind_AzureMssqlServer CloudResourceKind = 433
+	// AzureResourceGroup is a prerequisite because a server is created inside
+	// a referenced resource group (VNet injection additionally references a
+	// delegated subnet and a private DNS zone, but neither is universally
+	// required, so they are not registry prerequisites).
+	CloudResourceKind_AzureMysqlFlexibleServer CloudResourceKind = 434
+	// The parent logical server is referenced via server_id, not auto-deployed:
+	// E2E scenarios declare their own server fixture (minimal-server.yaml or
+	// the pool-attach chain through AzureMssqlElasticPool) so sequential
+	// subtests never destroy and recreate the same globally unique server_name.
+	CloudResourceKind_AzureMssqlDatabase CloudResourceKind = 435
+	// AzureMssqlServer is a prerequisite because every elastic pool lives on
+	// a referenced logical server (the server's resource group is transitive).
+	CloudResourceKind_AzureMssqlElasticPool        CloudResourceKind = 436
+	CloudResourceKind_AzureContainerAppEnvironment CloudResourceKind = 440
+	CloudResourceKind_AzureContainerApp            CloudResourceKind = 441
+	CloudResourceKind_AzureServicePlan             CloudResourceKind = 442
+	CloudResourceKind_AzureFunctionApp             CloudResourceKind = 443
+	CloudResourceKind_AzureLinuxWebApp             CloudResourceKind = 444
+	CloudResourceKind_AzureLogAnalyticsWorkspace   CloudResourceKind = 450
+	CloudResourceKind_AzureApplicationInsights     CloudResourceKind = 451
 	// AzureResourceGroup is a prerequisite because the identity is created
 	// inside a referenced resource group that must already exist.
 	CloudResourceKind_AzureUserAssignedIdentity CloudResourceKind = 460
@@ -768,6 +782,8 @@ var (
 		432:  "AzureCosmosdbAccount",
 		433:  "AzureMssqlServer",
 		434:  "AzureMysqlFlexibleServer",
+		435:  "AzureMssqlDatabase",
+		436:  "AzureMssqlElasticPool",
 		440:  "AzureContainerAppEnvironment",
 		441:  "AzureContainerApp",
 		442:  "AzureServicePlan",
@@ -1199,6 +1215,8 @@ var (
 		"AzureCosmosdbAccount":                    432,
 		"AzureMssqlServer":                        433,
 		"AzureMysqlFlexibleServer":                434,
+		"AzureMssqlDatabase":                      435,
+		"AzureMssqlElasticPool":                   436,
 		"AzureContainerAppEnvironment":            440,
 		"AzureContainerApp":                       441,
 		"AzureServicePlan":                        442,
@@ -1765,7 +1783,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*ə\x01\n" +
+	"\x02v1\x10\x01*\xb4\x9a\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1889,9 +1907,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"!AzureWebApplicationFirewallPolicy\x10\xab\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazwafpol:\x02\x90\x03\x126\n" +
 	"\x1dAzurePostgresqlFlexibleServer\x10\xae\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azpg:\x02\x90\x03\x12%\n" +
 	"\x0fAzureRedisCache\x10\xaf\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azred\x12*\n" +
-	"\x14AzureCosmosdbAccount\x10\xb0\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azcdb\x12'\n" +
-	"\x10AzureMssqlServer\x10\xb1\x03\x1a\x10\xa2\xf7\x04\f\b\r\x10\x01\"\x06azmsql\x120\n" +
-	"\x18AzureMysqlFlexibleServer\x10\xb2\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazmysql\x124\n" +
+	"\x14AzureCosmosdbAccount\x10\xb0\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azcdb\x12+\n" +
+	"\x10AzureMssqlServer\x10\xb1\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azmsql:\x02\x90\x03\x124\n" +
+	"\x18AzureMysqlFlexibleServer\x10\xb2\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazmysql:\x02\x90\x03\x12+\n" +
+	"\x12AzureMssqlDatabase\x10\xb3\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazmsqldb\x124\n" +
+	"\x15AzureMssqlElasticPool\x10\xb4\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x10\x01\"\n" +
+	"azmsqlpool:\x02\xb1\x03\x124\n" +
 	"\x1cAzureContainerAppEnvironment\x10\xb8\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\x05azcae0\x01\x12&\n" +
 	"\x11AzureContainerApp\x10\xb9\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azca\x12%\n" +

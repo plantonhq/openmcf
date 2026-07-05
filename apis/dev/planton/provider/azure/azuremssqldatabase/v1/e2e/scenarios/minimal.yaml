@@ -1,0 +1,39 @@
+# Minimal AzureMssqlDatabase scenario: a Basic-tier database on the
+# fixture logical server.
+#
+# The server reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind (fixture RG ->
+# fixture server -> this database). Basic is the cheapest provisioned
+# tier (~5 DTU) and creates in ~1-2 minutes; max_size_gb 2 is its
+# ceiling, and the short-term retention block proves the folded backup
+# sub-API path on both engines.
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlDatabase
+metadata:
+  name: planton-oss-e2e-azumssqldb-smoke
+  id: planton-oss-e2e-azumssqldb-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremssqldatabase
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local server (minimal-server.yaml) instead of the shared
+    # fixture: Azure SQL server names are globally unique and sequential
+    # subtests that destroy and recreate the same name hang on recreate.
+    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azuremssqldatabase/v1/e2e/minimal-server.yaml"
+  tags:
+    - planton-e2e
+spec:
+  serverId:
+    valueFrom:
+      name: planton-oss-e2e-mssqldb-min-sql
+  databaseName: smoke
+  skuName: Basic
+  maxSizeGb: 2
+  shortTermRetentionPolicy:
+    retentionDays: 7
+  tags:
+    e2e-suite: azure
+    purpose: smoke

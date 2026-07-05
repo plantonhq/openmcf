@@ -14,6 +14,39 @@ type Locals struct {
 	AzureTags         map[string]string
 }
 
+// connectionPolicyStrings maps the spec's connection-policy enum to ARM's
+// values. Unspecified is not sent at all, letting Azure apply its Default
+// policy -- mirroring the Terraform module's null.
+var connectionPolicyStrings = map[azuremssqlserverv1.AzureMssqlServerConnectionPolicy]string{
+	azuremssqlserverv1.AzureMssqlServerConnectionPolicy_DEFAULT:  "Default",
+	azuremssqlserverv1.AzureMssqlServerConnectionPolicy_PROXY:    "Proxy",
+	azuremssqlserverv1.AzureMssqlServerConnectionPolicy_REDIRECT: "Redirect",
+}
+
+// identityTypeStrings maps the spec's identity-type enum to ARM's values.
+var identityTypeStrings = map[azuremssqlserverv1.AzureMssqlServerIdentityType]string{
+	azuremssqlserverv1.AzureMssqlServerIdentityType_SYSTEM_ASSIGNED:          "SystemAssigned",
+	azuremssqlserverv1.AzureMssqlServerIdentityType_USER_ASSIGNED:            "UserAssigned",
+	azuremssqlserverv1.AzureMssqlServerIdentityType_SYSTEM_AND_USER_ASSIGNED: "SystemAssigned, UserAssigned",
+}
+
+// alertPolicyStateStrings maps the Defender policy-state enum to ARM's
+// values.
+var alertPolicyStateStrings = map[azuremssqlserverv1.AzureMssqlServerSecurityAlertPolicyState]string{
+	azuremssqlserverv1.AzureMssqlServerSecurityAlertPolicyState_ENABLED:  "Enabled",
+	azuremssqlserverv1.AzureMssqlServerSecurityAlertPolicyState_DISABLED: "Disabled",
+}
+
+// alertTypeStrings maps the Defender detector enum to ARM's Snake_Pascal
+// wire vocabulary.
+var alertTypeStrings = map[azuremssqlserverv1.AzureMssqlServerSecurityAlertType]string{
+	azuremssqlserverv1.AzureMssqlServerSecurityAlertType_SQL_INJECTION:               "Sql_Injection",
+	azuremssqlserverv1.AzureMssqlServerSecurityAlertType_SQL_INJECTION_VULNERABILITY: "Sql_Injection_Vulnerability",
+	azuremssqlserverv1.AzureMssqlServerSecurityAlertType_ACCESS_ANOMALY:              "Access_Anomaly",
+	azuremssqlserverv1.AzureMssqlServerSecurityAlertType_DATA_EXFILTRATION:           "Data_Exfiltration",
+	azuremssqlserverv1.AzureMssqlServerSecurityAlertType_UNSAFE_ACTION:               "Unsafe_Action",
+}
+
 func initializeLocals(ctx *pulumi.Context, stackInput *azuremssqlserverv1.AzureMssqlServerStackInput) *Locals {
 	locals := &Locals{}
 
@@ -22,7 +55,6 @@ func initializeLocals(ctx *pulumi.Context, stackInput *azuremssqlserverv1.AzureM
 
 	locals.ResourceGroupName = target.Spec.ResourceGroup.GetValue()
 
-	// Create Azure tags for resource tagging
 	locals.AzureTags = map[string]string{
 		"resource":      "true",
 		"resource_name": target.Metadata.Name,
@@ -39,6 +71,13 @@ func initializeLocals(ctx *pulumi.Context, stackInput *azuremssqlserverv1.AzureM
 
 	if target.Metadata.Env != "" {
 		locals.AzureTags["environment"] = target.Metadata.Env
+	}
+
+	// The user's spec tags merge over the metadata-derived tags -- user
+	// tags deliberately win so an org's governance conventions can
+	// override the derived values where they collide.
+	for key, value := range target.Spec.Tags {
+		locals.AzureTags[key] = value
 	}
 
 	return locals

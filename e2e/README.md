@@ -231,20 +231,47 @@ Burstable VM sizes in `eastus` may support only availability zone `1` — multi-
 lists fail with `AvailabilityZoneNotSupported`. AKS E2E scenarios in this repo
 use `zones: ["1"]` for the test subscription.
 
-### Offer-restricted services on free/PAYG subscriptions
+### Offer-restricted services on free/PAYG subscriptions (probe, don't roulette)
 
-Some Azure services reject provisioning on free-tier and new pay-as-you-go
-subscriptions regardless of region: the ARM API returns
-`LocationIsOfferRestricted` ("Subscriptions are restricted from provisioning
-in location ...") for every region tried. PostgreSQL Flexible Server is a
-verified example (blocked in both `eastus` and `eastus2` on the test
-subscription). This is a subscription-level quota gate, not a module or
-scenario defect — the fix is a quota request through the link in the ARM
-error message (for Postgres: https://aka.ms/postgres-request-quota-increase)
-or a subscription that already carries the quota. When an E2E run hits this,
-record the deferral rather than burning time on region roulette: trying a
-second region confirms whether the restriction is regional or
-subscription-wide, and two failures mean subscription-wide.
+Some Azure database services restrict provisioning PER REGION on free-tier
+and new pay-as-you-go subscriptions: the ARM API returns
+`LocationIsOfferRestricted` (PostgreSQL/MySQL Flexible Server) or
+`ProvisioningDisabled` (Microsoft.Sql logical servers) in the restricted
+regions. Verified on the test subscription: `eastus`, `eastus2`, and
+`westus2` are blocked for PostgreSQL while `westus3`, `centralus`,
+`canadacentral`, `northeurope`, and `uksouth` are clean — the restriction
+is REGIONAL, not subscription-wide, so do not record a deferral after two
+failures; find a clean region instead.
+
+For PostgreSQL the per-region flag is queryable UP FRONT — probe before
+picking (or moving) a scenario region:
+
+```bash
+az rest --method get \
+  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.DBforPostgreSQL/locations/{region}/capabilities?api-version=2024-08-01" \
+  --query "value[0].restricted"   # "Disabled" == provisioning allowed
+```
+
+Each RDBMS carries its OWN restriction footprint — do not assume they
+match. Verified live on the test subscription: `westus3` is clean for
+PostgreSQL but blocked for MySQL (`ProvisionNotSupportedForRegion`),
+while `westus2` is blocked for PostgreSQL but clean for MySQL. MySQL's
+capabilities endpoint is itself the probe, just with a different signal:
+a restricted region answers 500 `InternalServerError`, a usable region
+returns its edition ladder:
+
+```bash
+az rest --method get \
+  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.DBforMySQL/locations/{region}/capabilities?api-version=2023-12-30" \
+  --query "value[0].supportedFlexibleServerEditions[].name"
+```
+
+Microsoft.Sql has no public equivalent — fall back to one live attempt.
+A server may live in a different region than its resource group, so the
+shared fixture RG serves unchanged when a scenario pins a different
+region. True subscription-wide gates do exist (the quota-increase link
+in the ARM error is the fix) — but conclude that only after a
+probe-verified clean region also fails.
 
 ### How the Terraform path works
 
@@ -392,6 +419,27 @@ owns two responsibilities beyond wiring verifiers:
   scenarios should keep purge protection OFF so teardown can actually purge.
   Expect destroys to be slow (a vault purge runs ~10 minutes) and size test
   timeouts accordingly.
+- **Never let sequential scenarios destroy and recreate the same globally unique
+  parent name.** When a kind's registry prerequisite chain deploys a fixture
+  whose name is globally unique (an Azure SQL logical server, a Key Vault),
+  every scenario of a multi-scenario component tears the fixture down and the
+  next scenario recreates it — and Azure can hold the just-deleted name long
+  enough that the recreate hangs indefinitely (a `Microsoft.Sql/servers` create
+  stuck 20+ minutes with no write in the activity log). Give each scenario its
+  own uniquely named parent instead: declare the parent through the
+  `e2e-extra-prerequisites` annotation with a scenario-local manifest (kept
+  OUTSIDE `e2e/scenarios/`, which the discoverer treats as test cases), and
+  drop the registry prerequisite if it would force the shared fixture chain in
+  anyway. Registry prerequisites are for parents a kind cannot exist without
+  AND that are safe to recreate per scenario.
+- **The tfvars wire format drops zero-valued proto fields — TF object attributes
+  where zero is meaningful must be `optional()` with the zero default.**
+  `ProtoToTFVars()` serializes from protojson, which omits scalar zeros
+  (proto3 implicit presence). A required attribute like
+  `per_database_settings.min_capacity = number` then fails
+  `terraform apply` with "attribute is required" whenever the manifest
+  legitimately sets `0`. Declare such attributes
+  `optional(number, 0)` so the dropped zero round-trips.
 
 ## Architecture
 

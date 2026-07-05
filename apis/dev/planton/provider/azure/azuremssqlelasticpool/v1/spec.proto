@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremssqlelasticpool.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureMssqlElasticPoolSpec** defines the configuration for creating an
+// Azure SQL elastic pool on an AzureMssqlServer logical server.
+//
+// An elastic pool is a shared-compute container: databases that join it
+// (AzureMssqlDatabase with sku_name "ElasticPool" + elastic_pool_id)
+// draw from the pool's eDTUs or vCores instead of carrying their own
+// SKU -- the right economics for many small databases with
+// non-overlapping usage peaks (SaaS tenant-per-database patterns).
+//
+// **SKU model** (`sku_name` + `capacity`):
+// - DTU pools: "BasicPool", "StandardPool", "PremiumPool" with capacity
+//   in eDTUs (e.g. BasicPool 50-1600, StandardPool 50-3000, PremiumPool
+//   125-4000)
+// - vCore pools: "GP_Gen5", "GP_Fsv2", "GP_DC" (General Purpose),
+//   "BC_Gen5", "BC_DC" (Business Critical), "HS_Gen5", "HS_PRMS",
+//   "HS_MOPRMS" (Hyperscale) with capacity in vCores
+// The service tier and hardware family ARM wants alongside the name are
+// pure functions of it, so both engines derive them -- a
+// name/tier/family mismatch is unrepresentable.
+//
+// **Sizing contract**: per_database_settings bounds what any ONE database
+// may consume (min guaranteed, max allowed); max_size_gb XOR
+// max_size_bytes caps the pool's total storage.
+message AzureMssqlElasticPoolSpec {
+  // The logical server the pool is created on, by ARM ID. References an
+  // AzureMssqlServer's server_id output; the server's name and resource
+  // group are derived from it. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef server_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMssqlServer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.server_id"
+  ];
+
+  // The Azure region the pool is created in -- MUST match the parent
+  // server's region (ARM rejects a mismatch; a pool cannot live in a
+  // different region than its server). Changing it replaces the pool.
+  string region = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The pool's name, unique within the server. Changing the name
+  // replaces the pool.
+  string pool_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // The pool SKU: a DTU pool (BasicPool/StandardPool/PremiumPool) or a
+  // vCore pool ({GP|BC|HS}_{Gen5|Fsv2|DC|PRMS|MOPRMS}). The service tier
+  // and hardware family are derived from it on both engines.
+  string sku_name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "mssql_pool_sku_vocabulary"
+      message: "sku_name must be BasicPool, StandardPool, PremiumPool, GP_Gen5, GP_Fsv2, GP_DC, BC_Gen5, BC_DC, HS_Gen5, HS_PRMS, or HS_MOPRMS"
+      expression: "this in ['BasicPool', 'StandardPool', 'PremiumPool', 'GP_Gen5', 'GP_Fsv2', 'GP_DC', 'BC_Gen5', 'BC_DC', 'HS_Gen5', 'HS_PRMS', 'HS_MOPRMS']"
+    }
+  ];
+
+  // The pool's capacity: eDTUs for DTU pools (e.g. 50, 100, 1200) or
+  // vCores for vCore pools (e.g. 2, 4, 40). ARM validates the exact
+  // ladder per SKU and region.
+  int32 capacity = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Per-database consumption bounds inside the pool.
+  AzureMssqlElasticPoolPerDatabaseSettings per_database_settings = 6 [(buf.validate.field).required = true];
+
+  // The pool's total storage cap in gigabytes. Mutually exclusive with
+  // max_size_bytes. Set it explicitly on DTU pools -- ARM's ladder pins
+  // the cap to the capacity (e.g. BasicPool at 50 eDTUs is 4.8828125)
+  // and provisioning rejects an unset cap on some engines; vCore pools
+  // may leave it unset for the SKU default.
+  optional double max_size_gb = 7 [(buf.validate.field).double.gt = 0];
+
+  // The pool's total storage cap in bytes, for sizes finer than whole
+  // gigabytes. Mutually exclusive with max_size_gb.
+  optional int64 max_size_bytes = 8 [(buf.validate.field).int64.gt = 0];
+
+  // Spread the pool's replicas across availability zones. Premium and
+  // Business Critical pools (plus zone-capable General Purpose regions).
+  bool zone_redundant = 9;
+
+  // The confidential-computing enclave for the pool's databases. Every
+  // database in the pool must use the same enclave type, so it is set
+  // at the pool level. Changing it is disruptive -- plan accordingly.
+  AzureMssqlElasticPoolEnclaveType enclave_type = 10;
+
+  // Azure Hybrid Benefit for vCore pools: BASE_PRICE brings your own SQL
+  // Server license; LICENSE_INCLUDED pays as you go. Unset lets Azure
+  // default (LicenseIncluded).
+  AzureMssqlElasticPoolLicenseType license_type = 11;
+
+  // Hyperscale pools only: how many readable HA replicas back each
+  // database in the pool (0-4).
+  optional int32 high_availability_replica_count = 12 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 4
+  }];
+
+  // The maintenance window Azure patches the pool in (e.g.
+  // "SQL_Default", "SQL_EastUS_DB_1"). Unspecified applies
+  // "SQL_Default". Databases in the pool inherit this window.
+  optional string maintenance_configuration_name = 13 [(dev.planton.shared.options.default) = "SQL_Default"];
+
+  // Free-form tags applied to the pool, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins.
+  map<string, string> tags = 14;
+
+  option (buf.validate.message).cel = {
+    id: "mssql_pool_max_size_xor"
+    message: "max_size_gb and max_size_bytes are mutually exclusive"
+    expression: "!(has(this.max_size_gb) && has(this.max_size_bytes))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mssql_pool_ha_replicas_require_hyperscale"
+    message: "high_availability_replica_count requires a Hyperscale pool sku (HS_)"
+    expression: "!has(this.high_availability_replica_count) || this.sku_name.startsWith('HS_')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mssql_pool_license_requires_vcore"
+    message: "license_type applies to vCore pools only (GP_/BC_/HS_)"
+    expression: "this.license_type == 0 || !(this.sku_name in ['BasicPool', 'StandardPool', 'PremiumPool'])"
+  };
+}
+
+// Per-database consumption bounds inside the pool, in the pool's
+// capacity unit (eDTUs for DTU pools, vCores for vCore pools).
+message AzureMssqlElasticPoolPerDatabaseSettings {
+  // The capacity every database is GUARANTEED (reserved even while
+  // idle). 0 reserves nothing -- the usual choice, letting the pool
+  // oversubscribe.
+  double min_capacity = 1 [(buf.validate.field).double.gte = 0];
+
+  // The capacity any one database may consume at peak. Caps noisy
+  // neighbors; must be at least min_capacity and at most the pool's
+  // capacity.
+  double max_capacity = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).double.gt = 0
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "mssql_pool_per_db_min_lte_max"
+    message: "per_database_settings.min_capacity cannot exceed max_capacity"
+    expression: "this.min_capacity <= this.max_capacity"
+  };
+}
+
+// The confidential-computing enclave for the pool's databases.
+enum AzureMssqlElasticPoolEnclaveType {
+  // Not specified: no enclave configured.
+  azure_mssql_elastic_pool_enclave_type_unspecified = 0;
+
+  // Virtualization-based security enclaves (Always Encrypted with
+  // secure enclaves) for every database in the pool.
+  VBS = 1;
+
+  // ARM's explicit "Default" (no enclave) -- distinct from unspecified
+  // so an update can actively clear a previously set enclave.
+  DEFAULT_ENCLAVE = 2;
+}
+
+// Azure Hybrid Benefit licensing for vCore pools.
+enum AzureMssqlElasticPoolLicenseType {
+  // Not specified: Azure defaults to LicenseIncluded.
+  azure_mssql_elastic_pool_license_type_unspecified = 0;
+
+  // Bring your own SQL Server license with Software Assurance.
+  BASE_PRICE = 1;
+
+  // Pay-as-you-go, license included in the hourly rate.
+  LICENSE_INCLUDED = 2;
+}

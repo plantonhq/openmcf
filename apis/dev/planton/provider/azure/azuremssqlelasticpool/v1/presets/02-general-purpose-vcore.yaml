@@ -1,0 +1,26 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureMssqlElasticPool
+metadata:
+  name: gp-vcore-pool
+spec:
+  serverId:
+    valueFrom:
+      kind: AzureMssqlServer
+      name: <server-resource-name>
+      fieldPath: status.outputs.server_id
+  region: <server-region>
+  poolName: <pool-name>
+  # A 4-vCore General Purpose pool: modern vCore economics with Azure
+  # Hybrid Benefit licensing.
+  skuName: GP_Gen5
+  capacity: 4
+  perDatabaseSettings:
+    # Guarantee each database a quarter vCore; cap any one at 2.
+    minCapacity: 0.25
+    maxCapacity: 2
+  maxSizeGb: 512
+  # Bring your own SQL Server license (Software Assurance) for up to 55%
+  # savings; switch to LICENSE_INCLUDED for pay-as-you-go.
+  licenseType: BASE_PRICE
+  tags:
+    cost-center: <cost-center>

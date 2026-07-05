@@ -1,0 +1,3 @@
+name: azure-mssql-database
+runtime: go
+description: Pulumi program for Azure SQL Database

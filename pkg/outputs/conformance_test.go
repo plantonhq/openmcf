@@ -1255,6 +1255,75 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureMysqlFlexibleServer: fqdn + administrator_login are what
+			// applications build connection strings from; server_id is the
+			// seam private endpoints and replica/restore servers
+			// (source_server_id) reference; database_ids is the name-keyed
+			// map seam; replica_capacity sizes replica topologies.
+			name: "AzureMysqlFlexibleServer",
+			kind: cloudresourcekind.CloudResourceKind_AzureMysqlFlexibleServer,
+			rawOutputs: map[string]interface{}{
+				"server_id":           "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.DBforMySQL/flexibleServers/orders-mysql",
+				"server_name":         "orders-mysql",
+				"fqdn":                "orders-mysql.mysql.database.azure.com",
+				"administrator_login": "mysqladmin",
+				"database_ids": map[string]interface{}{
+					"orders": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.DBforMySQL/flexibleServers/orders-mysql/databases/orders",
+				},
+				"replica_capacity": 10,
+			},
+			mustPopulate: []string{
+				"server_id", "server_name", "fqdn", "administrator_login",
+				"database_ids", "replica_capacity",
+			},
+		},
+		{
+			// AzureMssqlServer: server_id is the parent seam
+			// AzureMssqlDatabase and AzureMssqlElasticPool reference (and
+			// AzurePrivateEndpoint's connection target); fqdn +
+			// administrator_login build connection strings.
+			name: "AzureMssqlServer",
+			kind: cloudresourcekind.CloudResourceKind_AzureMssqlServer,
+			rawOutputs: map[string]interface{}{
+				"server_id":             "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.Sql/servers/orders-sql",
+				"server_name":           "orders-sql",
+				"fqdn":                  "orders-sql.database.windows.net",
+				"administrator_login":   "sqladmin",
+				"identity_principal_id": "44444444-4444-4444-4444-444444444444",
+			},
+			mustPopulate: []string{
+				"server_id", "server_name", "fqdn", "administrator_login",
+				"identity_principal_id",
+			},
+		},
+		{
+			// AzureMssqlDatabase: database_id is the seam
+			// copy/secondary/restore databases reference
+			// (creation_source_database_id).
+			name: "AzureMssqlDatabase",
+			kind: cloudresourcekind.CloudResourceKind_AzureMssqlDatabase,
+			rawOutputs: map[string]interface{}{
+				"database_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.Sql/servers/orders-sql/databases/orders",
+				"database_name": "orders",
+			},
+			mustPopulate: []string{
+				"database_id", "database_name",
+			},
+		},
+		{
+			// AzureMssqlElasticPool: elastic_pool_id is the seam pooled
+			// databases attach through (AzureMssqlDatabase.elastic_pool_id).
+			name: "AzureMssqlElasticPool",
+			kind: cloudresourcekind.CloudResourceKind_AzureMssqlElasticPool,
+			rawOutputs: map[string]interface{}{
+				"elastic_pool_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.Sql/servers/orders-sql/elasticPools/tenant-pool",
+				"elastic_pool_name": "tenant-pool",
+			},
+			mustPopulate: []string{
+				"elastic_pool_id", "elastic_pool_name",
+			},
+		},
+		{
 			// AzureKeyVaultCertificate: the secret face
 			// (versionless_secret_id) is the seam TLS terminators
 			// (Application Gateway) consume so renewals propagate; the

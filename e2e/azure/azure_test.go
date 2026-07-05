@@ -329,6 +329,42 @@ func TestAzurePostgresqlFlexibleServer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurepostgresqlflexibleserver", "terraform")
 }
 
+// --- Azure MySQL Flexible Server (fixture RG -> burstable public server with database, firewall rule, and server parameter) ---
+
+func TestAzureMysqlFlexibleServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremysqlflexibleserver", "pulumi")
+}
+func TestAzureMysqlFlexibleServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremysqlflexibleserver", "terraform")
+}
+
+// --- Azure SQL logical server (fixture RG -> SQL-auth server with firewall rule and Defender alert policy) ---
+
+func TestAzureMssqlServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremssqlserver", "pulumi")
+}
+func TestAzureMssqlServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremssqlserver", "terraform")
+}
+
+// --- Azure SQL Database (fixture RG -> fixture server -> Basic database; pool-attach joins the fixture elastic pool) ---
+
+func TestAzureMssqlDatabase_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremssqldatabase", "pulumi")
+}
+func TestAzureMssqlDatabase_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremssqldatabase", "terraform")
+}
+
+// --- Azure SQL elastic pool (fixture RG -> fixture server -> BasicPool) ---
+
+func TestAzureMssqlElasticPool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremssqlelasticpool", "pulumi")
+}
+func TestAzureMssqlElasticPool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremssqlelasticpool", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

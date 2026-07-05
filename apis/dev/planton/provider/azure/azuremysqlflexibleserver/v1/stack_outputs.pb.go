@@ -24,41 +24,40 @@ const (
 // **AzureMysqlFlexibleServerStackOutputs** captures the outputs of
 // provisioning an Azure Database for MySQL Flexible Server.
 //
-// The primary outputs are `server_id` for resource identification, `fqdn`
-// for constructing connection strings, and `administrator_login` for
-// authentication. The `database_ids` map provides individual database
-// resource IDs for downstream references.
-//
-// In the database-stack infra chart, the `fqdn` and `administrator_login`
-// outputs are used by applications to construct MySQL connection strings.
-// The `server_id` is referenced by AzurePrivateEndpoint for private connectivity.
+// `fqdn` + `administrator_login` are what applications need to construct
+// connection strings. `server_id` is the join key for everything that
+// attaches to or derives from the server: AzurePrivateEndpoint's
+// private_connection_resource_id, and another AzureMysqlFlexibleServer's
+// source_server_id when composing read replicas or restores.
 type AzureMysqlFlexibleServerStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure Resource Manager ID of the MySQL Flexible Server.
+	// The Azure Resource Manager ID of the server.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DBforMySQL/flexibleServers/{name}
-	//
 	// Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-	// for establishing private connectivity to the database server.
+	// and by replica/restore servers (source_server_id).
 	ServerId string `protobuf:"bytes,1,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
-	// The name of the MySQL Flexible Server.
+	// The name of the server.
 	ServerName string `protobuf:"bytes,2,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
-	// The fully qualified domain name of the MySQL Flexible Server.
-	// Format: {name}.mysql.database.azure.com
+	// The server's fully qualified domain name
+	// ({name}.mysql.database.azure.com). For a VNet-injected server it
+	// resolves to the private address through the private DNS zone.
+	// Connection strings take the shape:
 	//
-	// Used to construct connection strings:
-	//
-	//	mysql://{admin_login}:{password}@{fqdn}:3306/{database}?ssl-mode=REQUIRED
+	//	mysql://{login}:{password}@{fqdn}:3306/{database}?ssl-mode=REQUIRED
 	Fqdn string `protobuf:"bytes,3,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
-	// The administrator login name.
-	// Exported so downstream resources and applications can construct
-	// connection strings without needing to duplicate this value.
+	// The administrator login, echoed so applications can construct
+	// connection strings without duplicating the value.
 	AdministratorLogin string `protobuf:"bytes,4,opt,name=administrator_login,json=administratorLogin,proto3" json:"administrator_login,omitempty"`
-	// Map of database names to their Azure Resource Manager IDs.
-	// Only populated for databases defined in the spec's `databases` field.
-	// Format: { "myapp": "/subscriptions/.../databases/myapp" }
-	DatabaseIds   map[string]string `protobuf:"bytes,5,rep,name=database_ids,json=databaseIds,proto3" json:"database_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The ARM ID of each database declared in the spec, keyed by database
+	// name.
+	// Example valueFrom fieldPath: status.outputs.database_ids.myapp
+	DatabaseIds map[string]string `protobuf:"bytes,5,rep,name=database_ids,json=databaseIds,proto3" json:"database_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// How many read replicas the server can still accept -- Azure computes
+	// this from the SKU (burstable SKUs report 0). Useful when composing
+	// replica topologies.
+	ReplicaCapacity int32 `protobuf:"varint,6,opt,name=replica_capacity,json=replicaCapacity,proto3" json:"replica_capacity,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AzureMysqlFlexibleServerStackOutputs) Reset() {
@@ -126,18 +125,26 @@ func (x *AzureMysqlFlexibleServerStackOutputs) GetDatabaseIds() map[string]strin
 	return nil
 }
 
+func (x *AzureMysqlFlexibleServerStackOutputs) GetReplicaCapacity() int32 {
+	if x != nil {
+		return x.ReplicaCapacity
+	}
+	return 0
+}
+
 var File_dev_planton_provider_azure_azuremysqlflexibleserver_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Jdev/planton/provider/azure/azuremysqlflexibleserver/v1/stack_outputs.proto\x126dev.planton.provider.azure.azuremysqlflexibleserver.v1\"\xfc\x02\n" +
+	"Jdev/planton/provider/azure/azuremysqlflexibleserver/v1/stack_outputs.proto\x126dev.planton.provider.azure.azuremysqlflexibleserver.v1\"\xa7\x03\n" +
 	"$AzureMysqlFlexibleServerStackOutputs\x12\x1b\n" +
 	"\tserver_id\x18\x01 \x01(\tR\bserverId\x12\x1f\n" +
 	"\vserver_name\x18\x02 \x01(\tR\n" +
 	"serverName\x12\x12\n" +
 	"\x04fqdn\x18\x03 \x01(\tR\x04fqdn\x12/\n" +
 	"\x13administrator_login\x18\x04 \x01(\tR\x12administratorLogin\x12\x90\x01\n" +
-	"\fdatabase_ids\x18\x05 \x03(\v2m.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerStackOutputs.DatabaseIdsEntryR\vdatabaseIds\x1a>\n" +
+	"\fdatabase_ids\x18\x05 \x03(\v2m.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerStackOutputs.DatabaseIdsEntryR\vdatabaseIds\x12)\n" +
+	"\x10replica_capacity\x18\x06 \x01(\x05R\x0freplicaCapacity\x1a>\n" +
 	"\x10DatabaseIdsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc3\x03\n" +

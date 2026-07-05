@@ -6,322 +6,523 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// **AzureMssqlServerSpec** defines the configuration for creating an Azure SQL
-// Database logical server with optional databases and firewall rules.
+// **AzureMssqlServerSpec** defines the configuration for creating an Azure
+// SQL Database logical server: the administrative container that carries
+// the login endpoint, authentication (SQL and/or Microsoft Entra),
+// networking posture, transparent-data-encryption key, auditing, and
+// Microsoft Defender settings for every database and elastic pool created
+// on it.
 //
-// Azure SQL Database is a fully managed platform-as-a-service (PaaS) database
-// engine that handles most database management functions -- upgrading, patching,
-// backups, and monitoring -- without user involvement. It runs on the latest
-// stable version of the SQL Server database engine and patched OS with 99.99%
-// availability.
+// **Architecture**: unlike PostgreSQL and MySQL Flexible Servers (physical
+// servers with compute and storage), Azure SQL uses a **logical server +
+// database** model. The server has no compute of its own -- each
+// AzureMssqlDatabase carries its own SKU and storage and each
+// AzureMssqlElasticPool carries shared compute, so databases and pools are
+// first-class kinds referencing this server's `server_id` output rather
+// than fields folded into this spec.
 //
-// **Architecture**: Unlike PostgreSQL and MySQL Flexible Servers (which are
-// physical servers with compute and storage), Azure SQL uses a **logical server
-// + database** model:
-// - The **server** is a logical administrative container: it defines the login
-//   endpoint, firewall rules, TLS policy, and connection policy. It has no
-//   compute or storage of its own.
-// - Each **database** carries its own compute SKU, maximum storage size, zone
-//   redundancy, and license type. Databases are billed independently.
+// **Network access**: Azure SQL does not support VNet delegation. Public
+// reachability is `public_network_access_enabled` with `firewall_rules`
+// (IPv4 allowlist) and `virtual_network_rules` (subnet service-endpoint
+// allowlist); private connectivity is exclusively AzurePrivateEndpoint.
+// Outbound restriction (`outbound_network_restriction_enabled` +
+// `outbound_firewall_rules`) governs where the server may reach OUT to,
+// e.g. for elastic queries.
 //
-// This component bundles the logical server (`azurerm_mssql_server`) with its
-// databases (`azurerm_mssql_database`) and firewall rules
-// (`azurerm_mssql_firewall_rule`) because a server without at least one
-// database and a connection path has no practical utility. This follows DD03
-// (Composite Bundling Rules).
+// **Authentication** is SQL logins, Microsoft Entra, or both -- matching
+// ARM's real contract: at least one of `administrator_login` or an
+// `azuread_administrator` with `azuread_authentication_only` must be
+// configured. With Entra-only auth the SQL credentials are omitted
+// entirely.
 //
-// **Network access**: Azure SQL does not support VNet delegation like PostgreSQL
-// and MySQL Flexible Servers. Private connectivity is exclusively through
-// AzurePrivateEndpoint (a separate resource). The `public_network_access_enabled`
-// boolean controls whether the server is reachable over the public internet.
-// When set to false, only private endpoints can reach the server.
-//
-// **Authentication**: SQL authentication (login + password) is always enabled.
-// Azure Active Directory authentication is not exposed in v1 and can be
-// configured post-deployment via the Azure portal for advanced scenarios.
-//
-// **ForceNew fields** (changing these destroys and recreates the server):
-// `name` (server name is immutable after creation).
+// **Fixed at creation** (changing replaces the server): `server_name`,
+// `region`, `resource_group`, `version`, and `administrator_login` once
+// set. Two update-time contracts ARM enforces that validation cannot
+// express: `minimum_tls_version` cannot be removed once set, and the
+// administrator password cannot change while
+// `azuread_authentication_only` is true.
 message AzureMssqlServerSpec {
-  // The Azure region where the SQL Server will be created.
-  // Examples: "eastus", "westus2", "westeurope", "southeastasia".
+  // The Azure region where the logical server is created (e.g. "eastus",
+  // "westeurope"). Changing the region replaces the server.
   string region = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The Azure Resource Group where the SQL Server will be created.
-  // Can be a literal string or a reference to an AzureResourceGroup output.
+  // The Azure resource group the server is created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output. Changing it replaces the server.
   dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
   ];
 
-  // The name of the SQL Server.
-  // Must be globally unique across Azure. Used as the server hostname:
-  // `{name}.database.windows.net`
-  // Allowed characters: lowercase letters, numbers, and hyphens.
-  // Must start with a letter. Cannot start or end with a hyphen.
-  // Length: 3 to 63 characters.
-  //
-  // **ForceNew**: Changing this destroys and recreates the server.
-  string name = 3 [
+  // The server's name: 1-63 lowercase letters, digits, and hyphens, not
+  // starting or ending with a hyphen -- and GLOBALLY unique across Azure,
+  // because it becomes the server's DNS name
+  // ({name}.database.windows.net, the fqdn output). Changing the name
+  // replaces the server.
+  string server_name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 63,
-    (buf.validate.field).cel = {
-      id: "server_name_format"
-      message: "Server name must start with a letter and contain only lowercase letters, numbers, and hyphens"
-      expression: "this.matches('^[a-z][a-z0-9-]*$')"
-    }
+    (buf.validate.field).string.pattern = "^[0-9a-z]([-0-9a-z]*[0-9a-z])?$"
   ];
 
-  // The administrator login name for the server.
-  // Cannot be "admin", "administrator", "sa", "root", "dbmanager",
-  // "loginmanager", "dbo", "guest", or "public".
-  // Must start with a letter.
-  string administrator_login = 4 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
-  ];
-
-  // The administrator password for the server.
-  // Can be a literal value or a reference to another resource's output
-  // (e.g., a generated random password or a Key Vault secret value).
-  //
-  // Password requirements: 8-128 characters, must contain characters from
-  // at least three of: uppercase, lowercase, digits, special characters.
-  //
-  // This is a polymorphic StringValueOrRef with no default_kind because
-  // the password source varies (literal, chart variable, external secret).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef administrator_password = 5 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.options.sensitive) = true
-  ];
-
-  // The version of SQL Server.
-  // Azure SQL Database supports two version identifiers:
-  // - "12.0": Current version (SQL Server 2022 / Azure SQL Database)
-  // - "2.0": Legacy (SQL Server 2005 era, virtually unused)
-  //
-  // Default: "12.0" (the only version used in practice)
-  optional string version = 6 [
+  // The SQL Server version identifier. Unspecified applies "12.0" -- the
+  // only version real deployments use (it tracks the current Azure SQL
+  // engine; "2.0" is the SQL Server 2005-era legacy identifier kept for
+  // API completeness). Fixed at creation.
+  optional string version = 4 [
     (dev.planton.shared.options.default) = "12.0",
     (buf.validate.field).cel = {
-      id: "version_valid"
+      id: "mssql_version_valid"
       message: "version must be one of: 2.0, 12.0"
       expression: "this in ['2.0', '12.0']"
     }
   ];
 
-  // The minimum TLS version for all client connections.
-  // Azure SQL Database enforces TLS encryption for all connections.
-  //
-  // Valid values:
-  // - "1.2": TLS 1.2 (recommended, industry standard since 2018)
-  // - "1.0": TLS 1.0 (legacy, only for applications that cannot use TLS 1.2)
-  //
-  // Default: "1.2"
-  optional string minimum_tls_version = 7 [
+  // The administrator login for SQL authentication. Required unless the
+  // server is Entra-only (azuread_administrator.azuread_authentication_only
+  // = true). Azure reserves names like "admin", "administrator", "sa",
+  // "root", "dbmanager", "loginmanager", "dbo", "guest", and "public".
+  // The login is fixed once set.
+  string administrator_login = 5 [(buf.validate.field).cel = {
+    id: "mssql_admin_login_not_reserved"
+    message: "administrator_login cannot be a reserved name (admin, administrator, sa, root, dbmanager, loginmanager, dbo, guest, public)"
+    expression: "this == '' || !(this.lowerAscii() in ['admin', 'administrator', 'sa', 'root', 'dbmanager', 'loginmanager', 'dbo', 'guest', 'public'])"
+  }];
+
+  // The administrator password for SQL authentication (8-128 characters
+  // from at least three of: uppercase, lowercase, digits, special
+  // characters). Can be a literal value or a reference to another
+  // resource's output. Required with administrator_login; rotates in
+  // place -- but ARM rejects a password change while
+  // azuread_authentication_only is true.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef administrator_password = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // The server's Microsoft Entra (Azure AD) administrator -- the
+  // principal (use a group to admit a team) that can administer the
+  // server with directory tokens. Enables Entra authentication; with
+  // azuread_authentication_only it becomes the ONLY authentication
+  // mechanism and the SQL credentials must be omitted.
+  AzureMssqlServerAzureadAdministrator azuread_administrator = 7;
+
+  // The server's managed identity. Required for the
+  // transparent-data-encryption customer-managed key (the identity
+  // unwraps the key) and usable by databases for their own CMK.
+  AzureMssqlServerIdentity identity = 8;
+
+  // Which user-assigned identity (by ARM ID) is the server's PRIMARY
+  // identity -- the one ARM uses for Key Vault access when several are
+  // attached. Must be one of identity.identity_ids. Required when the
+  // identity type includes USER_ASSIGNED.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef primary_user_assigned_identity_id = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // Server-level transparent-data-encryption customer-managed key: every
+  // database's TDE protector defaults to this Key Vault key instead of a
+  // service-managed key. Takes a VERSIONED key ID (ARM pins the exact
+  // version at the server level), so the default reference points at an
+  // AzureKeyVaultKey's key_id output. Requires an identity with
+  // wrap/unwrap access on the key's vault.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef transparent_data_encryption_key_vault_key_id = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // How clients establish connections. Unspecified applies Azure's
+  // Default policy (Redirect inside Azure, Proxy from outside). REDIRECT
+  // gives the lowest latency but needs ports 11000-11999 open in
+  // addition to 1433; PROXY funnels everything through the gateway on
+  // 1433.
+  AzureMssqlServerConnectionPolicy connection_policy = 11;
+
+  // The minimum TLS version for client connections. Azure requires
+  // "1.2" (the only accepted value on current API versions -- older
+  // protocol floors are retired). Unspecified applies "1.2". ARM rejects
+  // removing the floor once set.
+  optional string minimum_tls_version = 12 [
     (dev.planton.shared.options.default) = "1.2",
     (buf.validate.field).cel = {
-      id: "tls_version_valid"
-      message: "minimum_tls_version must be one of: 1.0, 1.2"
-      expression: "this in ['1.0', '1.2']"
+      id: "mssql_tls_version_valid"
+      message: "minimum_tls_version must be 1.2 (older TLS floors are retired by Azure)"
+      expression: "this in ['1.2']"
     }
   ];
 
-  // Whether the server is accessible over the public internet.
-  // When true: the server has a public endpoint and firewall rules control access.
-  // When false: the server is only reachable via AzurePrivateEndpoint.
-  //
-  // Unlike PostgreSQL/MySQL Flexible Servers (which derive this from
-  // delegated_subnet_id), Azure SQL requires an explicit boolean because
-  // it does not support VNet delegation.
-  //
-  // Default: true
-  optional bool public_network_access_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+  // Whether the server is reachable over the public internet. When true,
+  // firewall_rules and virtual_network_rules control who connects; when
+  // false, only private endpoints reach the server. Unspecified applies
+  // Azure's default of true.
+  optional bool public_network_access_enabled = 13 [(dev.planton.shared.options.default) = "true"];
 
-  // The connection policy for the server.
-  // Controls how clients establish connections to the Azure SQL server.
-  //
-  // Valid values:
-  // - "Default": Uses Redirect for connections from within Azure, Proxy for external
-  // - "Proxy": All connections are proxied through the Azure SQL gateway (higher latency)
-  // - "Redirect": Connections are redirected to the database node (lower latency, requires
-  //   ports 11000-11999 open in addition to 1433)
-  //
-  // "Redirect" is recommended for Azure-to-Azure workloads for best performance.
-  // "Proxy" is simpler for external clients that cannot open the port range.
-  //
-  // Default: "Default"
-  optional string connection_policy = 9 [
-    (dev.planton.shared.options.default) = "Default",
-    (buf.validate.field).cel = {
-      id: "connection_policy_valid"
-      message: "connection_policy must be one of: Default, Proxy, Redirect"
-      expression: "this in ['Default', 'Proxy', 'Redirect']"
+  // Whether OUTBOUND connections from the server (elastic queries,
+  // linked external tables) are restricted to the FQDNs in
+  // outbound_firewall_rules. Azure's default is false (unrestricted).
+  bool outbound_network_restriction_enabled = 14;
+
+  // The FQDNs the server may reach out to while outbound restriction is
+  // enabled. Each entry is its own ARM outbound-firewall-rule
+  // sub-resource.
+  repeated string outbound_firewall_rules = 15 [(buf.validate.field).repeated = {
+    items: {
+      string: {min_len: 1}
     }
-  ];
+  }];
 
-  // Databases to create on the server.
-  // Each database is a separate `azurerm_mssql_database` resource with its own
-  // compute SKU, storage, and lifecycle.
-  //
-  // **Important**: Unlike PostgreSQL/MySQL where the server defines compute,
-  // in Azure SQL each database carries its own compute tier (sku_name) and
-  // maximum storage size (max_size_gb). The server is only a logical container.
-  //
-  // If omitted, only the system databases exist (master, tempdb, etc.).
-  // Most applications create at least one application database.
-  repeated AzureMssqlDatabase databases = 10;
+  // Whether Microsoft Defender's express vulnerability assessment runs
+  // on the server (agentless SQL scanning without a storage account).
+  // Azure's default is false.
+  bool express_vulnerability_assessment_enabled = 16;
 
-  // Firewall rules for public access mode.
-  // Only effective when `public_network_access_enabled` is true.
-  // Each rule allows connections from a range of IP addresses.
-  //
-  // To allow all Azure services: start_ip_address = "0.0.0.0", end_ip_address = "0.0.0.0"
-  // To allow a single IP: set both start and end to the same address.
-  repeated AzureMssqlFirewallRule firewall_rules = 11;
+  // Public-endpoint firewall allowlist: each rule admits a contiguous
+  // IPv4 range. Only meaningful while public network access is enabled.
+  // The special rule 0.0.0.0-0.0.0.0 admits Azure-internal services only
+  // (not the internet).
+  repeated AzureMssqlServerFirewallRule firewall_rules = 17;
+
+  // Subnet allowlist: each rule admits one subnet through its
+  // Microsoft.Sql service endpoint -- the classic (non-Private-Link) way
+  // to keep traffic on the Azure backbone. Only meaningful while public
+  // network access is enabled.
+  repeated AzureMssqlServerVirtualNetworkRule virtual_network_rules = 18;
+
+  // Server-level SQL auditing: writes audit events for every database on
+  // the server to blob storage and/or Azure Monitor. Presence enables
+  // auditing; omit the block to leave auditing off.
+  AzureMssqlServerExtendedAuditing extended_auditing = 19;
+
+  // Microsoft Defender for SQL threat detection at the server scope:
+  // alerting on SQL injection, anomalous access, data exfiltration, and
+  // unsafe actions. Presence configures the policy; omit the block to
+  // leave Defender's advanced threat protection unconfigured.
+  AzureMssqlServerSecurityAlertPolicy security_alert_policy = 20;
+
+  // Free-form tags applied to the server, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Tags are Azure's governance
+  // surface -- Azure Policy enforces them and Microsoft Cost Management
+  // groups by them.
+  map<string, string> tags = 21;
+
+  option (buf.validate.message).cel = {
+    id: "mssql_at_least_one_auth"
+    message: "configure administrator_login (SQL auth) and/or an azuread_administrator with azuread_authentication_only (Entra-only auth)"
+    expression: "this.administrator_login != '' || (has(this.azuread_administrator) && this.azuread_administrator.azuread_authentication_only)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mssql_sql_auth_credentials_pair"
+    message: "administrator_login and administrator_password must be set together"
+    expression: "(this.administrator_login != '') == has(this.administrator_password)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mssql_aad_only_forbids_sql_credentials"
+    message: "an Entra-only server (azuread_authentication_only = true) must omit administrator_login and administrator_password"
+    expression: "!(has(this.azuread_administrator) && this.azuread_administrator.azuread_authentication_only) || this.administrator_login == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mssql_primary_uai_requires_identity"
+    message: "primary_user_assigned_identity_id requires an identity block whose type includes USER_ASSIGNED"
+    expression: "!has(this.primary_user_assigned_identity_id) || (has(this.identity) && this.identity.type >= 2)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mssql_tde_cmk_requires_identity"
+    message: "transparent_data_encryption_key_vault_key_id requires an identity block (the identity unwraps the key)"
+    expression: "!has(this.transparent_data_encryption_key_vault_key_id) || has(this.identity)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mssql_outbound_rules_require_restriction"
+    message: "outbound_firewall_rules require outbound_network_restriction_enabled = true"
+    expression: "this.outbound_firewall_rules.size() == 0 || this.outbound_network_restriction_enabled"
+  };
 }
 
-// AzureMssqlDatabase defines a database to create on the Azure SQL logical server.
-//
-// Each database is a separate Azure resource with its own compute tier (SKU),
-// maximum storage, zone redundancy, and license type. This is fundamentally
-// different from PostgreSQL/MySQL Flexible Server databases, which are lightweight
-// objects (just name + charset + collation) because the server carries the compute.
-//
-// **SKU naming convention**:
-// - DTU-based: "Basic", "S0"-"S12" (Standard), "P1"-"P15" (Premium)
-// - vCore-based: "{SERVICE_TIER}_Gen5_{VCORES}" where SERVICE_TIER is:
-//   - "GP" (General Purpose): e.g., "GP_Gen5_2", "GP_Gen5_4", "GP_Gen5_8"
-//   - "BC" (Business Critical): e.g., "BC_Gen5_2", "BC_Gen5_4"
-//   - "HS" (Hyperscale): e.g., "HS_Gen5_2", "HS_Gen5_4"
-// - Serverless: "GP_S_Gen5_1", "GP_S_Gen5_2" (auto-pause capable)
-// - Free: "Free" (one free database per subscription)
-message AzureMssqlDatabase {
-  // The name of the database.
-  // Must be unique within the server. Cannot contain special characters
-  // `<>*%&:\/?` and cannot end with a period or space.
-  // Maximum length: 128 characters.
+// The server's Microsoft Entra administrator grant.
+message AzureMssqlServerAzureadAdministrator {
+  // The administrator principal's display name as it appears in Entra
+  // (e.g. "dba-team@contoso.com" for a user, the group name for a
+  // group). Used as the login name for Entra connections.
+  string login_username = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The directory object ID of the Entra principal being granted the
+  // administrator role. The default reference points at an
+  // AzureUserAssignedIdentity's principal_id output so a deployment
+  // identity can administer the server; for a user or group supply the
+  // directory object ID literally.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef object_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.principal_id"
+  ];
+
+  // The Entra tenant of the administrator principal. Leave unset to use
+  // the deploying credential's tenant -- the correct value for virtually
+  // every deployment.
+  optional string tenant_id = 3 [(buf.validate.field).string.uuid = true];
+
+  // When true, Entra becomes the ONLY authentication mechanism: SQL
+  // logins are disabled server-wide and the SQL admin credentials must
+  // be omitted from the spec. Azure's recommended posture for
+  // passwordless estates.
+  bool azuread_authentication_only = 4;
+}
+
+// The server's managed identity.
+message AzureMssqlServerIdentity {
+  // The identity flavor. SYSTEM_ASSIGNED is created and rotated by
+  // Azure with the server's lifecycle; USER_ASSIGNED attaches
+  // pre-existing identities (required when Key Vault grants must exist
+  // BEFORE the server does, e.g. for TDE CMK).
+  AzureMssqlServerIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // The user-assigned identities to attach, by ARM ID. Required (and
+  // only allowed) when the type includes USER_ASSIGNED.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "mssql_identity_ids_match_type"
+    message: "identity_ids are required for USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type >= 2) == (this.identity_ids.size() > 0)"
+  };
+}
+
+// One public-endpoint firewall rule admitting a contiguous IPv4 range.
+message AzureMssqlServerFirewallRule {
+  // The rule's name, unique within the server. E.g. "allow-office",
+  // "allow-azure-services".
   string name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 128
   ];
 
-  // The SKU name defining the compute tier and performance level.
-  // This is the most important field -- it determines compute capacity and cost.
-  //
-  // DTU-based tiers (simpler, bundled compute/IO/storage):
-  //   "Basic" (~5 DTU), "S0" (10 DTU), "S1" (20 DTU), "S2" (50 DTU),
-  //   "S3" (100 DTU), "P1" (125 DTU), "P2" (250 DTU), "P4" (500 DTU)
-  //
-  // vCore-based tiers (flexible, independent compute/storage):
-  //   "GP_Gen5_2" (2 vCores), "GP_Gen5_4", "GP_Gen5_8", "GP_Gen5_16"
-  //   "BC_Gen5_2", "BC_Gen5_4" (Business Critical with local SSD)
-  //   "HS_Gen5_2", "HS_Gen5_4" (Hyperscale, up to 100 TB)
-  //
-  // Serverless (auto-pause, pay-per-second):
-  //   "GP_S_Gen5_1", "GP_S_Gen5_2", "GP_S_Gen5_4"
-  string sku_name = 2 [
+  // The first IPv4 address of the admitted range (inclusive). Use
+  // 0.0.0.0 for both start and end to admit Azure-internal services.
+  string start_ip_address = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).string.ipv4 = true
   ];
 
-  // The maximum size of the database in gigabytes.
-  // If omitted, Azure uses the default for the chosen SKU.
-  //
-  // For DTU-based: varies by tier (Basic: 2 GB, S0-S2: 250 GB, P1: 500 GB)
-  // For vCore-based: up to 4096 GB (GP), 4096 GB (BC), 100 TB (HS)
-  //
-  // Fractional values (0.5 GB) are supported by Azure but this field uses
-  // int32 for simplicity. Use the Azure portal for sub-GB sizing.
-  optional int32 max_size_gb = 3 [(buf.validate.field).int32.gte = 1];
-
-  // The collation of the database.
-  // Determines sort order and string comparison behavior.
-  //
-  // Default: "SQL_Latin1_General_CP1_CI_AS" (case-insensitive, accent-sensitive;
-  // the default for Azure SQL Database and most SQL Server deployments).
-  //
-  // Common alternatives:
-  // - "SQL_Latin1_General_CP1_CS_AS" (case-sensitive)
-  // - "Latin1_General_100_CI_AS_SC_UTF8" (UTF-8 with supplementary characters)
-  //
-  // **ForceNew**: Changing collation after creation destroys and recreates the database.
-  optional string collation = 4 [(dev.planton.shared.options.default) = "SQL_Latin1_General_CP1_CI_AS"];
-
-  // Enable zone redundancy for the database.
-  // When true, database replicas are spread across availability zones for
-  // higher availability. Supported on Premium (DTU) and Business Critical (vCore).
-  // Not supported on Basic, Standard, or General Purpose tiers.
-  //
-  // Default: false
-  optional bool zone_redundant = 5 [(dev.planton.shared.options.default) = "false"];
-
-  // The license type for Azure Hybrid Benefit.
-  // Allows customers with existing SQL Server licenses (with Software Assurance)
-  // to save up to 55% on Azure SQL Database costs.
-  //
-  // Valid values:
-  // - "BasePrice": Azure Hybrid Benefit applied (bring your own license, lower cost)
-  // - "LicenseIncluded": Full Azure SQL license cost included (pay-as-you-go)
-  //
-  // If omitted, Azure defaults to "LicenseIncluded".
-  // Not applicable to serverless (GP_S_*) or Free SKUs.
-  optional string license_type = 6 [(buf.validate.field).cel = {
-    id: "license_type_valid"
-    message: "license_type must be one of: BasePrice, LicenseIncluded"
-    expression: "this in ['BasePrice', 'LicenseIncluded']"
-  }];
-
-  // The storage account type for backup redundancy.
-  // Controls where database backups are replicated for disaster recovery.
-  //
-  // Valid values:
-  // - "Geo": Geo-redundant (default, backups replicated to paired region)
-  // - "GeoZone": Geo-zone-redundant (backups across zones and regions)
-  // - "Local": Locally-redundant (backups stay in the same region)
-  // - "Zone": Zone-redundant (backups across availability zones, same region)
-  //
-  // Default: "Geo"
-  optional string storage_account_type = 7 [
-    (dev.planton.shared.options.default) = "Geo",
-    (buf.validate.field).cel = {
-      id: "storage_account_type_valid"
-      message: "storage_account_type must be one of: Geo, GeoZone, Local, Zone"
-      expression: "this in ['Geo', 'GeoZone', 'Local', 'Zone']"
-    }
+  // The last IPv4 address of the admitted range (inclusive). Equal to
+  // start_ip_address for a single-address rule.
+  string end_ip_address = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ipv4 = true
   ];
 }
 
-// AzureMssqlFirewallRule defines a firewall rule for public access mode.
-// Each rule allows connections from a contiguous range of IPv4 addresses.
-message AzureMssqlFirewallRule {
-  // The name of the firewall rule.
-  // Must be unique within the server.
-  // Examples: "allow-office", "allow-azure-services", "allow-dev-machine".
+// One subnet admitted through its Microsoft.Sql service endpoint.
+message AzureMssqlServerVirtualNetworkRule {
+  // The rule's name, unique within the server. E.g. "allow-app-subnet".
   string name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
   ];
 
-  // The start of the IP address range (inclusive).
-  // Must be a valid IPv4 address.
-  // Use "0.0.0.0" with end "0.0.0.0" to allow all Azure services.
-  string start_ip_address = 2 [
+  // The subnet to admit, by ARM ID. The subnet needs the Microsoft.Sql
+  // service endpoint enabled (see AzureSubnet.service_endpoints) unless
+  // ignore_missing_vnet_service_endpoint is set.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 7
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // The end of the IP address range (inclusive).
-  // Must be a valid IPv4 address and >= start_ip_address.
-  // Set equal to start_ip_address for a single IP rule.
-  string end_ip_address = 3 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 7
-  ];
+  // Create the rule even while the subnet's Microsoft.Sql service
+  // endpoint is not yet enabled (traffic flows once it is). Azure's
+  // default is false.
+  bool ignore_missing_vnet_service_endpoint = 3;
+}
+
+// Server-level SQL auditing configuration (Azure's extended auditing
+// policy). Events go to blob storage (storage_endpoint + access key)
+// and/or Azure Monitor (log_monitoring_enabled -- consumed through
+// diagnostic settings).
+message AzureMssqlServerExtendedAuditing {
+  // The blob-storage endpoint audit logs are written to (e.g.
+  // https://<account>.blob.core.windows.net). Omit for
+  // Azure-Monitor-only auditing.
+  string storage_endpoint = 1 [(buf.validate.field).cel = {
+    id: "mssql_audit_storage_endpoint_https"
+    message: "storage_endpoint must be an https:// URL"
+    expression: "this == '' || this.startsWith('https://')"
+  }];
+
+  // The storage account's access key for the audit-log container.
+  // Required with storage_endpoint unless the server's managed identity
+  // holds the Storage Blob Data Contributor role on the account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_access_key = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  // Whether the access key belongs to the storage account's secondary
+  // key slot (documents which key rotates). Azure's default is false.
+  bool storage_account_access_key_is_secondary = 3;
+
+  // How many days audit logs are retained in blob storage. 0 (Azure's
+  // default) retains them indefinitely.
+  optional int32 retention_in_days = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3285
+  }];
+
+  // Whether audit events are also sent to Azure Monitor (surfaced
+  // through the server's diagnostic settings as SQLSecurityAuditEvents).
+  // Azure's default is true.
+  optional bool log_monitoring_enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // The subscription of the audit storage account, when it lives in a
+  // different subscription than the server.
+  optional string storage_account_subscription_id = 6 [(buf.validate.field).string.uuid = true];
+
+  // A T-SQL predicate that filters which audit records are captured
+  // (e.g. "statement <> 'select 1'"). Omit to capture everything the
+  // action groups select.
+  string predicate_expression = 7;
+
+  // The audit action groups (and actions) to capture. Omit for Azure's
+  // default set: SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP,
+  // FAILED_DATABASE_AUTHENTICATION_GROUP, BATCH_COMPLETED_GROUP.
+  repeated string audit_actions_and_groups = 8 [(buf.validate.field).repeated = {
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "mssql_audit_key_requires_endpoint"
+    message: "storage_account_access_key requires storage_endpoint"
+    expression: "!has(this.storage_account_access_key) || this.storage_endpoint != ''"
+  };
+}
+
+// Microsoft Defender for SQL server-scope threat detection.
+message AzureMssqlServerSecurityAlertPolicy {
+  // Whether the policy is enforced. ENABLED turns Defender's advanced
+  // threat protection on for every database on the server.
+  AzureMssqlServerSecurityAlertPolicyState state = 1 [(buf.validate.field).required = true];
+
+  // Alert classes to suppress. Each entry disables one detector.
+  repeated AzureMssqlServerSecurityAlertType disabled_alerts = 2 [(buf.validate.field).repeated = {
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+
+  // Whether alert emails also go to the subscription administrators.
+  // Azure's default is false.
+  bool email_account_admins = 3;
+
+  // Additional email addresses that receive alerts.
+  repeated string email_addresses = 4 [(buf.validate.field).repeated = {
+    items: {
+      string: {min_len: 3}
+    }
+  }];
+
+  // How many days threat-detection audit records are retained in the
+  // export storage account. 0 (Azure's default) retains indefinitely.
+  optional int32 retention_days = 5 [(buf.validate.field).int32.gte = 0];
+
+  // The blob-storage endpoint threat-detection audit records are
+  // exported to. Set together with storage_account_access_key; omit both
+  // to keep alerts without a storage export.
+  string storage_endpoint = 6;
+
+  // The access key of the export storage account. Required with
+  // storage_endpoint.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_access_key = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "mssql_alert_storage_pair"
+    message: "storage_endpoint and storage_account_access_key must be set together"
+    expression: "(this.storage_endpoint != '') == has(this.storage_account_access_key)"
+  };
+}
+
+// How clients establish connections to the server.
+enum AzureMssqlServerConnectionPolicy {
+  // Not specified: Azure's Default policy (Redirect for Azure-internal
+  // clients, Proxy for external ones).
+  azure_mssql_server_connection_policy_unspecified = 0;
+
+  // Redirect inside Azure, Proxy from outside -- Azure's default.
+  DEFAULT = 1;
+
+  // All connections funnel through the regional gateway on port 1433.
+  // Simplest firewalling, highest latency.
+  PROXY = 2;
+
+  // Clients are redirected to the database node after login -- the
+  // lowest latency, but requires ports 11000-11999 open alongside 1433.
+  REDIRECT = 3;
+}
+
+// The server's managed-identity flavor.
+enum AzureMssqlServerIdentityType {
+  // Not specified -- invalid; choose an explicit type when the identity
+  // block is present.
+  azure_mssql_server_identity_type_unspecified = 0;
+
+  // Azure creates and rotates an identity tied to the server's
+  // lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Attach pre-existing user-assigned identities (identity_ids).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned identity and the attached user-assigned
+  // identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// Whether the Defender security-alert policy is enforced.
+enum AzureMssqlServerSecurityAlertPolicyState {
+  // Not specified -- invalid; choose an explicit state when the policy
+  // block is present.
+  azure_mssql_server_security_alert_policy_state_unspecified = 0;
+
+  // Threat detection is on.
+  ENABLED = 1;
+
+  // Threat detection is configured but off.
+  DISABLED = 2;
+}
+
+// The alert classes Microsoft Defender for SQL can raise.
+enum AzureMssqlServerSecurityAlertType {
+  // Not specified -- invalid as a disabled_alerts entry.
+  azure_mssql_server_security_alert_type_unspecified = 0;
+
+  // Potential SQL injection attacks.
+  SQL_INJECTION = 1;
+
+  // Application code vulnerable to SQL injection.
+  SQL_INJECTION_VULNERABILITY = 2;
+
+  // Logins from unusual locations, principals, or applications.
+  ACCESS_ANOMALY = 3;
+
+  // Unusually large result sets or data movement.
+  DATA_EXFILTRATION = 4;
+
+  // High-privilege or destructive statements.
+  UNSAFE_ACTION = 5;
 }
