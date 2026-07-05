@@ -21,7 +21,7 @@ This preset uses a generic `my-topic` name. Rename `metadata.name` to match your
 ## Common Additions
 
 - Add `kmsKeyId` with a `valueFrom` reference to an AwsKmsKey for encryption at rest
-- Add `subscriptions` to define SQS, Lambda, or email delivery targets
+- Attach consumers with separate `AwsSnsSubscription` resources (SQS, Lambda, email, HTTP/S) referencing this topic's `topic_arn` output
 - Add `policy` to grant other AWS services (EventBridge, S3) permission to publish
 - Set `displayName` for topics that send SMS notifications
 - Set `tracingConfig: Active` for X-Ray distributed tracing
@@ -29,4 +29,5 @@ This preset uses a generic `my-topic` name. Rename `metadata.name` to match your
 ## Related Presets
 
 - **02-fifo-with-deduplication** — use when you need exactly-once delivery and strict ordering
-- **03-fanout-to-sqs** — demonstrates the fan-out pattern with SQS subscriptions and filtering
+- **03-fifo-with-archive** — adds a message archive so new consumers can replay history
+- The `AwsSnsSubscription` component's **01-sqs-fanout** preset — the fan-out pattern with SQS endpoints and filtering

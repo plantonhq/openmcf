@@ -7,7 +7,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources orchestrates SNS topic creation, subscription setup, and exports outputs.
+// Resources orchestrates SNS topic creation and exports outputs. Subscriptions
+// are first-class AwsSnsSubscription resources that reference this topic's
+// exported topic_arn.
 func Resources(ctx *pulumi.Context, stackInput *awssnstopicv1.AwsSnsTopicStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
@@ -18,13 +20,8 @@ func Resources(ctx *pulumi.Context, stackInput *awssnstopicv1.AwsSnsTopicStackIn
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	createdTopic, err := topic(ctx, locals, provider)
-	if err != nil {
+	if _, err := topic(ctx, locals, provider); err != nil {
 		return errors.Wrap(err, "sns topic")
-	}
-
-	if err := subscriptions(ctx, locals, createdTopic, provider); err != nil {
-		return errors.Wrap(err, "sns topic subscriptions")
 	}
 
 	return nil

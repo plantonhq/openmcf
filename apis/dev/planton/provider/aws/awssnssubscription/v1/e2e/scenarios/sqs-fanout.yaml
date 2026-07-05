@@ -1,0 +1,40 @@
+# AwsSnsSubscription scenario: SQS fan-out from the shared topic prerequisite
+# into the shared standard queue fixture, with raw delivery and a filter
+# policy. Full metadata is supplied for tagging/orphan cleanup.
+#
+# AwsSnsTopic is a registry prerequisite. The e2e-prerequisites annotation
+# composes the SQS queue endpoint fixture.
+apiVersion: aws.planton.dev/v1
+kind: AwsSnsSubscription
+metadata:
+  name: planton-oss-e2e-awssnssubscription-sqs-fanout
+  id: planton-oss-e2e-awssnssubscription-sqs-fanout
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssnssubscription
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSqsQueue"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  topicArn:
+    valueFrom:
+      kind: AwsSnsTopic
+      name: planton-oss-e2e-awssnstopic-prereq
+      fieldPath: status.outputs.topic_arn
+  protocol: sqs
+  endpoint:
+    valueFrom:
+      kind: AwsSqsQueue
+      name: planton-oss-e2e-awssqsqueue-prereq
+      fieldPath: status.outputs.queue_arn
+  rawMessageDelivery: true
+  filterPolicy:
+    event_type:
+      - order_placed
+      - order_shipped
+  filterPolicyScope: MessageAttributes

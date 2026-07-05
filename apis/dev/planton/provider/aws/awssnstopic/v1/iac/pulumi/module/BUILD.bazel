@@ -6,7 +6,6 @@ go_library(
         "locals.go",
         "main.go",
         "outputs.go",
-        "subscription.go",
         "topic.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssnstopic/v1/iac/pulumi/module",

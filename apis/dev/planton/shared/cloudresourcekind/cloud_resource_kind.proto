@@ -755,6 +755,18 @@ enum CloudResourceKind {
     prerequisites: [AwsLambda]
   }];
 
+  // AwsSnsTopic is a prerequisite because a subscription cannot exist without
+  // the topic it subscribes to (a required reference). Endpoints (SQS queues,
+  // Lambda functions, Firehose streams) are optional composition -- scenarios
+  // declare them via the e2e-prerequisites annotation rather than taxing
+  // every consumer's chain.
+  AwsSnsSubscription = 353 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awssnssub"
+    prerequisites: [AwsSnsTopic]
+  }];
+
   // 400–599: Azure resources
   AzureResourceGroup = 400 [(kind_meta) = {
     provider: azure

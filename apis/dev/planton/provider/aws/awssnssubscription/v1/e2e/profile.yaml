@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awssnssubscription
+spec:
+  # An SNS subscription under E2E: the harness deploys the AwsSnsTopic registry
+  # prerequisite, composes the SQS queue fixture via the scenario's
+  # e2e-prerequisites annotation, then runs deploy ->
+  # GetSubscriptionAttributes verify -> destroy -> verify-destroyed on both
+  # provisioners. The scenario wires one standard topic into the shared
+  # standard queue with raw delivery and a message-attribute filter policy --
+  # the smallest honest SQS fan-out surface. Deliberately not in the live
+  # scenario: Lambda, HTTP/S, email, Firehose, and cross-account topics --
+  # all proven by CEL spec tests and the offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15
