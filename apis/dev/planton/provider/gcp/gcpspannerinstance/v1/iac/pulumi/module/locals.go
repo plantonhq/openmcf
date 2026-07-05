@@ -14,16 +14,27 @@ type Locals struct {
 	GcpProviderConfig  *gcpprovider.GcpProviderConfig
 	GcpSpannerInstance *gcpspannerinstancev1.GcpSpannerInstance
 	GcpLabels          map[string]string
+	InstanceName       string
 }
 
 func initializeLocals(_ *pulumi.Context, stackInput *gcpspannerinstancev1.GcpSpannerInstanceStackInput) *Locals {
 	locals := &Locals{}
 	locals.GcpSpannerInstance = stackInput.Target
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     "true",
-		gcplabelkeys.ResourceName: locals.GcpSpannerInstance.Spec.InstanceName,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpSpannerInstance.String()),
+
+	locals.InstanceName = locals.GcpSpannerInstance.Spec.InstanceName
+	if locals.InstanceName == "" {
+		locals.InstanceName = locals.GcpSpannerInstance.Metadata.Name
 	}
+
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpSpannerInstance.Spec.Labels {
+		locals.GcpLabels[key] = value
+	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.InstanceName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpSpannerInstance.String())
 
 	if locals.GcpSpannerInstance.Metadata.Org != "" {
 		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpSpannerInstance.Metadata.Org

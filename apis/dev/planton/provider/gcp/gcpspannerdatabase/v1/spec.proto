@@ -4,126 +4,155 @@ package dev.planton.provider.gcp.gcpspannerdatabase.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
 
-// GcpSpannerDatabaseSpec defines the configuration for a Google Cloud Spanner
-// database.
+// GcpSpannerDatabaseEncryptionConfig selects customer-managed encryption
+// (CMEK) for the database. Immutable: the encryption posture is fixed at
+// creation and changing it recreates the database.
+//
+// Exactly one key shape must be set:
+//   - kms_key_name — one key, for databases on REGIONAL instance
+//     configurations. The key must live in the same location as the
+//     instance configuration.
+//   - kms_key_names — one key PER REGION of a MULTI-REGION instance
+//     configuration (each region of the config needs its key in that
+//     region).
+//
+// If the message is omitted entirely, Google-managed encryption is used.
+message GcpSpannerDatabaseEncryptionConfig {
+  // Fully qualified name of the KMS key for single-region CMEK.
+  // Format: projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Fully qualified KMS key names for multi-region CMEK — one key per
+  // region of the instance's multi-region configuration.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_names = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "encryption_exactly_one_key_shape"
+    expression: "has(this.kms_key_name) != (this.kms_key_names.size() > 0)"
+    message: "set exactly one of kms_key_name (regional) or kms_key_names (multi-region)"
+  };
+}
+
+// GcpSpannerDatabaseSpec defines the configuration for a Google Cloud
+// Spanner database.
 //
 // A Spanner database is a collection of tables, views, indexes, and other
-// schema objects hosted within a Spanner instance. Each database belongs to
-// exactly one instance and inherits its compute capacity and regional
-// configuration.
+// schema objects hosted on a Spanner instance (GcpSpannerInstance). Each
+// database belongs to exactly one instance and shares its compute capacity
+// and geographic configuration. Backup schedules are separate composable
+// resources (GcpSpannerBackupSchedule) that reference this database by
+// name.
 //
 // Important behavioral notes:
 //
-//   - The database_name, database_dialect, kms_key_name, and instance fields
-//     are immutable after creation. Changing them requires recreating the
-//     database.
+//   - database_name, database_dialect, encryption_config, and instance are
+//     IMMUTABLE — changing any of them recreates the database.
 //
-//   - The ddl field executes DDL statements atomically with database creation.
-//     After creation, new statements may be appended but existing statements
-//     cannot be modified or removed without recreating the database.
+//   - The ddl list is APPEND-ONLY after creation: new statements are
+//     executed via UpdateDDL; modifying or removing an existing statement
+//     forces recreation. For ongoing schema management use a migration
+//     tool (Liquibase, Flyway) — IaC-owned DDL is for the initial schema.
 //
-//   - Spanner databases do not support GCP labels. Labels are only available
-//     at the instance level (see GcpSpannerInstance).
+//   - Spanner databases do not support GCP labels; labels exist only at
+//     the instance level.
 //
-//   - The enable_drop_protection flag is a GCP API-level protection that
-//     prevents deletion of both the database and its parent instance through
-//     any interface (Console, API, CLI, IaC tools).
+//   - TWO deletion guards exist and differ in enforcement point:
+//     enable_drop_protection is GCP API-side (blocks deletion through
+//     Console, gcloud, API, and IaC alike — and blocks deletion of the
+//     PARENT INSTANCE while set); deletion_protection is IaC-side (both
+//     engines refuse to destroy this resource while true — GCP itself
+//     would still allow a console delete). deletion_protection defaults
+//     TRUE, matching the safe posture.
 message GcpSpannerDatabaseSpec {
-  // GCP project where the Spanner database will be created.
-  // Must match the project of the parent Spanner instance.
+  // The GCP project that owns the parent Spanner instance. Accepts a
+  // literal project ID or a reference to a GcpProject resource. If
+  // omitted, the provider's default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 
-  // Spanner instance to create the database on. This determines the
-  // compute capacity and regional configuration available to the database.
-  // Immutable after creation.
+  // The Spanner instance to create the database on. This determines the
+  // compute capacity and geographic configuration available to the
+  // database. Immutable.
   dev.planton.shared.foreignkey.v1.StringValueOrRef instance = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpSpannerInstance,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_name"
   ];
 
-  // Unique name for the Spanner database within the instance.
-  // Must start with a lowercase letter, can contain lowercase letters,
-  // digits, underscores, and hyphens, and must end with a lowercase
-  // letter or digit. 2-30 characters. Immutable after creation.
+  // Unique name of the database within the instance. Immutable. If not
+  // specified, defaults to metadata.name. Must be 2-30 characters: start
+  // with a lowercase letter, contain lowercase letters, digits,
+  // underscores, and hyphens, and end with a letter or digit.
   string database_name = 3 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_\\-]*[a-z0-9]$",
-    (buf.validate.field).string.min_len = 2,
-    (buf.validate.field).string.max_len = 30
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      pattern: "^[a-z][a-z0-9_\\-]*[a-z0-9]$"
+      min_len: 2
+      max_len: 30
+    }
   ];
 
-  // SQL dialect for the database. Determines the SQL syntax and features
-  // available. This choice is permanent and cannot be changed after creation.
+  // SQL dialect of the database. Immutable — this choice is permanent.
   //
-  // GOOGLE_STANDARD_SQL: Google's proprietary SQL dialect with full Spanner
-  // feature support including interleaved tables and STRUCT types.
+  // GOOGLE_STANDARD_SQL (default): Google's SQL dialect with full Spanner
+  // feature support, including interleaved tables and STRUCT types.
   //
-  // POSTGRESQL: PostgreSQL-compatible interface for teams familiar with
-  // PostgreSQL syntax. Some Spanner-specific features may not be available.
-  //
-  // If not set, defaults to GOOGLE_STANDARD_SQL.
+  // POSTGRESQL: PostgreSQL-compatible interface for teams standardized on
+  // PostgreSQL syntax and tooling. Some Spanner-specific features are not
+  // available through this dialect.
   string database_dialect = 4 [(buf.validate.field).cel = {
     id: "database_dialect_valid_value"
     expression: "this == '' || this in ['GOOGLE_STANDARD_SQL', 'POSTGRESQL']"
     message: "database_dialect must be GOOGLE_STANDARD_SQL or POSTGRESQL"
   }];
 
-  // Retention period for database versions, enabling point-in-time recovery.
-  // The retention period must be between 1 hour and 7 days.
-  // Accepts duration formats: "1h", "24h", "1d", "1440m", "86400s".
-  // Defaults to "1h" if not set.
-  //
-  // Increasing this value provides a longer window for point-in-time
-  // recovery but consumes more storage. Changing this value does not
-  // require database recreation.
+  // Retention period for database versions, enabling point-in-time
+  // recovery. Between 1 hour and 7 days; accepts duration formats such as
+  // "1h", "24h", "3d", "86400s". GCP defaults to "1h". Mutable — a longer
+  // window widens point-in-time recovery at the cost of extra storage.
   string version_retention_period = 5;
 
-  // Optional list of DDL statements to execute when creating the database.
-  // Statements can create tables, indexes, views, and other schema objects.
+  // DDL statements executed when creating the database (tables, indexes,
+  // views). Statements run atomically with creation — if any fails, the
+  // database is not created.
   //
-  // These statements execute atomically with the database creation. If any
-  // statement fails, the database is not created.
-  //
-  // Important lifecycle behavior:
-  //   - New statements can be appended after creation (executed via UpdateDDL).
-  //   - Modifying or removing existing statements forces database recreation.
-  //   - For ongoing schema management, use a migration tool (Liquibase, Flyway).
+  // Lifecycle: APPEND-ONLY. New statements added later are applied via
+  // UpdateDDL; modifying or removing an existing entry forces database
+  // recreation. Use a migration tool for ongoing schema management.
   repeated string ddl = 6;
 
-  // Whether to enable GCP API-level drop protection for this database.
-  // When true, the database cannot be deleted through any interface
-  // (Console, gcloud, API, Terraform, Pulumi) until this flag is set
-  // back to false.
-  //
-  // Additionally, enabling drop protection on a database prevents deletion
-  // of the parent Spanner instance.
-  //
-  // Defaults to false.
+  // GCP API-side drop protection. While true, the database cannot be
+  // deleted through ANY interface (Console, gcloud, API, Terraform,
+  // Pulumi) and the parent Spanner instance cannot be deleted either.
+  // Mutable. Defaults to false — prefer deletion_protection (below) for
+  // day-to-day IaC safety and reserve this for compliance-grade locks.
   bool enable_drop_protection = 7;
 
-  // Fully qualified name of the KMS key to use for customer-managed
-  // encryption (CMEK). The key must exist in the same location as the
-  // Spanner instance. Immutable after creation.
-  //
-  // Format: projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
-  //
-  // If not set, Google-managed encryption is used (default).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 8 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
-  ];
+  // Customer-managed encryption (CMEK). Immutable. If omitted,
+  // Google-managed encryption is used. Exactly one key shape inside:
+  // kms_key_name for regional instances, kms_key_names (one per region)
+  // for multi-region instances.
+  GcpSpannerDatabaseEncryptionConfig encryption_config = 8;
 
-  // Default time zone for the database. Affects SQL functions that depend
-  // on time zones, such as CURRENT_TIMESTAMP() and FORMAT_TIMESTAMP().
-  // Must be a valid name from the IANA Time Zone Database
-  // (e.g., "America/New_York", "Europe/London", "UTC").
-  //
-  // If not set, GCP defaults to "America/Los_Angeles".
+  // Default time zone for the database, affecting time-zone-dependent SQL
+  // functions. Must be a valid IANA Time Zone Database name (e.g.
+  // "America/New_York", "UTC"). GCP defaults to "America/Los_Angeles".
   string default_time_zone = 9;
+
+  // IaC-side deletion guard. While true (the default), BOTH engines refuse
+  // to destroy this resource — a plan that would delete the database fails
+  // before touching GCP. Set false explicitly before an intentional
+  // teardown. Unlike enable_drop_protection, GCP itself does not enforce
+  // this: a console/gcloud delete would still succeed.
+  optional bool deletion_protection = 10 [(dev.planton.shared.options.default) = "true"];
 }

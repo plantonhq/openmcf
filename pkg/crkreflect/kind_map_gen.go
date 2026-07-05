@@ -260,6 +260,7 @@ import (
 	gcprouternatv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1"
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
 	gcpservicenetworkingconnectionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1"
+	gcpspannerbackupschedulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerbackupschedule/v1"
 	gcpspannerdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerdatabase/v1"
 	gcpspannerinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerinstance/v1"
 	gcpsslcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsslcertificate/v1"
@@ -734,6 +735,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpRouterNat:                    &gcprouternatv1.GcpRouterNat{},
 	cloudresourcekind.CloudResourceKind_GcpServiceAccount:               &gcpserviceaccountv1.GcpServiceAccount{},
 	cloudresourcekind.CloudResourceKind_GcpServiceNetworkingConnection:  &gcpservicenetworkingconnectionv1.GcpServiceNetworkingConnection{},
+	cloudresourcekind.CloudResourceKind_GcpSpannerBackupSchedule:        &gcpspannerbackupschedulev1.GcpSpannerBackupSchedule{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:              &gcpspannerdatabasev1.GcpSpannerDatabase{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerInstance:              &gcpspannerinstancev1.GcpSpannerInstance{},
 	cloudresourcekind.CloudResourceKind_GcpSslCertificate:               &gcpsslcertificatev1.GcpSslCertificate{},

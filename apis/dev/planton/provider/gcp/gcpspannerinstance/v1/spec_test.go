@@ -257,18 +257,108 @@ var _ = ginkgo.Describe("GcpSpannerInstanceSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Negative Cases ────────────────
-
-	ginkgo.It("should reject when project_id is missing", func() {
+	ginkgo.It("should accept omitted project_id (ambient provider project)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept omitted instance_name (defaults to metadata.name)", func() {
+		msg := minimal()
+		msg.Spec.InstanceName = ""
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"team": "payments", "cost-center": "cc-1234"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept asymmetric autoscaling options on a multi-region config", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.Config = "nam-eur-asia1"
+		msg.Spec.Edition = "ENTERPRISE"
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 5,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{
+					ReplicaLocation: "europe-west1",
+					Overrides: &GcpSpannerInstanceAsymmetricAutoscalingOverrides{
+						MinNodes: 2,
+						MaxNodes: 10,
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject asymmetric option without replica_location", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 5,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{
+					Overrides: &GcpSpannerInstanceAsymmetricAutoscalingOverrides{
+						MinNodes: 1,
+						MaxNodes: 3,
+					},
+				},
+			},
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject when instance_name is empty", func() {
+	ginkgo.It("should reject asymmetric option without overrides", func() {
 		msg := minimal()
-		msg.Spec.InstanceName = ""
+		msg.Spec.NumNodes = 0
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 5,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{ReplicaLocation: "europe-west1"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject asymmetric override with max_nodes < min_nodes", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 5,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{
+					ReplicaLocation: "europe-west1",
+					Overrides: &GcpSpannerInstanceAsymmetricAutoscalingOverrides{
+						MinNodes: 5,
+						MaxNodes: 2,
+					},
+				},
+			},
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

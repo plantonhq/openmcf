@@ -910,6 +910,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpspdb"
+    prerequisites: [GcpSpannerInstance]
   }];
   GcpBigtableInstance = 635 [(kind_meta) = {
     provider: gcp
@@ -944,6 +945,15 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpadbusr"
     prerequisites: [GcpAlloydbCluster]
+  }];
+  GcpSpannerBackupSchedule = 641 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsbs"
+    prerequisites: [
+      GcpSpannerInstance,
+      GcpSpannerDatabase
+    ]
   }];
   GcpBigQueryDataset = 650 [(kind_meta) = {
     provider: gcp

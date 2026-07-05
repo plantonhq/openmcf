@@ -372,6 +372,31 @@ func TestGcpCloudRunJob_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpcloudrunjob", "terraform")
 }
 
+// GcpSpannerInstance scenarios (100-PU minimal + autoscaling; ~1-2 minutes each).
+func TestGcpSpannerInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpspannerinstance", "pulumi")
+}
+func TestGcpSpannerInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpspannerinstance", "terraform")
+}
+
+// GcpSpannerDatabase scenarios (instance prerequisite + database with DDL).
+func TestGcpSpannerDatabase_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpspannerdatabase", "pulumi")
+}
+func TestGcpSpannerDatabase_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpspannerdatabase", "terraform")
+}
+
+// GcpSpannerBackupSchedule scenarios (instance + database prerequisites +
+// daily full-backup schedule).
+func TestGcpSpannerBackupSchedule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpspannerbackupschedule", "pulumi")
+}
+func TestGcpSpannerBackupSchedule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpspannerbackupschedule", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

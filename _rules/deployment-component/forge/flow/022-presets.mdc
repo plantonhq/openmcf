@@ -47,6 +47,11 @@ SEQUENTIAL STEPS
       - `apiVersion` and `kind` match `api.proto` constants exactly
       - `metadata.name` prefixed with `my-`
       - All `StringValueOrRef` fields use `value:` wrapper with angle-bracket placeholders
+      - Reference-form `StringValueOrRef` examples use the exact `valueFrom` key set
+        `kind` / `name` / `fieldPath` — the sub-key is `fieldPath`, never `field`
+        (a `field:` key fails manifest load with "Unknown field", which only
+        `planton validate` catches; copying a preset with the wrong key propagates
+        the defect to every preset written from it)
       - **Every preset must pass `planton validate`** — a placeholder must satisfy the
         field's OWN validation rules. Angle-bracket tokens like `<gcp-region>` fail any
         pattern-validated field; for those, use a realistic sample value with a

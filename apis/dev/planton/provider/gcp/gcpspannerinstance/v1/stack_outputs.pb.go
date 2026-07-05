@@ -29,13 +29,18 @@ type GcpSpannerInstanceStackOutputs struct {
 	// Format: projects/{project}/instances/{instance_name}
 	// This is the canonical identifier used for IAM bindings and API calls.
 	InstanceId string `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
-	// Short instance name. This is the value that GcpSpannerDatabase
-	// and other downstream resources use to reference this instance.
+	// Short instance name. This is the value that GcpSpannerDatabase,
+	// GcpSpannerBackupSchedule, and other downstream resources use to
+	// reference this instance.
 	InstanceName string `protobuf:"bytes,2,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
 	// Instance state: CREATING or READY.
 	// CREATING indicates the instance is being provisioned.
 	// READY indicates the instance is available for use.
-	State         string `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
+	State string `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
+	// The instance configuration the instance was created with
+	// (e.g. "regional-us-central1", "nam6") — the geographic topology
+	// handle auditors and capacity planners ask for.
+	Config        string `protobuf:"bytes,4,opt,name=config,proto3" json:"config,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -91,16 +96,24 @@ func (x *GcpSpannerInstanceStackOutputs) GetState() string {
 	return ""
 }
 
+func (x *GcpSpannerInstanceStackOutputs) GetConfig() string {
+	if x != nil {
+		return x.Config
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpspannerinstance_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpspannerinstance_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/gcp/gcpspannerinstance/v1/stack_outputs.proto\x12.dev.planton.provider.gcp.gcpspannerinstance.v1\"|\n" +
+	"Bdev/planton/provider/gcp/gcpspannerinstance/v1/stack_outputs.proto\x12.dev.planton.provider.gcp.gcpspannerinstance.v1\"\x94\x01\n" +
 	"\x1eGcpSpannerInstanceStackOutputs\x12\x1f\n" +
 	"\vinstance_id\x18\x01 \x01(\tR\n" +
 	"instanceId\x12#\n" +
 	"\rinstance_name\x18\x02 \x01(\tR\finstanceName\x12\x14\n" +
-	"\x05state\x18\x03 \x01(\tR\x05stateB\x8d\x03\n" +
+	"\x05state\x18\x03 \x01(\tR\x05state\x12\x16\n" +
+	"\x06config\x18\x04 \x01(\tR\x06configB\x8d\x03\n" +
 	"2com.dev.planton.provider.gcp.gcpspannerinstance.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerinstance/v1;gcpspannerinstancev1\xa2\x02\x05DPPGG\xaa\x02.Dev.Planton.Provider.Gcp.Gcpspannerinstance.V1\xca\x02.Dev\\Planton\\Provider\\Gcp\\Gcpspannerinstance\\V1\xe2\x02:Dev\\Planton\\Provider\\Gcp\\Gcpspannerinstance\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Gcp::Gcpspannerinstance::V1b\x06proto3"
 
 var (

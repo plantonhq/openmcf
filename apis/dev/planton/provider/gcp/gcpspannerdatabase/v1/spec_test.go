@@ -136,11 +136,29 @@ var _ = ginkgo.Describe("GcpSpannerDatabaseSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept kms_key_name", func() {
+	ginkgo.It("should accept a regional CMEK key (kms_key_name)", func() {
 		msg := minimal()
-		msg.Spec.KmsKeyName = &foreignkeyv1.StringValueOrRef{
-			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-				Value: "projects/my-proj/locations/us-central1/keyRings/ring/cryptoKeys/key",
+		msg.Spec.EncryptionConfig = &GcpSpannerDatabaseEncryptionConfig{
+			KmsKeyName: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "projects/my-proj/locations/us-central1/keyRings/ring/cryptoKeys/key",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept multi-region CMEK keys (kms_key_names)", func() {
+		msg := minimal()
+		msg.Spec.EncryptionConfig = &GcpSpannerDatabaseEncryptionConfig{
+			KmsKeyNames: []*foreignkeyv1.StringValueOrRef{
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "projects/my-proj/locations/us-central1/keyRings/ring/cryptoKeys/key1",
+				}},
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "projects/my-proj/locations/us-east1/keyRings/ring/cryptoKeys/key2",
+				}},
 			},
 		}
 		err := validator.Validate(msg)
@@ -150,6 +168,28 @@ var _ = ginkgo.Describe("GcpSpannerDatabaseSpec", func() {
 	ginkgo.It("should accept default_time_zone", func() {
 		msg := minimal()
 		msg.Spec.DefaultTimeZone = "UTC"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept explicit deletion_protection false", func() {
+		msg := minimal()
+		deletionProtection := false
+		msg.Spec.DeletionProtection = &deletionProtection
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept omitted project_id (ambient provider project)", func() {
+		msg := minimal()
+		msg.Spec.ProjectId = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept omitted database_name (defaults to metadata.name)", func() {
+		msg := minimal()
+		msg.Spec.DatabaseName = ""
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -164,9 +204,11 @@ var _ = ginkgo.Describe("GcpSpannerDatabaseSpec", func() {
 			"CREATE TABLE Accounts (Id STRING(36) NOT NULL) PRIMARY KEY (Id)",
 			"CREATE INDEX AccountsById ON Accounts(Id)",
 		}
-		msg.Spec.KmsKeyName = &foreignkeyv1.StringValueOrRef{
-			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-				Value: "projects/my-proj/locations/us-central1/keyRings/ring/cryptoKeys/key",
+		msg.Spec.EncryptionConfig = &GcpSpannerDatabaseEncryptionConfig{
+			KmsKeyName: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "projects/my-proj/locations/us-central1/keyRings/ring/cryptoKeys/key",
+				},
 			},
 		}
 		err := validator.Validate(msg)
@@ -175,9 +217,27 @@ var _ = ginkgo.Describe("GcpSpannerDatabaseSpec", func() {
 
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject missing project_id", func() {
+	ginkgo.It("should reject encryption_config with both key shapes set", func() {
 		msg := minimal()
-		msg.Spec.ProjectId = nil
+		msg.Spec.EncryptionConfig = &GcpSpannerDatabaseEncryptionConfig{
+			KmsKeyName: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "projects/my-proj/locations/us-central1/keyRings/ring/cryptoKeys/key",
+				},
+			},
+			KmsKeyNames: []*foreignkeyv1.StringValueOrRef{
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "projects/my-proj/locations/us-east1/keyRings/ring/cryptoKeys/key2",
+				}},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject encryption_config with no key set", func() {
+		msg := minimal()
+		msg.Spec.EncryptionConfig = &GcpSpannerDatabaseEncryptionConfig{}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
@@ -185,13 +245,6 @@ var _ = ginkgo.Describe("GcpSpannerDatabaseSpec", func() {
 	ginkgo.It("should reject missing instance", func() {
 		msg := minimal()
 		msg.Spec.Instance = nil
-		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
-	})
-
-	ginkgo.It("should reject missing database_name", func() {
-		msg := minimal()
-		msg.Spec.DatabaseName = ""
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

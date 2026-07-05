@@ -22,6 +22,7 @@ import (
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
+	"google.golang.org/api/spanner/v1"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 )
@@ -42,6 +43,7 @@ type Services struct {
 	Run       *run.Service
 	AlloyDB   *alloydb.Service
 	DNS       *dns.Service
+	Spanner   *spanner.Service
 }
 
 // Verifier checks a single component's GCP resource for existence/absence.
@@ -93,6 +95,9 @@ var verifiers = map[string]Verifier{
 	"gcpalloydbuser":                  &alloydbUserVerifier{},
 	"gcpdnszone":                      &dnsZoneVerifier{},
 	"gcpcloudrunjob":                  &cloudRunJobVerifier{},
+	"gcpspannerinstance":              &spannerInstanceVerifier{},
+	"gcpspannerdatabase":              &spannerDatabaseVerifier{},
+	"gcpspannerbackupschedule":        &spannerBackupScheduleVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

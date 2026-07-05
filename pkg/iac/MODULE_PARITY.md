@@ -55,6 +55,15 @@ matching `pulumi/module/*.go`), confirm both sides agree on:
   destroys cleanly. When the released GA schema has no such attribute, explicitly
   neutralize it in the Pulumi module with a comment explaining why; never let a
   bridged-only default decide destroy semantics on one engine.
+- **Bridged-provider attribute value format.** The same computed attribute can come
+  back in DIFFERENT string forms on the two engines: the bridged Pulumi provider may
+  return a fully qualified resource path (e.g. `projects/{p}/instanceConfigs/{name}`)
+  where the released Terraform provider stores the plain name the spec passed in.
+  Exporting the raw attribute as a stack output then breaks output parity — and any
+  API caller or verifier consuming the output — on one engine only, invisibly to every
+  offline gate. Decide the output contract from the spec's vocabulary (usually the
+  plain name), normalize the divergent engine with a comment, and prove with a live
+  run on BOTH engines, not just `validate-outputs` (which checks shape, not value).
 - **Cross-resource addressing.** Both engines consume the spec's resolved reference
   fields (`StringValueOrRef` arrives as a plain string) to address a parent or sibling
   resource. Never re-discover a parent on one engine via a provider data-source lookup

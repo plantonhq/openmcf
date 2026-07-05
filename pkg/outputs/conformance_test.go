@@ -663,6 +663,44 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"job_name", "location", "uid"},
 		},
 		{
+			// GcpSpannerInstance: the fully qualified instance path (the IAM/API
+			// handle), the short name downstream databases and backup schedules
+			// reference, the lifecycle state, and the geographic config.
+			name: "GcpSpannerInstance",
+			kind: cloudresourcekind.CloudResourceKind_GcpSpannerInstance,
+			rawOutputs: map[string]interface{}{
+				"instance_id":   "projects/prod-project/instances/orders-spanner",
+				"instance_name": "orders-spanner",
+				"state":         "READY",
+				"config":        "regional-us-central1",
+			},
+			mustPopulate: []string{"instance_id", "instance_name", "state", "config"},
+		},
+		{
+			// GcpSpannerDatabase: the fully qualified database path (the IAM/API
+			// handle), the short name backup schedules reference, and the
+			// lifecycle state.
+			name: "GcpSpannerDatabase",
+			kind: cloudresourcekind.CloudResourceKind_GcpSpannerDatabase,
+			rawOutputs: map[string]interface{}{
+				"database_id":   "projects/prod-project/instances/orders-spanner/databases/orders",
+				"database_name": "orders",
+				"state":         "READY",
+			},
+			mustPopulate: []string{"database_id", "database_name", "state"},
+		},
+		{
+			// GcpSpannerBackupSchedule: the fully qualified schedule path (the
+			// API handle) and the short name within the database.
+			name: "GcpSpannerBackupSchedule",
+			kind: cloudresourcekind.CloudResourceKind_GcpSpannerBackupSchedule,
+			rawOutputs: map[string]interface{}{
+				"schedule_id":   "projects/prod-project/instances/orders-spanner/databases/orders/backupSchedules/daily-backups",
+				"schedule_name": "daily-backups",
+			},
+			mustPopulate: []string{"schedule_id", "schedule_name"},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

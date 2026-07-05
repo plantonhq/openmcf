@@ -1,28 +1,5 @@
-# GcpSpannerDatabase - Pulumi Implementation
+# Pulumi module for GcpSpannerDatabase
 
-## Quick Start
+Provisions a `spanner.Database` from the validated protobuf spec. Enables `spanner.googleapis.com` automatically.
 
-```bash
-# From the component directory
-cd apis/dev/planton/provider/gcp/gcpspannerdatabase/v1/iac/pulumi
-
-# Preview changes
-pulumi preview --stack dev
-
-# Apply changes
-pulumi up --stack dev
-```
-
-## Local Development
-
-```bash
-# Build the module
-go build ./module/...
-
-# Run tests
-go test -v ./module/...
-```
-
-## Module Overview
-
-See [overview.md](overview.md) for architecture and design details.
+See the component [README](../../README.md) for the full configuration reference.
