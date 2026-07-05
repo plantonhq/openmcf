@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscertmanagercert
+spec:
+  # An ACM certificate under E2E: the harness runs deploy ->
+  # DescribeCertificate verify -> destroy -> verify-destroyed on both
+  # provisioners. The scenario is a true leaf (no registry prerequisites):
+  # an imported self-signed certificate -- deploys in seconds, no domain
+  # ownership, deletion is immediate. Requested DNS/EMAIL validation on
+  # unowned domains fails at the AWS API (ValidationStatus FAILED with no
+  # DVO records) and blocks the provider create waiter, so the live leaf
+  # uses imported mode. Deliberately not in the live scenario: managed
+  # Route53 validation + the issuance waiter (needs a real owned domain)
+  # and private-CA issuance -- all proven by CEL spec tests and the offline
+  # gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15
