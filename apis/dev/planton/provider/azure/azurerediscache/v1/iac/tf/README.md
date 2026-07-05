@@ -1,46 +1,47 @@
-# AzureRedisCache Terraform Module
+# AzureRedisCache - Terraform Module
 
-This Terraform module provisions an Azure Cache for Redis instance with optional
-firewall rules and patch schedules.
+Terraform implementation for the AzureRedisCache deployment component.
 
 ## Resources Created
 
-- `azurerm_redis_cache.main` -- The Redis cache instance
-- `azurerm_redis_firewall_rule.rules` -- IP-based firewall rules (via `for_each`)
+- `azurerm_redis_cache.main` -- the cache at the chosen tier and size
+- `azurerm_redis_firewall_rule.rules` -- one per `firewall_rules` entry
+  (public-endpoint IP allow-list)
 
-## Key Implementation Details
+## Variable Highlights
 
-### SKU Family Auto-Derivation
-
-The `family` local is computed from `sku_name`: `"P"` for Premium, `"C"` for
-Basic/Standard. This is in `locals.tf`.
-
-### Patch Schedules
-
-Patch schedules use a `dynamic` block to handle zero or more schedules.
-
-### Firewall Rules
-
-Firewall rules use `for_each` keyed by rule name for stable resource addresses.
+| Variable | Notes |
+| --- | --- |
+| `spec.cache_name` | Globally unique DNS label; becomes `{name}.redis.cache.windows.net` |
+| `spec.sku_name` | Spec enum name strings (BASIC/STANDARD/PREMIUM); absent coalesces to STANDARD (tfvars drops zero-valued proto fields); the size-family letter is derived from it |
+| `spec.capacity` | `optional(number, 0)` -- zero is meaningful (C0), so the attribute defaults to 0 rather than null |
+| `spec.access_keys_authentication_enabled` | The keyless posture: only false once Entra auth is on (spec-enforced) |
+| `spec.redis_configuration` | Emitted as a block only when present, so an omitted block deploys Azure's engine defaults; unset memory dials are never sent |
+| `spec.identity` | Type enum name strings mapped to ARM's values; pairs with MANAGED_IDENTITY persistence auth |
+| `spec.patch_schedules[].day_of_week` | Spec enum name strings (MONDAY..SUNDAY) mapped to ARM's capitalized day names |
 
 ## Usage
 
-```bash
-terraform init
-terraform plan -var-file=terraform.tfvars
-terraform apply
+```hcl
+module "redis_cache" {
+  source = "./path/to/module"
+
+  metadata = {
+    name = "app-cache"
+    org  = "mycompany"
+  }
+
+  spec = {
+    region         = "eastus"
+    resource_group = "app-rg"
+    cache_name     = "my-app-cache"
+    sku_name       = "STANDARD"
+    capacity       = 1
+  }
+}
 ```
 
-## Inputs
-
-See `variables.tf` for the full variable specification.
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `redis_id` | Azure Resource Manager ID |
-| `hostname` | Cache hostname |
-| `ssl_port` | SSL port (6380) |
-| `primary_access_key` | Primary authentication key (sensitive) |
-| `primary_connection_string` | Connection string (sensitive) |
+Provisioning runs 15-40 minutes (azurerm's own timeouts are 3 hours).
+The keys and connection strings are secret-bearing outputs; both
+primary and secondary faces are exported so clients rotate with zero
+downtime.

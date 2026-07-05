@@ -421,6 +421,48 @@ func TestAzureStorageEncryptionScope_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurestorageencryptionscope", "terraform")
 }
 
+// --- Azure Redis cache (fixture RG -> Standard C0 cache with Entra auth,
+// firewall rule, patch window; Redis provisioning runs 15-40 min per cache) ---
+
+func TestAzureRedisCache_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerediscache", "pulumi")
+}
+func TestAzureRedisCache_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerediscache", "terraform")
+}
+
+// --- Azure Redis cache access policy (fixture RG -> scenario-local Entra
+// cache -> prefix-scoped custom policy) ---
+
+func TestAzureRedisCacheAccessPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerediscacheaccesspolicy", "pulumi")
+}
+func TestAzureRedisCacheAccessPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerediscacheaccesspolicy", "terraform")
+}
+
+// --- Azure Redis cache access policy assignment (fixture RG + identity ->
+// scenario-local Entra cache -> custom policy -> the grant; proves both FK
+// seams: policy-name and identity-principal references) ---
+
+func TestAzureRedisCacheAccessPolicyAssignment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerediscacheaccesspolicyassignment", "pulumi")
+}
+func TestAzureRedisCacheAccessPolicyAssignment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerediscacheaccesspolicyassignment", "terraform")
+}
+
+// --- Azure Redis linked server (fixture RG -> two scenario-local Premium P1
+// caches in different regions -> the geo-replication link; the most expensive
+// scenario in the suite) ---
+
+func TestAzureRedisLinkedServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureredislinkedserver", "pulumi")
+}
+func TestAzureRedisLinkedServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureredislinkedserver", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

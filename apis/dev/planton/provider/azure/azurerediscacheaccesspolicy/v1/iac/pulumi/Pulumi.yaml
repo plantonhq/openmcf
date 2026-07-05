@@ -1,0 +1,3 @@
+name: azure-redis-cache-access-policy
+runtime: go
+description: Pulumi program for Azure Redis cache access policy (custom data-plane permission set)

@@ -1,0 +1,30 @@
+# Dedicated AzureRedisCache for the grant-chain scenario only. Cache
+# names are globally unique DNS labels, so each scenario that creates
+# and destroys its own parent cache carries a distinct name. BASIC C0 is
+# the cheapest, fastest-provisioning tier that supports Entra
+# authentication and access policies.
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisCache
+metadata:
+  name: planton-oss-e2e-redisgrant-fixture-cache
+  id: planton-oss-e2e-redisgrant-fixture-cache
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurerediscache
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  cacheName: pltn-oss-e2e-redisgrant-fix
+  skuName: BASIC
+  capacity: 0
+  redisConfiguration:
+    # Grants gate token-authenticated clients only.
+    activeDirectoryAuthenticationEnabled: true

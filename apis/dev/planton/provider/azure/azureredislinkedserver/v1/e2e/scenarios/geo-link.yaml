@@ -1,0 +1,36 @@
+# AzureRedisLinkedServer chain scenario: two scenario-local Premium P1
+# caches in different regions (path-form extra fixtures, deploy order:
+# primary then secondary) joined by the link under test. Every spec
+# field resolves by reference -- both cache ids AND the secondary's
+# region ride the same fixture's outputs, proving the
+# never-hand-repeated location seam live. Destroying the link is
+# Azure's failover operation; the destroy phase proves it detaches
+# cleanly with both caches still standing (they tear down afterwards as
+# fixtures).
+apiVersion: azure.planton.dev/v1
+kind: AzureRedisLinkedServer
+metadata:
+  name: planton-oss-e2e-azureredislinkedserver-geo
+  id: planton-oss-e2e-azureredislinkedserver-geo
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureredislinkedserver
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azureredislinkedserver/v1/e2e/primary-cache.yaml, apis/dev/planton/provider/azure/azureredislinkedserver/v1/e2e/secondary-cache.yaml"
+  tags:
+    - planton-e2e
+spec:
+  targetRedisCacheId:
+    valueFrom:
+      name: planton-oss-e2e-redisgeo-primary-cache
+  linkedRedisCacheId:
+    valueFrom:
+      name: planton-oss-e2e-redisgeo-secondary-cache
+  linkedRedisCacheLocation:
+    valueFrom:
+      name: planton-oss-e2e-redisgeo-secondary-cache
+      fieldPath: status.outputs.region
+  serverRole: SECONDARY

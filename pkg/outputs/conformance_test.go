@@ -1468,6 +1468,78 @@ func TestStackOutputsConformance(t *testing.T) {
 				"resource_manager_versionless_id",
 			},
 		},
+		{
+			// AzureRedisCache: redis_cache_id is what the linked-server,
+			// access-policy, and private-endpoint kinds reference; region
+			// is the linked-server location seam; both key faces stay live
+			// so clients rotate with zero downtime.
+			name: "AzureRedisCache",
+			kind: cloudresourcekind.CloudResourceKind_AzureRedisCache,
+			rawOutputs: map[string]interface{}{
+				"redis_cache_id":              "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cache/redis/app-cache",
+				"redis_cache_name":            "app-cache",
+				"region":                      "eastus",
+				"resource_group_name":         "app-rg",
+				"hostname":                    "app-cache.redis.cache.windows.net",
+				"port":                        6379,
+				"ssl_port":                    6380,
+				"primary_access_key":          "primary-key-value",
+				"secondary_access_key":        "secondary-key-value",
+				"primary_connection_string":   "app-cache.redis.cache.windows.net:6380,password=primary-key-value,ssl=True,abortConnect=False",
+				"secondary_connection_string": "app-cache.redis.cache.windows.net:6380,password=secondary-key-value,ssl=True,abortConnect=False",
+				"identity_principal_id":       "11111111-2222-3333-4444-555555555555",
+			},
+			mustPopulate: []string{
+				"redis_cache_id", "redis_cache_name", "region",
+				"resource_group_name", "hostname", "port", "ssl_port",
+				"primary_access_key", "secondary_access_key",
+				"primary_connection_string", "secondary_connection_string",
+				"identity_principal_id",
+			},
+		},
+		{
+			// AzureRedisLinkedServer: the geo hostname follows the CURRENT
+			// primary across failovers -- the stable endpoint applications
+			// point at instead of either cache's own hostname.
+			name: "AzureRedisLinkedServer",
+			kind: cloudresourcekind.CloudResourceKind_AzureRedisLinkedServer,
+			rawOutputs: map[string]interface{}{
+				"linked_server_id":                 "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-east/providers/Microsoft.Cache/redis/app-cache-east/linkedServers/app-cache-west",
+				"linked_server_name":               "app-cache-west",
+				"geo_replicated_primary_host_name": "app-cache-east.geo.redis.cache.windows.net",
+			},
+			mustPopulate: []string{
+				"linked_server_id", "linked_server_name",
+				"geo_replicated_primary_host_name",
+			},
+		},
+		{
+			// AzureRedisCacheAccessPolicy: access_policy_name is the seam
+			// assignments reference to grant the policy to an identity.
+			name: "AzureRedisCacheAccessPolicy",
+			kind: cloudresourcekind.CloudResourceKind_AzureRedisCacheAccessPolicy,
+			rawOutputs: map[string]interface{}{
+				"access_policy_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cache/redis/app-cache/accessPolicies/app-read-only",
+				"access_policy_name": "app-read-only",
+			},
+			mustPopulate: []string{
+				"access_policy_id", "access_policy_name",
+			},
+		},
+		{
+			// AzureRedisCacheAccessPolicyAssignment: the grant half of the
+			// keyless cache story -- id and name identify the grant for
+			// audits and teardown.
+			name: "AzureRedisCacheAccessPolicyAssignment",
+			kind: cloudresourcekind.CloudResourceKind_AzureRedisCacheAccessPolicyAssignment,
+			rawOutputs: map[string]interface{}{
+				"access_policy_assignment_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cache/redis/app-cache/accessPolicyAssignments/app-identity-data-reader",
+				"access_policy_assignment_name": "app-identity-data-reader",
+			},
+			mustPopulate: []string{
+				"access_policy_assignment_id", "access_policy_assignment_name",
+			},
+		},
 	}
 
 	for _, tc := range cases {

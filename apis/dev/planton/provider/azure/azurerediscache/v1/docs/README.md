@@ -1,197 +1,82 @@
-# AzureRedisCache: Deployment Landscape & Design Research
+# AzureRedisCache -- Design Research
 
-## What is Azure Cache for Redis?
+## The Resource
 
-Azure Cache for Redis is Microsoft's fully managed implementation of the open-source Redis
-in-memory data store. It provides sub-millisecond data access for caching, session management,
-real-time analytics, message brokering, and distributed locking workloads. Azure manages
-patching, monitoring, scaling, and high availability.
+Azure Cache for Redis (`Microsoft.Cache/redis`) is the managed
+open-source-Redis service: caching, session state, leaderboards, and
+pub/sub with sub-millisecond latency. The component maps onto
+`azurerm_redis_cache` plus `azurerm_redis_firewall_rule` (azurerm v4.x,
+`internal/services/redis/`), parity-verified field-by-field against
+pulumi-azure v6 (`redis.Cache`, `redis.FirewallRule`).
 
-## Deployment Methods Compared
+Redis ENTERPRISE (`Microsoft.Cache/redisEnterprise`) is a different ARM
+family with different SKUs, modules, and CMK support -- deliberately NOT
+this kind; it is a separate breadth evaluation.
 
-| Method | Scope | Abstraction | Networking | Best For |
-|--------|-------|-------------|------------|----------|
-| Azure Portal | Single cache | GUI | Manual | Learning, one-off |
-| Azure CLI / PowerShell | Single cache | Imperative | Manual | Quick scripting |
-| ARM/Bicep Templates | Full stack | Declarative | In-template | Azure-native IaC |
-| Terraform (`azurerm_redis_cache`) | Full stack | Declarative | In-module | Multi-cloud IaC |
-| Pulumi (`redis.Cache`) | Full stack | Declarative | Programmatic | Multi-cloud, type-safe IaC |
-| **Planton AzureRedisCache** | Full stack | Declarative | Composable | Multi-cloud consistency, infra charts |
+## Field Mapping (azurerm → spec)
 
-### Why Planton for Redis?
+| azurerm | spec | Notes |
+|---|---|---|
+| `name` | `cache_name` | Required, ForceNew, globally unique DNS label; azurerm ships no validator -- the CEL encodes ARM's actual rule (1-63 alnum+hyphen, no edge/consecutive hyphens) |
+| `sku_name` | enum | BASIC/STANDARD/PREMIUM; unspecified deploys STANDARD; downgrade-forces-recreate documented (azurerm CustomizeDiff) |
+| `family` | -- derived | Fully determined by the tier ("C"/"P"); modeling it would spell one fact twice -- both modules derive it |
+| `capacity` | `capacity` | 0-6 field bound + the Premium 1-5 matrix as message CEL (azurerm's CustomizeDiff table) |
+| `redis_version` | same | "4"/"6" string, matching azurerm's contract; major-only |
+| `zones` | same | ForceNew; items constrained to 1-3 |
+| `subnet_id` | same | `StringValueOrRef` → `AzureSubnet.subnet_id`; Premium gate as CEL |
+| `private_static_ip_address` | same | ipv4-validated; requires-subnet CEL |
+| `shard_count` | same | 1-10; Premium gate + mutual exclusion with replicas as CELs |
+| `replicas_per_primary` | same | 1-3; Premium gate |
+| `replicas_per_master` | -- skipped | ARM's legacy alias for the same setting (azurerm carries both with an equal-if-both-set rule only because it must round-trip legacy state); modeling both is contradictable redundant state |
+| `non_ssl_port_enabled` | same | Plain bool, Azure default false |
+| `public_network_access_enabled` | same | optional bool, default true |
+| `access_keys_authentication_enabled` | same | optional bool, default true; the keys-off-requires-Entra CustomizeDiff mirrored as message CEL |
+| `redis_configuration.*` | `redis_configuration` message | Full block: Entra auth, eviction policy vocabulary (Redis's own), memory dials (non-Basic CEL), keyspace events, auth toggle (VNet-only CEL), persistence auth enum, RDB/AOF (Premium CELs; conn-string-or-managed-identity CEL); all three storage connection strings `(sensitive)` |
+| `redis_configuration.maxclients` | -- skipped | Computed-only in azurerm (ARM derives it from size); not an input |
+| `identity` | `identity` message | SystemAssigned/UserAssigned with UAI FKs and the ids-match-type CEL (the storage-account precedent) |
+| `tenant_settings` | same | Raw map passthrough |
+| `patch_schedule` | `patch_schedules` | day_of_week as a closed 7-day enum (azurerm validates IsDayOfTheWeek -- ARM's Everyday/Weekend aliases are not accepted by the provider); ISO-8601 window CEL |
+| firewall rules (own resource) | `firewall_rules` | Folded (the Postgres/MySQL/MSSQL verdict): pure IP filters, never FK-referenced, no life without the cache; ipv4 validation added |
+| `minimum_tls_version` | -- skipped | Azure retired TLS <1.2 platform-wide (Aug 2025); azurerm v5 accepts only "1.2" -- a one-legal-value knob is dead surface, the provider default applies |
 
-Planton's value is **composability**. A Redis cache rarely exists in isolation -- it's
-part of a larger deployment alongside databases, compute, and networking. Planton's
-`StringValueOrRef` mechanism lets infra charts wire the Redis cache into dependency-aware
-deployment DAGs alongside AzureResourceGroup, AzureSubnet, AzurePostgresqlFlexibleServer,
-and other resources.
+## Decomposition Decisions
 
-## Azure Cache for Redis Architecture
+- **Firewall rules and patch schedules FOLD** -- rules are pure filters;
+  the patch schedule is ARM's singleton per-cache document (the storage
+  lifecycle-policy class).
+- **The linked server SPLITS** (`AzureRedisLinkedServer`) -- deleting
+  the link IS the failover operation; a fold would make DR a spec edit
+  on the surviving cache.
+- **Access policies and assignments SPLIT**
+  (`AzureRedisCacheAccessPolicy`/`...Assignment`) -- the assignment is
+  the grant class (a module must never own grants -- the role-assignment
+  precedent), and policies are many-per-cache, referenced by name.
 
-### Tier Comparison (Deep)
+## Recorded Skips (with reasons)
 
-**Basic**: Single Redis node, no replication, no SLA. Azure allocates a VM running
-the Redis process. If the VM fails, the cache is rebuilt from scratch (data loss).
-The only use case is development, testing, and CI/CD pipelines.
+- `replicas_per_master`, `minimum_tls_version`, `maxclients` -- above.
+- Redis Enterprise (CMK, RediSearch modules, active geo-replication) --
+  a different ARM resource family, recorded as a breadth evaluation.
 
-**Standard**: Two-node deployment (primary + replica). Azure manages automatic
-failover -- if the primary node fails, the replica promotes automatically. This
-provides a 99.9% SLA. The replica is not directly accessible to clients; it exists
-solely for failover. This is the right tier for most production workloads.
+## Operational Behavior Worth Knowing
 
-**Premium**: Same two-node base as Standard, plus advanced features:
-- **VNet injection**: Deploy into a dedicated subnet for network isolation
-- **Redis Cluster**: Shard data across multiple primary/replica pairs (1-10 shards)
-- **Data persistence**: RDB snapshots or AOF logs to Azure Blob Storage
-- **Zone redundancy**: Distribute nodes across availability zones
-- **Larger sizes**: P1-P5 (6 GB to 120 GB per shard)
+- **Provisioning is the slowest in the Azure catalog**: 15-40 minutes
+  typical; azurerm's own timeouts are 3 hours.
+- **RDB and AOF persistence are alternatives in practice** -- enable one;
+  ARM accepts both flags but the engine persists via one pipeline.
+- **Managed-identity persistence** needs the identity granted "Storage
+  Blob Data Contributor" on the persistence account -- the exported
+  `identity_principal_id` is the grant target.
+- **A just-deleted cache name is held by Azure** -- sequential
+  delete-recreate of the same name fails; the E2E scenarios use
+  scenario-local fixtures for exactly this reason.
 
-### Memory Management
+## Composition
 
-Redis is an in-memory data store. When the cache reaches its memory limit, the
-`maxmemory_policy` determines behavior:
-
-1. **Eviction-based policies** (`volatile-lru`, `allkeys-lru`, etc.): Redis removes
-   keys to make room for new writes. This is the default behavior and appropriate
-   for caching workloads.
-
-2. **No-eviction** (`noeviction`): Redis returns errors on writes when full. This
-   protects against data loss but requires careful memory monitoring.
-
-The `maxmemory_reserved` and `maxmemory_delta` settings (omitted in v1) control how
-much memory Redis reserves for non-data overhead (replication buffers, fragmentation).
-These are advanced tuning parameters for Premium tier.
-
-### Networking
-
-**Public access**: Default mode. The cache gets a public hostname
-(`{name}.redis.cache.windows.net`) and is accessible from any network.
-Firewall rules restrict which IPs can connect.
-
-**VNet injection** (Premium only): The cache is deployed into a dedicated subnet
-and gets a private IP. No public endpoint. This is the strongest isolation model
-but requires Premium tier pricing.
-
-**Private Endpoint**: Any tier (Standard/Premium) can use Azure Private Link via
-the AzurePrivateEndpoint resource. This creates a private IP in your VNet that
-maps to the cache's public endpoint. A middle-ground between public access and
-full VNet injection.
-
-## 80/20 Scoping Rationale
-
-### What's Included (Covers 80%+ of Production Use Cases)
-
-| Feature | Field | Rationale |
-|---------|-------|-----------|
-| SKU tier selection | `sku_name` | Every deployment needs to choose a tier |
-| Cache sizing | `capacity` | Every deployment needs to choose a size |
-| Eviction policy | `maxmemory_policy` | Critical for cache behavior in production |
-| Network access | `public_network_access_enabled` | Private vs public is a baseline decision |
-| VNet injection | `subnet_id` | Enterprise networking requirement |
-| Zone redundancy | `zones` | Production HA requirement |
-| Redis Cluster | `shard_count` | Large-scale caching requirement |
-| Maintenance windows | `patch_schedules` | Production operational requirement |
-| Firewall rules | `firewall_rules` | Network security baseline |
-| TLS enforcement | `minimum_tls_version` | Security compliance |
-| Redis version | `redis_version` | Engine version control |
-
-### What's Deferred to v2 (Niche or Advanced)
-
-| Feature | Rationale for Deferral |
-|---------|----------------------|
-| Data persistence (RDB/AOF) | Premium-only, requires storage account wiring |
-| Managed identity | Advanced Key Vault / AAD auth integration |
-| Memory tuning (maxmemory_reserved, delta) | Advanced DBA territory, auto-tuned by Azure |
-| Replicas per primary | Premium replication fine-tuning |
-| AAD-only authentication | New feature, enterprise IAM integration |
-| Linked servers (geo-replication) | Complex multi-region setup |
-| Access policies | New RBAC model for Redis |
-| Tenant settings | Custom settings map |
-
-## Common Deployment Patterns
-
-### Pattern 1: Application Cache (Standard)
-
-The most common pattern. A Standard C2 or C3 cache sitting between the application
-and database, caching query results, API responses, and computed values.
-
-**Key decisions:**
-- `sku_name: Standard` (SLA, replication)
-- `maxmemory_policy: allkeys-lru` (all keys are cache entries)
-- `capacity: 2-3` (2.5 GB to 6 GB)
-
-### Pattern 2: Session Store (Standard)
-
-Web application session storage across multiple app instances. Sessions have TTL,
-so `volatile-lru` (default) is appropriate.
-
-**Key decisions:**
-- `sku_name: Standard`
-- `maxmemory_policy: volatile-lru` (default, sessions have TTL)
-- `capacity: 1-2` (1 GB to 2.5 GB)
-
-### Pattern 3: Enterprise Cache (Premium + VNet)
-
-Network-isolated cache for enterprise workloads requiring VNet integration and
-zone redundancy.
-
-**Key decisions:**
-- `sku_name: Premium`
-- `subnet_id` pointing to a dedicated subnet
-- `zones: ["1", "2"]` for zone redundancy
-- `public_network_access_enabled: false`
-
-### Pattern 4: High-Throughput Cache (Premium + Cluster)
-
-Large-scale caching with Redis Cluster sharding for higher throughput and larger
-data sets than a single node can handle.
-
-**Key decisions:**
-- `sku_name: Premium`
-- `shard_count: 2-5` depending on data size
-- `capacity: 2-3` per shard
-
-## Connection String Format
-
-Azure Cache for Redis connection strings follow this format:
-
-```
-{hostname}:{ssl_port},password={primary_access_key},ssl=True,abortConnect=False
-```
-
-Example:
-```
-myapp-redis.redis.cache.windows.net:6380,password=abc123...,ssl=True,abortConnect=False
-```
-
-Most Redis client libraries (.NET StackExchange.Redis, Node.js ioredis, Python redis-py)
-accept this format directly.
-
-## Infra Chart Composition
-
-### Upstream Dependencies
-
-- **AzureResourceGroup** (`resource_group`): Container for the cache
-- **AzureSubnet** (`subnet_id`): VNet injection target (Premium only)
-
-### Downstream Consumers
-
-AzureRedisCache is typically a leaf resource -- applications consume it via
-connection string, not via other Planton resources. The exception is
-AzurePrivateEndpoint, which references `redis_id` for private connectivity.
-
-### DAG Position
-
-```
-AzureResourceGroup (Layer 0)
-  └── AzureRedisCache (Layer 1-2, alongside databases)
-        └── AzurePrivateEndpoint (optional, Layer 2-3)
-```
-
-## Further Reading
-
-- [Azure Cache for Redis Documentation](https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/)
-- [Redis Eviction Policies](https://redis.io/docs/reference/eviction/)
-- [Azure Cache for Redis Best Practices](https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/cache-best-practices)
-- [Terraform azurerm_redis_cache](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/redis_cache)
-- [Pulumi Azure Redis Cache](https://www.pulumi.com/registry/packages/azure/api-docs/redis/cache/)
+- `resource_group` → `AzureResourceGroup.resource_group_name`
+- `subnet_id` → `AzureSubnet.subnet_id`
+- `identity.user_assigned_identity_ids` → `AzureUserAssignedIdentity.identity_id`
+- `redis_cache_id` output ← `AzureRedisLinkedServer`,
+  `AzureRedisCacheAccessPolicy`, `AzureRedisCacheAccessPolicyAssignment`,
+  `AzurePrivateEndpoint`
+- `region` output ← `AzureRedisLinkedServer.linked_redis_cache_location`

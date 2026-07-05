@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurerediscacheaccesspolicy
+spec:
+  # The harness deploys the fixture resource group and a SCENARIO-LOCAL
+  # Entra-enabled BASIC cache (declared via the extra-prerequisites
+  # annotation -- cache names are globally unique, so the cache is never
+  # a shared recreate-per-scenario registry prerequisite), creates a
+  # prefix-scoped custom policy, verifies it via the ARM API, destroys
+  # it, and verifies it is gone.
+  #
+  # The policy itself deploys in seconds; the timeout is sized by the
+  # fixture cache's provisioning (Redis is the slowest-provisioning
+  # service in the Azure catalog).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 90

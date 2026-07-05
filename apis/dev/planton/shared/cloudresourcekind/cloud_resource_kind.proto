@@ -856,10 +856,15 @@ enum CloudResourceKind {
     id_prefix: "azpg"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because the cache is created inside
+  // a referenced resource group (VNet injection additionally references a
+  // dedicated subnet, but only the Premium tier supports it, so it is not a
+  // registry prerequisite).
   AzureRedisCache = 431 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azred"
+    prerequisites: [AzureResourceGroup]
   }];
   AzureCosmosdbAccount = 432 [(kind_meta) = {
     provider: azure
@@ -900,6 +905,33 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azmsqlpool"
     prerequisites: [AzureMssqlServer]
+  }];
+  // The target and linked caches are referenced via ARM ids, not
+  // auto-deployed: cache names are globally unique DNS names that Azure
+  // holds after deletion, so E2E scenarios declare their own cache fixtures
+  // instead of a registry prerequisite recreating the same name per run.
+  AzureRedisLinkedServer = 437 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azredlink"
+  }];
+  // The parent cache is referenced via redis_cache_id, not auto-deployed:
+  // cache names are globally unique DNS names that Azure holds after
+  // deletion, so E2E scenarios declare their own cache fixtures instead of
+  // a registry prerequisite recreating the same name per run.
+  AzureRedisCacheAccessPolicy = 438 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azredpol"
+  }];
+  // The parent cache is referenced via redis_cache_id, not auto-deployed:
+  // cache names are globally unique DNS names that Azure holds after
+  // deletion, so E2E scenarios declare their own cache fixtures instead of
+  // a registry prerequisite recreating the same name per run.
+  AzureRedisCacheAccessPolicyAssignment = 439 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azredpola"
   }];
   AzureContainerAppEnvironment = 440 [(kind_meta) = {
     provider: azure

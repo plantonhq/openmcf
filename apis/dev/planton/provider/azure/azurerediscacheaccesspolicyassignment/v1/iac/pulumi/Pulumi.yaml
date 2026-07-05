@@ -1,0 +1,3 @@
+name: azure-redis-cache-access-policy-assignment
+runtime: go
+description: Pulumi program for Azure Redis cache access policy assignment (data-plane grant)

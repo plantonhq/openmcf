@@ -160,6 +160,9 @@ import (
 	azurepublicipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepublicip/v1"
 	azurepublicipprefixv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurepublicipprefix/v1"
 	azurerediscachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurerediscache/v1"
+	azurerediscacheaccesspolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurerediscacheaccesspolicy/v1"
+	azurerediscacheaccesspolicyassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1"
+	azureredislinkedserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureredislinkedserver/v1"
 	azureresourcegroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureresourcegroup/v1"
 	azureroleassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroleassignment/v1"
 	azureroledefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureroledefinition/v1"
@@ -625,6 +628,9 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzurePublicIp:                         &azurepublicipv1.AzurePublicIp{},
 	cloudresourcekind.CloudResourceKind_AzurePublicIpPrefix:                   &azurepublicipprefixv1.AzurePublicIpPrefix{},
 	cloudresourcekind.CloudResourceKind_AzureRedisCache:                       &azurerediscachev1.AzureRedisCache{},
+	cloudresourcekind.CloudResourceKind_AzureRedisCacheAccessPolicy:           &azurerediscacheaccesspolicyv1.AzureRedisCacheAccessPolicy{},
+	cloudresourcekind.CloudResourceKind_AzureRedisCacheAccessPolicyAssignment: &azurerediscacheaccesspolicyassignmentv1.AzureRedisCacheAccessPolicyAssignment{},
+	cloudresourcekind.CloudResourceKind_AzureRedisLinkedServer:                &azureredislinkedserverv1.AzureRedisLinkedServer{},
 	cloudresourcekind.CloudResourceKind_AzureResourceGroup:                    &azureresourcegroupv1.AzureResourceGroup{},
 	cloudresourcekind.CloudResourceKind_AzureRoleAssignment:                   &azureroleassignmentv1.AzureRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureRoleDefinition:                   &azureroledefinitionv1.AzureRoleDefinition{},
