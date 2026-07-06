@@ -42,9 +42,18 @@ type GcpMemorystoreInstanceStackOutputs struct {
 	InstanceUid string `protobuf:"bytes,3,opt,name=instance_uid,json=instanceUid,proto3" json:"instance_uid,omitempty"`
 	// Memory size per node in GB, determined by the chosen node_type.
 	// Useful for capacity planning and monitoring.
-	NodeSizeGb    float64 `protobuf:"fixed64,4,opt,name=node_size_gb,json=nodeSizeGb,proto3" json:"node_size_gb,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NodeSizeGb float64 `protobuf:"fixed64,4,opt,name=node_size_gb,json=nodeSizeGb,proto3" json:"node_size_gb,omitempty"`
+	// Full resource path of the instance
+	// (projects/{project}/locations/{location}/instances/{instance}).
+	// The composition key for cross-instance replication: a SECONDARY's
+	// primary_instance reference resolves to this value.
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	// Full resource path of the backup collection GCP maintains for this
+	// instance once automated backups are configured — where
+	// managed_backup_source paths for seeding new instances come from.
+	BackupCollection string `protobuf:"bytes,6,opt,name=backup_collection,json=backupCollection,proto3" json:"backup_collection,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GcpMemorystoreInstanceStackOutputs) Reset() {
@@ -105,17 +114,33 @@ func (x *GcpMemorystoreInstanceStackOutputs) GetNodeSizeGb() float64 {
 	return 0
 }
 
+func (x *GcpMemorystoreInstanceStackOutputs) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpMemorystoreInstanceStackOutputs) GetBackupCollection() string {
+	if x != nil {
+		return x.BackupCollection
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/gcp/gcpmemorystoreinstance/v1/stack_outputs.proto\x122dev.planton.provider.gcp.gcpmemorystoreinstance.v1\"\xbd\x01\n" +
+	"Fdev/planton/provider/gcp/gcpmemorystoreinstance/v1/stack_outputs.proto\x122dev.planton.provider.gcp.gcpmemorystoreinstance.v1\"\xfe\x01\n" +
 	"\"GcpMemorystoreInstanceStackOutputs\x12+\n" +
 	"\x11discovery_address\x18\x01 \x01(\tR\x10discoveryAddress\x12%\n" +
 	"\x0ediscovery_port\x18\x02 \x01(\x05R\rdiscoveryPort\x12!\n" +
 	"\finstance_uid\x18\x03 \x01(\tR\vinstanceUid\x12 \n" +
 	"\fnode_size_gb\x18\x04 \x01(\x01R\n" +
-	"nodeSizeGbB\xa9\x03\n" +
+	"nodeSizeGb\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\x12+\n" +
+	"\x11backup_collection\x18\x06 \x01(\tR\x10backupCollectionB\xa9\x03\n" +
 	"6com.dev.planton.provider.gcp.gcpmemorystoreinstance.v1B\x11StackOutputsProtoP\x01Zmgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1;gcpmemorystoreinstancev1\xa2\x02\x05DPPGG\xaa\x022Dev.Planton.Provider.Gcp.Gcpmemorystoreinstance.V1\xca\x022Dev\\Planton\\Provider\\Gcp\\Gcpmemorystoreinstance\\V1\xe2\x02>Dev\\Planton\\Provider\\Gcp\\Gcpmemorystoreinstance\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Gcp::Gcpmemorystoreinstance::V1b\x06proto3"
 
 var (

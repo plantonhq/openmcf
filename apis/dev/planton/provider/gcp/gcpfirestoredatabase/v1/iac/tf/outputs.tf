@@ -1,6 +1,10 @@
+# Fully qualified database ID — the canonical identifier for API calls
+# and client library connections. The resource's own id attribute
+# already carries the projects/{project}/databases/{name} form, with the
+# project resolved even when the spec rode the provider default.
 output "database_id" {
   description = "Fully qualified database ID (projects/{project}/databases/{name})"
-  value       = "projects/${local.project_id}/databases/${google_firestore_database.this.name}"
+  value       = google_firestore_database.this.id
 }
 
 output "database_name" {
@@ -21,4 +25,21 @@ output "create_time" {
 output "earliest_version_time" {
   description = "Earliest timestamp for point-in-time recovery reads"
   value       = google_firestore_database.this.earliest_version_time
+}
+
+# The retention window PITR restores and earliest-version reads can
+# target (3600s without PITR, 604800s with it).
+output "version_retention_period" {
+  description = "How long past versions of data are retained"
+  value       = google_firestore_database.this.version_retention_period
+}
+
+output "key_prefix" {
+  description = "Key prefix for Datastore Mode app identifiers"
+  value       = google_firestore_database.this.key_prefix
+}
+
+output "update_time" {
+  description = "Timestamp of the database's last configuration update"
+  value       = google_firestore_database.this.update_time
 }

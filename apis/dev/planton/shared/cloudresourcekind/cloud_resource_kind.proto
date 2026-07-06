@@ -922,6 +922,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpmsi"
+    prerequisites: [GcpServiceConnectionPolicy]
   }];
   GcpCloudSqlDatabase = 637 [(kind_meta) = {
     provider: gcp
@@ -955,6 +956,24 @@ enum CloudResourceKind {
       GcpSpannerInstance,
       GcpSpannerDatabase
     ]
+  }];
+  GcpBigtableTable = 642 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpbttbl"
+    prerequisites: [GcpBigtableInstance]
+  }];
+  GcpFirestoreBackupSchedule = 643 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpfstbs"
+    prerequisites: [GcpFirestoreDatabase]
+  }];
+  GcpFirestoreIndex = 644 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpfstidx"
+    prerequisites: [GcpFirestoreDatabase]
   }];
   GcpBigQueryDataset = 650 [(kind_meta) = {
     provider: gcp
@@ -1074,6 +1093,15 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpaddr"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork
+    ]
+  }];
+  GcpServiceConnectionPolicy = 715 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpscp"
     prerequisites: [
       GcpVpcNetwork,
       GcpSubnetwork

@@ -19,11 +19,16 @@ type Locals struct {
 func initializeLocals(_ *pulumi.Context, stackInput *gcpbigtableinstancev1.GcpBigtableInstanceStackInput) *Locals {
 	locals := &Locals{}
 	locals.GcpBigtableInstance = stackInput.Target
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     "true",
-		gcplabelkeys.ResourceName: locals.GcpBigtableInstance.Spec.InstanceName,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpBigtableInstance.String()),
+
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpBigtableInstance.Spec.Labels {
+		locals.GcpLabels[key] = value
 	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.GcpBigtableInstance.Spec.InstanceName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpBigtableInstance.String())
 
 	if locals.GcpBigtableInstance.Metadata.Org != "" {
 		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpBigtableInstance.Metadata.Org

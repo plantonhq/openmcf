@@ -1,6 +1,4 @@
-name: gcp-firestore-database
+name: gcpfirestoredatabase-pulumi-project
 runtime:
   name: go
-  options:
-    binary: ./pulumi
 description: Planton GcpFirestoreDatabase Pulumi module

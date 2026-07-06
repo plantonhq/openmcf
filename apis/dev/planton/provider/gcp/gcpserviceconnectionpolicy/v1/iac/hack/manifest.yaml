@@ -1,0 +1,29 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceConnectionPolicy
+metadata:
+  name: my-sample-scp
+spec:
+  # GCP project owning the network and the policy.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Region the policy applies to — service connectivity automation is
+  # regional, so each region needs its own policy.
+  location: us-central1
+
+  # The consumer VPC network — a resource path (a GcpVpcNetwork reference
+  # resolves to it automatically).
+  network:
+    value: projects/my-gcp-project-123/global/networks/my-vpc
+
+  # The producer's published service class. gcp-memorystore authorizes
+  # Memorystore for Valkey instances on this network.
+  serviceClass: gcp-memorystore
+
+  # Subnets the automation draws PSC endpoint IPs from, plus an optional
+  # connection cap.
+  pscConfig:
+    subnetworks:
+      - value: projects/my-gcp-project-123/regions/us-central1/subnetworks/my-subnet
+    limit: 10

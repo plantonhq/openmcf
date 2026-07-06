@@ -26,4 +26,15 @@ message GcpMemorystoreInstanceStackOutputs {
   // Memory size per node in GB, determined by the chosen node_type.
   // Useful for capacity planning and monitoring.
   double node_size_gb = 4;
+
+  // Full resource path of the instance
+  // (projects/{project}/locations/{location}/instances/{instance}).
+  // The composition key for cross-instance replication: a SECONDARY's
+  // primary_instance reference resolves to this value.
+  string name = 5;
+
+  // Full resource path of the backup collection GCP maintains for this
+  // instance once automated backups are configured — where
+  // managed_backup_source paths for seeding new instances come from.
+  string backup_collection = 6;
 }

@@ -771,6 +771,108 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpServiceConnectionPolicy: the fully qualified policy path, the
+			// short name, the connectivity mechanism the automation reports,
+			// and the change-detection etag.
+			name: "GcpServiceConnectionPolicy",
+			kind: cloudresourcekind.CloudResourceKind_GcpServiceConnectionPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_id":      "projects/prod-project/locations/us-central1/serviceConnectionPolicies/memorystore-policy",
+				"name":           "memorystore-policy",
+				"infrastructure": "PSC",
+				"etag":           "abc123etag",
+			},
+			mustPopulate: []string{"policy_id", "name", "infrastructure", "etag"},
+		},
+		{
+			// GcpMemorystoreInstance: the PSC discovery endpoint (address +
+			// numeric port), the server uid, the node memory a node_type
+			// implies (float), the full resource path DR secondaries
+			// reference, and the backup collection automated backups land in.
+			name: "GcpMemorystoreInstance",
+			kind: cloudresourcekind.CloudResourceKind_GcpMemorystoreInstance,
+			rawOutputs: map[string]interface{}{
+				"discovery_address": "10.9.0.5",
+				"discovery_port":    6379,
+				"instance_uid":      "a1b2c3d4-uid",
+				"node_size_gb":      1.4,
+				"name":              "projects/prod-project/locations/us-central1/instances/prod-cache",
+				"backup_collection": "projects/prod-project/locations/us-central1/backupCollections/col-1",
+			},
+			mustPopulate: []string{
+				"discovery_address", "discovery_port", "instance_uid",
+				"node_size_gb", "name", "backup_collection",
+			},
+		},
+		{
+			// GcpBigtableInstance: the fully qualified instance path and the
+			// short name client libraries connect with.
+			name: "GcpBigtableInstance",
+			kind: cloudresourcekind.CloudResourceKind_GcpBigtableInstance,
+			rawOutputs: map[string]interface{}{
+				"instance_id":   "projects/prod-project/instances/prod-bigtable",
+				"instance_name": "prod-bigtable",
+			},
+			mustPopulate: []string{"instance_id", "instance_name"},
+		},
+		{
+			// GcpBigtableTable: the fully qualified table path, the short
+			// name clients open, and the parent instance.
+			name: "GcpBigtableTable",
+			kind: cloudresourcekind.CloudResourceKind_GcpBigtableTable,
+			rawOutputs: map[string]interface{}{
+				"table_id":      "projects/prod-project/instances/prod-bigtable/tables/events",
+				"table_name":    "events",
+				"instance_name": "prod-bigtable",
+			},
+			mustPopulate: []string{"table_id", "table_name", "instance_name"},
+		},
+		{
+			// GcpFirestoreDatabase: the fully qualified database path, the
+			// name clients connect with, the server-generated uid, and the
+			// PITR/version-retention posture timestamps.
+			name: "GcpFirestoreDatabase",
+			kind: cloudresourcekind.CloudResourceKind_GcpFirestoreDatabase,
+			rawOutputs: map[string]interface{}{
+				"database_id":              "projects/prod-project/databases/orders-db",
+				"database_name":            "orders-db",
+				"uid":                      "8d68546e-3c88-4244-8722-0a4b0a4b0a4b",
+				"create_time":              "2026-07-05T10:00:00Z",
+				"earliest_version_time":    "2026-07-05T10:00:00Z",
+				"version_retention_period": "3600s",
+				"key_prefix":               "",
+				"update_time":              "2026-07-05T10:00:00Z",
+			},
+			mustPopulate: []string{
+				"database_id", "database_name", "uid",
+				"create_time", "earliest_version_time",
+				"version_retention_period", "update_time",
+			},
+		},
+		{
+			// GcpFirestoreBackupSchedule: the server-assigned schedule id and
+			// the parent database name the verifier reassembles the resource
+			// path from.
+			name: "GcpFirestoreBackupSchedule",
+			kind: cloudresourcekind.CloudResourceKind_GcpFirestoreBackupSchedule,
+			rawOutputs: map[string]interface{}{
+				"schedule_id": "8d68546e-3c88-4244-8722-0a4b0a4b0a4b",
+				"database":    "orders-db",
+			},
+			mustPopulate: []string{"schedule_id", "database"},
+		},
+		{
+			// GcpFirestoreIndex: the server-defined index resource path and
+			// the collection group it serves.
+			name: "GcpFirestoreIndex",
+			kind: cloudresourcekind.CloudResourceKind_GcpFirestoreIndex,
+			rawOutputs: map[string]interface{}{
+				"index_id":   "projects/prod-project/databases/orders-db/collectionGroups/orders/indexes/CICAgJjF6JEK",
+				"collection": "orders",
+			},
+			mustPopulate: []string{"index_id", "collection"},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

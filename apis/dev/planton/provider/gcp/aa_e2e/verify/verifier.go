@@ -12,16 +12,20 @@ package verify
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/alloydb/v1"
 	"google.golang.org/api/bigquery/v2"
+	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/dns/v1"
+	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/networkconnectivity/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
 	"google.golang.org/api/spanner/v1"
@@ -35,21 +39,30 @@ import (
 type Services struct {
 	// Project is the resolved E2E test project id (exported as GOOGLE_PROJECT
 	// for the IaC subprocesses); the fallback when outputs omit a project.
-	Project   string
-	Crm       *cloudresourcemanager.Service
-	Iam       *iam.Service
-	Compute   *compute.Service
-	Storage   *storage.Service
-	SqlAdmin  *sqladmin.Service
-	Redis     *redis.Service
-	Container *container.Service
-	Run       *run.Service
-	AlloyDB   *alloydb.Service
-	DNS       *dns.Service
-	Spanner   *spanner.Service
-	BigQuery  *bigquery.Service
-	VpcAccess *vpcaccess.Service
-	Functions *cloudfunctions.Service
+	Project             string
+	Crm                 *cloudresourcemanager.Service
+	Iam                 *iam.Service
+	Compute             *compute.Service
+	Storage             *storage.Service
+	SqlAdmin            *sqladmin.Service
+	Redis               *redis.Service
+	Container           *container.Service
+	Run                 *run.Service
+	AlloyDB             *alloydb.Service
+	DNS                 *dns.Service
+	Spanner             *spanner.Service
+	BigQuery            *bigquery.Service
+	VpcAccess           *vpcaccess.Service
+	Functions           *cloudfunctions.Service
+	NetworkConnectivity *networkconnectivity.Service
+	BigtableAdmin       *bigtableadmin.Service
+	Firestore           *firestore.Service
+
+	// RestClient is an ADC-authenticated HTTP client for GCP services whose
+	// typed Go client is not yet in the pinned google.golang.org/api line
+	// (e.g. the Memorystore for Valkey API). Verifiers use it for plain
+	// REST GET probes only.
+	RestClient *http.Client
 }
 
 // Verifier checks a single component's GCP resource for existence/absence.
@@ -108,6 +121,13 @@ var verifiers = map[string]Verifier{
 	"gcpbigquerytable":                &bigQueryTableVerifier{},
 	"gcpserverlessvpcconnector":       &serverlessVpcConnectorVerifier{},
 	"gcpcloudfunction":                &cloudFunctionVerifier{},
+	"gcpserviceconnectionpolicy":      &serviceConnectionPolicyVerifier{},
+	"gcpmemorystoreinstance":          &memorystoreInstanceVerifier{},
+	"gcpfirestoredatabase":            &firestoreDatabaseVerifier{},
+	"gcpfirestorebackupschedule":      &firestoreBackupScheduleVerifier{},
+	"gcpfirestoreindex":               &firestoreIndexVerifier{},
+	"gcpbigtableinstance":             &bigtableInstanceVerifier{},
+	"gcpbigtabletable":                &bigtableTableVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

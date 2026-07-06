@@ -28,4 +28,17 @@ message GcpFirestoreDatabaseStackOutputs {
   // 7 days with PITR enabled). Useful for planning point-in-time
   // recovery operations. RFC3339 UTC format.
   string earliest_version_time = 5;
+
+  // How long past versions of data are retained (e.g. "3600s" without
+  // PITR, "604800s" with PITR enabled) — the window earliest-version
+  // reads and PITR restores can target.
+  string version_retention_period = 6;
+
+  // Key prefix for Datastore Mode app identifiers (the appid of a
+  // legacy App Engine application). Empty for databases without one.
+  string key_prefix = 7;
+
+  // Timestamp of the database's last configuration update. RFC3339 UTC
+  // format.
+  string update_time = 8;
 }

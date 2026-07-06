@@ -1,0 +1,25 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpBigtableTable
+metadata:
+  name: usage-counters
+spec:
+  instance:
+    valueFrom:
+      kind: GcpBigtableInstance
+      name: prod-bigtable
+      fieldPath: status.outputs.instance_name
+
+  columnFamilies:
+    # An aggregate family: intsum cells are incremented server-side
+    # atomically at write time — no read-modify-write race, no
+    # application-side counter logic. Age-based GC bounds how long
+    # accumulated counters are retained.
+    - family: counts
+      type: intsum
+      gcPolicy:
+        maxAge: 8760h # 1 year
+
+    # A regular family beside it for dimensional attributes.
+    - family: attrs
+      gcPolicy:
+        maxVersions: 1

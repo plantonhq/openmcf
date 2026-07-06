@@ -15,7 +15,7 @@ When you deploy a GcpMemorystoreInstance resource, Planton provisions:
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** where the Memorystore instance will be created
+- **A `GcpServiceConnectionPolicy`** for the `gcp-memorystore` service class on each consumer network in the instance's region — deployed BEFORE the instance (without it, creation fails with a connectivity error)
 - **A VPC network** in the consumer project for PSC endpoint creation (format: `projects/{project_id}/global/networks/{network_id}`)
 - **A Cloud KMS key** if using customer-managed encryption at rest (CMEK)
 
@@ -60,7 +60,6 @@ This creates a single-shard Memorystore instance in `us-central1` with a PSC end
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `string` | GCP project where the instance is created. Can reference GcpProject via `valueFrom`. | Required |
 | `instanceName` | `string` | Name of the Memorystore instance. Becomes the GCP resource name. Immutable after creation. | 4-63 chars, lowercase letters/numbers/hyphens, must start with letter and end with letter or number |
 | `location` | `string` | GCP region for deployment (e.g., `us-central1`). Immutable after creation. | Required |
 | `shardCount` | `int` | Number of shards. Each shard handles a portion of the keyspace. | Minimum 1 |
@@ -69,6 +68,7 @@ This creates a single-shard Memorystore instance in `us-central1` with a PSC end
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `projectId` | `string` | provider default | GCP project where the instance is created. Can reference GcpProject via `valueFrom`. |
 | `mode` | `string` | — | Instance topology. `CLUSTER`: sharded mode requiring cluster-aware clients. `CLUSTER_DISABLED`: standalone single-primary mode. Immutable after creation. |
 | `nodeType` | `string` | GCP default | CPU and memory per node. `SHARED_CORE_NANO`, `STANDARD_SMALL`, `HIGHMEM_MEDIUM`, or `HIGHMEM_XLARGE`. |
 | `engineVersion` | `string` | Latest | Valkey engine version (e.g., `VALKEY_8_0`, `VALKEY_7_2`). |
@@ -76,7 +76,7 @@ This creates a single-shard Memorystore instance in `us-central1` with a PSC end
 | `replicaCount` | `int` | `0` | Read replicas per shard (0-5). Replicas provide read scaling and automatic failover. |
 | `pscAutoConnections` | `object[]` | `[]` | PSC endpoints for VPC connectivity. Each entry creates a PSC endpoint in the specified consumer VPC. Immutable after creation. |
 | `pscAutoConnections[].network` | `string` | — | Consumer VPC network. Format: `projects/{project}/global/networks/{network}`. Can reference GcpVpcNetwork via `valueFrom`. |
-| `pscAutoConnections[].projectId` | `string` | — | Consumer project ID for the PSC endpoint. Can reference GcpProject via `valueFrom`. |
+| `pscAutoConnections[].projectId` | `string` | provider default | Consumer project ID for the PSC endpoint. Can reference GcpProject via `valueFrom`. |
 | `authorizationMode` | `string` | `AUTH_DISABLED` | Authentication mode. `AUTH_DISABLED`: no auth. `IAM_AUTH`: GCP IAM credentials required. Immutable after creation. |
 | `transitEncryptionMode` | `string` | `TRANSIT_ENCRYPTION_DISABLED` | TLS encryption mode. `TRANSIT_ENCRYPTION_DISABLED`: no encryption. `SERVER_AUTHENTICATION`: clients verify server via TLS. Immutable after creation. |
 | `kmsKey` | `string` | Google-managed | Cloud KMS key for customer-managed encryption at rest. Format: `projects/{p}/locations/{l}/keyRings/{kr}/cryptoKeys/{k}`. Can reference GcpKmsKey via `valueFrom`. Immutable after creation. |
@@ -90,7 +90,13 @@ This creates a single-shard Memorystore instance in `us-central1` with a PSC end
 | `maintenancePolicy.weeklyMaintenanceWindow.hour` | `int` | — | Hour of day (0-23, UTC) when the 1-hour maintenance window starts. |
 | `automatedBackupConfig.startHour` | `int` | — | Hour of day (0-23, UTC) when the daily backup starts. |
 | `automatedBackupConfig.retention` | `string` | — | Backup retention duration in seconds (e.g., `3024000s` for 35 days). Min: `86400s` (1 day). Max: `31536000s` (365 days). |
-| `deletionProtectionEnabled` | `bool` | `false` | Prevents deletion of the instance until this flag is disabled. |
+| `crossInstanceReplicationConfig.instanceRole` | `string` | — | Cross-region DR role: `NONE`, `PRIMARY` (lists secondaries), or `SECONDARY` (points at its primary). Roles exchange in place during switchover. |
+| `crossInstanceReplicationConfig.primaryInstance.instance` | `string` | — | Full resource path of the primary (another instance's `name` output). Required for `SECONDARY`. |
+| `crossInstanceReplicationConfig.secondaryInstances[].instance` | `string` | — | Full resource paths of the secondaries. Set on the `PRIMARY`. |
+| `gcsSource.uris` | `string[]` | — | `gs://` RDB files to seed data from at creation. Mutually exclusive with `managedBackupSource`. Immutable. |
+| `managedBackupSource.backup` | `string` | — | Managed backup path to seed data from at creation. Mutually exclusive with `gcsSource`. Immutable. |
+| `labels` | `map<string, string>` | `{}` | User labels merged beneath Planton platform labels. |
+| `deletionProtectionEnabled` | `bool` | `true` | Prevents deletion of the instance until explicitly set `false`. Both engines send it explicitly, so destroy behavior is engine-independent. |
 
 ## Examples
 
@@ -237,9 +243,12 @@ After deployment, the following outputs are available in `status.outputs`:
 | `discovery_port` | `int` | Port of the instance's discovery endpoint (typically 6379). |
 | `instance_uid` | `string` | Server-generated unique identifier for the instance. Stable across updates. |
 | `node_size_gb` | `double` | Memory size per node in GB, determined by the chosen `nodeType`. Useful for capacity planning. |
+| `name` | `string` | Full resource path of the instance — the composition key for cross-instance replication. |
+| `backup_collection` | `string` | Full resource path of the backup collection automated backups land in. |
 
 ## Related Components
 
+- [GcpServiceConnectionPolicy](/docs/catalog/gcp/gcpserviceconnectionpolicy) — the required PSC authorization on the network (deploy first)
 - [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork) — provides the VPC network for PSC endpoint creation
 - [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project for instance deployment
 - [GcpKmsKey](/docs/catalog/gcp/gcpkmskey) — provides the Cloud KMS key for customer-managed encryption at rest

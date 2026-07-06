@@ -145,6 +145,16 @@ NOTES
   `var.spec.name == "" || can(regex(...))` (or `try(var.spec.name, "") == ""`).
   This bites exactly when the optional field is omitted, so it escapes a plan
   against a fully-populated manifest — test the omitted case.
+- **Gate ambient-project data sources with `count` on actual need:** an
+  unconditional `data "google_project"` (or any live-lookup data source) executes
+  during EVERY plan — including offline plans against the hack manifest's sample
+  project — and fails with "user does not have permission to access Project".
+  When a module resolves the provider's effective project only for entries that
+  omit theirs, compute a `needs_ambient_*` local (spec project empty AND some
+  entry empty) and set `count = local.needs_ambient_* ? 1 : 0` on the data
+  source, referencing it as `data.google_project.this[0]`. This also mirrors the
+  Pulumi side's only-when-needed `GetClientConfig` lookup, keeping the engines'
+  resolution behavior identical.
 
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` in the proto schema

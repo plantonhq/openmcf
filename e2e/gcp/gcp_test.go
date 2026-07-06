@@ -440,6 +440,55 @@ func TestGcpCloudFunction_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpcloudfunction", "terraform")
 }
 
+func TestGcpServiceConnectionPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpserviceconnectionpolicy", "pulumi")
+}
+func TestGcpServiceConnectionPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpserviceconnectionpolicy", "terraform")
+}
+
+func TestGcpMemorystoreInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmemorystoreinstance", "pulumi")
+}
+func TestGcpMemorystoreInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmemorystoreinstance", "terraform")
+}
+
+func TestGcpBigtableInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbigtableinstance", "pulumi")
+}
+func TestGcpBigtableInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbigtableinstance", "terraform")
+}
+
+func TestGcpBigtableTable_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbigtabletable", "pulumi")
+}
+func TestGcpBigtableTable_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpbigtabletable", "terraform")
+}
+
+func TestGcpFirestoreDatabase_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirestoredatabase", "pulumi")
+}
+func TestGcpFirestoreDatabase_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirestoredatabase", "terraform")
+}
+
+func TestGcpFirestoreBackupSchedule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirestorebackupschedule", "pulumi")
+}
+func TestGcpFirestoreBackupSchedule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirestorebackupschedule", "terraform")
+}
+
+func TestGcpFirestoreIndex_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirestoreindex", "pulumi")
+}
+func TestGcpFirestoreIndex_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirestoreindex", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -29,12 +29,15 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/alloydb/v1"
 	"google.golang.org/api/bigquery/v2"
+	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/dns/v1"
+	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/networkconnectivity/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
 	"google.golang.org/api/spanner/v1"
@@ -138,6 +141,25 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create cloudfunctions client")
 	}
+	networkConnectivityService, err := networkconnectivity.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create networkconnectivity client")
+	}
+	bigtableAdminService, err := bigtableadmin.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create bigtableadmin client")
+	}
+	firestoreService, err := firestore.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create firestore admin client")
+	}
+	// ADC-authenticated plain HTTP client for services whose typed Go
+	// client is not in the pinned google.golang.org/api line (Memorystore
+	// for Valkey) — verifiers use it for REST GET probes only.
+	restClient, err := google.DefaultClient(ctx, cloudresourcemanager.CloudPlatformScope)
+	if err != nil {
+		return errors.Wrap(err, "failed to create ADC-authenticated REST client")
+	}
 
 	gotProject, err := crmService.Projects.Get(project).Context(ctx).Do()
 	if err != nil {
@@ -148,21 +170,25 @@ func (h *Harness) Setup(ctx context.Context) error {
 	fmt.Printf("  [gcp] authenticated against project %s (%s)\n", gotProject.ProjectId, gotProject.LifecycleState)
 
 	h.services = &verify.Services{
-		Project:   project,
-		Crm:       crmService,
-		Iam:       iamService,
-		Compute:   computeService,
-		Storage:   storageService,
-		SqlAdmin:  sqlAdminService,
-		Redis:     redisService,
-		Container: containerService,
-		Run:       runService,
-		AlloyDB:   alloyDBService,
-		DNS:       dnsService,
-		Spanner:   spannerService,
-		BigQuery:  bigQueryService,
-		VpcAccess: vpcAccessService,
-		Functions: cloudFunctionsService,
+		Project:             project,
+		Crm:                 crmService,
+		Iam:                 iamService,
+		Compute:             computeService,
+		Storage:             storageService,
+		SqlAdmin:            sqlAdminService,
+		Redis:               redisService,
+		Container:           containerService,
+		Run:                 runService,
+		AlloyDB:             alloyDBService,
+		DNS:                 dnsService,
+		Spanner:             spannerService,
+		BigQuery:            bigQueryService,
+		VpcAccess:           vpcAccessService,
+		Functions:           cloudFunctionsService,
+		NetworkConnectivity: networkConnectivityService,
+		BigtableAdmin:       bigtableAdminService,
+		Firestore:           firestoreService,
+		RestClient:          restClient,
 	}
 	return nil
 }

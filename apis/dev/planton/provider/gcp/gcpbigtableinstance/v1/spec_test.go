@@ -273,14 +273,20 @@ var _ = ginkgo.Describe("GcpBigtableInstanceSpec", func() {
 	//  NEGATIVE CASES
 	// ──────────────────────────────────────────────────────────
 
+	ginkgo.It("should accept user labels", func() {
+		r := minimal()
+		r.Spec.Labels = map[string]string{"team": "data-platform", "tier": "prod"}
+		err := validator.Validate(r)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
 	ginkgo.Context("invalid specs", func() {
 
-		ginkgo.It("should reject missing project_id", func() {
+		ginkgo.It("should accept an omitted project_id (ambient-project contract)", func() {
 			r := minimal()
 			r.Spec.ProjectId = nil
 			err := validator.Validate(r)
-			gomega.Expect(err).To(gomega.HaveOccurred())
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("project_id"))
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		})
 
 		ginkgo.It("should reject missing instance_name", func() {

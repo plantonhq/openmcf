@@ -1,0 +1,37 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceConnectionPolicy
+metadata:
+  name: shared-vpc-memorystore-policy
+spec:
+  # Explicit host project: in a Shared VPC topology the policy lives with
+  # the network in the host project, while producer instances may be
+  # created from service projects.
+  projectId:
+    value: my-host-project # replace with your Shared VPC host project
+
+  location: us-central1
+
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: shared-vpc
+      fieldPath: status.outputs.network_id
+
+  serviceClass: gcp-memorystore
+
+  description: Memorystore for Valkey endpoints in the shared VPC — platform team owns this policy
+
+  labels:
+    team: platform
+    cost-center: shared-infra
+
+  pscConfig:
+    subnetworks:
+      - valueFrom:
+          kind: GcpSubnetwork
+          name: shared-services-subnet
+          fieldPath: status.outputs.subnetwork_self_link
+
+    # Guardrail for the shared network: at most 5 instances can attach
+    # through this policy before an operator deliberately raises the cap.
+    limit: 5

@@ -1,0 +1,37 @@
+# GcpServiceConnectionPolicy scenario: authorize the gcp-memorystore
+# service class on the prerequisite VPC, drawing endpoint IPs from the
+# prerequisite subnet. project_id is deliberately omitted: the policy
+# rides the provider's default project, which the E2E harness exports as
+# GOOGLE_PROJECT from the resolved test project. The cloud-side policy
+# name carries ${E2E_RUN_ID} so stale orphans from a half-finished
+# teardown never 409 a rerun; metadata.name stays fixed.
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceConnectionPolicy
+metadata:
+  name: planton-oss-e2e-gcpscp-smoke
+  id: planton-oss-e2e-gcpscp-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpserviceconnectionpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  policyName: e2e-scp-${E2E_RUN_ID}
+  location: us-central1
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_id
+  serviceClass: gcp-memorystore
+  pscConfig:
+    subnetworks:
+      - valueFrom:
+          kind: GcpSubnetwork
+          name: planton-oss-e2e-gcpsnw-scp-prereq
+          fieldPath: status.outputs.subnetwork_self_link
+    limit: 5

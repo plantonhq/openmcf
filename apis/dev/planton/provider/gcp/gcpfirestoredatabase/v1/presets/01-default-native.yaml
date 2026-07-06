@@ -1,11 +1,10 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
-  name: my-firestore-db
+  name: default-firestore
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  locationId: nam5
-  databaseName: "(default)"
+  # The special "(default)" database — what Firestore client libraries
+  # connect to when no database ID is given. One per project.
+  databaseName: (default)
+  locationId: nam5 # US multi-region; use eur3 for Europe
   type: FIRESTORE_NATIVE
-  deleteProtectionState: DELETE_PROTECTION_ENABLED

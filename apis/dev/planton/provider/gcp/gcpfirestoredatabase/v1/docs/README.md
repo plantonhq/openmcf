@@ -77,25 +77,29 @@ ENTERPRISE edition is immutable after creation. It enables additional capabiliti
 | Delete protection | Yes | Production safety guard |
 | Concurrency mode | Yes | Transaction behavior control |
 
-### What We Exclude
+### What We Exclude (recorded skips)
 
 | Feature | Excluded | Rationale |
 |---|---|---|
-| App Engine integration mode | Yes | Legacy feature; modern deployments don't use it |
 | Resource Manager tags | Yes | Advanced organizational feature; not infrastructure config |
-| Firestore data access mode | Yes | Enterprise-only, auto-enabled with defaults; v2 candidate |
-| MongoDB-compatible mode | Yes | Enterprise-only, auto-enabled with defaults; v2 candidate |
-| Realtime updates mode | Yes | Enterprise-only, auto-enabled with defaults; v2 candidate |
+| Firestore data access mode | Yes | Absent from the released google 6.x line (Enterprise-only access modes); one-engine field risk |
+| MongoDB-compatible mode | Yes | Absent from the released google 6.x line; one-engine field risk |
+| Realtime updates mode | Yes | Absent from the released google 6.x line; one-engine field risk |
+| User credentials (`user_creds`) | Yes | Absent from the released google 6.x line |
 | Deletion policy | Yes | IaC-internal concern; hardcoded to DELETE for lifecycle management |
-| Indexes | Yes | Application-level concern managed by Firestore SDKs or firebase.json |
 | Security rules | Yes | Application-level concern, typically in version control alongside app code |
-| Backup schedules | Yes | Operational concern managed separately |
+| Documents (`firestore_document`) | Yes | Application data, not infrastructure |
+| TTL / single-field overrides (`firestore_field`) | Yes | Data-lifecycle policy tied to application schema; revisit on concrete pull |
+
+Composite indexes and backup schedules are NOT exclusions — they are
+first-class composable kinds (`GcpFirestoreIndex`, `GcpFirestoreBackupSchedule`),
+each many-per-database with an independent lifecycle.
 
 ### Deliberate Design Choices
 
 **`deletion_policy` hardcoded to DELETE:** The GCP API / Terraform has a `deletion_policy` field with "DELETE" or "ABANDON". We hardcode it to "DELETE" in both the Pulumi and Terraform modules so that IaC tools manage the full lifecycle. Users who want protection against accidental deletion should use `delete_protection_state = DELETE_PROTECTION_ENABLED`, which is a GCP API-level guard that works across all interfaces.
 
-**No App Engine integration mode:** The `app_engine_integration_mode` field controls legacy App Engine integration that 99% of modern Firestore deployments don't use. Including it would confuse users and add a field with no practical value for new applications. GCP defaults it sensibly.
+**App Engine integration mode is modeled but rarely needed:** `app_engine_integration_mode` exists for Datastore Mode databases tied to legacy App Engine applications. Most deployments never set it; it is immutable, so it must be decided at create time when it applies.
 
 **CMEK via `kms_key_name` (not `cmek_config` sub-message):** We flatten the CMEK configuration to a single `kms_key_name` field for consistency with other Planton components (GcpSpannerDatabase, GcpBigQueryDataset, GcpBigtableInstance). The Pulumi/Terraform modules wrap it in the appropriate `cmek_config`/`CmekConfig` structure internally.
 

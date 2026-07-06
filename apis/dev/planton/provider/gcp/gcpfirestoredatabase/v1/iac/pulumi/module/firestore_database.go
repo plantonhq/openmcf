@@ -4,66 +4,99 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/firestore"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// firestoreDatabase provisions the Firestore database: the top-level
+// container for collections, documents, and indexes. A project supports
+// multiple named databases beside the special "(default)" one.
+//
+// locationId, name, databaseEdition, the CMEK key, and
+// appEngineIntegrationMode are immutable (ForceNew in the provider).
+// type is mutable but switching between Native and Datastore Mode is a
+// significant operational change. deleteProtectionState is GCP's own
+// guard — deletion by any client fails while ENABLED.
 func firestoreDatabase(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpFirestoreDatabase.Spec
+
+	// Enable the Firestore API — the control plane the database is
+	// managed through. disable_on_destroy stays false: tearing down one
+	// database must never disable the API for everything else in the
+	// project.
+	firestoreApiArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("firestore.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		firestoreApiArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdFirestoreApi, err := projects.NewService(ctx,
+		"fst-firestore.googleapis.com", firestoreApiArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable firestore.googleapis.com api")
+	}
 
 	args := &firestore.DatabaseArgs{
 		LocationId: pulumi.String(spec.LocationId),
 		Type:       pulumi.String(spec.Type),
 		Name:       pulumi.StringPtr(spec.DatabaseName),
-		Project:    pulumi.StringPtr(spec.ProjectId.GetValue()),
 	}
 
-	// Concurrency mode.
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project (omit the arg entirely; an empty string
+	// would be sent verbatim and rejected).
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
+
 	if spec.ConcurrencyMode != "" {
 		args.ConcurrencyMode = pulumi.StringPtr(spec.ConcurrencyMode)
 	}
-
-	// Point-in-time recovery.
 	if spec.PointInTimeRecoveryEnablement != "" {
 		args.PointInTimeRecoveryEnablement = pulumi.StringPtr(spec.PointInTimeRecoveryEnablement)
 	}
-
-	// Delete protection state.
 	if spec.GetDeleteProtectionState() != "" {
 		args.DeleteProtectionState = pulumi.StringPtr(spec.GetDeleteProtectionState())
 	}
-
-	// Database edition.
 	if spec.DatabaseEdition != "" {
 		args.DatabaseEdition = pulumi.StringPtr(spec.DatabaseEdition)
 	}
+	if spec.AppEngineIntegrationMode != "" {
+		args.AppEngineIntegrationMode = pulumi.StringPtr(spec.AppEngineIntegrationMode)
+	}
 
 	// CMEK encryption.
-	if spec.KmsKeyName != nil && spec.KmsKeyName.GetValue() != "" {
+	if spec.KmsKeyName.GetValue() != "" {
 		args.CmekConfig = &firestore.DatabaseCmekConfigArgs{
 			KmsKeyName: pulumi.String(spec.KmsKeyName.GetValue()),
 		}
 	}
 
-	// Always set deletion_policy to DELETE so the IaC tool manages the
-	// full lifecycle. Without this, the default "ABANDON" would leave the
-	// database behind when the stack is destroyed.
+	// Always DELETE so the IaC tool manages the full lifecycle. Without
+	// this, the provider's default ABANDON would leave the database
+	// behind on destroy — identical to the Terraform module.
 	args.DeletionPolicy = pulumi.StringPtr("DELETE")
 
-	createdDatabase, err := firestore.NewDatabase(ctx, "firestore-database", args, pulumi.Provider(gcpProvider))
+	createdDatabase, err := firestore.NewDatabase(ctx, "firestore-database", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdFirestoreApi}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create firestore database")
 	}
 
-	// Export outputs.
-	ctx.Export(OpDatabaseId, pulumi.Sprintf(
-		"projects/%s/databases/%s",
-		pulumi.String(spec.ProjectId.GetValue()),
-		createdDatabase.Name,
-	))
+	// The resource ID already carries the projects/{project}/databases/{name}
+	// form, with the project resolved even when the spec rode the
+	// provider default — identical to the Terraform module's id output.
+	ctx.Export(OpDatabaseId, createdDatabase.ID())
 	ctx.Export(OpDatabaseName, createdDatabase.Name)
 	ctx.Export(OpUid, createdDatabase.Uid)
 	ctx.Export(OpCreateTime, createdDatabase.CreateTime)
 	ctx.Export(OpEarliestVersionTime, createdDatabase.EarliestVersionTime)
+	ctx.Export(OpVersionRetentionPeriod, createdDatabase.VersionRetentionPeriod)
+	ctx.Export(OpKeyPrefix, createdDatabase.KeyPrefix)
+	ctx.Export(OpUpdateTime, createdDatabase.UpdateTime)
 
 	return nil
 }

@@ -40,8 +40,9 @@ message GcpFirestoreDatabaseSpec {
   };
 
   // GCP project where the Firestore database will be created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
@@ -174,4 +175,17 @@ message GcpFirestoreDatabaseSpec {
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
   ];
+
+  // App Engine integration mode. ENABLED couples the database's
+  // lifecycle to the project's App Engine application (a legacy
+  // coupling: disabling the App Engine app disables the database with
+  // it). DISABLED keeps the database independent — the right choice for
+  // everything that is not a legacy App Engine deployment.
+  //
+  // If not set, GCP applies its default.
+  string app_engine_integration_mode = 10 [(buf.validate.field).cel = {
+    id: "app_engine_integration_mode_valid_value"
+    expression: "this == '' || this in ['ENABLED', 'DISABLED']"
+    message: "app_engine_integration_mode must be ENABLED or DISABLED"
+  }];
 }

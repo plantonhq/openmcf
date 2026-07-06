@@ -1,34 +1,49 @@
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = string
-  })
-}
-
 variable "metadata" {
-  description = "Resource metadata"
+  description = "Metadata for the resource, including name and labels"
   type = object({
-    name = string
-    id   = optional(string, "")
-    org  = optional(string, "")
-    env  = optional(string, "")
+    name    = string,
+    id      = optional(string),
+    org     = optional(string),
+    env     = optional(string),
+    labels  = optional(map(string)),
+    tags    = optional(list(string)),
+    version = optional(object({ id = string, message = string }))
   })
 }
 
 variable "spec" {
-  description = "GcpBigtableInstance specification"
+  description = "Specification for the GCP Bigtable instance"
   type = object({
-    project_id          = string
-    instance_name       = string
-    display_name        = optional(string, "")
+    # The GCP project for the instance. The CLI's tfvars converter
+    # resolves StringValueOrRef fields to their literal string before the
+    # module runs, so this arrives as a plain string.
+    # If empty, the provider's default project is used (see locals.tf).
+    project_id = optional(string, "")
+
+    # Instance ID (GCP resource name), 6-33 chars. Immutable (ForceNew).
+    instance_name = string
+
+    # Human-readable display name; empty defaults to instance_name
+    # server-side.
+    display_name = optional(string, "")
+
+    # Terraform-side deletion guard. The spec defaults this to true
+    # (Planton middleware materializes the default); destroy fails until
+    # it is explicitly set false.
     deletion_protection = optional(bool, true)
-    force_destroy       = optional(bool, false)
+
+    # Delete all backups in the instance on destroy — Bigtable otherwise
+    # blocks instance deletion while backups exist.
+    force_destroy = optional(bool, false)
+
+    # Physical replicas. Each cluster's zone, storage_type, kms_key_name,
+    # and node_scaling_factor are immutable server-side.
     clusters = list(object({
-      cluster_id         = string
-      zone               = string
-      num_nodes          = optional(number, 0)
-      storage_type       = optional(string, "SSD")
-      kms_key_name       = optional(string, "")
+      cluster_id          = string
+      zone                = string
+      num_nodes           = optional(number, 0)
+      storage_type        = optional(string, "SSD")
+      kms_key_name        = optional(string, "")
       node_scaling_factor = optional(string, "")
       autoscaling_config = optional(object({
         min_nodes      = number
@@ -37,5 +52,19 @@ variable "spec" {
         storage_target = optional(number, 0)
       }), null)
     }))
+
+    # User labels merged beneath Planton platform labels (platform keys
+    # win on conflict).
+    labels = optional(map(string), {})
   })
+
+  validation {
+    condition     = var.spec.instance_name != ""
+    error_message = "instance_name is required."
+  }
+
+  validation {
+    condition     = length(var.spec.clusters) > 0
+    error_message = "at least one cluster is required."
+  }
 }

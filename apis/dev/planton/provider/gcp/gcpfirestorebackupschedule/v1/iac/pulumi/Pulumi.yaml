@@ -1,0 +1,4 @@
+name: gcpfirestorebackupschedule-pulumi-project
+runtime:
+  name: go
+description: Planton GcpFirestoreBackupSchedule Pulumi module

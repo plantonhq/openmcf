@@ -324,6 +324,38 @@ Serverless VPC Access connectors are slow: budget **≥15m per connector scenari
 (CREATING → READY is typically 5-10 minutes). Cloud Functions Gen 2 deploys
 (including Cloud Build) need **≥20m per scenario**.
 
+**Reservation-window resources need consumer-unique prerequisite names:**
+`${E2E_RUN_ID}` makes cloud-side names unique per run — but two scenario
+chains in the SAME run that install the same prerequisite profile still
+produce the same name, and for resource classes that reserve a deleted
+ID for minutes after destroy (Firestore database IDs are held ~3-5
+minutes), the second chain's create collides with the first chain's
+just-deleted ghost ("not available ... retry in N seconds"). When
+multiple consumers chain on such a prerequisite kind, give each consumer
+a consumer-scoped override whose cloud-side name embeds the consumer
+(e.g. `e2e-fsidx-db-${E2E_RUN_ID}` vs `e2e-fsbs-db-${E2E_RUN_ID}`), not
+just the run.
+
+**First-ever API activation outruns in-module enablement:** every module
+enables its service APIs with a dependency edge before creating resources,
+and that is sufficient for a project where the API has been active before.
+But the FIRST-ever activation of a service on a project propagates slowly —
+the create call can land minutes before the activation is visible and fail
+with a 403 "API has not been used in project ... before or it is disabled",
+even though the enablement resource completed. When a new service family
+first joins the harness, pre-enable its APIs on the test project once
+(`gcloud services enable <api> --project <test-project>`) before the first
+live run; from then on the in-module enablement carries every future run.
+
+**Typed-client gaps in the pinned Google API line:** a brand-new GCP service
+may have no typed client in the repo's pinned `google.golang.org/api`
+version (Memorystore for Valkey was first). Do not bump the shared
+dependency mid-component for one verifier — the harness carries an
+ADC-authenticated plain HTTP client (`Services.RestClient`) for exactly
+this: probe the service's documented REST GET path and decode the few
+fields the posture assertions need. Swap to the typed client whenever the
+dependency is next upgraded for its own reasons.
+
 ## Build Tag Isolation
 
 All E2E test files use `//go:build e2e`. This means:

@@ -1,0 +1,27 @@
+# Consumer-scoped GcpSubnetwork install profile for the Memorystore
+# instance chain: the address space the service connection policy draws
+# PSC endpoint IPs from. A regular /24 — no special subnet purpose.
+apiVersion: gcp.planton.dev/v1
+kind: GcpSubnetwork
+metadata:
+  name: planton-oss-e2e-gcpsnw-scp-prereq
+  id: planton-oss-e2e-gcpsnw-scp-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsubnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  vpcSelfLink:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_self_link
+  subnetworkName: e2e-msi-subnet-${E2E_RUN_ID}
+  region: us-central1
+  ipCidrRange: 10.9.1.0/24
+  description: Ephemeral /24 for the GcpMemorystoreInstance E2E chain; safe to delete

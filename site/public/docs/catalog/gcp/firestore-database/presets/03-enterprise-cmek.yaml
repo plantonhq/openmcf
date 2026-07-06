@@ -1,15 +1,23 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
-  name: my-enterprise-db
+  name: regulated-firestore
 spec:
-  projectId:
-    value: "<gcp-project-id>"
-  locationId: "<location-id>"
-  databaseName: <database-name>
+  databaseName: regulated
+  locationId: nam5
+  # ENTERPRISE edition requires FIRESTORE_NATIVE (enforced by the spec).
   type: FIRESTORE_NATIVE
   databaseEdition: ENTERPRISE
+
   pointInTimeRecoveryEnablement: POINT_IN_TIME_RECOVERY_ENABLED
   deleteProtectionState: DELETE_PROTECTION_ENABLED
+  appEngineIntegrationMode: DISABLED
+
+  # Customer-managed encryption. For nam5 the key must live in the "us"
+  # multi-region (eur3 needs "europe"). Reference the GcpKmsKey so the
+  # key resource ID resolves automatically.
   kmsKeyName:
-    value: "<kms-key-fully-qualified-name>"
+    valueFrom:
+      kind: GcpKmsKey
+      name: firestore-cmek
+      fieldPath: status.outputs.key_id

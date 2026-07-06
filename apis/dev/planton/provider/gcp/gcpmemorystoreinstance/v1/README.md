@@ -1,10 +1,12 @@
-# GCP Memorystore Instance (New-Generation API)
+# GCP Memorystore Instance
 
-Deploys a Google Cloud Memorystore instance via the new-generation API using Pulumi `memorystore.Instance`. Memorystore is a fully managed, in-memory data store supporting the Valkey protocol (Redis-compatible), with native sharding, Private Service Connect (PSC) networking, and predefined node types.
+Deploys a Google Cloud Memorystore (Valkey) instance (`google_memorystore_instance`) — the new-generation, PSC-first in-memory data store with native sharding, predefined node types, RDB/AOF persistence, automated backups, and cross-region replication. Redis-compatible via the Valkey protocol.
 
 ## Overview
 
-Google Cloud Memorystore (new-generation) replaces the legacy Memorystore for Redis API with a modern architecture built around Valkey, PSC-based networking, and first-class clustering support. It provides sub-millisecond latency for caching, session management, real-time analytics, leaderboards, and pub/sub messaging — while eliminating VPC peering complexity and adding features that the legacy API never offered.
+Google Cloud Memorystore (new-generation) replaces the legacy Memorystore for Redis API with a modern architecture built around Valkey, PSC-based networking, and first-class clustering support. It provides sub-millisecond latency for caching, session management, real-time analytics, leaderboards, and pub/sub messaging — while eliminating VPC peering complexity and adding features the legacy API never offered.
+
+**Connectivity prerequisite**: the instance reaches your VPC through service connectivity automation, which requires a `GcpServiceConnectionPolicy` for the `gcp-memorystore` service class on the network in the instance's region — deployed BEFORE the instance. Without it, instance creation fails with a connectivity error.
 
 ## Key Differences from GcpRedisInstance (Legacy)
 
@@ -17,25 +19,38 @@ Google Cloud Memorystore (new-generation) replaces the legacy Memorystore for Re
 | **Modes** | BASIC / STANDARD_HA | CLUSTER / CLUSTER_DISABLED |
 | **Persistence** | RDB only | RDB and AOF |
 | **Automated backups** | Not supported | Built-in with configurable retention |
+| **Cross-region DR** | Not supported | PRIMARY/SECONDARY replication |
 | **Auth** | AUTH string | IAM-based authentication |
 
 ## Quick Start
 
-A minimal manifest to create a development Memorystore instance:
+Deploy the connection policy once per (network, region), then the instance:
 
 ```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceConnectionPolicy
+metadata:
+  name: memorystore-valkey-policy
+spec:
+  location: us-central1
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: prod-vpc
+      fieldPath: status.outputs.network_id
+  serviceClass: gcp-memorystore
+  pscConfig:
+    subnetworks:
+      - valueFrom:
+          kind: GcpSubnetwork
+          name: prod-subnet
+          fieldPath: status.outputs.subnetwork_self_link
+---
 apiVersion: gcp.planton.dev/v1
 kind: GcpMemorystoreInstance
 metadata:
   name: dev-cache
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpMemorystoreInstance.dev-cache
 spec:
-  projectId:
-    value: <gcp-project-id>
   instanceName: dev-cache
   location: us-central1
   shardCount: 1
@@ -43,9 +58,10 @@ spec:
   nodeType: SHARED_CORE_NANO
   pscAutoConnections:
     - network:
-        value: "projects/<gcp-project-id>/global/networks/<vpc-name>"
-      projectId:
-        value: "<gcp-project-id>"
+        valueFrom:
+          kind: GcpVpcNetwork
+          name: prod-vpc
+          fieldPath: status.outputs.network_id
 ```
 
 ## Configuration Options
@@ -60,13 +76,16 @@ spec:
 | **Persistence** | `persistence_config.mode`: `DISABLED`, `RDB` (periodic snapshots), or `AOF` (append-only file) |
 | **Encryption** | `transit_encryption_mode: SERVER_AUTHENTICATION` for TLS; `kms_key` for CMEK at rest |
 | **Auth** | `authorization_mode: IAM_AUTH` for IAM-based client authentication |
-| **Networking** | `psc_auto_connections` — PSC endpoints in consumer VPCs (immutable after creation) |
+| **Networking** | `psc_auto_connections` — PSC endpoints in consumer VPCs (immutable after creation); a per-entry `project_id` omitted rides the provider's effective project |
 | **Zones** | `zone_distribution_config`: `MULTI_ZONE` (HA default) or `SINGLE_ZONE` |
 | **Maintenance** | `maintenance_policy` — weekly window (day + hour UTC) |
 | **Backups** | `automated_backup_config` — daily backups with configurable start hour and retention |
-| **Protection** | `deletion_protection_enabled: true` to prevent accidental deletion |
+| **Cross-region DR** | `cross_instance_replication_config` — PRIMARY replicating to secondaries, or SECONDARY replicating from a primary (roles exchange in place during switchover) |
+| **Seeding** | `gcs_source` (RDB files in GCS) XOR `managed_backup_source` (a managed backup) — creation-time only |
+| **Labels** | `labels` — user labels merged beneath platform attribution labels |
+| **Protection** | `deletion_protection_enabled` — defaults TRUE; destroy fails until explicitly set false |
 
-**Immutable fields** (require instance replacement if changed): `instance_name`, `location`, `mode`, `authorization_mode`, `transit_encryption_mode`, `kms_key`, `zone_distribution_config`, `psc_auto_connections`.
+**Immutable fields** (require instance replacement if changed): `instance_name`, `location`, `mode`, `authorization_mode`, `transit_encryption_mode`, `kms_key`, `zone_distribution_config`, `psc_auto_connections`, and the seed sources.
 
 ## Stack Outputs
 
@@ -76,13 +95,31 @@ spec:
 | `discovery_port` | int32 | Port of the discovery endpoint (typically 6379) |
 | `instance_uid` | string | Server-generated unique identifier for the instance |
 | `node_size_gb` | double | Memory size per node in GB (determined by `node_type`) |
+| `name` | string | Full resource path — the composition key for cross-instance replication |
+| `backup_collection` | string | Where automated backups land — the source of `managed_backup_source` paths |
+
+## Important Notes
+
+- **Deploy the connection policy first**: a `GcpServiceConnectionPolicy` (`serviceClass: gcp-memorystore`) must exist on each `psc_auto_connections` network in this region before the instance is created, and must outlive the instance.
+- **Deletion protection defaults on**: destroying an instance requires explicitly setting `deletion_protection_enabled: false` first — both engines send the flag explicitly, so destroy behavior is identical regardless of engine.
+- **DR composition**: deploy the PRIMARY first (listing its secondaries by full resource path — another instance's `name` output), then each SECONDARY pointing back at the primary. A secondary is read-only until promoted.
+- **Node memory is a consequence of `node_type`** — reported in `node_size_gb`, never configured directly.
+
+### Deliberately not modeled (recorded reasons)
+
+- **`server_ca_mode` / `server_ca_pool`** — absent from the released google provider 6.x line (schema-probe verified); modeling them would create a one-engine field.
+- **`maintenance_version`** — absent from the released 6.x line.
+- **Expanded node types** (`CUSTOM_PICO/MICRO/MINI`, `HIGHCPU_MEDIUM`, `STANDARD_LARGE`, `HIGHMEM_2XLARGE`) — absent from the released 6.x line; the four released types are modeled.
+- **`allow_fewer_zones_deployment`** — a narrow zonal-capacity escape hatch; absent from the pinned Pulumi SDK line, so modeling it would break engine parity (revisit when both engines carry it).
+- **`deletion_policy`** — a client-side Terraform lever that conflicts with Planton-managed destroy (catalog-wide decision).
+- **`google_memorystore_instance_desired_user_created_endpoints`** — the bring-your-own-forwarding-rules alternative to auto-created endpoints; a Tier-2 sibling on concrete pull.
 
 ## When to Use GcpMemorystoreInstance vs GcpRedisInstance
 
 **Use GcpMemorystoreInstance (this component) when:**
 - You need native sharding for horizontal data distribution
 - You prefer PSC networking over VPC peering
-- You want AOF persistence or automated backups
+- You want AOF persistence, automated backups, or cross-region DR
 - You are starting a new deployment with no legacy constraints
 - You need IAM-based authentication
 
@@ -90,18 +127,17 @@ spec:
 - You have existing Memorystore for Redis instances and need consistency
 - You require AUTH string–based authentication (not IAM)
 - You depend on VPC peering or Private Service Access connectivity
-- You need read replicas with a separate read endpoint (legacy API model)
 
 ## Related Components
 
-- **GcpProject** — provides the GCP project ID
+- **GcpServiceConnectionPolicy** — the required PSC authorization on the network (deploy first)
 - **GcpVpcNetwork** — provides the VPC network for PSC auto-connections
 - **GcpKmsKey** — provides a CMEK key for encryption at rest
+- **GcpProject** — provides the GCP project ID
 - **GcpRedisInstance** — legacy Memorystore for Redis (VPC peering model)
 
 ## Additional Resources
 
 - [Memorystore Documentation](https://cloud.google.com/memorystore/docs/overview)
-- [Memorystore Instance REST API](https://cloud.google.com/memorystore/docs/reference/rest/v1/projects.locations.instances)
 - [Valkey Project](https://valkey.io/)
-- [Private Service Connect Overview](https://cloud.google.com/vpc/docs/private-service-connect)
+- [Service connectivity automation](https://cloud.google.com/vpc/docs/about-service-connectivity-automation)

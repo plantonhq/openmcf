@@ -82,6 +82,10 @@ Each PSC auto-connection creates a forwarding rule and an internal IP address in
 | **Setup complexity** | Reserve IP range, create peering, wait for propagation | Declare PSC connection in spec; GCP creates endpoints |
 | **Security** | Firewall rules on both sides | Consumer VPC only; service producer is isolated |
 
+### The service connection policy prerequisite
+
+PSC endpoints for Memorystore are placed by Google's **service connectivity automation**, and the automation only acts where a **service connection policy** for the `gcp-memorystore` service class already exists on the consumer network in the instance's region. The policy is a first-class Planton resource (`GcpServiceConnectionPolicy`) naming the network, the subnets endpoint IPs come from, and an optional connection cap. Deploy it before the first instance; keep it alive as long as any instance depends on it. Without the policy, instance creation fails with a connectivity error — the single most common first-deploy failure.
+
 ### Implications for Planton
 
 PSC connections are **immutable after instance creation**. This means:
@@ -90,7 +94,7 @@ PSC connections are **immutable after instance creation**. This means:
 - Adding or changing PSC connections requires instance replacement
 - For cross-project access, define multiple `psc_auto_connections` entries upfront
 
-The Planton spec models PSC connections as a repeated `GcpMemorystoreInstancePscAutoConnection` message with `network` and `project_id` fields, both supporting `StringValueOrRef` for cross-resource references.
+The Planton spec models PSC connections as a repeated `GcpMemorystoreInstancePscAutoConnection` message with `network` and `project_id` fields, both supporting `StringValueOrRef` for cross-resource references. The `network` reference resolves to the VPC's relative resource path (`projects/{p}/global/networks/{n}`) — the only format the Service Connectivity API accepts. An entry that omits `project_id` rides the provider's effective project (the common same-project case), resolved identically by both engines.
 
 ---
 
@@ -309,11 +313,11 @@ For production instances, enable automated backups with 7–35 days of retention
 
 ---
 
-## 9. 80/20 Scoping Rationale
+## 9. 90/10 Coverage
 
-### What We Included
+### What the spec models
 
-The Planton spec covers the fields needed for ~80% of Memorystore deployments:
+The spec stands at the released google provider 6.x floor — what an advanced organization can actually reach:
 
 | Feature | Rationale |
 |---------|-----------|
@@ -330,23 +334,25 @@ The Planton spec covers the fields needed for ~80% of Memorystore deployments:
 | `zone_distribution_config` | HA: multi-zone vs. single-zone |
 | `maintenance_policy` | Operational: controlled maintenance windows |
 | `automated_backup_config` | Operational: daily backups with retention |
-| `deletion_protection_enabled` | Safety: prevent accidental deletion |
+| `cross_instance_replication_config` | Cross-region DR: PRIMARY/SECONDARY topology with in-place switchover |
+| `gcs_source` XOR `managed_backup_source` | Creation-time seeding from RDB files or a managed backup |
+| `labels` | User labels beneath platform attribution labels |
+| `deletion_protection_enabled` | Safety: defaults TRUE, sent explicitly by both engines |
 
-### What We Excluded and Why
+### Recorded skips (with reasons)
 
-| Excluded Feature | Reason |
+| Skipped | Reason |
 |-----------------|--------|
-| **Cross-instance replication** | Niche feature for disaster recovery across regions. Complex topology that most users don't need. Can be added in a future version. |
-| **`gcs_source`** | Used to import data from a GCS bucket during instance creation. One-time migration operation, not a steady-state configuration. Better handled by a separate migration workflow. |
-| **`managed_backup_source`** | Used to restore an instance from a managed backup. One-time restore operation, not a declarative spec field. Better handled imperatively. |
-| **User-created endpoints** | The API supports `DesiredUserCreatedEndpoints` for manually managed PSC endpoints. Auto-created endpoints (`DesiredAutoCreatedEndpoints`) cover the common case. User-created endpoints are for advanced networking scenarios (e.g., custom forwarding rules). |
-| **`display_name`** | Cosmetic field. Instance identification is handled by `instance_name` and Planton labels. |
-| **`secondary_zone`** | Zone pinning within MULTI_ZONE. GCP handles zone placement optimally; manual zone pinning is rarely needed. |
-| **`ondemand_maintenance`** | Triggers immediate maintenance. Imperative action, not a declarative field. |
+| **`server_ca_mode` / `server_ca_pool`** | Absent from the released google provider 6.x line (schema-probe verified) — modeling them would create a one-engine field. |
+| **`maintenance_version`** | Absent from the released 6.x line. |
+| **Expanded node types** (`CUSTOM_*`, `HIGHCPU_MEDIUM`, `STANDARD_LARGE`, `HIGHMEM_2XLARGE`) | Absent from the released 6.x line; the four released types are modeled. |
+| **`allow_fewer_zones_deployment`** | Absent from the pinned Pulumi SDK line — modeling it would break engine parity. Revisit when both engines carry it. |
+| **User-created endpoints** (`google_memorystore_instance_desired_user_created_endpoints`) | The bring-your-own-forwarding-rules alternative; auto-created endpoints cover the common case. Tier-2 sibling on concrete pull. |
+| **`deletion_policy`** | Client-side Terraform lever conflicting with Planton-managed destroy (catalog-wide decision). |
 
-### Design Principle
+### Design principle
 
-The spec follows the 80/20 rule: cover the majority of production use cases with a clean, focused API. Advanced features (cross-instance replication, GCS import, user-created endpoints) are deferred until user demand justifies the additional complexity. All excluded features can be accessed directly via Terraform or Pulumi if needed for a specific deployment.
+Coverage targets ~90% of real Memorystore architectures composed from first-class nodes — never 100% of the API. Every skip above is deliberate and carries its reason; nothing is silently absent.
 
 ---
 
@@ -492,13 +498,15 @@ The Terraform module lives at:
 apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1/iac/tf/
 ```
 
-It provisions a `google_memorystore_instance` resource with equivalent field mappings and outputs `discovery_address`, `discovery_port`, `instance_uid`, and `node_size_gb`.
+It provisions a `google_memorystore_instance` resource with equivalent field mappings and outputs `discovery_address`, `discovery_port`, `instance_uid`, `node_size_gb`, `name`, and `backup_collection`.
 
 ---
 
 ## 13. Common Pitfalls
 
-1. **Immutable field changes**: Changing `instance_name`, `location`, `mode`, `authorization_mode`, `transit_encryption_mode`, `kms_key`, `zone_distribution_config`, or `psc_auto_connections` forces instance replacement. Plan for data migration or use blue-green deployment.
+0. **Missing service connection policy**: instance creation fails with a connectivity error when no `GcpServiceConnectionPolicy` for the `gcp-memorystore` class exists on the network in the instance's region. Deploy the policy first, and never delete it while instances depend on it.
+
+1. **Immutable field changes**: Changing `instance_name`, `location`, `mode`, `authorization_mode`, `transit_encryption_mode`, `kms_key`, `zone_distribution_config`, `psc_auto_connections`, or a seed source forces instance replacement. Plan for data migration or use blue-green deployment.
 
 2. **PSC connection planning**: PSC connections cannot be added after creation. If you anticipate needing cross-project or multi-VPC access, include all connections in the initial manifest.
 

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpfirestorebackupschedule.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/gcp/gcpfirestorebackupschedule/v1/spec.proto";
+import "dev/planton/provider/gcp/gcpfirestorebackupschedule/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+//gcp-firestore-backup-schedule
+message GcpFirestoreBackupSchedule {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpFirestoreBackupSchedule'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpFirestoreBackupScheduleSpec spec = 4 [(buf.validate.field).required = true];
+  GcpFirestoreBackupScheduleStatus status = 5;
+}
+
+message GcpFirestoreBackupScheduleStatus {
+  GcpFirestoreBackupScheduleStackOutputs outputs = 1;
+}

@@ -1,0 +1,10 @@
+package module
+
+// Output keys must match the field names in stack_outputs.proto — the outputs
+// transformer maps raw engine outputs onto the proto by name.
+const (
+	OpPolicyId       = "policy_id"
+	OpName           = "name"
+	OpInfrastructure = "infrastructure"
+	OpEtag           = "etag"
+)

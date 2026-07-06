@@ -242,6 +242,9 @@ const (
 	CloudResourceKind_GcpAlloydbInstance            CloudResourceKind = 639
 	CloudResourceKind_GcpAlloydbUser                CloudResourceKind = 640
 	CloudResourceKind_GcpSpannerBackupSchedule      CloudResourceKind = 641
+	CloudResourceKind_GcpBigtableTable              CloudResourceKind = 642
+	CloudResourceKind_GcpFirestoreBackupSchedule    CloudResourceKind = 643
+	CloudResourceKind_GcpFirestoreIndex             CloudResourceKind = 644
 	CloudResourceKind_GcpBigQueryDataset            CloudResourceKind = 650
 	CloudResourceKind_GcpDataprocCluster            CloudResourceKind = 651
 	CloudResourceKind_GcpDataprocVirtualCluster     CloudResourceKind = 652
@@ -267,6 +270,7 @@ const (
 	CloudResourceKind_GcpSslCertificate              CloudResourceKind = 712
 	CloudResourceKind_GcpServiceNetworkingConnection CloudResourceKind = 713
 	CloudResourceKind_GcpAddress                     CloudResourceKind = 714
+	CloudResourceKind_GcpServiceConnectionPolicy     CloudResourceKind = 715
 	// 720–729: GCP serverless overflow
 	CloudResourceKind_GcpCloudRunJob            CloudResourceKind = 720
 	CloudResourceKind_GcpServerlessVpcConnector CloudResourceKind = 721
@@ -697,6 +701,9 @@ var (
 		639:  "GcpAlloydbInstance",
 		640:  "GcpAlloydbUser",
 		641:  "GcpSpannerBackupSchedule",
+		642:  "GcpBigtableTable",
+		643:  "GcpFirestoreBackupSchedule",
+		644:  "GcpFirestoreIndex",
 		650:  "GcpBigQueryDataset",
 		651:  "GcpDataprocCluster",
 		652:  "GcpDataprocVirtualCluster",
@@ -718,6 +725,7 @@ var (
 		712:  "GcpSslCertificate",
 		713:  "GcpServiceNetworkingConnection",
 		714:  "GcpAddress",
+		715:  "GcpServiceConnectionPolicy",
 		720:  "GcpCloudRunJob",
 		721:  "GcpServerlessVpcConnector",
 		800:  "KubernetesArgocd",
@@ -1132,6 +1140,9 @@ var (
 		"GcpAlloydbInstance":                      639,
 		"GcpAlloydbUser":                          640,
 		"GcpSpannerBackupSchedule":                641,
+		"GcpBigtableTable":                        642,
+		"GcpFirestoreBackupSchedule":              643,
+		"GcpFirestoreIndex":                       644,
 		"GcpBigQueryDataset":                      650,
 		"GcpDataprocCluster":                      651,
 		"GcpDataprocVirtualCluster":               652,
@@ -1153,6 +1164,7 @@ var (
 		"GcpSslCertificate":                       712,
 		"GcpServiceNetworkingConnection":          713,
 		"GcpAddress":                              714,
+		"GcpServiceConnectionPolicy":              715,
 		"GcpCloudRunJob":                          720,
 		"GcpServerlessVpcConnector":               721,
 		"KubernetesArgocd":                        800,
@@ -1665,7 +1677,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xeb\x9a\x01\n" +
+	"\x02v1\x10\x01*\xc1\x9c\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1835,14 +1847,17 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14GcpFirestoreDatabase\x10\xf8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpfst\x12)\n" +
 	"\x12GcpSpannerInstance\x10\xf9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpspn\x12.\n" +
 	"\x12GcpSpannerDatabase\x10\xfa\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpspdb:\x02\xf9\x04\x12)\n" +
-	"\x13GcpBigtableInstance\x10\xfb\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpbt\x12-\n" +
-	"\x16GcpMemorystoreInstance\x10\xfc\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpmsi\x120\n" +
+	"\x13GcpBigtableInstance\x10\xfb\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpbt\x121\n" +
+	"\x16GcpMemorystoreInstance\x10\xfc\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpmsi:\x02\xcb\x05\x120\n" +
 	"\x13GcpCloudSqlDatabase\x10\xfd\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpsqldb:\x02\xdc\x04\x12-\n" +
 	"\x0fGcpCloudSqlUser\x10\xfe\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\tgcpsqlusr:\x02\xdc\x04\x121\n" +
 	"\x12GcpAlloydbInstance\x10\xff\x04\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\n" +
 	"gcpadbinst:\x02\xf6\x04\x12,\n" +
 	"\x0eGcpAlloydbUser\x10\x80\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\tgcpadbusr:\x02\xf6\x04\x125\n" +
-	"\x18GcpSpannerBackupSchedule\x10\x81\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpsbs:\x04\xf9\x04\xfa\x04\x12*\n" +
+	"\x18GcpSpannerBackupSchedule\x10\x81\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpsbs:\x04\xf9\x04\xfa\x04\x12-\n" +
+	"\x10GcpBigtableTable\x10\x82\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpbttbl:\x02\xfb\x04\x127\n" +
+	"\x1aGcpFirestoreBackupSchedule\x10\x83\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpfstbs:\x02\xf8\x04\x12/\n" +
+	"\x11GcpFirestoreIndex\x10\x84\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\tgcpfstidx:\x02\xf8\x04\x12*\n" +
 	"\x12GcpBigQueryDataset\x10\x8a\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpbqds\x12)\n" +
 	"\x12GcpDataprocCluster\x10\x8b\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdpc\x120\n" +
 	"\x19GcpDataprocVirtualCluster\x10\x8c\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpdvc\x12-\n" +
@@ -1865,7 +1880,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"gcpsslcert\x12;\n" +
 	"\x1eGcpServiceNetworkingConnection\x10\xc9\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpsnc:\x04\xe2\x04\xed\x04\x12(\n" +
 	"\n" +
-	"GcpAddress\x10\xca\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\agcpaddr:\x04\xe2\x04\xe3\x04\x12(\n" +
+	"GcpAddress\x10\xca\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x10\x01\"\agcpaddr:\x04\xe2\x04\xe3\x04\x127\n" +
+	"\x1aGcpServiceConnectionPolicy\x10\xcb\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpscp:\x04\xe2\x04\xe3\x04\x12(\n" +
 	"\x0eGcpCloudRunJob\x10\xd0\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\tcldrunjob\x12:\n" +
 	"\x19GcpServerlessVpcConnector\x10\xd1\x05\x1a\x1a\xa2\xf7\x04\x16\b\x12\x10\x01\"\n" +
 	"gcpvpcconn:\x04\xe2\x04\xe3\x04\x12(\n" +

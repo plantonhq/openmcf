@@ -221,6 +221,7 @@ import (
 	gcpbigquerydatasetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerydataset/v1"
 	gcpbigquerytablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerytable/v1"
 	gcpbigtableinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtableinstance/v1"
+	gcpbigtabletablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtabletable/v1"
 	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
 	gcpcloudarmorpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudarmorpolicy/v1"
 	gcpcloudcomposerenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1"
@@ -238,7 +239,9 @@ import (
 	gcpdnsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnsrecord/v1"
 	gcpdnszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnszone/v1"
 	gcpfilestoreinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfilestoreinstance/v1"
+	gcpfirestorebackupschedulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirestorebackupschedule/v1"
 	gcpfirestoredatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirestoredatabase/v1"
+	gcpfirestoreindexv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirestoreindex/v1"
 	gcpfirewallrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirewallrule/v1"
 	gcpgcsbucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgcsbucket/v1"
 	gcpgkeclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkecluster/v1"
@@ -261,6 +264,7 @@ import (
 	gcprouternatv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1"
 	gcpserverlessvpcconnectorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserverlessvpcconnector/v1"
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
+	gcpserviceconnectionpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceconnectionpolicy/v1"
 	gcpservicenetworkingconnectionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1"
 	gcpspannerbackupschedulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerbackupschedule/v1"
 	gcpspannerdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerdatabase/v1"
@@ -698,6 +702,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpBigQueryDataset:              &gcpbigquerydatasetv1.GcpBigQueryDataset{},
 	cloudresourcekind.CloudResourceKind_GcpBigQueryTable:                &gcpbigquerytablev1.GcpBigQueryTable{},
 	cloudresourcekind.CloudResourceKind_GcpBigtableInstance:             &gcpbigtableinstancev1.GcpBigtableInstance{},
+	cloudresourcekind.CloudResourceKind_GcpBigtableTable:                &gcpbigtabletablev1.GcpBigtableTable{},
 	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:              &gcpcertmanagercertv1.GcpCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_GcpCloudArmorPolicy:             &gcpcloudarmorpolicyv1.GcpCloudArmorPolicy{},
 	cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment:     &gcpcloudcomposerenvironmentv1.GcpCloudComposerEnvironment{},
@@ -715,7 +720,9 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpDnsRecord:                    &gcpdnsrecordv1.GcpDnsRecord{},
 	cloudresourcekind.CloudResourceKind_GcpDnsZone:                      &gcpdnszonev1.GcpDnsZone{},
 	cloudresourcekind.CloudResourceKind_GcpFilestoreInstance:            &gcpfilestoreinstancev1.GcpFilestoreInstance{},
+	cloudresourcekind.CloudResourceKind_GcpFirestoreBackupSchedule:      &gcpfirestorebackupschedulev1.GcpFirestoreBackupSchedule{},
 	cloudresourcekind.CloudResourceKind_GcpFirestoreDatabase:            &gcpfirestoredatabasev1.GcpFirestoreDatabase{},
+	cloudresourcekind.CloudResourceKind_GcpFirestoreIndex:               &gcpfirestoreindexv1.GcpFirestoreIndex{},
 	cloudresourcekind.CloudResourceKind_GcpFirewallRule:                 &gcpfirewallrulev1.GcpFirewallRule{},
 	cloudresourcekind.CloudResourceKind_GcpGcsBucket:                    &gcpgcsbucketv1.GcpGcsBucket{},
 	cloudresourcekind.CloudResourceKind_GcpGkeCluster:                   &gcpgkeclusterv1.GcpGkeCluster{},
@@ -738,6 +745,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpRouterNat:                    &gcprouternatv1.GcpRouterNat{},
 	cloudresourcekind.CloudResourceKind_GcpServerlessVpcConnector:       &gcpserverlessvpcconnectorv1.GcpServerlessVpcConnector{},
 	cloudresourcekind.CloudResourceKind_GcpServiceAccount:               &gcpserviceaccountv1.GcpServiceAccount{},
+	cloudresourcekind.CloudResourceKind_GcpServiceConnectionPolicy:      &gcpserviceconnectionpolicyv1.GcpServiceConnectionPolicy{},
 	cloudresourcekind.CloudResourceKind_GcpServiceNetworkingConnection:  &gcpservicenetworkingconnectionv1.GcpServiceNetworkingConnection{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerBackupSchedule:        &gcpspannerbackupschedulev1.GcpSpannerBackupSchedule{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerDatabase:              &gcpspannerdatabasev1.GcpSpannerDatabase{},

@@ -230,11 +230,25 @@ var _ = ginkgo.Describe("GcpFirestoreDatabaseSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Negative Cases ────────────────
-
-	ginkgo.It("should reject missing project_id", func() {
+	ginkgo.It("should accept an omitted project_id (ambient-project contract)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept app_engine_integration_mode DISABLED", func() {
+		msg := minimal()
+		msg.Spec.AppEngineIntegrationMode = "DISABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject an invalid app_engine_integration_mode", func() {
+		msg := minimal()
+		msg.Spec.AppEngineIntegrationMode = "MAYBE"
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

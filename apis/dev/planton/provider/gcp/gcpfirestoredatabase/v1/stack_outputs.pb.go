@@ -44,8 +44,18 @@ type GcpFirestoreDatabaseStackOutputs struct {
 	// 7 days with PITR enabled). Useful for planning point-in-time
 	// recovery operations. RFC3339 UTC format.
 	EarliestVersionTime string `protobuf:"bytes,5,opt,name=earliest_version_time,json=earliestVersionTime,proto3" json:"earliest_version_time,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// How long past versions of data are retained (e.g. "3600s" without
+	// PITR, "604800s" with PITR enabled) — the window earliest-version
+	// reads and PITR restores can target.
+	VersionRetentionPeriod string `protobuf:"bytes,6,opt,name=version_retention_period,json=versionRetentionPeriod,proto3" json:"version_retention_period,omitempty"`
+	// Key prefix for Datastore Mode app identifiers (the appid of a
+	// legacy App Engine application). Empty for databases without one.
+	KeyPrefix string `protobuf:"bytes,7,opt,name=key_prefix,json=keyPrefix,proto3" json:"key_prefix,omitempty"`
+	// Timestamp of the database's last configuration update. RFC3339 UTC
+	// format.
+	UpdateTime    string `protobuf:"bytes,8,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpFirestoreDatabaseStackOutputs) Reset() {
@@ -113,11 +123,32 @@ func (x *GcpFirestoreDatabaseStackOutputs) GetEarliestVersionTime() string {
 	return ""
 }
 
+func (x *GcpFirestoreDatabaseStackOutputs) GetVersionRetentionPeriod() string {
+	if x != nil {
+		return x.VersionRetentionPeriod
+	}
+	return ""
+}
+
+func (x *GcpFirestoreDatabaseStackOutputs) GetKeyPrefix() string {
+	if x != nil {
+		return x.KeyPrefix
+	}
+	return ""
+}
+
+func (x *GcpFirestoreDatabaseStackOutputs) GetUpdateTime() string {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpfirestoredatabase_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpfirestoredatabase_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/gcp/gcpfirestoredatabase/v1/stack_outputs.proto\x120dev.planton.provider.gcp.gcpfirestoredatabase.v1\"\xcf\x01\n" +
+	"Ddev/planton/provider/gcp/gcpfirestoredatabase/v1/stack_outputs.proto\x120dev.planton.provider.gcp.gcpfirestoredatabase.v1\"\xc9\x02\n" +
 	" GcpFirestoreDatabaseStackOutputs\x12\x1f\n" +
 	"\vdatabase_id\x18\x01 \x01(\tR\n" +
 	"databaseId\x12#\n" +
@@ -125,7 +156,12 @@ const file_dev_planton_provider_gcp_gcpfirestoredatabase_v1_stack_outputs_proto_
 	"\x03uid\x18\x03 \x01(\tR\x03uid\x12\x1f\n" +
 	"\vcreate_time\x18\x04 \x01(\tR\n" +
 	"createTime\x122\n" +
-	"\x15earliest_version_time\x18\x05 \x01(\tR\x13earliestVersionTimeB\x9b\x03\n" +
+	"\x15earliest_version_time\x18\x05 \x01(\tR\x13earliestVersionTime\x128\n" +
+	"\x18version_retention_period\x18\x06 \x01(\tR\x16versionRetentionPeriod\x12\x1d\n" +
+	"\n" +
+	"key_prefix\x18\a \x01(\tR\tkeyPrefix\x12\x1f\n" +
+	"\vupdate_time\x18\b \x01(\tR\n" +
+	"updateTimeB\x9b\x03\n" +
 	"4com.dev.planton.provider.gcp.gcpfirestoredatabase.v1B\x11StackOutputsProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfirestoredatabase/v1;gcpfirestoredatabasev1\xa2\x02\x05DPPGG\xaa\x020Dev.Planton.Provider.Gcp.Gcpfirestoredatabase.V1\xca\x020Dev\\Planton\\Provider\\Gcp\\Gcpfirestoredatabase\\V1\xe2\x02<Dev\\Planton\\Provider\\Gcp\\Gcpfirestoredatabase\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Gcp::Gcpfirestoredatabase::V1b\x06proto3"
 
 var (
