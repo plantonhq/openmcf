@@ -345,15 +345,18 @@ Go implementation of the CLI:
 **Core Technologies:**
 - **Protocol Buffers** - Schema definition language
 - **buf CLI** - Proto compilation, linting, breaking change detection
-- **Buf Schema Registry** - Proto module hosting and documentation
 - **buf-validate** - Field-level validation rules (based on protovalidate-go)
 - **CEL (Common Expression Language)** - Complex validation logic
 
 **Generated Artifacts:**
-- Go stubs (for CLI and modules)
-- Java stubs (for JVM integrations)
-- Python stubs (for Python tooling)
-- TypeScript stubs (for web UIs)
+- Go stubs (for CLI and modules; committed alongside the protos)
+- Java stubs (compiled as a build-time gate to catch invalid generated Java early; not committed)
+
+Code generators run locally as pinned plugins from the git-ignored `apis/.tools/`
+directory, provisioned automatically by `make proto-tools`. buf orchestrates the
+generation (config, managed mode); the generator binaries themselves execute on
+the developer's machine, keeping stub generation deterministic and independent
+of any hosted code-generation service.
 
 **Validation Flow:**
 ```
