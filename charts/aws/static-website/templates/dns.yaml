@@ -5,7 +5,8 @@ kind: AwsRoute53Zone
 metadata:
   name: "{{ values.domain_name }}"
   group: network
-spec: {}
+spec:
+  region: "{{ values.aws_region }}"
 ---
 apiVersion: aws.planton.dev/v1
 kind: AwsCertManagerCert
@@ -17,6 +18,9 @@ metadata:
       name: "{{ values.domain_name }}"
       type: uses
 spec:
+  # CloudFront only accepts viewer certificates issued in us-east-1,
+  # regardless of where the bucket lives.
+  region: us-east-1
   primaryDomainName: "{{ values.website_domain_name }}"
   route53HostedZoneId:
     valueFrom:

@@ -6,7 +6,7 @@ metadata:
   name: "{{ values.cognito_pool_name }}"
   group: security
 spec:
-  poolName: "{{ values.cognito_pool_name }}"
+  region: "{{ values.aws_region }}"
   usernameAttributes:
     - email
   autoVerifiedAttributes:

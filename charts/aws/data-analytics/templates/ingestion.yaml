@@ -5,6 +5,7 @@ metadata:
   name: "{{ values.kinesis_stream_name }}"
   group: messaging
 spec:
+  region: "{{ values.aws_region }}"
   streamMode: "{{ values.kinesis_stream_mode }}"
 {% if values.kinesis_stream_mode == "PROVISIONED" %}
   shardCount: {{ values.kinesis_shard_count }}
@@ -18,6 +19,7 @@ metadata:
   name: "{{ values.firehose_name }}-delivery-role"
   group: identity
 spec:
+  region: "{{ values.aws_region }}"
   description: IAM role for Firehose to read from Kinesis and write to S3
   path: /service-role/
   trustPolicy:
@@ -69,6 +71,7 @@ metadata:
       name: "{{ values.firehose_name }}-delivery-role"
       type: uses
 spec:
+  region: "{{ values.aws_region }}"
   kinesisStreamSource:
     streamArn:
       valueFrom:

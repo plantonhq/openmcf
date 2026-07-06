@@ -17,6 +17,7 @@ spec:
   engine: aurora-postgresql
   engineVersion: "{{ values.db_engine_version }}"
   databaseName: "{{ values.db_name }}"
+  masterUsername: "{{ values.db_master_username }}"
   manageMasterUserPassword: true
   port: 5432
   storageEncrypted: true

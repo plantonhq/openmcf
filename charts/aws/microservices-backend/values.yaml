@@ -89,6 +89,10 @@ params:
     description: Initial database name created on the cluster
     value: appdb
 
+  - name: db_master_username
+    description: Master username for the Aurora cluster (password is generated and managed by AWS Secrets Manager)
+    value: appadmin
+
   # ─── Cache ───────────────────────────────────────────────────────────────────
   - name: cacheEnabled
     description: Create an ElastiCache Redis cluster

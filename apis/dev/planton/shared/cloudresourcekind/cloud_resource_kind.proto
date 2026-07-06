@@ -626,16 +626,27 @@ enum CloudResourceKind {
     id_prefix: "awskin"
   }];
 
+  // Every Firehose destination requires an S3 configuration (the primary
+  // target for extended_s3; the failed/all-document backup for the rest)
+  // and an IAM role Firehose assumes to write to it, so both are hard
+  // deploy prerequisites.
   AwsKinesisFirehose = 261 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awskfh"
+    prerequisites: [
+      AwsS3Bucket,
+      AwsIamRole
+    ]
   }];
 
+  // A consumer registers against exactly one stream and cannot exist
+  // without it.
   AwsKinesisStreamConsumer = 262 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awskincon"
+    prerequisites: [AwsKinesisStream]
   }];
 
   AwsAthenaWorkgroup = 263 [(kind_meta) = {

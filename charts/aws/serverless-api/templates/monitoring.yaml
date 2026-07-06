@@ -5,4 +5,5 @@ metadata:
   name: "{{ values.api_name }}-access-logs"
   group: monitoring
 spec:
+  region: "{{ values.aws_region }}"
   retentionInDays: 30

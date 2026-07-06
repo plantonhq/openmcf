@@ -4,191 +4,918 @@ package dev.planton.provider.aws.awss3bucket.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "google/protobuf/struct.proto";
 
-// AwsS3BucketSpec defines the specification required to deploy an AWS S3 Bucket with production-grade defaults.
-// This message encapsulates all configurations necessary for setting up an S3 bucket following security best practices,
-// including encryption, versioning, lifecycle policies, and access controls.
-// Amazon S3 (Simple Storage Service) provides object storage through a web service interface,
-// allowing you to store and retrieve any amount of data from anywhere on the web.
-// With this specification, you can automate the creation and configuration of S3 buckets,
-// ensuring that your storage resources are correctly set up according to your requirements.
-// This is particularly useful for managing large-scale storage needs, hosting static websites,
-// or storing data for backup and archiving.
+// AwsS3BucketSpec defines the desired configuration for an AWS S3 bucket.
+//
+// S3 is object storage: buckets hold objects (files) addressed by key, and nearly
+// every AWS architecture touches one — static websites, log destinations, Lambda
+// code archives, data-lake storage, artifact stores, backup targets.
+//
+// AWS models the bucket itself as a small resource and every behavioral setting
+// (versioning, encryption, lifecycle, replication, website hosting, notifications,
+// and so on) as a bucket-scoped configuration with the bucket's own lifecycle.
+// This spec folds those settings into one document so a bucket is fully described
+// in one place; none of them is independently referenceable, so none deserves to
+// be its own resource kind.
+//
+// Notes:
+// - The bucket name comes from `metadata.name` and cannot be changed after
+//   creation (AWS bucket names are immutable and globally unique across all
+//   AWS accounts).
+// - New buckets are private by default: all four public-access-block guards are
+//   enabled unless `public_access_block` explicitly relaxes them, and object
+//   ownership defaults to `BucketOwnerEnforced` (ACLs disabled). Serving public
+//   content is best done through CloudFront with Origin Access Control; direct
+//   public buckets are the exception, not the rule.
+// - Since January 2023 AWS encrypts every object with SSE-S3 (AES256) by
+//   default, so the `encryption` block only needs to be set to switch to
+//   SSE-KMS/DSSE-KMS or to enable the S3 Bucket Key cost optimization.
+// - Credentials, region wiring, and deployment workflow live outside this spec
+//   in stack inputs.
 message AwsS3BucketSpec {
-  // Encryption type for the S3 bucket.
-  enum EncryptionType {
-    // Unspecified encryption defaults to SSE_S3 (AES-256) for security.
-    ENCRYPTION_TYPE_UNSPECIFIED = 0;
-    // Server-side encryption with Amazon S3-managed keys (AES-256).
-    // This is the default AWS encryption and is free.
-    ENCRYPTION_TYPE_SSE_S3 = 1;
-    // Server-side encryption with AWS KMS keys.
-    // Provides audit trails via CloudTrail and customer control over key management.
-    ENCRYPTION_TYPE_SSE_KMS = 2;
-  }
+  option (buf.validate.message).cel = {
+    id: "acl_requires_non_enforced_ownership"
+    message: "acl can only be set when object_ownership is BucketOwnerPreferred or ObjectWriter (ACLs are disabled under BucketOwnerEnforced)"
+    expression: "this.acl == '' || (this.object_ownership == 'BucketOwnerPreferred' || this.object_ownership == 'ObjectWriter')"
+  };
+  option (buf.validate.message).cel = {
+    id: "object_lock_retention_requires_object_lock"
+    message: "object_lock_default_retention requires object_lock_enabled to be true"
+    expression: "!has(this.object_lock_default_retention) || this.object_lock_enabled"
+  };
+  option (buf.validate.message).cel = {
+    id: "object_lock_requires_versioning"
+    message: "object_lock_enabled requires versioning_status to be Enabled (AWS enables versioning automatically for Object Lock buckets; state it explicitly so the manifest is honest)"
+    expression: "!this.object_lock_enabled || this.versioning_status == 'Enabled'"
+  };
+  option (buf.validate.message).cel = {
+    id: "replication_requires_versioning"
+    message: "replication requires versioning_status to be Enabled on the source bucket"
+    expression: "!has(this.replication) || this.versioning_status == 'Enabled'"
+  };
 
-  // Storage class for lifecycle transitions.
-  enum StorageClass {
-    STORAGE_CLASS_UNSPECIFIED = 0;
-    // Standard storage for frequently accessed data.
-    STORAGE_CLASS_STANDARD = 1;
-    // Infrequent Access storage for data accessed less than once per month.
-    STORAGE_CLASS_STANDARD_IA = 2;
-    // One Zone-IA for non-critical infrequently accessed data.
-    STORAGE_CLASS_ONE_ZONE_IA = 3;
-    // Intelligent-Tiering for unpredictable access patterns.
-    STORAGE_CLASS_INTELLIGENT_TIERING = 4;
-    // Glacier Instant Retrieval for archive data needing millisecond access.
-    STORAGE_CLASS_GLACIER_INSTANT_RETRIEVAL = 5;
-    // Glacier Flexible Retrieval for archive data (minutes to hours retrieval).
-    STORAGE_CLASS_GLACIER_FLEXIBLE_RETRIEVAL = 6;
-    // Glacier Deep Archive for long-term archival (12+ hours retrieval).
-    STORAGE_CLASS_GLACIER_DEEP_ARCHIVE = 7;
-  }
-
-  // Lifecycle rule to automate storage transitions and expiration.
-  message LifecycleRule {
-    // Unique identifier for the rule.
-    string id = 1 [(buf.validate.field).string.min_len = 1];
-    // Whether the rule is enabled.
-    bool enabled = 2;
-    // Prefix filter for objects affected by this rule (e.g., "logs/").
-    // Empty string applies to all objects in the bucket.
-    string prefix = 3;
-    // Days after creation to transition objects to the specified storage class.
-    int32 transition_days = 4;
-    // Target storage class for transition.
-    StorageClass transition_storage_class = 5 [(buf.validate.field).enum.defined_only = true];
-    // Days after creation to expire (delete) objects. 0 means no expiration.
-    int32 expiration_days = 6;
-    // Days after becoming noncurrent to expire old versions. Only applies if versioning is enabled.
-    int32 noncurrent_version_expiration_days = 7;
-    // Days to abort incomplete multipart uploads. Recommended: 7 days.
-    int32 abort_incomplete_multipart_upload_days = 8;
-  }
-
-  // Cross-region or same-region replication configuration.
-  message ReplicationConfiguration {
-    // Whether replication is enabled.
-    bool enabled = 1;
-    // ARN of the IAM role that S3 assumes to replicate objects.
-    // The role must have permissions to read from source bucket and write to destination.
-    // Can reference an AwsIamRole resource.
-    dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
-      (buf.validate.field).required = true,
-      (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
-      (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
-    ];
-    // Destination bucket for replication.
-    message Destination {
-      // ARN of the destination bucket (e.g., "arn:aws:s3:::destination-bucket").
-      string bucket_arn = 1 [(buf.validate.field).string.min_len = 1];
-      // Destination storage class. If not specified, uses source object's storage class.
-      StorageClass storage_class = 2 [(buf.validate.field).enum.defined_only = true];
-      // AWS account ID for cross-account replication. Leave empty for same-account.
-      string account_id = 3;
-    }
-    // Destination configuration.
-    Destination destination = 3 [(buf.validate.field).required = true];
-    // Prefix filter for objects to replicate. Empty string replicates all objects.
-    string prefix = 4;
-    // Priority for replication rules. Higher numbers have higher priority.
-    int32 priority = 5;
-  }
-
-  // Server access logging configuration.
-  message LoggingConfiguration {
-    // Whether logging is enabled.
-    bool enabled = 1;
-    // Target bucket for access logs. Must be in the same region.
-    string target_bucket = 2 [(buf.validate.field).string.min_len = 1];
-    // Prefix for log object keys (e.g., "logs/mybucket/").
-    string target_prefix = 3;
-  }
-
-  // CORS (Cross-Origin Resource Sharing) configuration.
-  message CorsConfiguration {
-    // CORS rule.
-    message CorsRule {
-      // HTTP methods allowed (e.g., ["GET", "PUT", "POST"]).
-      repeated string allowed_methods = 1 [(buf.validate.field).repeated.min_items = 1];
-      // Origins allowed (e.g., ["https://example.com"]).
-      repeated string allowed_origins = 2 [(buf.validate.field).repeated.min_items = 1];
-      // Headers allowed in preflight requests.
-      repeated string allowed_headers = 3;
-      // Headers exposed to the browser.
-      repeated string expose_headers = 4;
-      // Time in seconds browser should cache preflight response.
-      int32 max_age_seconds = 5;
-    }
-    // List of CORS rules.
-    repeated CorsRule cors_rules = 1;
-  }
-
-  // The AWS region where the resource will be created.
+  // The AWS region where the bucket will be created.
   // Example: "us-west-2", "eu-west-1"
   string region = 1 [(buf.validate.field).string.min_len = 1];
 
-  // Flag to indicate if the S3 bucket should have external (public) access.
-  // When set to `true`, the bucket will be publicly accessible over the internet.
-  // When set to `false` (default), Block Public Access is enabled (recommended for security).
-  // Public access should be used cautiously to avoid unintended data exposure.
-  // Even for public content, consider using CloudFront with Origin Access Control instead.
-  bool is_public = 2;
+  // ---------------------------------------------------------------------------
+  // Bucket root settings
+  // ---------------------------------------------------------------------------
 
-  // Enable versioning to protect against accidental deletions and overwrites.
-  // When enabled, S3 keeps all versions of an object. Recommended for production buckets.
-  // Note: Versioning increases storage costs as each version is stored separately.
-  // Use lifecycle policies to expire old versions and control costs.
-  bool versioning_enabled = 3;
+  // Delete all objects (including all versions and delete markers) when the
+  // bucket is destroyed, so a non-empty bucket does not block teardown.
+  // Irreversible — leave false for production buckets holding real data.
+  bool force_destroy = 2;
 
-  // Encryption type for objects in the bucket.
-  // Defaults to SSE_S3 (AES-256) if unspecified, which is free and provides strong encryption.
-  // Use SSE_KMS for audit trails (CloudTrail logs key usage) and customer-managed key control.
-  EncryptionType encryption_type = 4 [(buf.validate.field).enum.defined_only = true];
+  // Enable S3 Object Lock on the bucket (WORM — write once, read many).
+  // Cannot be changed after creation and requires versioning. Enabling the
+  // flag alone only makes the bucket lock-capable; pair it with
+  // `object_lock_default_retention` to apply a default retention window to
+  // every new object.
+  bool object_lock_enabled = 3;
 
-  // KMS key ID or ARN for SSE-KMS encryption.
-  // Required when encryption_type is ENCRYPTION_TYPE_SSE_KMS.
-  // Leave empty for ENCRYPTION_TYPE_SSE_S3.
-  // Can reference an AwsKmsKey resource.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 5 [
+  // ---------------------------------------------------------------------------
+  // Versioning
+  // ---------------------------------------------------------------------------
+
+  // Bucket versioning state. When empty the bucket is left unversioned (the
+  // AWS default). "Enabled" keeps every version of every object — the
+  // foundation for replication, Object Lock, and protection against
+  // accidental overwrite/delete. "Suspended" stops minting new versions but
+  // keeps existing ones. AWS does not allow returning to the never-versioned
+  // state once versioning has been enabled, so flipping Enabled back to
+  // empty is rejected by AWS at apply time — use Suspended instead.
+  // Versioned buckets accrue storage for every version; pair with lifecycle
+  // `noncurrent_version_expiration` to bound costs.
+  string versioning_status = 4 [(buf.validate.field).cel = {
+    id: "versioning_status_valid"
+    message: "versioning_status must be one of: Enabled, Suspended (or empty for unversioned)"
+    expression: "this == '' || this == 'Enabled' || this == 'Suspended'"
+  }];
+
+  // ---------------------------------------------------------------------------
+  // Encryption at rest
+  // ---------------------------------------------------------------------------
+
+  // Default server-side encryption for new objects. When unset, AWS applies
+  // its own SSE-S3 (AES256) default — set this only to move to KMS-based
+  // encryption or to tune the bucket key.
+  AwsS3BucketEncryption encryption = 5;
+
+  // ---------------------------------------------------------------------------
+  // Public access, ownership, and ACLs
+  // ---------------------------------------------------------------------------
+
+  // Public access guard rails. When unset, ALL FOUR guards are enabled — the
+  // secure default for every new bucket. Set this block (flipping specific
+  // guards to false) only when the bucket must serve public content directly,
+  // e.g. a public static website. Each guard is independent; see the block's
+  // field comments for what each one controls.
+  AwsS3BucketPublicAccessBlock public_access_block = 6;
+
+  // Object Ownership setting. Empty defaults to "BucketOwnerEnforced" — ACLs
+  // are disabled and the bucket owner owns every object; access is managed
+  // purely through policies (the AWS-recommended model). "BucketOwnerPreferred"
+  // and "ObjectWriter" re-enable ACLs for legacy cross-account upload patterns
+  // that depend on them.
+  string object_ownership = 7 [(buf.validate.field).cel = {
+    id: "object_ownership_valid"
+    message: "object_ownership must be one of: BucketOwnerEnforced, BucketOwnerPreferred, ObjectWriter"
+    expression: "this == '' || this == 'BucketOwnerEnforced' || this == 'BucketOwnerPreferred' || this == 'ObjectWriter'"
+  }];
+
+  // Canned ACL applied to the bucket. Only meaningful when `object_ownership`
+  // re-enables ACLs (BucketOwnerPreferred or ObjectWriter) — enforced by
+  // validation. Prefer bucket policies over ACLs; this exists for legacy
+  // integrations (e.g. "log-delivery-write" for classic log delivery).
+  string acl = 8 [(buf.validate.field).cel = {
+    id: "acl_valid"
+    message: "acl must be a canned ACL: private, public-read, public-read-write, authenticated-read, log-delivery-write"
+    expression: "this == '' || this == 'private' || this == 'public-read' || this == 'public-read-write' || this == 'authenticated-read' || this == 'log-delivery-write'"
+  }];
+
+  // ---------------------------------------------------------------------------
+  // Access policy
+  // ---------------------------------------------------------------------------
+
+  // Bucket resource policy as a standard IAM policy document. This is the
+  // primary access-control surface for a bucket: cross-account read/write
+  // grants, TLS-only conditions, public-read statements for website buckets,
+  // and service permissions (CloudFront OAC, log delivery) all live here.
+  // Note: statements granting public access also require the corresponding
+  // `public_access_block` guards to be relaxed, otherwise AWS blocks the
+  // policy at apply time.
+  google.protobuf.Struct policy = 9;
+
+  // ---------------------------------------------------------------------------
+  // Lifecycle management
+  // ---------------------------------------------------------------------------
+
+  // Minimum object size for the default transition behavior across all
+  // lifecycle rules. "all_storage_classes_128K" (the AWS default) skips
+  // transitioning objects smaller than 128 KB, which would otherwise cost
+  // more in transition requests than they save in storage;
+  // "varies_by_storage_class" applies the legacy per-class minimums.
+  string transition_default_minimum_object_size = 10 [(buf.validate.field).cel = {
+    id: "transition_default_minimum_object_size_valid"
+    message: "transition_default_minimum_object_size must be one of: all_storage_classes_128K, varies_by_storage_class"
+    expression: "this == '' || this == 'all_storage_classes_128K' || this == 'varies_by_storage_class'"
+  }];
+
+  // Lifecycle rules that transition objects to cheaper storage classes and
+  // expire objects/versions on a schedule. The standard levers for cost
+  // control: tier logs to Glacier, expire temporary data, prune noncurrent
+  // versions on versioned buckets, and abort stale multipart uploads.
+  repeated AwsS3BucketLifecycleRule lifecycle_rules = 11;
+
+  // ---------------------------------------------------------------------------
+  // Replication
+  // ---------------------------------------------------------------------------
+
+  // Replication configuration. Copies objects (asynchronously) to one or more
+  // destination buckets — cross-region for disaster recovery, same-region for
+  // cross-account backup or log aggregation. Requires versioning on both the
+  // source (enforced here) and every destination bucket.
+  AwsS3BucketReplication replication = 12;
+
+  // ---------------------------------------------------------------------------
+  // Static website hosting
+  // ---------------------------------------------------------------------------
+
+  // Static website hosting configuration. Serves bucket content over the
+  // region's website endpoint (HTTP only, no TLS). For production sites,
+  // front the bucket with CloudFront (which adds TLS, caching, and lets the
+  // bucket stay private via Origin Access Control) and leave this unset;
+  // direct website hosting suits internal or throwaway sites.
+  AwsS3BucketWebsite website = 13;
+
+  // ---------------------------------------------------------------------------
+  // Server access logging
+  // ---------------------------------------------------------------------------
+
+  // Server access logging. Delivers request logs to another bucket (with some
+  // delay). The target bucket must be in the same region and must allow log
+  // delivery — either via its ACL (legacy) or, under BucketOwnerEnforced
+  // ownership, via a bucket policy granting `logging.s3.amazonaws.com`.
+  AwsS3BucketLogging logging = 14;
+
+  // ---------------------------------------------------------------------------
+  // CORS
+  // ---------------------------------------------------------------------------
+
+  // CORS rules for browser-based access, required when a web application on
+  // another origin reads from or writes to the bucket directly (presigned
+  // uploads, font/asset serving).
+  repeated AwsS3BucketCorsRule cors_rules = 15 [(buf.validate.field).repeated.max_items = 100];
+
+  // ---------------------------------------------------------------------------
+  // Event notifications
+  // ---------------------------------------------------------------------------
+
+  // Event notifications for object-level events (created, removed, restored,
+  // replicated...). Targets are Lambda functions, SQS queues, SNS topics, or
+  // EventBridge. Note: SQS/SNS/Lambda targets must grant S3 permission to
+  // deliver BEFORE the notification is configured (queue/topic policy or
+  // Lambda resource permission), or AWS rejects the configuration at apply
+  // time; the EventBridge arm needs no such grant.
+  AwsS3BucketNotification notification = 16;
+
+  // ---------------------------------------------------------------------------
+  // Object Lock default retention
+  // ---------------------------------------------------------------------------
+
+  // Default Object Lock retention applied to every new object. Requires
+  // `object_lock_enabled` (enforced by validation). GOVERNANCE mode can be
+  // bypassed by principals with special permission; COMPLIANCE mode cannot be
+  // shortened or bypassed by anyone — including the root account — until the
+  // retention period expires, so treat COMPLIANCE with care.
+  AwsS3BucketObjectLockDefaultRetention object_lock_default_retention = 17;
+
+  // ---------------------------------------------------------------------------
+  // Transfer acceleration and requester pays
+  // ---------------------------------------------------------------------------
+
+  // Transfer Acceleration state. "Enabled" routes uploads/downloads through
+  // CloudFront edge locations for faster long-distance transfers (extra cost
+  // per GB). Once enabled, use "Suspended" to turn it off — the setting
+  // cannot be removed entirely.
+  string acceleration_status = 18 [(buf.validate.field).cel = {
+    id: "acceleration_status_valid"
+    message: "acceleration_status must be one of: Enabled, Suspended"
+    expression: "this == '' || this == 'Enabled' || this == 'Suspended'"
+  }];
+
+  // Who pays for requests and data transfer. Empty defaults to "BucketOwner".
+  // "Requester" shifts request/transfer costs to the caller — common for
+  // large public datasets.
+  string request_payer = 19 [(buf.validate.field).cel = {
+    id: "request_payer_valid"
+    message: "request_payer must be one of: BucketOwner, Requester"
+    expression: "this == '' || this == 'BucketOwner' || this == 'Requester'"
+  }];
+
+  // ---------------------------------------------------------------------------
+  // Intelligent-Tiering archive configurations
+  // ---------------------------------------------------------------------------
+
+  // Archive-tier configurations for objects stored in the INTELLIGENT_TIERING
+  // storage class. Each named configuration opts a scope of objects into the
+  // Archive Access and/or Deep Archive Access tiers after a period without
+  // access. Only affects objects already in INTELLIGENT_TIERING (via lifecycle
+  // transition or direct upload).
+  repeated AwsS3BucketIntelligentTieringConfiguration intelligent_tiering_configurations = 20;
+}
+
+// Default server-side encryption for new objects in the bucket.
+message AwsS3BucketEncryption {
+  option (buf.validate.message).cel = {
+    id: "kms_key_requires_kms_algorithm"
+    message: "kms_key_id is only used when sse_algorithm is aws:kms or aws:kms:dsse"
+    expression: "!has(this.kms_key_id) || (this.sse_algorithm == 'aws:kms' || this.sse_algorithm == 'aws:kms:dsse')"
+  };
+
+  // Encryption algorithm for new objects. "AES256" is SSE-S3 (S3-managed
+  // keys, free — also the AWS account-wide default when this block is
+  // absent). "aws:kms" is SSE-KMS: CloudTrail-audited key usage and
+  // customer-controlled key policy, billed per KMS request unless the bucket
+  // key is enabled. "aws:kms:dsse" is dual-layer SSE-KMS for workloads that
+  // require two independent layers of encryption.
+  string sse_algorithm = 1 [(buf.validate.field).cel = {
+    id: "sse_algorithm_valid"
+    message: "sse_algorithm must be one of: AES256, aws:kms, aws:kms:dsse"
+    expression: "this == '' || this == 'AES256' || this == 'aws:kms' || this == 'aws:kms:dsse'"
+  }];
+
+  // Customer-managed KMS key for SSE-KMS/DSSE-KMS. Accepts a key ARN or a
+  // reference to an AwsKmsKey resource. When omitted with a KMS algorithm,
+  // AWS uses the account's AWS-managed `aws/s3` key — functional, but without
+  // customer control over the key policy or rotation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
 
-  // Tags for resource governance, cost allocation, and organization.
-  // Common tags: Environment (prod/staging), Project, Owner, CostCenter.
-  // AWS allows up to 50 tags per bucket.
-  map<string, string> tags = 6;
+  // Use an S3 Bucket Key to reduce SSE-KMS costs. A bucket-level key is
+  // derived from the KMS key and reused for objects, cutting KMS API calls
+  // by up to 99% on KMS-encrypted buckets. Recommended whenever SSE-KMS is
+  // in use; no effect under AES256.
+  bool bucket_key_enabled = 3;
+}
 
-  // Lifecycle rules for automatic storage transitions and expiration.
-  // Use lifecycle rules to:
-  // - Move old objects to cheaper storage (Standard -> IA -> Glacier)
-  // - Expire old logs or temporary data
-  // - Delete old object versions to control costs
-  // - Abort incomplete multipart uploads
-  repeated LifecycleRule lifecycle_rules = 7;
+// Public access guard rails for the bucket. Absence of this block means all
+// four guards are ON (fully private) — each field here flips a specific guard.
+message AwsS3BucketPublicAccessBlock {
+  // Reject new ACLs that grant public access (PUT requests carrying public
+  // ACLs fail).
+  bool block_public_acls = 1;
 
-  // Replication configuration for disaster recovery or compliance.
-  // Cross-Region Replication (CRR): replicate to different region for disaster recovery.
-  // Same-Region Replication (SRR): replicate to same region for cross-account backups or log aggregation.
-  // Note: Requires versioning_enabled = true on both source and destination buckets.
-  ReplicationConfiguration replication = 8;
+  // Reject bucket policies that grant public access (the policy PUT fails).
+  bool block_public_policy = 2;
 
-  // Server access logging configuration.
-  // Logs all requests made to the bucket for security audits and analytics.
-  // Access logs are delivered to a separate bucket with some delay (minutes to hours).
-  // Alternative: Use CloudTrail Data Events for real-time logging (higher cost for high-traffic buckets).
-  LoggingConfiguration logging = 9;
+  // Ignore all existing public ACLs when evaluating access.
+  bool ignore_public_acls = 3;
 
-  // CORS configuration for web applications.
-  // Required when your web application hosted on one domain needs to access bucket content.
-  // Example: React app on example.com accessing S3 bucket for images/files.
-  CorsConfiguration cors = 10;
+  // Restrict access to this bucket to AWS service principals and authorized
+  // users within the bucket owner's account, even if a policy grants public
+  // access.
+  bool restrict_public_buckets = 4;
+}
 
-  // Force destroy the bucket even if it contains objects.
-  // When true, all objects (including versions) are deleted before destroying the bucket.
-  // WARNING: Use with caution! This is irreversible.
-  // Recommended: false for production buckets to prevent accidental data loss.
-  bool force_destroy = 11;
+// One lifecycle rule: which objects it covers (filter) and what happens to
+// them over time (transitions, expiration, version pruning, upload cleanup).
+message AwsS3BucketLifecycleRule {
+  option (buf.validate.message).cel = {
+    id: "lifecycle_rule_has_action"
+    message: "a lifecycle rule must define at least one action (transition, expiration, noncurrent-version handling, or multipart-upload abort)"
+    expression: "size(this.transitions) > 0 || has(this.expiration) || has(this.noncurrent_version_expiration) || size(this.noncurrent_version_transitions) > 0 || this.abort_incomplete_multipart_upload_days > 0"
+  };
+
+  // AWS rejects AbortIncompleteMultipartUpload on rules whose filter uses
+  // object tags or object size (multipart uploads in progress have neither,
+  // so such a filter could never match them). Prefix-only filters are fine.
+  option (buf.validate.message).cel = {
+    id: "abort_multipart_incompatible_with_tag_or_size_filter"
+    message: "abort_incomplete_multipart_upload_days cannot be combined with a filter using tags or object-size bounds (AWS rejects it; prefix-only filters are allowed)"
+    expression: "this.abort_incomplete_multipart_upload_days == 0 || !has(this.filter) || (size(this.filter.tags) == 0 && this.filter.object_size_greater_than == 0 && this.filter.object_size_less_than == 0)"
+  };
+
+  // Unique identifier for the rule within the bucket.
+  string id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // Rule state. Empty defaults to "Enabled"; set "Disabled" to keep a rule
+  // defined but inactive.
+  string status = 2 [(buf.validate.field).cel = {
+    id: "lifecycle_rule_status_valid"
+    message: "status must be one of: Enabled, Disabled"
+    expression: "this == '' || this == 'Enabled' || this == 'Disabled'"
+  }];
+
+  // Which objects the rule applies to. When unset the rule covers every
+  // object in the bucket.
+  AwsS3BucketLifecycleFilter filter = 3;
+
+  // Storage-class transitions for current object versions, e.g. to
+  // STANDARD_IA after 30 days and DEEP_ARCHIVE after 365. Each entry names a
+  // target class and when to move.
+  repeated AwsS3BucketLifecycleTransition transitions = 4;
+
+  // Expiration (deletion) of current object versions.
+  AwsS3BucketLifecycleExpiration expiration = 5;
+
+  // Storage-class transitions for noncurrent (superseded) versions on
+  // versioned buckets.
+  repeated AwsS3BucketNoncurrentVersionTransition noncurrent_version_transitions = 6;
+
+  // Permanent deletion of noncurrent versions — the essential cost control
+  // for versioned buckets.
+  AwsS3BucketNoncurrentVersionExpiration noncurrent_version_expiration = 7;
+
+  // Abort incomplete multipart uploads this many days after initiation,
+  // reclaiming storage from failed uploads. 7 days is a common choice.
+  int32 abort_incomplete_multipart_upload_days = 8 [(buf.validate.field).int32.gte = 0];
+}
+
+// Object scope for a lifecycle rule. Predicates combine with AND: an object
+// must match the prefix, every tag, and the size bounds. (AWS expresses a
+// single predicate and a multi-predicate "and" wrapper as different document
+// shapes; the IaC modules emit whichever shape the chosen predicates need.)
+message AwsS3BucketLifecycleFilter {
+  // Key prefix, e.g. "logs/".
+  string prefix = 1;
+
+  // Object tags that must all be present.
+  map<string, string> tags = 2;
+
+  // Minimum object size in bytes (exclusive). 0 means no lower bound.
+  int64 object_size_greater_than = 3 [(buf.validate.field).int64.gte = 0];
+
+  // Maximum object size in bytes (exclusive). 0 means no upper bound.
+  int64 object_size_less_than = 4 [(buf.validate.field).int64.gte = 0];
+}
+
+// A storage-class transition for current object versions.
+message AwsS3BucketLifecycleTransition {
+  option (buf.validate.message).cel = {
+    id: "transition_days_xor_date"
+    message: "exactly one of days or date must be set"
+    expression: "(this.days > 0 && this.date == '') || (this.days == 0 && this.date != '')"
+  };
+
+  // Days after object creation to transition. Mutually exclusive with `date`.
+  int32 days = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Absolute transition date in RFC3339 format (e.g. "2027-01-01T00:00:00Z").
+  // Mutually exclusive with `days`.
+  string date = 2;
+
+  // Target storage class.
+  string storage_class = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "transition_storage_class_valid"
+      message: "storage_class must be one of: STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE"
+      expression: "this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE'"
+    }
+  ];
+}
+
+// Expiration of current object versions. On versioned buckets "expiration"
+// creates a delete marker (the versions remain as noncurrent); on unversioned
+// buckets the object is permanently deleted.
+message AwsS3BucketLifecycleExpiration {
+  option (buf.validate.message).cel = {
+    id: "expiration_exactly_one"
+    message: "exactly one of days, date, or expired_object_delete_marker must be set"
+    expression: "(this.days > 0 ? 1 : 0) + (this.date != '' ? 1 : 0) + (this.expired_object_delete_marker ? 1 : 0) == 1"
+  };
+
+  // Days after object creation to expire.
+  int32 days = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Absolute expiration date in RFC3339 format. Mutually exclusive with `days`.
+  string date = 2;
+
+  // Remove delete markers that have no remaining noncurrent versions
+  // ("expired object delete markers") — housekeeping for versioned buckets
+  // that also prune noncurrent versions.
+  bool expired_object_delete_marker = 3;
+}
+
+// A storage-class transition for noncurrent (superseded) versions.
+message AwsS3BucketNoncurrentVersionTransition {
+  // Days after an object version becomes noncurrent to transition it.
+  int32 noncurrent_days = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Keep this many newest noncurrent versions in their current class; the
+  // transition applies only to older ones. 0 transitions all noncurrent
+  // versions on schedule.
+  int32 newer_noncurrent_versions = 2 [(buf.validate.field).int32.gte = 0];
+
+  // Target storage class.
+  string storage_class = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "noncurrent_transition_storage_class_valid"
+      message: "storage_class must be one of: STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE"
+      expression: "this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE'"
+    }
+  ];
+}
+
+// Permanent deletion of noncurrent versions.
+message AwsS3BucketNoncurrentVersionExpiration {
+  // Days after an object version becomes noncurrent to delete it permanently.
+  int32 noncurrent_days = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Keep this many newest noncurrent versions regardless of age; only older
+  // ones are deleted. 0 deletes all noncurrent versions on schedule.
+  int32 newer_noncurrent_versions = 2 [(buf.validate.field).int32.gte = 0];
+}
+
+// Replication configuration: the IAM role S3 assumes plus one or more rules.
+message AwsS3BucketReplication {
+  // IAM role S3 assumes to replicate. The role must trust
+  // `s3.amazonaws.com`, be able to read from this bucket, and be able to
+  // write (`s3:ReplicateObject`/`s3:ReplicateDelete`) to every destination.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Replication rules. Rules with overlapping scopes are disambiguated by
+  // `priority`.
+  repeated AwsS3BucketReplicationRule rules = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 1000
+  }];
+}
+
+// One replication rule: scope, destination, and replication behavior.
+message AwsS3BucketReplicationRule {
+  option (buf.validate.message).cel = {
+    id: "sse_kms_replication_requires_replica_key"
+    message: "replicating SSE-KMS encrypted objects requires destination.replica_kms_key_id"
+    expression: "!this.replicate_sse_kms_encrypted_objects || (has(this.destination) && has(this.destination.replica_kms_key_id))"
+  };
+
+  // Unique identifier for the rule.
+  string id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // Priority among rules with overlapping scopes; higher wins. Must be unique
+  // across rules.
+  int32 priority = 2 [(buf.validate.field).int32.gte = 0];
+
+  // Rule state. Empty defaults to "Enabled".
+  string status = 3 [(buf.validate.field).cel = {
+    id: "replication_rule_status_valid"
+    message: "status must be one of: Enabled, Disabled"
+    expression: "this == '' || this == 'Enabled' || this == 'Disabled'"
+  }];
+
+  // Which objects the rule replicates. When unset the rule covers the whole
+  // bucket. Predicates combine with AND (same convention as lifecycle
+  // filters; tag-scoped rules require delete-marker replication to stay
+  // disabled per AWS rules — AWS validates this at apply time).
+  AwsS3BucketReplicationFilter filter = 4;
+
+  // Where and how replicas are stored.
+  AwsS3BucketReplicationDestination destination = 5 [(buf.validate.field).required = true];
+
+  // Replicate delete markers to the destination, keeping deletions in sync.
+  // AWS default is NOT to replicate them (replicas outlive source deletions).
+  bool delete_marker_replication = 6;
+
+  // Replicate existing objects (those created before the rule). Requires an
+  // AWS Support-activated Batch Replication entitlement on some accounts;
+  // most new setups replicate only new objects and backfill with S3 Batch
+  // Operations.
+  bool existing_object_replication = 7;
+
+  // Replicate changes to replica metadata (replica modification sync) — used
+  // for bi-directional replication topologies.
+  bool replicate_replica_modifications = 8;
+
+  // Replicate objects encrypted with SSE-KMS (skipped by default). Requires
+  // `destination.replica_kms_key_id` (enforced by validation), and the
+  // replication role must be able to decrypt with the source key and encrypt
+  // with the destination key.
+  bool replicate_sse_kms_encrypted_objects = 9;
+}
+
+// Object scope for a replication rule (prefix and/or tags, AND-combined).
+message AwsS3BucketReplicationFilter {
+  // Key prefix, e.g. "important/".
+  string prefix = 1;
+
+  // Object tags that must all be present.
+  map<string, string> tags = 2;
+}
+
+// Replication destination and replica settings.
+message AwsS3BucketReplicationDestination {
+  option (buf.validate.message).cel = {
+    id: "rtc_requires_metrics"
+    message: "replication_time_control_enabled requires metrics_enabled (AWS requires replication metrics with RTC)"
+    expression: "!this.replication_time_control_enabled || this.metrics_enabled"
+  };
+  option (buf.validate.message).cel = {
+    id: "ownership_translation_requires_account"
+    message: "change_replica_ownership_to_destination requires account (the destination account ID)"
+    expression: "!this.change_replica_ownership_to_destination || this.account != ''"
+  };
+
+  // Destination bucket. Accepts a bucket ARN (arn:aws:s3:::name) or a
+  // reference to an AwsS3Bucket resource. The destination must have
+  // versioning enabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // Destination AWS account ID for cross-account replication. Empty for
+  // same-account.
+  string account = 2;
+
+  // Storage class for replicas. Empty keeps each source object's class.
+  string storage_class = 3 [(buf.validate.field).cel = {
+    id: "replica_storage_class_valid"
+    message: "storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY"
+    expression: "this == '' || this == 'STANDARD' || this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE' || this == 'REDUCED_REDUNDANCY'"
+  }];
+
+  // Transfer replica ownership to the destination account (cross-account
+  // replication where the destination owns its copies). Requires `account`.
+  bool change_replica_ownership_to_destination = 4;
+
+  // KMS key (in the destination region/account) used to encrypt replicas of
+  // SSE-KMS objects. Required when the rule sets
+  // `replicate_sse_kms_encrypted_objects`.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef replica_kms_key_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Emit replication metrics (bytes pending, latency) to CloudWatch.
+  // Required for — and implied by — Replication Time Control.
+  bool metrics_enabled = 6;
+
+  // Enable S3 Replication Time Control: an SLA that 99.99% of objects
+  // replicate within 15 minutes, with metrics and events. Extra per-GB cost;
+  // requires `metrics_enabled`.
+  bool replication_time_control_enabled = 7;
+}
+
+// Static website hosting configuration. Set either the index/error document
+// fields (a normal website) or `redirect_all_requests_to` (a pure redirect
+// bucket), not both.
+message AwsS3BucketWebsite {
+  option (buf.validate.message).cel = {
+    id: "website_index_xor_redirect_all"
+    message: "set either index_document_suffix (website mode) or redirect_all_requests_to (redirect mode), not both"
+    expression: "(this.index_document_suffix != '' && !has(this.redirect_all_requests_to)) || (this.index_document_suffix == '' && has(this.redirect_all_requests_to))"
+  };
+  option (buf.validate.message).cel = {
+    id: "website_error_requires_index"
+    message: "error_document_key requires index_document_suffix (website mode)"
+    expression: "this.error_document_key == '' || this.index_document_suffix != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "website_routing_rules_require_index"
+    message: "routing_rules require index_document_suffix (website mode)"
+    expression: "size(this.routing_rules) == 0 || this.index_document_suffix != ''"
+  };
+
+  // Index document object suffix served for directory-style requests,
+  // e.g. "index.html".
+  string index_document_suffix = 1;
+
+  // Object key served on 4XX errors, e.g. "error.html".
+  string error_document_key = 2;
+
+  // Redirect every request to another host — makes this a pure redirect
+  // bucket (e.g. apex-domain → www).
+  AwsS3BucketWebsiteRedirectAll redirect_all_requests_to = 3;
+
+  // Conditional redirect rules evaluated per request (e.g. redirect a prefix
+  // to another host or rewrite key prefixes).
+  repeated AwsS3BucketWebsiteRoutingRule routing_rules = 4;
+}
+
+// Redirect-everything target for a redirect bucket.
+message AwsS3BucketWebsiteRedirectAll {
+  // Host to redirect to, e.g. "www.example.com".
+  string host_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Protocol for the redirect. Empty preserves the request protocol.
+  string protocol = 2 [(buf.validate.field).cel = {
+    id: "redirect_all_protocol_valid"
+    message: "protocol must be one of: http, https"
+    expression: "this == '' || this == 'http' || this == 'https'"
+  }];
+}
+
+// One conditional website routing rule.
+message AwsS3BucketWebsiteRoutingRule {
+  // When the rule applies. At least one condition should be set; an empty
+  // condition matches every request.
+  AwsS3BucketWebsiteRoutingRuleCondition condition = 1;
+
+  // What the redirect does.
+  AwsS3BucketWebsiteRoutingRuleRedirect redirect = 2 [(buf.validate.field).required = true];
+}
+
+// Condition for a website routing rule (fields AND-combine when both set).
+message AwsS3BucketWebsiteRoutingRuleCondition {
+  // Apply when the response would have this HTTP error code, e.g. "404".
+  string http_error_code_returned_equals = 1;
+
+  // Apply to requests whose key starts with this prefix, e.g. "docs/".
+  string key_prefix_equals = 2;
+}
+
+// Redirect action for a website routing rule.
+message AwsS3BucketWebsiteRoutingRuleRedirect {
+  // Redirect target host. Empty keeps the original host.
+  string host_name = 1;
+
+  // HTTP redirect code, e.g. "301". Empty uses the AWS default (301).
+  string http_redirect_code = 2;
+
+  // Protocol for the redirect. Empty preserves the request protocol.
+  string protocol = 3 [(buf.validate.field).cel = {
+    id: "routing_redirect_protocol_valid"
+    message: "protocol must be one of: http, https"
+    expression: "this == '' || this == 'http' || this == 'https'"
+  }];
+
+  // Replace the matched key prefix with this value (prefix rewrite).
+  // Mutually exclusive with replace_key_with.
+  string replace_key_prefix_with = 4;
+
+  // Replace the entire key with this value. Mutually exclusive with
+  // replace_key_prefix_with.
+  string replace_key_with = 5;
+}
+
+// Server access logging target.
+message AwsS3BucketLogging {
+  // Destination bucket for access logs. Accepts a bucket name or a reference
+  // to an AwsS3Bucket resource. Must be in the same region; must not be the
+  // bucket itself (logging loops amplify storage).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Key prefix for log objects, e.g. "logs/my-bucket/".
+  string target_prefix = 2;
+
+  // Date source for partitioned log-object keys
+  // ("[prefix]/[account]/[region]/[bucket]/[yyyy]/[mm]/[dd]/..."), which makes
+  // logs directly queryable by Athena partitions. "EventTime" partitions by
+  // when the request happened, "DeliveryTime" by when the log was delivered.
+  // Empty uses the flat (non-partitioned) key format.
+  string partitioned_prefix_date_source = 3 [(buf.validate.field).cel = {
+    id: "partitioned_prefix_date_source_valid"
+    message: "partitioned_prefix_date_source must be one of: EventTime, DeliveryTime"
+    expression: "this == '' || this == 'EventTime' || this == 'DeliveryTime'"
+  }];
+}
+
+// One CORS rule.
+message AwsS3BucketCorsRule {
+  // Optional identifier for the rule (shows up in error messages).
+  string id = 1 [(buf.validate.field).string.max_len = 255];
+
+  // HTTP methods the origin may use, e.g. ["GET", "PUT"].
+  repeated string allowed_methods = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      cel: {
+        id: "cors_method_valid"
+        message: "allowed_methods entries must be one of: GET, PUT, POST, DELETE, HEAD"
+        expression: "this == 'GET' || this == 'PUT' || this == 'POST' || this == 'DELETE' || this == 'HEAD'"
+      }
+    }
+  ];
+
+  // Origins allowed to make requests, e.g. ["https://example.com"]. "*"
+  // allows any origin.
+  repeated string allowed_origins = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // Headers allowed in the actual request (matched against
+  // Access-Control-Request-Headers in preflight).
+  repeated string allowed_headers = 4;
+
+  // Response headers the browser is allowed to read.
+  repeated string expose_headers = 5;
+
+  // Seconds the browser may cache the preflight response.
+  int32 max_age_seconds = 6 [(buf.validate.field).int32.gte = 0];
+}
+
+// Event notification targets. Any combination of the four arms may be set.
+message AwsS3BucketNotification {
+  // Deliver all bucket events to Amazon EventBridge (the default event bus),
+  // where rules route them anywhere. The most flexible arm and the only one
+  // requiring no delivery permission setup.
+  bool eventbridge = 1;
+
+  // Lambda function targets.
+  repeated AwsS3BucketLambdaNotification lambda_functions = 2;
+
+  // SQS queue targets. The queue policy must allow `s3.amazonaws.com` to
+  // send messages (scoped to this bucket's ARN) before the notification is
+  // configured.
+  repeated AwsS3BucketQueueNotification queues = 3;
+
+  // SNS topic targets. The topic policy must allow `s3.amazonaws.com` to
+  // publish (scoped to this bucket's ARN) before the notification is
+  // configured.
+  repeated AwsS3BucketTopicNotification topics = 4;
+}
+
+// A Lambda notification target.
+message AwsS3BucketLambdaNotification {
+  // Lambda function to invoke. Accepts a function ARN or a reference to an
+  // AwsLambda resource. The function must carry a resource-based permission
+  // allowing `s3.amazonaws.com` to invoke it (AwsLambda's
+  // `invoke_permissions` models this).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_function_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Event types to deliver, e.g. ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"].
+  repeated string events = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Only deliver events for keys starting with this prefix.
+  string filter_prefix = 3;
+
+  // Only deliver events for keys ending with this suffix, e.g. ".jpg".
+  string filter_suffix = 4;
+}
+
+// An SQS notification target.
+message AwsS3BucketQueueNotification {
+  // SQS queue to deliver to. Accepts a queue ARN or a reference to an
+  // AwsSqsQueue resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef queue_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+
+  // Event types to deliver, e.g. ["s3:ObjectCreated:*"].
+  repeated string events = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Only deliver events for keys starting with this prefix.
+  string filter_prefix = 3;
+
+  // Only deliver events for keys ending with this suffix.
+  string filter_suffix = 4;
+}
+
+// An SNS notification target.
+message AwsS3BucketTopicNotification {
+  // SNS topic to publish to. Accepts a topic ARN or a reference to an
+  // AwsSnsTopic resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef topic_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // Event types to deliver, e.g. ["s3:ObjectCreated:*"].
+  repeated string events = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Only deliver events for keys starting with this prefix.
+  string filter_prefix = 3;
+
+  // Only deliver events for keys ending with this suffix.
+  string filter_suffix = 4;
+}
+
+// Default Object Lock retention for new objects.
+message AwsS3BucketObjectLockDefaultRetention {
+  option (buf.validate.message).cel = {
+    id: "retention_days_xor_years"
+    message: "exactly one of days or years must be set"
+    expression: "(this.days > 0 && this.years == 0) || (this.days == 0 && this.years > 0)"
+  };
+
+  // Retention mode. GOVERNANCE allows privileged bypass
+  // (s3:BypassGovernanceRetention); COMPLIANCE is immutable for everyone
+  // until expiry.
+  string mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "object_lock_mode_valid"
+      message: "mode must be one of: GOVERNANCE, COMPLIANCE"
+      expression: "this == 'GOVERNANCE' || this == 'COMPLIANCE'"
+    }
+  ];
+
+  // Retention period in days. Mutually exclusive with `years`.
+  int32 days = 2 [(buf.validate.field).int32.gte = 0];
+
+  // Retention period in years. Mutually exclusive with `days`.
+  int32 years = 3 [(buf.validate.field).int32.gte = 0];
+}
+
+// One Intelligent-Tiering archive configuration.
+message AwsS3BucketIntelligentTieringConfiguration {
+  // Name of the configuration, unique within the bucket.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Configuration state. Empty defaults to "Enabled".
+  string status = 2 [(buf.validate.field).cel = {
+    id: "intelligent_tiering_status_valid"
+    message: "status must be one of: Enabled, Disabled"
+    expression: "this == '' || this == 'Enabled' || this == 'Disabled'"
+  }];
+
+  // Key prefix scoping the configuration. Combined (AND) with filter_tags.
+  string filter_prefix = 3;
+
+  // Object tags scoping the configuration. Combined (AND) with filter_prefix.
+  map<string, string> filter_tags = 4;
+
+  // Archive tiers to enable and when. ARCHIVE_ACCESS requires at least 90
+  // days without access, DEEP_ARCHIVE_ACCESS at least 180 (enforced by
+  // validation, mirroring AWS limits; both max 730).
+  repeated AwsS3BucketIntelligentTieringTier tiers = 5 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One Intelligent-Tiering archive tier.
+message AwsS3BucketIntelligentTieringTier {
+  option (buf.validate.message).cel = {
+    id: "tier_days_minimum"
+    message: "days must be at least 90 for ARCHIVE_ACCESS and at least 180 for DEEP_ARCHIVE_ACCESS (max 730)"
+    expression: "(this.access_tier == 'ARCHIVE_ACCESS' && this.days >= 90 && this.days <= 730) || (this.access_tier == 'DEEP_ARCHIVE_ACCESS' && this.days >= 180 && this.days <= 730)"
+  };
+
+  // Archive tier to move objects into.
+  string access_tier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "access_tier_valid"
+      message: "access_tier must be one of: ARCHIVE_ACCESS, DEEP_ARCHIVE_ACCESS"
+      expression: "this == 'ARCHIVE_ACCESS' || this == 'DEEP_ARCHIVE_ACCESS'"
+    }
+  ];
+
+  // Consecutive days without access before objects move to this tier.
+  int32 days = 2 [(buf.validate.field).int32.gte = 1];
 }

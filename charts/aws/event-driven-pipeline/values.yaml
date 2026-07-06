@@ -1,4 +1,9 @@
 params:
+  # ─── Region ────────────────────────────────────────────────────────────
+  - name: aws_region
+    description: AWS region for every resource
+    value: us-east-1
+
   # ─── EventBridge ───────────────────────────────────────────────────────
   - name: bus_name
     description: Custom EventBridge bus name for application events

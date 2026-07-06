@@ -979,6 +979,74 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsS3Bucket: bucket_id (name) and bucket_arn are the join keys the
+			// catalog's 12 consumer fields reference; the regional domain doubles
+			// as the CloudFront origin domain; the website pair is exported as
+			// empty strings when hosting is off so the output contract stays
+			// shape-stable across both engines.
+			name: "AwsS3Bucket",
+			kind: cloudresourcekind.CloudResourceKind_AwsS3Bucket,
+			rawOutputs: map[string]interface{}{
+				"bucket_id":                   "planton-oss-e2e-awss3bucket-smoke",
+				"bucket_arn":                  "arn:aws:s3:::planton-oss-e2e-awss3bucket-smoke",
+				"region":                      "us-west-2",
+				"bucket_regional_domain_name": "planton-oss-e2e-awss3bucket-smoke.s3.us-west-2.amazonaws.com",
+				"bucket_domain_name":          "planton-oss-e2e-awss3bucket-smoke.s3.amazonaws.com",
+				"hosted_zone_id":              "Z3BJ6K6RIION7M",
+				"website_endpoint":            "planton-oss-e2e-awss3bucket-smoke.s3-website-us-west-2.amazonaws.com",
+				"website_domain":              "s3-website-us-west-2.amazonaws.com",
+			},
+			mustPopulate: []string{
+				"bucket_id", "bucket_arn", "region",
+				"bucket_regional_domain_name", "bucket_domain_name",
+				"hosted_zone_id", "website_endpoint", "website_domain",
+			},
+		},
+		{
+			// AwsKinesisStream: stream_arn is the join key consumers, Lambda
+			// event source mappings, DynamoDB streaming destinations, and
+			// Firehose sources reference; stream_name keys the E2E verifier.
+			name: "AwsKinesisStream",
+			kind: cloudresourcekind.CloudResourceKind_AwsKinesisStream,
+			rawOutputs: map[string]interface{}{
+				"stream_arn":  "arn:aws:kinesis:us-west-2:123456789012:stream/planton-oss-e2e-kinesis-smoke",
+				"stream_name": "planton-oss-e2e-kinesis-smoke",
+			},
+			mustPopulate: []string{
+				"stream_arn", "stream_name",
+			},
+		},
+		{
+			// AwsKinesisStreamConsumer: consumer_arn is the enhanced-fan-out
+			// identity SubscribeToShard callers use; consumer_name keys the
+			// E2E verifier; stream_arn echoes the parent join key.
+			name: "AwsKinesisStreamConsumer",
+			kind: cloudresourcekind.CloudResourceKind_AwsKinesisStreamConsumer,
+			rawOutputs: map[string]interface{}{
+				"consumer_arn":       "arn:aws:kinesis:us-west-2:123456789012:stream/planton-oss-e2e-kinesis-smoke/consumer/planton-oss-e2e-consumer-smoke:1751700000",
+				"consumer_name":      "planton-oss-e2e-consumer-smoke",
+				"stream_arn":         "arn:aws:kinesis:us-west-2:123456789012:stream/planton-oss-e2e-kinesis-smoke",
+				"creation_timestamp": "2026-07-05T12:00:00Z",
+			},
+			mustPopulate: []string{
+				"consumer_arn", "consumer_name", "stream_arn", "creation_timestamp",
+			},
+		},
+		{
+			// AwsKinesisFirehose: delivery_stream_arn is the IAM/EventBridge
+			// join key; delivery_stream_name keys the E2E verifier and the
+			// MSK broker-log delivery reference.
+			name: "AwsKinesisFirehose",
+			kind: cloudresourcekind.CloudResourceKind_AwsKinesisFirehose,
+			rawOutputs: map[string]interface{}{
+				"delivery_stream_arn":  "arn:aws:firehose:us-west-2:123456789012:deliverystream/planton-oss-e2e-firehose-smoke",
+				"delivery_stream_name": "planton-oss-e2e-firehose-smoke",
+			},
+			mustPopulate: []string{
+				"delivery_stream_arn", "delivery_stream_name",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

@@ -23,11 +23,6 @@ spec:
   numberOfBrokerNodes: {{ values.broker_count }}
   instanceType: "{{ values.broker_instance_type }}"
   ebsVolumeSizeGib: {{ values.ebs_volume_size_gib }}
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: "{{ values.cluster_name }}-vpc"
-      fieldPath: status.outputs.vpc_id
   subnetIds:
     - valueFrom:
         kind: AwsSubnet

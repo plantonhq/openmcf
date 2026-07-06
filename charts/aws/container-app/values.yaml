@@ -4,6 +4,10 @@ params:
     description: App Runner service name
     value: my-app
 
+  - name: aws_region
+    description: AWS region for every resource
+    value: us-east-1
+
   # ─── Container Image ────────────────────────────────────────────────────────
   - name: ecr_repo_name
     description: ECR repository name for container images
@@ -13,7 +17,7 @@ params:
     description: >
       Full ECR image URI including tag.
       Example: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest
-    value: ""
+    value: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest
 
   - name: container_port
     description: Port the container listens on

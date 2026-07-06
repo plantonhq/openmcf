@@ -11,6 +11,7 @@ import (
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -126,8 +127,26 @@ type AwsKinesisStreamSpec struct {
 	// This is an operational setting that only affects stream deletion. It has
 	// no impact on the running stream.
 	EnforceConsumerDeletion bool `protobuf:"varint,8,opt,name=enforce_consumer_deletion,json=enforceConsumerDeletion,proto3" json:"enforce_consumer_deletion,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Pre-provisioned warm write throughput in MiB/s for ON_DEMAND streams.
+	// On-demand streams normally scale up in response to observed traffic;
+	// warm throughput keeps capacity for a known burst level ready in advance,
+	// so a sudden spike (a product launch, a scheduled batch) is absorbed
+	// without ProvisionedThroughputExceeded throttling while scaling catches
+	// up. Billed per MiB/s-hour on top of on-demand data charges.
+	//
+	// Mutually exclusive with shard_count (warm throughput is meaningless on
+	// PROVISIONED streams, where capacity IS the shard count). Leave at 0 to
+	// let on-demand scaling manage capacity reactively.
+	WarmThroughputMibPs int32 `protobuf:"varint,9,opt,name=warm_throughput_mib_ps,json=warmThroughputMibPs,proto3" json:"warm_throughput_mib_ps,omitempty"`
+	// Resource-based access policy for the stream, as a standard IAM policy
+	// document. The primary use is cross-account access: granting another
+	// account's principals PutRecord/GetRecords on this stream without role
+	// assumption. AWS models this as a separate resource-policy API keyed by
+	// the stream ARN; it is folded here because the policy has no identity of
+	// its own and follows the stream's lifecycle.
+	ResourcePolicy *structpb.Struct `protobuf:"bytes,10,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsKinesisStreamSpec) Reset() {
@@ -216,11 +235,25 @@ func (x *AwsKinesisStreamSpec) GetEnforceConsumerDeletion() bool {
 	return false
 }
 
+func (x *AwsKinesisStreamSpec) GetWarmThroughputMibPs() int32 {
+	if x != nil {
+		return x.WarmThroughputMibPs
+	}
+	return 0
+}
+
+func (x *AwsKinesisStreamSpec) GetResourcePolicy() *structpb.Struct {
+	if x != nil {
+		return x.ResourcePolicy
+	}
+	return nil
+}
+
 var File_dev_planton_provider_aws_awskinesisstream_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awskinesisstream_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7dev/planton/provider/aws/awskinesisstream/v1/spec.proto\x12,dev.planton.provider.aws.awskinesisstream.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb9\x0e\n" +
+	"7dev/planton/provider/aws/awskinesisstream/v1/spec.proto\x12,dev.planton.provider.aws.awskinesisstream.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x9a\x11\n" +
 	"\x14AwsKinesisStreamSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1f\n" +
 	"\vstream_mode\x18\x02 \x01(\tR\n" +
@@ -232,15 +265,17 @@ const file_dev_planton_provider_aws_awskinesisstream_v1_spec_proto_rawDesc = "" 
 	"kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x122\n" +
 	"\x16max_record_size_in_kib\x18\x06 \x01(\x05R\x12maxRecordSizeInKib\x12.\n" +
 	"\x13shard_level_metrics\x18\a \x03(\tR\x11shardLevelMetrics\x12:\n" +
-	"\x19enforce_consumer_deletion\x18\b \x01(\bR\x17enforceConsumerDeletion:\xf4\n" +
-	"\xbaH\xf0\n" +
-	"\x1a\x8a\x01\n" +
+	"\x19enforce_consumer_deletion\x18\b \x01(\bR\x17enforceConsumerDeletion\x123\n" +
+	"\x16warm_throughput_mib_ps\x18\t \x01(\x05R\x13warmThroughputMibPs\x12@\n" +
+	"\x0fresource_policy\x18\n" +
+	" \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy:\xde\f\xbaH\xda\f\x1a\x8a\x01\n" +
 	"\x14stream_mode_required\x12@stream_mode is required and must be 'PROVISIONED' or 'ON_DEMAND'\x1a0this.stream_mode in ['PROVISIONED', 'ON_DEMAND']\x1a\xa4\x01\n" +
 	"$shard_count_required_for_provisioned\x12@shard_count must be at least 1 when stream_mode is 'PROVISIONED'\x1a:this.stream_mode != 'PROVISIONED' || this.shard_count >= 1\x1a\xb9\x01\n" +
 	"#shard_count_forbidden_for_on_demand\x12Xshard_count must be 0 when stream_mode is 'ON_DEMAND' (AWS manages shards automatically)\x1a8this.stream_mode != 'ON_DEMAND' || this.shard_count == 0\x1a\xd9\x01\n" +
 	"\x16retention_period_range\x12Oretention_period_hours must be between 24 and 8760 (1 day to 365 days) when set\x1anthis.retention_period_hours == 0 || (this.retention_period_hours >= 24 && this.retention_period_hours <= 8760)\x1a\xdc\x01\n" +
-	"\x15max_record_size_range\x12Pmax_record_size_in_kib must be between 1024 and 10240 (1 MiB to 10 MiB) when set\x1aqthis.max_record_size_in_kib == 0 || (this.max_record_size_in_kib >= 1024 && this.max_record_size_in_kib <= 10240)\x1a\xc2\x03\n" +
-	"\x19shard_level_metrics_valid\x12\xcd\x01each shard_level_metrics value must be one of: IncomingBytes, IncomingRecords, OutgoingBytes, OutgoingRecords, WriteProvisionedThroughputExceeded, ReadProvisionedThroughputExceeded, IteratorAgeMilliseconds\x1a\xd4\x01this.shard_level_metrics.all(m, m in ['IncomingBytes', 'IncomingRecords', 'OutgoingBytes', 'OutgoingRecords', 'WriteProvisionedThroughputExceeded', 'ReadProvisionedThroughputExceeded', 'IteratorAgeMilliseconds'])B\xf7\x02\n" +
+	"\x15max_record_size_range\x12Pmax_record_size_in_kib must be between 1024 and 10240 (1 MiB to 10 MiB) when set\x1aqthis.max_record_size_in_kib == 0 || (this.max_record_size_in_kib >= 1024 && this.max_record_size_in_kib <= 10240)\x1a\xce\x03\n" +
+	"\x19shard_level_metrics_valid\x12\xd2\x01each shard_level_metrics value must be one of: IncomingBytes, IncomingRecords, OutgoingBytes, OutgoingRecords, WriteProvisionedThroughputExceeded, ReadProvisionedThroughputExceeded, IteratorAgeMilliseconds, ALL\x1a\xdb\x01this.shard_level_metrics.all(m, m in ['IncomingBytes', 'IncomingRecords', 'OutgoingBytes', 'OutgoingRecords', 'WriteProvisionedThroughputExceeded', 'ReadProvisionedThroughputExceeded', 'IteratorAgeMilliseconds', 'ALL'])\x1a\xdb\x01\n" +
+	"*warm_throughput_conflicts_with_shard_count\x12rwarm_throughput_mib_ps cannot be set together with shard_count (warm throughput applies to ON_DEMAND streams only)\x1a9this.warm_throughput_mib_ps == 0 || this.shard_count == 0B\xf7\x02\n" +
 	"0com.dev.planton.provider.aws.awskinesisstream.v1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awskinesisstream/v1;awskinesisstreamv1\xa2\x02\x05DPPAA\xaa\x02,Dev.Planton.Provider.Aws.Awskinesisstream.V1\xca\x02,Dev\\Planton\\Provider\\Aws\\Awskinesisstream\\V1\xe2\x028Dev\\Planton\\Provider\\Aws\\Awskinesisstream\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Aws::Awskinesisstream::V1b\x06proto3"
 
 var (
@@ -259,14 +294,16 @@ var file_dev_planton_provider_aws_awskinesisstream_v1_spec_proto_msgTypes = make
 var file_dev_planton_provider_aws_awskinesisstream_v1_spec_proto_goTypes = []any{
 	(*AwsKinesisStreamSpec)(nil), // 0: dev.planton.provider.aws.awskinesisstream.v1.AwsKinesisStreamSpec
 	(*v1.StringValueOrRef)(nil),  // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),      // 2: google.protobuf.Struct
 }
 var file_dev_planton_provider_aws_awskinesisstream_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.provider.aws.awskinesisstream.v1.AwsKinesisStreamSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: dev.planton.provider.aws.awskinesisstream.v1.AwsKinesisStreamSpec.resource_policy:type_name -> google.protobuf.Struct
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awskinesisstream_v1_spec_proto_init() }

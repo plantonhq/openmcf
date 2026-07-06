@@ -66,9 +66,11 @@ This creates an on-demand Kinesis stream with 24-hour default retention, no encr
 |-------|------|---------|-------------|
 | `retentionPeriodHours` | `int` | `24` | Hours that data remains accessible. Range: 24–8760 (1 day to 365 days). Extended retention incurs additional cost. |
 | `kmsKeyId` | `string` | — | KMS key for server-side encryption. Accepts a key ID, key ARN, or alias (e.g., `alias/aws/kinesis`). Can reference an AwsKmsKey resource via `valueFrom`. |
-| `maxRecordSizeInKib` | `int` | `1024` | Maximum single record size in KiB. Range: 1024–10240 (1–10 MiB). Note: deferred in current IaC modules pending provider upgrade. |
-| `shardLevelMetrics` | `string[]` | `[]` | Shard-level CloudWatch metrics to enable. Valid values: `IncomingBytes`, `IncomingRecords`, `OutgoingBytes`, `OutgoingRecords`, `WriteProvisionedThroughputExceeded`, `ReadProvisionedThroughputExceeded`, `IteratorAgeMilliseconds`. |
+| `maxRecordSizeInKib` | `int` | `1024` | Maximum single record size in KiB. Range: 1024–10240 (1–10 MiB). Requires the `kinesis:UpdateMaxRecordSize` IAM permission on the deploying principal. |
+| `warmThroughputMibPs` | `int` | — | Pre-provisioned warm write throughput (MiB/s) for ON_DEMAND streams — absorbs known bursts without throttling while auto-scaling catches up. Mutually exclusive with `shardCount`; billed per MiB/s-hour; requires `kinesis:UpdateStreamWarmThroughput`. |
+| `shardLevelMetrics` | `string[]` | `[]` | Shard-level CloudWatch metrics to enable. Valid values: `IncomingBytes`, `IncomingRecords`, `OutgoingBytes`, `OutgoingRecords`, `WriteProvisionedThroughputExceeded`, `ReadProvisionedThroughputExceeded`, `IteratorAgeMilliseconds`, or `ALL`. |
 | `enforceConsumerDeletion` | `bool` | `false` | When `true`, deregisters all enhanced fan-out consumers before deleting the stream. |
+| `resourcePolicy` | `object` | — | Resource-based access policy as a native YAML structure. Primary use: cross-account producer/consumer grants (PutRecord, GetRecords) without role assumption. |
 
 ## Examples
 
@@ -149,6 +151,33 @@ spec:
       kind: AwsKmsKey
       name: data-encryption-key
       fieldPath: status.outputs.key_arn
+```
+
+### Cross-Account Access via Resource Policy
+
+Grant another account's principals read access without role assumption:
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsKinesisStream
+metadata:
+  name: shared-events
+spec:
+  region: us-east-1
+  streamMode: ON_DEMAND
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: CrossAccountRead
+        Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::210987654321:root
+        Action:
+          - kinesis:DescribeStreamSummary
+          - kinesis:ListShards
+          - kinesis:GetRecords
+          - kinesis:GetShardIterator
+        Resource: "*"
 ```
 
 ## Stack Outputs

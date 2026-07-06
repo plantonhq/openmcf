@@ -255,7 +255,7 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 		ginkgo.It("should accept exportable certificates with CT logging disabled", func() {
 			input.Spec.Options = &AwsCertManagerCertOptions{
 				CertificateTransparencyLoggingPreference: "DISABLED",
-				Export: "ENABLED",
+				Export:                                   "ENABLED",
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())

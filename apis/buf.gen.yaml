@@ -19,14 +19,17 @@ managed:
       value: SPEED
     - file_option: go_package_prefix
       value: github.com/plantonhq/planton/apis
+# Plugins run locally from .tools/ (provisioned by `make proto-tools`);
+# version pins live in the Makefile's proto-toolchain section.
 plugins:
-  - remote: buf.build/protocolbuffers/go:v1.36.6
+  - local: .tools/protoc-gen-go
     out: generated/stubs/go
-  - remote: buf.build/grpc/go:v1.5.1
+  - local: .tools/protoc-gen-go-grpc
     out: generated/stubs/go
   # Java stubs catch reserved keyword conflicts early (e.g., 'public', 'class').
   # These are NOT committed -- generated/stubs/java is gitignored.
-  - remote: buf.build/protocolbuffers/java:v30.1
+  - protoc_builtin: java
+    protoc_path: .tools/protoc/bin/protoc
     out: generated/stubs/java
-  - remote: buf.build/grpc/java:v1.65.0
+  - local: .tools/protoc-gen-grpc-java
     out: generated/stubs/java

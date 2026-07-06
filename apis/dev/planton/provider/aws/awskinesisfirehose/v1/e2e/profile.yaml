@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awskinesisfirehose
+spec:
+  # A Firehose delivery stream under live E2E: the harness installs both
+  # registry prerequisites -- the shared S3 bucket fixture and the IAM
+  # role profile (whose firehose-delivery document trusts
+  # firehose.amazonaws.com and is scoped to that bucket) -- then runs
+  # deploy -> DescribeDeliveryStream verify -> destroy ->
+  # verify-destroyed on both provisioners. The scenario is the dominant
+  # Direct PUT -> extended_s3 shape with SSE (AWS-owned CMK), GZIP, and
+  # !{...} prefix expressions; no records are ever put. Deliberately not
+  # in the live lane: the Kinesis stream source and the other three
+  # destinations (OpenSearch, HTTP endpoint, Redshift -- each needs live
+  # external infrastructure) -- proven by CEL spec tests and the offline
+  # gate per the approved audit-only scope for this kind.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

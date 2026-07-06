@@ -1,5 +1,11 @@
 version: v2
-name: buf.build/planton/planton
+modules:
+  - path: .
+    name: buf.build/planton/planton
+    excludes:
+      # .tools is the pinned proto toolchain; protoc's include/ tree inside it
+      # carries .proto files that must not join the module
+      - .tools
 deps:
   - buf.build/bufbuild/protovalidate
 # plugins:

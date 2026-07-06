@@ -3,12 +3,17 @@ kind: ComponentE2EProfile
 metadata:
   name: awss3bucket
 spec:
-  # Walking skeleton for the AWS harness, live-validated on both provisioners
-  # (deploy -> HeadBucket verify -> destroy -> verify-destroyed) against the AWS
-  # test account via keyless SSO credentials.
+  # Two scenarios, live-validated on both provisioners (deploy -> HeadBucket
+  # verify -> destroy -> verify-destroyed): the minimal walking skeleton and
+  # the full-surface bucket (versioning + KMS-with-bucket-key encryption +
+  # TLS-only policy + multi-predicate lifecycle filters + website with
+  # routing rules + EventBridge notifications + Intelligent-Tiering).
+  # Deliberately not run live: replication (needs a second versioned bucket
+  # + replication role; module surface proven offline) and Object Lock
+  # (irreversible bucket mode) -- see the full-surface scenario header.
   tier: 1
   status: green
   validated_provisioners:
     - pulumi
     - terraform
-  timeout_minutes: 5
+  timeout_minutes: 15

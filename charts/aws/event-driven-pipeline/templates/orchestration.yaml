@@ -6,6 +6,7 @@ metadata:
   name: "{{ values.log_group_name }}"
   group: monitoring
 spec:
+  region: "{{ values.aws_region }}"
   retentionInDays: 30
 ---
 apiVersion: aws.planton.dev/v1
@@ -14,6 +15,7 @@ metadata:
   name: "{{ values.step_function_name }}-execution-role"
   group: identity
 spec:
+  region: "{{ values.aws_region }}"
   description: Execution role for the {{ values.step_function_name }} Step Functions state machine
   path: /service-role/
   trustPolicy:
@@ -71,6 +73,7 @@ metadata:
       name: "{{ values.processing_queue_name }}"
       type: uses
 spec:
+  region: "{{ values.aws_region }}"
   type: STANDARD
   roleArn:
     valueFrom:

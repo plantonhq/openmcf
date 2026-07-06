@@ -11,6 +11,8 @@ site/.yarn/*
 site/!next-env.d.ts
 apis/internal/
 apis/generated/
+# Pinned proto toolchain, provisioned by `make proto-tools` in apis/
+apis/.tools/
 
 # Swap the comments on the following lines if you don't wish to use zero-installs
 # Documentation here: https://yarnpkg.com/features/zero-installs

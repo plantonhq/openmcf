@@ -101,6 +101,13 @@ var migratedKinds = []string{
 	"AwsSnsSubscription",
 	"AwsEventBridgeBus",
 	"AwsEventBridgeRule",
+	// Object storage + streaming depth pass: S3 migrated off its legacy
+	// hand-written contract; the Kinesis family off its legacy type = any
+	// contracts.
+	"AwsS3Bucket",
+	"AwsKinesisStream",
+	"AwsKinesisStreamConsumer",
+	"AwsKinesisFirehose",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

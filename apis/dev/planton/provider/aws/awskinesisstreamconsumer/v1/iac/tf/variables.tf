@@ -1,9 +1,21 @@
 variable "metadata" {
-  description = "Resource metadata (name, org, env, id, labels)."
-  type        = any
+  description = "Cloud resource metadata"
+  type = object({
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
+  })
 }
 
 variable "spec" {
-  description = "AwsKinesisStreamConsumerSpec — desired configuration for the Kinesis stream consumer."
-  type        = any
+  description = "AwsKinesisStreamConsumer specification"
+  type = object({
+    region = string
+    stream_arn = string
+    resource_policy = optional(any)
+  })
 }

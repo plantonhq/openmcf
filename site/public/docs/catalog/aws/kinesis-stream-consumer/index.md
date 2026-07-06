@@ -63,7 +63,11 @@ This registers an enhanced fan-out consumer with the specified stream. The consu
 
 ### Optional Fields
 
-This component has no optional fields. The consumer name is derived from `metadata.name`. Tags are derived from `metadata.labels`.
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `resourcePolicy` | `object` | — | Resource-based access policy on the consumer, as a native YAML structure. Primary use: granting another account's principals `kinesis:SubscribeToShard` / `kinesis:DescribeStreamConsumer` on this consumer without role assumption. |
+
+The consumer name is derived from `metadata.name` (ForceNew — consumers cannot be renamed).
 
 ## Examples
 

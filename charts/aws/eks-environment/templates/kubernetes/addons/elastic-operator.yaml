@@ -12,5 +12,16 @@ spec:
   targetCluster:
     clusterKind: AwsEksCluster
     clusterName: "{{ values.env }}-{{ values.cluster_name }}"
+  namespace:
+    value: elastic-system
+  createNamespace: true
+  container:
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 50m
+        memory: 100Mi
 {% endif %}
 

@@ -6,7 +6,7 @@ metadata:
   name: "{{ values.sqs_queue_name }}"
   group: messaging
 spec:
-  queueType: STANDARD
+  region: "{{ values.aws_region }}"
   visibilityTimeoutSeconds: 60
   messageRetentionSeconds: 345600
 {% endif %}
@@ -17,5 +17,6 @@ kind: AwsSnsTopic
 metadata:
   name: "{{ values.sns_topic_name }}"
   group: messaging
-spec: {}
+spec:
+  region: "{{ values.aws_region }}"
 {% endif %}

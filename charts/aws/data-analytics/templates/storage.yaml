@@ -6,12 +6,13 @@ metadata:
   group: storage
 spec:
   region: "{{ values.aws_region }}"
-  isPublic: false
-  versioningEnabled: true
+  versioningStatus: Enabled
   lifecycleRules:
     - id: transition-to-ia
-      enabled: true
-      prefix: "raw/"
-      transitionDays: 90
-      transitionStorageClass: STORAGE_CLASS_STANDARD_IA
+      status: Enabled
+      filter:
+        prefix: "raw/"
+      transitions:
+        - days: 90
+          storageClass: STANDARD_IA
       abortIncompleteMultipartUploadDays: 7

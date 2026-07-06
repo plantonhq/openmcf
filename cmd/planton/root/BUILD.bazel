@@ -4,6 +4,7 @@ go_library(
     name = "root",
     srcs = [
         "apply.go",
+        "chart.go",
         "checkout.go",
         "destroy.go",
         "downgrade.go",
@@ -57,6 +58,7 @@ go_library(
         "//pkg/iac/stackinput/stackinputproviderconfig",
         "//pkg/iac/tofu/tfbackend",
         "//pkg/iac/tofu/tofumodule",
+        "//pkg/infrachart",
         "//pkg/kubernetes/kubecontext",
         "//pkg/outputs",
         "//pkg/refcheck",

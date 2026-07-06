@@ -12,5 +12,8 @@ spec:
   targetCluster:
     clusterKind: AwsEksCluster
     clusterName: "{{ values.env }}-{{ values.cluster_name }}"
+  namespace:
+    value: cert-manager
+  createNamespace: true
 {% endif %}
 

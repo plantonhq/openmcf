@@ -17,19 +17,31 @@ metadata:
       type: uses
 {% endif %}
 spec:
+  # CloudFront is a global service; deployments run through us-east-1.
+  region: us-east-1
   enabled: true
   defaultRootObject: "{{ values.default_root_object }}"
   origins:
-    - domainName: "{{ values.s3_bucket_name }}.s3.{{ values.aws_region }}.amazonaws.com"
-      isDefault: true
+    - originId: s3-content
+      domainName: "{{ values.s3_bucket_name }}.s3.{{ values.aws_region }}.amazonaws.com"
+  defaultCacheBehavior:
+    targetOriginId: s3-content
+    viewerProtocolPolicy: redirect-to-https
+    compress: true
+    # AWS managed cache policy "Managed-CachingOptimized" -- the standard
+    # choice for static content.
+    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
 {% if values.dnsEnabled | bool %}
   aliases:
     - "{{ values.website_domain_name }}"
-  certificateArn:
-    valueFrom:
-      kind: AwsCertManagerCert
-      name: "{{ values.s3_bucket_name }}-cert"
-      fieldPath: status.outputs.cert_arn
+  viewerCertificate:
+    acmCertificateArn:
+      valueFrom:
+        kind: AwsCertManagerCert
+        name: "{{ values.s3_bucket_name }}-cert"
+        fieldPath: status.outputs.cert_arn
+    sslSupportMethod: sni-only
+    minimumProtocolVersion: TLSv1.2_2021
 {% endif %}
 {% if values.dnsEnabled | bool %}
 ---
@@ -46,6 +58,7 @@ metadata:
       name: "{{ values.domain_name }}"
       type: runs_on
 spec:
+  region: "{{ values.aws_region }}"
   zoneId:
     valueFrom:
       kind: AwsRoute53Zone

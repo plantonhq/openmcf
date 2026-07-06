@@ -4,4 +4,4 @@ kind: AwsS3Bucket
 metadata:
   name: "{{ values.bucket_name }}"
 spec:
-  region: us-east-1
+  region: "{{ values.aws_region }}"

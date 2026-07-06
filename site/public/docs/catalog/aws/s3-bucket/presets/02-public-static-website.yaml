@@ -4,15 +4,26 @@ metadata:
   name: my-public-website-bucket
 spec:
   region: <aws-region>
-  isPublic: true
-  versioningEnabled: false
-  encryptionType: ENCRYPTION_TYPE_SSE_S3
-  forceDestroy: false
-  cors:
-    corsRules:
-      - allowedMethods:
-          - GET
-          - HEAD
-        allowedOrigins:
-          - "*"
-        maxAgeSeconds: 3600
+  publicAccessBlock:
+    blockPublicAcls: true
+    ignorePublicAcls: true
+    blockPublicPolicy: false
+    restrictPublicBuckets: false
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: PublicReadGetObject
+        Effect: Allow
+        Principal: "*"
+        Action: s3:GetObject
+        Resource: arn:aws:s3:::my-public-website-bucket/*
+  website:
+    indexDocumentSuffix: index.html
+    errorDocumentKey: error.html
+  corsRules:
+    - allowedMethods:
+        - GET
+        - HEAD
+      allowedOrigins:
+        - "*"
+      maxAgeSeconds: 3600

@@ -9,6 +9,7 @@ import (
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAwsKinesisStreamConsumerSpec(t *testing.T) {
@@ -183,5 +184,31 @@ var _ = ginkgo.Describe("AwsKinesisStreamConsumerSpec validations", func() {
 		}
 		err := protovalidate.Validate(input)
 		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a resource policy document (cross-account enhanced fan-out grant)", func() {
+		policy, err := structpb.NewStruct(map[string]interface{}{
+			"Version": "2012-10-17",
+			"Statement": []interface{}{
+				map[string]interface{}{
+					"Sid":       "CrossAccountSubscribe",
+					"Effect":    "Allow",
+					"Principal": map[string]interface{}{"AWS": "arn:aws:iam::123456789012:root"},
+					"Action":    []interface{}{"kinesis:SubscribeToShard", "kinesis:DescribeStreamConsumer"},
+					"Resource":  "*",
+				},
+			},
+		})
+		gomega.Expect(err).To(gomega.BeNil())
+		spec := &AwsKinesisStreamConsumerSpec{
+			Region: "us-west-2",
+			StreamArn: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "arn:aws:kinesis:us-east-1:123456789012:stream/test",
+				},
+			},
+			ResourcePolicy: policy,
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 })

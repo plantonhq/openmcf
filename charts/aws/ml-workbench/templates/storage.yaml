@@ -6,8 +6,7 @@ metadata:
   group: storage
 spec:
   region: "{{ values.aws_region }}"
-  isPublic: false
-  versioningEnabled: true
+  versioningStatus: Enabled
 {% if values.customImagesEnabled | bool %}
 ---
 apiVersion: aws.planton.dev/v1

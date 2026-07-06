@@ -17,6 +17,7 @@ import (
 	"github.com/plantonhq/planton/pkg/ulidgen"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	goyaml "gopkg.in/yaml.v3"
 	"sigs.k8s.io/yaml"
 )
 
@@ -64,14 +65,22 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 		return nil, errors.Wrapf(err, "failed to read manifest file %s", manifestPath)
 	}
 
+	return LoadManifestBytes(manifestYamlBytes, manifestPath)
+}
+
+// LoadManifestBytes unmarshals an in-memory manifest into its kind's typed proto message
+// and applies proto-declared defaults. The manifest never needs to exist on disk, which is
+// what rendered-template validation (e.g. infra-chart templates) relies on. sourceName is
+// used only in error messages (a file path, or a "chart/template.yaml[docN]" style label).
+func LoadManifestBytes(manifestYamlBytes []byte, sourceName string) (proto.Message, error) {
 	jsonBytes, err := yaml.YAMLToJSON(manifestYamlBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load yaml to json")
 	}
 
-	kindName, err := crkreflect.ExtractKindFromTargetManifest(manifestPath)
+	kindName, err := extractKindName(manifestYamlBytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to extract cloudResourceKind from %s stack input yaml", manifestPath)
+		return nil, errors.Wrapf(err, "failed to extract cloudResourceKind from %s", sourceName)
 	}
 
 	cloudResourceKind := crkreflect.KindFromString(kindName)
@@ -81,9 +90,12 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 	if manifest == nil {
 		return nil, formatUnsupportedResourceError(kindName)
 	}
+	// ToMessageMap holds shared instances; clone so concurrent/repeated loads never
+	// unmarshal into the same message.
+	manifest = proto.Clone(manifest)
 
 	if err := protojson.Unmarshal(jsonBytes, manifest); err != nil {
-		return nil, &ManifestLoadError{ManifestPath: manifestPath, Err: err}
+		return nil, &ManifestLoadError{ManifestPath: sourceName, Err: err}
 	}
 
 	// Apply defaults from proto field options
@@ -92,6 +104,25 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 	}
 
 	return manifest, nil
+}
+
+// extractKindName reads the top-level 'kind' key from raw manifest YAML. It is the
+// in-memory equivalent of crkreflect.ExtractKindFromTargetManifest so byte- and
+// path-based loading resolve kinds identically.
+func extractKindName(manifestYamlBytes []byte) (string, error) {
+	var yamlData map[string]interface{}
+	if err := goyaml.Unmarshal(manifestYamlBytes, &yamlData); err != nil {
+		return "", errors.Wrap(err, "failed to unmarshal manifest YAML")
+	}
+	kind, ok := yamlData["kind"]
+	if !ok {
+		return "", errors.New("key 'kind' not found in manifest YAML")
+	}
+	kindStr, ok := kind.(string)
+	if !ok {
+		return "", errors.New("value of 'kind' key is not a string")
+	}
+	return kindStr, nil
 }
 
 func downloadManifest(manifestUrl string) (string, error) {

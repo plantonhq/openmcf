@@ -5,6 +5,7 @@ metadata:
   name: "{{ values.service_name }}-ecr"
   group: compute
 spec:
+  region: "{{ values.aws_region }}"
   repositoryName: "{{ values.ecr_repo_name }}"
   encryptionType: AES256
   imageImmutable: true
@@ -22,15 +23,24 @@ metadata:
     - kind: AwsIamRole
       name: "{{ values.service_name }}-instance-role"
       type: uses
+    - kind: AwsIamRole
+      name: "{{ values.service_name }}-ecr-access-role"
+      type: uses
 {% if values.databaseEnabled | bool %}
     - kind: AwsDynamodb
       name: "{{ values.dynamodb_table_name }}"
       type: uses
 {% endif %}
 spec:
+  region: "{{ values.aws_region }}"
   imageSource:
     imageRepositoryType: ECR
     imageIdentifier: "{{ values.image_uri }}"
+    accessRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: "{{ values.service_name }}-ecr-access-role"
+        fieldPath: status.outputs.role_arn
   cpu: "{{ values.cpu }}"
   memory: "{{ values.memory }}"
   instanceRoleArn:

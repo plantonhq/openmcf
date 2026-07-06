@@ -9,11 +9,12 @@
 #   make build-verbose  Build all charts with full output on failure
 #   make publish        Publish all charts to the Planton platform
 #
-# IMPORTANT: `planton chart` is provided by the Planton *Platform* CLI. The
-# `InfraChart` kind is a platform API, so the open-source `planton` binary built
-# from this repo does not carry the `chart` command. Keep this Makefile scoped to
-# charts/ and out of the repo's build graph until CLI convergence folds `chart`
-# into the open-source command tree.
+# IMPORTANT: `planton chart build` and `planton chart publish` are provided by
+# the Planton *Platform* CLI -- the `InfraChart` kind is a platform API. The
+# `chart validate` subcommand -- the offline render/protovalidate/ref-integrity
+# gate, also enforced in CI via lint.charts -- is defined once in this repo and
+# mounted by BOTH binaries (the standalone open-source CLI and the Platform
+# CLI). Keep this Makefile scoped to charts/ and out of the repo's build graph.
 # =============================================================================
 
 CHARTS := $(shell find . -mindepth 2 -name values.yaml -not -path '*/build/*' \
