@@ -235,6 +235,14 @@ Based on scenario:
 - Parse explanation of what needs changing
 - Consult docs/README.md for deployment architecture context
 - Identify affected module files
+- **Re-check stale SDK-deferral comments**: any module comment deferring a
+  spec field because it is "not available in the pinned SDK/provider" is a
+  claim about a moving target. Verify each one against the currently
+  resolved provider (Terraform) and SDK (Pulumi) versions -- search the
+  local canonical provider clone and the vendored Pulumi SDK for the
+  argument. If the field has since landed, wire it in BOTH engines and
+  delete the deferral comment; a stale deferral is a silent parity gap that
+  no offline gate will ever flag.
 - Plan update and test sequence
 
 **Fix Issue:**
