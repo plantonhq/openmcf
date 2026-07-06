@@ -49,7 +49,23 @@ apis/dev/planton/provider/aws/awss3bucket/v1/spec.proto
 ```
 The directory name is the kind in lowercase with no separators (e.g., `OciObjectStorageBucket` → `ociobjectstoragebucket`).
 
-## Phase 1: Build
+## Phase 1: Validate and Build
+
+### Offline validation (first, no backend needed)
+
+The open-source CLI carries `planton chart validate` — an offline gate that renders every template (defaults plus each bool toggle flipped) and validates every rendered manifest against the local kind registry: typed load (catches unknown/renamed fields), protovalidate (constraints + CEL rules), and `valueFrom` reference resolution. Run it before anything else; it catches the entire proto-drift defect class in seconds and its per-manifest, per-variant errors are the diagnosis input for Phase 2:
+
+```bash
+# From the repo root, with the CLI built from this checkout
+go build -o /tmp/planton . && /tmp/planton chart validate --all charts
+
+# Or a single chart
+/tmp/planton chart validate charts/<provider>/<chart-name>
+```
+
+CI enforces this gate on chart changes via `lint.charts` (`chart-validate` job).
+
+### Authoritative build (Platform CLI)
 
 Run the build from the `charts/` directory:
 
@@ -57,7 +73,7 @@ Run the build from the `charts/` directory:
 cd charts && make build
 ```
 
-This discovers all charts and runs `planton chart build <chart> --no-browser` on each one, printing a pass/fail summary. The `planton chart` command is provided by the Planton **Platform** CLI (the `InfraChart` kind is a platform API); the open-source `planton` binary built from this repo does not carry it.
+This discovers all charts and runs `planton chart build <chart> --no-browser` on each one, printing a pass/fail summary. The `planton chart build` and `planton chart publish` commands are provided by the Planton **Platform** CLI (the `InfraChart` kind is a platform API); the Platform build remains the engine-of-record gate for publishing.
 
 To build a single chart:
 
@@ -65,7 +81,7 @@ To build a single chart:
 planton chart build <provider>/<chart-name> --no-browser
 ```
 
-**Capture the output.** The summary reports which charts failed. For each failing chart, you'll need the detailed error messages, so re-run the individual chart build and capture the full stderr.
+**Capture the output.** The summary reports which charts failed. For each failing chart, you'll need the detailed error messages, so re-run the individual chart build (or `chart validate`, which prints them directly) and capture the full stderr.
 
 ## Phase 2: Diagnose
 
