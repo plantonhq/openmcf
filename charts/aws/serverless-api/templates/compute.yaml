@@ -38,7 +38,8 @@ spec:
   runtime: "{{ values.lambda_runtime }}"
   handler: "{{ values.lambda_handler }}"
   s3:
-    bucket: "{{ values.lambda_s3_bucket }}"
+    bucket:
+      value: "{{ values.lambda_s3_bucket }}"
     key: "{{ values.lambda_s3_key }}"
 {% endif %}
   environment:
