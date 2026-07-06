@@ -4,6 +4,7 @@ go_library(
     name = "infrachart",
     srcs = [
         "chart.go",
+        "discover.go",
         "refs.go",
         "render.go",
         "validate.go",
@@ -30,6 +31,7 @@ go_library(
 go_test(
     name = "infrachart_test",
     srcs = [
+        "discover_test.go",
         "render_test.go",
         "validate_test.go",
     ],
