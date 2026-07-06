@@ -11,11 +11,15 @@ presets:
   - slug: "01-private-encrypted"
     rank: "01"
     title: "Private Encrypted Bucket"
-    excerpt: "This preset creates a private S3 bucket with Block Public Access enabled, SSE-S3 encryption, and versioning turned on. This is the standard production bucket configuration that protects against..."
+    excerpt: "This preset creates a fully private, versioned S3 bucket encrypted with a customer-managed KMS key. It is the right starting point for application data, backups, and anything holding real information."
   - slug: "02-public-static-website"
     rank: "02"
     title: "Public Static Website Bucket"
-    excerpt: "This preset creates a publicly accessible S3 bucket configured for static website hosting with CORS enabled for cross-origin asset loading. It allows GET and HEAD requests from any origin, making it..."
+    excerpt: "This preset creates a bucket that serves a static website directly over S3's website endpoint. Public access is granted deliberately and precisely: the policy grants read on objects, and only the two..."
+  - slug: "03-log-archive-lifecycle"
+    rank: "03"
+    title: "Log Archive with Lifecycle Tiering"
+    excerpt: "This preset creates a private bucket purpose-built as a log/archive destination: objects tier down through cheaper storage classes as they age and are deleted after a year, with no manual..."
 ---
 
 # S3 Bucket Presets
