@@ -170,12 +170,38 @@ var _ = ginkgo.Describe("AwsS3BucketSpec validations", func() {
 				{Days: 30, StorageClass: "STANDARD_IA"},
 				{Days: 365, StorageClass: "DEEP_ARCHIVE"},
 			},
-			Expiration:                         &AwsS3BucketLifecycleExpiration{Days: 730},
-			NoncurrentVersionTransitions:       []*AwsS3BucketNoncurrentVersionTransition{{NoncurrentDays: 30, StorageClass: "GLACIER_IR"}},
-			NoncurrentVersionExpiration:        &AwsS3BucketNoncurrentVersionExpiration{NoncurrentDays: 90, NewerNoncurrentVersions: 3},
+			Expiration:                   &AwsS3BucketLifecycleExpiration{Days: 730},
+			NoncurrentVersionTransitions: []*AwsS3BucketNoncurrentVersionTransition{{NoncurrentDays: 30, StorageClass: "GLACIER_IR"}},
+			NoncurrentVersionExpiration:  &AwsS3BucketNoncurrentVersionExpiration{NoncurrentDays: 90, NewerNoncurrentVersions: 3},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts multipart-upload abort with a prefix-only filter", func() {
+		spec.LifecycleRules = []*AwsS3BucketLifecycleRule{{
+			Id:                                 "abort-prefixed",
+			Filter:                             &AwsS3BucketLifecycleFilter{Prefix: "uploads/"},
 			AbortIncompleteMultipartUploadDays: 7,
 		}}
 		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects multipart-upload abort combined with a tag filter", func() {
+		spec.LifecycleRules = []*AwsS3BucketLifecycleRule{{
+			Id:                                 "abort-tagged",
+			Filter:                             &AwsS3BucketLifecycleFilter{Tags: map[string]string{"team": "data"}},
+			AbortIncompleteMultipartUploadDays: 7,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects multipart-upload abort combined with an object-size filter", func() {
+		spec.LifecycleRules = []*AwsS3BucketLifecycleRule{{
+			Id:                                 "abort-sized",
+			Filter:                             &AwsS3BucketLifecycleFilter{ObjectSizeGreaterThan: 1024},
+			AbortIncompleteMultipartUploadDays: 7,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
 	ginkgo.It("rejects a lifecycle rule with no action", func() {

@@ -331,6 +331,15 @@ message AwsS3BucketLifecycleRule {
     expression: "size(this.transitions) > 0 || has(this.expiration) || has(this.noncurrent_version_expiration) || size(this.noncurrent_version_transitions) > 0 || this.abort_incomplete_multipart_upload_days > 0"
   };
 
+  // AWS rejects AbortIncompleteMultipartUpload on rules whose filter uses
+  // object tags or object size (multipart uploads in progress have neither,
+  // so such a filter could never match them). Prefix-only filters are fine.
+  option (buf.validate.message).cel = {
+    id: "abort_multipart_incompatible_with_tag_or_size_filter"
+    message: "abort_incomplete_multipart_upload_days cannot be combined with a filter using tags or object-size bounds (AWS rejects it; prefix-only filters are allowed)"
+    expression: "this.abort_incomplete_multipart_upload_days == 0 || !has(this.filter) || (size(this.filter.tags) == 0 && this.filter.object_size_greater_than == 0 && this.filter.object_size_less_than == 0)"
+  };
+
   // Unique identifier for the rule within the bucket.
   string id = 1 [(buf.validate.field).string = {
     min_len: 1

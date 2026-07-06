@@ -36,10 +36,13 @@ locals {
   # sse_algorithm still means AES256 (stated rather than implied so a
   # bucket_key-only or future tweak keeps working).
   manage_encryption = var.spec.encryption != null
-  sse_algorithm     = local.manage_encryption && var.spec.encryption.sse_algorithm != "" ? var.spec.encryption.sse_algorithm : "AES256"
+  # try() guards the attribute access: HCL evaluates both operands of &&,
+  # so touching var.spec.encryption.* directly would error when the whole
+  # encryption block is absent (null).
+  sse_algorithm = try(var.spec.encryption.sse_algorithm, "") != "" ? var.spec.encryption.sse_algorithm : "AES256"
   # kms key only applies to the KMS algorithms; the generated contract
   # flattens the StringValueOrRef to a plain string.
-  sse_kms_key_id = local.manage_encryption && var.spec.encryption.kms_key_id != "" ? var.spec.encryption.kms_key_id : null
+  sse_kms_key_id = try(var.spec.encryption.kms_key_id, "") != "" ? var.spec.encryption.kms_key_id : null
 
   # Bucket policy — the Struct arrives from the tfvars layer as a nested
   # object; the provider wants the document as a JSON string.

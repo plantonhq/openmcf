@@ -51,6 +51,10 @@ spec:
             aws:SecureTransport: "false"
   transitionDefaultMinimumObjectSize: all_storage_classes_128K
   lifecycleRules:
+    # AWS forbids AbortIncompleteMultipartUpload on rules whose filter uses
+    # tags or object size (enforced by the spec CEL this lane surfaced), so
+    # the size-filtered rule carries transitions only and the unfiltered
+    # prune rule carries the multipart cleanup.
     - id: tier-large-logs
       filter:
         prefix: logs/
@@ -60,11 +64,11 @@ spec:
           storageClass: STANDARD_IA
         - days: 90
           storageClass: GLACIER
-      abortIncompleteMultipartUploadDays: 7
     - id: prune-noncurrent
       noncurrentVersionExpiration:
         noncurrentDays: 30
         newerNoncurrentVersions: 2
+      abortIncompleteMultipartUploadDays: 7
   website:
     indexDocumentSuffix: index.html
     errorDocumentKey: error.html

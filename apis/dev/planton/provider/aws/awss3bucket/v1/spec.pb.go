@@ -2340,8 +2340,7 @@ const file_dev_planton_provider_aws_awss3bucket_v1_spec_proto_rawDesc = "" +
 	"\x11block_public_acls\x18\x01 \x01(\bR\x0fblockPublicAcls\x12.\n" +
 	"\x13block_public_policy\x18\x02 \x01(\bR\x11blockPublicPolicy\x12,\n" +
 	"\x12ignore_public_acls\x18\x03 \x01(\bR\x10ignorePublicAcls\x126\n" +
-	"\x17restrict_public_buckets\x18\x04 \x01(\bR\x15restrictPublicBuckets\"\x80\n" +
-	"\n" +
+	"\x17restrict_public_buckets\x18\x04 \x01(\bR\x15restrictPublicBuckets\"\x96\r\n" +
 	"\x18AwsS3BucketLifecycleRule\x12\x1a\n" +
 	"\x02id\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xff\x01R\x02id\x12\x9e\x01\n" +
@@ -2354,8 +2353,9 @@ const file_dev_planton_provider_aws_awss3bucket_v1_spec_proto_rawDesc = "" +
 	"expiration\x12\x95\x01\n" +
 	"\x1enoncurrent_version_transitions\x18\x06 \x03(\v2O.dev.planton.provider.aws.awss3bucket.v1.AwsS3BucketNoncurrentVersionTransitionR\x1cnoncurrentVersionTransitions\x12\x93\x01\n" +
 	"\x1dnoncurrent_version_expiration\x18\a \x01(\v2O.dev.planton.provider.aws.awss3bucket.v1.AwsS3BucketNoncurrentVersionExpirationR\x1bnoncurrentVersionExpiration\x12[\n" +
-	"&abort_incomplete_multipart_upload_days\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\"abortIncompleteMultipartUploadDays:\xea\x02\xbaH\xe6\x02\x1a\xe3\x02\n" +
-	"\x19lifecycle_rule_has_action\x12\x81\x01a lifecycle rule must define at least one action (transition, expiration, noncurrent-version handling, or multipart-upload abort)\x1a\xc1\x01size(this.transitions) > 0 || has(this.expiration) || has(this.noncurrent_version_expiration) || size(this.noncurrent_version_transitions) > 0 || this.abort_incomplete_multipart_upload_days > 0\"\xce\x02\n" +
+	"&abort_incomplete_multipart_upload_days\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\"abortIncompleteMultipartUploadDays:\x80\x06\xbaH\xfc\x05\x1a\xe3\x02\n" +
+	"\x19lifecycle_rule_has_action\x12\x81\x01a lifecycle rule must define at least one action (transition, expiration, noncurrent-version handling, or multipart-upload abort)\x1a\xc1\x01size(this.transitions) > 0 || has(this.expiration) || has(this.noncurrent_version_expiration) || size(this.noncurrent_version_transitions) > 0 || this.abort_incomplete_multipart_upload_days > 0\x1a\x93\x03\n" +
+	"4abort_multipart_incompatible_with_tag_or_size_filter\x12\x9a\x01abort_incomplete_multipart_upload_days cannot be combined with a filter using tags or object-size bounds (AWS rejects it; prefix-only filters are allowed)\x1a\xbd\x01this.abort_incomplete_multipart_upload_days == 0 || !has(this.filter) || (size(this.filter.tags) == 0 && this.filter.object_size_greater_than == 0 && this.filter.object_size_less_than == 0)\"\xce\x02\n" +
 	"\x1aAwsS3BucketLifecycleFilter\x12\x16\n" +
 	"\x06prefix\x18\x01 \x01(\tR\x06prefix\x12a\n" +
 	"\x04tags\x18\x02 \x03(\v2M.dev.planton.provider.aws.awss3bucket.v1.AwsS3BucketLifecycleFilter.TagsEntryR\x04tags\x12@\n" +
