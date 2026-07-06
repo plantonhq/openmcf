@@ -283,6 +283,33 @@ func TestAwsDynamodb_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsdynamodb", "terraform")
 }
 
+// --- AWS Kinesis Data Stream (true leaf; ON_DEMAND full surface with folded resource policy) ---
+
+func TestAwsKinesisStream_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awskinesisstream", "pulumi")
+}
+func TestAwsKinesisStream_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awskinesisstream", "terraform")
+}
+
+// --- AWS Kinesis Stream Consumer (enhanced fan-out; AwsKinesisStream prerequisite chain) ---
+
+func TestAwsKinesisStreamConsumer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awskinesisstreamconsumer", "pulumi")
+}
+func TestAwsKinesisStreamConsumer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awskinesisstreamconsumer", "terraform")
+}
+
+// --- AWS Kinesis Firehose (Direct PUT -> extended_s3; S3 bucket + IAM role prerequisite chain) ---
+
+func TestAwsKinesisFirehose_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awskinesisfirehose", "pulumi")
+}
+func TestAwsKinesisFirehose_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awskinesisfirehose", "terraform")
+}
+
 // --- AWS ElastiCache RBAC (account-level; no VPC prerequisite) ---
 
 func TestAwsElasticacheUser_Pulumi(t *testing.T) {
