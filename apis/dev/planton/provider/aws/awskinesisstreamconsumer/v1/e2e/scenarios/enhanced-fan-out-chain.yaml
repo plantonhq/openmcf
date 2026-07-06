@@ -2,13 +2,16 @@
 # consumer against the shared stream fixture. AwsKinesisStream is the kind's
 # registry prerequisite (a consumer cannot exist without its stream), so the
 # harness installs the stream first and the streamArn reference resolves
-# against its captured outputs. The folded resource policy -- its own
-# provider resource keyed by the consumer ARN -- is exercised live with a
-# same-account grant of the two enhanced-fan-out read actions; its
-# aws:PrincipalAccount condition value carries a literal ${...} sequence,
-# re-proving the tfvars template-introducer escaping on this kind's module.
-# The consumer registers in seconds and holds no data, so the lane cost is
-# the stream fixture alone.
+# against its captured outputs. The consumer registers in seconds and holds
+# no data, so the lane cost is the stream fixture alone.
+#
+# Deliberately not composed here: the folded resource_policy. Kinesis
+# requires a resource policy's Resource element to equal the target ARN
+# exactly (no wildcards), and a consumer ARN embeds its registration
+# timestamp -- it cannot be written statically before the consumer exists.
+# The policy fold is proven by CEL spec tests, the offline gate, and the
+# stream lane (the same aws_kinesis_resource_policy satellite against the
+# stream's deterministic ARN).
 apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStreamConsumer
 metadata:
@@ -30,17 +33,3 @@ spec:
       kind: AwsKinesisStream
       name: planton-oss-e2e-awskinesisstream-prereq
       fieldPath: status.outputs.stream_arn
-  resourcePolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Sid: AllowOwnAccountEnhancedFanOut
-        Effect: Allow
-        Principal:
-          AWS: "*"
-        Action:
-          - kinesis:DescribeStreamConsumer
-          - kinesis:SubscribeToShard
-        Resource: "*"
-        Condition:
-          StringEquals:
-            aws:PrincipalAccount: "${aws:ResourceAccount}"

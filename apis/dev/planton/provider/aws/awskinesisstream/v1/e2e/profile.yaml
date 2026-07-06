@@ -10,12 +10,14 @@ spec:
   # completes in minutes at negligible cost while exercising this
   # session's new depth live: extended retention, AWS-managed-key KMS
   # encryption, the 10 MiB large-record surface, shard-level enhanced
-  # monitoring, warm throughput, and the folded resource policy (its own
-  # provider resource) carrying a literal ${...} condition value that
-  # proves the tfvars template-introducer escaping. Deliberately not in
-  # the live scenario: PROVISIONED mode with an explicit shard_count (it
-  # conflicts with the warm-throughput arm under test) and a
-  # customer-managed KMS key -- both proven by CEL spec tests and the
+  # monitoring, and the folded resource policy (its own provider
+  # resource) carrying a literal ${...} condition value that proves the
+  # tfvars template-introducer escaping. Deliberately not in the live
+  # scenario: warm_throughput_mib_ps (needs an account-level
+  # minimum-throughput billing commitment the test account lacks; the
+  # live CreateStream rejection proved the wiring reaches AWS),
+  # PROVISIONED mode with an explicit shard_count, and a
+  # customer-managed KMS key -- all proven by CEL spec tests and the
   # offline gate.
   tier: 1
   status: green

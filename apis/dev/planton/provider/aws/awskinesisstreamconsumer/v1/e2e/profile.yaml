@@ -7,11 +7,13 @@ spec:
   # AwsKinesisStream registry prerequisite (the shared ON_DEMAND stream
   # fixture), then runs deploy -> DescribeStreamConsumer verify -> destroy
   # -> verify-destroyed on both provisioners. The scenario registers one
-  # consumer against the fixture stream and applies the folded resource
-  # policy live (a same-account SubscribeToShard/DescribeStreamConsumer
-  # grant whose condition value carries a literal ${...} sequence). The
-  # consumer registers in seconds and holds no data, so the lane cost is
-  # the stream fixture alone.
+  # consumer against the fixture stream; it registers in seconds and holds
+  # no data, so the lane cost is the stream fixture alone. Deliberately
+  # not in the live scenario: the folded resource_policy -- Kinesis
+  # requires the policy's Resource to equal the consumer ARN exactly, and
+  # that ARN embeds the registration timestamp, so it cannot be written
+  # statically; the fold is proven by CEL spec tests, the offline gate,
+  # and the stream lane's identical resource-policy satellite.
   tier: 1
   status: green
   validated_provisioners:
