@@ -1047,6 +1047,71 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsEcrRepo: repository_url is what docker push/pull targets;
+			// repository_arn scopes IAM policies; repository_name keys the
+			// E2E verifier; registry_id is the owning account.
+			name: "AwsEcrRepo",
+			kind: cloudresourcekind.CloudResourceKind_AwsEcrRepo,
+			rawOutputs: map[string]interface{}{
+				"repository_name": "planton-oss-e2e/full-surface",
+				"repository_url":  "123456789012.dkr.ecr.us-west-2.amazonaws.com/planton-oss-e2e/full-surface",
+				"repository_arn":  "arn:aws:ecr:us-west-2:123456789012:repository/planton-oss-e2e/full-surface",
+				"registry_id":     "123456789012",
+			},
+			mustPopulate: []string{
+				"repository_name", "repository_url", "repository_arn", "registry_id",
+			},
+		},
+		{
+			// AwsRoute53Zone: zone_id is the join key every DNS-composing
+			// resource references (records, ACM validation, ALB/NLB alias
+			// registration) and keys the E2E verifier; nameservers carry the
+			// registrar delegation values.
+			name: "AwsRoute53Zone",
+			kind: cloudresourcekind.CloudResourceKind_AwsRoute53Zone,
+			rawOutputs: map[string]interface{}{
+				"zone_id":             "Z1D633PJN98FT9",
+				"zone_name":           "example.com",
+				"nameservers":         []interface{}{"ns-1.awsdns-01.org", "ns-2.awsdns-02.com"},
+				"primary_name_server": "ns-1.awsdns-01.org",
+				"zone_arn":            "arn:aws:route53:::hostedzone/Z1D633PJN98FT9",
+			},
+			mustPopulate: []string{
+				"zone_id", "zone_name", "nameservers", "primary_name_server", "zone_arn",
+			},
+		},
+		{
+			// AwsRoute53DnsRecord: fqdn + record_type + zone_id together key
+			// the E2E verifier (a record has no standalone describe API);
+			// is_alias and set_identifier echo the record's shape.
+			name: "AwsRoute53DnsRecord",
+			kind: cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord,
+			rawOutputs: map[string]interface{}{
+				"fqdn":           "canary.example.com",
+				"record_type":    "A",
+				"zone_id":        "Z1D633PJN98FT9",
+				"is_alias":       false,
+				"set_identifier": "canary",
+			},
+			mustPopulate: []string{
+				"fqdn", "record_type", "zone_id", "set_identifier",
+			},
+		},
+		{
+			// AwsRoute53HealthCheck: health_check_id is what DNS records
+			// reference (health_check_id) and calculated parents aggregate;
+			// it also keys the E2E verifier.
+			name: "AwsRoute53HealthCheck",
+			kind: cloudresourcekind.CloudResourceKind_AwsRoute53HealthCheck,
+			rawOutputs: map[string]interface{}{
+				"health_check_id":  "abcdef11-2222-3333-4444-555555fedcba",
+				"health_check_arn": "arn:aws:route53:::healthcheck/abcdef11-2222-3333-4444-555555fedcba",
+			},
+			mustPopulate: []string{
+				"health_check_id", "health_check_arn",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

@@ -23,11 +23,11 @@ This preset creates an ECR repository optimized for development workflows. Mutab
 
 ## Key Configuration Choices
 
-- **Mutable tags** (`imageImmutable: false`) -- Tags like `latest` or `dev` can be overwritten on each push
+- **Mutable tags** (`imageTagMutability: MUTABLE`) -- Tags like `latest` or `dev` can be overwritten on each push
 - **Scan on push** (`scanOnPush: true`) -- Vulnerability scanning stays on even for dev to catch issues early
-- **3-day untagged expiration** (`expireUntaggedAfterDays: 3`) -- Aggressively cleans up orphaned layers from frequent rebuilds
-- **20 image retention** (`maxImageCount: 20`) -- Minimal retention; older dev images are rarely needed
-- **Force delete disabled** (`forceDelete: false`) -- Still protects against accidental repository deletion
+- **3-day untagged cleanup rule** (priority 1, `sinceImagePushed` 3 days on `untagged`) -- Aggressively cleans up orphaned layers from frequent rebuilds
+- **Keep-last-20 rule** (priority 2, `imageCountMoreThan` 20 on `any`) -- Minimal retention; older dev images are rarely needed
+- **Force delete enabled** (`forceDelete: true`) -- Disposable dev repositories tear down cleanly even with images present
 
 ## Placeholders to Replace
 

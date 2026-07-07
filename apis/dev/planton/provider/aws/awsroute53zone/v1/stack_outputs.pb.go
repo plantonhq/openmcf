@@ -21,19 +21,34 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Status for the AWS Route53 Zone
+// AwsRoute53ZoneStackOutputs captures observable identifiers from a
+// provisioned Route 53 hosted zone.
+//
+// The primary output is `zone_id` — the join key every DNS-composing resource
+// uses: AwsRoute53DnsRecord targets a zone by it, AwsCertManagerCert points
+// DNS validation at it, and AwsAlb/AwsNlb register their alias records
+// through it.
 type AwsRoute53ZoneStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// hosted-zone id
+	// The hosted zone ID (e.g. "Z1D633PJN98FT9"). The identifier used by every
+	// resource that composes onto this zone.
 	ZoneId string `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
-	// hosted-zone name
+	// The zone's domain name as normalized by Route 53 (trailing dot removed),
+	// e.g. "example.com".
 	ZoneName string `protobuf:"bytes,2,opt,name=zone_name,json=zoneName,proto3" json:"zone_name,omitempty"`
-	// The list of nameservers for the Managed Zone created for the DNS Domain.
+	// The four authoritative name servers assigned to the zone. For a public
+	// zone, these are the values to set as the domain's NS delegation at the
+	// registrar.
 	Nameservers []string `protobuf:"bytes,3,rep,name=nameservers,proto3" json:"nameservers,omitempty"`
-	// caller_reference is the unique string that identifies the request to create the hosted zone.
-	CallerReference string `protobuf:"bytes,4,opt,name=caller_reference,json=callerReference,proto3" json:"caller_reference,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The first (primary) name server of the zone's delegation set — the one
+	// used as the SOA MNAME.
+	PrimaryNameServer string `protobuf:"bytes,4,opt,name=primary_name_server,json=primaryNameServer,proto3" json:"primary_name_server,omitempty"`
+	// The Amazon Resource Name of the hosted zone
+	// (arn:aws:route53:::hostedzone/<zone_id>). Used in IAM policies scoping
+	// route53:ChangeResourceRecordSets to specific zones.
+	ZoneArn       string `protobuf:"bytes,5,opt,name=zone_arn,json=zoneArn,proto3" json:"zone_arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsRoute53ZoneStackOutputs) Reset() {
@@ -87,9 +102,16 @@ func (x *AwsRoute53ZoneStackOutputs) GetNameservers() []string {
 	return nil
 }
 
-func (x *AwsRoute53ZoneStackOutputs) GetCallerReference() string {
+func (x *AwsRoute53ZoneStackOutputs) GetPrimaryNameServer() string {
 	if x != nil {
-		return x.CallerReference
+		return x.PrimaryNameServer
+	}
+	return ""
+}
+
+func (x *AwsRoute53ZoneStackOutputs) GetZoneArn() string {
+	if x != nil {
+		return x.ZoneArn
 	}
 	return ""
 }
@@ -98,12 +120,13 @@ var File_dev_planton_provider_aws_awsroute53zone_v1_stack_outputs_proto protoref
 
 const file_dev_planton_provider_aws_awsroute53zone_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awsroute53zone/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awsroute53zone.v1\"\x9f\x01\n" +
+	">dev/planton/provider/aws/awsroute53zone/v1/stack_outputs.proto\x12*dev.planton.provider.aws.awsroute53zone.v1\"\xbf\x01\n" +
 	"\x1aAwsRoute53ZoneStackOutputs\x12\x17\n" +
 	"\azone_id\x18\x01 \x01(\tR\x06zoneId\x12\x1b\n" +
 	"\tzone_name\x18\x02 \x01(\tR\bzoneName\x12 \n" +
-	"\vnameservers\x18\x03 \x03(\tR\vnameservers\x12)\n" +
-	"\x10caller_reference\x18\x04 \x01(\tR\x0fcallerReferenceB\xf1\x02\n" +
+	"\vnameservers\x18\x03 \x03(\tR\vnameservers\x12.\n" +
+	"\x13primary_name_server\x18\x04 \x01(\tR\x11primaryNameServer\x12\x19\n" +
+	"\bzone_arn\x18\x05 \x01(\tR\azoneArnB\xf1\x02\n" +
 	".com.dev.planton.provider.aws.awsroute53zone.v1B\x11StackOutputsProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1;awsroute53zonev1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awsroute53zone.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awsroute53zone\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awsroute53zone\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awsroute53zone::V1b\x06proto3"
 
 var (

@@ -1,0 +1,35 @@
+# HTTPS AwsRoute53HealthCheck scenario: the standard internet-facing probe
+# shape with tuned cadence, an explicit checker-region triple (the AWS
+# minimum), latency measurement, and SNI. The check is created DISABLED so
+# the checker fleet never actually probes the placeholder domain — AWS
+# creates and stores the full configuration regardless, which is exactly
+# what the lane verifies (a disabled check also reports healthy, which is
+# the documented maintenance-window semantics, not a failure).
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53HealthCheck
+metadata:
+  name: planton-oss-e2e-awsroute53healthcheck-https
+  id: planton-oss-e2e-awsroute53healthcheck-https
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53healthcheck
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  checkType: HTTPS
+  fqdn: e2e-placeholder.example.com
+  resourcePath: /healthz
+  requestInterval: 30
+  failureThreshold: 3
+  measureLatency: true
+  enableSni: true
+  regions:
+    - us-east-1
+    - us-west-2
+    - eu-west-1
+  disabled: true

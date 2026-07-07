@@ -264,10 +264,14 @@ enum CloudResourceKind {
     id_prefix: "docdb"
     prerequisites: [AwsSubnet]
   }];
+  // AwsRoute53Zone is a prerequisite because every record lives inside a
+  // hosted zone -- the spec's zone_id reference must resolve before the
+  // record can be created.
   AwsRoute53DnsRecord = 223 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "r53rec"
+    prerequisites: [AwsRoute53Zone]
   }];
   // AwsS3Bucket is a prerequisite because the object set's bucket reference
   // is required -- objects cannot exist without the bucket that holds them.
@@ -776,6 +780,11 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awssnssub"
     prerequisites: [AwsSnsTopic]
+  }];
+  AwsRoute53HealthCheck = 354 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "r53hc"
   }];
 
   // 400–599: Azure resources

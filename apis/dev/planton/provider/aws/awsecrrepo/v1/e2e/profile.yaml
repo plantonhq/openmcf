@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsecrrepo
+spec:
+  # An ECR repository under live E2E: the harness runs deploy ->
+  # DescribeRepositories verify -> destroy -> verify-destroyed on both
+  # provisioners. The repository is a true leaf (no prerequisites) and an
+  # empty repository costs nothing, so a lane completes in ~1-2 minutes.
+  # The full-surface scenario exercises exclusion-filtered tag immutability
+  # (IMMUTABLE_WITH_EXCLUSION + wildcard filters), scan-on-push, all three
+  # structured lifecycle-rule shapes (untagged-by-age, tagged-by-prefix
+  # keep-last-N, any keep-last-N — the folded lifecycle policy materializes
+  # as its own provider resource), and the folded repository policy (a
+  # Lambda service-principal pull grant). Deliberately not in the live
+  # scenario: KMS/KMS_DSSE encryption (needs a KMS-key prerequisite; the
+  # AES256 default proves the same encryption block wiring) — proven by CEL
+  # spec tests and the offline gate.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 10

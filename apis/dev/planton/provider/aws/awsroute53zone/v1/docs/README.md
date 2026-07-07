@@ -359,64 +359,33 @@ Run `octodns-sync`, and it applies changes to all configured providers.
 
 ---
 
-## What Planton Supports: Pulumi for Production DNS
+## The Zone/Record Split: Why Records Are Not Part of the Zone
 
-Planton defaults to **Pulumi** for managing AWS Route53 zones and records.
+The zone is the CONTAINER; records are its CONTENTS — and the two have genuinely different lifecycles. A zone is created once per domain and lives as long as the domain does. Records churn constantly: deploys repoint them, canaries add weighted members, incident response flips failover roles. Modeling records inside the zone document would mean every record change is a zone change, every team touching DNS contends on one document, and the record's own rich surface (seven routing policies, alias targets, health-check gating) gets buried three levels deep.
 
-**Why Pulumi?**
+So the zone spec carries only zone-scoped configuration, and each record is a first-class resource referencing the zone's `zone_id` output:
 
-1. **Real Code, Real Benefits**: DNS configurations often need logic—loops for creating multiple similar records, conditionals for environment-specific settings, helper functions for normalizing domain names. With Pulumi's TypeScript or Python, this is natural. With HCL or YAML, it's painful.
+- **Zone-scoped (this spec)**: public/private flavor, VPC associations, delegation set, DNSSEC signing, query logging, accelerated recovery, force-destroy.
+- **Record-scoped (`AwsRoute53DnsRecord`)**: name, type, values or alias target, TTL, routing policy, health-check gating, set identifier.
+- **Probe-scoped (`AwsRoute53HealthCheck`)**: the availability checks records reference.
 
-2. **Type Safety and IDE Support**: Catch errors before deployment. Your editor autocompletes Route53 record types, warns if you set an alias and a TTL (invalid), and highlights missing required fields.
+## The Coverage Line (90/10)
 
-3. **Testable Infrastructure**: Write unit tests to verify your DNS module creates the correct number of records or validates domain name formats. This is standard practice in application code—it should be standard in infrastructure code too.
+### Covered (zone-scoped)
 
-4. **Multi-Cloud Ready**: While Route53 is AWS-specific, many organizations also use GCP Cloud DNS or Cloudflare. Pulumi handles all of them in one codebase with a unified programming model.
+1. **Public zones**: comment, force-destroy, reusable delegation sets, accelerated recovery
+2. **Private zones**: multi-VPC associations with cross-region support (`vpc_region` defaults to the zone's region)
+3. **DNSSEC signing**: the key-signing key (from a referenced KMS key) plus the signing toggle, with the chain-of-trust caveat documented (the DS record at the registrar is outside AWS)
+4. **Query logging**: delivery to a referenced CloudWatch Logs log group, with the us-east-1 and account-level resource-policy prerequisites documented
 
-5. **Open Source and Vendor-Neutral**: Pulumi is fully open source (Apache 2.0). The state backend can be self-hosted (S3, Azure Blob, local filesystem) or use Pulumi Cloud. No vendor lock-in on the tooling layer.
+### Deliberately not modeled (different lifecycle owners)
 
-**What We Abstract Away**:
-
-- **Boilerplate**: Our Pulumi modules handle common patterns—creating a public zone with default TTLs, configuring alias records for CloudFront/ALB without hardcoding zone IDs, attaching health checks to failover records.
-- **Best Practices**: We enforce trailing dots where required, validate CNAME targets, and prevent common mistakes like setting TTL on alias records.
-- **Multi-Environment Management**: Define DNS once, deploy to dev/staging/prod with environment-specific overrides (like different ALB targets or TTL values).
-
-**What You Control**:
-
-- **Record Definitions**: You specify the DNS records you need—A, AAAA, CNAME, MX, TXT, alias, routing policies.
-- **Health Checks and Failover**: Configure health checks and attach them to failover policies as needed.
-- **Private Zones and VPC Associations**: Declare private zones with explicit VPC associations for split-horizon DNS.
-
----
-
-## The 80/20 Rule: What Most Teams Actually Need
-
-Route53 is feature-rich, but production DNS for most applications uses a **small, predictable subset**:
-
-### Essential Record Types (>80% of Use Cases)
-
-1. **A/AAAA Records**: Map domain names to IPv4/IPv6 addresses. Often replaced by alias records for AWS resources.
-2. **Alias Records**: Route53's killer feature—point your apex domain (`example.com`) to CloudFront, ALB, S3 website, or API Gateway without CNAME restrictions. Also free (no query charges for alias queries to AWS resources).
-3. **CNAME Records**: Alias subdomains to external services (`support.example.com` → `yourcompany.zendesk.com`).
-4. **MX Records**: Email routing. Typically 2-3 records with priorities (`10 mail1.provider.com`, `20 mail2.provider.com`).
-5. **TXT Records**: SPF for email validation, domain verification tokens (Google, AWS, etc.), DKIM keys.
-
-### Common Advanced Patterns (Next 15%)
-
-- **Weighted Routing**: Blue/green deployments (90% traffic to old version, 10% to new).
-- **Latency-Based Routing**: Global applications serving users from the nearest region.
-- **Failover Routing**: Primary/secondary setup with health checks for automatic disaster recovery.
-- **Geolocation Routing**: Serve different content based on user location (e.g., GDPR-compliant EU endpoints).
-
-### Rarely Used Features (<5%)
-
-- **Geoproximity and IP-Based Routing**: Niche use cases requiring fine-grained control over traffic distribution.
-- **DNSSEC**: Security enhancement, but adoption is low due to complexity and limited client support.
-- **Traffic Flow Policies**: Visual policy editor. Powerful but lacks Terraform/Pulumi support, making it unsuitable for IaC workflows.
-- **CAA Records**: Restrict which Certificate Authorities can issue certificates for your domain. Good security practice but not universally adopted.
-- **SRV Records**: Mainly for legacy services like Active Directory or SIP. Modern cloud-native apps rarely use them.
-
-**Planton's API focuses on the 80%**: zones (public/private), core record types, alias targets, and basic routing policies. Advanced features can be added as needed, but the API remains simple by default.
+- **Cross-account VPC associations** (`aws_route53_zone_association` + `aws_route53_vpc_association_authorization`): a two-account handshake — the zone owner authorizes, the VPC owner associates. Same-account associations are the folded `vpc_associations`; the cross-account plane composes later on concrete pull.
+- **Reusable delegation set management** (`aws_route53_delegation_set`): an account-level object; the zone composes by `delegation_set_id`.
+- **Traffic policies** (`aws_route53_traffic_policy` + instances): a separate versioned-document product surface.
+- **CIDR collections/locations**: back the record kind's CIDR routing policy; compose by literal ID.
+- **`aws_route53_records_exclusive`**: an alternate whole-zone ownership model that conflicts with per-record resources.
+- **Domain registration (`route53domains`), Resolver, Profiles, Application Recovery Controller**: separate AWS services with their own APIs.
 
 ---
 

@@ -310,6 +310,42 @@ func TestAwsKinesisFirehose_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awskinesisfirehose", "terraform")
 }
 
+// --- AWS ECR repository (true leaf; folded lifecycle rules + repository policy) ---
+
+func TestAwsEcrRepo_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrrepo", "pulumi")
+}
+func TestAwsEcrRepo_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrrepo", "terraform")
+}
+
+// --- AWS Route 53 hosted zone (public leaf + private-VPC composed arm) ---
+
+func TestAwsRoute53Zone_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53zone", "pulumi")
+}
+func TestAwsRoute53Zone_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53zone", "terraform")
+}
+
+// --- AWS Route 53 DNS record (AwsRoute53Zone prerequisite chain) ---
+
+func TestAwsRoute53DnsRecord_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53dnsrecord", "pulumi")
+}
+func TestAwsRoute53DnsRecord_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53dnsrecord", "terraform")
+}
+
+// --- AWS Route 53 health check (true leaf; disabled probe, zero external traffic) ---
+
+func TestAwsRoute53HealthCheck_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53healthcheck", "pulumi")
+}
+func TestAwsRoute53HealthCheck_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53healthcheck", "terraform")
+}
+
 // --- AWS ElastiCache RBAC (account-level; no VPC prerequisite) ---
 
 func TestAwsElasticacheUser_Pulumi(t *testing.T) {

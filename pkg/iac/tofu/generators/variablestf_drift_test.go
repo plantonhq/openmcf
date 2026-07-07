@@ -108,6 +108,11 @@ var migratedKinds = []string{
 	"AwsKinesisStream",
 	"AwsKinesisStreamConsumer",
 	"AwsKinesisFirehose",
+	// DNS: the record migrated off its hand-written contract (the zone was
+	// already enrolled); the health check generator-owned from the day it
+	// was forged.
+	"AwsRoute53DnsRecord",
+	"AwsRoute53HealthCheck",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

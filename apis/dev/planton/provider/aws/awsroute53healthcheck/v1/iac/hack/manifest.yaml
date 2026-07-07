@@ -1,0 +1,29 @@
+# AWS Route 53 health check — examples
+#
+# Usage:
+#   planton apply -f manifest.yaml
+
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53HealthCheck
+metadata:
+  name: app-https-check
+spec:
+  region: us-west-2
+  checkType: HTTPS
+  fqdn: app.example.com
+  resourcePath: /healthz
+  requestInterval: 30
+  failureThreshold: 3
+
+---
+# TCP check against a static address (a database listener, a bastion).
+
+apiVersion: aws.planton.dev/v1
+kind: AwsRoute53HealthCheck
+metadata:
+  name: db-tcp-check
+spec:
+  region: us-west-2
+  checkType: TCP
+  ipAddress: 192.0.2.10
+  port: 5432

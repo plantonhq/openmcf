@@ -25,7 +25,6 @@ go_test(
     srcs = ["spec_test.go"],
     embed = [":awsroute53dnsrecord"],
     deps = [
-        "//apis/dev/planton/shared",
         "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
         "@build_buf_go_protovalidate//:protovalidate",
         "@com_github_onsi_ginkgo_v2//:ginkgo",

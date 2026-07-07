@@ -1,8 +1,10 @@
 terraform {
   required_providers {
     aws = {
+      # Floor 6.25.0: enable_accelerated_recovery landed there (the zone's
+      # vpc block, DNSSEC resources, and query logging are far older).
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.25.0"
     }
   }
 }

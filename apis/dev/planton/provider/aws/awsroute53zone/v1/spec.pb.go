@@ -9,7 +9,6 @@ package awsroute53zonev1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	dnsrecordtype "github.com/plantonhq/planton/apis/dev/planton/shared/networking/enums/dnsrecordtype"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,102 +23,80 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Failover record type enum
-type Route53FailoverRoutingPolicy_FailoverRecordType int32
-
-const (
-	// Default value (invalid, must specify PRIMARY or SECONDARY)
-	Route53FailoverRoutingPolicy_FAILOVER_RECORD_TYPE_UNSPECIFIED Route53FailoverRoutingPolicy_FailoverRecordType = 0
-	// Primary record - serves traffic when healthy
-	Route53FailoverRoutingPolicy_PRIMARY Route53FailoverRoutingPolicy_FailoverRecordType = 1
-	// Secondary record - serves traffic when primary fails health check
-	Route53FailoverRoutingPolicy_SECONDARY Route53FailoverRoutingPolicy_FailoverRecordType = 2
-)
-
-// Enum value maps for Route53FailoverRoutingPolicy_FailoverRecordType.
-var (
-	Route53FailoverRoutingPolicy_FailoverRecordType_name = map[int32]string{
-		0: "FAILOVER_RECORD_TYPE_UNSPECIFIED",
-		1: "PRIMARY",
-		2: "SECONDARY",
-	}
-	Route53FailoverRoutingPolicy_FailoverRecordType_value = map[string]int32{
-		"FAILOVER_RECORD_TYPE_UNSPECIFIED": 0,
-		"PRIMARY":                          1,
-		"SECONDARY":                        2,
-	}
-)
-
-func (x Route53FailoverRoutingPolicy_FailoverRecordType) Enum() *Route53FailoverRoutingPolicy_FailoverRecordType {
-	p := new(Route53FailoverRoutingPolicy_FailoverRecordType)
-	*p = x
-	return p
-}
-
-func (x Route53FailoverRoutingPolicy_FailoverRecordType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (Route53FailoverRoutingPolicy_FailoverRecordType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (Route53FailoverRoutingPolicy_FailoverRecordType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_enumTypes[0]
-}
-
-func (x Route53FailoverRoutingPolicy_FailoverRecordType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use Route53FailoverRoutingPolicy_FailoverRecordType.Descriptor instead.
-func (Route53FailoverRoutingPolicy_FailoverRecordType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{7, 0}
-}
-
-// AwsRoute53ZoneSpec defines the specification required to create and manage a Route53 DNS Zone in AWS.
-// This message encapsulates the configurations necessary for setting up DNS records within the zone,
-// allowing you to specify multiple DNS records of various types, including support for Route53's
-// advanced features like alias records, routing policies, health checks, and private zones.
+// AwsRoute53ZoneSpec defines the configuration for an Amazon Route 53 hosted
+// zone — the DNS container for a domain. The zone's domain name comes from
+// metadata.name (e.g. a zone named "example.com" hosts that domain) and is
+// create-time immutable (ForceNew).
 //
-// AWS Route53 is a scalable and highly available Domain Name System (DNS) web service that can be used
-// to route users to internet applications by translating domain names into IP addresses.
+// A hosted zone is either PUBLIC (resolves on the internet; Route 53 assigns
+// four authoritative name servers, exported as stack outputs for registrar
+// delegation) or PRIVATE (resolves only inside the associated VPCs —
+// split-horizon DNS). The private/public choice shapes the rest of the
+// surface: reusable delegation sets, DNSSEC signing, accelerated recovery,
+// and query logging are public-zone features, while VPC associations define a
+// private zone.
 //
-// This specification helps in automating the creation and management of DNS records within a Route53 zone,
-// ensuring that your domain names are correctly mapped to your resources with support for advanced
-// traffic routing and high availability features.
+// Individual DNS records are deliberately NOT part of the zone: each record
+// is its own AwsRoute53DnsRecord resource referencing this zone's zone_id
+// output. Records have independent lifecycles (create, repoint, and delete
+// without touching the zone), are many-per-zone, and carry their own routing
+// surface — folding them here would bury that composability inside one
+// document.
 type AwsRoute53ZoneSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
+	// Route 53 itself is a global service; this selects the region used for
+	// provider API calls and for regional companions (e.g. a private zone's
+	// default VPC region).
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// Flag to indicate if this is a private hosted zone.
-	// Private zones are used for split-horizon DNS and only resolve within associated VPCs.
-	// Public zones (is_private=false) resolve globally on the internet.
-	// Default: false (public zone)
-	IsPrivate bool `protobuf:"varint,2,opt,name=is_private,json=isPrivate,proto3" json:"is_private,omitempty"`
-	// VPC associations for private hosted zones.
-	// Only applicable when is_private is true.
-	// Each association allows the private zone to resolve DNS queries from the specified VPC.
-	// You must enable enableDnsHostnames and enableDnsSupport in your VPC settings.
-	VpcAssociations []*Route53VpcAssociation `protobuf:"bytes,3,rep,name=vpc_associations,json=vpcAssociations,proto3" json:"vpc_associations,omitempty"`
-	// Enable query logging for this hosted zone.
-	// Query logs are sent to CloudWatch Logs and can be used for debugging,
-	// security monitoring, and understanding query patterns.
-	// Warning: High-traffic domains generate large log volumes.
-	EnableQueryLogging bool `protobuf:"varint,4,opt,name=enable_query_logging,json=enableQueryLogging,proto3" json:"enable_query_logging,omitempty"`
-	// CloudWatch Log Group name for query logs (required if enable_query_logging is true).
-	// The log group must exist before enabling query logging.
-	QueryLogGroupName string `protobuf:"bytes,5,opt,name=query_log_group_name,json=queryLogGroupName,proto3" json:"query_log_group_name,omitempty"`
-	// Enable DNSSEC for the hosted zone.
-	// DNSSEC adds cryptographic signatures to DNS records to prevent spoofing attacks.
-	// Note: Requires additional configuration at domain registrar level.
-	EnableDnssec bool `protobuf:"varint,6,opt,name=enable_dnssec,json=enableDnssec,proto3" json:"enable_dnssec,omitempty"`
-	// The DNS records that are added to the zone.
-	// Each record represents a DNS resource record with support for basic records (A, AAAA, CNAME, MX, TXT),
-	// alias records (pointing to AWS resources), and advanced routing policies.
-	// These records define how your domain or subdomains are routed to your resources.
-	Records       []*Route53DnsRecord `protobuf:"bytes,7,rep,name=records,proto3" json:"records,omitempty"`
+	// Human-readable comment stored on the hosted zone, visible in the AWS
+	// console and GetHostedZone responses. Useful for ownership or purpose
+	// notes (e.g. "production apex zone — owned by platform team").
+	// Maximum 256 characters.
+	Comment string `protobuf:"bytes,2,opt,name=comment,proto3" json:"comment,omitempty"`
+	// Marks the zone as a private hosted zone that resolves only inside the
+	// VPCs listed in vpc_associations. Private zones require at least one VPC
+	// association at creation (AWS bakes the first VPC into CreateHostedZone).
+	// Default: false (public zone, resolves globally).
+	IsPrivate bool `protobuf:"varint,3,opt,name=is_private,json=isPrivate,proto3" json:"is_private,omitempty"`
+	// VPCs that can resolve this private zone. Required (at least one) when
+	// is_private is true; must be empty for public zones.
+	//
+	// Each associated VPC must have DNS support and DNS hostnames enabled.
+	// All associations here must be same-account: associating a VPC from
+	// ANOTHER account requires an authorization handshake between the two
+	// accounts (a separate cross-account surface, deliberately not modeled).
+	VpcAssociations []*AwsRoute53ZoneVpcAssociation `protobuf:"bytes,4,rep,name=vpc_associations,json=vpcAssociations,proto3" json:"vpc_associations,omitempty"`
+	// ID of a reusable delegation set to assign this zone's name servers from.
+	// Reusable delegation sets give many zones the same four name servers —
+	// the white-label DNS pattern (vanity name servers) and bulk zone
+	// migrations. Public zones only (AWS rejects it for private zones), and
+	// create-time immutable (ForceNew).
+	// When omitted, Route 53 assigns a fresh set of name servers to the zone.
+	DelegationSetId string `protobuf:"bytes,5,opt,name=delegation_set_id,json=delegationSetId,proto3" json:"delegation_set_id,omitempty"`
+	// When true, deleting the zone first purges every record in it (except the
+	// required NS/SOA pair) and disables DNSSEC signing, so deletion cannot
+	// fail on "zone not empty". Leave false (default) to protect a zone that
+	// still carries live records from accidental teardown.
+	ForceDestroy bool `protobuf:"varint,6,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
+	// Enables accelerated recovery for the hosted zone: Route 53 pre-stages
+	// the zone's data so control-plane changes propagate faster during
+	// regional recovery events. Public zones only.
+	EnableAcceleratedRecovery bool `protobuf:"varint,7,opt,name=enable_accelerated_recovery,json=enableAcceleratedRecovery,proto3" json:"enable_accelerated_recovery,omitempty"`
+	// DNS query logging to CloudWatch Logs — who is querying which names, with
+	// response codes. Used for security monitoring, debugging resolution
+	// issues, and understanding query patterns. Public zones only.
+	// Warning: high-traffic domains generate large log volumes (and cost).
+	QueryLogging *AwsRoute53ZoneQueryLogging `protobuf:"bytes,8,opt,name=query_logging,json=queryLogging,proto3" json:"query_logging,omitempty"`
+	// DNSSEC signing for the zone: Route 53 signs the zone's records with a
+	// key-signing key (KSK) backed by an asymmetric KMS key, protecting
+	// resolvers from spoofed responses. Public zones only.
+	//
+	// Enabling signing here is half the chain of trust — to complete it, the
+	// DS record from the signed zone must also be registered with the parent
+	// (the domain registrar), which is outside this resource.
+	Dnssec        *AwsRoute53ZoneDnssec `protobuf:"bytes,9,opt,name=dnssec,proto3" json:"dnssec,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -161,6 +138,13 @@ func (x *AwsRoute53ZoneSpec) GetRegion() string {
 	return ""
 }
 
+func (x *AwsRoute53ZoneSpec) GetComment() string {
+	if x != nil {
+		return x.Comment
+	}
+	return ""
+}
+
 func (x *AwsRoute53ZoneSpec) GetIsPrivate() bool {
 	if x != nil {
 		return x.IsPrivate
@@ -168,70 +152,76 @@ func (x *AwsRoute53ZoneSpec) GetIsPrivate() bool {
 	return false
 }
 
-func (x *AwsRoute53ZoneSpec) GetVpcAssociations() []*Route53VpcAssociation {
+func (x *AwsRoute53ZoneSpec) GetVpcAssociations() []*AwsRoute53ZoneVpcAssociation {
 	if x != nil {
 		return x.VpcAssociations
 	}
 	return nil
 }
 
-func (x *AwsRoute53ZoneSpec) GetEnableQueryLogging() bool {
+func (x *AwsRoute53ZoneSpec) GetDelegationSetId() string {
 	if x != nil {
-		return x.EnableQueryLogging
-	}
-	return false
-}
-
-func (x *AwsRoute53ZoneSpec) GetQueryLogGroupName() string {
-	if x != nil {
-		return x.QueryLogGroupName
+		return x.DelegationSetId
 	}
 	return ""
 }
 
-func (x *AwsRoute53ZoneSpec) GetEnableDnssec() bool {
+func (x *AwsRoute53ZoneSpec) GetForceDestroy() bool {
 	if x != nil {
-		return x.EnableDnssec
+		return x.ForceDestroy
 	}
 	return false
 }
 
-func (x *AwsRoute53ZoneSpec) GetRecords() []*Route53DnsRecord {
+func (x *AwsRoute53ZoneSpec) GetEnableAcceleratedRecovery() bool {
 	if x != nil {
-		return x.Records
+		return x.EnableAcceleratedRecovery
+	}
+	return false
+}
+
+func (x *AwsRoute53ZoneSpec) GetQueryLogging() *AwsRoute53ZoneQueryLogging {
+	if x != nil {
+		return x.QueryLogging
 	}
 	return nil
 }
 
-// Route53VpcAssociation represents a VPC association for a private hosted zone.
-// Private zones can be associated with multiple VPCs, allowing DNS resolution across VPCs.
-type Route53VpcAssociation struct {
+func (x *AwsRoute53ZoneSpec) GetDnssec() *AwsRoute53ZoneDnssec {
+	if x != nil {
+		return x.Dnssec
+	}
+	return nil
+}
+
+// AwsRoute53ZoneVpcAssociation associates one VPC with a private hosted zone,
+// letting resolvers inside that VPC answer queries for the zone's records.
+type AwsRoute53ZoneVpcAssociation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The VPC ID to associate with the private hosted zone.
-	// Example: "vpc-12345678"
-	// Can reference an AwsVpc resource.
+	// The VPC to associate. Can reference an AwsVpc resource.
 	VpcId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
-	// The AWS region where the VPC is located.
-	// Example: "us-east-1"
+	// The region the VPC lives in. Defaults to the zone's region when omitted
+	// — set it only for VPCs in other regions (a private zone can be resolved
+	// from VPCs across regions within the same account).
 	VpcRegion     string `protobuf:"bytes,2,opt,name=vpc_region,json=vpcRegion,proto3" json:"vpc_region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Route53VpcAssociation) Reset() {
-	*x = Route53VpcAssociation{}
+func (x *AwsRoute53ZoneVpcAssociation) Reset() {
+	*x = AwsRoute53ZoneVpcAssociation{}
 	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Route53VpcAssociation) String() string {
+func (x *AwsRoute53ZoneVpcAssociation) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Route53VpcAssociation) ProtoMessage() {}
+func (*AwsRoute53ZoneVpcAssociation) ProtoMessage() {}
 
-func (x *Route53VpcAssociation) ProtoReflect() protoreflect.Message {
+func (x *AwsRoute53ZoneVpcAssociation) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -243,122 +233,61 @@ func (x *Route53VpcAssociation) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Route53VpcAssociation.ProtoReflect.Descriptor instead.
-func (*Route53VpcAssociation) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsRoute53ZoneVpcAssociation.ProtoReflect.Descriptor instead.
+func (*AwsRoute53ZoneVpcAssociation) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Route53VpcAssociation) GetVpcId() *v1.StringValueOrRef {
+func (x *AwsRoute53ZoneVpcAssociation) GetVpcId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.VpcId
 	}
 	return nil
 }
 
-func (x *Route53VpcAssociation) GetVpcRegion() string {
+func (x *AwsRoute53ZoneVpcAssociation) GetVpcRegion() string {
 	if x != nil {
 		return x.VpcRegion
 	}
 	return ""
 }
 
-// Route53DnsRecord represents a DNS resource record in the Route53 zone.
-// It supports basic DNS records, alias records (Route53's killer feature), and advanced routing policies
-// for traffic management (weighted, latency-based, failover, geolocation).
+// AwsRoute53ZoneQueryLogging sends the zone's DNS query logs to a CloudWatch
+// Logs log group.
 //
-// This message allows you to specify detailed DNS configurations for your domain,
-// enabling fine-grained control over how your domain name resolves and how traffic is routed.
-type Route53DnsRecord struct {
+// AWS operational requirements (the module wires the config; these are yours
+// to satisfy on the log group side):
+//   - The log group MUST live in us-east-1 — Route 53 is a global service and
+//     delivers query logs there regardless of where anything else runs.
+//   - The Route 53 service principal (route53.amazonaws.com) must be allowed to
+//     deliver: a CloudWatch Logs RESOURCE POLICY granting logs:CreateLogStream
+//     and logs:PutLogEvents on the log group. Resource policies are
+//     account-level (max 10 per region), shared across zones — typically one
+//     policy covering "/aws/route53/*" — so this resource deliberately does not
+//     create one per zone.
+type AwsRoute53ZoneQueryLogging struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The DNS record type.
-	// This specifies the type of DNS record, such as A, AAAA, CNAME, MX, TXT, etc.
-	// The record type determines how the DNS query is processed and what kind of data is returned.
-	RecordType dnsrecordtype.DnsRecordType `protobuf:"varint,1,opt,name=record_type,json=recordType,proto3,enum=dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordType" json:"record_type,omitempty"`
-	// The name of the DNS record, e.g., "example.com" or "dev.example.com".
-	// This is the domain name or subdomain for which the DNS record applies.
-	// Route53 will automatically append a trailing dot if not provided.
-	// Supports wildcard records: "*.example.com" for catch-all subdomains.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// The Time To Live (TTL) for the DNS record, in seconds.
-	// TTL specifies how long DNS resolvers should cache the DNS record before querying again.
-	// Default: 300 seconds (5 minutes) - balances caching efficiency with change propagation speed.
-	// Common values:
-	//   - 60 seconds: For records you might change during incidents (faster cutover)
-	//   - 300 seconds: Default for most records
-	//   - 86400 seconds (1 day): For static records (MX, NS) to reduce query costs
-	//
-	// Note: TTL is not applicable for alias records (ignored if alias_target is set).
-	TtlSeconds int32 `protobuf:"varint,3,opt,name=ttl_seconds,json=ttlSeconds,proto3" json:"ttl_seconds,omitempty"`
-	// The values for the DNS record.
-	// This field contains the data associated with the DNS record type.
-	// Examples:
-	//   - A record: ["192.0.2.1", "192.0.2.2"]
-	//   - AAAA record: ["2001:0db8::1"]
-	//   - CNAME record: ["target.example.com."]
-	//   - MX record: ["10 mail1.example.com.", "20 mail2.example.com."]
-	//   - TXT record: ["v=spf1 include:_spf.example.com ~all"]
-	//
-	// Note: This field is mutually exclusive with alias_target. Use one or the other, not both.
-	Values []string `protobuf:"bytes,4,rep,name=values,proto3" json:"values,omitempty"`
-	// Alias target configuration for Route53 alias records.
-	// Alias records are Route53's killer feature - they allow you to:
-	//  1. Point your zone apex (example.com) to AWS resources without CNAME restrictions
-	//  2. Route traffic to CloudFront, ALB/NLB, S3 website, API Gateway, etc.
-	//  3. Get free queries (no Route53 charges for alias queries to AWS resources)
-	//
-	// Use alias instead of CNAME for:
-	//   - Zone apex records (DNS spec prohibits CNAME at zone apex)
-	//   - AWS resource targets (free queries vs paid CNAME queries)
-	//
-	// Note: This field is mutually exclusive with values. Use one or the other, not both.
-	// Note: TTL is not applicable for alias records (Route53 uses the target resource's TTL).
-	AliasTarget *Route53AliasTarget `protobuf:"bytes,5,opt,name=alias_target,json=aliasTarget,proto3" json:"alias_target,omitempty"`
-	// Routing policy configuration.
-	// Route53 supports multiple routing policies for advanced traffic management:
-	//   - Simple: Default single-value response
-	//   - Weighted: Split traffic across multiple resources (blue/green, canary deployments)
-	//   - Latency: Route users to the lowest-latency endpoint (global applications)
-	//   - Failover: Automatic failover to secondary resource with health checks
-	//   - Geolocation: Route based on user's geographic location (GDPR compliance, localized content)
-	//
-	// If not specified, simple routing is used (standard DNS behavior).
-	RoutingPolicy *Route53RoutingPolicy `protobuf:"bytes,6,opt,name=routing_policy,json=routingPolicy,proto3" json:"routing_policy,omitempty"`
-	// Health check ID for failover routing.
-	// Attach a Route53 health check to monitor endpoint availability.
-	// When the primary resource fails the health check, Route53 automatically returns the failover record.
-	//
-	// Health checks monitor:
-	//   - HTTP/HTTPS endpoints (status code, response body)
-	//   - TCP connections
-	//   - CloudWatch alarms (for application-level health)
-	//
-	// Cost: ~$0.50/month per health check for AWS endpoints (first 50 free)
-	//
-	// Note: Only used with failover routing policy.
-	HealthCheckId string `protobuf:"bytes,7,opt,name=health_check_id,json=healthCheckId,proto3" json:"health_check_id,omitempty"`
-	// Set identifier for routing policies.
-	// Required for weighted, latency, failover, and geolocation routing.
-	// Must be unique among records with the same name and type.
-	// Example: "primary", "secondary", "us-east-1", "weight-70"
-	SetIdentifier string `protobuf:"bytes,8,opt,name=set_identifier,json=setIdentifier,proto3" json:"set_identifier,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// ARN of the destination CloudWatch Logs log group (must be in us-east-1).
+	// Can reference an AwsCloudwatchLogGroup resource.
+	CloudwatchLogGroupArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=cloudwatch_log_group_arn,json=cloudwatchLogGroupArn,proto3" json:"cloudwatch_log_group_arn,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
-func (x *Route53DnsRecord) Reset() {
-	*x = Route53DnsRecord{}
+func (x *AwsRoute53ZoneQueryLogging) Reset() {
+	*x = AwsRoute53ZoneQueryLogging{}
 	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Route53DnsRecord) String() string {
+func (x *AwsRoute53ZoneQueryLogging) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Route53DnsRecord) ProtoMessage() {}
+func (*AwsRoute53ZoneQueryLogging) ProtoMessage() {}
 
-func (x *Route53DnsRecord) ProtoReflect() protoreflect.Message {
+func (x *AwsRoute53ZoneQueryLogging) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -370,124 +299,56 @@ func (x *Route53DnsRecord) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Route53DnsRecord.ProtoReflect.Descriptor instead.
-func (*Route53DnsRecord) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsRoute53ZoneQueryLogging.ProtoReflect.Descriptor instead.
+func (*AwsRoute53ZoneQueryLogging) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *Route53DnsRecord) GetRecordType() dnsrecordtype.DnsRecordType {
+func (x *AwsRoute53ZoneQueryLogging) GetCloudwatchLogGroupArn() *v1.StringValueOrRef {
 	if x != nil {
-		return x.RecordType
-	}
-	return dnsrecordtype.DnsRecordType(0)
-}
-
-func (x *Route53DnsRecord) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Route53DnsRecord) GetTtlSeconds() int32 {
-	if x != nil {
-		return x.TtlSeconds
-	}
-	return 0
-}
-
-func (x *Route53DnsRecord) GetValues() []string {
-	if x != nil {
-		return x.Values
+		return x.CloudwatchLogGroupArn
 	}
 	return nil
 }
 
-func (x *Route53DnsRecord) GetAliasTarget() *Route53AliasTarget {
-	if x != nil {
-		return x.AliasTarget
-	}
-	return nil
-}
-
-func (x *Route53DnsRecord) GetRoutingPolicy() *Route53RoutingPolicy {
-	if x != nil {
-		return x.RoutingPolicy
-	}
-	return nil
-}
-
-func (x *Route53DnsRecord) GetHealthCheckId() string {
-	if x != nil {
-		return x.HealthCheckId
-	}
-	return ""
-}
-
-func (x *Route53DnsRecord) GetSetIdentifier() string {
-	if x != nil {
-		return x.SetIdentifier
-	}
-	return ""
-}
-
-// Route53AliasTarget defines an alias record target.
-// Alias records are a Route53-specific extension to DNS that allows you to route traffic
-// to AWS resources without the limitations of CNAME records.
+// AwsRoute53ZoneDnssec enables DNSSEC signing for a public hosted zone: a
+// key-signing key (KSK) is created from the referenced KMS key and the zone's
+// signing status is switched on.
 //
-// Key benefits:
-//   - Works at zone apex (example.com) where CNAME is not allowed
-//   - No query charges for alias queries to AWS resources
-//   - Automatic updates when target resource's IP changes
-//
-// Common use cases:
-//   - Point apex domain to CloudFront distribution
-//   - Point domain to Application/Network Load Balancer
-//   - Point domain to S3 website endpoint
-//   - Point domain to API Gateway
-//   - Point domain to another Route53 record in same zone
-type Route53AliasTarget struct {
+// KMS key requirements (AWS is strict about all three):
+//   - The key MUST live in us-east-1 (the Route 53 DNSSEC control plane region).
+//   - It must be an asymmetric key with key spec ECC_NIST_P256, usage
+//     SIGN_VERIFY.
+//   - Its key policy must allow the Route 53 DNSSEC service principal
+//     (dnssec-route53.amazonaws.com) kms:DescribeKey, kms:GetPublicKey, and
+//     kms:Sign, plus kms:CreateGrant for the zone's grants.
+type AwsRoute53ZoneDnssec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The DNS name of the target resource.
-	// Examples:
-	//   - CloudFront: "d1234abcd.cloudfront.net"
-	//   - ALB: "my-alb-1234567890.us-east-1.elb.amazonaws.com"
-	//   - S3 website: "my-bucket.s3-website-us-east-1.amazonaws.com"
-	//   - API Gateway: "abc123.execute-api.us-east-1.amazonaws.com"
-	DnsName string `protobuf:"bytes,1,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
-	// The hosted zone ID of the target resource.
-	// Each AWS service has a specific hosted zone ID per region.
-	// Common hosted zone IDs:
-	//   - CloudFront: "Z2FDTNDATAQYW2" (global)
-	//   - ALB (us-east-1): "Z35SXDOTRQ7X7K"
-	//   - S3 website (us-east-1): "Z3AQBSTGFYJSTF"
-	//
-	// Note: This is NOT your Route53 zone ID - it's the AWS service's zone ID.
-	// The Pulumi/Terraform provider typically handles this automatically.
-	HostedZoneId string `protobuf:"bytes,2,opt,name=hosted_zone_id,json=hostedZoneId,proto3" json:"hosted_zone_id,omitempty"`
-	// Evaluate target health.
-	// If true, Route53 checks the health of the target resource before responding to queries.
-	// Useful for automatic failover when combined with health checks.
-	// Default: false
-	EvaluateTargetHealth bool `protobuf:"varint,3,opt,name=evaluate_target_health,json=evaluateTargetHealth,proto3" json:"evaluate_target_health,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The asymmetric KMS key backing the key-signing key. Can reference an
+	// AwsKmsKey resource (see the message comment for the us-east-1 /
+	// ECC_NIST_P256 / key-policy requirements).
+	KmsKeyArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
+	// Name of the key-signing key inside Route 53 (3–128 characters; letters,
+	// numbers, "._-"). Defaults to a name derived from the zone when omitted.
+	KeySigningKeyName string `protobuf:"bytes,2,opt,name=key_signing_key_name,json=keySigningKeyName,proto3" json:"key_signing_key_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
-func (x *Route53AliasTarget) Reset() {
-	*x = Route53AliasTarget{}
+func (x *AwsRoute53ZoneDnssec) Reset() {
+	*x = AwsRoute53ZoneDnssec{}
 	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Route53AliasTarget) String() string {
+func (x *AwsRoute53ZoneDnssec) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Route53AliasTarget) ProtoMessage() {}
+func (*AwsRoute53ZoneDnssec) ProtoMessage() {}
 
-func (x *Route53AliasTarget) ProtoReflect() protoreflect.Message {
+func (x *AwsRoute53ZoneDnssec) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -499,389 +360,21 @@ func (x *Route53AliasTarget) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Route53AliasTarget.ProtoReflect.Descriptor instead.
-func (*Route53AliasTarget) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsRoute53ZoneDnssec.ProtoReflect.Descriptor instead.
+func (*AwsRoute53ZoneDnssec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Route53AliasTarget) GetDnsName() string {
+func (x *AwsRoute53ZoneDnssec) GetKmsKeyArn() *v1.StringValueOrRef {
 	if x != nil {
-		return x.DnsName
-	}
-	return ""
-}
-
-func (x *Route53AliasTarget) GetHostedZoneId() string {
-	if x != nil {
-		return x.HostedZoneId
-	}
-	return ""
-}
-
-func (x *Route53AliasTarget) GetEvaluateTargetHealth() bool {
-	if x != nil {
-		return x.EvaluateTargetHealth
-	}
-	return false
-}
-
-// Route53RoutingPolicy defines traffic routing policies for DNS records.
-// Route53 supports multiple routing strategies beyond simple DNS resolution,
-// enabling advanced traffic management, high availability, and performance optimization.
-type Route53RoutingPolicy struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Policy:
-	//
-	//	*Route53RoutingPolicy_Weighted
-	//	*Route53RoutingPolicy_Latency
-	//	*Route53RoutingPolicy_Failover
-	//	*Route53RoutingPolicy_Geolocation
-	Policy        isRoute53RoutingPolicy_Policy `protobuf_oneof:"policy"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Route53RoutingPolicy) Reset() {
-	*x = Route53RoutingPolicy{}
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Route53RoutingPolicy) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Route53RoutingPolicy) ProtoMessage() {}
-
-func (x *Route53RoutingPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Route53RoutingPolicy.ProtoReflect.Descriptor instead.
-func (*Route53RoutingPolicy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *Route53RoutingPolicy) GetPolicy() isRoute53RoutingPolicy_Policy {
-	if x != nil {
-		return x.Policy
+		return x.KmsKeyArn
 	}
 	return nil
 }
 
-func (x *Route53RoutingPolicy) GetWeighted() *Route53WeightedRoutingPolicy {
+func (x *AwsRoute53ZoneDnssec) GetKeySigningKeyName() string {
 	if x != nil {
-		if x, ok := x.Policy.(*Route53RoutingPolicy_Weighted); ok {
-			return x.Weighted
-		}
-	}
-	return nil
-}
-
-func (x *Route53RoutingPolicy) GetLatency() *Route53LatencyRoutingPolicy {
-	if x != nil {
-		if x, ok := x.Policy.(*Route53RoutingPolicy_Latency); ok {
-			return x.Latency
-		}
-	}
-	return nil
-}
-
-func (x *Route53RoutingPolicy) GetFailover() *Route53FailoverRoutingPolicy {
-	if x != nil {
-		if x, ok := x.Policy.(*Route53RoutingPolicy_Failover); ok {
-			return x.Failover
-		}
-	}
-	return nil
-}
-
-func (x *Route53RoutingPolicy) GetGeolocation() *Route53GeolocationRoutingPolicy {
-	if x != nil {
-		if x, ok := x.Policy.(*Route53RoutingPolicy_Geolocation); ok {
-			return x.Geolocation
-		}
-	}
-	return nil
-}
-
-type isRoute53RoutingPolicy_Policy interface {
-	isRoute53RoutingPolicy_Policy()
-}
-
-type Route53RoutingPolicy_Weighted struct {
-	// Weighted routing policy.
-	// Distributes traffic across multiple resources based on assigned weights.
-	// Use cases:
-	//   - Blue/green deployments (90% old, 10% new)
-	//   - A/B testing
-	//   - Load distribution across regions
-	Weighted *Route53WeightedRoutingPolicy `protobuf:"bytes,1,opt,name=weighted,proto3,oneof"`
-}
-
-type Route53RoutingPolicy_Latency struct {
-	// Latency-based routing policy.
-	// Routes users to the resource with the lowest network latency.
-	// Use cases:
-	//   - Global applications serving users from multiple regions
-	//   - Automatic selection of nearest endpoint
-	Latency *Route53LatencyRoutingPolicy `protobuf:"bytes,2,opt,name=latency,proto3,oneof"`
-}
-
-type Route53RoutingPolicy_Failover struct {
-	// Failover routing policy.
-	// Routes to primary resource, automatically fails over to secondary when health check fails.
-	// Use cases:
-	//   - Active-passive disaster recovery
-	//   - Automatic failover during incidents
-	Failover *Route53FailoverRoutingPolicy `protobuf:"bytes,3,opt,name=failover,proto3,oneof"`
-}
-
-type Route53RoutingPolicy_Geolocation struct {
-	// Geolocation routing policy.
-	// Routes traffic based on the geographic location of the user.
-	// Use cases:
-	//   - GDPR compliance (EU users to EU endpoints)
-	//   - Localized content
-	//   - Geographic restrictions
-	Geolocation *Route53GeolocationRoutingPolicy `protobuf:"bytes,4,opt,name=geolocation,proto3,oneof"`
-}
-
-func (*Route53RoutingPolicy_Weighted) isRoute53RoutingPolicy_Policy() {}
-
-func (*Route53RoutingPolicy_Latency) isRoute53RoutingPolicy_Policy() {}
-
-func (*Route53RoutingPolicy_Failover) isRoute53RoutingPolicy_Policy() {}
-
-func (*Route53RoutingPolicy_Geolocation) isRoute53RoutingPolicy_Policy() {}
-
-// Route53WeightedRoutingPolicy enables traffic splitting across multiple resources.
-// Weights are relative - Route53 calculates the percentage based on the sum of all weights.
-// Example: Records with weights 70 and 30 get 70% and 30% of traffic respectively.
-type Route53WeightedRoutingPolicy struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Weight value (0-255).
-	// Higher weight means more traffic.
-	// Weight of 0 stops traffic to this record (useful for quick traffic draining).
-	Weight        int32 `protobuf:"varint,1,opt,name=weight,proto3" json:"weight,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Route53WeightedRoutingPolicy) Reset() {
-	*x = Route53WeightedRoutingPolicy{}
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Route53WeightedRoutingPolicy) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Route53WeightedRoutingPolicy) ProtoMessage() {}
-
-func (x *Route53WeightedRoutingPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Route53WeightedRoutingPolicy.ProtoReflect.Descriptor instead.
-func (*Route53WeightedRoutingPolicy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *Route53WeightedRoutingPolicy) GetWeight() int32 {
-	if x != nil {
-		return x.Weight
-	}
-	return 0
-}
-
-// Route53LatencyRoutingPolicy routes users to the resource with the lowest latency.
-// Route53 measures latency from different AWS regions and automatically routes users
-// to the endpoint that provides the best performance.
-type Route53LatencyRoutingPolicy struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where this resource is located.
-	// Route53 uses this to measure latency from user locations.
-	// Example: "us-east-1", "eu-west-1", "ap-southeast-1"
-	Region        string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Route53LatencyRoutingPolicy) Reset() {
-	*x = Route53LatencyRoutingPolicy{}
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Route53LatencyRoutingPolicy) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Route53LatencyRoutingPolicy) ProtoMessage() {}
-
-func (x *Route53LatencyRoutingPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Route53LatencyRoutingPolicy.ProtoReflect.Descriptor instead.
-func (*Route53LatencyRoutingPolicy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *Route53LatencyRoutingPolicy) GetRegion() string {
-	if x != nil {
-		return x.Region
-	}
-	return ""
-}
-
-// Route53FailoverRoutingPolicy enables active-passive failover.
-// Primary resource serves traffic when healthy. If health check fails,
-// Route53 automatically routes traffic to the secondary resource.
-type Route53FailoverRoutingPolicy struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Failover record type.
-	// Must have exactly one PRIMARY and one SECONDARY record with the same name and type.
-	Type          Route53FailoverRoutingPolicy_FailoverRecordType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.aws.awsroute53zone.v1.Route53FailoverRoutingPolicy_FailoverRecordType" json:"type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Route53FailoverRoutingPolicy) Reset() {
-	*x = Route53FailoverRoutingPolicy{}
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Route53FailoverRoutingPolicy) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Route53FailoverRoutingPolicy) ProtoMessage() {}
-
-func (x *Route53FailoverRoutingPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Route53FailoverRoutingPolicy.ProtoReflect.Descriptor instead.
-func (*Route53FailoverRoutingPolicy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *Route53FailoverRoutingPolicy) GetType() Route53FailoverRoutingPolicy_FailoverRecordType {
-	if x != nil {
-		return x.Type
-	}
-	return Route53FailoverRoutingPolicy_FAILOVER_RECORD_TYPE_UNSPECIFIED
-}
-
-// Route53GeolocationRoutingPolicy routes traffic based on user's geographic location.
-// You can specify routing at the continent, country, or state level (US states only).
-// Route53 selects the most specific match.
-type Route53GeolocationRoutingPolicy struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Continent code (two-letter).
-	// Examples: "NA" (North America), "EU" (Europe), "AS" (Asia)
-	// Note: Use continent OR country, not both. Country is more specific.
-	Continent string `protobuf:"bytes,1,opt,name=continent,proto3" json:"continent,omitempty"`
-	// Country code (two-letter ISO 3166-1 alpha-2).
-	// Examples: "US" (United States), "GB" (United Kingdom), "DE" (Germany)
-	// More specific than continent.
-	Country string `protobuf:"bytes,2,opt,name=country,proto3" json:"country,omitempty"`
-	// Subdivision code (US state).
-	// Only valid when country is "US".
-	// Examples: "CA" (California), "NY" (New York), "TX" (Texas)
-	// Most specific geolocation routing option.
-	Subdivision   string `protobuf:"bytes,3,opt,name=subdivision,proto3" json:"subdivision,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Route53GeolocationRoutingPolicy) Reset() {
-	*x = Route53GeolocationRoutingPolicy{}
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Route53GeolocationRoutingPolicy) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Route53GeolocationRoutingPolicy) ProtoMessage() {}
-
-func (x *Route53GeolocationRoutingPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Route53GeolocationRoutingPolicy.ProtoReflect.Descriptor instead.
-func (*Route53GeolocationRoutingPolicy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *Route53GeolocationRoutingPolicy) GetContinent() string {
-	if x != nil {
-		return x.Continent
-	}
-	return ""
-}
-
-func (x *Route53GeolocationRoutingPolicy) GetCountry() string {
-	if x != nil {
-		return x.Country
-	}
-	return ""
-}
-
-func (x *Route53GeolocationRoutingPolicy) GetSubdivision() string {
-	if x != nil {
-		return x.Subdivision
+		return x.KeySigningKeyName
 	}
 	return ""
 }
@@ -890,56 +383,33 @@ var File_dev_planton_provider_aws_awsroute53zone_v1_spec_proto protoreflect.File
 
 const file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5dev/planton/provider/aws/awsroute53zone/v1/spec.proto\x12*dev.planton.provider.aws.awsroute53zone.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1aGdev/planton/shared/networking/enums/dnsrecordtype/dns_record_type.proto\"\xa2\x03\n" +
+	"5dev/planton/provider/aws/awsroute53zone/v1/spec.proto\x12*dev.planton.provider.aws.awsroute53zone.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8d\r\n" +
 	"\x12AwsRoute53ZoneSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1d\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\"\n" +
+	"\acomment\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\acomment\x12\x1d\n" +
 	"\n" +
-	"is_private\x18\x02 \x01(\bR\tisPrivate\x12l\n" +
-	"\x10vpc_associations\x18\x03 \x03(\v2A.dev.planton.provider.aws.awsroute53zone.v1.Route53VpcAssociationR\x0fvpcAssociations\x120\n" +
-	"\x14enable_query_logging\x18\x04 \x01(\bR\x12enableQueryLogging\x12/\n" +
-	"\x14query_log_group_name\x18\x05 \x01(\tR\x11queryLogGroupName\x12#\n" +
-	"\renable_dnssec\x18\x06 \x01(\bR\fenableDnssec\x12V\n" +
-	"\arecords\x18\a \x03(\v2<.dev.planton.provider.aws.awsroute53zone.v1.Route53DnsRecordR\arecords\"\xaf\x01\n" +
-	"\x15Route53VpcAssociation\x12o\n" +
-	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12%\n" +
+	"is_private\x18\x03 \x01(\bR\tisPrivate\x12s\n" +
+	"\x10vpc_associations\x18\x04 \x03(\v2H.dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneVpcAssociationR\x0fvpcAssociations\x123\n" +
+	"\x11delegation_set_id\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18 R\x0fdelegationSetId\x12#\n" +
+	"\rforce_destroy\x18\x06 \x01(\bR\fforceDestroy\x12>\n" +
+	"\x1benable_accelerated_recovery\x18\a \x01(\bR\x19enableAcceleratedRecovery\x12k\n" +
+	"\rquery_logging\x18\b \x01(\v2F.dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneQueryLoggingR\fqueryLogging\x12X\n" +
+	"\x06dnssec\x18\t \x01(\v2@.dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneDnssecR\x06dnssec:\xbc\b\xbaH\xb8\b\x1a\xd1\x01\n" +
+	"\x19private_zone_requires_vpc\x12~at least one vpc_associations entry is required when is_private is true (AWS creates a private zone attached to its first VPC)\x1a4!this.is_private || this.vpc_associations.size() > 0\x1a\xbf\x01\n" +
+	" vpc_associations_require_private\x12evpc_associations can only be set when is_private is true (public zones resolve globally, not per-VPC)\x1a4this.is_private || this.vpc_associations.size() == 0\x1a\xb7\x01\n" +
+	"\x1adelegation_set_public_only\x12gdelegation_set_id cannot be set for private zones (reusable delegation sets apply to public zones only)\x1a0!this.is_private || this.delegation_set_id == ''\x1a\x96\x01\n" +
+	" accelerated_recovery_public_only\x12;enable_accelerated_recovery cannot be set for private zones\x1a5!this.is_private || !this.enable_accelerated_recovery\x1a\xb3\x01\n" +
+	"\x19query_logging_public_only\x12hquery_logging cannot be set for private zones (Route 53 query logging supports public hosted zones only)\x1a,!this.is_private || !has(this.query_logging)\x1a\x96\x01\n" +
+	"\x12dnssec_public_only\x12Ydnssec cannot be set for private zones (DNSSEC signing supports public hosted zones only)\x1a%!this.is_private || !has(this.dnssec)\"\xae\x01\n" +
+	"\x1cAwsRoute53ZoneVpcAssociation\x12o\n" +
+	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x1d\n" +
 	"\n" +
-	"vpc_region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tvpcRegion\"\xbb\x04\n" +
-	"\x10Route53DnsRecord\x12i\n" +
-	"\vrecord_type\x18\x01 \x01(\x0e2@.dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordTypeB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"recordType\x12h\n" +
-	"\x04name\x18\x02 \x01(\tBT\xbaHQ\xc8\x01\x01rL2J^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9\\-\\.]+)$R\x04name\x12\x1f\n" +
-	"\vttl_seconds\x18\x03 \x01(\x05R\n" +
-	"ttlSeconds\x12\x16\n" +
-	"\x06values\x18\x04 \x03(\tR\x06values\x12a\n" +
-	"\falias_target\x18\x05 \x01(\v2>.dev.planton.provider.aws.awsroute53zone.v1.Route53AliasTargetR\valiasTarget\x12g\n" +
-	"\x0erouting_policy\x18\x06 \x01(\v2@.dev.planton.provider.aws.awsroute53zone.v1.Route53RoutingPolicyR\rroutingPolicy\x12&\n" +
-	"\x0fhealth_check_id\x18\a \x01(\tR\rhealthCheckId\x12%\n" +
-	"\x0eset_identifier\x18\b \x01(\tR\rsetIdentifier\"\x9b\x01\n" +
-	"\x12Route53AliasTarget\x12!\n" +
-	"\bdns_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\adnsName\x12,\n" +
-	"\x0ehosted_zone_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fhostedZoneId\x124\n" +
-	"\x16evaluate_target_health\x18\x03 \x01(\bR\x14evaluateTargetHealth\"\xc6\x03\n" +
-	"\x14Route53RoutingPolicy\x12f\n" +
-	"\bweighted\x18\x01 \x01(\v2H.dev.planton.provider.aws.awsroute53zone.v1.Route53WeightedRoutingPolicyH\x00R\bweighted\x12c\n" +
-	"\alatency\x18\x02 \x01(\v2G.dev.planton.provider.aws.awsroute53zone.v1.Route53LatencyRoutingPolicyH\x00R\alatency\x12f\n" +
-	"\bfailover\x18\x03 \x01(\v2H.dev.planton.provider.aws.awsroute53zone.v1.Route53FailoverRoutingPolicyH\x00R\bfailover\x12o\n" +
-	"\vgeolocation\x18\x04 \x01(\v2K.dev.planton.provider.aws.awsroute53zone.v1.Route53GeolocationRoutingPolicyH\x00R\vgeolocationB\b\n" +
-	"\x06policy\"B\n" +
-	"\x1cRoute53WeightedRoutingPolicy\x12\"\n" +
-	"\x06weight\x18\x01 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xff\x01(\x00R\x06weight\"=\n" +
-	"\x1bRoute53LatencyRoutingPolicy\x12\x1e\n" +
-	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\"\xef\x01\n" +
-	"\x1cRoute53FailoverRoutingPolicy\x12w\n" +
-	"\x04type\x18\x01 \x01(\x0e2[.dev.planton.provider.aws.awsroute53zone.v1.Route53FailoverRoutingPolicy.FailoverRecordTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\"V\n" +
-	"\x12FailoverRecordType\x12$\n" +
-	" FAILOVER_RECORD_TYPE_UNSPECIFIED\x10\x00\x12\v\n" +
-	"\aPRIMARY\x10\x01\x12\r\n" +
-	"\tSECONDARY\x10\x02\"{\n" +
-	"\x1fRoute53GeolocationRoutingPolicy\x12\x1c\n" +
-	"\tcontinent\x18\x01 \x01(\tR\tcontinent\x12\x18\n" +
-	"\acountry\x18\x02 \x01(\tR\acountry\x12 \n" +
-	"\vsubdivision\x18\x03 \x01(\tR\vsubdivisionB\xe9\x02\n" +
+	"vpc_region\x18\x02 \x01(\tR\tvpcRegion\"\xb7\x01\n" +
+	"\x1aAwsRoute53ZoneQueryLogging\x12\x98\x01\n" +
+	"\x18cloudwatch_log_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\"\xe5\x01\n" +
+	"\x14AwsRoute53ZoneDnssec\x12y\n" +
+	"\vkms_key_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12R\n" +
+	"\x14key_signing_key_name\x18\x02 \x01(\tB!\xbaH\x1er\x1c2\x1a^$|^[0-9A-Za-z._-]{3,128}$R\x11keySigningKeyNameB\xe9\x02\n" +
 	".com.dev.planton.provider.aws.awsroute53zone.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1;awsroute53zonev1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awsroute53zone.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awsroute53zone\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awsroute53zone\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awsroute53zone::V1b\x06proto3"
 
 var (
@@ -954,39 +424,26 @@ func file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescGZIP() []
 	return file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_goTypes = []any{
-	(Route53FailoverRoutingPolicy_FailoverRecordType)(0), // 0: dev.planton.provider.aws.awsroute53zone.v1.Route53FailoverRoutingPolicy.FailoverRecordType
-	(*AwsRoute53ZoneSpec)(nil),                           // 1: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneSpec
-	(*Route53VpcAssociation)(nil),                        // 2: dev.planton.provider.aws.awsroute53zone.v1.Route53VpcAssociation
-	(*Route53DnsRecord)(nil),                             // 3: dev.planton.provider.aws.awsroute53zone.v1.Route53DnsRecord
-	(*Route53AliasTarget)(nil),                           // 4: dev.planton.provider.aws.awsroute53zone.v1.Route53AliasTarget
-	(*Route53RoutingPolicy)(nil),                         // 5: dev.planton.provider.aws.awsroute53zone.v1.Route53RoutingPolicy
-	(*Route53WeightedRoutingPolicy)(nil),                 // 6: dev.planton.provider.aws.awsroute53zone.v1.Route53WeightedRoutingPolicy
-	(*Route53LatencyRoutingPolicy)(nil),                  // 7: dev.planton.provider.aws.awsroute53zone.v1.Route53LatencyRoutingPolicy
-	(*Route53FailoverRoutingPolicy)(nil),                 // 8: dev.planton.provider.aws.awsroute53zone.v1.Route53FailoverRoutingPolicy
-	(*Route53GeolocationRoutingPolicy)(nil),              // 9: dev.planton.provider.aws.awsroute53zone.v1.Route53GeolocationRoutingPolicy
-	(*v1.StringValueOrRef)(nil),                          // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(dnsrecordtype.DnsRecordType)(0),                     // 11: dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordType
+	(*AwsRoute53ZoneSpec)(nil),           // 0: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneSpec
+	(*AwsRoute53ZoneVpcAssociation)(nil), // 1: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneVpcAssociation
+	(*AwsRoute53ZoneQueryLogging)(nil),   // 2: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneQueryLogging
+	(*AwsRoute53ZoneDnssec)(nil),         // 3: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneDnssec
+	(*v1.StringValueOrRef)(nil),          // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_depIdxs = []int32{
-	2,  // 0: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneSpec.vpc_associations:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53VpcAssociation
-	3,  // 1: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneSpec.records:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53DnsRecord
-	10, // 2: dev.planton.provider.aws.awsroute53zone.v1.Route53VpcAssociation.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 3: dev.planton.provider.aws.awsroute53zone.v1.Route53DnsRecord.record_type:type_name -> dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordType
-	4,  // 4: dev.planton.provider.aws.awsroute53zone.v1.Route53DnsRecord.alias_target:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53AliasTarget
-	5,  // 5: dev.planton.provider.aws.awsroute53zone.v1.Route53DnsRecord.routing_policy:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53RoutingPolicy
-	6,  // 6: dev.planton.provider.aws.awsroute53zone.v1.Route53RoutingPolicy.weighted:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53WeightedRoutingPolicy
-	7,  // 7: dev.planton.provider.aws.awsroute53zone.v1.Route53RoutingPolicy.latency:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53LatencyRoutingPolicy
-	8,  // 8: dev.planton.provider.aws.awsroute53zone.v1.Route53RoutingPolicy.failover:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53FailoverRoutingPolicy
-	9,  // 9: dev.planton.provider.aws.awsroute53zone.v1.Route53RoutingPolicy.geolocation:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53GeolocationRoutingPolicy
-	0,  // 10: dev.planton.provider.aws.awsroute53zone.v1.Route53FailoverRoutingPolicy.type:type_name -> dev.planton.provider.aws.awsroute53zone.v1.Route53FailoverRoutingPolicy.FailoverRecordType
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneSpec.vpc_associations:type_name -> dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneVpcAssociation
+	2, // 1: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneSpec.query_logging:type_name -> dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneQueryLogging
+	3, // 2: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneSpec.dnssec:type_name -> dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneDnssec
+	4, // 3: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneVpcAssociation.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 4: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneQueryLogging.cloudwatch_log_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 5: dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneDnssec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_init() }
@@ -994,25 +451,18 @@ func file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_init() {
 	if File_dev_planton_provider_aws_awsroute53zone_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes[4].OneofWrappers = []any{
-		(*Route53RoutingPolicy_Weighted)(nil),
-		(*Route53RoutingPolicy_Latency)(nil),
-		(*Route53RoutingPolicy_Failover)(nil),
-		(*Route53RoutingPolicy_Geolocation)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   9,
+			NumEnums:      0,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_aws_awsroute53zone_v1_spec_proto = out.File

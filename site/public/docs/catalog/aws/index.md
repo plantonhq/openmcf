@@ -83,6 +83,7 @@ The following AWS resources can be deployed using Planton:
 - [Redshift Serverless Namespace](/docs/catalog/aws/redshift-serverless-namespace)
 - [Redshift Serverless Workgroup](/docs/catalog/aws/redshift-serverless-workgroup)
 - [Route53 DNS Record](/docs/catalog/aws/route53-dns-record)
+- [Route53 Health Check](/docs/catalog/aws/route53-health-check)
 - [Route53 Zone](/docs/catalog/aws/route53-zone)
 - [S3 Bucket](/docs/catalog/aws/s3-bucket)
 - [S3 Object Set](/docs/catalog/aws/s3-object-set)

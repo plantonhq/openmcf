@@ -243,6 +243,15 @@ Based on scenario:
   argument. If the field has since landed, wire it in BOTH engines and
   delete the deferral comment; a stale deferral is a silent parity gap that
   no offline gate will ever flag.
+- **Grep the TF module for `.value` reads on generator-flattened fields**:
+  the variables.tf generator flattens `StringValueOrRef` fields to plain
+  strings, but a module authored against an older hand-written contract may
+  still read `try(var.spec.<field>.value, null)`. On a flat string that
+  expression errors and `try()` swallows it to null -- the field is
+  SILENTLY DROPPED on every apply while `tofu validate`, the drift guard,
+  and the plan all stay green. Search `rg '\.value' iac/tf/` and cross-check
+  every hit against the generated contract; anything reading `.value` on a
+  flattened scalar is a live defect to fix in the same session.
 - Plan update and test sequence
 
 **Fix Issue:**

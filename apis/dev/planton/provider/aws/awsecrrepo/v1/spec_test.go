@@ -6,139 +6,266 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
-
-// stringOfLength is a helper for test scenarios needing an overly long string.
-func stringOfLength(n int) string {
-	s := make([]byte, n)
-	for i := range s {
-		s[i] = 'a'
-	}
-	return string(s)
-}
 
 func TestAwsEcrRepoSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "AwsEcrRepoSpec Custom Validation Tests")
+	ginkgo.RunSpecs(t, "AwsEcrRepoSpec Validation Suite")
 }
 
-var _ = ginkgo.Describe("AwsEcrRepoSpec Custom Validation Tests", func() {
-	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("aws_ecr_repo", func() {
-			var input *AwsEcrRepo
+// helper to create a StringValueOrRef with a literal value.
+func strRef(val string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
+	}
+}
 
-			ginkgo.BeforeEach(func() {
-				input = &AwsEcrRepo{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsEcrRepo",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "valid-repo-metadata",
-					},
-					Spec: &AwsEcrRepoSpec{
-						Region:         "us-west-2",
-						RepositoryName: "my-valid-repo",
-						ImageImmutable: true,
-						EncryptionType: proto.String("AES256"),
-						ForceDelete:    false,
-					},
-				}
-			})
+// helper to build a Struct from a map, failing loudly on error.
+func mustStruct(m map[string]interface{}) *structpb.Struct {
+	s, err := structpb.NewStruct(m)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
 
-			ginkgo.It("should not return a validation error", func() {
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+var _ = ginkgo.Describe("AwsEcrRepoSpec validations", func() {
+	var spec *AwsEcrRepoSpec
 
-			ginkgo.Context("repository_name length constraints", func() {
-				ginkgo.It("should fail if repository_name is too short", func() {
-					input.Spec.RepositoryName = "a"
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).NotTo(gomega.BeNil())
-				})
+	ginkgo.BeforeEach(func() {
+		// Minimal valid spec.
+		spec = &AwsEcrRepoSpec{
+			Region:         "us-west-2",
+			RepositoryName: "team-blue/checkout-service",
+		}
+	})
 
-				ginkgo.It("should fail if repository_name is too long", func() {
-					input.Spec.RepositoryName = stringOfLength(257)
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).NotTo(gomega.BeNil())
-				})
+	// -------------------------------------------------------------------------
+	// Happy path
+	// -------------------------------------------------------------------------
 
-				ginkgo.It("should succeed if repository_name length is within the valid range", func() {
-					input.Spec.RepositoryName = "valid-repo-123"
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				})
-			})
+	ginkgo.It("accepts a minimal repository", func() {
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.Context("encryption_type constraints", func() {
-				ginkgo.It("should fail if encryption_type is invalid", func() {
-					input.Spec.EncryptionType = proto.String("INVALID")
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).NotTo(gomega.BeNil())
-				})
-
-				ginkgo.It("should succeed if encryption_type is AES256", func() {
-					input.Spec.EncryptionType = proto.String("AES256")
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				})
-
-				ginkgo.It("should succeed if encryption_type is KMS", func() {
-					input.Spec.EncryptionType = proto.String("KMS")
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				})
-			})
-
-			ginkgo.Context("lifecycle_policy constraints", func() {
-				ginkgo.It("should succeed with valid lifecycle policy", func() {
-					input.Spec.LifecyclePolicy = &AwsEcrRepoLifecyclePolicy{
-						ExpireUntaggedAfterDays: proto.Int32(14),
-						MaxImageCount:           proto.Int32(30),
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				})
-
-				ginkgo.It("should fail if expire_untagged_after_days is less than 1", func() {
-					input.Spec.LifecyclePolicy = &AwsEcrRepoLifecyclePolicy{
-						ExpireUntaggedAfterDays: proto.Int32(0),
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).NotTo(gomega.BeNil())
-				})
-
-				ginkgo.It("should fail if expire_untagged_after_days is greater than 365", func() {
-					input.Spec.LifecyclePolicy = &AwsEcrRepoLifecyclePolicy{
-						ExpireUntaggedAfterDays: proto.Int32(366),
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).NotTo(gomega.BeNil())
-				})
-
-				ginkgo.It("should fail if max_image_count is less than 1", func() {
-					input.Spec.LifecyclePolicy = &AwsEcrRepoLifecyclePolicy{
-						MaxImageCount: proto.Int32(0),
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).NotTo(gomega.BeNil())
-				})
-
-				ginkgo.It("should fail if max_image_count is greater than 1000", func() {
-					input.Spec.LifecyclePolicy = &AwsEcrRepoLifecyclePolicy{
-						MaxImageCount: proto.Int32(1001),
-					}
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).NotTo(gomega.BeNil())
-				})
-
-				ginkgo.It("should succeed with no lifecycle policy", func() {
-					input.Spec.LifecyclePolicy = nil
-					err := protovalidate.Validate(input)
-					gomega.Expect(err).To(gomega.BeNil())
-				})
-			})
+	ginkgo.It("accepts the full production surface", func() {
+		spec.ImageTagMutability = proto.String("IMMUTABLE_WITH_EXCLUSION")
+		spec.ImageTagMutabilityExclusionFilters = []string{"latest", "dev-*"}
+		spec.EncryptionType = proto.String("KMS")
+		spec.KmsKeyId = strRef("arn:aws:kms:us-west-2:123456789012:key/abc")
+		spec.ScanOnPush = proto.Bool(true)
+		spec.ForceDelete = true
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{
+			{
+				RulePriority: 1,
+				Description:  "Expire untagged images after 14 days",
+				TagStatus:    "untagged",
+				CountType:    "sinceImagePushed",
+				CountNumber:  14,
+			},
+			{
+				RulePriority: 2,
+				TagStatus:    "tagged",
+				TagPrefixes:  []string{"pr-"},
+				CountType:    "imageCountMoreThan",
+				CountNumber:  10,
+			},
+			{
+				RulePriority: 3,
+				TagStatus:    "any",
+				CountType:    "imageCountMoreThan",
+				CountNumber:  100,
+			},
+		}
+		spec.RepositoryPolicy = mustStruct(map[string]interface{}{
+			"Version": "2012-10-17",
+			"Statement": []interface{}{map[string]interface{}{
+				"Sid":       "AllowLambdaPull",
+				"Effect":    "Allow",
+				"Principal": map[string]interface{}{"Service": "lambda.amazonaws.com"},
+				"Action":    []interface{}{"ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"},
+			}},
 		})
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts dual-layer KMS_DSSE encryption without an explicit key", func() {
+		spec.EncryptionType = proto.String("KMS_DSSE")
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts tag patterns as the tagged-rule selector", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "tagged",
+			TagPatterns:  []string{"*-snapshot"},
+			CountType:    "sinceImagePushed",
+			CountNumber:  30,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// repository_name
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects a missing repository name", func() {
+		spec.RepositoryName = ""
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects uppercase repository names", func() {
+		spec.RepositoryName = "Team/Service"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a trailing slash", func() {
+		spec.RepositoryName = "team/"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// Tag mutability + exclusion filters
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects an invalid mutability value", func() {
+		spec.ImageTagMutability = proto.String("FROZEN")
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects exclusion filters without an exclusion mode", func() {
+		spec.ImageTagMutability = proto.String("IMMUTABLE")
+		spec.ImageTagMutabilityExclusionFilters = []string{"latest"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an exclusion mode without filters", func() {
+		spec.ImageTagMutability = proto.String("MUTABLE_WITH_EXCLUSION")
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a filter with more than two wildcards", func() {
+		spec.ImageTagMutability = proto.String("IMMUTABLE_WITH_EXCLUSION")
+		spec.ImageTagMutabilityExclusionFilters = []string{"*a*b*"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects more than five exclusion filters", func() {
+		spec.ImageTagMutability = proto.String("IMMUTABLE_WITH_EXCLUSION")
+		spec.ImageTagMutabilityExclusionFilters = []string{"a", "b", "c", "d", "e", "f"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// Encryption
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects an invalid encryption type", func() {
+		spec.EncryptionType = proto.String("SSE-S3")
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a KMS key with AES256 encryption", func() {
+		spec.EncryptionType = proto.String("AES256")
+		spec.KmsKeyId = strRef("arn:aws:kms:us-west-2:123456789012:key/abc")
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a KMS key when encryption type is omitted", func() {
+		spec.KmsKeyId = strRef("arn:aws:kms:us-west-2:123456789012:key/abc")
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// Lifecycle rules
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects duplicate rule priorities", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{
+			{RulePriority: 1, TagStatus: "untagged", CountType: "sinceImagePushed", CountNumber: 7},
+			{RulePriority: 1, TagStatus: "any", CountType: "imageCountMoreThan", CountNumber: 50},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects two 'any' rules", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{
+			{RulePriority: 1, TagStatus: "any", CountType: "imageCountMoreThan", CountNumber: 50},
+			{RulePriority: 2, TagStatus: "any", CountType: "imageCountMoreThan", CountNumber: 100},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects two 'untagged' rules", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{
+			{RulePriority: 1, TagStatus: "untagged", CountType: "sinceImagePushed", CountNumber: 7},
+			{RulePriority: 2, TagStatus: "untagged", CountType: "sinceImagePushed", CountNumber: 30},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a tagged rule without a selector list", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "tagged",
+			CountType:    "imageCountMoreThan",
+			CountNumber:  10,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a tagged rule with both selector lists", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "tagged",
+			TagPrefixes:  []string{"release-"},
+			TagPatterns:  []string{"v1.*"},
+			CountType:    "imageCountMoreThan",
+			CountNumber:  10,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an untagged rule carrying tag prefixes", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "untagged",
+			TagPrefixes:  []string{"release-"},
+			CountType:    "sinceImagePushed",
+			CountNumber:  7,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an invalid count type", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "any",
+			CountType:    "olderThan",
+			CountNumber:  10,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a zero count number", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "any",
+			CountType:    "imageCountMoreThan",
+			CountNumber:  0,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// region
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects a missing region", func() {
+		spec.Region = ""
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 })

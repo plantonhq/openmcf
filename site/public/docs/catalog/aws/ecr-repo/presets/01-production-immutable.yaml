@@ -5,10 +5,21 @@ metadata:
 spec:
   region: <aws-region>
   repositoryName: <repository-name>
-  imageImmutable: true  # Prevents tag overwriting in production
+  # Release tags are frozen forever; "latest" stays movable for convenience.
+  imageTagMutability: IMMUTABLE_WITH_EXCLUSION
+  imageTagMutabilityExclusionFilters:
+    - latest
   encryptionType: AES256  # default from spec
-  forceDelete: false  # Prevents accidental data loss
+  forceDelete: false  # deletion fails while images exist
   scanOnPush: true  # default from spec; vulnerability scanning on push
-  lifecyclePolicy:
-    expireUntaggedAfterDays: 7  # Remove orphaned layers quickly
-    maxImageCount: 100  # Retain recent images for rollback capability
+  lifecycleRules:
+    - rulePriority: 1
+      description: Expire untagged images after 7 days
+      tagStatus: untagged
+      countType: sinceImagePushed
+      countNumber: 7
+    - rulePriority: 2
+      description: Keep the most recent 100 images
+      tagStatus: any
+      countType: imageCountMoreThan
+      countNumber: 100

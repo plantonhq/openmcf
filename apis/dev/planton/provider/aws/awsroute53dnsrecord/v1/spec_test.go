@@ -6,641 +6,325 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
 func TestAwsRoute53DnsRecordSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "AwsRoute53DnsRecordSpec Custom Validation Tests")
+	ginkgo.RunSpecs(t, "AwsRoute53DnsRecordSpec Validation Suite")
 }
 
-// Helper to create StringValueOrRef with literal value
-func stringValue(val string) *foreignkeyv1.StringValueOrRef {
+// helper to create a StringValueOrRef with a literal value.
+func strRef(val string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
 		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
 	}
 }
 
-var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec Custom Validation Tests", func() {
+// helper to build a valid alias target (an ALB pair).
+func albAlias() *AwsRoute53AliasTarget {
+	return &AwsRoute53AliasTarget{
+		DnsName: strRef("my-alb-1234567890.us-east-1.elb.amazonaws.com"),
+		ZoneId:  strRef("Z35SXDOTRQ7X7K"),
+	}
+}
 
-	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("aws_route53_dns_record", func() {
+var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec validations", func() {
+	var spec *AwsRoute53DnsRecordSpec
 
-			ginkgo.It("should not return a validation error for minimal valid A record", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-a-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for AAAA record", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-aaaa-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_AAAA,
-						Ttl:    300,
-						Values: []string{"2001:db8::1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for CNAME record", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-cname-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "app.example.com",
-						Type:   AwsRoute53DnsRecordSpec_CNAME,
-						Ttl:    300,
-						Values: []string{"target.example.com"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for MX record", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-mx-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "example.com",
-						Type:   AwsRoute53DnsRecordSpec_MX,
-						Ttl:    3600,
-						Values: []string{"10 mail1.example.com", "20 mail2.example.com"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for TXT record", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-txt-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "example.com",
-						Type:   AwsRoute53DnsRecordSpec_TXT,
-						Ttl:    300,
-						Values: []string{"v=spf1 include:_spf.google.com ~all"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for A record with multiple values", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-multi-a-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1", "192.0.2.2", "192.0.2.3"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for alias record to CloudFront", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-alias-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						AliasTarget: &AwsRoute53AliasTarget{
-							DnsName: stringValue("d1234abcd.cloudfront.net"),
-							ZoneId:  stringValue("Z2FDTNDATAQYW2"),
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for alias record to ALB", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-alb-alias-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "api.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						AliasTarget: &AwsRoute53AliasTarget{
-							DnsName:              stringValue("my-alb-1234567890.us-east-1.elb.amazonaws.com"),
-							ZoneId:               stringValue("Z35SXDOTRQ7X7K"),
-							EvaluateTargetHealth: true,
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for wildcard record", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-wildcard-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "*.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for weighted routing policy", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-weighted-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-						RoutingPolicy: &AwsRoute53RoutingPolicy{
-							Policy: &AwsRoute53RoutingPolicy_Weighted{
-								Weighted: &AwsRoute53WeightedPolicy{
-									Weight: 70,
-								},
-							},
-						},
-						SetIdentifier: "primary",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for latency routing policy", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-latency-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "api.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    60,
-						Values: []string{"192.0.2.1"},
-						RoutingPolicy: &AwsRoute53RoutingPolicy{
-							Policy: &AwsRoute53RoutingPolicy_Latency{
-								Latency: &AwsRoute53LatencyPolicy{
-									Region: "us-east-1",
-								},
-							},
-						},
-						SetIdentifier: "us-east-1",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for failover routing policy", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-failover-primary",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    60,
-						Values: []string{"192.0.2.1"},
-						RoutingPolicy: &AwsRoute53RoutingPolicy{
-							Policy: &AwsRoute53RoutingPolicy_Failover{
-								Failover: &AwsRoute53FailoverPolicy{
-									FailoverType: AwsRoute53FailoverPolicy_primary,
-								},
-							},
-						},
-						SetIdentifier: "primary",
-						HealthCheckId: "abcd1234-5678-90ab-cdef-example",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for geolocation routing policy with country", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-geo-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-						RoutingPolicy: &AwsRoute53RoutingPolicy{
-							Policy: &AwsRoute53RoutingPolicy_Geolocation{
-								Geolocation: &AwsRoute53GeolocationPolicy{
-									Country: "US",
-								},
-							},
-						},
-						SetIdentifier: "us",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for geolocation routing with continent", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-geo-continent-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-						RoutingPolicy: &AwsRoute53RoutingPolicy{
-							Policy: &AwsRoute53RoutingPolicy_Geolocation{
-								Geolocation: &AwsRoute53GeolocationPolicy{
-									Continent: "EU",
-								},
-							},
-						},
-						SetIdentifier: "europe",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for CAA record", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-caa-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "example.com",
-						Type:   AwsRoute53DnsRecordSpec_CAA,
-						Ttl:    3600,
-						Values: []string{"0 issue \"letsencrypt.org\""},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
+	ginkgo.BeforeEach(func() {
+		// Minimal valid spec: a simple A record.
+		spec = &AwsRoute53DnsRecordSpec{
+			Region: "us-west-2",
+			ZoneId: strRef("Z1234567890ABC"),
+			Name:   "www.example.com",
+			Type:   "A",
+			Ttl:    300,
+			Values: []string{"192.0.2.1"},
+		}
 	})
 
-	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("aws_route53_dns_record", func() {
+	// -------------------------------------------------------------------------
+	// Happy path: standard records
+	// -------------------------------------------------------------------------
 
-			ginkgo.It("should return a validation error when zone_id is missing", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts a simple A record", func() {
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts every supported record type", func() {
+		for _, t := range []string{"A", "AAAA", "CAA", "CNAME", "DS", "HTTPS", "MX", "NAPTR", "NS", "PTR", "SOA", "SPF", "SRV", "SSHFP", "SVCB", "TLSA", "TXT"} {
+			spec.Type = t
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed(), "type %s should be valid", t)
+		}
+	})
 
-			ginkgo.It("should return a validation error when type is unspecified", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_record_type_unspecified,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts a multi-value A record and a wildcard name", func() {
+		spec.Name = "*.example.com"
+		spec.Values = []string{"192.0.2.1", "192.0.2.2"}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.It("should return a validation error when neither values nor alias_target is specified", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts allow_overwrite", func() {
+		spec.AllowOverwrite = true
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.It("should return a validation error when both values and alias_target are specified", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-						AliasTarget: &AwsRoute53AliasTarget{
-							DnsName: stringValue("d1234abcd.cloudfront.net"),
-							ZoneId:  stringValue("Z2FDTNDATAQYW2"),
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	// -------------------------------------------------------------------------
+	// Happy path: alias records
+	// -------------------------------------------------------------------------
 
-			ginkgo.It("should return a validation error for TTL exceeding max", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    700000,
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts an alias record to an ALB", func() {
+		spec.Ttl = 0
+		spec.Values = nil
+		spec.AliasTarget = albAlias()
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.It("should return a validation error for alias_target missing dns_name", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						AliasTarget: &AwsRoute53AliasTarget{
-							ZoneId: stringValue("Z2FDTNDATAQYW2"),
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts an alias record with target-health evaluation", func() {
+		spec.Ttl = 0
+		spec.Values = nil
+		spec.AliasTarget = albAlias()
+		spec.AliasTarget.EvaluateTargetHealth = true
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.It("should return a validation error for alias_target missing zone_id", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						AliasTarget: &AwsRoute53AliasTarget{
-							DnsName: stringValue("d1234abcd.cloudfront.net"),
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	// -------------------------------------------------------------------------
+	// Happy path: routing policies
+	// -------------------------------------------------------------------------
 
-			ginkgo.It("should return a validation error for weighted routing without set_identifier", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-						RoutingPolicy: &AwsRoute53RoutingPolicy{
-							Policy: &AwsRoute53RoutingPolicy_Weighted{
-								Weighted: &AwsRoute53WeightedPolicy{
-									Weight: 70,
-								},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts weighted routing with a set identifier", func() {
+		spec.SetIdentifier = "weight-70"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Weighted{Weighted: &AwsRoute53WeightedPolicy{Weight: 70}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.It("should return a validation error for latency routing missing region", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-						RoutingPolicy: &AwsRoute53RoutingPolicy{
-							Policy: &AwsRoute53RoutingPolicy_Latency{
-								Latency: &AwsRoute53LatencyPolicy{},
-							},
-						},
-						SetIdentifier: "us-east",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts latency routing", func() {
+		spec.SetIdentifier = "us-east-1"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Latency{Latency: &AwsRoute53LatencyPolicy{Region: "us-east-1"}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.It("should return a validation error for weighted routing with weight exceeding max", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "www.example.com",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-						RoutingPolicy: &AwsRoute53RoutingPolicy{
-							Policy: &AwsRoute53RoutingPolicy_Weighted{
-								Weighted: &AwsRoute53WeightedPolicy{
-									Weight: 300,
-								},
-							},
-						},
-						SetIdentifier: "primary",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+	ginkgo.It("accepts failover routing with a health check ref", func() {
+		spec.SetIdentifier = "primary"
+		spec.HealthCheckId = strRef("abcdef11-2222-3333-4444-555555fedcba")
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Failover{Failover: &AwsRoute53FailoverPolicy{FailoverType: "PRIMARY"}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
 
-			ginkgo.It("should return a validation error for invalid name pattern", func() {
-				input := &AwsRoute53DnsRecord{
-					ApiVersion: "aws.planton.dev/v1",
-					Kind:       "AwsRoute53DnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &AwsRoute53DnsRecordSpec{
-						Region: "us-east-1",
-						ZoneId: stringValue("Z1234567890ABC"),
-						Name:   "invalid name with spaces",
-						Type:   AwsRoute53DnsRecordSpec_A,
-						Ttl:    300,
-						Values: []string{"192.0.2.1"},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
+	ginkgo.It("accepts geolocation routing by country", func() {
+		spec.SetIdentifier = "eu-users"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Geolocation{Geolocation: &AwsRoute53GeolocationPolicy{Country: "DE"}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts geoproximity routing by region with bias", func() {
+		spec.SetIdentifier = "us-east"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Geoproximity{Geoproximity: &AwsRoute53GeoproximityPolicy{
+				AwsRegion: "us-east-1",
+				Bias:      25,
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts geoproximity routing by coordinates", func() {
+		spec.SetIdentifier = "nyc-dc"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Geoproximity{Geoproximity: &AwsRoute53GeoproximityPolicy{
+				Coordinates: &AwsRoute53Coordinates{Latitude: "40.71", Longitude: "-74.01"},
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts CIDR routing", func() {
+		spec.SetIdentifier = "office-network"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Cidr{Cidr: &AwsRoute53CidrPolicy{
+				CollectionId: "cf1234ab-cdef-5678-90ab-cdef12345678",
+				LocationName: "office",
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts multivalue answer routing on a standard record", func() {
+		spec.SetIdentifier = "server-1"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_MultivalueAnswer{MultivalueAnswer: &AwsRoute53MultivalueAnswerPolicy{}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// Required fields
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects a missing zone_id", func() {
+		spec.ZoneId = nil
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a missing name", func() {
+		spec.Name = ""
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a missing type", func() {
+		spec.Type = ""
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an unknown record type", func() {
+		spec.Type = "ALIAS"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an invalid record name", func() {
+		spec.Name = "not a domain!"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// Standard XOR alias
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects a record with neither values nor alias", func() {
+		spec.Values = nil
+		spec.Ttl = 0
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a record with both values and alias", func() {
+		spec.AliasTarget = albAlias()
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a ttl on an alias record", func() {
+		spec.Values = nil
+		spec.AliasTarget = albAlias()
+		spec.Ttl = 300
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a standard record without a ttl", func() {
+		spec.Ttl = 0
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a ttl above one week", func() {
+		spec.Ttl = 604801
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an alias missing its target zone id", func() {
+		spec.Values = nil
+		spec.Ttl = 0
+		spec.AliasTarget = &AwsRoute53AliasTarget{
+			DnsName: strRef("d1234abcd.cloudfront.net"),
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// Routing policy contracts
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects a routing policy without a set identifier", func() {
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Weighted{Weighted: &AwsRoute53WeightedPolicy{Weight: 50}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a weight above 255", func() {
+		spec.SetIdentifier = "w"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Weighted{Weighted: &AwsRoute53WeightedPolicy{Weight: 256}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects latency routing without a region", func() {
+		spec.SetIdentifier = "l"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Latency{Latency: &AwsRoute53LatencyPolicy{}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an invalid failover type", func() {
+		spec.SetIdentifier = "p"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Failover{Failover: &AwsRoute53FailoverPolicy{FailoverType: "ACTIVE"}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects geolocation routing without any location", func() {
+		spec.SetIdentifier = "g"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Geolocation{Geolocation: &AwsRoute53GeolocationPolicy{}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects geoproximity with two location determinants", func() {
+		spec.SetIdentifier = "gp"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Geoproximity{Geoproximity: &AwsRoute53GeoproximityPolicy{
+				AwsRegion:      "us-east-1",
+				LocalZoneGroup: "us-east-1-bue-1",
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects geoproximity with no location determinant", func() {
+		spec.SetIdentifier = "gp"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Geoproximity{Geoproximity: &AwsRoute53GeoproximityPolicy{Bias: 10}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a geoproximity bias outside -99..99", func() {
+		spec.SetIdentifier = "gp"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Geoproximity{Geoproximity: &AwsRoute53GeoproximityPolicy{
+				AwsRegion: "us-east-1",
+				Bias:      100,
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects CIDR routing without a location name", func() {
+		spec.SetIdentifier = "c"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_Cidr{Cidr: &AwsRoute53CidrPolicy{CollectionId: "cf1234"}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects multivalue answer routing on an alias record", func() {
+		spec.Values = nil
+		spec.Ttl = 0
+		spec.AliasTarget = albAlias()
+		spec.SetIdentifier = "server-1"
+		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+			Policy: &AwsRoute53RoutingPolicy_MultivalueAnswer{MultivalueAnswer: &AwsRoute53MultivalueAnswerPolicy{}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 })

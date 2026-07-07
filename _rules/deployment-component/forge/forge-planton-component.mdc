@@ -412,7 +412,16 @@ go test -tags e2e ./e2e/<provider>/... -run 'Test<Kind>' -v -count=1
 ```
 
 (`-count=1` matters too: a cached `go test` result silently replays the old
-run instead of touching the cloud.) If a lane still fails this way, the
+run instead of touching the cloud.) **The private TMPDIR must be a SHORT
+path** — never a nested `mktemp -d` chain. Terraform/OpenTofu providers are
+go-plugin processes that hand-shake over unix domain sockets created under
+`$TMPDIR`, and macOS caps a socket path at 104 bytes; a deep TMPDIR (e.g.
+`/var/folders/.../T/tmp.X/tmp.Y/tmp.Z`) overflows that limit and every
+Terraform lane fails at provider-schema time with the cryptic
+`Unrecognized remote plugin message` — which looks like a corrupted plugin
+but is purely the socket path length. Pulumi lanes are unaffected, so a
+"Pulumi passes / Terraform fails to even instantiate the provider" split is
+the signature of this failure. If a lane still fails this way, the
 leaked resources remain recoverable through the backend directory left under
 `$TMPDIR` — `pulumi destroy --stack <name>` with `PULUMI_BACKEND_URL=file://…`
 from the dependency's module directory, then sweep the account.

@@ -122,6 +122,7 @@ import (
 	awsredshiftserverlessnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftserverlessnamespace/v1"
 	awsredshiftserverlessworkgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsredshiftserverlessworkgroup/v1"
 	awsroute53dnsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53dnsrecord/v1"
+	awsroute53healthcheckv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53healthcheck/v1"
 	awsroute53zonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1"
 	awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1"
 	awss3objectsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3objectset/v1"
@@ -576,6 +577,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace:   &awsredshiftserverlessnamespacev1.AwsRedshiftServerlessNamespace{},
 	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessWorkgroup:   &awsredshiftserverlessworkgroupv1.AwsRedshiftServerlessWorkgroup{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord:              &awsroute53dnsrecordv1.AwsRoute53DnsRecord{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53HealthCheck:            &awsroute53healthcheckv1.AwsRoute53HealthCheck{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:                   &awsroute53zonev1.AwsRoute53Zone{},
 	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                      &awss3bucketv1.AwsS3Bucket{},
 	cloudresourcekind.CloudResourceKind_AwsS3ObjectSet:                   &awss3objectsetv1.AwsS3ObjectSet{},

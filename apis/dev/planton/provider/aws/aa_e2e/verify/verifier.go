@@ -96,6 +96,10 @@ var verifiers = map[string]Verifier{
 	"awsmwaaenvironment":             &mwaaEnvironmentVerifier{},
 	"awsopensearchdomain":            &opensearchDomainVerifier{},
 	"awsec2instance":                 &ec2InstanceVerifier{},
+	"awsecrrepo":                     &ecrRepoVerifier{},
+	"awsroute53zone":                 &route53ZoneVerifier{},
+	"awsroute53dnsrecord":            &route53DnsRecordVerifier{},
+	"awsroute53healthcheck":          &route53HealthCheckVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

@@ -276,8 +276,8 @@ func TestProtoToVariablesTF_RequiredVsOptional(t *testing.T) {
 // pruned tfvars validates instead of erroring "attribute X is required".
 func TestProtoToVariablesTF_OptionalScalarsAndMaps(t *testing.T) {
 	r53spec := extractBlock(generateVariables(t, &awsroute53zonev1.AwsRoute53Zone{}), `variable "spec"`)
-	if !strings.Contains(r53spec, "records = optional(list(object({") {
-		t.Errorf("route53 spec.records must be optional list-of-object:\n%s", r53spec)
+	if !strings.Contains(r53spec, "vpc_associations = optional(list(object({") {
+		t.Errorf("route53 spec.vpc_associations must be optional list-of-object:\n%s", r53spec)
 	}
 
 	ecrspec := extractBlock(generateVariables(t, &awsecrrepov1.AwsEcrRepo{}), `variable "spec"`)
