@@ -73,6 +73,7 @@ go_library(
         "//apis/dev/planton/provider/aws/awsclientvpn/v1:awsclientvpn",
         "//apis/dev/planton/provider/aws/awscloudfront/v1:awscloudfront",
         "//apis/dev/planton/provider/aws/awscloudwatchalarm/v1:awscloudwatchalarm",
+        "//apis/dev/planton/provider/aws/awscloudwatchcompositealarm/v1:awscloudwatchcompositealarm",
         "//apis/dev/planton/provider/aws/awscloudwatchloggroup/v1:awscloudwatchloggroup",
         "//apis/dev/planton/provider/aws/awscodebuildproject/v1:awscodebuildproject",
         "//apis/dev/planton/provider/aws/awscodepipeline/v1:awscodepipeline",

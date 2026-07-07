@@ -280,3 +280,40 @@ spec:
         Principal:
           Service: firehose.amazonaws.com
         Action: sts:AssumeRole
+---
+# CloudWatch Logs delivery role: trusts logs.amazonaws.com and carries the
+# Kinesis put permissions a log group's subscription filter needs to stream
+# matching events into the shared Kinesis stream fixture.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-cwl-delivery-role
+  id: planton-oss-e2e-cwl-delivery-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for CloudWatch Logs subscription delivery
+  inlinePolicies:
+    cwlKinesisDeliveryE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - kinesis:PutRecord
+            - kinesis:PutRecords
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: logs.amazonaws.com
+        Action: sts:AssumeRole

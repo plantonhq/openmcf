@@ -113,6 +113,12 @@ var migratedKinds = []string{
 	// was forged.
 	"AwsRoute53DnsRecord",
 	"AwsRoute53HealthCheck",
+	// Observability: the CloudWatch pair migrated off their legacy type = any
+	// contracts; the composite alarm generator-owned from the day it was
+	// forged.
+	"AwsCloudwatchLogGroup",
+	"AwsCloudwatchAlarm",
+	"AwsCloudwatchCompositeAlarm",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

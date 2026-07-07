@@ -1,6 +1,6 @@
 # AWS CloudWatch Alarm
 
-Deploys an AWS CloudWatch metric alarm that monitors a single metric or metric math expression and triggers actions when the value breaches a threshold. Supports M-of-N evaluation to reduce false positives, and can target SNS topics, Auto Scaling policies, or EC2 automation actions.
+Deploys an AWS CloudWatch metric alarm that monitors a metric, a metric math expression, or a PromQL query against an Amazon Managed Service for Prometheus workspace, and triggers actions when the alarm condition holds. Supports M-of-N evaluation to reduce false positives, anomaly detection bands, cross-account metrics, and can target SNS topics, Auto Scaling policies, or EC2 automation actions.
 
 ## What Gets Created
 
@@ -57,16 +57,16 @@ This creates an alarm that triggers when EC2 CPU utilization exceeds 80% for 3 c
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `region` | `string` | AWS region where the alarm will be created (e.g., `us-west-2`). | Required |
-| `comparisonOperator` | `string` | Arithmetic operation comparing the statistic to the threshold. | One of: `GreaterThanOrEqualToThreshold`, `GreaterThanThreshold`, `LessThanThreshold`, `LessThanOrEqualToThreshold`, `LessThanLowerOrGreaterThanUpperThreshold`, `LessThanLowerThreshold`, `GreaterThanUpperThreshold` |
-| `evaluationPeriods` | `int` | Number of consecutive periods over which data is compared to the threshold. | >= 1 |
+| `comparisonOperator` | `string` | Arithmetic operation comparing the statistic to the threshold. Required for simple-metric and metric-query alarms; must be omitted for PromQL alarms. | One of: `GreaterThanOrEqualToThreshold`, `GreaterThanThreshold`, `LessThanThreshold`, `LessThanOrEqualToThreshold`, `LessThanLowerOrGreaterThanUpperThreshold`, `LessThanLowerThreshold`, `GreaterThanUpperThreshold` |
+| `evaluationPeriods` | `int` | Number of consecutive periods over which data is compared to the threshold. Required for simple-metric and metric-query alarms; must be omitted for PromQL alarms. | >= 1 |
 
-One of the following metric source modes is required:
+Exactly one of the following metric source modes is required:
 
 **Simple Metric Mode** — set `metricName`, `namespace`, `period`, and one of `statistic` or `extendedStatistic`:
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `metricName` | `string` | CloudWatch metric name (e.g., `CPUUtilization`, `RequestCount`). | Max 255 chars. Mutually exclusive with `metricQueries`. |
+| `metricName` | `string` | CloudWatch metric name (e.g., `CPUUtilization`, `RequestCount`). | Max 255 chars. Mutually exclusive with `metricQueries` and `evaluationCriteria`. |
 | `namespace` | `string` | Metric namespace (e.g., `AWS/EC2`, `AWS/SQS`). | Required when `metricName` is set. Max 255 chars. |
 | `period` | `int` | Period in seconds for statistic evaluation. | Required when `metricName` is set. Valid: 10, 20, 30, or multiple of 60. |
 | `statistic` | `string` | Standard statistic. | One of: `SampleCount`, `Average`, `Sum`, `Minimum`, `Maximum`. Mutually exclusive with `extendedStatistic`. |
@@ -75,7 +75,18 @@ One of the following metric source modes is required:
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `metricQueries` | `object[]` | Metric math expressions or multi-metric queries. | Max 20 items. Mutually exclusive with `metricName`. |
+| `metricQueries` | `object[]` | Metric math expressions or multi-metric queries. | Max 20 items. Exactly one query sets `returnData: true`; each query sets exactly one of `expression`/`metric`. Mutually exclusive with `metricName` and `evaluationCriteria`. |
+
+**PromQL Mode** — set `evaluationCriteria` to alarm on an Amazon Managed Service for Prometheus workspace:
+
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `evaluationCriteria.promqlCriteria.query` | `string` | PromQL query producing a boolean-style firing signal; the query itself is the alarm condition. | Required in this mode. Max 10000 chars. |
+| `evaluationCriteria.promqlCriteria.pendingPeriod` | `int` | Seconds the query must continuously fire before ALARM (Prometheus `for:`). | 0–86400. |
+| `evaluationCriteria.promqlCriteria.recoveryPeriod` | `int` | Seconds the query must be quiet before returning to OK. | 0–86400. |
+| `evaluationInterval` | `int` | Query evaluation cadence in seconds. | 10, 20, 30, or multiple of 60. Only valid with `evaluationCriteria`. |
+
+In PromQL mode the threshold fields (`comparisonOperator`, `evaluationPeriods`, `threshold`, `datapointsToAlarm`, and the simple-metric fields) must be omitted — the query expresses the condition.
 
 ### Optional Fields
 
@@ -246,8 +257,36 @@ After deployment, the following outputs are available in `status.outputs`:
 | `alarm_arn` | `string` | ARN of the CloudWatch metric alarm. Used by composite alarms and operational tooling. |
 | `alarm_name` | `string` | Name of the alarm, unique within the AWS account and region. |
 
+### PromQL Alarm on a Prometheus Workspace
+
+Alarm on a PromQL query with Prometheus-style pending/recovery semantics:
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: promql-cpu-saturation
+  labels:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: acme
+    pulumi.planton.dev/project: platform
+    pulumi.planton.dev/stack.name: prod.AwsCloudwatchAlarm.promql-cpu-saturation
+spec:
+  region: us-west-2
+  evaluationCriteria:
+    promqlCriteria:
+      query: 'avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) > 0.8'
+      pendingPeriod: 300
+      recoveryPeriod: 120
+  evaluationInterval: 60
+  alarmDescription: "Prometheus-reported CPU saturation above 80% for 5 minutes"
+  alarmActions:
+    - value: arn:aws:sns:us-east-1:123456789012:ops-alerts
+```
+
 ## Related Components
 
+- [AwsCloudwatchCompositeAlarm](/docs/catalog/aws/awscloudwatchcompositealarm) — combines this alarm's state with others by name for shared-cause paging and maintenance suppression
 - [AwsSnsTopic](/docs/catalog/aws/awssnstopic) — the most common alarm action target for notifications
 - [AwsCloudwatchLogGroup](/docs/catalog/aws/awscloudwatchloggroup) — log storage that generates metrics (via metric filters) for alarm evaluation
 - [AwsSqsQueue](/docs/catalog/aws/awssqsqueue) — queues commonly monitored by depth and age alarms

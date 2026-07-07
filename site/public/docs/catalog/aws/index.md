@@ -18,6 +18,7 @@ The following AWS resources can be deployed using Planton:
 - [Client VPN](/docs/catalog/aws/client-vpn)
 - [CloudFront](/docs/catalog/aws/cloudfront)
 - [CloudWatch Alarm](/docs/catalog/aws/cloudwatch-alarm)
+- [CloudWatch Composite Alarm](/docs/catalog/aws/cloudwatch-composite-alarm)
 - [CloudWatch Log Group](/docs/catalog/aws/cloudwatch-log-group)
 - [CodeBuild Project](/docs/catalog/aws/codebuild-project)
 - [CodePipeline](/docs/catalog/aws/codepipeline)

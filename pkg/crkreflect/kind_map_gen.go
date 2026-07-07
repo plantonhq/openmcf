@@ -57,6 +57,7 @@ import (
 	awsclientvpnv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsclientvpn/v1"
 	awscloudfrontv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudfront/v1"
 	awscloudwatchalarmv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudwatchalarm/v1"
+	awscloudwatchcompositealarmv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudwatchcompositealarm/v1"
 	awscloudwatchloggroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudwatchloggroup/v1"
 	awscodebuildprojectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscodebuildproject/v1"
 	awscodepipelinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscodepipeline/v1"
@@ -512,6 +513,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                     &awsclientvpnv1.AwsClientVpn{},
 	cloudresourcekind.CloudResourceKind_AwsCloudFront:                    &awscloudfrontv1.AwsCloudFront{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm:               &awscloudwatchalarmv1.AwsCloudwatchAlarm{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchCompositeAlarm:      &awscloudwatchcompositealarmv1.AwsCloudwatchCompositeAlarm{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup:            &awscloudwatchloggroupv1.AwsCloudwatchLogGroup{},
 	cloudresourcekind.CloudResourceKind_AwsCodeBuildProject:              &awscodebuildprojectv1.AwsCodeBuildProject{},
 	cloudresourcekind.CloudResourceKind_AwsCodePipeline:                  &awscodepipelinev1.AwsCodePipeline{},

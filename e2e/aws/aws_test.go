@@ -601,6 +601,29 @@ func TestAwsEventBridgeRule_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awseventbridgerule", "terraform")
 }
 
+// --- AWS CloudWatch observability family ---
+
+func TestAwsCloudwatchLogGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchloggroup", "pulumi")
+}
+func TestAwsCloudwatchLogGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchloggroup", "terraform")
+}
+
+func TestAwsCloudwatchAlarm_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchalarm", "pulumi")
+}
+func TestAwsCloudwatchAlarm_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchalarm", "terraform")
+}
+
+func TestAwsCloudwatchCompositeAlarm_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchcompositealarm", "pulumi")
+}
+func TestAwsCloudwatchCompositeAlarm_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchcompositealarm", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -1112,6 +1112,51 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsCloudwatchLogGroup: log_group_arn is the FK target for Step
+			// Functions logging, Route 53 query logging, API Gateway access
+			// logs, and OpenSearch log publishing; log_group_name is the join
+			// key for name-addressed consumers (ECS awslogs, ElastiCache) and
+			// the E2E verifier.
+			name: "AwsCloudwatchLogGroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup,
+			rawOutputs: map[string]interface{}{
+				"log_group_arn":  "arn:aws:logs:us-west-2:123456789012:log-group:app-logs",
+				"log_group_name": "app-logs",
+			},
+			mustPopulate: []string{
+				"log_group_arn", "log_group_name",
+			},
+		},
+		{
+			// AwsCloudwatchAlarm: alarm_arn is referenced by ECS service
+			// rollback alarms and ASG instance-refresh alarms; alarm_name is
+			// the join key composite alarm rules and actions suppressors use,
+			// and keys the E2E verifier.
+			name: "AwsCloudwatchAlarm",
+			kind: cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm,
+			rawOutputs: map[string]interface{}{
+				"alarm_arn":  "arn:aws:cloudwatch:us-west-2:123456789012:alarm:cpu-high",
+				"alarm_name": "cpu-high",
+			},
+			mustPopulate: []string{
+				"alarm_arn", "alarm_name",
+			},
+		},
+		{
+			// AwsCloudwatchCompositeAlarm: alarm_name is how parent composite
+			// alarms reference this one inside their own rule expressions;
+			// it also keys the E2E verifier.
+			name: "AwsCloudwatchCompositeAlarm",
+			kind: cloudresourcekind.CloudResourceKind_AwsCloudwatchCompositeAlarm,
+			rawOutputs: map[string]interface{}{
+				"alarm_arn":  "arn:aws:cloudwatch:us-west-2:123456789012:alarm:shared-cause",
+				"alarm_name": "shared-cause",
+			},
+			mustPopulate: []string{
+				"alarm_arn", "alarm_name",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

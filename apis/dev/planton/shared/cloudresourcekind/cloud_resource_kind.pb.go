@@ -224,6 +224,7 @@ const (
 	CloudResourceKind_AwsWafWebAcl                     CloudResourceKind = 301
 	CloudResourceKind_AwsCloudwatchLogGroup            CloudResourceKind = 310
 	CloudResourceKind_AwsCloudwatchAlarm               CloudResourceKind = 311
+	CloudResourceKind_AwsCloudwatchCompositeAlarm      CloudResourceKind = 355
 	CloudResourceKind_AwsKinesisStream                 CloudResourceKind = 260
 	// Every Firehose destination requires an S3 configuration (the primary
 	// target for extended_s3; the failed/all-document backup for the rest)
@@ -704,6 +705,7 @@ var (
 		301:  "AwsWafWebAcl",
 		310:  "AwsCloudwatchLogGroup",
 		311:  "AwsCloudwatchAlarm",
+		355:  "AwsCloudwatchCompositeAlarm",
 		260:  "AwsKinesisStream",
 		261:  "AwsKinesisFirehose",
 		262:  "AwsKinesisStreamConsumer",
@@ -1135,6 +1137,7 @@ var (
 		"AwsWafWebAcl":                            301,
 		"AwsCloudwatchLogGroup":                   310,
 		"AwsCloudwatchAlarm":                      311,
+		"AwsCloudwatchCompositeAlarm":             355,
 		"AwsKinesisStream":                        260,
 		"AwsKinesisFirehose":                      261,
 		"AwsKinesisStreamConsumer":                262,
@@ -1740,7 +1743,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xa4\x99\x01\n" +
+	"\x02v1\x10\x01*ݙ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1825,7 +1828,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1aAwsCognitoIdentityProvider\x10\xae\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawscogidp\x12#\n" +
 	"\fAwsWafWebAcl\x10\xad\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awswaf\x12-\n" +
 	"\x15AwsCloudwatchLogGroup\x10\xb6\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawscwlg\x12)\n" +
-	"\x12AwsCloudwatchAlarm\x10\xb7\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscwa\x12'\n" +
+	"\x12AwsCloudwatchAlarm\x10\xb7\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscwa\x127\n" +
+	"\x1bAwsCloudwatchCompositeAlarm\x10\xe3\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawscwca:\x02\xb7\x02\x12'\n" +
 	"\x10AwsKinesisStream\x10\x84\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskin\x12/\n" +
 	"\x12AwsKinesisFirehose\x10\x85\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awskfh:\x04\xd5\x01\xd0\x01\x126\n" +
 	"\x18AwsKinesisStreamConsumer\x10\x86\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawskincon:\x02\x84\x02\x12)\n" +

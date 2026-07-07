@@ -26,11 +26,12 @@ const (
 // AwsCloudwatchAlarmSpec defines the desired configuration for an AWS
 // CloudWatch metric alarm.
 //
-// A CloudWatch alarm watches a single metric or the result of a metric math
-// expression and performs one or more actions when the metric value crosses a
-// threshold for a sustained number of evaluation periods.
+// A CloudWatch alarm watches a metric (or a computed signal) and performs one
+// or more actions when the value crosses a threshold for a sustained number of
+// evaluation periods.
 //
-// Two metric definition modes are supported (mutually exclusive):
+// Three metric definition modes are supported (mutually exclusive — exactly
+// one must be used):
 //
 //  1. **Simple metric mode** — Set `metric_name`, `namespace`, `period`, and
 //     one of `statistic` or `extended_statistic`. Suitable for alarms on a
@@ -40,6 +41,12 @@ const (
 //     anomaly detection, or multi-metric alarms. Up to 20 metric queries can
 //     be combined. Exactly one query must set `return_data = true` to serve as
 //     the alarm's evaluation signal.
+//
+//  3. **PromQL mode** — Use `evaluation_criteria` to alarm on a PromQL query
+//     against an Amazon Managed Service for Prometheus workspace. In this mode
+//     the alerting contract lives in the query itself, so the threshold-based
+//     fields (`comparison_operator`, `evaluation_periods`, `threshold`, the
+//     simple-metric fields) must NOT be set.
 //
 // Actions are specified as repeated StringValueOrRef fields for alarm, OK, and
 // insufficient-data state transitions. The most common action target is an SNS
@@ -64,13 +71,20 @@ type AwsCloudwatchAlarmSpec struct {
 	// - "LessThanLowerOrGreaterThanUpperThreshold"
 	// - "LessThanLowerThreshold"
 	// - "GreaterThanUpperThreshold"
+	//
+	// Required for simple-metric and metric-query alarms. Must NOT be set for
+	// PromQL alarms (`evaluation_criteria`) — the query expresses the condition.
 	ComparisonOperator string `protobuf:"bytes,2,opt,name=comparison_operator,json=comparisonOperator,proto3" json:"comparison_operator,omitempty"`
 	// Number of consecutive periods over which the metric is compared to the
-	// threshold. Must be at least 1.
+	// threshold.
 	//
 	// Combined with `datapoints_to_alarm` this creates an M-of-N evaluation
 	// window. For example, evaluation_periods=5 with datapoints_to_alarm=3
 	// means "3 out of the last 5 periods must breach to trigger the alarm."
+	//
+	// Required (must be at least 1) for simple-metric and metric-query alarms.
+	// Must NOT be set for PromQL alarms — pending/recovery periods on the
+	// PromQL criteria play that role instead.
 	EvaluationPeriods int32 `protobuf:"varint,3,opt,name=evaluation_periods,json=evaluationPeriods,proto3" json:"evaluation_periods,omitempty"`
 	// Number of data points within the evaluation window that must breach the
 	// threshold to trigger the alarm. Must be less than or equal to
@@ -84,7 +98,7 @@ type AwsCloudwatchAlarmSpec struct {
 	// against this value using `comparison_operator`.
 	//
 	// Required for static threshold alarms. Must not be set for anomaly
-	// detection alarms (use `threshold_metric_id` instead).
+	// detection alarms (use `threshold_metric_id` instead) or PromQL alarms.
 	Threshold float64 `protobuf:"fixed64,5,opt,name=threshold,proto3" json:"threshold,omitempty"`
 	// For anomaly detection alarms, set this to the ID of the
 	// ANOMALY_DETECTION_BAND function defined in `metric_queries`. The anomaly
@@ -105,17 +119,18 @@ type AwsCloudwatchAlarmSpec struct {
 	//   - "ignore"       — The current alarm state is maintained regardless of
 	//     missing data.
 	TreatMissingData string `protobuf:"bytes,7,opt,name=treat_missing_data,json=treatMissingData,proto3" json:"treat_missing_data,omitempty"`
-	// Whether actions execute during alarm state transitions. Defaults to true
-	// in the IaC module when not set. Set to false to suppress actions during
-	// maintenance windows or alarm tuning.
-	ActionsEnabled bool `protobuf:"varint,8,opt,name=actions_enabled,json=actionsEnabled,proto3" json:"actions_enabled,omitempty"`
+	// Whether actions execute during alarm state transitions. When unset, AWS
+	// defaults to true (actions enabled). Set explicitly to false to suppress
+	// actions during maintenance windows or alarm tuning — the alarm still
+	// evaluates and changes state, it just does not act.
+	ActionsEnabled *bool `protobuf:"varint,8,opt,name=actions_enabled,json=actionsEnabled,proto3,oneof" json:"actions_enabled,omitempty"`
 	// Name of the CloudWatch metric to alarm on (e.g., "CPUUtilization",
 	// "4xxErrorRate", "ApproximateNumberOfMessagesVisible").
 	//
 	// When set, `namespace`, `period`, and one of `statistic` or
 	// `extended_statistic` must also be set.
 	//
-	// Mutually exclusive with `metric_queries`.
+	// Mutually exclusive with `metric_queries` and `evaluation_criteria`.
 	MetricName string `protobuf:"bytes,9,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
 	// Namespace of the metric (e.g., "AWS/EC2", "AWS/ECS", "AWS/SQS",
 	// "AWS/ApplicationELB"). Custom namespaces are also supported.
@@ -156,7 +171,7 @@ type AwsCloudwatchAlarmSpec struct {
 	Dimensions map[string]string `protobuf:"bytes,14,rep,name=dimensions,proto3" json:"dimensions,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Unit for the metric. When specified, only data points with a matching unit
 	// are used for evaluation. Most alarms omit this and use the metric's
-	// published unit.
+	// published unit. Must be a valid CloudWatch StandardUnit when set.
 	Unit string `protobuf:"bytes,15,opt,name=unit,proto3" json:"unit,omitempty"`
 	// Metric math expressions or multi-metric queries. Use this mode for:
 	// - Metric math (e.g., error rate = errors / total * 100)
@@ -168,7 +183,8 @@ type AwsCloudwatchAlarmSpec struct {
 	// `return_data = true` to serve as the alarm's evaluation signal.
 	//
 	// Mutually exclusive with simple metric fields (`metric_name`,
-	// `namespace`, `period`, `statistic`, `extended_statistic`, `dimensions`).
+	// `namespace`, `period`, `statistic`, `extended_statistic`, `dimensions`)
+	// and with `evaluation_criteria`.
 	MetricQueries []*AwsCloudwatchAlarmMetricQuery `protobuf:"bytes,16,rep,name=metric_queries,json=metricQueries,proto3" json:"metric_queries,omitempty"`
 	// Actions to execute when the alarm transitions to ALARM state. Each action
 	// is an ARN — typically an SNS topic ARN, but can also be an Auto Scaling
@@ -196,8 +212,19 @@ type AwsCloudwatchAlarmSpec struct {
 	// Only meaningful when using percentile statistics (extended_statistic or
 	// a percentile stat in metric_queries).
 	EvaluateLowSampleCountPercentiles string `protobuf:"bytes,21,opt,name=evaluate_low_sample_count_percentiles,json=evaluateLowSampleCountPercentiles,proto3" json:"evaluate_low_sample_count_percentiles,omitempty"`
-	unknownFields                     protoimpl.UnknownFields
-	sizeCache                         protoimpl.SizeCache
+	// PromQL evaluation criteria for alarming on an Amazon Managed Service for
+	// Prometheus workspace. In this mode the alarm evaluates a PromQL query on
+	// a schedule (`evaluation_interval`) and transitions based on the query's
+	// firing state, so the threshold-based fields (`comparison_operator`,
+	// `evaluation_periods`, `threshold`, `datapoints_to_alarm`, and all
+	// simple-metric fields) must NOT be set.
+	EvaluationCriteria *AwsCloudwatchAlarmEvaluationCriteria `protobuf:"bytes,22,opt,name=evaluation_criteria,json=evaluationCriteria,proto3" json:"evaluation_criteria,omitempty"`
+	// How often (in seconds) the PromQL query is evaluated. Only valid together
+	// with `evaluation_criteria`. Valid values: 10, 20, 30, or any multiple
+	// of 60. When unset, AWS uses its default evaluation interval.
+	EvaluationInterval int32 `protobuf:"varint,23,opt,name=evaluation_interval,json=evaluationInterval,proto3" json:"evaluation_interval,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AwsCloudwatchAlarmSpec) Reset() {
@@ -280,8 +307,8 @@ func (x *AwsCloudwatchAlarmSpec) GetTreatMissingData() string {
 }
 
 func (x *AwsCloudwatchAlarmSpec) GetActionsEnabled() bool {
-	if x != nil {
-		return x.ActionsEnabled
+	if x != nil && x.ActionsEnabled != nil {
+		return *x.ActionsEnabled
 	}
 	return false
 }
@@ -375,6 +402,20 @@ func (x *AwsCloudwatchAlarmSpec) GetEvaluateLowSampleCountPercentiles() string {
 		return x.EvaluateLowSampleCountPercentiles
 	}
 	return ""
+}
+
+func (x *AwsCloudwatchAlarmSpec) GetEvaluationCriteria() *AwsCloudwatchAlarmEvaluationCriteria {
+	if x != nil {
+		return x.EvaluationCriteria
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchAlarmSpec) GetEvaluationInterval() int32 {
+	if x != nil {
+		return x.EvaluationInterval
+	}
+	return 0
 }
 
 // AwsCloudwatchAlarmMetricQuery defines a single metric query within a metric
@@ -518,6 +559,8 @@ type AwsCloudwatchAlarmMetricQueryMetric struct {
 	// Name of the CloudWatch metric (e.g., "CPUUtilization", "5XXError").
 	MetricName string `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
 	// Namespace of the metric (e.g., "AWS/EC2", "AWS/ApplicationELB").
+	// Optional in the CloudWatch API, but virtually always needed to address
+	// a metric unambiguously. Must not start with a colon.
 	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Period in seconds for the metric data points. Determines the granularity
 	// of the data used in expressions.
@@ -610,20 +653,149 @@ func (x *AwsCloudwatchAlarmMetricQueryMetric) GetUnit() string {
 	return ""
 }
 
+// AwsCloudwatchAlarmEvaluationCriteria defines the PromQL evaluation contract
+// for alarms on an Amazon Managed Service for Prometheus workspace. The
+// wrapper mirrors the CloudWatch API shape, which reserves room for future
+// criteria types beyond PromQL.
+type AwsCloudwatchAlarmEvaluationCriteria struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The PromQL criteria to evaluate. Required.
+	PromqlCriteria *AwsCloudwatchAlarmPromqlCriteria `protobuf:"bytes,1,opt,name=promql_criteria,json=promqlCriteria,proto3" json:"promql_criteria,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchAlarmEvaluationCriteria) Reset() {
+	*x = AwsCloudwatchAlarmEvaluationCriteria{}
+	mi := &file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchAlarmEvaluationCriteria) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchAlarmEvaluationCriteria) ProtoMessage() {}
+
+func (x *AwsCloudwatchAlarmEvaluationCriteria) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchAlarmEvaluationCriteria.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchAlarmEvaluationCriteria) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsCloudwatchAlarmEvaluationCriteria) GetPromqlCriteria() *AwsCloudwatchAlarmPromqlCriteria {
+	if x != nil {
+		return x.PromqlCriteria
+	}
+	return nil
+}
+
+// AwsCloudwatchAlarmPromqlCriteria defines a PromQL query and its firing
+// behavior. The query runs against the Prometheus workspace on the alarm's
+// evaluation interval; the alarm transitions to ALARM when the query returns
+// a firing result for the pending period, and back to OK after the recovery
+// period.
+type AwsCloudwatchAlarmPromqlCriteria struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The PromQL query to evaluate, addressing an Amazon Managed Service for
+	// Prometheus workspace. The query must produce a boolean-style firing
+	// signal, e.g.:
+	//
+	//	'avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) > 0.8'
+	//
+	// Maximum 10000 characters.
+	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	// How long (in seconds) the query must continuously return a firing result
+	// before the alarm transitions to ALARM — the PromQL analog of "for:" in
+	// Prometheus alerting rules. 0 transitions immediately. Maximum 86400
+	// (24 hours). When unset, AWS applies its default pending behavior.
+	PendingPeriod *int32 `protobuf:"varint,2,opt,name=pending_period,json=pendingPeriod,proto3,oneof" json:"pending_period,omitempty"`
+	// How long (in seconds) the query must continuously return a non-firing
+	// result before the alarm transitions back to OK — dampens flapping.
+	// 0 recovers immediately. Maximum 86400 (24 hours). When unset, AWS
+	// applies its default recovery behavior.
+	RecoveryPeriod *int32 `protobuf:"varint,3,opt,name=recovery_period,json=recoveryPeriod,proto3,oneof" json:"recovery_period,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchAlarmPromqlCriteria) Reset() {
+	*x = AwsCloudwatchAlarmPromqlCriteria{}
+	mi := &file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchAlarmPromqlCriteria) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchAlarmPromqlCriteria) ProtoMessage() {}
+
+func (x *AwsCloudwatchAlarmPromqlCriteria) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchAlarmPromqlCriteria.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchAlarmPromqlCriteria) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsCloudwatchAlarmPromqlCriteria) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchAlarmPromqlCriteria) GetPendingPeriod() int32 {
+	if x != nil && x.PendingPeriod != nil {
+		return *x.PendingPeriod
+	}
+	return 0
+}
+
+func (x *AwsCloudwatchAlarmPromqlCriteria) GetRecoveryPeriod() int32 {
+	if x != nil && x.RecoveryPeriod != nil {
+		return *x.RecoveryPeriod
+	}
+	return 0
+}
+
 var File_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/aws/awscloudwatchalarm/v1/spec.proto\x12.dev.planton.provider.aws.awscloudwatchalarm.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc1!\n" +
+	"9dev/planton/provider/aws/awscloudwatchalarm/v1/spec.proto\x12.dev.planton.provider.aws.awscloudwatchalarm.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xfe7\n" +
 	"\x16AwsCloudwatchAlarmSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x127\n" +
-	"\x13comparison_operator\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12comparisonOperator\x126\n" +
-	"\x12evaluation_periods\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x11evaluationPeriods\x12.\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12/\n" +
+	"\x13comparison_operator\x18\x02 \x01(\tR\x12comparisonOperator\x12-\n" +
+	"\x12evaluation_periods\x18\x03 \x01(\x05R\x11evaluationPeriods\x12.\n" +
 	"\x13datapoints_to_alarm\x18\x04 \x01(\x05R\x11datapointsToAlarm\x12\x1c\n" +
 	"\tthreshold\x18\x05 \x01(\x01R\tthreshold\x128\n" +
 	"\x13threshold_metric_id\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\x11thresholdMetricId\x12,\n" +
-	"\x12treat_missing_data\x18\a \x01(\tR\x10treatMissingData\x12'\n" +
-	"\x0factions_enabled\x18\b \x01(\bR\x0eactionsEnabled\x12)\n" +
+	"\x12treat_missing_data\x18\a \x01(\tR\x10treatMissingData\x12,\n" +
+	"\x0factions_enabled\x18\b \x01(\bH\x00R\x0eactionsEnabled\x88\x01\x01\x12)\n" +
 	"\vmetric_name\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\n" +
 	"metricName\x12&\n" +
 	"\tnamespace\x18\n" +
@@ -641,26 +813,37 @@ const file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDesc = "
 	"ok_actions\x18\x12 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\tokActions\x12\x91\x01\n" +
 	"\x19insufficient_data_actions\x18\x13 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x17insufficientDataActions\x125\n" +
 	"\x11alarm_description\x18\x14 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x10alarmDescription\x12P\n" +
-	"%evaluate_low_sample_count_percentiles\x18\x15 \x01(\tR!evaluateLowSampleCountPercentiles\x1a=\n" +
+	"%evaluate_low_sample_count_percentiles\x18\x15 \x01(\tR!evaluateLowSampleCountPercentiles\x12\x85\x01\n" +
+	"\x13evaluation_criteria\x18\x16 \x01(\v2T.dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmEvaluationCriteriaR\x12evaluationCriteria\x12/\n" +
+	"\x13evaluation_interval\x18\x17 \x01(\x05R\x12evaluationInterval\x1a=\n" +
 	"\x0fDimensionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xad\x16\xbaH\xa9\x16\x1a\xef\x03\n" +
-	"\x19comparison_operator_valid\x12\xe3\x01comparison_operator must be one of: GreaterThanOrEqualToThreshold, GreaterThanThreshold, LessThanThreshold, LessThanOrEqualToThreshold, LessThanLowerOrGreaterThanUpperThreshold, LessThanLowerThreshold, GreaterThanUpperThreshold\x1a\xeb\x01this.comparison_operator in ['GreaterThanOrEqualToThreshold', 'GreaterThanThreshold', 'LessThanThreshold', 'LessThanOrEqualToThreshold', 'LessThanLowerOrGreaterThanUpperThreshold', 'LessThanLowerThreshold', 'GreaterThanUpperThreshold']\x1a\xc4\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa9+\xbaH\xa5+\x1a\x91\x04\n" +
+	"\x19comparison_operator_valid\x12\xe3\x01comparison_operator must be one of: GreaterThanOrEqualToThreshold, GreaterThanThreshold, LessThanThreshold, LessThanOrEqualToThreshold, LessThanLowerOrGreaterThanUpperThreshold, LessThanLowerThreshold, GreaterThanUpperThreshold\x1a\x8d\x02this.comparison_operator == '' || this.comparison_operator in ['GreaterThanOrEqualToThreshold', 'GreaterThanThreshold', 'LessThanThreshold', 'LessThanOrEqualToThreshold', 'LessThanLowerOrGreaterThanUpperThreshold', 'LessThanLowerThreshold', 'GreaterThanUpperThreshold']\x1a\xc4\x01\n" +
 	"\x0fstatistic_valid\x12Nstatistic must be one of: SampleCount, Average, Sum, Minimum, Maximum when set\x1aathis.statistic == '' || this.statistic in ['SampleCount', 'Average', 'Sum', 'Minimum', 'Maximum']\x1a\xe0\x01\n" +
 	"\x18treat_missing_data_valid\x12Ttreat_missing_data must be one of: missing, ignore, breaching, notBreaching when set\x1anthis.treat_missing_data == '' || this.treat_missing_data in ['missing', 'ignore', 'breaching', 'notBreaching']\x1a\xf6\x01\n" +
-	"+evaluate_low_sample_count_percentiles_valid\x12Mevaluate_low_sample_count_percentiles must be 'evaluate' or 'ignore' when set\x1axthis.evaluate_low_sample_count_percentiles == '' || this.evaluate_low_sample_count_percentiles in ['evaluate', 'ignore']\x1a\x97\x01\n" +
-	"&statistic_extended_statistic_exclusive\x126only one of statistic or extended_statistic may be set\x1a5this.statistic == '' || this.extended_statistic == ''\x1a\xb0\x01\n" +
-	"\x1fsimple_metric_or_metric_queries\x12Smetric_name and metric_queries are mutually exclusive — use one mode or the other\x1a8this.metric_name == '' || size(this.metric_queries) == 0\x1a\x83\x01\n" +
-	"\x16metric_source_required\x120either metric_name or metric_queries must be set\x1a7this.metric_name != '' || size(this.metric_queries) > 0\x1a\x84\x01\n" +
+	"+evaluate_low_sample_count_percentiles_valid\x12Mevaluate_low_sample_count_percentiles must be 'evaluate' or 'ignore' when set\x1axthis.evaluate_low_sample_count_percentiles == '' || this.evaluate_low_sample_count_percentiles in ['evaluate', 'ignore']\x1a\xc3\x04\n" +
+	"\x11unit_valid_values\x12\x83\x01unit must be a valid CloudWatch unit (e.g. Seconds, Milliseconds, Bytes, Percent, Count, Bytes/Second, Count/Second, None) when set\x1a\xa7\x03this.unit == '' || this.unit in ['Seconds', 'Microseconds', 'Milliseconds', 'Bytes', 'Kilobytes', 'Megabytes', 'Gigabytes', 'Terabytes', 'Bits', 'Kilobits', 'Megabits', 'Gigabits', 'Terabits', 'Percent', 'Count', 'Bytes/Second', 'Kilobytes/Second', 'Megabytes/Second', 'Gigabytes/Second', 'Terabytes/Second', 'Bits/Second', 'Kilobits/Second', 'Megabits/Second', 'Gigabits/Second', 'Terabits/Second', 'Count/Second', 'None']\x1a\x97\x01\n" +
+	"&statistic_extended_statistic_exclusive\x126only one of statistic or extended_statistic may be set\x1a5this.statistic == '' || this.extended_statistic == ''\x1a\xe3\x01\n" +
+	"\x16metric_source_required\x12oone of metric_name, metric_queries, or evaluation_criteria must be set — the alarm needs a signal to evaluate\x1aXthis.metric_name != '' || size(this.metric_queries) > 0 || has(this.evaluation_criteria)\x1a\xb0\x01\n" +
+	"\x1fsimple_metric_or_metric_queries\x12Smetric_name and metric_queries are mutually exclusive — use one mode or the other\x1a8this.metric_name == '' || size(this.metric_queries) == 0\x1a\x86\x02\n" +
+	"!promql_exclusive_with_other_modes\x12\x82\x01evaluation_criteria (PromQL mode) cannot be combined with metric_name or metric_queries — use exactly one metric definition mode\x1a\\!has(this.evaluation_criteria) || (this.metric_name == '' && size(this.metric_queries) == 0)\x1a\x82\x05\n" +
+	"\x1fpromql_forbids_threshold_fields\x12\x87\x02PromQL alarms (evaluation_criteria) must not set comparison_operator, evaluation_periods, datapoints_to_alarm, threshold, threshold_metric_id, namespace, period, statistic, extended_statistic, dimensions, or unit — the PromQL query expresses the alarm condition\x1a\xd4\x02!has(this.evaluation_criteria) || (this.comparison_operator == '' && this.evaluation_periods == 0 && this.datapoints_to_alarm == 0 && this.threshold == 0.0 && this.threshold_metric_id == '' && this.namespace == '' && this.period == 0 && this.statistic == '' && this.extended_statistic == '' && size(this.dimensions) == 0 && this.unit == '')\x1a\xbe\x01\n" +
+	"0comparison_operator_required_for_threshold_modes\x12Icomparison_operator is required for simple-metric and metric-query alarms\x1a?has(this.evaluation_criteria) || this.comparison_operator != ''\x1a\xc1\x01\n" +
+	"/evaluation_periods_required_for_threshold_modes\x12Oevaluation_periods must be at least 1 for simple-metric and metric-query alarms\x1a=has(this.evaluation_criteria) || this.evaluation_periods >= 1\x1a\xb8\x01\n" +
+	"#evaluation_interval_requires_promql\x12Qevaluation_interval is only valid together with evaluation_criteria (PromQL mode)\x1a>this.evaluation_interval == 0 || has(this.evaluation_criteria)\x1a\xfe\x01\n" +
+	" evaluation_interval_valid_values\x12Devaluation_interval must be 10, 20, 30, or a multiple of 60 when set\x1a\x93\x01this.evaluation_interval == 0 || this.evaluation_interval in [10, 20, 30] || (this.evaluation_interval >= 60 && this.evaluation_interval % 60 == 0)\x1a\x84\x01\n" +
 	"#namespace_required_with_metric_name\x12-namespace is required when metric_name is set\x1a.this.metric_name == '' || this.namespace != ''\x1ay\n" +
 	" period_required_with_metric_name\x12*period is required when metric_name is set\x1a)this.metric_name == '' || this.period > 0\x1a\xc2\x01\n" +
 	"#statistic_required_with_metric_name\x12Jone of statistic or extended_statistic is required when metric_name is set\x1aOthis.metric_name == '' || this.statistic != '' || this.extended_statistic != ''\x1a\xaf\x01\n" +
 	"\x13period_valid_values\x127period must be 10, 20, 30, or a multiple of 60 when set\x1a_this.period == 0 || this.period in [10, 20, 30] || (this.period >= 60 && this.period % 60 == 0)\x1a\xc8\x01\n" +
 	"*datapoints_to_alarm_lte_evaluation_periods\x12Ddatapoints_to_alarm must be less than or equal to evaluation_periods\x1aTthis.datapoints_to_alarm == 0 || this.datapoints_to_alarm <= this.evaluation_periods\x1a[\n" +
-	"\x15metric_queries_max_20\x12!maximum 20 metric_queries allowed\x1a\x1fsize(this.metric_queries) <= 20\x1aU\n" +
+	"\x15metric_queries_max_20\x12!maximum 20 metric_queries allowed\x1a\x1fsize(this.metric_queries) <= 20\x1a\xe2\x01\n" +
+	"&metric_queries_exactly_one_return_data\x12dexactly one metric query must set return_data = true — that query is the alarm's evaluation signal\x1aRsize(this.metric_queries) == 0 || this.metric_queries.exists_one(q, q.return_data)\x1aU\n" +
 	"\x13alarm_actions_max_5\x12\x1fmaximum 5 alarm_actions allowed\x1a\x1dsize(this.alarm_actions) <= 5\x1aL\n" +
 	"\x10ok_actions_max_5\x12\x1cmaximum 5 ok_actions allowed\x1a\x1asize(this.ok_actions) <= 5\x1ay\n" +
-	"\x1finsufficient_data_actions_max_5\x12+maximum 5 insufficient_data_actions allowed\x1a)size(this.insufficient_data_actions) <= 5\"\xcb\x02\n" +
+	"\x1finsufficient_data_actions_max_5\x12+maximum 5 insufficient_data_actions allowed\x1a)size(this.insufficient_data_actions) <= 5B\x12\n" +
+	"\x10_actions_enabled\"\x80\x06\n" +
 	"\x1dAwsCloudwatchAlarmMetricQuery\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xff\x01R\x02id\x12(\n" +
 	"\n" +
@@ -672,11 +855,13 @@ const file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDesc = "
 	"\vreturn_data\x18\x06 \x01(\bR\n" +
 	"returnData\x12'\n" +
 	"\n" +
-	"account_id\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\taccountId\"\x94\x03\n" +
+	"account_id\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\taccountId:\xb2\x03\xbaH\xae\x03\x1a\xe7\x01\n" +
+	" expression_or_metric_exactly_one\x12\x95\x01each metric query must set exactly one of expression or metric — an expression computes from other queries, a metric retrieves data from CloudWatch\x1a+(this.expression != '') != has(this.metric)\x1a\xc1\x01\n" +
+	"\x19query_period_valid_values\x12=period must be 1, 5, 10, 20, 30, or a multiple of 60 when set\x1aethis.period == 0 || this.period in [1, 5, 10, 20, 30] || (this.period >= 60 && this.period % 60 == 0)\"\xc0\x04\n" +
 	"#AwsCloudwatchAlarmMetricQueryMetric\x12,\n" +
 	"\vmetric_name\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xff\x01R\n" +
-	"metricName\x12)\n" +
-	"\tnamespace\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xff\x01R\tnamespace\x12\x1f\n" +
+	"metricName\x12&\n" +
+	"\tnamespace\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\tnamespace\x12\x1f\n" +
 	"\x06period\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x06period\x12\x1a\n" +
 	"\x04stat\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04stat\x12\x83\x01\n" +
 	"\n" +
@@ -685,7 +870,18 @@ const file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDesc = "
 	"\x04unit\x18\x06 \x01(\tR\x04unit\x1a=\n" +
 	"\x0fDimensionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x85\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xac\x01\xbaH\xa8\x01\x1a\xa5\x01\n" +
+	"\x1ametric_period_valid_values\x124period must be 1, 5, 10, 20, 30, or a multiple of 60\x1aQthis.period in [1, 5, 10, 20, 30] || (this.period >= 60 && this.period % 60 == 0)\"\xaa\x01\n" +
+	"$AwsCloudwatchAlarmEvaluationCriteria\x12\x81\x01\n" +
+	"\x0fpromql_criteria\x18\x01 \x01(\v2P.dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmPromqlCriteriaB\x06\xbaH\x03\xc8\x01\x01R\x0epromqlCriteria\"\xb4\x04\n" +
+	" AwsCloudwatchAlarmPromqlCriteria\x12!\n" +
+	"\x05query\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x90NR\x05query\x12*\n" +
+	"\x0epending_period\x18\x02 \x01(\x05H\x00R\rpendingPeriod\x88\x01\x01\x12,\n" +
+	"\x0frecovery_period\x18\x03 \x01(\x05H\x01R\x0erecoveryPeriod\x88\x01\x01:\xeb\x02\xbaH\xe7\x02\x1a\xae\x01\n" +
+	"\x14pending_period_range\x12=pending_period must be between 0 and 86400 seconds (24 hours)\x1aW!has(this.pending_period) || (this.pending_period >= 0 && this.pending_period <= 86400)\x1a\xb3\x01\n" +
+	"\x15recovery_period_range\x12>recovery_period must be between 0 and 86400 seconds (24 hours)\x1aZ!has(this.recovery_period) || (this.recovery_period >= 0 && this.recovery_period <= 86400)B\x11\n" +
+	"\x0f_pending_periodB\x12\n" +
+	"\x10_recovery_periodB\x85\x03\n" +
 	"2com.dev.planton.provider.aws.awscloudwatchalarm.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudwatchalarm/v1;awscloudwatchalarmv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awscloudwatchalarm.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awscloudwatchalarm\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awscloudwatchalarm\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awscloudwatchalarm::V1b\x06proto3"
 
 var (
@@ -700,28 +896,32 @@ func file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDescGZIP(
 	return file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_goTypes = []any{
-	(*AwsCloudwatchAlarmSpec)(nil),              // 0: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec
-	(*AwsCloudwatchAlarmMetricQuery)(nil),       // 1: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQuery
-	(*AwsCloudwatchAlarmMetricQueryMetric)(nil), // 2: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric
-	nil,                         // 3: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.DimensionsEntry
-	nil,                         // 4: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric.DimensionsEntry
-	(*v1.StringValueOrRef)(nil), // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsCloudwatchAlarmSpec)(nil),               // 0: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec
+	(*AwsCloudwatchAlarmMetricQuery)(nil),        // 1: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQuery
+	(*AwsCloudwatchAlarmMetricQueryMetric)(nil),  // 2: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric
+	(*AwsCloudwatchAlarmEvaluationCriteria)(nil), // 3: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmEvaluationCriteria
+	(*AwsCloudwatchAlarmPromqlCriteria)(nil),     // 4: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmPromqlCriteria
+	nil,                                          // 5: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.DimensionsEntry
+	nil,                                          // 6: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric.DimensionsEntry
+	(*v1.StringValueOrRef)(nil),                  // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.dimensions:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.DimensionsEntry
+	5, // 0: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.dimensions:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.DimensionsEntry
 	1, // 1: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.metric_queries:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQuery
-	5, // 2: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.alarm_actions:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // 3: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.ok_actions:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // 4: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.insufficient_data_actions:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 5: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQuery.metric:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric
-	4, // 6: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric.dimensions:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric.DimensionsEntry
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	7, // 2: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.alarm_actions:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // 3: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.ok_actions:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // 4: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.insufficient_data_actions:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 5: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmSpec.evaluation_criteria:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmEvaluationCriteria
+	2, // 6: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQuery.metric:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric
+	6, // 7: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric.dimensions:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryMetric.DimensionsEntry
+	4, // 8: dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmEvaluationCriteria.promql_criteria:type_name -> dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmPromqlCriteria
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_init() }
@@ -729,13 +929,15 @@ func file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_init() {
 	if File_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

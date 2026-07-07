@@ -252,6 +252,23 @@ Based on scenario:
   and the plan all stay green. Search `rg '\.value' iac/tf/` and cross-check
   every hit against the generated contract; anything reading `.value` on a
   flattened scalar is a live defect to fix in the same session.
+- **Reconcile the identity-tag set across BOTH engines**: older modules
+  predate the settled tag convention (the `Name` tag plus the
+  `planton.ai/*` identity keys, with user labels merged in unable to
+  override them) and commonly diverge -- e.g. a Terraform `locals.tf` that
+  merges only `{ Name }` with labels while the Pulumi module applies the
+  `awstagkeys` identity set WITHOUT `Name`, so the same manifest tags the
+  resource differently per engine. No offline gate flags this (tags are not
+  stack outputs). When touching an older kind, diff the two engines' tag
+  maps against the current convention and converge both in the same
+  session.
+- **Verify the Pulumi module sets the cloud name argument explicitly**
+  (`Name`/`AlarmName`/equivalent from `metadata.name`): modules authored
+  before the explicit-naming mandate rely on Pulumi auto-naming, which
+  appends a random suffix and silently diverges from the Terraform module's
+  exact `metadata.name` -- same manifest, two physical names. Compiles
+  clean, validates clean; only a live cross-engine comparison or code
+  review catches it.
 - Plan update and test sequence
 
 **Fix Issue:**

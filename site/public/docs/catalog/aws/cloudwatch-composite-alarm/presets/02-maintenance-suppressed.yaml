@@ -1,0 +1,21 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsCloudwatchCompositeAlarm
+metadata:
+  name: prod-api-paging
+spec:
+  region: <aws-region>
+  alarmRule: 'ALARM("<api-5xx-alarm-name>") OR ALARM("<api-latency-alarm-name>")'
+  alarmDescription: "API is unhealthy (5xx or latency breaching). Suppressed while the maintenance flag is up."
+  alarmActions:
+    - value: arn:aws:sns:us-east-1:123456789012:ops-critical
+  # While the suppressor alarm is in ALARM (e.g. a deploy pipeline raises a
+  # maintenance flag metric), this composite still evaluates and records
+  # state transitions — it just withholds the actions.
+  actionsSuppressor:
+    alarm:
+      valueFrom:
+        kind: AwsCloudwatchAlarm
+        name: <maintenance-flag-alarm>
+        fieldPath: status.outputs.alarm_name
+    waitPeriod: 60  # seconds to wait for the suppressor to catch up before acting
+    extensionPeriod: 120  # seconds actions stay suppressed after the suppressor clears

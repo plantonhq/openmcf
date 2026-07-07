@@ -622,6 +622,13 @@ enum CloudResourceKind {
     id_prefix: "awscwa"
   }];
 
+  AwsCloudwatchCompositeAlarm = 355 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awscwca"
+    prerequisites: [AwsCloudwatchAlarm]
+  }];
+
   // --- Analytics / Streaming ---
 
   AwsKinesisStream = 260 [(kind_meta) = {

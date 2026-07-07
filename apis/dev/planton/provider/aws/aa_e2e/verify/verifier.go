@@ -100,6 +100,9 @@ var verifiers = map[string]Verifier{
 	"awsroute53zone":                 &route53ZoneVerifier{},
 	"awsroute53dnsrecord":            &route53DnsRecordVerifier{},
 	"awsroute53healthcheck":          &route53HealthCheckVerifier{},
+	"awscloudwatchloggroup":          &cloudwatchLogGroupVerifier{},
+	"awscloudwatchalarm":             &cloudwatchAlarmVerifier{},
+	"awscloudwatchcompositealarm":    &cloudwatchCompositeAlarmVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.
