@@ -30,7 +30,7 @@ locals {
 
   # The generator flattens StringValueOrRef to its resolved string (the
   # orchestrator resolves any value_from before the module runs).
-  web_acl_arn = var.spec.web_acl_id
+  web_acl_arn = var.spec.web_acl_arn
 
   # Viewer certificate arms. Absent block (or neither arm set) serves the
   # default *.cloudfront.net certificate; CEL blocks aliases in that shape.

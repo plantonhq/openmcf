@@ -138,6 +138,12 @@ var migratedKinds = []string{
 	// contract; the access point generator-owned from the day it was forged.
 	"AwsElasticFileSystem",
 	"AwsEfsAccessPoint",
+	// WAF family: the web ACL migrated off its legacy type = any contract;
+	// the IP set and regex pattern set generator-owned from the day they
+	// were forged.
+	"AwsWafWebAcl",
+	"AwsWafIpSet",
+	"AwsWafRegexPatternSet",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

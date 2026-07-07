@@ -1112,6 +1112,56 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsWafWebAcl: web_acl_arn is the FK target for every protected
+			// resource (CloudFront's web_acl_arn, the ALB association);
+			// capacity reports the deployed WCU total and
+			// application_integration_url carries the CAPTCHA/Challenge JS
+			// integration endpoint.
+			name: "AwsWafWebAcl",
+			kind: cloudresourcekind.CloudResourceKind_AwsWafWebAcl,
+			rawOutputs: map[string]interface{}{
+				"web_acl_arn":                 "arn:aws:wafv2:us-west-2:123456789012:regional/webacl/edge-acl/11111111-2222-3333-4444-555555555555",
+				"web_acl_id":                  "11111111-2222-3333-4444-555555555555",
+				"web_acl_name":                "edge-acl",
+				"capacity":                    125,
+				"application_integration_url": "https://11111111.us-west-2.captcha.awswaf.com/11111111/",
+			},
+			mustPopulate: []string{
+				"web_acl_arn", "web_acl_id", "web_acl_name", "capacity", "application_integration_url",
+			},
+		},
+		{
+			// AwsWafIpSet: ip_set_arn is what web ACL ip_set_reference
+			// statements point at; id + name address the set through the
+			// WAFv2 API (and key the E2E verifier).
+			name: "AwsWafIpSet",
+			kind: cloudresourcekind.CloudResourceKind_AwsWafIpSet,
+			rawOutputs: map[string]interface{}{
+				"ip_set_arn":  "arn:aws:wafv2:us-west-2:123456789012:regional/ipset/office-allowlist/66666666-7777-8888-9999-000000000000",
+				"ip_set_id":   "66666666-7777-8888-9999-000000000000",
+				"ip_set_name": "office-allowlist",
+			},
+			mustPopulate: []string{
+				"ip_set_arn", "ip_set_id", "ip_set_name",
+			},
+		},
+		{
+			// AwsWafRegexPatternSet: regex_pattern_set_arn is what web ACL
+			// regex_pattern_set_reference statements point at; id + name
+			// address the set through the WAFv2 API (and key the E2E
+			// verifier).
+			name: "AwsWafRegexPatternSet",
+			kind: cloudresourcekind.CloudResourceKind_AwsWafRegexPatternSet,
+			rawOutputs: map[string]interface{}{
+				"regex_pattern_set_arn":  "arn:aws:wafv2:us-west-2:123456789012:regional/regexpatternset/blocked-paths/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				"regex_pattern_set_id":   "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				"regex_pattern_set_name": "blocked-paths",
+			},
+			mustPopulate: []string{
+				"regex_pattern_set_arn", "regex_pattern_set_id", "regex_pattern_set_name",
+			},
+		},
+		{
 			// AwsCloudwatchLogGroup: log_group_arn is the FK target for Step
 			// Functions logging, Route 53 query logging, API Gateway access
 			// logs, and OpenSearch log publishing; log_group_name is the join

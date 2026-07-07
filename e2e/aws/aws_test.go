@@ -700,6 +700,29 @@ func TestAwsEfsAccessPoint_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsefsaccesspoint", "terraform")
 }
 
+// --- AWS WAF family (leaf sets + the web ACL composing them by reference) ---
+
+func TestAwsWafIpSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafipset", "pulumi")
+}
+func TestAwsWafIpSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafipset", "terraform")
+}
+
+func TestAwsWafRegexPatternSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafregexpatternset", "pulumi")
+}
+func TestAwsWafRegexPatternSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafregexpatternset", "terraform")
+}
+
+func TestAwsWafWebAcl_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafwebacl", "pulumi")
+}
+func TestAwsWafWebAcl_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awswafwebacl", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

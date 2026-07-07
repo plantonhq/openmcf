@@ -100,9 +100,9 @@ type AwsCloudFrontSpec struct {
 	PriceClass string `protobuf:"bytes,8,opt,name=price_class,json=priceClass,proto3" json:"price_class,omitempty"`
 	// The AWS WAF Web ACL protecting the distribution, by ARN.
 	// CloudFront-scope ACLs (scope CLOUDFRONT, which must live in
-	// us-east-1) are addressed by ARN. Can reference an AwsWafWebAcl
-	// resource.
-	WebAclId *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=web_acl_id,json=webAclId,proto3" json:"web_acl_id,omitempty"`
+	// us-east-1) are addressed by ARN — never by the bare web ACL ID.
+	// Can reference an AwsWafWebAcl resource.
+	WebAclArn *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=web_acl_arn,json=webAclArn,proto3" json:"web_acl_arn,omitempty"`
 	// The content sources the distribution can route to. Each origin's
 	// origin_id is your stable handle -- cache behaviors and origin
 	// groups target it by that ID.
@@ -241,9 +241,9 @@ func (x *AwsCloudFrontSpec) GetPriceClass() string {
 	return ""
 }
 
-func (x *AwsCloudFrontSpec) GetWebAclId() *v1.StringValueOrRef {
+func (x *AwsCloudFrontSpec) GetWebAclArn() *v1.StringValueOrRef {
 	if x != nil {
-		return x.WebAclId
+		return x.WebAclArn
 	}
 	return nil
 }
@@ -1721,7 +1721,7 @@ var File_dev_planton_provider_aws_awscloudfront_v1_spec_proto protoreflect.FileD
 
 const file_dev_planton_provider_aws_awscloudfront_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/aws/awscloudfront/v1/spec.proto\x12)dev.planton.provider.aws.awscloudfront.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd3\x1b\n" +
+	"4dev/planton/provider/aws/awscloudfront/v1/spec.proto\x12)dev.planton.provider.aws.awscloudfront.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd5\x1b\n" +
 	"\x11AwsCloudFrontSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12'\n" +
 	"\aenabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12J\n" +
@@ -1731,9 +1731,8 @@ const file_dev_planton_provider_aws_awscloudfront_v1_spec_proto_rawDesc = "" +
 	"\fhttp_version\x18\x06 \x01(\tB*\xbaH'\xd8\x01\x01r\"R\ahttp1.1R\x05http2R\thttp2and3R\x05http3R\vhttpVersion\x12&\n" +
 	"\x0fis_ipv6_enabled\x18\a \x01(\bR\risIpv6Enabled\x12Y\n" +
 	"\vprice_class\x18\b \x01(\tB8\xbaH5\xd8\x01\x01r0R\x0ePriceClass_100R\x0ePriceClass_200R\x0ePriceClass_AllR\n" +
-	"priceClass\x12u\n" +
-	"\n" +
-	"web_acl_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xad\x02\x92\xd4a\x1astatus.outputs.web_acl_arnR\bwebAclId\x12b\n" +
+	"priceClass\x12w\n" +
+	"\vweb_acl_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xad\x02\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x12b\n" +
 	"\aorigins\x18\n" +
 	" \x03(\v2>.dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontOriginB\b\xbaH\x05\x92\x01\x02\b\x01R\aorigins\x12h\n" +
 	"\rorigin_groups\x18\v \x03(\v2C.dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontOriginGroupR\foriginGroups\x12\x83\x01\n" +
@@ -1904,7 +1903,7 @@ var file_dev_planton_provider_aws_awscloudfront_v1_spec_proto_goTypes = []any{
 	(*v1.StringValueOrRef)(nil),                    // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awscloudfront_v1_spec_proto_depIdxs = []int32{
-	17, // 0: dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontSpec.web_acl_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 0: dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontSpec.origins:type_name -> dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontOrigin
 	7,  // 2: dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontSpec.origin_groups:type_name -> dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontOriginGroup
 	8,  // 3: dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontSpec.default_cache_behavior:type_name -> dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontCacheBehavior

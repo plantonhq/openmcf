@@ -66,6 +66,18 @@ resource "aws_lb" "this" {
   tags = local.aws_tags
 }
 
+# Optional WAFv2 protection: an ALB has at most one web ACL, and the binding
+# is a setting of the PROTECTED resource, so the association lives here (the
+# web ACL itself never knows its consumers). Both fields are ForceNew on the
+# association -- re-pointing the ALB at a different ACL replaces only this
+# glue resource, never the load balancer.
+resource "aws_wafv2_web_acl_association" "this" {
+  count = var.spec.web_acl_arn != "" ? 1 : 0
+
+  resource_arn = aws_lb.this.arn
+  web_acl_arn  = var.spec.web_acl_arn
+}
+
 # Optional Route53 records for each hostname when DNS is enabled.
 # allow_overwrite adopts an existing alias record (e.g. left by a prior partial apply,
 # or one already pointing at this ALB) instead of failing the apply on a CREATE

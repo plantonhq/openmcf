@@ -253,6 +253,8 @@ const (
 	// before the CreateResourceServer call.
 	CloudResourceKind_AwsCognitoResourceServer    CloudResourceKind = 359
 	CloudResourceKind_AwsWafWebAcl                CloudResourceKind = 301
+	CloudResourceKind_AwsWafIpSet                 CloudResourceKind = 361
+	CloudResourceKind_AwsWafRegexPatternSet       CloudResourceKind = 362
 	CloudResourceKind_AwsCloudwatchLogGroup       CloudResourceKind = 310
 	CloudResourceKind_AwsCloudwatchAlarm          CloudResourceKind = 311
 	CloudResourceKind_AwsCloudwatchCompositeAlarm CloudResourceKind = 355
@@ -739,6 +741,8 @@ var (
 		358:  "AwsCognitoUserPoolClient",
 		359:  "AwsCognitoResourceServer",
 		301:  "AwsWafWebAcl",
+		361:  "AwsWafIpSet",
+		362:  "AwsWafRegexPatternSet",
 		310:  "AwsCloudwatchLogGroup",
 		311:  "AwsCloudwatchAlarm",
 		355:  "AwsCloudwatchCompositeAlarm",
@@ -1176,6 +1180,8 @@ var (
 		"AwsCognitoUserPoolClient":                358,
 		"AwsCognitoResourceServer":                359,
 		"AwsWafWebAcl":                            301,
+		"AwsWafIpSet":                             361,
+		"AwsWafRegexPatternSet":                   362,
 		"AwsCloudwatchLogGroup":                   310,
 		"AwsCloudwatchAlarm":                      311,
 		"AwsCloudwatchCompositeAlarm":             355,
@@ -1784,7 +1790,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf1\x9b\x01\n" +
+	"\x02v1\x10\x01*˜\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1873,7 +1879,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1aAwsCognitoIdentityProvider\x10\xae\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawscogidp:\x02\xac\x02\x129\n" +
 	"\x18AwsCognitoUserPoolClient\x10\xe6\x02\x1a\x1a\xa2\xf7\x04\x16\b\f\x10\x01\"\fawscogclient:\x02\xac\x02\x125\n" +
 	"\x18AwsCognitoResourceServer\x10\xe7\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawscogrs:\x02\xac\x02\x12#\n" +
-	"\fAwsWafWebAcl\x10\xad\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awswaf\x12-\n" +
+	"\fAwsWafWebAcl\x10\xad\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awswaf\x12%\n" +
+	"\vAwsWafIpSet\x10\xe9\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawswafips\x121\n" +
+	"\x15AwsWafRegexPatternSet\x10\xea\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\vawswafregex\x12-\n" +
 	"\x15AwsCloudwatchLogGroup\x10\xb6\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawscwlg\x12)\n" +
 	"\x12AwsCloudwatchAlarm\x10\xb7\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscwa\x127\n" +
 	"\x1bAwsCloudwatchCompositeAlarm\x10\xe3\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawscwca:\x02\xb7\x02\x12'\n" +

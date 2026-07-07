@@ -37,17 +37,29 @@ func minimalSpec() *AwsWafWebAclSpec {
 	}
 }
 
+// helper to create a StringValueOrRef with a literal value.
+func strRef(val string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
+	}
+}
+
+// helper wrapping a statement arm into the Statement node.
+func stmt(arm isAwsWafWebAclStatement_Statement) *AwsWafWebAclStatement {
+	return &AwsWafWebAclStatement{Statement: arm}
+}
+
 // helper to create a managed rule group rule.
 func managedRuleGroupRule(name string, priority int32, groupName string) *AwsWafWebAclRule {
 	return &AwsWafWebAclRule{
 		Name:     name,
 		Priority: priority,
-		Statement: &AwsWafWebAclRule_ManagedRuleGroup{
+		Statement: stmt(&AwsWafWebAclStatement_ManagedRuleGroup{
 			ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{
 				Name:       groupName,
 				VendorName: "AWS",
 			},
-		},
+		}),
 		OverrideAction: "none",
 	}
 }
@@ -57,11 +69,11 @@ func rateBasedRule(name string, priority int32, limit int32) *AwsWafWebAclRule {
 	return &AwsWafWebAclRule{
 		Name:     name,
 		Priority: priority,
-		Statement: &AwsWafWebAclRule_RateBased{
+		Statement: stmt(&AwsWafWebAclStatement_RateBased{
 			RateBased: &AwsWafWebAclRateBasedStatement{
 				Limit: limit,
 			},
-		},
+		}),
 		Action: "block",
 	}
 }
@@ -71,11 +83,11 @@ func geoMatchRule(name string, priority int32, countryCodes []string) *AwsWafWeb
 	return &AwsWafWebAclRule{
 		Name:     name,
 		Priority: priority,
-		Statement: &AwsWafWebAclRule_GeoMatch{
+		Statement: stmt(&AwsWafWebAclStatement_GeoMatch{
 			GeoMatch: &AwsWafWebAclGeoMatchStatement{
 				CountryCodes: countryCodes,
 			},
-		},
+		}),
 		Action: "block",
 	}
 }
@@ -85,13 +97,44 @@ func ipSetRefRule(name string, priority int32, arn string) *AwsWafWebAclRule {
 	return &AwsWafWebAclRule{
 		Name:     name,
 		Priority: priority,
-		Statement: &AwsWafWebAclRule_IpSetReference{
+		Statement: stmt(&AwsWafWebAclStatement_IpSetReference{
 			IpSetReference: &AwsWafWebAclIpSetReferenceStatement{
-				Arn: arn,
+				Arn: strRef(arn),
 			},
-		},
+		}),
 		Action: "block",
 	}
+}
+
+// helper for a byte-match statement inspecting the URI path.
+func byteMatchStatement(search string) *AwsWafWebAclStatement {
+	return stmt(&AwsWafWebAclStatement_ByteMatch{
+		ByteMatch: &AwsWafWebAclByteMatchStatement{
+			SearchString:         search,
+			PositionalConstraint: "STARTS_WITH",
+			FieldToMatch: &AwsWafWebAclFieldToMatch{
+				Field: &AwsWafWebAclFieldToMatch_UriPath{UriPath: true},
+			},
+			TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "NONE"}},
+		},
+	})
+}
+
+// helper wrapping a statement into a match rule.
+func matchRule(name string, priority int32, statement *AwsWafWebAclStatement) *AwsWafWebAclRule {
+	return &AwsWafWebAclRule{
+		Name:      name,
+		Priority:  priority,
+		Statement: statement,
+		Action:    "block",
+	}
+}
+
+// helper wrapping rules into a valid spec + acl.
+func aclWithRules(rules ...*AwsWafWebAclRule) *AwsWafWebAcl {
+	spec := minimalSpec()
+	spec.Rules = rules
+	return minimalAcl(spec)
 }
 
 var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
@@ -101,986 +144,792 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 	// =========================================================================
 
 	ginkgo.It("accepts a minimal spec with REGIONAL scope and allow default action", func() {
-		input := minimalAcl(minimalSpec())
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(minimalSpec()))).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a minimal spec with CLOUDFRONT scope", func() {
+	ginkgo.It("accepts CLOUDFRONT scope in us-east-1", func() {
 		spec := minimalSpec()
 		spec.Scope = "CLOUDFRONT"
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
+		spec.Region = "us-east-1"
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a spec with block default action", func() {
+	ginkgo.It("rejects CLOUDFRONT scope outside us-east-1", func() {
 		spec := minimalSpec()
-		spec.DefaultAction = &AwsWafWebAclDefaultAction{Type: "block"}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
+		spec.Scope = "CLOUDFRONT"
+		spec.Region = "us-west-2"
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a spec with description", func() {
+	ginkgo.It("rejects an invalid scope", func() {
 		spec := minimalSpec()
-		spec.Description = "Production Web ACL for API Gateway"
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
+		spec.Scope = "GLOBAL"
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a spec with token_domains", func() {
+	ginkgo.It("rejects a missing region", func() {
 		spec := minimalSpec()
-		spec.TokenDomains = []string{"example.com", "api.example.com"}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
+		spec.Region = ""
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a spec with visibility_config override", func() {
+	ginkgo.It("rejects a description over 256 characters", func() {
 		spec := minimalSpec()
-		spec.VisibilityConfig = &AwsWafWebAclVisibilityConfig{
-			CloudwatchMetricsEnabled: true,
-			SampledRequestsEnabled:   true,
-			MetricName:               "my-custom-metric",
+		for i := 0; i < 26; i++ {
+			spec.Description += "0123456789"
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
 	// =========================================================================
-	// Happy path — Managed rule group rules
+	// Default action
 	// =========================================================================
 
-	ginkgo.It("accepts a managed rule group rule with override_action none", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			managedRuleGroupRule("aws-common", 1, "AWSManagedRulesCommonRuleSet"),
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a managed rule group rule with override_action count", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "aws-common-count",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_ManagedRuleGroup{
-					ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{
-						Name:       "AWSManagedRulesCommonRuleSet",
-						VendorName: "AWS",
-					},
-				},
-				OverrideAction: "count",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a managed rule group with version pinning", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "aws-common-pinned",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_ManagedRuleGroup{
-					ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{
-						Name:       "AWSManagedRulesCommonRuleSet",
-						VendorName: "AWS",
-						Version:    "Version_1.0",
-					},
-				},
-				OverrideAction: "none",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a managed rule group with rule action overrides", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "aws-common-tuned",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_ManagedRuleGroup{
-					ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{
-						Name:       "AWSManagedRulesCommonRuleSet",
-						VendorName: "AWS",
-						RuleActionOverrides: []*AwsWafWebAclRuleActionOverride{
-							{Name: "SizeRestrictions_BODY", Action: "count"},
-							{Name: "NoUserAgent_HEADER", Action: "count"},
-						},
-					},
-				},
-				OverrideAction: "none",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — Rate-based rules
-	// =========================================================================
-
-	ginkgo.It("accepts a rate-based rule with minimal config", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{rateBasedRule("rate-limit", 1, 2000)}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a rate-based rule with custom evaluation window", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "rate-limit-60s",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_RateBased{
-					RateBased: &AwsWafWebAclRateBasedStatement{
-						Limit:               500,
-						EvaluationWindowSec: 60,
-					},
-				},
-				Action: "block",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a rate-based rule with FORWARDED_IP and config", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "rate-forwarded",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_RateBased{
-					RateBased: &AwsWafWebAclRateBasedStatement{
-						Limit:            1000,
-						AggregateKeyType: "FORWARDED_IP",
-						ForwardedIpConfig: &AwsWafWebAclForwardedIpConfig{
-							HeaderName:       "X-Forwarded-For",
-							FallbackBehavior: "MATCH",
-						},
-					},
-				},
-				Action: "block",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — Geo match rules
-	// =========================================================================
-
-	ginkgo.It("accepts a geo match rule blocking specific countries", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			geoMatchRule("block-countries", 1, []string{"RU", "CN", "KP"}),
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a geo match rule with forwarded IP config", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "geo-forwarded",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{
-						CountryCodes: []string{"US"},
-						ForwardedIpConfig: &AwsWafWebAclForwardedIpConfig{
-							HeaderName:       "X-Forwarded-For",
-							FallbackBehavior: "NO_MATCH",
-						},
-					},
-				},
-				Action: "allow",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — IP set reference rules
-	// =========================================================================
-
-	ginkgo.It("accepts an IP set reference rule", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			ipSetRefRule("block-ips", 1, "arn:aws:wafv2:us-east-1:123456789012:regional/ipset/bad-ips/abc123"),
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts an IP set reference rule with forwarded IP config and position", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "ip-set-forwarded",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_IpSetReference{
-					IpSetReference: &AwsWafWebAclIpSetReferenceStatement{
-						Arn: "arn:aws:wafv2:us-east-1:123456789012:regional/ipset/allow-ips/def456",
-						ForwardedIpConfig: &AwsWafWebAclForwardedIpConfig{
-							HeaderName:       "X-Forwarded-For",
-							FallbackBehavior: "NO_MATCH",
-							Position:         "FIRST",
-						},
-					},
-				},
-				Action: "allow",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — Custom statement (escape hatch)
-	// =========================================================================
-
-	ginkgo.It("accepts a custom statement for SQL injection detection", func() {
-		sqliStatement, _ := structpb.NewStruct(map[string]interface{}{
-			"SqliMatchStatement": map[string]interface{}{
-				"FieldToMatch": map[string]interface{}{
-					"Body": map[string]interface{}{},
-				},
-				"TextTransformations": []interface{}{
-					map[string]interface{}{
-						"Priority": 0,
-						"Type":     "URL_DECODE",
-					},
-				},
-			},
-		})
-
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "block-sqli",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_CustomStatement{
-					CustomStatement: sqliStatement,
-				},
-				Action: "block",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — Multiple rules (production-like)
-	// =========================================================================
-
-	ginkgo.It("accepts a production-like Web ACL with multiple rule types", func() {
-		spec := minimalSpec()
-		spec.Description = "Production Web ACL"
-		spec.Rules = []*AwsWafWebAclRule{
-			managedRuleGroupRule("aws-common", 1, "AWSManagedRulesCommonRuleSet"),
-			managedRuleGroupRule("aws-known-bad", 2, "AWSManagedRulesKnownBadInputsRuleSet"),
-			managedRuleGroupRule("aws-sqli", 3, "AWSManagedRulesSQLiRuleSet"),
-			rateBasedRule("rate-limit", 4, 2000),
-			geoMatchRule("block-countries", 5, []string{"RU", "CN", "KP"}),
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — Custom response bodies
-	// =========================================================================
-
-	ginkgo.It("accepts custom response bodies with block action referencing them", func() {
-		spec := minimalSpec()
-		spec.DefaultAction = &AwsWafWebAclDefaultAction{
-			Type: "block",
-			CustomResponse: &AwsWafWebAclCustomResponse{
-				ResponseCode:          403,
-				CustomResponseBodyKey: "forbidden-html",
-			},
-		}
-		spec.CustomResponseBodies = []*AwsWafWebAclCustomResponseBody{
-			{
-				Key:         "forbidden-html",
-				Content:     "<html><body><h1>Forbidden</h1></body></html>",
-				ContentType: "TEXT_HTML",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — Logging
-	// =========================================================================
-
-	ginkgo.It("accepts a spec with logging enabled", func() {
-		spec := minimalSpec()
-		spec.Logging = &AwsWafWebAclLoggingConfig{
-			DestinationArn: strRef("arn:aws:logs:us-east-1:123456789012:log-group:aws-waf-logs-my-acl"),
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts logging with redacted headers", func() {
-		spec := minimalSpec()
-		spec.Logging = &AwsWafWebAclLoggingConfig{
-			DestinationArn:      strRef("arn:aws:logs:us-east-1:123456789012:log-group:aws-waf-logs-my-acl"),
-			RedactedHeaderNames: []string{"Authorization", "Cookie"},
-			RedactUriPath:       true,
-			RedactQueryString:   true,
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — Rule actions
-	// =========================================================================
-
-	ginkgo.It("accepts a rule with captcha action", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "captcha-suspicious",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_RateBased{
-					RateBased: &AwsWafWebAclRateBasedStatement{Limit: 100},
-				},
-				Action: "captcha",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a rule with challenge action", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "challenge-bots",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_RateBased{
-					RateBased: &AwsWafWebAclRateBasedStatement{Limit: 500},
-				},
-				Action: "challenge",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a rule with count action", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			geoMatchRule("count-geo", 1, []string{"CN"}),
-		}
-		spec.Rules[0].Action = "count"
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a block rule with custom response", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "block-with-custom-response",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{
-						CountryCodes: []string{"RU"},
-					},
-				},
-				Action: "block",
-				CustomResponse: &AwsWafWebAclCustomResponse{
-					ResponseCode: 403,
-					ResponseHeaders: []*AwsWafWebAclCustomHeader{
-						{Name: "x-blocked-reason", Value: "geo-restriction"},
-					},
-				},
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts an allow rule with custom request headers", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "allow-with-headers",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_IpSetReference{
-					IpSetReference: &AwsWafWebAclIpSetReferenceStatement{
-						Arn: "arn:aws:wafv2:us-east-1:123456789012:regional/ipset/trusted-ips/xyz",
-					},
-				},
-				Action: "allow",
-				CustomRequestHeaders: []*AwsWafWebAclCustomHeader{
-					{Name: "x-waf-verified", Value: "true"},
-				},
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Failure — Scope
-	// =========================================================================
-
-	ginkgo.It("fails with invalid scope", func() {
-		spec := minimalSpec()
-		spec.Scope = "INVALID"
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails with empty scope", func() {
-		spec := minimalSpec()
-		spec.Scope = ""
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Failure — Default action
-	// =========================================================================
-
-	ginkgo.It("fails with invalid default action type", func() {
+	ginkgo.It("rejects an invalid default action type", func() {
 		spec := minimalSpec()
 		spec.DefaultAction = &AwsWafWebAclDefaultAction{Type: "count"}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails with missing default action", func() {
-		spec := &AwsWafWebAclSpec{
-			Scope: "REGIONAL",
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails with custom_response on allow default action", func() {
+	ginkgo.It("accepts a block default action with custom response", func() {
 		spec := minimalSpec()
 		spec.DefaultAction = &AwsWafWebAclDefaultAction{
-			Type: "allow",
-			CustomResponse: &AwsWafWebAclCustomResponse{
-				ResponseCode: 403,
-			},
+			Type:           "block",
+			CustomResponse: &AwsWafWebAclCustomResponse{ResponseCode: 403},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
 	})
 
-	ginkgo.It("fails with custom_request_headers on block default action", func() {
+	ginkgo.It("rejects custom_response on an allow default action", func() {
 		spec := minimalSpec()
 		spec.DefaultAction = &AwsWafWebAclDefaultAction{
-			Type: "block",
-			CustomRequestHeaders: []*AwsWafWebAclCustomHeader{
-				{Name: "x-test", Value: "test"},
-			},
+			Type:           "allow",
+			CustomResponse: &AwsWafWebAclCustomResponse{ResponseCode: 403},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects custom_request_headers on a block default action", func() {
+		spec := minimalSpec()
+		spec.DefaultAction = &AwsWafWebAclDefaultAction{
+			Type:                 "block",
+			CustomRequestHeaders: []*AwsWafWebAclCustomHeader{{Name: "x-a", Value: "b"}},
+		}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
 	// =========================================================================
-	// Failure — Rule action / override_action mutual exclusivity
+	// Rule action model
 	// =========================================================================
 
-	ginkgo.It("fails when managed rule group uses action instead of override_action", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-managed",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_ManagedRuleGroup{
-					ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{
-						Name:       "AWSManagedRulesCommonRuleSet",
-						VendorName: "AWS",
+	ginkgo.It("accepts a managed rule group rule with override_action", func() {
+		gomega.Expect(protovalidate.Validate(aclWithRules(
+			managedRuleGroupRule("common", 1, "AWSManagedRulesCommonRuleSet"),
+		))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a managed rule group rule with action instead of override_action", func() {
+		rule := managedRuleGroupRule("common", 1, "AWSManagedRulesCommonRuleSet")
+		rule.OverrideAction = ""
+		rule.Action = "block"
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a rule group reference rule with action instead of override_action", func() {
+		rule := &AwsWafWebAclRule{
+			Name:     "custom-group",
+			Priority: 1,
+			Statement: stmt(&AwsWafWebAclStatement_RuleGroupReference{
+				RuleGroupReference: &AwsWafWebAclRuleGroupReferenceStatement{
+					Arn: "arn:aws:wafv2:us-west-2:111122223333:regional/rulegroup/x/1",
+				},
+			}),
+			Action: "block",
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a rule group reference rule with override_action", func() {
+		rule := &AwsWafWebAclRule{
+			Name:     "custom-group",
+			Priority: 1,
+			Statement: stmt(&AwsWafWebAclStatement_RuleGroupReference{
+				RuleGroupReference: &AwsWafWebAclRuleGroupReferenceStatement{
+					Arn: "arn:aws:wafv2:us-west-2:111122223333:regional/rulegroup/x/1",
+				},
+			}),
+			OverrideAction: "none",
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a match rule with override_action instead of action", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Action = ""
+		rule.OverrideAction = "none"
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid rule action", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Action = "drop"
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid override_action", func() {
+		rule := managedRuleGroupRule("common", 1, "AWSManagedRulesCommonRuleSet")
+		rule.OverrideAction = "block"
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a rule without a statement", func() {
+		rule := &AwsWafWebAclRule{Name: "no-stmt", Priority: 1, Action: "block"}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a statement with no arm set", func() {
+		rule := &AwsWafWebAclRule{
+			Name:      "empty-stmt",
+			Priority:  1,
+			Statement: &AwsWafWebAclStatement{},
+			Action:    "block",
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects custom_response on a non-block rule action", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Action = "count"
+		rule.CustomResponse = &AwsWafWebAclCustomResponse{ResponseCode: 429}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a rule with per-rule captcha and challenge immunity", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Action = "captcha"
+		rule.CaptchaConfig = &AwsWafWebAclImmunityTimeConfig{ImmunityTimeSec: 120}
+		rule.ChallengeConfig = &AwsWafWebAclImmunityTimeConfig{ImmunityTimeSec: 600}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Rate-based statements
+	// =========================================================================
+
+	ginkgo.It("rejects a rate limit below 10", func() {
+		gomega.Expect(protovalidate.Validate(aclWithRules(rateBasedRule("rate", 1, 5)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid evaluation window", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Statement.GetRateBased().EvaluationWindowSec = 90
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects FORWARDED_IP aggregation without forwarded_ip_config", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Statement.GetRateBased().AggregateKeyType = "FORWARDED_IP"
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts FORWARDED_IP aggregation with forwarded_ip_config", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rb := rule.Statement.GetRateBased()
+		rb.AggregateKeyType = "FORWARDED_IP"
+		rb.ForwardedIpConfig = &AwsWafWebAclForwardedIpConfig{
+			HeaderName:       "X-Forwarded-For",
+			FallbackBehavior: "MATCH",
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects custom_keys without CUSTOM_KEYS aggregation", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Statement.GetRateBased().CustomKeys = []*AwsWafWebAclRateBasedCustomKey{
+			{Key: &AwsWafWebAclRateBasedCustomKey_Ip{Ip: true}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects CUSTOM_KEYS aggregation without custom_keys", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Statement.GetRateBased().AggregateKeyType = "CUSTOM_KEYS"
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts CUSTOM_KEYS aggregation with header + uri_path keys", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rb := rule.Statement.GetRateBased()
+		rb.AggregateKeyType = "CUSTOM_KEYS"
+		rb.CustomKeys = []*AwsWafWebAclRateBasedCustomKey{
+			{Key: &AwsWafWebAclRateBasedCustomKey_Header{Header: &AwsWafWebAclKeyWithTransformations{
+				Name:                "x-api-key",
+				TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "NONE"}},
+			}}},
+			{Key: &AwsWafWebAclRateBasedCustomKey_UriPath{UriPath: &AwsWafWebAclTransformationsOnlyKey{
+				TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "LOWERCASE"}},
+			}}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects more than five custom keys", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rb := rule.Statement.GetRateBased()
+		rb.AggregateKeyType = "CUSTOM_KEYS"
+		for i := 0; i < 6; i++ {
+			rb.CustomKeys = append(rb.CustomKeys, &AwsWafWebAclRateBasedCustomKey{
+				Key: &AwsWafWebAclRateBasedCustomKey_QueryString{QueryString: &AwsWafWebAclTransformationsOnlyKey{
+					TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: int32(i), Type: "NONE"}},
+				}},
+			})
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a custom key with no arm set", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rb := rule.Statement.GetRateBased()
+		rb.AggregateKeyType = "CUSTOM_KEYS"
+		rb.CustomKeys = []*AwsWafWebAclRateBasedCustomKey{{}}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a false bool custom-key arm", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rb := rule.Statement.GetRateBased()
+		rb.AggregateKeyType = "CUSTOM_KEYS"
+		rb.CustomKeys = []*AwsWafWebAclRateBasedCustomKey{
+			{Key: &AwsWafWebAclRateBasedCustomKey_Ip{Ip: false}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Scope-down statements
+	// =========================================================================
+
+	ginkgo.It("accepts a geo scope-down on a managed rule group", func() {
+		rule := managedRuleGroupRule("common", 1, "AWSManagedRulesCommonRuleSet")
+		rule.Statement.GetManagedRuleGroup().ScopeDownStatement = stmt(&AwsWafWebAclStatement_GeoMatch{
+			GeoMatch: &AwsWafWebAclGeoMatchStatement{CountryCodes: []string{"US"}},
+		})
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a managed rule group inside a scope-down", func() {
+		rule := managedRuleGroupRule("common", 1, "AWSManagedRulesCommonRuleSet")
+		rule.Statement.GetManagedRuleGroup().ScopeDownStatement = stmt(&AwsWafWebAclStatement_ManagedRuleGroup{
+			ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{Name: "x", VendorName: "AWS"},
+		})
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a rate-based statement inside a rate-based scope-down", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Statement.GetRateBased().ScopeDownStatement = stmt(&AwsWafWebAclStatement_RateBased{
+			RateBased: &AwsWafWebAclRateBasedStatement{Limit: 100},
+		})
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a byte-match scope-down on a rate-based statement", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.Statement.GetRateBased().ScopeDownStatement = byteMatchStatement("/login")
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Logical composition (and/or/not)
+	// =========================================================================
+
+	ginkgo.It("accepts an AND of geo and byte-match", func() {
+		rule := matchRule("and-rule", 1, stmt(&AwsWafWebAclStatement_AndStatement{
+			AndStatement: &AwsWafWebAclAndStatement{Statements: []*AwsWafWebAclStatement{
+				stmt(&AwsWafWebAclStatement_GeoMatch{GeoMatch: &AwsWafWebAclGeoMatchStatement{CountryCodes: []string{"US"}}}),
+				byteMatchStatement("/admin"),
+			}},
+		}))
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an AND with a single statement", func() {
+		rule := matchRule("and-rule", 1, stmt(&AwsWafWebAclStatement_AndStatement{
+			AndStatement: &AwsWafWebAclAndStatement{Statements: []*AwsWafWebAclStatement{
+				byteMatchStatement("/admin"),
+			}},
+		}))
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a NOT of an OR nested three levels", func() {
+		rule := matchRule("nested", 1, stmt(&AwsWafWebAclStatement_NotStatement{
+			NotStatement: &AwsWafWebAclNotStatement{Statement: stmt(&AwsWafWebAclStatement_OrStatement{
+				OrStatement: &AwsWafWebAclOrStatement{Statements: []*AwsWafWebAclStatement{
+					byteMatchStatement("/health"),
+					stmt(&AwsWafWebAclStatement_LabelMatch{LabelMatch: &AwsWafWebAclLabelMatchStatement{
+						Scope: "LABEL",
+						Key:   "awswaf:managed:aws:bot-control:bot:category:monitoring",
+					}}),
+				}},
+			})},
+		}))
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a NOT without a statement", func() {
+		rule := matchRule("not-empty", 1, stmt(&AwsWafWebAclStatement_NotStatement{
+			NotStatement: &AwsWafWebAclNotStatement{},
+		}))
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Match statements + field_to_match + text transformations
+	// =========================================================================
+
+	ginkgo.It("accepts geo, ip-set, and regex-set reference rules", func() {
+		regexRefRule := matchRule("regex-set", 3, stmt(&AwsWafWebAclStatement_RegexPatternSetReference{
+			RegexPatternSetReference: &AwsWafWebAclRegexPatternSetReferenceStatement{
+				Arn: strRef("arn:aws:wafv2:us-west-2:111122223333:regional/regexpatternset/x/1"),
+				FieldToMatch: &AwsWafWebAclFieldToMatch{
+					Field: &AwsWafWebAclFieldToMatch_UriPath{UriPath: true},
+				},
+				TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "LOWERCASE"}},
+			},
+		}))
+		gomega.Expect(protovalidate.Validate(aclWithRules(
+			geoMatchRule("geo", 1, []string{"US", "CA"}),
+			ipSetRefRule("ips", 2, "arn:aws:wafv2:us-west-2:111122223333:regional/ipset/x/1"),
+			regexRefRule,
+		))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a geo match without country codes", func() {
+		gomega.Expect(protovalidate.Validate(aclWithRules(geoMatchRule("geo", 1, nil)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an ip-set reference without an arn", func() {
+		rule := &AwsWafWebAclRule{
+			Name:     "ips",
+			Priority: 1,
+			Statement: stmt(&AwsWafWebAclStatement_IpSetReference{
+				IpSetReference: &AwsWafWebAclIpSetReferenceStatement{},
+			}),
+			Action: "block",
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a byte match without text transformations", func() {
+		statement := byteMatchStatement("/admin")
+		statement.GetByteMatch().TextTransformations = nil
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("bm", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid positional constraint", func() {
+		statement := byteMatchStatement("/admin")
+		statement.GetByteMatch().PositionalConstraint = "NEAR"
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("bm", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid text transformation type", func() {
+		statement := byteMatchStatement("/admin")
+		statement.GetByteMatch().TextTransformations = []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "ROT13"}}
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("bm", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a field_to_match with no component set", func() {
+		statement := byteMatchStatement("/admin")
+		statement.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{}
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("bm", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a false bool field_to_match arm", func() {
+		statement := byteMatchStatement("/admin")
+		statement.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_UriPath{UriPath: false},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("bm", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a headers inspection with an include list", func() {
+		statement := byteMatchStatement("bot")
+		statement.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_Headers{Headers: &AwsWafWebAclHeadersMatch{
+				MatchPattern:     &AwsWafWebAclNamePattern{IncludedNames: []string{"user-agent"}},
+				MatchScope:       "VALUE",
+				OversizeHandling: "CONTINUE",
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("hdr", 1, statement)))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a name pattern selecting both all and an include list", func() {
+		statement := byteMatchStatement("bot")
+		statement.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_Headers{Headers: &AwsWafWebAclHeadersMatch{
+				MatchPattern:     &AwsWafWebAclNamePattern{All: true, IncludedNames: []string{"user-agent"}},
+				MatchScope:       "VALUE",
+				OversizeHandling: "CONTINUE",
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("hdr", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a cookies inspection without oversize handling", func() {
+		statement := byteMatchStatement("session")
+		statement.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_Cookies{Cookies: &AwsWafWebAclCookiesMatch{
+				MatchPattern: &AwsWafWebAclNamePattern{All: true},
+				MatchScope:   "ALL",
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("ck", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a json body inspection", func() {
+		statement := byteMatchStatement("admin")
+		statement.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_JsonBody{JsonBody: &AwsWafWebAclJsonBodyMatch{
+				MatchScope:       "VALUE",
+				IncludedPaths:    []string{"/role"},
+				OversizeHandling: "MATCH",
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("jb", 1, statement)))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid sqli sensitivity level", func() {
+		statement := stmt(&AwsWafWebAclStatement_SqliMatch{SqliMatch: &AwsWafWebAclSqliMatchStatement{
+			FieldToMatch:        &AwsWafWebAclFieldToMatch{Field: &AwsWafWebAclFieldToMatch_Body{Body: &AwsWafWebAclBodyMatch{}}},
+			TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "URL_DECODE"}},
+			SensitivityLevel:    "MEDIUM",
+		}})
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("sqli", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an xss match on the body with oversize handling", func() {
+		statement := stmt(&AwsWafWebAclStatement_XssMatch{XssMatch: &AwsWafWebAclXssMatchStatement{
+			FieldToMatch:        &AwsWafWebAclFieldToMatch{Field: &AwsWafWebAclFieldToMatch_Body{Body: &AwsWafWebAclBodyMatch{OversizeHandling: "MATCH"}}},
+			TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "HTML_ENTITY_DECODE"}},
+		}})
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("xss", 1, statement)))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid size constraint operator", func() {
+		statement := stmt(&AwsWafWebAclStatement_SizeConstraint{SizeConstraint: &AwsWafWebAclSizeConstraintStatement{
+			ComparisonOperator:  "GTE",
+			Size:                8192,
+			FieldToMatch:        &AwsWafWebAclFieldToMatch{Field: &AwsWafWebAclFieldToMatch_Body{Body: &AwsWafWebAclBodyMatch{}}},
+			TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "NONE"}},
+		}})
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("size", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a regex match over 512 characters", func() {
+		long := ""
+		for i := 0; i < 52; i++ {
+			long += "0123456789"
+		}
+		statement := stmt(&AwsWafWebAclStatement_RegexMatch{RegexMatch: &AwsWafWebAclRegexMatchStatement{
+			RegexString:         long,
+			FieldToMatch:        &AwsWafWebAclFieldToMatch{Field: &AwsWafWebAclFieldToMatch_UriPath{UriPath: true}},
+			TextTransformations: []*AwsWafWebAclTextTransformation{{Priority: 0, Type: "NONE"}},
+		}})
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("re", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid label match scope", func() {
+		statement := stmt(&AwsWafWebAclStatement_LabelMatch{LabelMatch: &AwsWafWebAclLabelMatchStatement{
+			Scope: "PREFIX",
+			Key:   "ns:label",
+		}})
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("lbl", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an asn match with more than 100 entries", func() {
+		asns := make([]int64, 101)
+		for i := range asns {
+			asns[i] = int64(64500 + i)
+		}
+		statement := stmt(&AwsWafWebAclStatement_AsnMatch{AsnMatch: &AwsWafWebAclAsnMatchStatement{AsnList: asns}})
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("asn", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a custom statement escape hatch", func() {
+		payload, err := structpb.NewStruct(map[string]interface{}{
+			"SqliMatchStatement": map[string]interface{}{
+				"FieldToMatch":        map[string]interface{}{"Body": map[string]interface{}{}},
+				"TextTransformations": []interface{}{map[string]interface{}{"Priority": 0, "Type": "URL_DECODE"}},
+			},
+		})
+		gomega.Expect(err).To(gomega.BeNil())
+		rule := matchRule("custom", 1, stmt(&AwsWafWebAclStatement_CustomStatement{CustomStatement: payload}))
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Managed rule group configs
+	// =========================================================================
+
+	ginkgo.It("accepts a bot control config", func() {
+		rule := managedRuleGroupRule("bots", 1, "AWSManagedRulesBotControlRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			BotControl: &AwsWafWebAclBotControlConfig{InspectionLevel: "TARGETED"},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid bot control inspection level", func() {
+		rule := managedRuleGroupRule("bots", 1, "AWSManagedRulesBotControlRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			BotControl: &AwsWafWebAclBotControlConfig{InspectionLevel: "DEEP"},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an ATP config with request and response inspection", func() {
+		rule := managedRuleGroupRule("atp", 1, "AWSManagedRulesATPRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			AccountTakeoverPrevention: &AwsWafWebAclAtpConfig{
+				LoginPath: "/api/login",
+				RequestInspection: &AwsWafWebAclAtpRequestInspection{
+					PayloadType:   "JSON",
+					UsernameField: &AwsWafWebAclFieldIdentifier{Identifier: "/email"},
+					PasswordField: &AwsWafWebAclFieldIdentifier{Identifier: "/password"},
+				},
+				ResponseInspection: &AwsWafWebAclResponseInspection{
+					StatusCode: &AwsWafWebAclResponseInspectionStatusCode{
+						SuccessCodes: []int32{200},
+						FailureCodes: []int32{401, 403},
 					},
 				},
-				Action: "block", // Should be override_action
 			},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when custom rule uses override_action instead of action", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-geo",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{
-						CountryCodes: []string{"CN"},
-					},
+	ginkgo.It("rejects an ATP config without a login path", func() {
+		rule := managedRuleGroupRule("atp", 1, "AWSManagedRulesATPRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			AccountTakeoverPrevention: &AwsWafWebAclAtpConfig{},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an ATP request inspection with an invalid payload type", func() {
+		rule := managedRuleGroupRule("atp", 1, "AWSManagedRulesATPRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			AccountTakeoverPrevention: &AwsWafWebAclAtpConfig{
+				LoginPath: "/api/login",
+				RequestInspection: &AwsWafWebAclAtpRequestInspection{
+					PayloadType:   "XML",
+					UsernameField: &AwsWafWebAclFieldIdentifier{Identifier: "/email"},
+					PasswordField: &AwsWafWebAclFieldIdentifier{Identifier: "/password"},
 				},
-				OverrideAction: "none", // Should be action
 			},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when rule has both action and override_action", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "both-actions",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{
-						CountryCodes: []string{"CN"},
-					},
-				},
-				Action:         "block",
-				OverrideAction: "count",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails when rule has neither action nor override_action", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "no-action",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{
-						CountryCodes: []string{"CN"},
+	ginkgo.It("accepts an ACFP config", func() {
+		rule := managedRuleGroupRule("acfp", 1, "AWSManagedRulesACFPRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			AccountCreationFraudPrevention: &AwsWafWebAclAcfpConfig{
+				CreationPath:         "/api/signup",
+				RegistrationPagePath: "/register",
+				RequestInspection: &AwsWafWebAclAcfpRequestInspection{
+					PayloadType: "JSON",
+					EmailField:  &AwsWafWebAclFieldIdentifier{Identifier: "/email"},
+					PhoneNumberFields: &AwsWafWebAclFieldIdentifiers{
+						Identifiers: []string{"/phone"},
 					},
 				},
 			},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
 	})
 
-	// =========================================================================
-	// Failure — Rule action values
-	// =========================================================================
+	ginkgo.It("rejects an ACFP config without request inspection", func() {
+		rule := managedRuleGroupRule("acfp", 1, "AWSManagedRulesACFPRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			AccountCreationFraudPrevention: &AwsWafWebAclAcfpConfig{
+				CreationPath:         "/api/signup",
+				RegistrationPagePath: "/register",
+			},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
 
-	ginkgo.It("fails with invalid rule action value", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-action",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{CountryCodes: []string{"CN"}},
+	ginkgo.It("accepts an anti-DDoS config", func() {
+		rule := managedRuleGroupRule("ddos", 1, "AWSManagedRulesAntiDDoSRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			AntiDdos: &AwsWafWebAclAntiDdosConfig{
+				ClientSideAction: &AwsWafWebAclAntiDdosClientSideAction{
+					UsageOfAction:               "ENABLED",
+					Sensitivity:                 "HIGH",
+					ExemptUriRegularExpressions: []string{"^/api/webhooks/.*"},
 				},
-				Action: "reject", // Invalid
+				SensitivityToBlock: "LOW",
 			},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
 	})
 
-	ginkgo.It("fails with invalid override_action value", func() {
+	ginkgo.It("rejects an anti-DDoS config without a client side action", func() {
+		rule := managedRuleGroupRule("ddos", 1, "AWSManagedRulesAntiDDoSRuleSet")
+		rule.Statement.GetManagedRuleGroup().ManagedRuleGroupConfigs = &AwsWafWebAclManagedRuleGroupConfigs{
+			AntiDdos: &AwsWafWebAclAntiDdosConfig{},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid rule action override", func() {
+		rule := managedRuleGroupRule("common", 1, "AWSManagedRulesCommonRuleSet")
+		rule.Statement.GetManagedRuleGroup().RuleActionOverrides = []*AwsWafWebAclRuleActionOverride{
+			{Name: "SizeRestrictions_BODY", Action: "drop"},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Top-level configs
+	// =========================================================================
+
+	ginkgo.It("accepts web-ACL-wide captcha and challenge immunity windows", func() {
 		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-override",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_ManagedRuleGroup{
-					ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{
-						Name:       "AWSManagedRulesCommonRuleSet",
-						VendorName: "AWS",
-					},
-				},
-				OverrideAction: "block", // Invalid for override_action
+		spec.CaptchaConfig = &AwsWafWebAclImmunityTimeConfig{ImmunityTimeSec: 300}
+		spec.ChallengeConfig = &AwsWafWebAclImmunityTimeConfig{ImmunityTimeSec: 86400}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an immunity window below 60 seconds", func() {
+		spec := minimalSpec()
+		spec.CaptchaConfig = &AwsWafWebAclImmunityTimeConfig{ImmunityTimeSec: 30}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts association config body limits", func() {
+		spec := minimalSpec()
+		spec.AssociationConfig = &AwsWafWebAclAssociationConfig{
+			ApiGatewayRequestBodyLimit:      "KB_48",
+			CognitoUserPoolRequestBodyLimit: "KB_32",
+		}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid body inspection limit", func() {
+		spec := minimalSpec()
+		spec.AssociationConfig = &AwsWafWebAclAssociationConfig{
+			CloudfrontRequestBodyLimit: "KB_128",
+		}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a data protection config", func() {
+		spec := minimalSpec()
+		spec.DataProtectionConfig = &AwsWafWebAclDataProtectionConfig{
+			DataProtections: []*AwsWafWebAclDataProtection{
+				{FieldType: "SINGLE_HEADER", FieldKeys: []string{"authorization"}, Action: "HASH"},
+				{FieldType: "BODY", Action: "SUBSTITUTION"},
 			},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
 	})
 
-	// =========================================================================
-	// Failure — Statement required
-	// =========================================================================
-
-	ginkgo.It("fails when rule has no statement", func() {
+	ginkgo.It("rejects a SINGLE_HEADER data protection without field keys", func() {
 		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "no-statement",
-				Priority: 1,
-				Action:   "block",
+		spec.DataProtectionConfig = &AwsWafWebAclDataProtectionConfig{
+			DataProtections: []*AwsWafWebAclDataProtection{
+				{FieldType: "SINGLE_HEADER", Action: "HASH"},
 			},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
-	// =========================================================================
-	// Failure — Rate-based validations
-	// =========================================================================
-
-	ginkgo.It("fails with rate-based limit below minimum (10)", func() {
+	ginkgo.It("rejects a BODY data protection with field keys", func() {
 		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{rateBasedRule("too-low", 1, 5)}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails with invalid evaluation_window_sec", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-window",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_RateBased{
-					RateBased: &AwsWafWebAclRateBasedStatement{
-						Limit:               1000,
-						EvaluationWindowSec: 180, // Invalid: not in [60,120,300,600]
-					},
-				},
-				Action: "block",
+		spec.DataProtectionConfig = &AwsWafWebAclDataProtectionConfig{
+			DataProtections: []*AwsWafWebAclDataProtection{
+				{FieldType: "BODY", FieldKeys: []string{"x"}, Action: "HASH"},
 			},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails with invalid aggregate_key_type", func() {
+	ginkgo.It("rejects an invalid data protection action", func() {
 		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-key-type",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_RateBased{
-					RateBased: &AwsWafWebAclRateBasedStatement{
-						Limit:            1000,
-						AggregateKeyType: "INVALID",
-					},
-				},
-				Action: "block",
+		spec.DataProtectionConfig = &AwsWafWebAclDataProtectionConfig{
+			DataProtections: []*AwsWafWebAclDataProtection{
+				{FieldType: "QUERY_STRING", Action: "DELETE"},
 			},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails when FORWARDED_IP type has no forwarded_ip_config", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "missing-fwd-config",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_RateBased{
-					RateBased: &AwsWafWebAclRateBasedStatement{
-						Limit:            1000,
-						AggregateKeyType: "FORWARDED_IP",
-						// Missing forwarded_ip_config
-					},
-				},
-				Action: "block",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
 	// =========================================================================
-	// Failure — Geo match validations
+	// Custom response bodies + logging
 	// =========================================================================
 
-	ginkgo.It("fails with empty country_codes", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "empty-countries",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{
-						CountryCodes: []string{},
-					},
-				},
-				Action: "block",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Failure — Forwarded IP config validations
-	// =========================================================================
-
-	ginkgo.It("fails with invalid fallback_behavior", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-fallback",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{
-						CountryCodes: []string{"US"},
-						ForwardedIpConfig: &AwsWafWebAclForwardedIpConfig{
-							HeaderName:       "X-Forwarded-For",
-							FallbackBehavior: "INVALID",
-						},
-					},
-				},
-				Action: "allow",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails with invalid forwarded IP position", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-position",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_IpSetReference{
-					IpSetReference: &AwsWafWebAclIpSetReferenceStatement{
-						Arn: "arn:aws:wafv2:us-east-1:123456789012:regional/ipset/test/abc",
-						ForwardedIpConfig: &AwsWafWebAclForwardedIpConfig{
-							HeaderName:       "X-Forwarded-For",
-							FallbackBehavior: "MATCH",
-							Position:         "MIDDLE", // Invalid
-						},
-					},
-				},
-				Action: "block",
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Failure — Custom response body validations
-	// =========================================================================
-
-	ginkgo.It("fails with invalid content_type", func() {
+	ginkgo.It("accepts custom response bodies with valid content types", func() {
 		spec := minimalSpec()
 		spec.CustomResponseBodies = []*AwsWafWebAclCustomResponseBody{
-			{
-				Key:         "bad-type",
-				Content:     "test",
-				ContentType: "TEXT_XML", // Invalid
-			},
+			{Key: "blocked", Content: "{\"error\": \"blocked\"}", ContentType: "APPLICATION_JSON"},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
 	})
 
-	ginkgo.It("fails with missing custom response body key", func() {
+	ginkgo.It("rejects an invalid custom response body content type", func() {
 		spec := minimalSpec()
 		spec.CustomResponseBodies = []*AwsWafWebAclCustomResponseBody{
-			{
-				Key:         "",
-				Content:     "test",
-				ContentType: "TEXT_PLAIN",
-			},
+			{Key: "blocked", Content: "<xml/>", ContentType: "APPLICATION_XML"},
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
-	// =========================================================================
-	// Failure — Custom response validations
-	// =========================================================================
+	ginkgo.It("rejects a custom response code outside 200-600", func() {
+		rule := rateBasedRule("rate", 1, 1000)
+		rule.CustomResponse = &AwsWafWebAclCustomResponse{ResponseCode: 199}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
 
-	ginkgo.It("fails with response_code below 200", func() {
+	ginkgo.It("accepts a logging config with a destination reference", func() {
 		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-response-code",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{CountryCodes: []string{"CN"}},
-				},
-				Action: "block",
-				CustomResponse: &AwsWafWebAclCustomResponse{
-					ResponseCode: 100, // Below minimum
-				},
-			},
+		spec.Logging = &AwsWafWebAclLoggingConfig{
+			DestinationArn:      strRef("arn:aws:logs:us-west-2:111122223333:log-group:aws-waf-logs-test"),
+			RedactedHeaderNames: []string{"authorization"},
+			RedactUriPath:       true,
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
 	})
 
-	ginkgo.It("fails with custom_response on non-block action", func() {
+	ginkgo.It("rejects a logging config without a destination", func() {
 		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "response-on-allow",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_GeoMatch{
-					GeoMatch: &AwsWafWebAclGeoMatchStatement{CountryCodes: []string{"US"}},
-				},
-				Action: "allow",
-				CustomResponse: &AwsWafWebAclCustomResponse{
-					ResponseCode: 403,
-				},
-			},
-		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		spec.Logging = &AwsWafWebAclLoggingConfig{}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
 	})
 
 	// =========================================================================
-	// Failure — Rule action override validations
+	// Forwarded IP config
 	// =========================================================================
 
-	ginkgo.It("fails with invalid rule action override action", func() {
-		spec := minimalSpec()
-		spec.Rules = []*AwsWafWebAclRule{
-			{
-				Name:     "bad-override-action",
-				Priority: 1,
-				Statement: &AwsWafWebAclRule_ManagedRuleGroup{
-					ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{
-						Name:       "AWSManagedRulesCommonRuleSet",
-						VendorName: "AWS",
-						RuleActionOverrides: []*AwsWafWebAclRuleActionOverride{
-							{Name: "SomeRule", Action: "reject"}, // Invalid
-						},
-					},
-				},
-				OverrideAction: "none",
-			},
+	ginkgo.It("rejects an invalid forwarded-ip fallback behavior", func() {
+		rule := geoMatchRule("geo", 1, []string{"US"})
+		rule.Statement.GetGeoMatch().ForwardedIpConfig = &AwsWafWebAclForwardedIpConfig{
+			HeaderName:       "X-Forwarded-For",
+			FallbackBehavior: "IGNORE",
 		}
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
 	})
 
-	// =========================================================================
-	// Failure — API envelope validations
-	// =========================================================================
-
-	ginkgo.It("fails with wrong apiVersion", func() {
-		input := &AwsWafWebAcl{
-			ApiVersion: "wrong/v1",
-			Kind:       "AwsWafWebAcl",
-			Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-			Spec:       minimalSpec(),
+	ginkgo.It("rejects an invalid forwarded-ip position", func() {
+		rule := ipSetRefRule("ips", 1, "arn:aws:wafv2:us-west-2:111122223333:regional/ipset/x/1")
+		rule.Statement.GetIpSetReference().ForwardedIpConfig = &AwsWafWebAclForwardedIpConfig{
+			HeaderName:       "X-Forwarded-For",
+			FallbackBehavior: "MATCH",
+			Position:         "MIDDLE",
 		}
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails with wrong kind", func() {
-		input := &AwsWafWebAcl{
-			ApiVersion: "aws.planton.dev/v1",
-			Kind:       "WrongKind",
-			Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-			Spec:       minimalSpec(),
-		}
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails with missing metadata", func() {
-		input := &AwsWafWebAcl{
-			ApiVersion: "aws.planton.dev/v1",
-			Kind:       "AwsWafWebAcl",
-			Spec:       minimalSpec(),
-		}
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails with missing spec", func() {
-		input := &AwsWafWebAcl{
-			ApiVersion: "aws.planton.dev/v1",
-			Kind:       "AwsWafWebAcl",
-			Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-		}
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("fails with description exceeding 256 characters", func() {
-		spec := minimalSpec()
-		longDesc := ""
-		for i := 0; i < 300; i++ {
-			longDesc += "a"
-		}
-		spec.Description = longDesc
-		input := minimalAcl(spec)
-		err := protovalidate.Validate(input)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
 	})
 })
-
-// strRef creates a StringValueOrRef with a literal value.
-func strRef(val string) *foreignkeyv1.StringValueOrRef {
-	return &foreignkeyv1.StringValueOrRef{
-		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
-	}
-}

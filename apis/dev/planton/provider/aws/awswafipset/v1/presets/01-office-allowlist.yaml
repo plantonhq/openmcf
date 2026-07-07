@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsWafIpSet
+metadata:
+  org: example-org
+  env: prod
+  name: office-allowlist
+  id: office-allowlist-id
+spec:
+  region: <aws-region>
+  scope: REGIONAL
+  ipAddressVersion: IPV4
+  addresses:
+    - 203.0.113.0/24
+    - 198.51.100.44/32
+  description: Corporate office and VPN egress ranges

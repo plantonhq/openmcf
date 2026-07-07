@@ -2,6 +2,8 @@ apiVersion: aws.planton.dev/v1
 kind: AwsWafWebAcl
 metadata:
   name: test-waf-acl
+  org: acme
+  env: dev
 spec:
   region: us-west-2
   scope: REGIONAL
@@ -11,11 +13,55 @@ spec:
     - name: aws-managed-common
       priority: 1
       overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesCommonRuleSet
-        vendorName: AWS
-    - name: rate-limit
+      statement:
+        managedRuleGroup:
+          name: AWSManagedRulesCommonRuleSet
+          vendorName: AWS
+          scopeDownStatement:
+            notStatement:
+              statement:
+                byteMatch:
+                  searchString: /health
+                  positionalConstraint: STARTS_WITH
+                  fieldToMatch:
+                    uriPath: true
+                  textTransformations:
+                    - priority: 0
+                      type: NONE
+    - name: rate-limit-per-api-key
       priority: 2
       action: block
-      rateBased:
-        limit: 2000
+      statement:
+        rateBased:
+          limit: 2000
+          aggregateKeyType: CUSTOM_KEYS
+          customKeys:
+            - header:
+                name: x-api-key
+                textTransformations:
+                  - priority: 0
+                    type: NONE
+            - ip: true
+    - name: block-bad-paths
+      priority: 3
+      action: block
+      customResponse:
+        responseCode: 403
+      statement:
+        orStatement:
+          statements:
+            - byteMatch:
+                searchString: /wp-admin
+                positionalConstraint: STARTS_WITH
+                fieldToMatch:
+                  uriPath: true
+                textTransformations:
+                  - priority: 0
+                    type: LOWERCASE
+            - sqliMatch:
+                fieldToMatch:
+                  body:
+                    oversizeHandling: MATCH
+                textTransformations:
+                  - priority: 0
+                    type: URL_DECODE

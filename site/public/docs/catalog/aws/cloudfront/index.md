@@ -104,7 +104,7 @@ This serves the private bucket on the distribution's `*.cloudfront.net` domain w
 | `priceClass` | `string` | `PriceClass_All` (default), `PriceClass_200`, `PriceClass_100`. |
 | `httpVersion` | `string` | `http2` (default), `http2and3`, `http3`, `http1.1`. |
 | `isIpv6Enabled` | `bool` | Free dual-stack serving. |
-| `webAclId` | `ref` | CLOUDFRONT-scope WAF Web ACL ARN (references `AwsWafWebAcl`). |
+| `webAclArn` | `ref` | CLOUDFRONT-scope WAF Web ACL ARN (references `AwsWafWebAcl`). |
 | `customErrorResponses` | `list` | Map origin errors to custom pages with error-caching control. |
 | `geoRestriction` | `object` | Country whitelist/blacklist. |
 | `logging` | `object` | Standard access logs to an S3 bucket domain name. |

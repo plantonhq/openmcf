@@ -218,3 +218,19 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   content_type = coalesce(each.value.content_type, "application/octet-stream")
   ```
 - See the reference component `iac/tf/` directories named in TOOLS for worked examples
+
+HANDLING RECURSIVE PROTO MESSAGES (self-referential statement trees)
+- When a spec message references itself (e.g. WAFv2 AND/OR/NOT statements, or any
+  nested tree whose descriptor cycle would hang the variables generator), the
+  generator detects the cycle on the current walk path and collapses that subtree
+  to bare `any` in `variables.tf`.
+- Terraform cannot express `list(any)` or `map(any)` when element types differ
+  across entries (heterogeneous object shapes under one repeated field). When a
+  list or map's element type contains free-form `any`, the generator emits the
+  **entire attribute** as bare `any` (`TFFreeFormList` / `TFFreeFormMap`), not
+  `list(object({...}))` with an `any` leaf -- otherwise `tofu plan` fails with
+  "element types must all match for conversion to list".
+- The module must serialize such trees itself (typically `rule_json` / `jsonencode`
+  in HCL, or a Go builder in Pulumi) rather than expecting typed nested Terraform
+  resources for every statement variant. Add a unit test on the serializer and a
+  regression test in `variablestf_test.go` when introducing a new recursive spec.

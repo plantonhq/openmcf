@@ -24,6 +24,7 @@ variable "spec" {
     client_keep_alive_seconds = optional(number, 0)
     http2_enabled = optional(bool)
     waf_fail_open_enabled = optional(bool, false)
+    web_acl_arn = optional(string, "")
     zonal_shift_enabled = optional(bool, false)
     drop_invalid_header_fields = optional(bool, false)
     preserve_host_header = optional(bool, false)

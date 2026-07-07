@@ -6,8 +6,10 @@
 # gateway, which the harness VPC does not -- the internal scheme proves the
 # ALB lifecycle without dragging the gateway chain into every run. No
 # security groups: AWS attaches the VPC default group, which is enough for a
-# create-and-destroy existence check. Full metadata is supplied for
-# tagging/orphan cleanup.
+# create-and-destroy existence check. The web_acl_arn reference (resolved
+# against the fixture web ACL the e2e-prerequisites annotation deploys)
+# proves the WAF association the module creates alongside the load
+# balancer. Full metadata is supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1
 kind: AwsAlb
 metadata:
@@ -20,6 +22,7 @@ metadata:
     e2e-component: awsalb
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsWafWebAcl"
   tags:
     - planton-e2e
 spec:
@@ -36,3 +39,9 @@ spec:
         fieldPath: status.outputs.subnet_id
   idleTimeoutSeconds: 60
   desyncMitigationMode: defensive
+  wafFailOpenEnabled: true
+  webAclArn:
+    valueFrom:
+      kind: AwsWafWebAcl
+      name: planton-oss-e2e-awswafwebacl-prereq
+      fieldPath: status.outputs.web_acl_arn

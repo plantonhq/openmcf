@@ -673,6 +673,18 @@ enum CloudResourceKind {
     id_prefix: "awswaf"
   }];
 
+  AwsWafIpSet = 361 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awswafips"
+  }];
+
+  AwsWafRegexPatternSet = 362 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awswafregex"
+  }];
+
   // --- Monitoring / Observability ---
 
   AwsCloudwatchLogGroup = 310 [(kind_meta) = {

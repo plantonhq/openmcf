@@ -104,4 +104,6 @@ The following AWS resources can be deployed using Planton:
 - [Transit Gateway](/docs/catalog/aws/transit-gateway)
 - [VPC](/docs/catalog/aws/vpc)
 - [VPC Endpoint](/docs/catalog/aws/vpc-endpoint)
+- [WAF IP Set](/docs/catalog/aws/waf-ip-set)
+- [WAF Regex Pattern Set](/docs/catalog/aws/waf-regex-pattern-set)
 - [WAF Web ACL](/docs/catalog/aws/waf-web-acl)

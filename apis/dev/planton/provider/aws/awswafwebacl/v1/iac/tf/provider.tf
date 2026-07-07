@@ -1,8 +1,11 @@
 terraform {
   required_providers {
     aws = {
+      # v6 floor: the asn_match statement landed in 6.0.0 (rule_json itself
+      # in 5.61, data_protection_config in 5.100) -- the full modeled
+      # surface needs the v6 line.
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.0.0"
     }
   }
 }

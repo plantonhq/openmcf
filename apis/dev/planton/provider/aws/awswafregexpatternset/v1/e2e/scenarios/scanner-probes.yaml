@@ -1,0 +1,25 @@
+# AwsWafRegexPatternSet scenario: a REGIONAL set of scanner-probe path
+# patterns exercising the regexes AWS's PCRE subset supports (anchors,
+# character classes, escapes). A true leaf: pattern sets need no fixtures.
+apiVersion: aws.planton.dev/v1
+kind: AwsWafRegexPatternSet
+metadata:
+  name: planton-oss-e2e-awswafregex-probes
+  id: planton-oss-e2e-awswafregex-probes
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awswafregexpatternset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  scope: REGIONAL
+  regularExpressions:
+    - ^/wp-admin/.*
+    - ^/\.env$
+    - ^/phpmyadmin/.*
+  description: Common scanner probe paths (E2E)

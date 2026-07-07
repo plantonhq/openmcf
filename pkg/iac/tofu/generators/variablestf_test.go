@@ -14,6 +14,7 @@ import (
 	kubernetescronjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 func TestProtoToVariablesTF_FreeFormJsonMapIsAnyNotMapAny(t *testing.T) {
@@ -283,6 +284,33 @@ func TestProtoToVariablesTF_OptionalScalarsAndMaps(t *testing.T) {
 	ecrspec := extractBlock(generateVariables(t, &awsecrrepov1.AwsEcrRepo{}), `variable "spec"`)
 	if !strings.Contains(ecrspec, "force_delete = optional(bool, false)") {
 		t.Errorf("ecr spec.force_delete must be optional(bool, false):\n%s", ecrspec)
+	}
+}
+
+// TestProtoToVariablesTF_RecursiveMessageCollapsesToAny asserts the descriptor
+// walk terminates on a self-recursive message and collapses the recursive
+// subtree to `any` (the google.protobuf.Struct treatment). Terraform's type
+// language cannot express a recursive object constraint, and naturally
+// recursive protos (boolean statement trees, nested expression grammars) are a
+// legitimate spec shape -- before cycle detection this walk never returned.
+// descriptorpb.DescriptorProto is used as the fixture because it is recursive
+// by definition (nested_type is a repeated DescriptorProto).
+func TestProtoToVariablesTF_RecursiveMessageCollapsesToAny(t *testing.T) {
+	got := generateVariables(t, &descriptorpb.DescriptorProto{})
+
+	// The direct self-recursion (nested_type, a repeated DescriptorProto at
+	// the root) must collapse to bare `any` instead of recursing forever.
+	// Not list(any): Terraform requires all list(any) elements to converge
+	// to one type, which recursive elements cannot guarantee.
+	nested := extractBlock(got, `variable "nested_type"`)
+	if !strings.Contains(nested, "type = any") {
+		t.Errorf("recursive repeated field must render bare any, got:\n%s", got)
+	}
+	// Non-recursive siblings keep their full typed shape (the cycle guard is
+	// path-scoped, not a blanket flattening).
+	field := extractBlock(got, `variable "field"`)
+	if !strings.Contains(field, "type_name = optional(string)") {
+		t.Errorf("non-recursive sibling fields must stay fully typed, got:\n%s", got)
 	}
 }
 

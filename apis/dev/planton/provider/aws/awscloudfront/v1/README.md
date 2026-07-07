@@ -38,7 +38,7 @@ Set `aliases` plus `viewerCertificate` with the ACM arm (a `StringValueOrRef` to
 - **`customErrorResponses`** — replace origin errors with custom pages (e.g. map S3's 403-for-missing-object to a 404, or to `200 /index.html` for SPAs) and control error caching.
 - **`geoRestriction`** — allow or deny viewers by country.
 - **`logging`** — standard access logs to an S3 bucket (the bucket needs ACLs enabled).
-- **`webAclId`** — a CLOUDFRONT-scope WAF Web ACL by ARN (referenceable from an `AwsWafWebAcl`).
+- **`webAclArn`** — a CLOUDFRONT-scope WAF Web ACL by ARN (referenceable from an `AwsWafWebAcl`).
 - **`priceClass`** — the cost/latency dial (`PriceClass_All` default, `PriceClass_200`, `PriceClass_100`).
 - **`httpVersion`** / **`isIpv6Enabled`** — protocol surface (`http2and3` is the safe way to adopt HTTP/3; IPv6 costs nothing).
 - **`enableAdditionalMetrics`** — CloudWatch additional metrics (cache hit rate, origin latency, per-status error rates).

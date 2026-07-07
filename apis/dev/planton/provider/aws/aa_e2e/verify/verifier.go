@@ -113,6 +113,9 @@ var verifiers = map[string]Verifier{
 	"awscognitoresourceserver":       &cognitoResourceServerVerifier{},
 	"awselasticfilesystem":           &efsFileSystemVerifier{},
 	"awsefsaccesspoint":              &efsAccessPointVerifier{},
+	"awswafwebacl":                   &wafWebAclVerifier{},
+	"awswafipset":                    &wafIpSetVerifier{},
+	"awswafregexpatternset":          &wafRegexPatternSetVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

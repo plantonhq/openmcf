@@ -201,8 +201,10 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 	if spec.PriceClass != "" {
 		args.PriceClass = pulumi.String(spec.PriceClass)
 	}
-	if spec.GetWebAclId().GetValue() != "" {
-		args.WebAclId = pulumi.String(spec.GetWebAclId().GetValue())
+	// The provider argument is named WebAclId, but for WAFv2 it takes the
+	// web ACL's ARN (the bare ID form is only for retired WAF Classic).
+	if spec.GetWebAclArn().GetValue() != "" {
+		args.WebAclId = pulumi.String(spec.GetWebAclArn().GetValue())
 	}
 	if len(originGroups) > 0 {
 		args.OriginGroups = originGroups

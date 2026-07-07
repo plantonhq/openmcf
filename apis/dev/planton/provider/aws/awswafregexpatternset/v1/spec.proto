@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awswafregexpatternset.v1;
+
+import "buf/validate/validate.proto";
+
+// AwsWafRegexPatternSetSpec defines an AWS WAFv2 regex pattern set — a named,
+// reusable collection of regular expressions that web ACL rules match request
+// components against (URI paths, headers, query strings, bodies). Pattern
+// sets centralize regexes that many rules share: update the set once and
+// every referencing rule sees the change immediately, with no web ACL
+// redeploy.
+//
+// A web ACL references the set through a regex_pattern_set_reference
+// statement using the set's ARN (exported as the regex_pattern_set_arn stack
+// output); the statement matches when ANY regex in the set matches the
+// inspected component. For a one-off regex that no other rule shares, the
+// web ACL's inline regex_match statement is the simpler choice — reach for a
+// pattern set when the same expressions back multiple rules or need
+// independent ownership.
+//
+// scope is create-time immutable (ForceNew). AWS supports a subset of PCRE —
+// notably NO backreferences or lookaround assertions; patterns using them
+// are rejected by AWS at create time.
+message AwsWafRegexPatternSetSpec {
+  option (buf.validate.message).cel = {
+    id: "cloudfront_scope_requires_us_east_1"
+    message: "CloudFront-scoped WAF resources live in the global (us-east-1) region — set region to 'us-east-1' when scope is 'CLOUDFRONT'"
+    expression: "this.scope != 'CLOUDFRONT' || this.region == 'us-east-1'"
+  };
+
+  // The AWS region where the pattern set is created. Must match the scope of
+  // the web ACLs that will reference it: a REGIONAL set lives in the same
+  // region as the resources it protects, while a CLOUDFRONT set must be
+  // created in us-east-1 (the WAF global region).
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Whether the set is usable by REGIONAL web ACLs (protecting ALBs, API
+  // Gateway, AppSync, Cognito, App Runner, Verified Access) or CLOUDFRONT
+  // web ACLs (protecting CloudFront distributions). Create-time immutable
+  // (ForceNew). A web ACL can only reference sets of its own scope.
+  string scope = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "REGIONAL",
+        "CLOUDFRONT"
+      ]
+    }
+  ];
+
+  // The regular expressions in the set, each up to 200 characters. AWS's
+  // default quota is 10 expressions per set (adjustable via Service Quotas).
+  // AWS supports a subset of PCRE — no backreferences (\1), no lookaround
+  // ((?=...)/(?<=...)); such patterns fail at AWS create time. At least one
+  // expression is required — unlike IP sets, AWS rejects an empty pattern
+  // set.
+  repeated string regular_expressions = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string = {
+      min_len: 1
+      max_len: 200
+    }
+  ];
+
+  // Free-form description of what the patterns match and who maintains them
+  // (e.g. "Blocked admin-path probes — owned by SecEng"). 1–256 characters
+  // when set.
+  string description = 4 [(buf.validate.field).string.max_len = 256];
+}
