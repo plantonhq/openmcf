@@ -31,6 +31,10 @@ var _ = ginkgo.Describe("GcpDataprocAutoscalingPolicySpec", func() {
 		}
 	}
 
+	// Helper for explicit-presence doubles (the scale factors), where a
+	// set 0.0 is a legitimate value distinct from unset.
+	f64 := func(v float64) *float64 { return &v }
+
 	// Helper to build a minimal valid GcpDataprocAutoscalingPolicy.
 	minimal := func() *GcpDataprocAutoscalingPolicy {
 		return &GcpDataprocAutoscalingPolicy{
@@ -48,8 +52,8 @@ var _ = ginkgo.Describe("GcpDataprocAutoscalingPolicySpec", func() {
 				BasicAlgorithm: &GcpDataprocAutoscalingPolicyBasicAlgorithm{
 					YarnConfig: &GcpDataprocAutoscalingPolicyYarnConfig{
 						GracefulDecommissionTimeout: "3600s",
-						ScaleUpFactor:               0.5,
-						ScaleDownFactor:             1.0,
+						ScaleUpFactor:               f64(0.5),
+						ScaleDownFactor:             f64(1.0),
 					},
 				},
 			},
@@ -154,16 +158,30 @@ var _ = ginkgo.Describe("GcpDataprocAutoscalingPolicySpec", func() {
 
 	ginkgo.It("should accept scale factors at the 1.0 upper bound", func() {
 		msg := minimal()
-		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = 1.0
-		msg.Spec.BasicAlgorithm.YarnConfig.ScaleDownFactor = 1.0
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = f64(1.0)
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleDownFactor = f64(1.0)
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should accept small fractional scale factors", func() {
 		msg := minimal()
-		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = 0.05
-		msg.Spec.BasicAlgorithm.YarnConfig.ScaleDownFactor = 0.05
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = f64(0.05)
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleDownFactor = f64(0.05)
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an explicit 0.0 scale_down_factor (scale-down disabled)", func() {
+		msg := minimal()
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleDownFactor = f64(0.0)
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an explicit 0.0 scale_up_factor", func() {
+		msg := minimal()
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = f64(0.0)
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -193,8 +211,8 @@ var _ = ginkgo.Describe("GcpDataprocAutoscalingPolicySpec", func() {
 			CooldownPeriod: "120s",
 			YarnConfig: &GcpDataprocAutoscalingPolicyYarnConfig{
 				GracefulDecommissionTimeout: "3600s",
-				ScaleUpFactor:               0.5,
-				ScaleDownFactor:             1.0,
+				ScaleUpFactor:               f64(0.5),
+				ScaleDownFactor:             f64(1.0),
 				ScaleUpMinWorkerFraction:    0.05,
 				ScaleDownMinWorkerFraction:  0.05,
 			},
@@ -355,23 +373,41 @@ var _ = ginkgo.Describe("GcpDataprocAutoscalingPolicySpec", func() {
 
 	ginkgo.It("should reject a scale_up_factor above 1.0", func() {
 		msg := minimal()
-		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = 1.5
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = f64(1.5)
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject a scale_down_factor above 1.0", func() {
 		msg := minimal()
-		msg.Spec.BasicAlgorithm.YarnConfig.ScaleDownFactor = 2.0
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleDownFactor = f64(2.0)
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject an unset scale_up_factor", func() {
 		msg := minimal()
-		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = 0
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = nil
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an unset scale_down_factor", func() {
+		msg := minimal()
+		msg.Spec.BasicAlgorithm.YarnConfig.ScaleDownFactor = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject secondary_worker_config with a floor but no ceiling", func() {
+		msg := minimal()
+		msg.Spec.SecondaryWorkerConfig = &GcpDataprocAutoscalingPolicySecondaryWorkerConfig{
+			MaxInstances: 0,
+			MinInstances: 5,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("max_instances"))
 	})
 
 	ginkgo.It("should reject a scale_up_min_worker_fraction above 1.0", func() {

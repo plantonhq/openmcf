@@ -503,4 +503,13 @@ message GcpCloudComposerDataRetentionConfig {
     expression: "this == 0 || (this >= 30 && this <= 730)"
     message: "airflow_metadata_retention_days must be between 30 and 730"
   }];
+
+  // Retention days only take effect alongside an explicit retention
+  // mode — the API ignores a bare day count, so reject it pre-deploy
+  // rather than silently dropping it.
+  option (buf.validate.message).cel = {
+    id: "retention_days_require_mode"
+    expression: "this.airflow_metadata_retention_days == 0 || this.airflow_metadata_retention_mode != ''"
+    message: "airflow_metadata_retention_days requires airflow_metadata_retention_mode to be set"
+  };
 }

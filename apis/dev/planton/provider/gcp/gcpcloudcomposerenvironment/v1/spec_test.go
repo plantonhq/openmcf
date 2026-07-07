@@ -752,6 +752,16 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should reject airflow_metadata_retention_days without a retention mode", func() {
+		msg := minimal()
+		msg.Spec.DataRetentionConfig = &GcpCloudComposerDataRetentionConfig{
+			AirflowMetadataRetentionDays: 90,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("airflow_metadata_retention_mode"))
+	})
+
 	ginkgo.It("should reject allowed_ip_range missing value", func() {
 		msg := minimal()
 		msg.Spec.WebServerNetworkAccessControl = &GcpCloudComposerWebServerAccessControl{

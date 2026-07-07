@@ -28,6 +28,7 @@ go_library(
         "firestore_backup_schedule.go",
         "firestore_database.go",
         "firestore_index.go",
+        "firewall_rule.go",
         "gcs_bucket.go",
         "gke_cluster.go",
         "gke_node_pool.go",

@@ -62,8 +62,8 @@ message GcpDataprocAutoscalingPolicySecondaryWorkerConfig {
 
   option (buf.validate.message).cel = {
     id: "max_gte_min_instances"
-    expression: "this.max_instances == 0 || this.max_instances >= this.min_instances"
-    message: "max_instances must be greater than or equal to min_instances"
+    expression: "this.min_instances == 0 || this.max_instances >= this.min_instances"
+    message: "max_instances must be greater than or equal to min_instances when min_instances is set"
   };
 }
 
@@ -87,7 +87,9 @@ message GcpDataprocAutoscalingPolicyYarnConfig {
   // Fraction of pending YARN memory the autoscaler adds capacity for
   // per evaluation (0.0-1.0). 1.0 scales up as fast as possible; 0.05
   // adds ~5% of the suggested capacity per cooldown period.
-  double scale_up_factor = 2 [
+  // Declared optional (explicit presence) so 0.0 — a legitimate API
+  // value — is expressible while the field itself stays required.
+  optional double scale_up_factor = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).double = {
       gte: 0.0
@@ -99,7 +101,9 @@ message GcpDataprocAutoscalingPolicyYarnConfig {
   // capacity for per evaluation (0.0-1.0). 1.0 scales down as fast as
   // possible; 0.0 disables scale-down entirely (ever-growing cluster —
   // pair with idle_delete_ttl on the cluster for cost control).
-  double scale_down_factor = 3 [
+  // Declared optional (explicit presence) so 0.0 — a legitimate API
+  // value — is expressible while the field itself stays required.
+  optional double scale_down_factor = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).double = {
       gte: 0.0

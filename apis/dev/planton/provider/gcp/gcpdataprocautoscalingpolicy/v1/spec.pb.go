@@ -187,12 +187,16 @@ type GcpDataprocAutoscalingPolicyYarnConfig struct {
 	// Fraction of pending YARN memory the autoscaler adds capacity for
 	// per evaluation (0.0-1.0). 1.0 scales up as fast as possible; 0.05
 	// adds ~5% of the suggested capacity per cooldown period.
-	ScaleUpFactor float64 `protobuf:"fixed64,2,opt,name=scale_up_factor,json=scaleUpFactor,proto3" json:"scale_up_factor,omitempty"`
+	// Declared optional (explicit presence) so 0.0 — a legitimate API
+	// value — is expressible while the field itself stays required.
+	ScaleUpFactor *float64 `protobuf:"fixed64,2,opt,name=scale_up_factor,json=scaleUpFactor,proto3,oneof" json:"scale_up_factor,omitempty"`
 	// Fraction of available (idle) YARN memory the autoscaler removes
 	// capacity for per evaluation (0.0-1.0). 1.0 scales down as fast as
 	// possible; 0.0 disables scale-down entirely (ever-growing cluster —
 	// pair with idle_delete_ttl on the cluster for cost control).
-	ScaleDownFactor float64 `protobuf:"fixed64,3,opt,name=scale_down_factor,json=scaleDownFactor,proto3" json:"scale_down_factor,omitempty"`
+	// Declared optional (explicit presence) so 0.0 — a legitimate API
+	// value — is expressible while the field itself stays required.
+	ScaleDownFactor *float64 `protobuf:"fixed64,3,opt,name=scale_down_factor,json=scaleDownFactor,proto3,oneof" json:"scale_down_factor,omitempty"`
 	// Minimum fractional change to the cluster size the autoscaler acts
 	// on when scaling up (0.0-1.0). Example: 0.05 means a recommendation
 	// must grow the cluster by at least 5% to trigger; 0.0 (default)
@@ -243,15 +247,15 @@ func (x *GcpDataprocAutoscalingPolicyYarnConfig) GetGracefulDecommissionTimeout(
 }
 
 func (x *GcpDataprocAutoscalingPolicyYarnConfig) GetScaleUpFactor() float64 {
-	if x != nil {
-		return x.ScaleUpFactor
+	if x != nil && x.ScaleUpFactor != nil {
+		return *x.ScaleUpFactor
 	}
 	return 0
 }
 
 func (x *GcpDataprocAutoscalingPolicyYarnConfig) GetScaleDownFactor() float64 {
-	if x != nil {
-		return x.ScaleDownFactor
+	if x != nil && x.ScaleDownFactor != nil {
+		return *x.ScaleDownFactor
 	}
 	return 0
 }
@@ -449,18 +453,20 @@ const file_dev_planton_provider_gcp_gcpdataprocautoscalingpolicy_v1_spec_proto_r
 	"\rmin_instances\x18\x02 \x01(\x05B\x86\x01\xbaH\x82\x01\xba\x01\x7f\n" +
 	"\x1dmin_instances_zero_or_gte_two\x12Fmin_instances must be at least 2 (or 0 to accept the API default of 2)\x1a\x16this == 0 || this >= 2R\fminInstances\x12\x1f\n" +
 	"\x06weight\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06weight:\xa1\x01\xbaH\x9d\x01\x1a\x9a\x01\n" +
-	"\x15max_gte_min_instances\x12<max_instances must be greater than or equal to min_instances\x1aCthis.min_instances == 0 || this.max_instances >= this.min_instances\"\xd4\x02\n" +
+	"\x15max_gte_min_instances\x12<max_instances must be greater than or equal to min_instances\x1aCthis.min_instances == 0 || this.max_instances >= this.min_instances\"\xee\x02\n" +
 	"1GcpDataprocAutoscalingPolicySecondaryWorkerConfig\x12,\n" +
 	"\rmax_instances\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\fmaxInstances\x12,\n" +
 	"\rmin_instances\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\fminInstances\x12\x1f\n" +
-	"\x06weight\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06weight:\xa1\x01\xbaH\x9d\x01\x1a\x9a\x01\n" +
-	"\x15max_gte_min_instances\x12<max_instances must be greater than or equal to min_instances\x1aCthis.max_instances == 0 || this.max_instances >= this.min_instances\"\xc3\x03\n" +
+	"\x06weight\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06weight:\xbb\x01\xbaH\xb7\x01\x1a\xb4\x01\n" +
+	"\x15max_gte_min_instances\x12Vmax_instances must be greater than or equal to min_instances when min_instances is set\x1aCthis.min_instances == 0 || this.max_instances >= this.min_instances\"\xf7\x03\n" +
 	"&GcpDataprocAutoscalingPolicyYarnConfig\x12W\n" +
-	"\x1dgraceful_decommission_timeout\x18\x01 \x01(\tB\x13\xbaH\x10\xc8\x01\x01r\v2\t^[0-9]+s$R\x1bgracefulDecommissionTimeout\x12B\n" +
-	"\x0fscale_up_factor\x18\x02 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00R\rscaleUpFactor\x12F\n" +
-	"\x11scale_down_factor\x18\x03 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00R\x0fscaleDownFactor\x12W\n" +
+	"\x1dgraceful_decommission_timeout\x18\x01 \x01(\tB\x13\xbaH\x10\xc8\x01\x01r\v2\t^[0-9]+s$R\x1bgracefulDecommissionTimeout\x12G\n" +
+	"\x0fscale_up_factor\x18\x02 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00H\x00R\rscaleUpFactor\x88\x01\x01\x12K\n" +
+	"\x11scale_down_factor\x18\x03 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00H\x01R\x0fscaleDownFactor\x88\x01\x01\x12W\n" +
 	"\x1cscale_up_min_worker_fraction\x18\x04 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00R\x18scaleUpMinWorkerFraction\x12[\n" +
-	"\x1escale_down_min_worker_fraction\x18\x05 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00R\x1ascaleDownMinWorkerFraction\"\xeb\x02\n" +
+	"\x1escale_down_min_worker_fraction\x18\x05 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00R\x1ascaleDownMinWorkerFractionB\x12\n" +
+	"\x10_scale_up_factorB\x14\n" +
+	"\x12_scale_down_factor\"\xeb\x02\n" +
 	"*GcpDataprocAutoscalingPolicyBasicAlgorithm\x12\xb0\x01\n" +
 	"\x0fcooldown_period\x18\x01 \x01(\tB\x86\x01\xbaH\x82\x01\xba\x01\x7f\n" +
 	"\x16cooldown_period_format\x12<cooldown_period must be a duration in seconds (e.g., '120s')\x1a'this == '' || this.matches('^[0-9]+s$')R\x0ecooldownPeriod\x12\x89\x01\n" +
@@ -515,6 +521,7 @@ func file_dev_planton_provider_gcp_gcpdataprocautoscalingpolicy_v1_spec_proto_in
 	if File_dev_planton_provider_gcp_gcpdataprocautoscalingpolicy_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_gcp_gcpdataprocautoscalingpolicy_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

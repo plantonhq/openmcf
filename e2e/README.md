@@ -371,6 +371,36 @@ this: probe the service's documented REST GET path and decode the few
 fields the posture assertions need. Swap to the typed client whenever the
 dependency is next upgraded for its own reasons.
 
+**Run GCP e2e batches SEQUENTIALLY — never two `go test` processes at once:**
+the GCP dependency deploys write each prerequisite's stack-input into the
+SHARED module source directories under `apis/.../iac/pulumi`, so a second
+concurrent `go test` process picks up the first's on-disk manifests and
+collides on the other run's names (409 already-exists / cross-contaminated
+stacks). Run one component's batch to completion (or one scenario at a time)
+before starting the next; parallelism within a single process is bounded by
+the framework, but two processes are not isolated from each other.
+
+**Intra-cluster firewall is part of a multi-node cluster's minimum
+composition on a custom VPC:** custom-mode VPCs have no default firewall
+rules, and managed multi-node clusters (Dataproc among them) refuse to reach
+RUNNING because master↔worker traffic is dropped — the create hangs, then
+times out, rather than failing fast. Model an intra-cluster `GcpFirewallRule`
+(allow ingress within the VPC/subnet) as a registry prerequisite for such
+kinds, exactly like the identity and networking prerequisites.
+
+**Dataproc's regional staging/temp buckets persist and carry per-creator
+ACLs:** Dataproc auto-creates `dataproc-staging-<region>-<project#>-<hash>`
+and `dataproc-temp-...` buckets (a deterministic name per project+region) and
+reuses them across runs; it never deletes them. If an earlier run created them
+under a since-deleted VM service account, a later run's identity can be locked
+out ("Permissions are missing ... on the staging_bucket") even with correct
+project-level IAM, because the bucket's fine-grained ACLs still name the old
+principal. When a Dataproc live batch fails on bucket permissions after an
+identity change, delete the leftover `dataproc-staging-*`/`dataproc-temp-*`
+buckets so Dataproc recreates them fresh under the current identity, then
+rerun. (The `roles/dataproc.worker` role already carries the full
+`storage.buckets.get` + `storage.objects.*` set a custom VM identity needs.)
+
 ## Build Tag Isolation
 
 All E2E test files use `//go:build e2e`. This means:

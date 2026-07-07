@@ -50,10 +50,13 @@ func autoscalingPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 	// fraction of pending/available memory the autoscaler acts on per
 	// cooldown period — 1.0 is maximally aggressive, small values smooth
 	// scaling at the cost of reaction speed.
+	// The scale factors use getter access: they are explicit-presence
+	// fields precisely so 0.0 (a legitimate value — 0.0 scale-down
+	// disables shrinking) survives validation and serialization.
 	yarnArgs := &dataproc.AutoscalingPolicyBasicAlgorithmYarnConfigArgs{
 		GracefulDecommissionTimeout: pulumi.String(spec.BasicAlgorithm.YarnConfig.GracefulDecommissionTimeout),
-		ScaleUpFactor:               pulumi.Float64(spec.BasicAlgorithm.YarnConfig.ScaleUpFactor),
-		ScaleDownFactor:             pulumi.Float64(spec.BasicAlgorithm.YarnConfig.ScaleDownFactor),
+		ScaleUpFactor:               pulumi.Float64(spec.BasicAlgorithm.YarnConfig.GetScaleUpFactor()),
+		ScaleDownFactor:             pulumi.Float64(spec.BasicAlgorithm.YarnConfig.GetScaleDownFactor()),
 	}
 	if spec.BasicAlgorithm.YarnConfig.ScaleUpMinWorkerFraction > 0 {
 		yarnArgs.ScaleUpMinWorkerFraction = pulumi.Float64Ptr(spec.BasicAlgorithm.YarnConfig.ScaleUpMinWorkerFraction)

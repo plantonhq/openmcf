@@ -1676,12 +1676,13 @@ const file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_ra
 	"\x19GcpCloudComposerCidrBlock\x12%\n" +
 	"\n" +
 	"cidr_block\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tcidrBlock\x12!\n" +
-	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"\xe6\x03\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"\xba\x05\n" +
 	"#GcpCloudComposerDataRetentionConfig\x12q\n" +
 	"\x16task_logs_storage_mode\x18\x01 \x01(\tB<\xbaH9r7R\x00R\x12CLOUD_LOGGING_ONLYR\x1fCLOUD_LOGGING_AND_CLOUD_STORAGER\x13taskLogsStorageMode\x12\x7f\n" +
 	"\x1fairflow_metadata_retention_mode\x18\x02 \x01(\tB8\xbaH5r3R\x00R\x16RETENTION_MODE_ENABLEDR\x17RETENTION_MODE_DISABLEDR\x1cairflowMetadataRetentionMode\x12\xca\x01\n" +
 	"\x1fairflow_metadata_retention_days\x18\x03 \x01(\x05B\x82\x01\xbaH\x7f\xba\x01|\n" +
-	"\x14retention_days_range\x12:airflow_metadata_retention_days must be between 30 and 730\x1a(this == 0 || (this >= 30 && this <= 730)R\x1cairflowMetadataRetentionDaysB\xc4\x03\n" +
+	"\x14retention_days_range\x12:airflow_metadata_retention_days must be between 30 and 730\x1a(this == 0 || (this >= 30 && this <= 730)R\x1cairflowMetadataRetentionDays:\xd1\x01\xbaH\xcd\x01\x1a\xca\x01\n" +
+	"\x1bretention_days_require_mode\x12Rairflow_metadata_retention_days requires airflow_metadata_retention_mode to be set\x1aWthis.airflow_metadata_retention_days == 0 || this.airflow_metadata_retention_mode != ''B\xc4\x03\n" +
 	";com.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1B\tSpecProtoP\x01Zwgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1;gcpcloudcomposerenvironmentv1\xa2\x02\x05DPPGG\xaa\x027Dev.Planton.Provider.Gcp.Gcpcloudcomposerenvironment.V1\xca\x027Dev\\Planton\\Provider\\Gcp\\Gcpcloudcomposerenvironment\\V1\xe2\x02CDev\\Planton\\Provider\\Gcp\\Gcpcloudcomposerenvironment\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Gcp::Gcpcloudcomposerenvironment::V1b\x06proto3"
 
 var (
