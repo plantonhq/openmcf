@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOrigin
+metadata:
+  name: my-app-origin
+spec:
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: <origin-group-resource-name>
+      fieldPath: status.outputs.origin_group_id
+  originName: primary-app
+  # The App Service default hostname. App Service routes BY Host header,
+  # and leaving originHostHeader unset sends exactly this hostname --
+  # the correct pairing for multi-tenant Azure backends.
+  hostName: <app-name>.azurewebsites.net

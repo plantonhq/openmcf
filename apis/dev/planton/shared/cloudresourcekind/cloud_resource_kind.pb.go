@@ -374,7 +374,28 @@ const (
 	CloudResourceKind_AzureFederatedIdentityCredential CloudResourceKind = 463
 	CloudResourceKind_AzureServiceBusNamespace         CloudResourceKind = 470
 	CloudResourceKind_AzureEventHubNamespace           CloudResourceKind = 471
-	CloudResourceKind_AzureFrontDoorProfile            CloudResourceKind = 480 // --- Storage data services ---
+	// AzureResourceGroup is a prerequisite because a Front Door profile is
+	// created inside a referenced resource group in composed environments.
+	// The profile is the container every Front Door delivery resource
+	// (endpoint, origin group, origin, route) nests under.
+	CloudResourceKind_AzureFrontDoorProfile CloudResourceKind = 480
+	// AzureFrontDoorProfile is a prerequisite because an endpoint is an ARM
+	// child of a referenced profile -- the profile must exist before the
+	// endpoint can be written. (The resource group arrives transitively
+	// through the profile's own prerequisite declaration.)
+	CloudResourceKind_AzureFrontDoorEndpoint CloudResourceKind = 481
+	// AzureFrontDoorProfile is a prerequisite because an origin group is an
+	// ARM child of a referenced profile.
+	CloudResourceKind_AzureFrontDoorOriginGroup CloudResourceKind = 482
+	// AzureFrontDoorOriginGroup is a prerequisite because an origin is an
+	// ARM child of a referenced origin group (the profile and resource
+	// group chain transitively).
+	CloudResourceKind_AzureFrontDoorOrigin CloudResourceKind = 483
+	// A route attaches to an endpoint (its ARM parent) and forwards to an
+	// origin group whose origins must exist before ARM accepts the route --
+	// so both the endpoint and the origin chain are genuine deploy-order
+	// prerequisites.
+	CloudResourceKind_AzureFrontDoorRoute CloudResourceKind = 484 // --- Storage data services ---
 	// None of the storage data-service kinds declares a registry
 	// prerequisite on AzureStorageAccount: account names are GLOBALLY
 	// unique and Azure holds a just-deleted name, so a
@@ -850,6 +871,10 @@ var (
 		470:  "AzureServiceBusNamespace",
 		471:  "AzureEventHubNamespace",
 		480:  "AzureFrontDoorProfile",
+		481:  "AzureFrontDoorEndpoint",
+		482:  "AzureFrontDoorOriginGroup",
+		483:  "AzureFrontDoorOrigin",
+		484:  "AzureFrontDoorRoute",
 		490:  "AzureStorageContainer",
 		491:  "AzureStorageShare",
 		492:  "AzureStorageQueue",
@@ -1295,6 +1320,10 @@ var (
 		"AzureServiceBusNamespace":                470,
 		"AzureEventHubNamespace":                  471,
 		"AzureFrontDoorProfile":                   480,
+		"AzureFrontDoorEndpoint":                  481,
+		"AzureFrontDoorOriginGroup":               482,
+		"AzureFrontDoorOrigin":                    483,
+		"AzureFrontDoorRoute":                     484,
 		"AzureStorageContainer":                   490,
 		"AzureStorageShare":                       491,
 		"AzureStorageQueue":                       492,
@@ -1856,7 +1885,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x96\x9f\x01\n" +
+	"\x02v1\x10\x01*\xe6\xa0\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2006,9 +2035,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x18AzureServiceBusNamespace\x10\xd6\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azsb\x12+\n" +
 	"\x16AzureEventHubNamespace\x10\xd7\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azeh\x12*\n" +
-	"\x15AzureFrontDoorProfile\x10\xe0\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azfd\x12*\n" +
+	"\b\r\x10\x01\"\x04azeh\x120\n" +
+	"\x15AzureFrontDoorProfile\x10\xe0\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x04azfd0\x01:\x02\x90\x03\x120\n" +
+	"\x16AzureFrontDoorEndpoint\x10\xe1\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfde:\x02\xe0\x03\x124\n" +
+	"\x19AzureFrontDoorOriginGroup\x10\xe2\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azfdog:\x02\xe0\x03\x12.\n" +
+	"\x14AzureFrontDoorOrigin\x10\xe3\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfdo:\x02\xe2\x03\x120\n" +
+	"\x13AzureFrontDoorRoute\x10\xe4\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\x06azfdrt:\x04\xe1\x03\xe3\x03\x12*\n" +
 	"\x15AzureStorageContainer\x10\xea\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azsc\x12)\n" +
 	"\x11AzureStorageShare\x10\xeb\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazshare\x12&\n" +

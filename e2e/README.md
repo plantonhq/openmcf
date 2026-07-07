@@ -285,6 +285,25 @@ creation as a region-capacity signal and move the scenario-local
 accounts to a quieter region (`westus3` verified clean) instead of
 recording a deferral or filing quota requests.
 
+### Front Door: fast creates, ~18-minute profile deletes
+
+Azure Front Door (Standard/Premium) inverts the usual timing profile:
+every resource in the family CREATES in seconds-to-minutes (profile
+~1-2 min; endpoints, origin groups, origins, and routes each well under
+a minute), but PROFILE DELETION runs ~18 minutes wall time (verified
+live on both engines; the service tears the global edge deployment down
+before ARM confirms). Consequences for scenario budgeting:
+
+- Any scenario whose chain includes a Front Door profile fixture costs
+  ~20-27 minutes per engine, dominated entirely by the fixture teardown.
+  Child-resource deletes inside a live profile are fast; it is only the
+  profile itself that is slow.
+- Deleting the fixture RESOURCE GROUP does not dodge this: the RG delete
+  waits on the profile delete inside it.
+- Estimate a full family suite accordingly (10 dual-engine runs measured
+  ~3.7 h total) rather than assuming CDN-family resources are cheap
+  because they create quickly.
+
 ### How the Terraform path works
 
 The Terraform runner uses [Terratest](https://github.com/gruntwork-io/terratest)

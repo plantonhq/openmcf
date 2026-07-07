@@ -1,0 +1,26 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOriginGroup
+metadata:
+  name: my-api-backends
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: <front-door-profile-resource-name>
+      fieldPath: status.outputs.profile_id
+  originGroupName: api-backends
+  # Latency-aware distribution across regions: origins within 100 ms of
+  # the fastest share traffic by weight instead of pinning to one region.
+  loadBalancing:
+    sampleSize: 4
+    successfulSamplesRequired: 3
+    additionalLatencyInMilliseconds: 100
+  # Probe a dedicated health endpoint over HTTPS so unhealthy regions
+  # leave rotation within ~2 minutes (4 samples x 30 s).
+  healthProbe:
+    protocol: HTTPS
+    intervalInSeconds: 30
+    requestType: GET
+    path: /healthz
+  # Stateless APIs want even distribution, not sticky sessions.
+  sessionAffinityEnabled: false

@@ -513,6 +513,57 @@ func TestAzureCosmosdbMongoCollection_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecosmosdbmongocollection", "terraform")
 }
 
+// --- Azure Front Door profile (fixture RG -> Standard profile with log
+// scrubbing and tags; Front Door is global -- no region on the resource) ---
+
+func TestAzureFrontDoorProfile_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorprofile", "pulumi")
+}
+func TestAzureFrontDoorProfile_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorprofile", "terraform")
+}
+
+// --- Azure Front Door endpoint (fixture RG -> fixture profile -> endpoint;
+// verifies the generated *.azurefd.net hostname surfaces as an output) ---
+
+func TestAzureFrontDoorEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorendpoint", "pulumi")
+}
+func TestAzureFrontDoorEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorendpoint", "terraform")
+}
+
+// --- Azure Front Door origin group (fixture RG -> fixture profile -> group
+// with health probe and load-balancing dials) ---
+
+func TestAzureFrontDoorOriginGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoororigingroup", "pulumi")
+}
+func TestAzureFrontDoorOriginGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoororigingroup", "terraform")
+}
+
+// --- Azure Front Door origin (fixture RG -> fixture profile -> fixture
+// group -> origin pointing at a public backend hostname) ---
+
+func TestAzureFrontDoorOrigin_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoororigin", "pulumi")
+}
+func TestAzureFrontDoorOrigin_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoororigin", "terraform")
+}
+
+// --- Azure Front Door route (the composed chain: fixture RG -> profile ->
+// endpoint + origin group -> origin -> route with caching; proves the whole
+// traffic-serving graph and the origin_ids ordering seam) ---
+
+func TestAzureFrontDoorRoute_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorroute", "pulumi")
+}
+func TestAzureFrontDoorRoute_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorroute", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

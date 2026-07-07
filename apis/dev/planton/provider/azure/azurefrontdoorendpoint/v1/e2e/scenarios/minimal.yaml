@@ -1,0 +1,24 @@
+# Minimal AzureFrontDoorEndpoint scenario: an enabled endpoint with user
+# tags on the fixture profile; verifies the generated *.azurefd.net
+# hostname surfaces through the host_name output.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorEndpoint
+metadata:
+  name: planton-oss-e2e-azurefrontdoorendpoint-smoke
+  id: planton-oss-e2e-azurefrontdoorendpoint-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-fd-profile-prereq
+  endpointName: pltn-e2e-fd-ep-smoke
+  tags:
+    purpose: e2e-smoke

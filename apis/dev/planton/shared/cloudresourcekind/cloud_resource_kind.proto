@@ -1027,12 +1027,58 @@ enum CloudResourceKind {
     id_prefix: "azeh"
   }];
 
-  // --- CDN ---
+  // --- CDN / Front Door ---
 
+  // AzureResourceGroup is a prerequisite because a Front Door profile is
+  // created inside a referenced resource group in composed environments.
+  // The profile is the container every Front Door delivery resource
+  // (endpoint, origin group, origin, route) nests under.
   AzureFrontDoorProfile = 480 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azfd"
+    container_kind: true
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureFrontDoorProfile is a prerequisite because an endpoint is an ARM
+  // child of a referenced profile -- the profile must exist before the
+  // endpoint can be written. (The resource group arrives transitively
+  // through the profile's own prerequisite declaration.)
+  AzureFrontDoorEndpoint = 481 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfde"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureFrontDoorProfile is a prerequisite because an origin group is an
+  // ARM child of a referenced profile.
+  AzureFrontDoorOriginGroup = 482 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdog"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureFrontDoorOriginGroup is a prerequisite because an origin is an
+  // ARM child of a referenced origin group (the profile and resource
+  // group chain transitively).
+  AzureFrontDoorOrigin = 483 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdo"
+    prerequisites: [AzureFrontDoorOriginGroup]
+  }];
+  // A route attaches to an endpoint (its ARM parent) and forwards to an
+  // origin group whose origins must exist before ARM accepts the route --
+  // so both the endpoint and the origin chain are genuine deploy-order
+  // prerequisites.
+  AzureFrontDoorRoute = 484 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdrt"
+    prerequisites: [
+      AzureFrontDoorEndpoint,
+      AzureFrontDoorOrigin
+    ]
   }];
   // --- Storage data services ---
 

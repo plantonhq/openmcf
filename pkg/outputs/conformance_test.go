@@ -1644,6 +1644,78 @@ func TestStackOutputsConformance(t *testing.T) {
 				"mongo_database_name", "cosmosdb_account_name",
 			},
 		},
+		{
+			// AzureFrontDoorProfile: profile_id is the parent seam every
+			// Front Door delivery kind (endpoint, origin group) references;
+			// identity_principal_id is the Key Vault grant target for
+			// bring-your-own TLS certificates.
+			name: "AzureFrontDoorProfile",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorProfile,
+			rawOutputs: map[string]interface{}{
+				"profile_id":            "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd",
+				"profile_name":          "app-fd",
+				"resource_guid":         "11111111-2222-3333-4444-555555555555",
+				"identity_principal_id": "66666666-7777-8888-9999-000000000000",
+			},
+			mustPopulate: []string{
+				"profile_id", "profile_name", "resource_guid", "identity_principal_id",
+			},
+		},
+		{
+			// AzureFrontDoorEndpoint: endpoint_id is the route's parent
+			// seam; host_name is the generated *.azurefd.net hostname DNS
+			// records CNAME onto.
+			name: "AzureFrontDoorEndpoint",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorEndpoint,
+			rawOutputs: map[string]interface{}{
+				"endpoint_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd/afdEndpoints/web",
+				"endpoint_name": "web",
+				"host_name":     "web-abc123.z01.azurefd.net",
+			},
+			mustPopulate: []string{
+				"endpoint_id", "endpoint_name", "host_name",
+			},
+		},
+		{
+			// AzureFrontDoorOriginGroup: origin_group_id is what origins
+			// reference as parent and routes reference as destination.
+			name: "AzureFrontDoorOriginGroup",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorOriginGroup,
+			rawOutputs: map[string]interface{}{
+				"origin_group_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd/originGroups/api-backends",
+				"origin_group_name": "api-backends",
+			},
+			mustPopulate: []string{
+				"origin_group_id", "origin_group_name",
+			},
+		},
+		{
+			// AzureFrontDoorOrigin: origin_id is what routes list in
+			// origin_ids to sequence deployment after the backends exist.
+			name: "AzureFrontDoorOrigin",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorOrigin,
+			rawOutputs: map[string]interface{}{
+				"origin_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd/originGroups/api-backends/origins/primary",
+				"origin_name": "primary",
+			},
+			mustPopulate: []string{
+				"origin_id", "origin_name",
+			},
+		},
+		{
+			// AzureFrontDoorRoute: the traffic-serving edge of the Front
+			// Door graph; no hostname output on purpose (it lives on the
+			// endpoint).
+			name: "AzureFrontDoorRoute",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorRoute,
+			rawOutputs: map[string]interface{}{
+				"route_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd/afdEndpoints/web/routes/default",
+				"route_name": "default",
+			},
+			mustPopulate: []string{
+				"route_id", "route_name",
+			},
+		},
 	}
 
 	for _, tc := range cases {

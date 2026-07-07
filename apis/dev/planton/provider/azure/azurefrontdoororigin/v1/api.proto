@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefrontdoororigin.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurefrontdoororigin/v1/spec.proto";
+import "dev/planton/provider/azure/azurefrontdoororigin/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureFrontDoorOrigin is the top-level API resource for one backend
+// inside an Azure Front Door origin group (referenced via
+// origin_group_id): the backend's address, TLS validation posture,
+// priority/weight in the pool, and optional Private Link connectivity.
+message AzureFrontDoorOrigin {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureFrontDoorOrigin'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureFrontDoorOriginSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureFrontDoorOriginStatus status = 5;
+}
+
+// AzureFrontDoorOriginStatus holds the deployment status and outputs.
+message AzureFrontDoorOriginStatus {
+  // stack-outputs
+  AzureFrontDoorOriginStackOutputs outputs = 1;
+}

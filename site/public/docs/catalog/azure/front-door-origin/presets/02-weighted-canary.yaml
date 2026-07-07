@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOrigin
+metadata:
+  name: my-canary-origin
+spec:
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: <origin-group-resource-name>
+      fieldPath: status.outputs.origin_group_id
+  originName: canary-app
+  hostName: <canary-backend-hostname>
+  # Same priority as the main origin (weights only compete WITHIN a
+  # priority tier); weight 50 against the main origin's 950 sends ~5%
+  # of traffic here. Dial the weights to move the split -- an in-place
+  # update, no recreation.
+  priority: 1
+  weight: 50

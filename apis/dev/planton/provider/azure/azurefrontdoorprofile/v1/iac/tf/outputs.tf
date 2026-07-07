@@ -1,24 +1,19 @@
 output "profile_id" {
-  description = "The Azure Resource Manager ID of the Front Door profile"
+  description = "The Azure Resource Manager ID of the Front Door profile (what endpoints and origin groups reference as their parent)"
   value       = azurerm_cdn_frontdoor_profile.main.id
 }
 
 output "profile_name" {
-  description = "The name of the Front Door profile"
+  description = "The profile's name -- the ARM namespace every child resource nests under"
   value       = azurerm_cdn_frontdoor_profile.main.name
 }
 
 output "resource_guid" {
-  description = "The Front Door resource GUID assigned by Azure"
+  description = "The Front Door service's own GUID for this profile (used for traffic-ownership validation, e.g. apex-domain afdverify records)"
   value       = azurerm_cdn_frontdoor_profile.main.resource_guid
 }
 
-output "endpoint_ids" {
-  description = "Map of endpoint names to their Azure Resource Manager IDs"
-  value       = { for k, v in azurerm_cdn_frontdoor_endpoint.endpoints : k => v.id }
-}
-
-output "endpoint_hostnames" {
-  description = "Map of endpoint names to their generated hostnames"
-  value       = { for k, v in azurerm_cdn_frontdoor_endpoint.endpoints : k => v.host_name }
+output "identity_principal_id" {
+  description = "The principal ID of the system-assigned managed identity (empty without one) -- the principal to grant Key Vault access to"
+  value       = try(azurerm_cdn_frontdoor_profile.main.identity[0].principal_id, "")
 }

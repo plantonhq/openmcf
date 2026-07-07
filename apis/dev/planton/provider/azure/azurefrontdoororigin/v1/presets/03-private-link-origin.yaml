@@ -1,0 +1,26 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorOrigin
+metadata:
+  name: my-private-origin
+spec:
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: <origin-group-resource-name>
+      fieldPath: status.outputs.origin_group_id
+  originName: private-app
+  hostName: <app-name>.azurewebsites.net
+  # Required with privateLink (Azure rejects the combination otherwise)
+  # -- and the secure choice regardless.
+  certificateNameCheckEnabled: true
+  # Front Door reaches the backend over Private Link instead of the
+  # public internet; the backend can disable public access entirely.
+  # PREMIUM profiles only. After deploy, approve the pending connection
+  # on the target resource (Networking > Private endpoint connections).
+  privateLink:
+    # The TARGET's region -- private-link connections are regional even
+    # though Front Door is global.
+    location: eastus
+    privateLinkTargetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-app
+    targetType: SITES
+    requestMessage: Front Door origin connection
