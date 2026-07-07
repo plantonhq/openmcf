@@ -32,8 +32,10 @@ import (
 	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	composer "google.golang.org/api/composer/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
+	dataproc "google.golang.org/api/dataproc/v1"
 	"google.golang.org/api/dns/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
@@ -153,6 +155,14 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create firestore admin client")
 	}
+	dataprocService, err := dataproc.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create dataproc client")
+	}
+	composerService, err := composer.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create composer client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -188,6 +198,8 @@ func (h *Harness) Setup(ctx context.Context) error {
 		NetworkConnectivity: networkConnectivityService,
 		BigtableAdmin:       bigtableAdminService,
 		Firestore:           firestoreService,
+		Dataproc:            dataprocService,
+		Composer:            composerService,
 		RestClient:          restClient,
 	}
 	return nil

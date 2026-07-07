@@ -984,11 +984,24 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpdpc"
+    // Dataproc's minimum composition on a custom VPC: a subnetwork, a VM
+    // runtime identity holding roles/dataproc.worker (hardened projects
+    // grant the default compute service account nothing), and an
+    // intra-cluster firewall rule (custom VPCs have no default rules, and
+    // multi-node clusters refuse to start when VM-to-VM traffic is
+    // blocked).
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork,
+      GcpFirewallRule,
+      GcpServiceAccount,
+      GcpDataprocAutoscalingPolicy
+    ]
   }];
-  GcpDataprocVirtualCluster = 652 [(kind_meta) = {
+  GcpDataprocAutoscalingPolicy = 652 [(kind_meta) = {
     provider: gcp
     version: v1
-    id_prefix: "gcpdvc"
+    id_prefix: "gcpdpasp"
   }];
   GcpBigQueryTable = 653 [(kind_meta) = {
     provider: gcp
@@ -1030,6 +1043,26 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpcce"
+    // Composer 3 requires an explicitly specified workloads service
+    // account holding roles/composer.worker — the identity is part of
+    // the environment's minimum composition.
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork,
+      GcpServiceAccount
+    ]
+  }];
+  GcpCloudComposerUserWorkloadsSecret = 681 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpcuws"
+    prerequisites: [GcpCloudComposerEnvironment]
+  }];
+  GcpCloudComposerUserWorkloadsConfigMap = 682 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpcuwcm"
+    prerequisites: [GcpCloudComposerEnvironment]
   }];
   GcpKmsKeyRing = 690 [(kind_meta) = {
     provider: gcp

@@ -489,6 +489,51 @@ func TestGcpFirestoreIndex_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpfirestoreindex", "terraform")
 }
 
+// --- GCP Dataproc Autoscaling Policy (the shareable scaling contract clusters attach by reference) ---
+
+func TestGcpDataprocAutoscalingPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpdataprocautoscalingpolicy", "pulumi")
+}
+func TestGcpDataprocAutoscalingPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpdataprocautoscalingpolicy", "terraform")
+}
+
+// --- GCP Dataproc Cluster (composed: VPC -> subnetwork -> autoscaling policy chain; ~2-4m per create) ---
+
+func TestGcpDataprocCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpdataproccluster", "pulumi")
+}
+func TestGcpDataprocCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpdataproccluster", "terraform")
+}
+
+// --- GCP Cloud Composer Environment (composed: VPC -> subnetwork chain; 25-45m per create — batch >=240m) ---
+
+func TestGcpCloudComposerEnvironment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudcomposerenvironment", "pulumi")
+}
+func TestGcpCloudComposerEnvironment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudcomposerenvironment", "terraform")
+}
+
+// --- GCP Cloud Composer user workloads Secret (composed: full environment chain — batch >=240m) ---
+
+func TestGcpCloudComposerUserWorkloadsSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudcomposeruserworkloadssecret", "pulumi")
+}
+func TestGcpCloudComposerUserWorkloadsSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudcomposeruserworkloadssecret", "terraform")
+}
+
+// --- GCP Cloud Composer user workloads ConfigMap (composed: full environment chain — batch >=240m) ---
+
+func TestGcpCloudComposerUserWorkloadsConfigMap_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudcomposeruserworkloadsconfigmap", "pulumi")
+}
+func TestGcpCloudComposerUserWorkloadsConfigMap_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudcomposeruserworkloadsconfigmap", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

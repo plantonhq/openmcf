@@ -27,11 +27,15 @@ func initializeLocals(_ *pulumi.Context, stackInput *gcpcloudcomposerenvironment
 		resourceName = locals.GcpCloudComposerEnvironment.Metadata.Name
 	}
 
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     "true",
-		gcplabelkeys.ResourceName: resourceName,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment.String()),
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpCloudComposerEnvironment.Spec.Labels {
+		locals.GcpLabels[key] = value
 	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = resourceName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment.String())
 
 	if locals.GcpCloudComposerEnvironment.Metadata.Org != "" {
 		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpCloudComposerEnvironment.Metadata.Org

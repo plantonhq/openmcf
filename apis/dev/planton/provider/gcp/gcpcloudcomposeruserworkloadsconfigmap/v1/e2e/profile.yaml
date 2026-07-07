@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpcloudcomposeruserworkloadsconfigmap
+spec:
+  # Composed scenario: the chain installs a full Composer 3 environment
+  # (25-45 minutes) before delivering the ConfigMap, so a batch run for
+  # both engines needs >=240m. The ConfigMap itself creates/destroys in
+  # seconds.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 240

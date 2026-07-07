@@ -20,8 +20,10 @@ import (
 	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	composer "google.golang.org/api/composer/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
+	dataproc "google.golang.org/api/dataproc/v1"
 	"google.golang.org/api/dns/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
@@ -57,6 +59,8 @@ type Services struct {
 	NetworkConnectivity *networkconnectivity.Service
 	BigtableAdmin       *bigtableadmin.Service
 	Firestore           *firestore.Service
+	Dataproc            *dataproc.Service
+	Composer            *composer.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -79,55 +83,61 @@ type Verifier interface {
 // verifiers maps a component name to its verifier. New GCP components register
 // here as they are forged.
 var verifiers = map[string]Verifier{
-	"gcpserviceaccount":               &serviceAccountVerifier{},
-	"gcpiamcustomrole":                &iamCustomRoleVerifier{},
-	"gcpprojectiammember":             &projectIamMemberVerifier{},
-	"gcpworkloadidentitypool":         &workloadIdentityPoolVerifier{},
-	"gcpworkloadidentitypoolprovider": &workloadIdentityPoolProviderVerifier{},
-	"gcphealthcheck":                  &healthCheckVerifier{},
-	"gcpbackendbucket":                &backendBucketVerifier{},
-	"gcpbackendservice":               &backendServiceVerifier{},
-	"gcpregionnetworkendpointgroup":   &regionNetworkEndpointGroupVerifier{},
-	"gcpurlmap":                       &urlMapVerifier{},
-	"gcpmanagedsslcertificate":        &managedSslCertificateVerifier{},
-	"gcpsubnetwork":                   &subnetworkVerifier{},
-	"gcpvpcnetwork":                   &vpcVerifier{},
-	"gcpgcsbucket":                    &gcsBucketVerifier{},
-	"gcptargethttpproxy":              &targetHttpProxyVerifier{},
-	"gcptargethttpsproxy":             &targetHttpsProxyVerifier{},
-	"gcpglobalforwardingrule":         &globalForwardingRuleVerifier{},
-	"gcpglobaladdress":                &globalAddressVerifier{},
-	"gcpsslpolicy":                    &sslPolicyVerifier{},
-	"gcpsslcertificate":               &sslCertificateVerifier{},
-	"gcpservicenetworkingconnection":  &serviceNetworkingConnectionVerifier{},
-	"gcpaddress":                      &addressVerifier{},
-	"gcpcloudsql":                     &cloudSqlInstanceVerifier{},
-	"gcpcloudsqldatabase":             &cloudSqlDatabaseVerifier{},
-	"gcpcloudsqluser":                 &cloudSqlUserVerifier{},
-	"gcpredisinstance":                &redisInstanceVerifier{},
-	"gcprouternat":                    &routerNatVerifier{},
-	"gcpgkecluster":                   &gkeClusterVerifier{},
-	"gcpgkenodepool":                  &gkeNodePoolVerifier{},
-	"gcpcloudrun":                     &cloudRunVerifier{},
-	"gcpalloydbcluster":               &alloydbClusterVerifier{},
-	"gcpalloydbinstance":              &alloydbInstanceVerifier{},
-	"gcpalloydbuser":                  &alloydbUserVerifier{},
-	"gcpdnszone":                      &dnsZoneVerifier{},
-	"gcpcloudrunjob":                  &cloudRunJobVerifier{},
-	"gcpspannerinstance":              &spannerInstanceVerifier{},
-	"gcpspannerdatabase":              &spannerDatabaseVerifier{},
-	"gcpspannerbackupschedule":        &spannerBackupScheduleVerifier{},
-	"gcpbigquerydataset":              &bigQueryDatasetVerifier{},
-	"gcpbigquerytable":                &bigQueryTableVerifier{},
-	"gcpserverlessvpcconnector":       &serverlessVpcConnectorVerifier{},
-	"gcpcloudfunction":                &cloudFunctionVerifier{},
-	"gcpserviceconnectionpolicy":      &serviceConnectionPolicyVerifier{},
-	"gcpmemorystoreinstance":          &memorystoreInstanceVerifier{},
-	"gcpfirestoredatabase":            &firestoreDatabaseVerifier{},
-	"gcpfirestorebackupschedule":      &firestoreBackupScheduleVerifier{},
-	"gcpfirestoreindex":               &firestoreIndexVerifier{},
-	"gcpbigtableinstance":             &bigtableInstanceVerifier{},
-	"gcpbigtabletable":                &bigtableTableVerifier{},
+	"gcpserviceaccount":                      &serviceAccountVerifier{},
+	"gcpiamcustomrole":                       &iamCustomRoleVerifier{},
+	"gcpprojectiammember":                    &projectIamMemberVerifier{},
+	"gcpworkloadidentitypool":                &workloadIdentityPoolVerifier{},
+	"gcpworkloadidentitypoolprovider":        &workloadIdentityPoolProviderVerifier{},
+	"gcphealthcheck":                         &healthCheckVerifier{},
+	"gcpbackendbucket":                       &backendBucketVerifier{},
+	"gcpbackendservice":                      &backendServiceVerifier{},
+	"gcpregionnetworkendpointgroup":          &regionNetworkEndpointGroupVerifier{},
+	"gcpurlmap":                              &urlMapVerifier{},
+	"gcpmanagedsslcertificate":               &managedSslCertificateVerifier{},
+	"gcpsubnetwork":                          &subnetworkVerifier{},
+	"gcpvpcnetwork":                          &vpcVerifier{},
+	"gcpgcsbucket":                           &gcsBucketVerifier{},
+	"gcptargethttpproxy":                     &targetHttpProxyVerifier{},
+	"gcptargethttpsproxy":                    &targetHttpsProxyVerifier{},
+	"gcpglobalforwardingrule":                &globalForwardingRuleVerifier{},
+	"gcpglobaladdress":                       &globalAddressVerifier{},
+	"gcpsslpolicy":                           &sslPolicyVerifier{},
+	"gcpsslcertificate":                      &sslCertificateVerifier{},
+	"gcpservicenetworkingconnection":         &serviceNetworkingConnectionVerifier{},
+	"gcpaddress":                             &addressVerifier{},
+	"gcpcloudsql":                            &cloudSqlInstanceVerifier{},
+	"gcpcloudsqldatabase":                    &cloudSqlDatabaseVerifier{},
+	"gcpcloudsqluser":                        &cloudSqlUserVerifier{},
+	"gcpredisinstance":                       &redisInstanceVerifier{},
+	"gcprouternat":                           &routerNatVerifier{},
+	"gcpgkecluster":                          &gkeClusterVerifier{},
+	"gcpgkenodepool":                         &gkeNodePoolVerifier{},
+	"gcpcloudrun":                            &cloudRunVerifier{},
+	"gcpalloydbcluster":                      &alloydbClusterVerifier{},
+	"gcpalloydbinstance":                     &alloydbInstanceVerifier{},
+	"gcpalloydbuser":                         &alloydbUserVerifier{},
+	"gcpdnszone":                             &dnsZoneVerifier{},
+	"gcpcloudrunjob":                         &cloudRunJobVerifier{},
+	"gcpspannerinstance":                     &spannerInstanceVerifier{},
+	"gcpspannerdatabase":                     &spannerDatabaseVerifier{},
+	"gcpspannerbackupschedule":               &spannerBackupScheduleVerifier{},
+	"gcpbigquerydataset":                     &bigQueryDatasetVerifier{},
+	"gcpbigquerytable":                       &bigQueryTableVerifier{},
+	"gcpserverlessvpcconnector":              &serverlessVpcConnectorVerifier{},
+	"gcpcloudfunction":                       &cloudFunctionVerifier{},
+	"gcpserviceconnectionpolicy":             &serviceConnectionPolicyVerifier{},
+	"gcpmemorystoreinstance":                 &memorystoreInstanceVerifier{},
+	"gcpfirestoredatabase":                   &firestoreDatabaseVerifier{},
+	"gcpfirestorebackupschedule":             &firestoreBackupScheduleVerifier{},
+	"gcpfirestoreindex":                      &firestoreIndexVerifier{},
+	"gcpbigtableinstance":                    &bigtableInstanceVerifier{},
+	"gcpbigtabletable":                       &bigtableTableVerifier{},
+	"gcpfirewallrule":                        &firewallRuleVerifier{},
+	"gcpdataproccluster":                     &dataprocClusterVerifier{},
+	"gcpdataprocautoscalingpolicy":           &dataprocAutoscalingPolicyVerifier{},
+	"gcpcloudcomposerenvironment":            &composerEnvironmentVerifier{},
+	"gcpcloudcomposeruserworkloadssecret":    &composerUserWorkloadsSecretVerifier{},
+	"gcpcloudcomposeruserworkloadsconfigmap": &composerUserWorkloadsConfigMapVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

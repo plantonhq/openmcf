@@ -306,7 +306,22 @@ and **≥90m** when batching multiple PSA or Memorystore scenarios in one `go te
 run — Redis instance destroy alone can exceed 15 minutes. GKE clusters are the
 slowest resources in the harness: a control-plane create runs 10-25 minutes and
 a destroy 5-10, per scenario per engine — budget **≥150m** when batching the
-GKE cluster scenarios across both engines.
+GKE cluster scenarios across both engines. Dataproc clusters boot real VMs:
+budget **≥90m** when batching multiple cluster scenarios across both engines.
+Cloud Composer environments are the longest single resource: a create runs
+25-45 minutes and a destroy 10-15, per scenario per engine — budget **≥240m**
+for a both-engines batch, and the same for any kind whose chain installs an
+environment as a prerequisite (the user-workloads Secret/ConfigMap).
+
+**Managed services that VALIDATE runtime identity at create:** some control
+planes reject creation unless the workload identity already holds the right
+role — Dataproc requires the VM service account to hold `roles/dataproc.worker`
+(hardened projects grant the default compute service account nothing), and
+Composer 3 requires an explicitly specified workloads service account holding
+`roles/composer.worker`. Model the identity as a registry prerequisite with a
+consumer-scoped `GcpServiceAccount` profile carrying the additive grant in
+`project_iam_roles` — a plain SA prerequisite without the grant fails the
+scenario at create with a permissions error, not at verify.
 
 **Test-side data staging (kinds whose deploy needs pre-existing object bytes):**
 Some resources cannot apply until a blob already exists in cloud storage — Gen

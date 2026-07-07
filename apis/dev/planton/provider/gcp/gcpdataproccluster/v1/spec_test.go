@@ -51,10 +51,38 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		}
 	}
 
+	// Helper for a minimal valid virtual (Dataproc-on-GKE) arm.
+	virtualArm := func() *GcpDataprocClusterVirtualClusterConfig {
+		return &GcpDataprocClusterVirtualClusterConfig{
+			KubernetesClusterConfig: &GcpDataprocClusterKubernetesClusterConfig{
+				GkeClusterConfig: &GcpDataprocClusterGkeClusterConfig{
+					GkeClusterTarget: svr("projects/my-gcp-project/locations/us-central1/clusters/my-gke"),
+				},
+				KubernetesSoftwareConfig: &GcpDataprocClusterKubernetesSoftwareConfig{
+					ComponentVersion: map[string]string{"SPARK": "3.5-dataproc-17"},
+				},
+			},
+		}
+	}
+
 	// ──────────────── Positive Cases ────────────────
 
 	ginkgo.It("should accept a minimal valid spec", func() {
 		msg := minimal()
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a spec without project_id (ambient project)", func() {
+		msg := minimal()
+		msg.Spec.ProjectId = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a multi-digit region", func() {
+		msg := minimal()
+		msg.Spec.Region = "europe-west12"
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -75,7 +103,6 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 
 	ginkgo.It("should accept cluster_name at max length (55 chars)", func() {
 		msg := minimal()
-		msg.Spec.ClusterName = "a" + string(make([]byte, 53)) + "z"
 		// Build a valid 55-char name: a + 53 lowercase chars + z
 		name := "a"
 		for i := 0; i < 53; i++ {
@@ -90,6 +117,14 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 	ginkgo.It("should accept spec with graceful_decommission_timeout", func() {
 		msg := minimal()
 		msg.Spec.GracefulDecommissionTimeout = "3600s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept user labels on the GCE arm", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"team": "data-eng", "cost-center": "1234"}
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -142,6 +177,37 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 			}
 			err := validator.Validate(msg)
 			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "preemptibility: %s", p)
+		}
+	})
+
+	ginkgo.It("should accept secondary workers with instance_flexibility_policy", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecondaryWorkerConfig: &GcpDataprocClusterSecondaryWorkerConfig{
+				NumInstances:   20,
+				Preemptibility: "SPOT",
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					InstanceSelectionList: []*GcpDataprocClusterInstanceSelection{
+						{MachineTypes: []string{"n2-standard-8", "n2d-standard-8"}, Rank: 0},
+						{MachineTypes: []string{"e2-standard-8"}, Rank: 1},
+					},
+					ProvisioningModelMix: &GcpDataprocClusterProvisioningModelMix{
+						StandardCapacityBase:             2,
+						StandardCapacityPercentAboveBase: 25,
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept all valid cluster_tier values", func() {
+		for _, tier := range []string{"CLUSTER_TIER_STANDARD", "CLUSTER_TIER_PREMIUM"} {
+			msg := minimal()
+			msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{ClusterTier: tier}
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "cluster_tier: %s", tier)
 		}
 	})
 
@@ -198,6 +264,65 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept gce_config with shielded and confidential instance config", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				ShieldedInstanceConfig: &GcpDataprocClusterShieldedInstanceConfig{
+					EnableSecureBoot:          true,
+					EnableVtpm:                true,
+					EnableIntegrityMonitoring: true,
+				},
+				ConfidentialInstanceConfig: &GcpDataprocClusterConfidentialInstanceConfig{
+					EnableConfidentialCompute: true,
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept reservation_affinity ANY_RESERVATION without key/values", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				ReservationAffinity: &GcpDataprocClusterReservationAffinity{
+					ConsumeReservationType: "ANY_RESERVATION",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept SPECIFIC_RESERVATION with key and values", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				ReservationAffinity: &GcpDataprocClusterReservationAffinity{
+					ConsumeReservationType: "SPECIFIC_RESERVATION",
+					Key:                    "compute.googleapis.com/reservation-name",
+					Values:                 []string{"my-reservation"},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept node_group_affinity with a node group URI", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				NodeGroupAffinity: &GcpDataprocClusterNodeGroupAffinity{
+					NodeGroupUri: "projects/my-project/zones/us-central1-a/nodeGroups/sole-tenant-group",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should accept spec with disk_config on master", func() {
 		msg := minimal()
 		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
@@ -228,6 +353,22 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		}
 	})
 
+	ginkgo.It("should accept all valid local_ssd_interface values", func() {
+		for _, iface := range []string{"scsi", "nvme"} {
+			msg := minimal()
+			msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+				WorkerConfig: &GcpDataprocClusterWorkerConfig{
+					DiskConfig: &GcpDataprocClusterDiskConfig{
+						NumLocalSsds:      2,
+						LocalSsdInterface: iface,
+					},
+				},
+			}
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "local_ssd_interface: %s", iface)
+		}
+	})
+
 	ginkgo.It("should accept spec with accelerators on master", func() {
 		msg := minimal()
 		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
@@ -245,6 +386,36 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		msg := minimal()
 		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
 			EncryptionKmsKeyName: svr("projects/p/locations/l/keyRings/kr/cryptoKeys/k"),
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept security_config with kerberos_config only", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecurityConfig: &GcpDataprocClusterSecurityConfig{
+				KerberosConfig: &GcpDataprocClusterKerberosConfig{
+					EnableKerberos:           true,
+					RootPrincipalPasswordUri: "gs://my-secure-bucket/kerberos/root-password.encrypted",
+					KmsKeyUri:                svr("projects/p/locations/l/keyRings/kr/cryptoKeys/k"),
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept security_config with identity_config only", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecurityConfig: &GcpDataprocClusterSecurityConfig{
+				IdentityConfig: &GcpDataprocClusterIdentityConfig{
+					UserServiceAccountMapping: map[string]string{
+						"bob@example.com": "bob-sa@my-project.iam.gserviceaccount.com",
+					},
+				},
+			},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -296,24 +467,95 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 	ginkgo.It("should accept spec with autoscaling_policy_uri", func() {
 		msg := minimal()
 		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
-			AutoscalingPolicyUri: "projects/my-project/locations/us-central1/autoscalingPolicies/my-policy",
+			AutoscalingPolicyUri: svr("projects/my-project/locations/us-central1/autoscalingPolicies/my-policy"),
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept a fully-featured spec", func() {
+	ginkgo.It("should accept spec with metastore_config", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			MetastoreConfig: &GcpDataprocClusterMetastoreConfig{
+				DataprocMetastoreService: svr("projects/my-project/locations/us-central1/services/shared-hive-metastore"),
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept dataproc_metric_config with valid metric sources", func() {
+		for _, source := range []string{"MONITORING_AGENT_DEFAULTS", "HDFS", "SPARK", "YARN", "SPARK_HISTORY_SERVER", "HIVESERVER2"} {
+			msg := minimal()
+			msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+				DataprocMetricConfig: &GcpDataprocClusterMetricConfig{
+					Metrics: []*GcpDataprocClusterMetric{
+						{MetricSource: source},
+					},
+				},
+			}
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "metric_source: %s", source)
+		}
+	})
+
+	ginkgo.It("should accept dataproc_metric_config with metric_overrides", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			DataprocMetricConfig: &GcpDataprocClusterMetricConfig{
+				Metrics: []*GcpDataprocClusterMetric{
+					{
+						MetricSource:    "YARN",
+						MetricOverrides: []string{"yarn:ResourceManager:QueueMetrics:AppsCompleted"},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an auxiliary node group with the DRIVER role", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			AuxiliaryNodeGroups: []*GcpDataprocClusterAuxiliaryNodeGroup{
+				{
+					Roles:       []string{"DRIVER"},
+					NodeGroupId: "spark-drivers",
+					NodeGroupConfig: &GcpDataprocClusterAuxiliaryNodeGroupConfig{
+						NumInstances: 2,
+						MachineType:  "n2-highmem-8",
+						DiskConfig: &GcpDataprocClusterDiskConfig{
+							BootDiskSizeGb: 200,
+							BootDiskType:   "pd-ssd",
+						},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a fully-featured GCE-arm spec", func() {
 		msg := minimal()
 		msg.Spec.GracefulDecommissionTimeout = "300s"
+		msg.Spec.Labels = map[string]string{"team": "data-eng"}
 		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
 			StagingBucket: svr("my-staging-bucket"),
 			TempBucket:    svr("my-temp-bucket"),
+			ClusterTier:   "CLUSTER_TIER_STANDARD",
 			GceConfig: &GcpDataprocClusterGceConfig{
 				Subnetwork:     svr("projects/my-project/regions/us-central1/subnetworks/dataproc"),
 				ServiceAccount: svr("dataproc-sa@my-project.iam.gserviceaccount.com"),
 				InternalIpOnly: true,
 				Tags:           []string{"dataproc", "spark"},
 				Metadata:       map[string]string{"enable-oslogin": "true"},
+				ShieldedInstanceConfig: &GcpDataprocClusterShieldedInstanceConfig{
+					EnableSecureBoot:          true,
+					EnableVtpm:                true,
+					EnableIntegrityMonitoring: true,
+				},
 			},
 			MasterConfig: &GcpDataprocClusterMasterConfig{
 				NumInstances: 3,
@@ -328,9 +570,10 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 				MachineType:     "n2-standard-8",
 				MinNumInstances: 2,
 				DiskConfig: &GcpDataprocClusterDiskConfig{
-					BootDiskSizeGb: 500,
-					BootDiskType:   "pd-ssd",
-					NumLocalSsds:   2,
+					BootDiskSizeGb:    500,
+					BootDiskType:      "pd-ssd",
+					NumLocalSsds:      2,
+					LocalSsdInterface: "nvme",
 				},
 				Accelerators: []*GcpDataprocClusterAccelerator{
 					{AcceleratorType: "nvidia-tesla-t4", AcceleratorCount: 1},
@@ -339,6 +582,15 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 			SecondaryWorkerConfig: &GcpDataprocClusterSecondaryWorkerConfig{
 				NumInstances:   10,
 				Preemptibility: "SPOT",
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					InstanceSelectionList: []*GcpDataprocClusterInstanceSelection{
+						{MachineTypes: []string{"n2-standard-8", "n2d-standard-8"}, Rank: 0},
+					},
+					ProvisioningModelMix: &GcpDataprocClusterProvisioningModelMix{
+						StandardCapacityBase:             2,
+						StandardCapacityPercentAboveBase: 20,
+					},
+				},
 			},
 			SoftwareConfig: &GcpDataprocClusterSoftwareConfig{
 				ImageVersion:       "2.2-debian12",
@@ -352,6 +604,7 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 			InitializationActions: []*GcpDataprocClusterInitAction{
 				{Script: "gs://my-bucket/init.sh", TimeoutSec: 600},
 			},
+			AutoscalingPolicyUri: svr("projects/my-project/locations/us-central1/autoscalingPolicies/etl-policy"),
 			EncryptionKmsKeyName: svr("projects/p/locations/l/keyRings/kr/cryptoKeys/k"),
 			EndpointConfig: &GcpDataprocClusterEndpointConfig{
 				EnableHttpPortAccess: true,
@@ -359,23 +612,98 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 			LifecycleConfig: &GcpDataprocClusterLifecycleConfig{
 				IdleDeleteTtl: "1800s",
 			},
+			MetastoreConfig: &GcpDataprocClusterMetastoreConfig{
+				DataprocMetastoreService: svr("projects/my-project/locations/us-central1/services/shared-hive-metastore"),
+			},
+			DataprocMetricConfig: &GcpDataprocClusterMetricConfig{
+				Metrics: []*GcpDataprocClusterMetric{
+					{MetricSource: "SPARK"},
+					{MetricSource: "YARN"},
+				},
+			},
+			AuxiliaryNodeGroups: []*GcpDataprocClusterAuxiliaryNodeGroup{
+				{
+					Roles:       []string{"DRIVER"},
+					NodeGroupId: "spark-drivers",
+				},
+			},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Negative Cases ────────────────
-
-	ginkgo.It("should reject missing project_id", func() {
+	ginkgo.It("should accept a minimal virtual (Dataproc-on-GKE) spec", func() {
 		msg := minimal()
-		msg.Spec.ProjectId = nil
+		msg.Spec.VirtualClusterConfig = virtualArm()
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept a virtual spec with node pool targets and auxiliary services", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.StagingBucket = svr("my-dataproc-staging")
+		arm.KubernetesClusterConfig.KubernetesNamespace = svr("dataproc-workloads")
+		arm.KubernetesClusterConfig.GkeClusterConfig.NodePoolTarget = []*GcpDataprocClusterNodePoolTarget{
+			{
+				NodePool: svr("projects/my-gcp-project/locations/us-central1/clusters/my-gke/nodePools/dataproc-pool"),
+				Roles:    []string{"DEFAULT"},
+				NodePoolConfig: &GcpDataprocClusterNodePoolConfig{
+					Locations: []string{"us-central1-a"},
+					Autoscaling: &GcpDataprocClusterNodePoolAutoscaling{
+						MinNodeCount: 0,
+						MaxNodeCount: 10,
+					},
+					MachineType: "n2-standard-8",
+					Spot:        true,
+				},
+			},
+			{
+				NodePool: svr("projects/my-gcp-project/locations/us-central1/clusters/my-gke/nodePools/controller-pool"),
+				Roles:    []string{"CONTROLLER", "SPARK_DRIVER"},
+			},
+		}
+		arm.AuxiliaryServicesConfig = &GcpDataprocClusterAuxiliaryServicesConfig{
+			MetastoreConfig: &GcpDataprocClusterMetastoreConfig{
+				DataprocMetastoreService: svr("projects/my-gcp-project/locations/us-central1/services/shared-hive-metastore"),
+			},
+			SparkHistoryServerConfig: &GcpDataprocClusterSparkHistoryServerConfig{
+				DataprocCluster: svr("projects/my-gcp-project/regions/us-central1/clusters/history-server"),
+			},
+		}
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept all valid node pool roles", func() {
+		for _, role := range []string{"DEFAULT", "CONTROLLER", "SPARK_DRIVER", "SPARK_EXECUTOR"} {
+			msg := minimal()
+			arm := virtualArm()
+			arm.KubernetesClusterConfig.GkeClusterConfig.NodePoolTarget = []*GcpDataprocClusterNodePoolTarget{
+				{
+					NodePool: svr("projects/p/locations/l/clusters/c/nodePools/np"),
+					Roles:    []string{role},
+				},
+			}
+			msg.Spec.VirtualClusterConfig = arm
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "role: %s", role)
+		}
+	})
+
+	// ──────────────── Negative Cases ────────────────
 
 	ginkgo.It("should reject missing region", func() {
 		msg := minimal()
 		msg.Spec.Region = ""
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a zone where a region is expected", func() {
+		msg := minimal()
+		msg.Spec.Region = "us-central1-a"
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
@@ -422,6 +750,24 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should reject both deployment arms set together", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{}
+		msg.Spec.VirtualClusterConfig = virtualArm()
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
+	})
+
+	ginkgo.It("should reject user labels on the virtual arm", func() {
+		msg := minimal()
+		msg.Spec.VirtualClusterConfig = virtualArm()
+		msg.Spec.Labels = map[string]string{"team": "data-eng"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("labels"))
+	})
+
 	ginkgo.It("should reject invalid preemptibility value", func() {
 		msg := minimal()
 		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
@@ -433,6 +779,16 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 		gomega.Expect(err.Error()).To(gomega.ContainSubstring("preemptibility"))
+	})
+
+	ginkgo.It("should reject invalid cluster_tier value", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			ClusterTier: "CLUSTER_TIER_GOLD",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("cluster_tier"))
 	})
 
 	ginkgo.It("should reject invalid boot_disk_type", func() {
@@ -461,6 +817,236 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 		gomega.Expect(err.Error()).To(gomega.ContainSubstring("boot_disk_size_gb"))
+	})
+
+	ginkgo.It("should reject invalid local_ssd_interface", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			WorkerConfig: &GcpDataprocClusterWorkerConfig{
+				DiskConfig: &GcpDataprocClusterDiskConfig{
+					NumLocalSsds:      1,
+					LocalSsdInterface: "sata",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("local_ssd_interface"))
+	})
+
+	ginkgo.It("should reject network and subnetwork set together", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				Network:    svr("projects/my-project/global/networks/default"),
+				Subnetwork: svr("projects/my-project/regions/us-central1/subnetworks/default"),
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("network"))
+	})
+
+	ginkgo.It("should reject SPECIFIC_RESERVATION without key and values", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				ReservationAffinity: &GcpDataprocClusterReservationAffinity{
+					ConsumeReservationType: "SPECIFIC_RESERVATION",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("SPECIFIC_RESERVATION"))
+	})
+
+	ginkgo.It("should reject invalid consume_reservation_type", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				ReservationAffinity: &GcpDataprocClusterReservationAffinity{
+					ConsumeReservationType: "SOME_RESERVATION",
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject node_group_affinity without node_group_uri", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				NodeGroupAffinity: &GcpDataprocClusterNodeGroupAffinity{},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject instance_selection with empty machine_types", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecondaryWorkerConfig: &GcpDataprocClusterSecondaryWorkerConfig{
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					InstanceSelectionList: []*GcpDataprocClusterInstanceSelection{
+						{MachineTypes: []string{}, Rank: 0},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject provisioning_model_mix percent above 100", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecondaryWorkerConfig: &GcpDataprocClusterSecondaryWorkerConfig{
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					ProvisioningModelMix: &GcpDataprocClusterProvisioningModelMix{
+						StandardCapacityPercentAboveBase: 120,
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject security_config with both kerberos and identity config", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecurityConfig: &GcpDataprocClusterSecurityConfig{
+				KerberosConfig: &GcpDataprocClusterKerberosConfig{
+					RootPrincipalPasswordUri: "gs://my-secure-bucket/kerberos/root-password.encrypted",
+					KmsKeyUri:                svr("projects/p/locations/l/keyRings/kr/cryptoKeys/k"),
+				},
+				IdentityConfig: &GcpDataprocClusterIdentityConfig{
+					UserServiceAccountMapping: map[string]string{
+						"bob@example.com": "bob-sa@my-project.iam.gserviceaccount.com",
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one"))
+	})
+
+	ginkgo.It("should reject security_config with neither mechanism set", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecurityConfig: &GcpDataprocClusterSecurityConfig{},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject kerberos_config without root_principal_password_uri", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecurityConfig: &GcpDataprocClusterSecurityConfig{
+				KerberosConfig: &GcpDataprocClusterKerberosConfig{
+					KmsKeyUri: svr("projects/p/locations/l/keyRings/kr/cryptoKeys/k"),
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject identity_config with an empty mapping", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecurityConfig: &GcpDataprocClusterSecurityConfig{
+				IdentityConfig: &GcpDataprocClusterIdentityConfig{
+					UserServiceAccountMapping: map[string]string{},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject metastore_config without a service", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			MetastoreConfig: &GcpDataprocClusterMetastoreConfig{},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid metric_source", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			DataprocMetricConfig: &GcpDataprocClusterMetricConfig{
+				Metrics: []*GcpDataprocClusterMetric{
+					{MetricSource: "FLINK"},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("metric_source"))
+	})
+
+	ginkgo.It("should reject dataproc_metric_config with no metrics", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			DataprocMetricConfig: &GcpDataprocClusterMetricConfig{
+				Metrics: []*GcpDataprocClusterMetric{},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an auxiliary node group role other than DRIVER", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			AuxiliaryNodeGroups: []*GcpDataprocClusterAuxiliaryNodeGroup{
+				{Roles: []string{"WORKER"}},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an auxiliary node group with no roles", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			AuxiliaryNodeGroups: []*GcpDataprocClusterAuxiliaryNodeGroup{
+				{Roles: []string{}},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject node_group_id shorter than 3 characters", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			AuxiliaryNodeGroups: []*GcpDataprocClusterAuxiliaryNodeGroup{
+				{Roles: []string{"DRIVER"}, NodeGroupId: "ab"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("node_group_id"))
+	})
+
+	ginkgo.It("should reject node_group_id longer than 33 characters", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			AuxiliaryNodeGroups: []*GcpDataprocClusterAuxiliaryNodeGroup{
+				{Roles: []string{"DRIVER"}, NodeGroupId: "abcdefghijklmnopqrstuvwxyz-0123456"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject invalid graceful_decommission_timeout format", func() {
@@ -518,6 +1104,144 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a virtual arm missing kubernetes_cluster_config", func() {
+		msg := minimal()
+		msg.Spec.VirtualClusterConfig = &GcpDataprocClusterVirtualClusterConfig{}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a virtual arm missing gke_cluster_config", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.GkeClusterConfig = nil
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a virtual arm missing kubernetes_software_config", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.KubernetesSoftwareConfig = nil
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a virtual arm missing gke_cluster_target", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.GkeClusterConfig.GkeClusterTarget = nil
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an empty component_version map", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.KubernetesSoftwareConfig.ComponentVersion = map[string]string{}
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a node pool target without node_pool", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.GkeClusterConfig.NodePoolTarget = []*GcpDataprocClusterNodePoolTarget{
+			{Roles: []string{"DEFAULT"}},
+		}
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a node pool target with no roles", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.GkeClusterConfig.NodePoolTarget = []*GcpDataprocClusterNodePoolTarget{
+			{NodePool: svr("projects/p/locations/l/clusters/c/nodePools/np")},
+		}
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid node pool role", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.GkeClusterConfig.NodePoolTarget = []*GcpDataprocClusterNodePoolTarget{
+			{
+				NodePool: svr("projects/p/locations/l/clusters/c/nodePools/np"),
+				Roles:    []string{"WORKER"},
+			},
+		}
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a node pool config with preemptible and spot together", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.GkeClusterConfig.NodePoolTarget = []*GcpDataprocClusterNodePoolTarget{
+			{
+				NodePool: svr("projects/p/locations/l/clusters/c/nodePools/np"),
+				Roles:    []string{"DEFAULT"},
+				NodePoolConfig: &GcpDataprocClusterNodePoolConfig{
+					Locations:   []string{"us-central1-a"},
+					Preemptible: true,
+					Spot:        true,
+				},
+			},
+		}
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("preemptible"))
+	})
+
+	ginkgo.It("should reject a node pool config with empty locations", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.GkeClusterConfig.NodePoolTarget = []*GcpDataprocClusterNodePoolTarget{
+			{
+				NodePool: svr("projects/p/locations/l/clusters/c/nodePools/np"),
+				Roles:    []string{"DEFAULT"},
+				NodePoolConfig: &GcpDataprocClusterNodePoolConfig{
+					Locations: []string{},
+				},
+			},
+		}
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject node pool autoscaling with max below min", func() {
+		msg := minimal()
+		arm := virtualArm()
+		arm.KubernetesClusterConfig.GkeClusterConfig.NodePoolTarget = []*GcpDataprocClusterNodePoolTarget{
+			{
+				NodePool: svr("projects/p/locations/l/clusters/c/nodePools/np"),
+				Roles:    []string{"DEFAULT"},
+				NodePoolConfig: &GcpDataprocClusterNodePoolConfig{
+					Locations: []string{"us-central1-a"},
+					Autoscaling: &GcpDataprocClusterNodePoolAutoscaling{
+						MinNodeCount: 5,
+						MaxNodeCount: 2,
+					},
+				},
+			},
+		}
+		msg.Spec.VirtualClusterConfig = arm
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("max_node_count"))
 	})
 
 	ginkgo.It("should reject wrong api_version", func() {

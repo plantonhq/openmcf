@@ -31,16 +31,30 @@ const (
 // metadata database, web server, and Cloud Storage DAG bucket. This component
 // targets Composer 2.x and 3 (Composer 1.x fields are excluded as that version
 // is deprecated by Google).
+//
+// Important behavioral notes:
+//
+//   - environment_name, region, node networking, encryption, and the private
+//     environment configuration are immutable after creation. The workloads
+//     sizing, environment size, resilience mode, software configuration
+//     (packages, overrides, env vars), maintenance window, web-server access
+//     control, and labels update in place.
+//
+//   - Environment creation takes 25-45 minutes: Composer assembles a GKE
+//     cluster, Cloud SQL database, and web server behind the scenes.
 type GcpCloudComposerEnvironmentSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project in which to create the Cloud Composer environment.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// GCP region for the Composer environment (e.g., "us-central1").
+	// GCP region for the Composer environment (e.g., "us-central1",
+	// "europe-west12"). Immutable after creation.
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
 	// Name of the Composer environment resource in GCP.
 	// Must be lowercase letters, numbers, and hyphens; start with a letter;
 	// end with a letter or number; 1-64 characters.
-	// Optional: when empty, defaults to metadata.name.
+	// Optional: when empty, defaults to metadata.name. Immutable after creation.
 	EnvironmentName string `protobuf:"bytes,3,opt,name=environment_name,json=environmentName,proto3" json:"environment_name,omitempty"`
 	// Networking and node configuration for the Composer environment.
 	NodeConfig *GcpCloudComposerNodeConfig `protobuf:"bytes,4,opt,name=node_config,json=nodeConfig,proto3" json:"node_config,omitempty"`
@@ -55,14 +69,14 @@ type GcpCloudComposerEnvironmentSpec struct {
 	// web server, triggerer, DAG processor). Applies to Composer 2.x and 3.
 	WorkloadsConfig *GcpCloudComposerWorkloadsConfig `protobuf:"bytes,7,opt,name=workloads_config,json=workloadsConfig,proto3" json:"workloads_config,omitempty"`
 	// Size of the Composer environment. Controls the managed infrastructure
-	// capacity. Only applicable to Composer 2.x and 3.
+	// capacity (GKE cluster and database sizing behind the scenes).
 	EnvironmentSize string `protobuf:"bytes,8,opt,name=environment_size,json=environmentSize,proto3" json:"environment_size,omitempty"`
 	// Resilience mode for the Composer environment. HIGH_RESILIENCE provides
 	// multi-zone redundancy for increased availability. Applies to Composer 2.1.15+.
 	ResilienceMode string `protobuf:"bytes,9,opt,name=resilience_mode,json=resilienceMode,proto3" json:"resilience_mode,omitempty"`
 	// Customer-managed encryption key for the Composer environment.
 	// All Composer-managed resources (GKE nodes, Cloud SQL, Cloud Storage) are
-	// encrypted with this key.
+	// encrypted with this key. Immutable after creation.
 	KmsKeyName *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
 	// Maintenance window configuration for the Composer environment.
 	// Defines when GCP may perform maintenance operations on the environment.
@@ -72,16 +86,32 @@ type GcpCloudComposerEnvironmentSpec struct {
 	// Network-level access restrictions for the Airflow web server UI.
 	// When configured, only requests from the specified IP ranges are allowed.
 	WebServerNetworkAccessControl *GcpCloudComposerWebServerAccessControl `protobuf:"bytes,13,opt,name=web_server_network_access_control,json=webServerNetworkAccessControl,proto3" json:"web_server_network_access_control,omitempty"`
+	// IP-based access control for the environment's GKE cluster master.
+	// Restricts which networks can reach the Kubernetes control plane that
+	// runs the Airflow workloads.
+	MasterAuthorizedNetworksConfig *GcpCloudComposerMasterAuthorizedNetworksConfig `protobuf:"bytes,14,opt,name=master_authorized_networks_config,json=masterAuthorizedNetworksConfig,proto3" json:"master_authorized_networks_config,omitempty"`
+	// Retention policies for Airflow task logs and metadata database rows —
+	// the levers that keep long-lived environments from accumulating
+	// unbounded operational data.
+	DataRetentionConfig *GcpCloudComposerDataRetentionConfig `protobuf:"bytes,15,opt,name=data_retention_config,json=dataRetentionConfig,proto3" json:"data_retention_config,omitempty"`
+	// Existing Cloud Storage bucket for the environment's DAGs, plugins, and
+	// data (instead of the bucket Composer auto-creates). Resolves to the
+	// bucket name. Immutable after creation.
+	StorageBucket *v1.StringValueOrRef `protobuf:"bytes,16,opt,name=storage_bucket,json=storageBucket,proto3" json:"storage_bucket,omitempty"`
 	// Enable private environment for Composer 3 environments. When true, the
 	// environment does not have a public IP endpoint for the web server.
 	// Only applicable to Composer 3.
-	EnablePrivateEnvironment bool `protobuf:"varint,14,opt,name=enable_private_environment,json=enablePrivateEnvironment,proto3" json:"enable_private_environment,omitempty"`
+	EnablePrivateEnvironment bool `protobuf:"varint,17,opt,name=enable_private_environment,json=enablePrivateEnvironment,proto3" json:"enable_private_environment,omitempty"`
 	// Enable private builds only for Composer 3 environments. When true,
 	// only builds using private connectivity are allowed for Python packages.
 	// Only applicable to Composer 3.
-	EnablePrivateBuildsOnly bool `protobuf:"varint,15,opt,name=enable_private_builds_only,json=enablePrivateBuildsOnly,proto3" json:"enable_private_builds_only,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	EnablePrivateBuildsOnly bool `protobuf:"varint,18,opt,name=enable_private_builds_only,json=enablePrivateBuildsOnly,proto3" json:"enable_private_builds_only,omitempty"`
+	// User-defined labels to organize and track the environment. Merged
+	// beneath Planton's platform attribution labels (platform keys win on
+	// conflict).
+	Labels        map[string]string `protobuf:"bytes,19,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpCloudComposerEnvironmentSpec) Reset() {
@@ -205,6 +235,27 @@ func (x *GcpCloudComposerEnvironmentSpec) GetWebServerNetworkAccessControl() *Gc
 	return nil
 }
 
+func (x *GcpCloudComposerEnvironmentSpec) GetMasterAuthorizedNetworksConfig() *GcpCloudComposerMasterAuthorizedNetworksConfig {
+	if x != nil {
+		return x.MasterAuthorizedNetworksConfig
+	}
+	return nil
+}
+
+func (x *GcpCloudComposerEnvironmentSpec) GetDataRetentionConfig() *GcpCloudComposerDataRetentionConfig {
+	if x != nil {
+		return x.DataRetentionConfig
+	}
+	return nil
+}
+
+func (x *GcpCloudComposerEnvironmentSpec) GetStorageBucket() *v1.StringValueOrRef {
+	if x != nil {
+		return x.StorageBucket
+	}
+	return nil
+}
+
 func (x *GcpCloudComposerEnvironmentSpec) GetEnablePrivateEnvironment() bool {
 	if x != nil {
 		return x.EnablePrivateEnvironment
@@ -219,6 +270,13 @@ func (x *GcpCloudComposerEnvironmentSpec) GetEnablePrivateBuildsOnly() bool {
 	return false
 }
 
+func (x *GcpCloudComposerEnvironmentSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
 // GcpCloudComposerNodeConfig defines networking and compute settings for the
 // underlying Kubernetes nodes that run Airflow components.
 type GcpCloudComposerNodeConfig struct {
@@ -230,8 +288,11 @@ type GcpCloudComposerNodeConfig struct {
 	// VPC subnetwork for the Composer environment.
 	// Used for Composer 2.x with VPC peering networking.
 	Subnetwork *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=subnetwork,proto3" json:"subnetwork,omitempty"`
-	// Service account used by the Composer environment's GKE nodes.
-	// If empty, the default Compute Engine service account is used.
+	// Service account the environment's workloads run as. Must hold
+	// roles/composer.worker. Composer 3 REQUIRES this to be explicitly
+	// specified (the API rejects environment creation without it); only
+	// legacy Composer 2 environments fall back to the default Compute
+	// Engine service account.
 	ServiceAccount *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=service_account,json=serviceAccount,proto3" json:"service_account,omitempty"`
 	// Network tags applied to Composer environment GKE nodes.
 	// Used for firewall rule targeting.
@@ -243,8 +304,15 @@ type GcpCloudComposerNodeConfig struct {
 	// IPv4 CIDR block for Composer 3 internal components.
 	// Must be a /20 range. Only applicable when using Composer 3.
 	ComposerInternalIpv4CidrBlock string `protobuf:"bytes,6,opt,name=composer_internal_ipv4_cidr_block,json=composerInternalIpv4CidrBlock,proto3" json:"composer_internal_ipv4_cidr_block,omitempty"`
-	unknownFields                 protoimpl.UnknownFields
-	sizeCache                     protoimpl.SizeCache
+	// Deploy the ip-masq-agent DaemonSet on the environment's GKE nodes,
+	// SNATing pod traffic to node IPs — needed when the pod CIDR is not
+	// routable in the wider network.
+	EnableIpMasqAgent bool `protobuf:"varint,7,opt,name=enable_ip_masq_agent,json=enableIpMasqAgent,proto3" json:"enable_ip_masq_agent,omitempty"`
+	// VPC-native (alias IP) range assignment for the environment's GKE
+	// pods and services.
+	IpAllocationPolicy *GcpCloudComposerIpAllocationPolicy `protobuf:"bytes,8,opt,name=ip_allocation_policy,json=ipAllocationPolicy,proto3" json:"ip_allocation_policy,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GcpCloudComposerNodeConfig) Reset() {
@@ -319,6 +387,100 @@ func (x *GcpCloudComposerNodeConfig) GetComposerInternalIpv4CidrBlock() string {
 	return ""
 }
 
+func (x *GcpCloudComposerNodeConfig) GetEnableIpMasqAgent() bool {
+	if x != nil {
+		return x.EnableIpMasqAgent
+	}
+	return false
+}
+
+func (x *GcpCloudComposerNodeConfig) GetIpAllocationPolicy() *GcpCloudComposerIpAllocationPolicy {
+	if x != nil {
+		return x.IpAllocationPolicy
+	}
+	return nil
+}
+
+// GcpCloudComposerIpAllocationPolicy pins the environment's GKE pod and
+// service ranges: name an existing secondary range on the subnetwork, or
+// give a CIDR for GKE to carve — per range, never both.
+type GcpCloudComposerIpAllocationPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the subnetwork's existing secondary range to use for pods.
+	// Mutually exclusive with cluster_ipv4_cidr_block.
+	ClusterSecondaryRangeName string `protobuf:"bytes,1,opt,name=cluster_secondary_range_name,json=clusterSecondaryRangeName,proto3" json:"cluster_secondary_range_name,omitempty"`
+	// CIDR block for the pod range when no named secondary range is used
+	// (e.g. "10.4.0.0/14", or a netmask size like "/14").
+	// Mutually exclusive with cluster_secondary_range_name.
+	ClusterIpv4CidrBlock string `protobuf:"bytes,2,opt,name=cluster_ipv4_cidr_block,json=clusterIpv4CidrBlock,proto3" json:"cluster_ipv4_cidr_block,omitempty"`
+	// Name of the subnetwork's existing secondary range to use for services.
+	// Mutually exclusive with services_ipv4_cidr_block.
+	ServicesSecondaryRangeName string `protobuf:"bytes,3,opt,name=services_secondary_range_name,json=servicesSecondaryRangeName,proto3" json:"services_secondary_range_name,omitempty"`
+	// CIDR block for the services range when no named secondary range is
+	// used. Mutually exclusive with services_secondary_range_name.
+	ServicesIpv4CidrBlock string `protobuf:"bytes,4,opt,name=services_ipv4_cidr_block,json=servicesIpv4CidrBlock,proto3" json:"services_ipv4_cidr_block,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GcpCloudComposerIpAllocationPolicy) Reset() {
+	*x = GcpCloudComposerIpAllocationPolicy{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudComposerIpAllocationPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudComposerIpAllocationPolicy) ProtoMessage() {}
+
+func (x *GcpCloudComposerIpAllocationPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudComposerIpAllocationPolicy.ProtoReflect.Descriptor instead.
+func (*GcpCloudComposerIpAllocationPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpCloudComposerIpAllocationPolicy) GetClusterSecondaryRangeName() string {
+	if x != nil {
+		return x.ClusterSecondaryRangeName
+	}
+	return ""
+}
+
+func (x *GcpCloudComposerIpAllocationPolicy) GetClusterIpv4CidrBlock() string {
+	if x != nil {
+		return x.ClusterIpv4CidrBlock
+	}
+	return ""
+}
+
+func (x *GcpCloudComposerIpAllocationPolicy) GetServicesSecondaryRangeName() string {
+	if x != nil {
+		return x.ServicesSecondaryRangeName
+	}
+	return ""
+}
+
+func (x *GcpCloudComposerIpAllocationPolicy) GetServicesIpv4CidrBlock() string {
+	if x != nil {
+		return x.ServicesIpv4CidrBlock
+	}
+	return ""
+}
+
 // GcpCloudComposerSoftwareConfig defines the Airflow software configuration
 // including the Composer/Airflow version, Python packages, and configuration
 // overrides.
@@ -344,13 +506,17 @@ type GcpCloudComposerSoftwareConfig struct {
 	// When DISABLED, custom Airflow UI plugins are not loaded.
 	// Only applicable to Composer 3.
 	WebServerPluginsMode string `protobuf:"bytes,5,opt,name=web_server_plugins_mode,json=webServerPluginsMode,proto3" json:"web_server_plugins_mode,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Cloud Data Lineage integration: Airflow operators report dataset
+	// lineage into Dataplex Data Lineage automatically.
+	// Applies to Composer 2.1.2+.
+	CloudDataLineageIntegration *GcpCloudComposerCloudDataLineageIntegration `protobuf:"bytes,6,opt,name=cloud_data_lineage_integration,json=cloudDataLineageIntegration,proto3" json:"cloud_data_lineage_integration,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *GcpCloudComposerSoftwareConfig) Reset() {
 	*x = GcpCloudComposerSoftwareConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -362,7 +528,7 @@ func (x *GcpCloudComposerSoftwareConfig) String() string {
 func (*GcpCloudComposerSoftwareConfig) ProtoMessage() {}
 
 func (x *GcpCloudComposerSoftwareConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -375,7 +541,7 @@ func (x *GcpCloudComposerSoftwareConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudComposerSoftwareConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerSoftwareConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GcpCloudComposerSoftwareConfig) GetImageVersion() string {
@@ -413,6 +579,60 @@ func (x *GcpCloudComposerSoftwareConfig) GetWebServerPluginsMode() string {
 	return ""
 }
 
+func (x *GcpCloudComposerSoftwareConfig) GetCloudDataLineageIntegration() *GcpCloudComposerCloudDataLineageIntegration {
+	if x != nil {
+		return x.CloudDataLineageIntegration
+	}
+	return nil
+}
+
+// GcpCloudComposerCloudDataLineageIntegration toggles automatic lineage
+// reporting from Airflow operators into Dataplex Data Lineage.
+type GcpCloudComposerCloudDataLineageIntegration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether the integration is enabled.
+	Enabled       bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudComposerCloudDataLineageIntegration) Reset() {
+	*x = GcpCloudComposerCloudDataLineageIntegration{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudComposerCloudDataLineageIntegration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudComposerCloudDataLineageIntegration) ProtoMessage() {}
+
+func (x *GcpCloudComposerCloudDataLineageIntegration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudComposerCloudDataLineageIntegration.ProtoReflect.Descriptor instead.
+func (*GcpCloudComposerCloudDataLineageIntegration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpCloudComposerCloudDataLineageIntegration) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
 // GcpCloudComposerPrivateEnvironmentConfig configures private networking
 // for Composer 2.x environments. Composer 3 uses enable_private_environment
 // and composer_network_attachment on the top-level spec instead.
@@ -442,7 +662,7 @@ type GcpCloudComposerPrivateEnvironmentConfig struct {
 
 func (x *GcpCloudComposerPrivateEnvironmentConfig) Reset() {
 	*x = GcpCloudComposerPrivateEnvironmentConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -454,7 +674,7 @@ func (x *GcpCloudComposerPrivateEnvironmentConfig) String() string {
 func (*GcpCloudComposerPrivateEnvironmentConfig) ProtoMessage() {}
 
 func (x *GcpCloudComposerPrivateEnvironmentConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -467,7 +687,7 @@ func (x *GcpCloudComposerPrivateEnvironmentConfig) ProtoReflect() protoreflect.M
 
 // Deprecated: Use GcpCloudComposerPrivateEnvironmentConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerPrivateEnvironmentConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GcpCloudComposerPrivateEnvironmentConfig) GetEnablePrivateEndpoint() bool {
@@ -521,7 +741,7 @@ func (x *GcpCloudComposerPrivateEnvironmentConfig) GetEnablePrivatelyUsedPublicI
 
 // GcpCloudComposerWorkloadsConfig defines resource allocation for individual
 // Airflow components. Each component runs as a separate workload in the
-// underlying GKE cluster.
+// underlying GKE cluster. All workload sizing updates in place.
 type GcpCloudComposerWorkloadsConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Resource allocation for the Airflow scheduler.
@@ -538,7 +758,7 @@ type GcpCloudComposerWorkloadsConfig struct {
 	Triggerer *GcpCloudComposerTriggererResource `protobuf:"bytes,4,opt,name=triggerer,proto3" json:"triggerer,omitempty"`
 	// Resource allocation for the DAG processor.
 	// The DAG processor parses DAG files independently of the scheduler.
-	// Only applicable to Composer 3.
+	// Only applicable to Composer 3 (replica count is capped at 3).
 	DagProcessor  *GcpCloudComposerWorkloadResource `protobuf:"bytes,5,opt,name=dag_processor,json=dagProcessor,proto3" json:"dag_processor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -546,7 +766,7 @@ type GcpCloudComposerWorkloadsConfig struct {
 
 func (x *GcpCloudComposerWorkloadsConfig) Reset() {
 	*x = GcpCloudComposerWorkloadsConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -558,7 +778,7 @@ func (x *GcpCloudComposerWorkloadsConfig) String() string {
 func (*GcpCloudComposerWorkloadsConfig) ProtoMessage() {}
 
 func (x *GcpCloudComposerWorkloadsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -571,7 +791,7 @@ func (x *GcpCloudComposerWorkloadsConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudComposerWorkloadsConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerWorkloadsConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GcpCloudComposerWorkloadsConfig) GetScheduler() *GcpCloudComposerWorkloadResource {
@@ -627,7 +847,7 @@ type GcpCloudComposerWorkloadResource struct {
 
 func (x *GcpCloudComposerWorkloadResource) Reset() {
 	*x = GcpCloudComposerWorkloadResource{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -639,7 +859,7 @@ func (x *GcpCloudComposerWorkloadResource) String() string {
 func (*GcpCloudComposerWorkloadResource) ProtoMessage() {}
 
 func (x *GcpCloudComposerWorkloadResource) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -652,7 +872,7 @@ func (x *GcpCloudComposerWorkloadResource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudComposerWorkloadResource.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerWorkloadResource) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GcpCloudComposerWorkloadResource) GetCpu() float64 {
@@ -700,7 +920,7 @@ type GcpCloudComposerWebServerResource struct {
 
 func (x *GcpCloudComposerWebServerResource) Reset() {
 	*x = GcpCloudComposerWebServerResource{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -712,7 +932,7 @@ func (x *GcpCloudComposerWebServerResource) String() string {
 func (*GcpCloudComposerWebServerResource) ProtoMessage() {}
 
 func (x *GcpCloudComposerWebServerResource) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -725,7 +945,7 @@ func (x *GcpCloudComposerWebServerResource) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GcpCloudComposerWebServerResource.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerWebServerResource) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GcpCloudComposerWebServerResource) GetCpu() float64 {
@@ -769,7 +989,7 @@ type GcpCloudComposerWorkerResource struct {
 
 func (x *GcpCloudComposerWorkerResource) Reset() {
 	*x = GcpCloudComposerWorkerResource{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -781,7 +1001,7 @@ func (x *GcpCloudComposerWorkerResource) String() string {
 func (*GcpCloudComposerWorkerResource) ProtoMessage() {}
 
 func (x *GcpCloudComposerWorkerResource) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -794,7 +1014,7 @@ func (x *GcpCloudComposerWorkerResource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudComposerWorkerResource.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerWorkerResource) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GcpCloudComposerWorkerResource) GetCpu() float64 {
@@ -849,7 +1069,7 @@ type GcpCloudComposerTriggererResource struct {
 
 func (x *GcpCloudComposerTriggererResource) Reset() {
 	*x = GcpCloudComposerTriggererResource{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -861,7 +1081,7 @@ func (x *GcpCloudComposerTriggererResource) String() string {
 func (*GcpCloudComposerTriggererResource) ProtoMessage() {}
 
 func (x *GcpCloudComposerTriggererResource) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -874,7 +1094,7 @@ func (x *GcpCloudComposerTriggererResource) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GcpCloudComposerTriggererResource.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerTriggererResource) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GcpCloudComposerTriggererResource) GetCpu() float64 {
@@ -917,7 +1137,7 @@ type GcpCloudComposerMaintenanceWindow struct {
 
 func (x *GcpCloudComposerMaintenanceWindow) Reset() {
 	*x = GcpCloudComposerMaintenanceWindow{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -929,7 +1149,7 @@ func (x *GcpCloudComposerMaintenanceWindow) String() string {
 func (*GcpCloudComposerMaintenanceWindow) ProtoMessage() {}
 
 func (x *GcpCloudComposerMaintenanceWindow) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -942,7 +1162,7 @@ func (x *GcpCloudComposerMaintenanceWindow) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GcpCloudComposerMaintenanceWindow.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerMaintenanceWindow) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GcpCloudComposerMaintenanceWindow) GetStartTime() string {
@@ -986,7 +1206,7 @@ type GcpCloudComposerRecoveryConfig struct {
 
 func (x *GcpCloudComposerRecoveryConfig) Reset() {
 	*x = GcpCloudComposerRecoveryConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -998,7 +1218,7 @@ func (x *GcpCloudComposerRecoveryConfig) String() string {
 func (*GcpCloudComposerRecoveryConfig) ProtoMessage() {}
 
 func (x *GcpCloudComposerRecoveryConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1011,7 +1231,7 @@ func (x *GcpCloudComposerRecoveryConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudComposerRecoveryConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerRecoveryConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GcpCloudComposerRecoveryConfig) GetEnabled() bool {
@@ -1054,7 +1274,7 @@ type GcpCloudComposerWebServerAccessControl struct {
 
 func (x *GcpCloudComposerWebServerAccessControl) Reset() {
 	*x = GcpCloudComposerWebServerAccessControl{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1066,7 +1286,7 @@ func (x *GcpCloudComposerWebServerAccessControl) String() string {
 func (*GcpCloudComposerWebServerAccessControl) ProtoMessage() {}
 
 func (x *GcpCloudComposerWebServerAccessControl) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1079,7 +1299,7 @@ func (x *GcpCloudComposerWebServerAccessControl) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use GcpCloudComposerWebServerAccessControl.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerWebServerAccessControl) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GcpCloudComposerWebServerAccessControl) GetAllowedIpRanges() []*GcpCloudComposerAllowedIpRange {
@@ -1103,7 +1323,7 @@ type GcpCloudComposerAllowedIpRange struct {
 
 func (x *GcpCloudComposerAllowedIpRange) Reset() {
 	*x = GcpCloudComposerAllowedIpRange{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1115,7 +1335,7 @@ func (x *GcpCloudComposerAllowedIpRange) String() string {
 func (*GcpCloudComposerAllowedIpRange) ProtoMessage() {}
 
 func (x *GcpCloudComposerAllowedIpRange) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1128,7 +1348,7 @@ func (x *GcpCloudComposerAllowedIpRange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudComposerAllowedIpRange.ProtoReflect.Descriptor instead.
 func (*GcpCloudComposerAllowedIpRange) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GcpCloudComposerAllowedIpRange) GetValue() string {
@@ -1145,31 +1365,219 @@ func (x *GcpCloudComposerAllowedIpRange) GetDescription() string {
 	return ""
 }
 
+// GcpCloudComposerMasterAuthorizedNetworksConfig restricts access to the
+// environment's GKE cluster master to the listed CIDR blocks (up to 50).
+type GcpCloudComposerMasterAuthorizedNetworksConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether master authorized networks are enforced.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Networks allowed to reach the Kubernetes control plane.
+	CidrBlocks    []*GcpCloudComposerCidrBlock `protobuf:"bytes,2,rep,name=cidr_blocks,json=cidrBlocks,proto3" json:"cidr_blocks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudComposerMasterAuthorizedNetworksConfig) Reset() {
+	*x = GcpCloudComposerMasterAuthorizedNetworksConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudComposerMasterAuthorizedNetworksConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudComposerMasterAuthorizedNetworksConfig) ProtoMessage() {}
+
+func (x *GcpCloudComposerMasterAuthorizedNetworksConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudComposerMasterAuthorizedNetworksConfig.ProtoReflect.Descriptor instead.
+func (*GcpCloudComposerMasterAuthorizedNetworksConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GcpCloudComposerMasterAuthorizedNetworksConfig) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GcpCloudComposerMasterAuthorizedNetworksConfig) GetCidrBlocks() []*GcpCloudComposerCidrBlock {
+	if x != nil {
+		return x.CidrBlocks
+	}
+	return nil
+}
+
+// GcpCloudComposerCidrBlock names one authorized network.
+type GcpCloudComposerCidrBlock struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// CIDR block allowed to access the cluster master (e.g., "10.0.0.0/8").
+	CidrBlock string `protobuf:"bytes,1,opt,name=cidr_block,json=cidrBlock,proto3" json:"cidr_block,omitempty"`
+	// Optional display name for the network.
+	DisplayName   string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudComposerCidrBlock) Reset() {
+	*x = GcpCloudComposerCidrBlock{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudComposerCidrBlock) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudComposerCidrBlock) ProtoMessage() {}
+
+func (x *GcpCloudComposerCidrBlock) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudComposerCidrBlock.ProtoReflect.Descriptor instead.
+func (*GcpCloudComposerCidrBlock) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GcpCloudComposerCidrBlock) GetCidrBlock() string {
+	if x != nil {
+		return x.CidrBlock
+	}
+	return ""
+}
+
+func (x *GcpCloudComposerCidrBlock) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+// GcpCloudComposerDataRetentionConfig bounds how long the environment
+// retains operational data.
+type GcpCloudComposerDataRetentionConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Where Airflow task logs are stored.
+	// CLOUD_LOGGING_ONLY: task logs go to Cloud Logging only.
+	// CLOUD_LOGGING_AND_CLOUD_STORAGE: logs also land in the environment's
+	// bucket. Applies to Composer 2.0.32+ (not Composer 3).
+	TaskLogsStorageMode string `protobuf:"bytes,1,opt,name=task_logs_storage_mode,json=taskLogsStorageMode,proto3" json:"task_logs_storage_mode,omitempty"`
+	// Whether Airflow metadata database retention is enforced.
+	// Composer 3 only.
+	AirflowMetadataRetentionMode string `protobuf:"bytes,2,opt,name=airflow_metadata_retention_mode,json=airflowMetadataRetentionMode,proto3" json:"airflow_metadata_retention_mode,omitempty"`
+	// Days of Airflow metadata (task history, XComs, logs metadata) to
+	// retain when retention is enabled (30-730). Composer 3 only.
+	AirflowMetadataRetentionDays int32 `protobuf:"varint,3,opt,name=airflow_metadata_retention_days,json=airflowMetadataRetentionDays,proto3" json:"airflow_metadata_retention_days,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
+}
+
+func (x *GcpCloudComposerDataRetentionConfig) Reset() {
+	*x = GcpCloudComposerDataRetentionConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudComposerDataRetentionConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudComposerDataRetentionConfig) ProtoMessage() {}
+
+func (x *GcpCloudComposerDataRetentionConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudComposerDataRetentionConfig.ProtoReflect.Descriptor instead.
+func (*GcpCloudComposerDataRetentionConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GcpCloudComposerDataRetentionConfig) GetTaskLogsStorageMode() string {
+	if x != nil {
+		return x.TaskLogsStorageMode
+	}
+	return ""
+}
+
+func (x *GcpCloudComposerDataRetentionConfig) GetAirflowMetadataRetentionMode() string {
+	if x != nil {
+		return x.AirflowMetadataRetentionMode
+	}
+	return ""
+}
+
+func (x *GcpCloudComposerDataRetentionConfig) GetAirflowMetadataRetentionDays() int32 {
+	if x != nil {
+		return x.AirflowMetadataRetentionDays
+	}
+	return 0
+}
+
 var File_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/gcp/gcpcloudcomposerenvironment/v1/spec.proto\x127dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb8\r\n" +
-	"\x1fGcpCloudComposerEnvironmentSpec\x12{\n" +
+	"Bdev/planton/provider/gcp/gcpcloudcomposerenvironment/v1/spec.proto\x127dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe9\x12\n" +
+	"\x1fGcpCloudComposerEnvironmentSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x1e\n" +
-	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12V\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12V\n" +
 	"\x10environment_name\x18\x03 \x01(\tB+\xbaH(r&2$^([a-z]([a-z0-9-]{0,62}[a-z0-9])?)?$R\x0fenvironmentName\x12t\n" +
 	"\vnode_config\x18\x04 \x01(\v2S.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfigR\n" +
 	"nodeConfig\x12\x80\x01\n" +
 	"\x0fsoftware_config\x18\x05 \x01(\v2W.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfigR\x0esoftwareConfig\x12\x9f\x01\n" +
 	"\x1aprivate_environment_config\x18\x06 \x01(\v2a.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerPrivateEnvironmentConfigR\x18privateEnvironmentConfig\x12\x83\x01\n" +
-	"\x10workloads_config\x18\a \x01(\v2X.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfigR\x0fworkloadsConfig\x12{\n" +
-	"\x10environment_size\x18\b \x01(\tBP\xbaHMrKR\x00R\x16ENVIRONMENT_SIZE_SMALLR\x17ENVIRONMENT_SIZE_MEDIUMR\x16ENVIRONMENT_SIZE_LARGER\x0fenvironmentSize\x12V\n" +
+	"\x10workloads_config\x18\a \x01(\v2X.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfigR\x0fworkloadsConfig\x12\x99\x01\n" +
+	"\x10environment_size\x18\b \x01(\tBn\xbaHkriR\x00R\x16ENVIRONMENT_SIZE_SMALLR\x17ENVIRONMENT_SIZE_MEDIUMR\x16ENVIRONMENT_SIZE_LARGER\x1cENVIRONMENT_SIZE_EXTRA_LARGER\x0fenvironmentSize\x12V\n" +
 	"\x0fresilience_mode\x18\t \x01(\tB-\xbaH*r(R\x00R\x13STANDARD_RESILIENCER\x0fHIGH_RESILIENCER\x0eresilienceMode\x12t\n" +
 	"\fkms_key_name\x18\n" +
 	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12\x89\x01\n" +
 	"\x12maintenance_window\x18\v \x01(\v2Z.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMaintenanceWindowR\x11maintenanceWindow\x12\x80\x01\n" +
 	"\x0frecovery_config\x18\f \x01(\v2W.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerRecoveryConfigR\x0erecoveryConfig\x12\xa9\x01\n" +
-	"!web_server_network_access_control\x18\r \x01(\v2_.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControlR\x1dwebServerNetworkAccessControl\x12<\n" +
-	"\x1aenable_private_environment\x18\x0e \x01(\bR\x18enablePrivateEnvironment\x12;\n" +
-	"\x1aenable_private_builds_only\x18\x0f \x01(\bR\x17enablePrivateBuildsOnly\"\xb2\x04\n" +
+	"!web_server_network_access_control\x18\r \x01(\v2_.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControlR\x1dwebServerNetworkAccessControl\x12\xb2\x01\n" +
+	"!master_authorized_networks_config\x18\x0e \x01(\v2g.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMasterAuthorizedNetworksConfigR\x1emasterAuthorizedNetworksConfig\x12\x90\x01\n" +
+	"\x15data_retention_config\x18\x0f \x01(\v2\\.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerDataRetentionConfigR\x13dataRetentionConfig\x12|\n" +
+	"\x0estorage_bucket\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\rstorageBucket\x12<\n" +
+	"\x1aenable_private_environment\x18\x11 \x01(\bR\x18enablePrivateEnvironment\x12;\n" +
+	"\x1aenable_private_builds_only\x18\x12 \x01(\bR\x17enablePrivateBuildsOnly\x12|\n" +
+	"\x06labels\x18\x13 \x03(\v2d.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf3\x05\n" +
 	"\x1aGcpCloudComposerNodeConfig\x12w\n" +
 	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
 	"\n" +
@@ -1178,13 +1586,23 @@ const file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_ra
 	"\x0fservice_account\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12\x12\n" +
 	"\x04tags\x18\x04 \x03(\tR\x04tags\x12>\n" +
 	"\x1bcomposer_network_attachment\x18\x05 \x01(\tR\x19composerNetworkAttachment\x12H\n" +
-	"!composer_internal_ipv4_cidr_block\x18\x06 \x01(\tR\x1dcomposerInternalIpv4CidrBlock\"\xb7\x06\n" +
+	"!composer_internal_ipv4_cidr_block\x18\x06 \x01(\tR\x1dcomposerInternalIpv4CidrBlock\x12/\n" +
+	"\x14enable_ip_masq_agent\x18\a \x01(\bR\x11enableIpMasqAgent\x12\x8d\x01\n" +
+	"\x14ip_allocation_policy\x18\b \x01(\v2[.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerIpAllocationPolicyR\x12ipAllocationPolicy\"\xa4\x05\n" +
+	"\"GcpCloudComposerIpAllocationPolicy\x12?\n" +
+	"\x1ccluster_secondary_range_name\x18\x01 \x01(\tR\x19clusterSecondaryRangeName\x125\n" +
+	"\x17cluster_ipv4_cidr_block\x18\x02 \x01(\tR\x14clusterIpv4CidrBlock\x12A\n" +
+	"\x1dservices_secondary_range_name\x18\x03 \x01(\tR\x1aservicesSecondaryRangeName\x127\n" +
+	"\x18services_ipv4_cidr_block\x18\x04 \x01(\tR\x15servicesIpv4CidrBlock:\x89\x03\xbaH\x85\x03\x1a\xbd\x01\n" +
+	"\x1bcluster_range_name_xor_cidr\x12Ocluster_secondary_range_name and cluster_ipv4_cidr_block are mutually exclusive\x1aMthis.cluster_secondary_range_name == '' || this.cluster_ipv4_cidr_block == ''\x1a\xc2\x01\n" +
+	"\x1cservices_range_name_xor_cidr\x12Qservices_secondary_range_name and services_ipv4_cidr_block are mutually exclusive\x1aOthis.services_secondary_range_name == '' || this.services_ipv4_cidr_block == ''\"\xe3\a\n" +
 	"\x1eGcpCloudComposerSoftwareConfig\x12#\n" +
 	"\rimage_version\x18\x01 \x01(\tR\fimageVersion\x12\xad\x01\n" +
 	"\x18airflow_config_overrides\x18\x02 \x03(\v2s.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.AirflowConfigOverridesEntryR\x16airflowConfigOverrides\x12\x8e\x01\n" +
 	"\rpypi_packages\x18\x03 \x03(\v2i.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.PypiPackagesEntryR\fpypiPackages\x12\x8e\x01\n" +
 	"\renv_variables\x18\x04 \x03(\v2i.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.EnvVariablesEntryR\fenvVariables\x12Q\n" +
-	"\x17web_server_plugins_mode\x18\x05 \x01(\tB\x1a\xbaH\x17r\x15R\x00R\aENABLEDR\bDISABLEDR\x14webServerPluginsMode\x1aI\n" +
+	"\x17web_server_plugins_mode\x18\x05 \x01(\tB\x1a\xbaH\x17r\x15R\x00R\aENABLEDR\bDISABLEDR\x14webServerPluginsMode\x12\xa9\x01\n" +
+	"\x1ecloud_data_lineage_integration\x18\x06 \x01(\v2d.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerCloudDataLineageIntegrationR\x1bcloudDataLineageIntegration\x1aI\n" +
 	"\x1bAirflowConfigOverridesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
@@ -1193,7 +1611,9 @@ const file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_ra
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
 	"\x11EnvVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x95\x04\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"G\n" +
+	"+GcpCloudComposerCloudDataLineageIntegration\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x95\x04\n" +
 	"(GcpCloudComposerPrivateEnvironmentConfig\x126\n" +
 	"\x17enable_private_endpoint\x18\x01 \x01(\bR\x15enablePrivateEndpoint\x12V\n" +
 	"\x0fconnection_type\x18\x02 \x01(\tB-\xbaH*r(R\x00R\vVPC_PEERINGR\x17PRIVATE_SERVICE_CONNECTR\x0econnectionType\x123\n" +
@@ -1248,7 +1668,20 @@ const file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_ra
 	"\x11allowed_ip_ranges\x18\x01 \x03(\v2W.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerAllowedIpRangeR\x0fallowedIpRanges\"`\n" +
 	"\x1eGcpCloudComposerAllowedIpRange\x12\x1c\n" +
 	"\x05value\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescriptionB\xc4\x03\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"\xbf\x01\n" +
+	".GcpCloudComposerMasterAuthorizedNetworksConfig\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12s\n" +
+	"\vcidr_blocks\x18\x02 \x03(\v2R.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerCidrBlockR\n" +
+	"cidrBlocks\"e\n" +
+	"\x19GcpCloudComposerCidrBlock\x12%\n" +
+	"\n" +
+	"cidr_block\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tcidrBlock\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"\xe6\x03\n" +
+	"#GcpCloudComposerDataRetentionConfig\x12q\n" +
+	"\x16task_logs_storage_mode\x18\x01 \x01(\tB<\xbaH9r7R\x00R\x12CLOUD_LOGGING_ONLYR\x1fCLOUD_LOGGING_AND_CLOUD_STORAGER\x13taskLogsStorageMode\x12\x7f\n" +
+	"\x1fairflow_metadata_retention_mode\x18\x02 \x01(\tB8\xbaH5r3R\x00R\x16RETENTION_MODE_ENABLEDR\x17RETENTION_MODE_DISABLEDR\x1cairflowMetadataRetentionMode\x12\xca\x01\n" +
+	"\x1fairflow_metadata_retention_days\x18\x03 \x01(\x05B\x82\x01\xbaH\x7f\xba\x01|\n" +
+	"\x14retention_days_range\x12:airflow_metadata_retention_days must be between 30 and 730\x1a(this == 0 || (this >= 30 && this <= 730)R\x1cairflowMetadataRetentionDaysB\xc4\x03\n" +
 	";com.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1B\tSpecProtoP\x01Zwgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1;gcpcloudcomposerenvironmentv1\xa2\x02\x05DPPGG\xaa\x027Dev.Planton.Provider.Gcp.Gcpcloudcomposerenvironment.V1\xca\x027Dev\\Planton\\Provider\\Gcp\\Gcpcloudcomposerenvironment\\V1\xe2\x02CDev\\Planton\\Provider\\Gcp\\Gcpcloudcomposerenvironment\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Gcp::Gcpcloudcomposerenvironment::V1b\x06proto3"
 
 var (
@@ -1263,53 +1696,66 @@ func file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_raw
 	return file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_goTypes = []any{
-	(*GcpCloudComposerEnvironmentSpec)(nil),          // 0: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec
-	(*GcpCloudComposerNodeConfig)(nil),               // 1: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig
-	(*GcpCloudComposerSoftwareConfig)(nil),           // 2: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig
-	(*GcpCloudComposerPrivateEnvironmentConfig)(nil), // 3: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerPrivateEnvironmentConfig
-	(*GcpCloudComposerWorkloadsConfig)(nil),          // 4: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig
-	(*GcpCloudComposerWorkloadResource)(nil),         // 5: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadResource
-	(*GcpCloudComposerWebServerResource)(nil),        // 6: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerResource
-	(*GcpCloudComposerWorkerResource)(nil),           // 7: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkerResource
-	(*GcpCloudComposerTriggererResource)(nil),        // 8: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerTriggererResource
-	(*GcpCloudComposerMaintenanceWindow)(nil),        // 9: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMaintenanceWindow
-	(*GcpCloudComposerRecoveryConfig)(nil),           // 10: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerRecoveryConfig
-	(*GcpCloudComposerWebServerAccessControl)(nil),   // 11: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControl
-	(*GcpCloudComposerAllowedIpRange)(nil),           // 12: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerAllowedIpRange
-	nil,                                              // 13: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.AirflowConfigOverridesEntry
-	nil,                                              // 14: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.PypiPackagesEntry
-	nil,                                              // 15: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.EnvVariablesEntry
-	(*v1.StringValueOrRef)(nil),                      // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpCloudComposerEnvironmentSpec)(nil),                // 0: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec
+	(*GcpCloudComposerNodeConfig)(nil),                     // 1: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig
+	(*GcpCloudComposerIpAllocationPolicy)(nil),             // 2: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerIpAllocationPolicy
+	(*GcpCloudComposerSoftwareConfig)(nil),                 // 3: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig
+	(*GcpCloudComposerCloudDataLineageIntegration)(nil),    // 4: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerCloudDataLineageIntegration
+	(*GcpCloudComposerPrivateEnvironmentConfig)(nil),       // 5: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerPrivateEnvironmentConfig
+	(*GcpCloudComposerWorkloadsConfig)(nil),                // 6: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig
+	(*GcpCloudComposerWorkloadResource)(nil),               // 7: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadResource
+	(*GcpCloudComposerWebServerResource)(nil),              // 8: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerResource
+	(*GcpCloudComposerWorkerResource)(nil),                 // 9: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkerResource
+	(*GcpCloudComposerTriggererResource)(nil),              // 10: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerTriggererResource
+	(*GcpCloudComposerMaintenanceWindow)(nil),              // 11: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMaintenanceWindow
+	(*GcpCloudComposerRecoveryConfig)(nil),                 // 12: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerRecoveryConfig
+	(*GcpCloudComposerWebServerAccessControl)(nil),         // 13: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControl
+	(*GcpCloudComposerAllowedIpRange)(nil),                 // 14: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerAllowedIpRange
+	(*GcpCloudComposerMasterAuthorizedNetworksConfig)(nil), // 15: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMasterAuthorizedNetworksConfig
+	(*GcpCloudComposerCidrBlock)(nil),                      // 16: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerCidrBlock
+	(*GcpCloudComposerDataRetentionConfig)(nil),            // 17: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerDataRetentionConfig
+	nil,                         // 18: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.LabelsEntry
+	nil,                         // 19: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.AirflowConfigOverridesEntry
+	nil,                         // 20: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.PypiPackagesEntry
+	nil,                         // 21: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.EnvVariablesEntry
+	(*v1.StringValueOrRef)(nil), // 22: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_depIdxs = []int32{
-	16, // 0: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 0: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.node_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig
-	2,  // 2: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.software_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig
-	3,  // 3: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.private_environment_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerPrivateEnvironmentConfig
-	4,  // 4: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.workloads_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig
-	16, // 5: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 6: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.maintenance_window:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMaintenanceWindow
-	10, // 7: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.recovery_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerRecoveryConfig
-	11, // 8: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.web_server_network_access_control:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControl
-	16, // 9: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 10: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 11: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 12: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.airflow_config_overrides:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.AirflowConfigOverridesEntry
-	14, // 13: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.pypi_packages:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.PypiPackagesEntry
-	15, // 14: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.env_variables:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.EnvVariablesEntry
-	5,  // 15: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.scheduler:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadResource
-	6,  // 16: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.web_server:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerResource
-	7,  // 17: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.worker:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkerResource
-	8,  // 18: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.triggerer:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerTriggererResource
-	5,  // 19: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.dag_processor:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadResource
-	12, // 20: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControl.allowed_ip_ranges:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerAllowedIpRange
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	3,  // 2: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.software_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig
+	5,  // 3: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.private_environment_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerPrivateEnvironmentConfig
+	6,  // 4: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.workloads_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig
+	22, // 5: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 6: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.maintenance_window:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMaintenanceWindow
+	12, // 7: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.recovery_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerRecoveryConfig
+	13, // 8: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.web_server_network_access_control:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControl
+	15, // 9: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.master_authorized_networks_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMasterAuthorizedNetworksConfig
+	17, // 10: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.data_retention_config:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerDataRetentionConfig
+	22, // 11: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.storage_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 12: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.labels:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.LabelsEntry
+	22, // 13: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 14: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 15: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 16: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfig.ip_allocation_policy:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerIpAllocationPolicy
+	19, // 17: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.airflow_config_overrides:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.AirflowConfigOverridesEntry
+	20, // 18: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.pypi_packages:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.PypiPackagesEntry
+	21, // 19: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.env_variables:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.EnvVariablesEntry
+	4,  // 20: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerSoftwareConfig.cloud_data_lineage_integration:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerCloudDataLineageIntegration
+	7,  // 21: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.scheduler:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadResource
+	8,  // 22: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.web_server:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerResource
+	9,  // 23: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.worker:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkerResource
+	10, // 24: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.triggerer:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerTriggererResource
+	7,  // 25: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadsConfig.dag_processor:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWorkloadResource
+	14, // 26: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControl.allowed_ip_ranges:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerAllowedIpRange
+	16, // 27: dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMasterAuthorizedNetworksConfig.cidr_blocks:type_name -> dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerCidrBlock
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_init() }
@@ -1323,7 +1769,7 @@ func file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_ini
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -873,6 +873,73 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"index_id", "collection"},
 		},
 		{
+			// GcpDataprocCluster: the fully qualified cluster path (the
+			// composition handle downstream spark-history-server references
+			// consume), the short name, and the staging bucket in use.
+			name: "GcpDataprocCluster",
+			kind: cloudresourcekind.CloudResourceKind_GcpDataprocCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_id":     "projects/prod-project/regions/us-central1/clusters/etl-cluster",
+				"cluster_name":   "etl-cluster",
+				"staging_bucket": "dataproc-staging-us-central1-123456789012-abcdef",
+			},
+			mustPopulate: []string{"cluster_id", "cluster_name", "staging_bucket"},
+		},
+		{
+			// GcpDataprocAutoscalingPolicy: the fully qualified policy path
+			// (what a cluster's autoscaling_policy_uri reference resolves to)
+			// plus the plain id and region.
+			name: "GcpDataprocAutoscalingPolicy",
+			kind: cloudresourcekind.CloudResourceKind_GcpDataprocAutoscalingPolicy,
+			rawOutputs: map[string]interface{}{
+				"name":      "projects/prod-project/locations/us-central1/autoscalingPolicies/batch-scaling",
+				"policy_id": "batch-scaling",
+				"location":  "us-central1",
+			},
+			mustPopulate: []string{"name", "policy_id", "location"},
+		},
+		{
+			// GcpCloudComposerEnvironment: the fully qualified environment
+			// path, the short name, and the assembled-stack handles (Airflow
+			// UI, DAG bucket prefix, underlying GKE cluster).
+			name: "GcpCloudComposerEnvironment",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment,
+			rawOutputs: map[string]interface{}{
+				"environment_id":   "projects/prod-project/locations/us-central1/environments/data-pipelines",
+				"environment_name": "data-pipelines",
+				"airflow_uri":      "https://12345678-dot-us-central1.composer.googleusercontent.com",
+				"dag_gcs_prefix":   "gs://us-central1-data-pipelines-abcdef-bucket/dags",
+				"gke_cluster":      "projects/prod-project/locations/us-central1/clusters/us-central1-data-pipelines-abcdef-gke",
+			},
+			mustPopulate: []string{
+				"environment_id", "environment_name", "airflow_uri",
+				"dag_gcs_prefix", "gke_cluster",
+			},
+		},
+		{
+			// GcpCloudComposerUserWorkloadsSecret: the fully qualified secret
+			// path and the Kubernetes Secret name DAGs reference. The secret
+			// data is deliberately never an output.
+			name: "GcpCloudComposerUserWorkloadsSecret",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudComposerUserWorkloadsSecret,
+			rawOutputs: map[string]interface{}{
+				"name":        "projects/prod-project/locations/us-central1/environments/data-pipelines/userWorkloadsSecrets/airflow-connections",
+				"secret_name": "airflow-connections",
+			},
+			mustPopulate: []string{"name", "secret_name"},
+		},
+		{
+			// GcpCloudComposerUserWorkloadsConfigMap: the fully qualified
+			// config-map path and the Kubernetes ConfigMap name DAGs reference.
+			name: "GcpCloudComposerUserWorkloadsConfigMap",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap,
+			rawOutputs: map[string]interface{}{
+				"name":            "projects/prod-project/locations/us-central1/environments/data-pipelines/userWorkloadsConfigMaps/dag-configuration",
+				"config_map_name": "dag-configuration",
+			},
+			mustPopulate: []string{"name", "config_map_name"},
+		},
+		{
 			// AwsNatGateway: flat scalar outputs from both engines (gateway id,
 			// public/private ip, ENI id, subnet id, region) must each land on the
 			// StackOutputs proto. A NAT gateway has no ARN, so none is emitted.

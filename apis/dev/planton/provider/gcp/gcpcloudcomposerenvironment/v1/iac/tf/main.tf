@@ -1,12 +1,36 @@
-###############################################################################
-# Cloud Composer Environment (Managed Apache Airflow)
-###############################################################################
+# Enable the Cloud Composer API — the control plane that owns the
+# environment. disable_on_destroy is false: tearing down one environment
+# must never disable the API for everything else in the project.
+resource "google_project_service" "composer_api" {
+  project = local.project_id
+  service = "composer.googleapis.com"
 
+  disable_dependent_services = true
+  disable_on_destroy         = false
+}
+
+# The Cloud Composer environment (managed Apache Airflow). Composer
+# assembles a GKE cluster, Cloud SQL metadata database, web server, and
+# DAG bucket behind this one resource — creation takes 25-45 minutes.
+#
+# Mutability: environment_name, region, node networking, encryption, and
+# the private environment configuration are immutable (recreate on
+# change). Workloads sizing, environment size, resilience mode, software
+# configuration, maintenance window, web-server access control, and
+# labels update in place.
 resource "google_composer_environment" "environment" {
   name    = local.environment_name
-  region  = var.spec.region
-  project = var.spec.project_id.value
-  labels  = local.labels
+  region  = local.region
+  project = local.project_id
+  labels  = local.final_labels
+
+  # Existing bucket for DAGs/plugins/data instead of the auto-created one.
+  dynamic "storage_config" {
+    for_each = var.spec.storage_bucket != "" ? [1] : []
+    content {
+      bucket = var.spec.storage_bucket
+    }
+  }
 
   config {
 
@@ -15,13 +39,27 @@ resource "google_composer_environment" "environment" {
     dynamic "node_config" {
       for_each = var.spec.node_config != null ? [var.spec.node_config] : []
       content {
-        network        = node_config.value.network != null ? node_config.value.network.value : null
-        subnetwork     = node_config.value.subnetwork != null ? node_config.value.subnetwork.value : null
-        service_account = node_config.value.service_account != null ? node_config.value.service_account.value : null
-        tags           = length(node_config.value.tags) > 0 ? node_config.value.tags : null
+        network         = node_config.value.network != "" ? node_config.value.network : null
+        subnetwork      = node_config.value.subnetwork != "" ? node_config.value.subnetwork : null
+        service_account = node_config.value.service_account != "" ? node_config.value.service_account : null
+        tags            = length(node_config.value.tags) > 0 ? node_config.value.tags : null
 
-        composer_network_attachment        = node_config.value.composer_network_attachment != "" ? node_config.value.composer_network_attachment : null
+        composer_network_attachment       = node_config.value.composer_network_attachment != "" ? node_config.value.composer_network_attachment : null
         composer_internal_ipv4_cidr_block = node_config.value.composer_internal_ipv4_cidr_block != "" ? node_config.value.composer_internal_ipv4_cidr_block : null
+
+        enable_ip_masq_agent = node_config.value.enable_ip_masq_agent ? true : null
+
+        # VPC-native range assignment: a named secondary range on the
+        # subnetwork XOR a CIDR for GKE to carve, per range.
+        dynamic "ip_allocation_policy" {
+          for_each = node_config.value.ip_allocation_policy != null ? [node_config.value.ip_allocation_policy] : []
+          content {
+            cluster_secondary_range_name  = ip_allocation_policy.value.cluster_secondary_range_name != "" ? ip_allocation_policy.value.cluster_secondary_range_name : null
+            cluster_ipv4_cidr_block       = ip_allocation_policy.value.cluster_ipv4_cidr_block != "" ? ip_allocation_policy.value.cluster_ipv4_cidr_block : null
+            services_secondary_range_name = ip_allocation_policy.value.services_secondary_range_name != "" ? ip_allocation_policy.value.services_secondary_range_name : null
+            services_ipv4_cidr_block      = ip_allocation_policy.value.services_ipv4_cidr_block != "" ? ip_allocation_policy.value.services_ipv4_cidr_block : null
+          }
+        }
       }
     }
 
@@ -35,6 +73,14 @@ resource "google_composer_environment" "environment" {
         pypi_packages            = length(software_config.value.pypi_packages) > 0 ? software_config.value.pypi_packages : null
         env_variables            = length(software_config.value.env_variables) > 0 ? software_config.value.env_variables : null
         web_server_plugins_mode  = software_config.value.web_server_plugins_mode != "" ? software_config.value.web_server_plugins_mode : null
+
+        # Automatic dataset lineage reporting into Dataplex.
+        dynamic "cloud_data_lineage_integration" {
+          for_each = software_config.value.cloud_data_lineage_integration != null ? [software_config.value.cloud_data_lineage_integration] : []
+          content {
+            enabled = cloud_data_lineage_integration.value.enabled
+          }
+        }
       }
     }
 
@@ -88,6 +134,8 @@ resource "google_composer_environment" "environment" {
           }
         }
 
+        # The triggerer's cpu/memory/count are all required by the API
+        # when the block is present.
         dynamic "triggerer" {
           for_each = workloads_config.value.triggerer != null ? [workloads_config.value.triggerer] : []
           content {
@@ -97,6 +145,7 @@ resource "google_composer_environment" "environment" {
           }
         }
 
+        # Composer 3 only; replica count capped at 3 by the API.
         dynamic "dag_processor" {
           for_each = workloads_config.value.dag_processor != null ? [workloads_config.value.dag_processor] : []
           content {
@@ -120,9 +169,9 @@ resource "google_composer_environment" "environment" {
     # -- Encryption config (CMEK) ------------------------------------------
 
     dynamic "encryption_config" {
-      for_each = var.spec.kms_key_name != null ? [var.spec.kms_key_name] : []
+      for_each = var.spec.kms_key_name != "" ? [1] : []
       content {
-        kms_key_name = encryption_config.value.value
+        kms_key_name = var.spec.kms_key_name
       }
     }
 
@@ -166,9 +215,52 @@ resource "google_composer_environment" "environment" {
       }
     }
 
+    # -- Master authorized networks (GKE control-plane allowlist) ----------
+
+    dynamic "master_authorized_networks_config" {
+      for_each = var.spec.master_authorized_networks_config != null ? [var.spec.master_authorized_networks_config] : []
+      content {
+        enabled = master_authorized_networks_config.value.enabled
+
+        dynamic "cidr_blocks" {
+          for_each = master_authorized_networks_config.value.cidr_blocks
+          content {
+            cidr_block   = cidr_blocks.value.cidr_block
+            display_name = cidr_blocks.value.display_name != "" ? cidr_blocks.value.display_name : null
+          }
+        }
+      }
+    }
+
+    # -- Data retention (task logs + Airflow metadata) ----------------------
+
+    dynamic "data_retention_config" {
+      for_each = var.spec.data_retention_config != null ? [var.spec.data_retention_config] : []
+      content {
+        dynamic "task_logs_retention_config" {
+          for_each = data_retention_config.value.task_logs_storage_mode != "" ? [1] : []
+          content {
+            storage_mode = data_retention_config.value.task_logs_storage_mode
+          }
+        }
+
+        dynamic "airflow_metadata_retention_config" {
+          for_each = data_retention_config.value.airflow_metadata_retention_mode != "" ? [1] : []
+          content {
+            retention_mode = data_retention_config.value.airflow_metadata_retention_mode
+            retention_days = data_retention_config.value.airflow_metadata_retention_days > 0 ? data_retention_config.value.airflow_metadata_retention_days : null
+          }
+        }
+      }
+    }
+
     # -- Composer 3 private environment flags ------------------------------
 
     enable_private_environment = var.spec.enable_private_environment ? true : null
     enable_private_builds_only = var.spec.enable_private_builds_only ? true : null
   }
+
+  depends_on = [
+    google_project_service.composer_api,
+  ]
 }

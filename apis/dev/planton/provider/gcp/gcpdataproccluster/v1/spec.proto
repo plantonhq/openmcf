@@ -6,7 +6,8 @@ import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // GcpDataprocClusterDiskConfig configures the boot disk and local SSDs
-// for Dataproc cluster node groups (master, worker, secondary worker).
+// for Dataproc cluster node groups (master, worker, secondary worker,
+// auxiliary driver groups).
 //
 // The boot disk type defaults to "pd-standard" in GCP when not specified.
 // Local SSDs provide high-performance scratch storage for shuffle data.
@@ -30,10 +31,20 @@ message GcpDataprocClusterDiskConfig {
   // Number of local SSDs to attach. Each local SSD is 375 GB.
   // Default: 0 (no local SSDs).
   int32 num_local_ssds = 3;
+
+  // Interface used to attach local SSDs: "scsi" (default) or "nvme".
+  // NVMe offers higher throughput for shuffle-heavy Spark workloads but
+  // requires an image that ships NVMe drivers (all current Dataproc
+  // images do).
+  string local_ssd_interface = 4 [(buf.validate.field).cel = {
+    id: "local_ssd_interface_valid_value"
+    expression: "this == '' || this in ['scsi', 'nvme']"
+    message: "local_ssd_interface must be scsi or nvme"
+  }];
 }
 
-// GcpDataprocClusterAccelerator configures GPU or TPU accelerators
-// attached to Dataproc cluster nodes for ML and compute workloads.
+// GcpDataprocClusterAccelerator configures GPU accelerators attached to
+// Dataproc cluster nodes for ML and compute workloads.
 message GcpDataprocClusterAccelerator {
   // Full accelerator type name (e.g., "nvidia-tesla-t4", "nvidia-tesla-v100").
   // See https://cloud.google.com/compute/docs/gpus for available types.
@@ -43,9 +54,73 @@ message GcpDataprocClusterAccelerator {
   int32 accelerator_count = 2 [(buf.validate.field).int32.gte = 1];
 }
 
+// GcpDataprocClusterShieldedInstanceConfig hardens the cluster's VMs with
+// Shielded VM features: verified boot chain and tamper-evident
+// attestation. All three toggles default to off in GCP; production
+// security baselines commonly enable all three.
+message GcpDataprocClusterShieldedInstanceConfig {
+  // Verify the boot integrity of the VM using a secure boot chain.
+  bool enable_secure_boot = 1;
+
+  // Enable the virtual Trusted Platform Module (vTPM).
+  bool enable_vtpm = 2;
+
+  // Enable integrity monitoring comparing boot measurements against a
+  // known-good baseline.
+  bool enable_integrity_monitoring = 3;
+}
+
+// GcpDataprocClusterConfidentialInstanceConfig runs the cluster's VMs as
+// Confidential VMs, encrypting data in use (memory encryption via AMD
+// SEV). Requires a machine type from the N2D family.
+message GcpDataprocClusterConfidentialInstanceConfig {
+  // Enable Confidential Compute for all cluster nodes.
+  bool enable_confidential_compute = 1;
+}
+
+// GcpDataprocClusterReservationAffinity pins the cluster's VMs to a
+// Compute Engine reservation, guaranteeing capacity for large or
+// time-critical clusters.
+message GcpDataprocClusterReservationAffinity {
+  // How the cluster consumes reservations.
+  // NO_RESERVATION: never consume reservations.
+  // ANY_RESERVATION: consume any matching open reservation (default).
+  // SPECIFIC_RESERVATION: consume only the reservation named by key/values.
+  string consume_reservation_type = 1 [(buf.validate.field).cel = {
+    id: "consume_reservation_type_valid_value"
+    expression: "this == '' || this in ['NO_RESERVATION', 'ANY_RESERVATION', 'SPECIFIC_RESERVATION']"
+    message: "consume_reservation_type must be NO_RESERVATION, ANY_RESERVATION, or SPECIFIC_RESERVATION"
+  }];
+
+  // Reservation label key. For SPECIFIC_RESERVATION use
+  // "compute.googleapis.com/reservation-name".
+  string key = 2;
+
+  // Reservation label values (the reservation name for
+  // SPECIFIC_RESERVATION).
+  repeated string values = 3;
+
+  // A specific reservation must be identified by key and values.
+  option (buf.validate.message).cel = {
+    id: "specific_reservation_requires_key_values"
+    expression: "this.consume_reservation_type != 'SPECIFIC_RESERVATION' || (this.key != '' && size(this.values) > 0)"
+    message: "key and values are required when consume_reservation_type is SPECIFIC_RESERVATION"
+  };
+}
+
+// GcpDataprocClusterNodeGroupAffinity places all cluster VMs on a
+// sole-tenant node group — physical servers dedicated to your project,
+// used for bring-your-own-license or compliance isolation requirements.
+message GcpDataprocClusterNodeGroupAffinity {
+  // URI of the sole-tenant node group the cluster will be created on.
+  // Format: projects/{project}/zones/{zone}/nodeGroups/{node_group}
+  // (shorter forms accepted by the API also work).
+  string node_group_uri = 1 [(buf.validate.field).required = true];
+}
+
 // GcpDataprocClusterGceConfig defines the Compute Engine environment
-// for the Dataproc cluster's nodes, including networking, identity, and
-// instance metadata.
+// for the Dataproc cluster's nodes, including networking, identity,
+// instance hardening, and placement.
 //
 // Either network or subnetwork may be specified, but not both.
 // If neither is specified, the cluster uses the project's default VPC.
@@ -96,10 +171,25 @@ message GcpDataprocClusterGceConfig {
   // Common use: startup scripts, environment variables for init actions.
   map<string, string> metadata = 8;
 
+  // Shielded VM hardening (secure boot, vTPM, integrity monitoring)
+  // for all cluster nodes.
+  GcpDataprocClusterShieldedInstanceConfig shielded_instance_config = 9;
+
+  // Reservation affinity for guaranteed compute capacity.
+  GcpDataprocClusterReservationAffinity reservation_affinity = 10;
+
+  // Sole-tenant node group placement for compliance or licensing
+  // isolation.
+  GcpDataprocClusterNodeGroupAffinity node_group_affinity = 11;
+
+  // Confidential VM (data-in-use encryption) for all cluster nodes.
+  // Requires an N2D machine type.
+  GcpDataprocClusterConfidentialInstanceConfig confidential_instance_config = 12;
+
   // network and subnetwork are mutually exclusive.
   option (buf.validate.message).cel = {
     id: "network_subnetwork_mutual_exclusion"
-    expression: "!has(this.network) || !has(this.subnetwork) || this.network.value == '' || this.subnetwork.value == ''"
+    expression: "!(has(this.network) && has(this.subnetwork))"
     message: "only one of network or subnetwork may be set"
   };
 }
@@ -121,7 +211,7 @@ message GcpDataprocClusterMasterConfig {
   // Boot disk and local SSD configuration.
   GcpDataprocClusterDiskConfig disk_config = 3;
 
-  // GPU or TPU accelerators attached to master nodes.
+  // GPU accelerators attached to master nodes.
   // Typically not needed for masters unless running single-node ML workloads.
   repeated GcpDataprocClusterAccelerator accelerators = 4;
 
@@ -142,7 +232,8 @@ message GcpDataprocClusterMasterConfig {
 // preemptible/spot capacity.
 message GcpDataprocClusterWorkerConfig {
   // Number of primary worker instances.
-  // If not specified, GCP defaults to 2.
+  // If not specified, GCP defaults to 2. This is one of the few fields
+  // that can be changed in place after creation (manual scaling).
   int32 num_instances = 1;
 
   // Compute Engine machine type (e.g., "n2-standard-4", "e2-standard-8").
@@ -152,7 +243,7 @@ message GcpDataprocClusterWorkerConfig {
   // Boot disk and local SSD configuration.
   GcpDataprocClusterDiskConfig disk_config = 3;
 
-  // GPU or TPU accelerators attached to worker nodes.
+  // GPU accelerators attached to worker nodes.
   // Common for Spark ML workloads using GPU-accelerated libraries.
   repeated GcpDataprocClusterAccelerator accelerators = 4;
 
@@ -163,8 +254,49 @@ message GcpDataprocClusterWorkerConfig {
   string image_uri = 6;
 
   // Minimum number of primary worker instances when autoscaling is active.
-  // The autoscaler will not scale below this threshold.
+  // The autoscaler will not scale below this threshold. Updatable in place.
   int32 min_num_instances = 7;
+}
+
+// GcpDataprocClusterInstanceSelection names a ranked machine-type
+// preference for flexible secondary-worker provisioning.
+message GcpDataprocClusterInstanceSelection {
+  // Machine types to try for this selection entry (e.g.
+  // ["n2-standard-8", "n2d-standard-8"]).
+  repeated string machine_types = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Preference rank. Lower rank is preferred; Dataproc falls back to
+  // higher ranks when capacity for the preferred types is unavailable.
+  int32 rank = 2 [(buf.validate.field).int32.gte = 0];
+}
+
+// GcpDataprocClusterProvisioningModelMix blends standard (on-demand)
+// and spot capacity within the secondary worker group, protecting a
+// baseline of standard capacity while bursting on cheaper spot VMs.
+message GcpDataprocClusterProvisioningModelMix {
+  // Number of secondary workers that must be standard (on-demand)
+  // capacity before any spot VMs are used.
+  int32 standard_capacity_base = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Percentage of capacity above the base that should also be standard
+  // (0-100). The remainder is provisioned as spot.
+  int32 standard_capacity_percent_above_base = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+}
+
+// GcpDataprocClusterInstanceFlexibilityPolicy lets the secondary worker
+// group draw from multiple machine types and mix provisioning models —
+// the lever for keeping large autoscaled clusters schedulable when a
+// single machine type's spot capacity dries up.
+message GcpDataprocClusterInstanceFlexibilityPolicy {
+  // Ranked machine-type preferences. Dataproc provisions from the
+  // lowest-rank entry with available capacity.
+  repeated GcpDataprocClusterInstanceSelection instance_selection_list = 1;
+
+  // Standard/spot capacity mix for the group.
+  GcpDataprocClusterProvisioningModelMix provisioning_model_mix = 2;
 }
 
 // GcpDataprocClusterSecondaryWorkerConfig defines the configuration
@@ -176,6 +308,7 @@ message GcpDataprocClusterWorkerConfig {
 // availability.
 message GcpDataprocClusterSecondaryWorkerConfig {
   // Number of secondary worker instances. Default: 0.
+  // Updatable in place (manual scaling).
   int32 num_instances = 1;
 
   // Preemptibility of the secondary workers.
@@ -183,6 +316,7 @@ message GcpDataprocClusterSecondaryWorkerConfig {
   // PREEMPTIBLE: legacy preemptible VMs with fixed pricing.
   // NON_PREEMPTIBLE: standard on-demand pricing (unusual for secondary workers).
   // If not specified, GCP defaults to PREEMPTIBLE.
+  // Immutable after creation.
   string preemptibility = 2 [(buf.validate.field).cel = {
     id: "preemptibility_valid_value"
     expression: "this == '' || this in ['PREEMPTIBLE', 'SPOT', 'NON_PREEMPTIBLE']"
@@ -190,9 +324,14 @@ message GcpDataprocClusterSecondaryWorkerConfig {
   }];
 
   // Boot disk and local SSD configuration for secondary workers.
-  // Secondary workers do not support custom machine types or accelerators;
-  // they inherit machine configuration from the primary worker config.
+  // Secondary workers do not support custom machine types or accelerators
+  // directly; they inherit machine configuration from the primary worker
+  // config unless an instance_flexibility_policy overrides it.
   GcpDataprocClusterDiskConfig disk_config = 3;
+
+  // Machine-type flexibility and standard/spot capacity mix for the
+  // group — only secondary workers support flexible provisioning.
+  GcpDataprocClusterInstanceFlexibilityPolicy instance_flexibility_policy = 4;
 }
 
 // GcpDataprocClusterSoftwareConfig defines the Dataproc image version,
@@ -215,7 +354,7 @@ message GcpDataprocClusterSoftwareConfig {
   // framework properties. Keys use the format "prefix:property", e.g.:
   //   "spark:spark.executor.memory" = "4g"
   //   "hdfs:dfs.replication" = "2"
-  //   "yarn:yarn.nodemanager.resource.memory-mb" = "8192"
+  //   "dataproc:dataproc.allow.zero.workers" = "true"  (single-node cluster)
   // See https://cloud.google.com/dataproc/docs/concepts/configuring-clusters/cluster-properties
   map<string, string> properties = 3;
 }
@@ -234,6 +373,98 @@ message GcpDataprocClusterInitAction {
   int32 timeout_sec = 2;
 }
 
+// GcpDataprocClusterKerberosConfig enables Hadoop Secure Mode via
+// Kerberos on the cluster.
+//
+// Every *_uri secret field is a Cloud Storage URI of a KMS-encrypted
+// file (never inline secret material) — the referenced kms_key_uri
+// decrypts them on-cluster. Storing paths, not secrets, is the API's
+// own contract, so none of these fields carry literal sensitive data.
+message GcpDataprocClusterKerberosConfig {
+  // Flag to indicate whether to Kerberize the cluster.
+  bool enable_kerberos = 1;
+
+  // Cloud Storage URI of a KMS-encrypted file containing the root
+  // principal password. Required to enable Kerberos.
+  string root_principal_password_uri = 2 [(buf.validate.field).required = true];
+
+  // URI of the KMS key used to decrypt the root password and the other
+  // encrypted files below.
+  // Format: projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_uri = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Custom Kerberos realm. If unset, Dataproc derives a realm from the
+  // cluster's hostname.
+  string realm = 4;
+
+  // Lifetime of ticket-granting tickets, in hours. Default: 10.
+  int32 tgt_lifetime_hours = 5;
+
+  // Cloud Storage URI of a KMS-encrypted file containing the master key
+  // of the KDC database.
+  string kdc_db_key_uri = 6;
+
+  // Cloud Storage URI of the keystore file (TLS). If unset, Dataproc
+  // generates a self-signed certificate.
+  string keystore_uri = 7;
+
+  // Cloud Storage URI of a KMS-encrypted file with the keystore password.
+  string keystore_password_uri = 8;
+
+  // Cloud Storage URI of a KMS-encrypted file with the key password.
+  string key_password_uri = 9;
+
+  // Cloud Storage URI of the truststore file (TLS).
+  string truststore_uri = 10;
+
+  // Cloud Storage URI of a KMS-encrypted file with the truststore password.
+  string truststore_password_uri = 11;
+
+  // Remote realm for cross-realm trust.
+  string cross_realm_trust_realm = 12;
+
+  // KDC host of the remote trusted realm.
+  string cross_realm_trust_kdc = 13;
+
+  // Admin server host of the remote trusted realm.
+  string cross_realm_trust_admin_server = 14;
+
+  // Cloud Storage URI of a KMS-encrypted file with the shared password
+  // between the on-cluster KDC and the remote trusted realm.
+  string cross_realm_trust_shared_password_uri = 15;
+}
+
+// GcpDataprocClusterIdentityConfig enables the service-account-to-user
+// mapping used by Dataproc personal cluster authentication: each cluster
+// user runs workloads as their own mapped service account rather than a
+// shared cluster identity.
+message GcpDataprocClusterIdentityConfig {
+  // Map of user accounts to the service accounts they operate as
+  // (e.g. "bob@example.com" -> "bob-sa@project.iam.gserviceaccount.com").
+  map<string, string> user_service_account_mapping = 1 [(buf.validate.field).map.min_pairs = 1];
+}
+
+// GcpDataprocClusterSecurityConfig hardens in-cluster authentication:
+// Kerberos (Hadoop Secure Mode) or personal-cluster identity mapping —
+// the API accepts exactly one of the two mechanisms.
+message GcpDataprocClusterSecurityConfig {
+  // Kerberos (Hadoop Secure Mode) configuration.
+  GcpDataprocClusterKerberosConfig kerberos_config = 1;
+
+  // Personal cluster authentication (user-to-service-account mapping).
+  GcpDataprocClusterIdentityConfig identity_config = 2;
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_security_mechanism"
+    expression: "has(this.kerberos_config) != has(this.identity_config)"
+    message: "exactly one of kerberos_config or identity_config must be set"
+  };
+}
+
 // GcpDataprocClusterEndpointConfig controls access to the Dataproc
 // Component Gateway, which provides authenticated web UI access to
 // cluster services like Spark UI, YARN ResourceManager, HDFS NameNode,
@@ -246,13 +477,13 @@ message GcpDataprocClusterEndpointConfig {
   bool enable_http_port_access = 1;
 }
 
-// GcpDataprocClusterLifecycleConfig controls automatic cluster shutdown
-// and deletion, which is critical for cost management of ephemeral
-// Spark/Hadoop clusters.
+// GcpDataprocClusterLifecycleConfig controls automatic cluster deletion,
+// which is critical for cost management of ephemeral Spark/Hadoop
+// clusters.
 //
 // Dataproc clusters are often ephemeral -- spun up for a batch job,
 // then torn down. Without lifecycle configuration, idle clusters
-// continue to incur costs indefinitely.
+// continue to incur costs indefinitely. Both fields update in place.
 message GcpDataprocClusterLifecycleConfig {
   // Duration of inactivity after which the cluster is automatically
   // deleted. Format: duration in seconds with 's' suffix (e.g., "1800s"
@@ -272,12 +503,104 @@ message GcpDataprocClusterLifecycleConfig {
   string auto_delete_time = 2;
 }
 
-// GcpDataprocClusterConfig wraps all cluster infrastructure configuration.
+// GcpDataprocClusterMetastoreConfig attaches the cluster to an existing
+// Dataproc Metastore service, giving jobs a persistent, shared Hive
+// metastore that outlives ephemeral clusters.
+message GcpDataprocClusterMetastoreConfig {
+  // Resource name of an existing Dataproc Metastore service.
+  // Format: projects/{project}/locations/{location}/services/{service}
+  // Accepts a literal resource name today; references attach when a
+  // metastore-service kind lands in the catalog.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dataproc_metastore_service = 1 [(buf.validate.field).required = true];
+}
+
+// GcpDataprocClusterMetric selects one metric source (and optionally
+// specific metric overrides) to collect from the cluster into Cloud
+// Monitoring.
+message GcpDataprocClusterMetric {
+  // Source to collect metrics from.
+  string metric_source = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "MONITORING_AGENT_DEFAULTS",
+        "HDFS",
+        "SPARK",
+        "YARN",
+        "SPARK_HISTORY_SERVER",
+        "HIVESERVER2"
+      ]
+    }
+  ];
+
+  // Specific metrics to collect, overriding the source's default set
+  // (e.g. "yarn:ResourceManager:QueueMetrics:AppsCompleted").
+  repeated string metric_overrides = 2;
+}
+
+// GcpDataprocClusterMetricConfig turns on OSS metric collection
+// (Spark/YARN/HDFS/Hive) into Cloud Monitoring — the observability
+// surface SRE dashboards and alerting build on.
+message GcpDataprocClusterMetricConfig {
+  // Metric sources to collect.
+  repeated GcpDataprocClusterMetric metrics = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpDataprocClusterAuxiliaryNodeGroupConfig sizes the VMs of an
+// auxiliary node group.
+message GcpDataprocClusterAuxiliaryNodeGroupConfig {
+  // Number of instances in the group.
+  int32 num_instances = 1;
+
+  // Compute Engine machine type for the group's instances.
+  string machine_type = 2;
+
+  // Minimum CPU platform for the group's instances.
+  string min_cpu_platform = 3;
+
+  // Boot disk and local SSD configuration.
+  GcpDataprocClusterDiskConfig disk_config = 4;
+
+  // GPU accelerators attached to the group's instances.
+  repeated GcpDataprocClusterAccelerator accelerators = 5;
+}
+
+// GcpDataprocClusterAuxiliaryNodeGroup adds a dedicated DRIVER node
+// group to the cluster — separate capacity where Spark drivers run so
+// heavy driver workloads (large collect()s, many concurrent jobs) don't
+// compete with the master's control-plane duties.
+message GcpDataprocClusterAuxiliaryNodeGroup {
+  // Roles assigned to the group. The API currently supports DRIVER.
+  repeated string roles = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      cel: {
+        id: "auxiliary_node_group_role_valid_value"
+        expression: "this in ['DRIVER']"
+        message: "each role must be DRIVER"
+      }
+    }
+  ];
+
+  // VM sizing for the group.
+  GcpDataprocClusterAuxiliaryNodeGroupConfig node_group_config = 2;
+
+  // Optional stable identifier for the group (3-33 characters).
+  // If unset, Dataproc generates one.
+  string node_group_id = 3 [(buf.validate.field).cel = {
+    id: "node_group_id_length"
+    expression: "this == '' || (size(this) >= 3 && size(this) <= 33)"
+    message: "node_group_id must be 3-33 characters"
+  }];
+}
+
+// GcpDataprocClusterConfig wraps all Compute Engine (GCE-based) cluster
+// infrastructure configuration.
 //
-// This message mirrors the Terraform/Pulumi cluster_config structure,
-// keeping the API surface familiar to infrastructure engineers coming
-// from Terraform or the GCP console. All fields are optional -- GCP
-// provides sensible defaults for a basic cluster when fields are omitted.
+// This message mirrors the provider's cluster_config structure, keeping
+// the API surface familiar to infrastructure engineers coming from
+// Terraform or the GCP console. All fields are optional -- GCP provides
+// sensible defaults for a basic cluster when fields are omitted.
 message GcpDataprocClusterConfig {
   // Cloud Storage bucket for staging job dependencies, jar files, and
   // other temporary data. If not specified, GCP auto-creates a staging
@@ -294,87 +617,304 @@ message GcpDataprocClusterConfig {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
   ];
 
+  // Cluster tier controlling the Dataproc feature set and SLA.
+  // CLUSTER_TIER_STANDARD: the default tier.
+  // CLUSTER_TIER_PREMIUM: premium features (e.g. advanced repair and
+  // faster scaling). Immutable after creation.
+  string cluster_tier = 3 [(buf.validate.field).cel = {
+    id: "cluster_tier_valid_value"
+    expression: "this == '' || this in ['CLUSTER_TIER_STANDARD', 'CLUSTER_TIER_PREMIUM']"
+    message: "cluster_tier must be CLUSTER_TIER_STANDARD or CLUSTER_TIER_PREMIUM"
+  }];
+
   // Compute Engine configuration for the cluster's nodes (networking,
-  // service account, zone, tags, metadata).
-  GcpDataprocClusterGceConfig gce_config = 3;
+  // service account, zone, tags, metadata, hardening, placement).
+  GcpDataprocClusterGceConfig gce_config = 4;
 
   // Master node configuration. If not specified, GCP defaults to
-  // 1 master with n2-standard-4 and 500 GB pd-standard disk.
-  GcpDataprocClusterMasterConfig master_config = 4;
+  // 1 master with a default machine type and 500 GB pd-standard disk.
+  GcpDataprocClusterMasterConfig master_config = 5;
 
   // Primary worker node configuration. If not specified, GCP defaults
-  // to 2 workers with n2-standard-4 and 500 GB pd-standard disk.
-  GcpDataprocClusterWorkerConfig worker_config = 5;
+  // to 2 workers. For a single-node cluster set the software property
+  // "dataproc:dataproc.allow.zero.workers" = "true" instead of a
+  // worker count of zero.
+  GcpDataprocClusterWorkerConfig worker_config = 6;
 
   // Secondary (preemptible/spot) worker node configuration.
   // If not specified, no secondary workers are created.
-  GcpDataprocClusterSecondaryWorkerConfig secondary_worker_config = 6;
+  GcpDataprocClusterSecondaryWorkerConfig secondary_worker_config = 7;
 
   // Software configuration including Dataproc image version, optional
   // components, and framework property overrides.
-  GcpDataprocClusterSoftwareConfig software_config = 7;
+  GcpDataprocClusterSoftwareConfig software_config = 8;
 
   // Initialization actions (startup scripts) that run on all nodes
   // when the cluster is created.
-  repeated GcpDataprocClusterInitAction initialization_actions = 8;
+  repeated GcpDataprocClusterInitAction initialization_actions = 9;
 
-  // URI of an existing Dataproc autoscaling policy to apply to the
-  // cluster. Format: projects/{project}/locations/{location}/autoscalingPolicies/{policy}
-  // The autoscaling policy must be created separately.
-  string autoscaling_policy_uri = 9;
+  // Autoscaling policy that governs worker scaling for this cluster.
+  // Resolves to the policy's full resource name
+  // (projects/{project}/locations/{location}/autoscalingPolicies/{policy}).
+  // Attaching, swapping, or detaching the policy updates in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef autoscaling_policy_uri = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpDataprocAutoscalingPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
 
   // Cloud KMS key for encrypting persistent disks attached to cluster
   // nodes (CMEK). Format: projects/{project}/locations/{location}/keyRings/{keyRing}/cryptoKeys/{key}
   // If not specified, disks are encrypted with Google-managed keys.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef encryption_kms_key_name = 10 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef encryption_kms_key_name = 11 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
   ];
 
-  // Component Gateway configuration for authenticated web UI access.
-  GcpDataprocClusterEndpointConfig endpoint_config = 11;
+  // In-cluster authentication hardening: Kerberos or personal-cluster
+  // identity mapping.
+  GcpDataprocClusterSecurityConfig security_config = 12;
 
-  // Lifecycle configuration for automatic cluster shutdown and deletion.
+  // Component Gateway configuration for authenticated web UI access.
+  GcpDataprocClusterEndpointConfig endpoint_config = 13;
+
+  // Lifecycle configuration for automatic cluster deletion.
   // Critical for cost management of ephemeral batch processing clusters.
-  GcpDataprocClusterLifecycleConfig lifecycle_config = 12;
+  GcpDataprocClusterLifecycleConfig lifecycle_config = 14;
+
+  // Attach the cluster to a persistent Dataproc Metastore service.
+  GcpDataprocClusterMetastoreConfig metastore_config = 15;
+
+  // OSS metric collection into Cloud Monitoring.
+  GcpDataprocClusterMetricConfig dataproc_metric_config = 16;
+
+  // Dedicated DRIVER node groups, separating Spark driver capacity
+  // from the master's control-plane duties.
+  repeated GcpDataprocClusterAuxiliaryNodeGroup auxiliary_node_groups = 17;
 }
 
-// GcpDataprocClusterSpec defines the configuration for a standard
-// (GCE-based) Dataproc cluster running Apache Spark, Hadoop, and
-// related open-source data processing frameworks.
+// GcpDataprocClusterKubernetesSoftwareConfig pins the Dataproc-on-GKE
+// component versions and framework properties.
+message GcpDataprocClusterKubernetesSoftwareConfig {
+  // Component-to-version map. The SPARK component is required, e.g.
+  // {"SPARK": "3.5-dataproc-17"}.
+  // See https://cloud.google.com/dataproc/docs/guides/dpgke/dataproc-gke-version-compatibility
+  map<string, string> component_version = 1 [(buf.validate.field).map.min_pairs = 1];
+
+  // Framework properties (e.g. "spark:spark.eventLog.enabled" = "true").
+  map<string, string> properties = 2;
+}
+
+// GcpDataprocClusterNodePoolAutoscaling bounds GKE node-pool autoscaling
+// for a Dataproc-managed node pool.
+message GcpDataprocClusterNodePoolAutoscaling {
+  // Minimum number of nodes per zone. May be 0 for scale-to-zero pools.
+  int32 min_node_count = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Maximum number of nodes per zone.
+  int32 max_node_count = 2 [(buf.validate.field).int32.gte = 0];
+
+  option (buf.validate.message).cel = {
+    id: "max_gte_min_node_count"
+    expression: "this.max_node_count >= this.min_node_count"
+    message: "max_node_count must be greater than or equal to min_node_count"
+  };
+}
+
+// GcpDataprocClusterNodePoolConfig sizes a node pool that Dataproc
+// creates on the target GKE cluster when the referenced pool does not
+// already exist. Ignored when the pool exists (existing pools are
+// adopted as-is).
+message GcpDataprocClusterNodePoolConfig {
+  // Compute Engine zones where the pool's nodes are placed
+  // (e.g. ["us-central1-a"]). Required when Dataproc creates the pool.
+  repeated string locations = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // GKE autoscaling bounds for the pool.
+  GcpDataprocClusterNodePoolAutoscaling autoscaling = 2;
+
+  // Compute Engine machine type for the pool's nodes.
+  string machine_type = 3;
+
+  // Number of local SSDs attached to each node.
+  int32 local_ssd_count = 4 [(buf.validate.field).int32.gte = 0];
+
+  // Minimum CPU platform for the pool's nodes.
+  string min_cpu_platform = 5;
+
+  // Use legacy preemptible VMs for the pool. Mutually exclusive with spot.
+  bool preemptible = 6;
+
+  // Use modern spot VMs for the pool (recommended over preemptible).
+  bool spot = 7;
+
+  option (buf.validate.message).cel = {
+    id: "preemptible_spot_mutual_exclusion"
+    expression: "!(this.preemptible && this.spot)"
+    message: "preemptible and spot are mutually exclusive"
+  };
+}
+
+// GcpDataprocClusterNodePoolTarget maps a GKE node pool to the Dataproc
+// roles it hosts.
+message GcpDataprocClusterNodePoolTarget {
+  // The target GKE node pool. Resolves to the pool's fully qualified
+  // resource name
+  // (projects/{project}/locations/{location}/clusters/{cluster}/nodePools/{pool}).
+  // The pool may pre-exist (composed via GcpGkeNodePool) or be created
+  // by Dataproc using node_pool_config.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef node_pool = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGkeNodePool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.node_pool_id"
+  ];
+
+  // Dataproc roles scheduled onto this pool.
+  // DEFAULT: catch-all for roles without a dedicated pool.
+  // CONTROLLER: the Dataproc control plane pods.
+  // SPARK_DRIVER: Spark driver pods.
+  // SPARK_EXECUTOR: Spark executor pods.
+  repeated string roles = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      cel: {
+        id: "node_pool_role_valid_value"
+        expression: "this in ['DEFAULT', 'CONTROLLER', 'SPARK_DRIVER', 'SPARK_EXECUTOR']"
+        message: "each role must be one of DEFAULT, CONTROLLER, SPARK_DRIVER, SPARK_EXECUTOR"
+      }
+    }
+  ];
+
+  // Sizing for the pool when Dataproc creates it. Ignored for
+  // pre-existing pools.
+  GcpDataprocClusterNodePoolConfig node_pool_config = 3;
+}
+
+// GcpDataprocClusterGkeClusterConfig binds the virtual cluster to its
+// target GKE cluster and node pools.
+message GcpDataprocClusterGkeClusterConfig {
+  // The target GKE cluster. Resolves to the cluster's fully qualified
+  // resource name (projects/{project}/locations/{location}/clusters/{cluster}).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gke_cluster_target = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGkeCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Node pools Dataproc schedules roles onto. When omitted, Dataproc
+  // creates and manages a default pool on the target cluster.
+  repeated GcpDataprocClusterNodePoolTarget node_pool_target = 2;
+}
+
+// GcpDataprocClusterKubernetesClusterConfig configures the Kubernetes
+// side of a Dataproc-on-GKE virtual cluster.
+message GcpDataprocClusterKubernetesClusterConfig {
+  // Kubernetes namespace Dataproc deploys workloads into. If unset,
+  // Dataproc uses a namespace named after the virtual cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kubernetes_namespace = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  // The target GKE cluster and node-pool role mapping.
+  GcpDataprocClusterGkeClusterConfig gke_cluster_config = 2 [(buf.validate.field).required = true];
+
+  // Component versions (SPARK is required) and framework properties.
+  GcpDataprocClusterKubernetesSoftwareConfig kubernetes_software_config = 3 [(buf.validate.field).required = true];
+}
+
+// GcpDataprocClusterSparkHistoryServerConfig points the virtual cluster
+// at a persistent Spark History Server running on another Dataproc
+// cluster, so job history outlives the ephemeral workload cluster.
+message GcpDataprocClusterSparkHistoryServerConfig {
+  // The Dataproc cluster hosting the Spark History Server. Resolves to
+  // the cluster's fully qualified resource name
+  // (projects/{project}/regions/{region}/clusters/{cluster}).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dataproc_cluster = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpDataprocCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+}
+
+// GcpDataprocClusterAuxiliaryServicesConfig attaches shared, persistent
+// services (Hive metastore, Spark History Server) to the virtual cluster.
+message GcpDataprocClusterAuxiliaryServicesConfig {
+  // Persistent Hive metastore for the virtual cluster's jobs.
+  GcpDataprocClusterMetastoreConfig metastore_config = 1;
+
+  // Persistent Spark History Server hosted on another Dataproc cluster.
+  GcpDataprocClusterSparkHistoryServerConfig spark_history_server_config = 2;
+}
+
+// GcpDataprocClusterVirtualClusterConfig runs Dataproc on an existing
+// GKE cluster (Dataproc-on-GKE) instead of dedicated Compute Engine
+// VMs: Spark workloads run as Kubernetes pods, sharing the GKE
+// cluster's capacity, autoscaling, and operational tooling.
 //
-// Dataproc clusters provide managed Spark and Hadoop infrastructure
-// on Google Compute Engine VMs. They are commonly used for batch ETL,
-// interactive data analysis, machine learning training, and stream
-// processing with Spark Structured Streaming.
+// The entire virtual arm is immutable after creation — any change
+// replaces the virtual cluster (the underlying GKE cluster and node
+// pools are not touched by the replacement).
+message GcpDataprocClusterVirtualClusterConfig {
+  // Cloud Storage bucket for staging job dependencies. If not
+  // specified, GCP auto-creates a staging bucket.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef staging_bucket = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGcsBucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // The Kubernetes-side configuration: target GKE cluster, node-pool
+  // role mapping, namespace, and component versions.
+  GcpDataprocClusterKubernetesClusterConfig kubernetes_cluster_config = 2 [(buf.validate.field).required = true];
+
+  // Shared persistent services (metastore, Spark History Server).
+  GcpDataprocClusterAuxiliaryServicesConfig auxiliary_services_config = 3;
+}
+
+// GcpDataprocClusterSpec defines the configuration for a Google Cloud
+// Dataproc cluster running Apache Spark, Hadoop, and related
+// open-source data processing frameworks.
 //
-// This component covers standard GCE-based Dataproc clusters.
-// For Dataproc-on-GKE (virtual clusters), see GcpDataprocVirtualCluster.
+// Dataproc offers two mutually exclusive deployment arms, mirroring the
+// API's own shape:
+//
+//   - cluster_config: the standard arm — dedicated Compute Engine VMs
+//     (master, workers, optional spot secondaries) fully managed by
+//     Dataproc. When both arms are omitted, GCP creates a default
+//     GCE-based cluster (2 workers, default machine types).
+//
+//   - virtual_cluster_config: the Dataproc-on-GKE arm — Spark workloads
+//     run as pods on an existing GKE cluster, composing against
+//     GcpGkeCluster and GcpGkeNodePool by reference.
 //
 // Important behavioral notes:
 //
 //   - The cluster_name and region fields are immutable after creation.
 //     Changing them requires recreating the cluster.
 //
-//   - Most cluster_config fields are immutable after creation (ForceNew
-//     in Terraform). The exceptions are worker_config.num_instances,
-//     worker_config.min_num_instances, and graceful_decommission_timeout.
+//   - Most configuration is immutable after creation (recreate on
+//     change). The in-place exceptions on the GCE arm: primary and
+//     secondary worker counts (manual scaling), min_num_instances, the
+//     autoscaling policy attachment, the lifecycle TTLs, and labels.
+//     The virtual arm is fully immutable.
 //
-//   - Dataproc applies GCP labels automatically. Framework labels
-//     (organization, environment, resource kind) are applied to the
-//     cluster resource for consistent tagging.
+//   - User labels are applied to the cluster and propagate to its VMs.
+//     The Dataproc API does not support user labels on virtual
+//     (GKE-based) clusters — leave labels empty for the virtual arm.
 message GcpDataprocClusterSpec {
   // GCP project where the Dataproc cluster will be created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
 
-  // GCP region for the cluster (e.g., "us-central1", "europe-west1").
+  // GCP region for the cluster (e.g., "us-central1", "europe-west12").
   // All cluster nodes will be placed in this region.
   // Immutable after creation.
-  string region = 2 [(buf.validate.field).required = true];
+  string region = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]+-[a-z]+[0-9]+$"
+  ];
 
   // Name of the Dataproc cluster. Must start with a lowercase letter,
   // can contain lowercase letters, numbers, and hyphens, and must end
@@ -387,19 +927,45 @@ message GcpDataprocClusterSpec {
     (buf.validate.field).string.max_len = 55
   ];
 
-  // Cluster infrastructure configuration including nodes, software,
-  // networking, encryption, and lifecycle management.
+  // Standard (Compute Engine) cluster arm: nodes, software, networking,
+  // encryption, security, and lifecycle. Mutually exclusive with
+  // virtual_cluster_config.
   GcpDataprocClusterConfig cluster_config = 4;
+
+  // Dataproc-on-GKE arm: run Spark as pods on an existing GKE cluster.
+  // Mutually exclusive with cluster_config.
+  GcpDataprocClusterVirtualClusterConfig virtual_cluster_config = 5;
 
   // Timeout for graceful YARN decommissioning when reducing the number
   // of workers. During this period, YARN waits for running tasks to
   // complete before shutting down nodes. Without this, scaling down
-  // can terminate running jobs.
+  // can terminate running jobs. Only meaningful for the GCE arm.
   // Format: duration in seconds with 's' suffix (e.g., "3600s").
   // Default: "0s" (immediate decommission).
-  string graceful_decommission_timeout = 5 [(buf.validate.field).cel = {
+  string graceful_decommission_timeout = 6 [(buf.validate.field).cel = {
     id: "graceful_decommission_timeout_format"
     expression: "this == '' || this.matches('^[0-9]+s$')"
     message: "graceful_decommission_timeout must be a duration in seconds (e.g., '3600s')"
   }];
+
+  // User-defined labels applied to the cluster (and propagated to its
+  // VMs). Merged beneath Planton's platform attribution labels
+  // (platform keys win on conflict). Not supported by the API for the
+  // virtual (GKE-based) arm.
+  map<string, string> labels = 7;
+
+  // The two deployment arms mirror the API's exactly-one contract;
+  // omitting both is also accepted (GCP creates a default GCE cluster).
+  option (buf.validate.message).cel = {
+    id: "at_most_one_deployment_arm"
+    expression: "!(has(this.cluster_config) && has(this.virtual_cluster_config))"
+    message: "cluster_config and virtual_cluster_config are mutually exclusive"
+  };
+
+  // The API rejects user labels on virtual clusters.
+  option (buf.validate.message).cel = {
+    id: "labels_unsupported_on_virtual_clusters"
+    expression: "!has(this.virtual_cluster_config) || size(this.labels) == 0"
+    message: "user labels are not supported on virtual (GKE-based) clusters"
+  };
 }

@@ -1,13 +1,13 @@
 variable "spec" {
   description = "GcpFirewallRule spec"
   type = object({
-    project_id = object({
-      value = string
-    })
-    network = object({
-      value = string
-    })
-    rule_name = string
+    # The CLI's tfvars converter resolves StringValueOrRef fields to their
+    # literal string before the module runs, so these arrive as plain
+    # strings. An empty project_id falls back to the provider's default
+    # project (see locals.tf).
+    project_id = optional(string, "")
+    network    = string
+    rule_name  = string
     direction = string
     action    = string
     rules = list(object({

@@ -1,83 +1,50 @@
-# GCP Cloud Composer Environment - Terraform Module
+# GcpCloudComposerEnvironment - Terraform Module
 
-Terraform module that provisions a Cloud Composer environment — a managed Apache Airflow service for authoring, scheduling, and monitoring data pipelines.
+This Terraform module provisions a Cloud Composer environment (`google_composer_environment`) — managed Apache Airflow. It is the Terraform-side implementation of the Planton `GcpCloudComposerEnvironment` resource kind and has feature parity with the Pulumi module.
 
-## Provider Requirements
+## Overview
 
-- `google` provider `~> 6.0`
+Composer assembles a GKE cluster, Cloud SQL metadata database, web server, and DAG bucket behind the one resource — creation takes 25-45 minutes. The module enables the Cloud Composer API (`disable_on_destroy=false`) so a fresh project works first try. An empty `project_id` falls back to the provider's default project, and an empty `environment_name` falls back to `metadata.name`. User labels are merged beneath Planton's platform attribution labels (platform keys win on conflict), identically to the Pulumi module.
 
-## Resources Created
+## Usage with Planton CLI
 
-- `google_composer_environment` — The Composer environment with all configuration including networking, software config, workloads, CMEK, maintenance windows, recovery, and access control
-
-## Usage
-
-```hcl
-module "composer_environment" {
-  source = "./path/to/module"
-
-  provider_config = {
-    service_account_key_base64 = var.gcp_sa_key
-  }
-
-  metadata = {
-    name = "my-composer"
-    org  = "my-org"
-    env  = "production"
-  }
-
-  spec = {
-    project_id      = "my-gcp-project"
-    region          = "us-central1"
-    environment_name = "my-composer-env"
-    environment_size = "ENVIRONMENT_SIZE_MEDIUM"
-
-    node_config = {
-      network = "projects/my-gcp-project/global/networks/prod-vpc"
-      subnetwork = "projects/my-gcp-project/regions/us-central1/subnetworks/prod-subnet"
-    }
-
-    software_config = {
-      image_version = "composer-2.9.7-airflow-2.9.3"
-      pypi_packages = {
-        numpy    = ">=1.21.0"
-        pandas   = ">=1.3.0"
-        requests = ""
-      }
-    }
-
-    workloads_config = {
-      scheduler = {
-        cpu        = 2.0
-        memory_gb  = 7.5
-        storage_gb = 5.0
-        count      = 1
-      }
-      worker = {
-        cpu        = 4.0
-        memory_gb  = 15.0
-        storage_gb = 10.0
-        min_count  = 2
-        max_count  = 10
-      }
-    }
-
-    kms_key_name = "projects/my-gcp-project/locations/us-central1/keyRings/composer-kr/cryptoKeys/composer-key"
-  }
-}
+```shell
+planton tofu init --manifest ../hack/manifest.yaml
+planton tofu plan --manifest ../hack/manifest.yaml
+planton tofu apply --manifest ../hack/manifest.yaml --auto-approve
+planton tofu destroy --manifest ../hack/manifest.yaml --auto-approve
 ```
 
-## Inputs
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
 
-| Name | Description | Type | Required |
-|------|-------------|------|----------|
-| provider_config | GCP provider configuration | object | yes |
-| metadata | Resource metadata (name, org, env, id) | object | yes |
-| spec | Composer environment specification | object | yes |
+## Direct Terraform Usage
+
+```bash
+cd apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1/iac/tf
+terraform init
+terraform plan -var-file=terraform.tfvars.json
+terraform apply -var-file=terraform.tfvars.json
+```
+
+## Variables
+
+| Name | Description | Default |
+|------|-------------|---------|
+| `metadata` | Resource metadata (name, labels, etc.) | — |
+| `spec` | GcpCloudComposerEnvironment spec | — |
+
+The `spec` object includes: identity (`project_id`, `region`, `environment_name`), capacity (`environment_size`, `resilience_mode`), networking (`node_config` with VPC peering or Composer 3 attachment, `ip_allocation_policy`, `enable_ip_masq_agent`; `private_environment_config`; Composer 3 flags), software (`software_config` incl. `cloud_data_lineage_integration`), workloads (`workloads_config` for all five components), security (`kms_key_name`, `web_server_network_access_control`, `master_authorized_networks_config`), operations (`maintenance_window`, `recovery_config`, `data_retention_config`), `storage_bucket`, and `labels`.
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| environment_id | Fully qualified environment resource name (`projects/{project}/locations/{region}/environments/{name}`) |
-| environment_name | Short environment name |
+| `environment_id` | Fully qualified resource ID (`projects/{project}/locations/{region}/environments/{name}`) |
+| `environment_name` | Short name of the Composer environment |
+| `airflow_uri` | URI of the Apache Airflow web UI |
+| `dag_gcs_prefix` | Cloud Storage prefix for DAG file uploads |
+| `gke_cluster` | Name of the underlying GKE cluster managed by Composer |
+
+## Lifecycle Notes
+
+The immutables (ForceNew): `region`, `environment_name`, node networking (network, subnetwork, network attachment, IP allocation), the private environment configuration, `kms_key_name`, and `storage_bucket`. Workload sizing, environment size, resilience mode, software configuration, maintenance window, access control, retention, and labels update in place. The triggerer block sends `cpu`, `memory_gb`, and `count` unconditionally — the API requires all three when the block is present.

@@ -1,50 +1,46 @@
-# GcpCloudComposerEnvironment Pulumi Module
+# GcpCloudComposerEnvironment - Pulumi Module
 
-This Pulumi module provisions a Google Cloud Composer environment — a managed Apache Airflow service for authoring, scheduling, and monitoring data pipelines.
+This Pulumi (Go) module provisions a Cloud Composer environment (`composer.Environment`) — managed Apache Airflow. It is the Pulumi-side implementation of the Planton `GcpCloudComposerEnvironment` resource kind and has feature parity with the Terraform module.
 
-## Architecture
+## Overview
 
-The module creates a single GCP resource:
+Composer assembles a GKE cluster, Cloud SQL metadata database, web server, and DAG bucket behind the one resource — creation takes 25-45 minutes. The module enables the Cloud Composer API so a fresh project works first try. An empty `project_id` falls back to the provider's default project, and an empty `environment_name` falls back to `metadata.name`. User labels are merged beneath Planton's platform attribution labels (platform keys win on conflict), identically to the Terraform module.
 
-1. **composer.Environment** — The Composer environment with networking, software configuration, workloads, CMEK encryption, maintenance windows, recovery, and access control
+## Usage with Planton CLI
 
-The environment resource includes all configuration inline (Composer's API bundles all settings within the environment resource). The module uses the `pulumi-gcp` (Google) provider with a **local backend** for state storage.
-
-## Prerequisites
-
-- GCP project with Cloud Composer API enabled
-- Cloud KMS keys (if using CMEK encryption) with appropriate IAM permissions for the Composer service account
-- VPC network and subnetwork (if using VPC peering networking)
-- PSC network attachment (if using Composer 3 PSC networking)
-
-## Structure
-
+```shell
+planton pulumi up --manifest ../hack/manifest.yaml --module-dir .
+planton pulumi destroy --manifest ../hack/manifest.yaml --module-dir .
 ```
-iac/pulumi/
-├── main/
-│   ├── main.go              # Entry point: loads stack input, calls module.Resources
-│   └── Pulumi.yaml          # Project definition
-└── module/
-    ├── main.go              # Resources(): orchestrates provider and composerEnvironment
-    ├── locals.go            # Label construction, context extraction from stack input
-    ├── composer_environment.go # composer.NewEnvironment with all configuration
-    └── outputs.go           # Export constants (environment_id, environment_name)
+
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
+
+## Direct Pulumi Usage
+
+```bash
+cd apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1/iac/pulumi
+make build
+pulumi up --stack dev
 ```
+
+## Module Layout
+
+- `main.go` — entrypoint; loads the stack input and calls the module
+- `module/main.go` — provider setup and resource orchestration
+- `module/locals.go` — metadata-derived values and the label merge
+- `module/composer_environment.go` — API enablement + the environment resource with all configuration blocks
+- `module/outputs.go` — stack output keys (must match `stack_outputs.proto`)
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| `environment_id` | Fully qualified environment resource name (`projects/{project}/locations/{region}/environments/{name}`) |
-| `environment_name` | Short environment name (same as `environmentName` input or `metadata.name`) |
+| `environment_id` | Fully qualified resource ID (`projects/{project}/locations/{region}/environments/{name}`) |
+| `environment_name` | Short name of the Composer environment |
+| `airflow_uri` | URI of the Apache Airflow web UI |
+| `dag_gcs_prefix` | Cloud Storage prefix for DAG file uploads |
+| `gke_cluster` | Name of the underlying GKE cluster managed by Composer |
 
-## Running the Module
+## Lifecycle Notes
 
-```bash
-cd iac/pulumi/main
-pulumi up
-```
-
-## Debugging
-
-See the [overview.md](overview.md) for architecture details and the debug script reference in the module directory.
+The immutables (ForceNew): `region`, `environment_name`, node networking (network, subnetwork, network attachment, IP allocation), the private environment configuration, `kms_key_name`, and `storage_bucket`. Workload sizing, environment size, resilience mode, software configuration, maintenance window, access control, retention, and labels update in place. The triggerer block sends `cpu`, `memory_gb`, and `count` unconditionally — the API requires all three when the block is present.

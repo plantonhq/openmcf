@@ -55,7 +55,7 @@ The pool inherits its project and location from the parent cluster (both resolve
 - **GcpServiceAccount** — the node identity (`service_account` reference)
 - **GcpKmsKey** — CMEK key for boot-disk encryption
 - **GcpGkeWorkloadIdentityBinding** — grants workloads IAM identities; pair with `GKE_METADATA` workload metadata mode
-- **GcpDataprocVirtualCluster** — schedules Dataproc roles onto named node pools by `node_pool_id`
+- **GcpDataprocCluster** — a Dataproc-on-GKE virtual cluster schedules Dataproc roles onto named node pools by `node_pool_id`
 
 ## Additional Resources
 

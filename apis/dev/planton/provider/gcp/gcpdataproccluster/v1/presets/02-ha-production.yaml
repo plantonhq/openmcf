@@ -1,43 +1,80 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocCluster
 metadata:
-  name: my-prod-spark
+  name: prod-spark
 spec:
   projectId:
-    value: "<your-gcp-project-id>"
+    value: my-gcp-project-123 # replace with your project ID
   region: us-central1
-  clusterName: my-prod-spark
+  clusterName: prod-spark
+
+  # Running jobs get an hour to finish before scale-down removes a node.
   gracefulDecommissionTimeout: "3600s"
+
+  labels:
+    environment: production
+    team: data-platform
+
   clusterConfig:
     gceConfig:
       subnetwork:
-        value: "<your-subnetwork-self-link>"
+        valueFrom:
+          kind: GcpSubnetwork
+          name: dataproc-subnet
+          fieldPath: status.outputs.subnetwork_self_link
       serviceAccount:
-        value: "<your-dataproc-sa-email>"
+        valueFrom:
+          kind: GcpServiceAccount
+          name: dataproc-sa
+          fieldPath: status.outputs.email
+      # No external IPs — nodes reach Google APIs via Private Google
+      # Access; internet egress needs Cloud NAT.
       internalIpOnly: true
       tags:
         - dataproc
         - spark
+      # Production hardening baseline: verified boot chain + attestation.
+      shieldedInstanceConfig:
+        enableSecureBoot: true
+        enableVtpm: true
+        enableIntegrityMonitoring: true
+
+    # 3 masters = HA HDFS/YARN with automatic failover.
     masterConfig:
-      numInstances: 3 # HA mode
+      numInstances: 3
       machineType: n2-standard-8
       diskConfig:
         bootDiskSizeGb: 200
         bootDiskType: pd-ssd
+
     workerConfig:
       numInstances: 5
-      machineType: n2-standard-8
       minNumInstances: 3
+      machineType: n2-standard-8
       diskConfig:
         bootDiskSizeGb: 500
         bootDiskType: pd-ssd
         numLocalSsds: 2
+        localSsdInterface: nvme
+
     softwareConfig:
       imageVersion: "2.2-debian12"
       properties:
         "spark:spark.executor.memory": "12g"
         "spark:spark.driver.memory": "8g"
+
+    # CMEK for every persistent disk in the cluster.
     encryptionKmsKeyName:
-      value: "<your-kms-key-resource-name>"
+      valueFrom:
+        kind: GcpKmsKey
+        name: dataproc-cmek
+        fieldPath: status.outputs.key_id
+
     endpointConfig:
       enableHttpPortAccess: true
+
+    # Spark/YARN metrics into Cloud Monitoring for SRE dashboards.
+    dataprocMetricConfig:
+      metrics:
+        - metricSource: SPARK
+        - metricSource: YARN

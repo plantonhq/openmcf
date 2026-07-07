@@ -32,7 +32,6 @@ The following GCP resources can be deployed using Planton:
 - [Cloud Tasks Queue](/docs/catalog/gcp/cloud-tasks-queue)
 - [Compute Instance](/docs/catalog/gcp/compute-instance)
 - [Dataproc Cluster](/docs/catalog/gcp/dataproc-cluster)
-- [Dataproc Virtual Cluster](/docs/catalog/gcp/dataproc-virtual-cluster)
 - [DNS Record](/docs/catalog/gcp/dns-record)
 - [DNS Zone](/docs/catalog/gcp/dns-zone)
 - [Filestore Instance](/docs/catalog/gcp/filestore-instance)

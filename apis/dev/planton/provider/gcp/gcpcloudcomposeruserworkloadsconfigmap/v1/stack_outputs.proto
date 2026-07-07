@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1;
+
+// Outputs produced after provisioning a Cloud Composer user workloads
+// ConfigMap.
+message GcpCloudComposerUserWorkloadsConfigMapStackOutputs {
+  // Fully qualified resource name.
+  // Format: projects/{project}/locations/{region}/environments/{environment}/userWorkloadsConfigMaps/{name}
+  string name = 1;
+
+  // The Kubernetes ConfigMap name (same as the spec's config_map_name
+  // input) — what KubernetesPodOperator tasks reference.
+  string config_map_name = 2;
+}
