@@ -73,11 +73,12 @@ type AzureCosmosdbMongoCollectionSpec struct {
 	// (requires analytical storage on the account). -1 keeps analytical
 	// data forever; a positive value ages it out.
 	AnalyticalStorageTtl *int32 `protobuf:"varint,7,opt,name=analytical_storage_ttl,json=analyticalStorageTtl,proto3,oneof" json:"analytical_storage_ttl,omitempty"`
-	// Indexes on the collection. Cosmos DB requires the unique index on
-	// ["_id"] for accounts on MongoDB server version 3.6 and above --
-	// declare it explicitly (indexes are part of the collection's real
-	// configuration). Compound indexes list multiple keys; `unique`
-	// enforces distinct values across the indexed keys.
+	// Indexes on the collection. Azure REQUIRES an index on ["_id"]
+	// (declare it with unique: true -- the _id index is always unique) --
+	// a collection cannot be created or updated without it, so it is part
+	// of the collection's real configuration, never injected silently.
+	// Compound indexes list multiple keys; `unique` enforces distinct
+	// values across the indexed keys.
 	Indexes       []*AzureCosmosdbMongoCollectionIndex `protobuf:"bytes,8,rep,name=indexes,proto3" json:"indexes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -231,8 +232,7 @@ var File_dev_planton_provider_azure_azurecosmosdbmongocollection_v1_spec_proto p
 
 const file_dev_planton_provider_azure_azurecosmosdbmongocollection_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/azure/azurecosmosdbmongocollection/v1/spec.proto\x12:dev.planton.provider.azure.azurecosmosdbmongocollection.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x97\n" +
-	"\n" +
+	"Edev/planton/provider/azure/azurecosmosdbmongocollection/v1/spec.proto\x12:dev.planton.provider.azure.azurecosmosdbmongocollection.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe3\v\n" +
 	" AzureCosmosdbMongoCollectionSpec\x12\x8f\x01\n" +
 	"\x11mongo_database_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\x03\x92\xd4a status.outputs.mongo_database_idR\x0fmongoDatabaseId\x126\n" +
 	"\x0fcollection_name\x18\x02 \x01(\tB\r\xbaH\n" +
@@ -247,8 +247,9 @@ const file_dev_planton_provider_azure_azurecosmosdbmongocollection_v1_spec_proto
 	"\x13default_ttl_seconds\x18\x06 \x01(\x05B\x98\x01\xbaH\x94\x01\xba\x01\x90\x01\n" +
 	"\x1dcosmosdb_mongo_coll_ttl_valid\x12Vdefault_ttl_seconds must be -1 (on, no default expiry) or a positive number of seconds\x1a\x17this >= -1 && this != 0H\x02R\x11defaultTtlSeconds\x88\x01\x01\x12K\n" +
 	"\x16analytical_storage_ttl\x18\a \x01(\x05B\x10\xbaH\r\x1a\v(\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01H\x03R\x14analyticalStorageTtl\x88\x01\x01\x12w\n" +
-	"\aindexes\x18\b \x03(\v2].dev.planton.provider.azure.azurecosmosdbmongocollection.v1.AzureCosmosdbMongoCollectionIndexR\aindexes:\xaa\x01\xbaH\xa6\x01\x1a\xa3\x01\n" +
-	"\"cosmosdb_mongo_coll_throughput_xor\x12>throughput and autoscale_max_throughput are mutually exclusive\x1a=!(has(this.throughput) && has(this.autoscale_max_throughput))B\r\n" +
+	"\aindexes\x18\b \x03(\v2].dev.planton.provider.azure.azurecosmosdbmongocollection.v1.AzureCosmosdbMongoCollectionIndexR\aindexes:\xf6\x02\xbaH\xf2\x02\x1a\xa3\x01\n" +
+	"\"cosmosdb_mongo_coll_throughput_xor\x12>throughput and autoscale_max_throughput are mutually exclusive\x1a=!(has(this.throughput) && has(this.autoscale_max_throughput))\x1a\xc9\x01\n" +
+	"%cosmosdb_mongo_coll_id_index_required\x12]indexes must include an index on the '_id' key -- Azure rejects a Mongo collection without it\x1aAthis.indexes.exists(i, i.keys.exists(k, k.lowerAscii() == '_id'))B\r\n" +
 	"\v_throughputB\x1b\n" +
 	"\x19_autoscale_max_throughputB\x16\n" +
 	"\x14_default_ttl_secondsB\x19\n" +

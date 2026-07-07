@@ -273,6 +273,18 @@ region. True subscription-wide gates do exist (the quota-increase link
 in the ARM error is the fix) — but conclude that only after a
 probe-verified clean region also fails.
 
+Cosmos DB adds a THIRD failure shape to this class: transient CAPACITY
+rejection rather than offer restriction. `eastus` answered
+`ServiceUnavailable` ("high demand in East US region for the zonal
+redundant (Availability Zones) accounts") for a plain single-region
+account that never asked for zones — Azure routes new accounts through
+zonal placement internally, so the error hits non-zonal manifests too.
+There is no up-front probe (the provider `locations` list still
+advertises the region); treat `ServiceUnavailable` on Cosmos account
+creation as a region-capacity signal and move the scenario-local
+accounts to a quieter region (`westus3` verified clean) instead of
+recording a deferral or filing quota requests.
+
 ### How the Terraform path works
 
 The Terraform runner uses [Terratest](https://github.com/gruntwork-io/terratest)

@@ -266,7 +266,7 @@ type AzureCosmosdbSqlContainerSpec struct {
 	// replaces the container and its data.
 	ContainerName string `protobuf:"bytes,2,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
 	// The partition key paths. Each starts with "/" and names a document
-	// property. One path is the normal case (kind HASH); two or three
+	// property. One path is the normal case (kind HASH); up to three
 	// paths form a HIERARCHICAL key (kind MULTI_HASH, e.g. ["/tenantId",
 	// "/userId"]) that routes queries carrying any prefix of the hierarchy
 	// efficiently. Fixed at creation.
@@ -844,7 +844,7 @@ var File_dev_planton_provider_azure_azurecosmosdbsqlcontainer_v1_spec_proto prot
 
 const file_dev_planton_provider_azure_azurecosmosdbsqlcontainer_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/azure/azurecosmosdbsqlcontainer/v1/spec.proto\x127dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x93\x11\n" +
+	"Bdev/planton/provider/azure/azurecosmosdbsqlcontainer/v1/spec.proto\x127dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xcb\x10\n" +
 	"\x1dAzureCosmosdbSqlContainerSpec\x12\x89\x01\n" +
 	"\x0fsql_database_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4\x03\x92\xd4a\x1estatus.outputs.sql_database_idR\rsqlDatabaseId\x124\n" +
 	"\x0econtainer_name\x18\x02 \x01(\tB\r\xbaH\n" +
@@ -866,22 +866,24 @@ const file_dev_planton_provider_azure_azurecosmosdbsqlcontainer_v1_spec_proto_ra
 	" \x03(\v2[.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerUniqueKeyR\n" +
 	"uniqueKeys\x12\x89\x01\n" +
 	"\x0findexing_policy\x18\v \x01(\v2`.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerIndexingPolicyR\x0eindexingPolicy\x12\xa8\x01\n" +
-	"\x1aconflict_resolution_policy\x18\f \x01(\v2j.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerConflictResolutionPolicyR\x18conflictResolutionPolicy:\x8a\x04\xbaH\x86\x04\x1a\xa6\x01\n" +
-	"%cosmosdb_sql_container_throughput_xor\x12>throughput and autoscale_max_throughput are mutually exclusive\x1a=!(has(this.throughput) && has(this.autoscale_max_throughput))\x1a\xda\x02\n" +
-	"&cosmosdb_sql_container_multihash_paths\x12zMULTI_HASH is for hierarchical keys (more than one path) and requires partition_key_version 2; HASH takes exactly one path\x1a\xb3\x01(this.partition_key_kind == 2) ? (this.partition_key_paths.size() > 1 && has(this.partition_key_version) && this.partition_key_version == 2) : this.partition_key_paths.size() == 1B\x18\n" +
+	"\x1aconflict_resolution_policy\x18\f \x01(\v2j.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerConflictResolutionPolicyR\x18conflictResolutionPolicy:\xc2\x03\xbaH\xbe\x03\x1a\xa6\x01\n" +
+	"%cosmosdb_sql_container_throughput_xor\x12>throughput and autoscale_max_throughput are mutually exclusive\x1a=!(has(this.throughput) && has(this.autoscale_max_throughput))\x1a\x92\x02\n" +
+	"&cosmosdb_sql_container_multihash_paths\x12YMULTI_HASH hierarchical keys require partition_key_version 2; HASH takes exactly one path\x1a\x8c\x01(this.partition_key_kind == 2) ? (has(this.partition_key_version) && this.partition_key_version == 2) : this.partition_key_paths.size() == 1B\x18\n" +
 	"\x16_partition_key_versionB\r\n" +
 	"\v_throughputB\x1b\n" +
 	"\x19_autoscale_max_throughputB\x0e\n" +
 	"\f_default_ttlB\x19\n" +
 	"\x17_analytical_storage_ttl\"D\n" +
 	"\"AzureCosmosdbSqlContainerUniqueKey\x12\x1e\n" +
-	"\x05paths\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x05paths\"\xdd\x05\n" +
+	"\x05paths\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x05paths\"\xff\t\n" +
 	"'AzureCosmosdbSqlContainerIndexingPolicy\x12\x8d\x01\n" +
 	"\rindexing_mode\x18\x01 \x01(\x0e2^.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerIndexingModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\findexingMode\x12\x82\x01\n" +
 	"\x0eincluded_paths\x18\x02 \x03(\v2[.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerIndexPathR\rincludedPaths\x12\x82\x01\n" +
 	"\x0eexcluded_paths\x18\x03 \x03(\v2[.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerIndexPathR\rexcludedPaths\x12\x8d\x01\n" +
 	"\x11composite_indexes\x18\x04 \x03(\v2`.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerCompositeIndexR\x10compositeIndexes\x12\x87\x01\n" +
-	"\x0fspatial_indexes\x18\x05 \x03(\v2^.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerSpatialIndexR\x0espatialIndexes\"D\n" +
+	"\x0fspatial_indexes\x18\x05 \x03(\v2^.dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1.AzureCosmosdbSqlContainerSpatialIndexR\x0espatialIndexes:\x9f\x04\xbaH\x9b\x04\x1a\xd8\x01\n" +
+	")cosmosdb_sql_container_none_mode_no_paths\x12Jincluded_paths and excluded_paths must be empty when indexing_mode is NONE\x1a_this.indexing_mode != 2 || (this.included_paths.size() == 0 && this.excluded_paths.size() == 0)\x1a\xbd\x02\n" +
+	")cosmosdb_sql_container_root_path_required\x12ewhen included_paths or excluded_paths are declared, exactly one of them must carry the root path '/*'\x1a\xa8\x01(this.included_paths.size() == 0 && this.excluded_paths.size() == 0) || (this.included_paths.exists(p, p.path == '/*') != this.excluded_paths.exists(p, p.path == '/*'))\"D\n" +
 	"\"AzureCosmosdbSqlContainerIndexPath\x12\x1e\n" +
 	"\x04path\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04path\"\xb5\x01\n" +

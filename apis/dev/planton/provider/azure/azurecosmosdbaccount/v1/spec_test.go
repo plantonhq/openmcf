@@ -210,8 +210,20 @@ var _ = ginkgo.Describe("AzureCosmosdbAccountSpec Validation Tests", func() {
 
 		ginkgo.It("should accept IPv4 addresses and CIDR ranges in the IP filter", func() {
 			input := minimalSpec()
-			input.Spec.IpRangeFilter = []string{"104.42.195.92", "10.0.0.0/16"}
+			input.Spec.IpRangeFilter = []string{"104.42.195.92", "10.0.0.0/16", "0.0.0.0", "255.255.255.255/32"}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept every TLS floor Azure's API allows", func() {
+			for _, tlsVersion := range []AzureCosmosdbAccountMinimalTlsVersion{
+				AzureCosmosdbAccountMinimalTlsVersion_TLS_1_0,
+				AzureCosmosdbAccountMinimalTlsVersion_TLS_1_1,
+				AzureCosmosdbAccountMinimalTlsVersion_TLS_1_2,
+			} {
+				input := minimalSpec()
+				input.Spec.MinimalTlsVersion = tlsVersion
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil(), "TLS floor %v must be accepted", tlsVersion)
+			}
 		})
 
 		ginkgo.It("should accept network posture, capacity, and feature switches", func() {
@@ -455,6 +467,20 @@ var _ = ginkgo.Describe("AzureCosmosdbAccountSpec Validation Tests", func() {
 		ginkgo.It("should reject a malformed IP filter entry", func() {
 			input := minimalSpec()
 			input.Spec.IpRangeFilter = []string{"not-an-ip"}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject IP filter entries with out-of-range octets or prefixes", func() {
+			for _, entry := range []string{"999.1.1.1", "10.0.0.256", "10.0.0.0/33", "10.0.0.0/99"} {
+				input := minimalSpec()
+				input.Spec.IpRangeFilter = []string{entry}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil(), "entry %q must be rejected", entry)
+			}
+		})
+
+		ginkgo.It("should reject an out-of-vocabulary TLS floor", func() {
+			input := minimalSpec()
+			input.Spec.MinimalTlsVersion = AzureCosmosdbAccountMinimalTlsVersion(99)
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 

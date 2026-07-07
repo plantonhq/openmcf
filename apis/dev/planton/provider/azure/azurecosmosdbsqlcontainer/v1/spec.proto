@@ -42,7 +42,7 @@ message AzureCosmosdbSqlContainerSpec {
   ];
 
   // The partition key paths. Each starts with "/" and names a document
-  // property. One path is the normal case (kind HASH); two or three
+  // property. One path is the normal case (kind HASH); up to three
   // paths form a HIERARCHICAL key (kind MULTI_HASH, e.g. ["/tenantId",
   // "/userId"]) that routes queries carrying any prefix of the hierarchy
   // efficiently. Fixed at creation.
@@ -133,10 +133,13 @@ message AzureCosmosdbSqlContainerSpec {
     message: "throughput and autoscale_max_throughput are mutually exclusive"
     expression: "!(has(this.throughput) && has(this.autoscale_max_throughput))"
   };
+  // MULTI_HASH takes 1-3 paths (a single-level hierarchy is legal);
+  // Azure requires partition key definition version 2 for it. HASH
+  // supports exactly one path -- Azure rejects more.
   option (buf.validate.message).cel = {
     id: "cosmosdb_sql_container_multihash_paths"
-    message: "MULTI_HASH is for hierarchical keys (more than one path) and requires partition_key_version 2; HASH takes exactly one path"
-    expression: "(this.partition_key_kind == 2) ? (this.partition_key_paths.size() > 1 && has(this.partition_key_version) && this.partition_key_version == 2) : this.partition_key_paths.size() == 1"
+    message: "MULTI_HASH hierarchical keys require partition_key_version 2; HASH takes exactly one path"
+    expression: "(this.partition_key_kind == 2) ? (has(this.partition_key_version) && this.partition_key_version == 2) : this.partition_key_paths.size() == 1"
   };
 }
 
@@ -184,6 +187,24 @@ message AzureCosmosdbSqlContainerIndexingPolicy {
 
   // Spatial indexes for GeoJSON geometry queries on the given paths.
   repeated AzureCosmosdbSqlContainerSpatialIndex spatial_indexes = 5;
+
+  // Azure rejects a NONE-mode policy that declares paths: with indexing
+  // off there is nothing to include or exclude.
+  option (buf.validate.message).cel = {
+    id: "cosmosdb_sql_container_none_mode_no_paths"
+    message: "included_paths and excluded_paths must be empty when indexing_mode is NONE"
+    expression: "this.indexing_mode != 2 || (this.included_paths.size() == 0 && this.excluded_paths.size() == 0)"
+  };
+
+  // Azure requires any declared path set to place the root path "/*" in
+  // EXACTLY one of the two lists -- the policy replaces the default
+  // wholesale, so the root's fate must be stated, and it cannot be both
+  // indexed and excluded.
+  option (buf.validate.message).cel = {
+    id: "cosmosdb_sql_container_root_path_required"
+    message: "when included_paths or excluded_paths are declared, exactly one of them must carry the root path '/*'"
+    expression: "(this.included_paths.size() == 0 && this.excluded_paths.size() == 0) || (this.included_paths.exists(p, p.path == '/*') != this.excluded_paths.exists(p, p.path == '/*'))"
+  };
 }
 
 // The indexing mode.

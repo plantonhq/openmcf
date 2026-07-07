@@ -80,6 +80,66 @@ func (AzureCosmosdbAccountKind) EnumDescriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
+// The minimum TLS version the account's endpoints accept.
+type AzureCosmosdbAccountMinimalTlsVersion int32
+
+const (
+	// Not specified: TLS 1.2 -- Azure's default since April 2023.
+	AzureCosmosdbAccountMinimalTlsVersion_azure_cosmosdb_account_minimal_tls_version_unspecified AzureCosmosdbAccountMinimalTlsVersion = 0
+	// Accept TLS 1.0 and above -- legacy clients only; Azure is retiring
+	// this floor. Azure wire value: "Tls".
+	AzureCosmosdbAccountMinimalTlsVersion_TLS_1_0 AzureCosmosdbAccountMinimalTlsVersion = 1
+	// Accept TLS 1.1 and above -- legacy clients only; Azure is retiring
+	// this floor. Azure wire value: "Tls11".
+	AzureCosmosdbAccountMinimalTlsVersion_TLS_1_1 AzureCosmosdbAccountMinimalTlsVersion = 2
+	// Accept TLS 1.2 and above -- the default and recommended floor.
+	// Azure wire value: "Tls12".
+	AzureCosmosdbAccountMinimalTlsVersion_TLS_1_2 AzureCosmosdbAccountMinimalTlsVersion = 3
+)
+
+// Enum value maps for AzureCosmosdbAccountMinimalTlsVersion.
+var (
+	AzureCosmosdbAccountMinimalTlsVersion_name = map[int32]string{
+		0: "azure_cosmosdb_account_minimal_tls_version_unspecified",
+		1: "TLS_1_0",
+		2: "TLS_1_1",
+		3: "TLS_1_2",
+	}
+	AzureCosmosdbAccountMinimalTlsVersion_value = map[string]int32{
+		"azure_cosmosdb_account_minimal_tls_version_unspecified": 0,
+		"TLS_1_0": 1,
+		"TLS_1_1": 2,
+		"TLS_1_2": 3,
+	}
+)
+
+func (x AzureCosmosdbAccountMinimalTlsVersion) Enum() *AzureCosmosdbAccountMinimalTlsVersion {
+	p := new(AzureCosmosdbAccountMinimalTlsVersion)
+	*p = x
+	return p
+}
+
+func (x AzureCosmosdbAccountMinimalTlsVersion) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureCosmosdbAccountMinimalTlsVersion) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureCosmosdbAccountMinimalTlsVersion) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureCosmosdbAccountMinimalTlsVersion) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureCosmosdbAccountMinimalTlsVersion.Descriptor instead.
+func (AzureCosmosdbAccountMinimalTlsVersion) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
 // The default consistency level of the account.
 type AzureCosmosdbAccountConsistencyLevel int32
 
@@ -134,11 +194,11 @@ func (x AzureCosmosdbAccountConsistencyLevel) String() string {
 }
 
 func (AzureCosmosdbAccountConsistencyLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[1].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[2].Descriptor()
 }
 
 func (AzureCosmosdbAccountConsistencyLevel) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[1]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[2]
 }
 
 func (x AzureCosmosdbAccountConsistencyLevel) Number() protoreflect.EnumNumber {
@@ -147,7 +207,7 @@ func (x AzureCosmosdbAccountConsistencyLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AzureCosmosdbAccountConsistencyLevel.Descriptor instead.
 func (AzureCosmosdbAccountConsistencyLevel) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 // Account capabilities. Azure wire values in the per-value comments; most
@@ -280,11 +340,11 @@ func (x AzureCosmosdbAccountCapability) String() string {
 }
 
 func (AzureCosmosdbAccountCapability) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[2].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[3].Descriptor()
 }
 
 func (AzureCosmosdbAccountCapability) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[2]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[3]
 }
 
 func (x AzureCosmosdbAccountCapability) Number() protoreflect.EnumNumber {
@@ -293,7 +353,7 @@ func (x AzureCosmosdbAccountCapability) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AzureCosmosdbAccountCapability.Descriptor instead.
 func (AzureCosmosdbAccountCapability) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 // The backup mode of the account.
@@ -332,11 +392,11 @@ func (x AzureCosmosdbAccountBackupType) String() string {
 }
 
 func (AzureCosmosdbAccountBackupType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[3].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[4].Descriptor()
 }
 
 func (AzureCosmosdbAccountBackupType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[3]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[4]
 }
 
 func (x AzureCosmosdbAccountBackupType) Number() protoreflect.EnumNumber {
@@ -345,7 +405,7 @@ func (x AzureCosmosdbAccountBackupType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AzureCosmosdbAccountBackupType.Descriptor instead.
 func (AzureCosmosdbAccountBackupType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 // The continuous-backup restore window.
@@ -385,11 +445,11 @@ func (x AzureCosmosdbAccountContinuousTier) String() string {
 }
 
 func (AzureCosmosdbAccountContinuousTier) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[4].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[5].Descriptor()
 }
 
 func (AzureCosmosdbAccountContinuousTier) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[4]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[5]
 }
 
 func (x AzureCosmosdbAccountContinuousTier) Number() protoreflect.EnumNumber {
@@ -398,7 +458,7 @@ func (x AzureCosmosdbAccountContinuousTier) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AzureCosmosdbAccountContinuousTier.Descriptor instead.
 func (AzureCosmosdbAccountContinuousTier) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 // Where periodic backup copies are stored.
@@ -443,11 +503,11 @@ func (x AzureCosmosdbAccountBackupStorageRedundancy) String() string {
 }
 
 func (AzureCosmosdbAccountBackupStorageRedundancy) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[5].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[6].Descriptor()
 }
 
 func (AzureCosmosdbAccountBackupStorageRedundancy) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[5]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[6]
 }
 
 func (x AzureCosmosdbAccountBackupStorageRedundancy) Number() protoreflect.EnumNumber {
@@ -456,7 +516,7 @@ func (x AzureCosmosdbAccountBackupStorageRedundancy) Number() protoreflect.EnumN
 
 // Deprecated: Use AzureCosmosdbAccountBackupStorageRedundancy.Descriptor instead.
 func (AzureCosmosdbAccountBackupStorageRedundancy) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 // The MongoDB wire-protocol version (MONGO_DB accounts).
@@ -516,11 +576,11 @@ func (x AzureCosmosdbAccountMongoServerVersion) String() string {
 }
 
 func (AzureCosmosdbAccountMongoServerVersion) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[6].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[7].Descriptor()
 }
 
 func (AzureCosmosdbAccountMongoServerVersion) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[6]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[7]
 }
 
 func (x AzureCosmosdbAccountMongoServerVersion) Number() protoreflect.EnumNumber {
@@ -529,7 +589,7 @@ func (x AzureCosmosdbAccountMongoServerVersion) Number() protoreflect.EnumNumber
 
 // Deprecated: Use AzureCosmosdbAccountMongoServerVersion.Descriptor instead.
 func (AzureCosmosdbAccountMongoServerVersion) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 // The managed-identity flavor.
@@ -573,11 +633,11 @@ func (x AzureCosmosdbAccountIdentityType) String() string {
 }
 
 func (AzureCosmosdbAccountIdentityType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[7].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[8].Descriptor()
 }
 
 func (AzureCosmosdbAccountIdentityType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[7]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[8]
 }
 
 func (x AzureCosmosdbAccountIdentityType) Number() protoreflect.EnumNumber {
@@ -586,7 +646,7 @@ func (x AzureCosmosdbAccountIdentityType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AzureCosmosdbAccountIdentityType.Descriptor instead.
 func (AzureCosmosdbAccountIdentityType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 // The default-identity flavor.
@@ -632,11 +692,11 @@ func (x AzureCosmosdbAccountDefaultIdentityType) String() string {
 }
 
 func (AzureCosmosdbAccountDefaultIdentityType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[8].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[9].Descriptor()
 }
 
 func (AzureCosmosdbAccountDefaultIdentityType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[8]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[9]
 }
 
 func (x AzureCosmosdbAccountDefaultIdentityType) Number() protoreflect.EnumNumber {
@@ -645,7 +705,7 @@ func (x AzureCosmosdbAccountDefaultIdentityType) Number() protoreflect.EnumNumbe
 
 // Deprecated: Use AzureCosmosdbAccountDefaultIdentityType.Descriptor instead.
 func (AzureCosmosdbAccountDefaultIdentityType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 // The analytical-store schema shape.
@@ -685,11 +745,11 @@ func (x AzureCosmosdbAccountAnalyticalStorageSchemaType) String() string {
 }
 
 func (AzureCosmosdbAccountAnalyticalStorageSchemaType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[9].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[10].Descriptor()
 }
 
 func (AzureCosmosdbAccountAnalyticalStorageSchemaType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[9]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[10]
 }
 
 func (x AzureCosmosdbAccountAnalyticalStorageSchemaType) Number() protoreflect.EnumNumber {
@@ -698,7 +758,7 @@ func (x AzureCosmosdbAccountAnalyticalStorageSchemaType) Number() protoreflect.E
 
 // Deprecated: Use AzureCosmosdbAccountAnalyticalStorageSchemaType.Descriptor instead.
 func (AzureCosmosdbAccountAnalyticalStorageSchemaType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 // How the account is created.
@@ -739,11 +799,11 @@ func (x AzureCosmosdbAccountCreateMode) String() string {
 }
 
 func (AzureCosmosdbAccountCreateMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[10].Descriptor()
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[11].Descriptor()
 }
 
 func (AzureCosmosdbAccountCreateMode) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[10]
+	return &file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes[11]
 }
 
 func (x AzureCosmosdbAccountCreateMode) Number() protoreflect.EnumNumber {
@@ -752,7 +812,7 @@ func (x AzureCosmosdbAccountCreateMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AzureCosmosdbAccountCreateMode.Descriptor instead.
 func (AzureCosmosdbAccountCreateMode) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 // **AzureCosmosdbAccountSpec** defines the configuration for creating an
@@ -922,37 +982,42 @@ type AzureCosmosdbAccountSpec struct {
 	// Cosmos DB's data-plane RBAC -- the keyless posture. The account keys
 	// in the stack outputs stop authenticating when this is false.
 	LocalAuthenticationEnabled *bool `protobuf:"varint,24,opt,name=local_authentication_enabled,json=localAuthenticationEnabled,proto3,oneof" json:"local_authentication_enabled,omitempty"`
+	// The minimum TLS version the account's endpoints accept. Unset means
+	// TLS 1.2 -- Azure's own default for all accounts since April 2023 and
+	// the recommended floor. The 1.0/1.1 values exist only to keep legacy
+	// clients connecting during a migration; Azure is retiring them.
+	MinimalTlsVersion AzureCosmosdbAccountMinimalTlsVersion `protobuf:"varint,25,opt,name=minimal_tls_version,json=minimalTlsVersion,proto3,enum=dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMinimalTlsVersion" json:"minimal_tls_version,omitempty"`
 	// Let trusted Azure services (e.g. Azure Synapse, Azure Data Factory)
 	// bypass the account's network rules.
-	NetworkAclBypassForAzureServices *bool `protobuf:"varint,25,opt,name=network_acl_bypass_for_azure_services,json=networkAclBypassForAzureServices,proto3,oneof" json:"network_acl_bypass_for_azure_services,omitempty"`
+	NetworkAclBypassForAzureServices *bool `protobuf:"varint,26,opt,name=network_acl_bypass_for_azure_services,json=networkAclBypassForAzureServices,proto3,oneof" json:"network_acl_bypass_for_azure_services,omitempty"`
 	// Specific resource IDs allowed to bypass the network rules (e.g. a
 	// Synapse workspace's ARM ID). Plain ARM IDs -- the bypass list admits
 	// many unrelated resource types, so there is no single kind to
 	// reference.
-	NetworkAclBypassIds []string `protobuf:"bytes,26,rep,name=network_acl_bypass_ids,json=networkAclBypassIds,proto3" json:"network_acl_bypass_ids,omitempty"`
+	NetworkAclBypassIds []string `protobuf:"bytes,27,rep,name=network_acl_bypass_ids,json=networkAclBypassIds,proto3" json:"network_acl_bypass_ids,omitempty"`
 	// Enable burst capacity: idle provisioned throughput accumulates and
 	// absorbs short spikes beyond the provisioned RU/s instead of
 	// rate-limiting them.
-	BurstCapacityEnabled *bool `protobuf:"varint,27,opt,name=burst_capacity_enabled,json=burstCapacityEnabled,proto3,oneof" json:"burst_capacity_enabled,omitempty"`
+	BurstCapacityEnabled *bool `protobuf:"varint,28,opt,name=burst_capacity_enabled,json=burstCapacityEnabled,proto3,oneof" json:"burst_capacity_enabled,omitempty"`
 	// Enable partition merge: Azure consolidates fragmented physical
 	// partitions after throughput scale-downs, recovering per-partition
 	// throughput headroom on long-lived containers.
-	PartitionMergeEnabled *bool `protobuf:"varint,28,opt,name=partition_merge_enabled,json=partitionMergeEnabled,proto3,oneof" json:"partition_merge_enabled,omitempty"`
+	PartitionMergeEnabled *bool `protobuf:"varint,29,opt,name=partition_merge_enabled,json=partitionMergeEnabled,proto3,oneof" json:"partition_merge_enabled,omitempty"`
 	// CORS configuration for browser-based access to the account's data
 	// plane. Azure accepts one rule per account.
-	CorsRule *AzureCosmosdbAccountCorsRule `protobuf:"bytes,29,opt,name=cors_rule,json=corsRule,proto3" json:"cors_rule,omitempty"`
+	CorsRule *AzureCosmosdbAccountCorsRule `protobuf:"bytes,30,opt,name=cors_rule,json=corsRule,proto3" json:"cors_rule,omitempty"`
 	// How the account is being created. Unspecified means a fresh, empty
 	// account. RESTORE creates the account FROM a continuous-backup restore
 	// point of another account -- `restore` must be set and `backup.type`
 	// must be CONTINUOUS. Fixed at creation.
-	CreateMode AzureCosmosdbAccountCreateMode `protobuf:"varint,30,opt,name=create_mode,json=createMode,proto3,enum=dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCreateMode" json:"create_mode,omitempty"`
+	CreateMode AzureCosmosdbAccountCreateMode `protobuf:"varint,31,opt,name=create_mode,json=createMode,proto3,enum=dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCreateMode" json:"create_mode,omitempty"`
 	// The restore source and scope when `create_mode` is RESTORE. Every
 	// field is fixed at creation -- a restore happens exactly once, into a
 	// new account.
-	Restore *AzureCosmosdbAccountRestore `protobuf:"bytes,31,opt,name=restore,proto3" json:"restore,omitempty"`
+	Restore *AzureCosmosdbAccountRestore `protobuf:"bytes,32,opt,name=restore,proto3" json:"restore,omitempty"`
 	// User-defined tags merged over the platform's identity tags (user
 	// values win) on the account.
-	Tags          map[string]string `protobuf:"bytes,32,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Tags          map[string]string `protobuf:"bytes,33,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1153,6 +1218,13 @@ func (x *AzureCosmosdbAccountSpec) GetLocalAuthenticationEnabled() bool {
 		return *x.LocalAuthenticationEnabled
 	}
 	return false
+}
+
+func (x *AzureCosmosdbAccountSpec) GetMinimalTlsVersion() AzureCosmosdbAccountMinimalTlsVersion {
+	if x != nil {
+		return x.MinimalTlsVersion
+	}
+	return AzureCosmosdbAccountMinimalTlsVersion_azure_cosmosdb_account_minimal_tls_version_unspecified
 }
 
 func (x *AzureCosmosdbAccountSpec) GetNetworkAclBypassForAzureServices() bool {
@@ -2014,7 +2086,7 @@ var File_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto protorefl
 
 const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/azure/azurecosmosdbaccount/v1/spec.proto\x122dev.planton.provider.azure.azurecosmosdbaccount.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x89/\n" +
+	"=dev/planton/provider/azure/azurecosmosdbaccount/v1/spec.proto\x122dev.planton.provider.azure.azurecosmosdbaccount.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x951\n" +
 	"\x18AzureCosmosdbAccountSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -2031,9 +2103,9 @@ const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc
 	" \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x1dmultipleWriteLocationsEnabled\x88\x01\x01\x12P\n" +
 	"\x1dpublic_network_access_enabled\x18\v \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x1apublicNetworkAccessEnabled\x88\x01\x01\x12X\n" +
 	"!is_virtual_network_filter_enabled\x18\f \x01(\bB\t\x8a\xa6\x1d\x05falseH\x04R\x1disVirtualNetworkFilterEnabled\x88\x01\x01\x12\x8e\x01\n" +
-	"\x15virtual_network_rules\x18\r \x03(\v2Z.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountVirtualNetworkRuleR\x13virtualNetworkRules\x12\xce\x01\n" +
-	"\x0fip_range_filter\x18\x0e \x03(\tB\xa5\x01\xbaH\xa1\x01\x92\x01\x9d\x01\"\x9a\x01\xba\x01\x96\x01\n" +
-	"\x17cosmosdb_ip_range_entry\x12=ip_range_filter entries must be an IPv4 address or CIDR range\x1a<this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}(/[0-9]{1,2})?$')R\ripRangeFilter\x12f\n" +
+	"\x15virtual_network_rules\x18\r \x03(\v2Z.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountVirtualNetworkRuleR\x13virtualNetworkRules\x12\xc4\x02\n" +
+	"\x0fip_range_filter\x18\x0e \x03(\tB\x9b\x02\xbaH\x97\x02\x92\x01\x93\x02\"\x90\x02\xba\x01\x8c\x02\n" +
+	"\x17cosmosdb_ip_range_entry\x12gip_range_filter entries must be a valid IPv4 address or CIDR range (each octet 0-255, prefix /0 to /32)\x1a\x87\x01this.matches('^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(/(3[0-2]|[12]?[0-9]))?$')R\ripRangeFilter\x12f\n" +
 	"\x06backup\x18\x0f \x01(\v2N.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupR\x06backup\x12\x96\x01\n" +
 	"\x14mongo_server_version\x18\x10 \x01(\x0e2Z.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMongoServerVersionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x12mongoServerVersion\x12l\n" +
 	"\bidentity\x18\x11 \x01(\v2P.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentityR\bidentity\x12\x82\x01\n" +
@@ -2043,17 +2115,18 @@ const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc
 	"\x12analytical_storage\x18\x15 \x01(\v2Y.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorageR\x11analyticalStorage\x12l\n" +
 	"\bcapacity\x18\x16 \x01(\v2P.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapacityR\bcapacity\x12Y\n" +
 	"\"access_key_metadata_writes_enabled\x18\x17 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x06R\x1eaccessKeyMetadataWritesEnabled\x88\x01\x01\x12O\n" +
-	"\x1clocal_authentication_enabled\x18\x18 \x01(\bB\b\x8a\xa6\x1d\x04trueH\aR\x1alocalAuthenticationEnabled\x88\x01\x01\x12_\n" +
-	"%network_acl_bypass_for_azure_services\x18\x19 \x01(\bB\t\x8a\xa6\x1d\x05falseH\bR networkAclBypassForAzureServices\x88\x01\x01\x123\n" +
-	"\x16network_acl_bypass_ids\x18\x1a \x03(\tR\x13networkAclBypassIds\x12D\n" +
-	"\x16burst_capacity_enabled\x18\x1b \x01(\bB\t\x8a\xa6\x1d\x05falseH\tR\x14burstCapacityEnabled\x88\x01\x01\x12F\n" +
-	"\x17partition_merge_enabled\x18\x1c \x01(\bB\t\x8a\xa6\x1d\x05falseH\n" +
+	"\x1clocal_authentication_enabled\x18\x18 \x01(\bB\b\x8a\xa6\x1d\x04trueH\aR\x1alocalAuthenticationEnabled\x88\x01\x01\x12\x93\x01\n" +
+	"\x13minimal_tls_version\x18\x19 \x01(\x0e2Y.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMinimalTlsVersionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x11minimalTlsVersion\x12_\n" +
+	"%network_acl_bypass_for_azure_services\x18\x1a \x01(\bB\t\x8a\xa6\x1d\x05falseH\bR networkAclBypassForAzureServices\x88\x01\x01\x123\n" +
+	"\x16network_acl_bypass_ids\x18\x1b \x03(\tR\x13networkAclBypassIds\x12D\n" +
+	"\x16burst_capacity_enabled\x18\x1c \x01(\bB\t\x8a\xa6\x1d\x05falseH\tR\x14burstCapacityEnabled\x88\x01\x01\x12F\n" +
+	"\x17partition_merge_enabled\x18\x1d \x01(\bB\t\x8a\xa6\x1d\x05falseH\n" +
 	"R\x15partitionMergeEnabled\x88\x01\x01\x12m\n" +
-	"\tcors_rule\x18\x1d \x01(\v2P.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCorsRuleR\bcorsRule\x12}\n" +
-	"\vcreate_mode\x18\x1e \x01(\x0e2R.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCreateModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\n" +
+	"\tcors_rule\x18\x1e \x01(\v2P.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCorsRuleR\bcorsRule\x12}\n" +
+	"\vcreate_mode\x18\x1f \x01(\x0e2R.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCreateModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\n" +
 	"createMode\x12i\n" +
-	"\arestore\x18\x1f \x01(\v2O.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreR\arestore\x12j\n" +
-	"\x04tags\x18  \x03(\v2V.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\arestore\x18  \x01(\v2O.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreR\arestore\x12j\n" +
+	"\x04tags\x18! \x03(\v2V.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x85\x10\xbaH\x81\x10\x1a\xa6\x01\n" +
@@ -2151,7 +2224,12 @@ const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc
 	"\x18AzureCosmosdbAccountKind\x12+\n" +
 	"'azure_cosmosdb_account_kind_unspecified\x10\x00\x12\x16\n" +
 	"\x12GLOBAL_DOCUMENT_DB\x10\x01\x12\f\n" +
-	"\bMONGO_DB\x10\x02*\xb5\x01\n" +
+	"\bMONGO_DB\x10\x02*\x8a\x01\n" +
+	"%AzureCosmosdbAccountMinimalTlsVersion\x12:\n" +
+	"6azure_cosmosdb_account_minimal_tls_version_unspecified\x10\x00\x12\v\n" +
+	"\aTLS_1_0\x10\x01\x12\v\n" +
+	"\aTLS_1_1\x10\x02\x12\v\n" +
+	"\aTLS_1_2\x10\x03*\xb5\x01\n" +
 	"$AzureCosmosdbAccountConsistencyLevel\x128\n" +
 	"4azure_cosmosdb_account_consistency_level_unspecified\x10\x00\x12\n" +
 	"\n" +
@@ -2238,71 +2316,73 @@ func file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescG
 	return file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
+var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
 var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_goTypes = []any{
 	(AzureCosmosdbAccountKind)(0),                        // 0: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountKind
-	(AzureCosmosdbAccountConsistencyLevel)(0),            // 1: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyLevel
-	(AzureCosmosdbAccountCapability)(0),                  // 2: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapability
-	(AzureCosmosdbAccountBackupType)(0),                  // 3: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupType
-	(AzureCosmosdbAccountContinuousTier)(0),              // 4: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountContinuousTier
-	(AzureCosmosdbAccountBackupStorageRedundancy)(0),     // 5: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupStorageRedundancy
-	(AzureCosmosdbAccountMongoServerVersion)(0),          // 6: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMongoServerVersion
-	(AzureCosmosdbAccountIdentityType)(0),                // 7: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentityType
-	(AzureCosmosdbAccountDefaultIdentityType)(0),         // 8: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentityType
-	(AzureCosmosdbAccountAnalyticalStorageSchemaType)(0), // 9: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorageSchemaType
-	(AzureCosmosdbAccountCreateMode)(0),                  // 10: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCreateMode
-	(*AzureCosmosdbAccountSpec)(nil),                     // 11: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec
-	(*AzureCosmosdbAccountConsistencyPolicy)(nil),        // 12: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyPolicy
-	(*AzureCosmosdbAccountGeoLocation)(nil),              // 13: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountGeoLocation
-	(*AzureCosmosdbAccountVirtualNetworkRule)(nil),       // 14: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountVirtualNetworkRule
-	(*AzureCosmosdbAccountBackup)(nil),                   // 15: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup
-	(*AzureCosmosdbAccountIdentity)(nil),                 // 16: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentity
-	(*AzureCosmosdbAccountDefaultIdentity)(nil),          // 17: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentity
-	(*AzureCosmosdbAccountAnalyticalStorage)(nil),        // 18: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorage
-	(*AzureCosmosdbAccountCapacity)(nil),                 // 19: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapacity
-	(*AzureCosmosdbAccountCorsRule)(nil),                 // 20: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCorsRule
-	(*AzureCosmosdbAccountRestore)(nil),                  // 21: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestore
-	(*AzureCosmosdbAccountRestoreDatabase)(nil),          // 22: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreDatabase
-	(*AzureCosmosdbAccountRestoreGremlinDatabase)(nil),   // 23: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreGremlinDatabase
-	nil,                         // 24: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.TagsEntry
-	(*v1.StringValueOrRef)(nil), // 25: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureCosmosdbAccountMinimalTlsVersion)(0),           // 1: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMinimalTlsVersion
+	(AzureCosmosdbAccountConsistencyLevel)(0),            // 2: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyLevel
+	(AzureCosmosdbAccountCapability)(0),                  // 3: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapability
+	(AzureCosmosdbAccountBackupType)(0),                  // 4: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupType
+	(AzureCosmosdbAccountContinuousTier)(0),              // 5: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountContinuousTier
+	(AzureCosmosdbAccountBackupStorageRedundancy)(0),     // 6: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupStorageRedundancy
+	(AzureCosmosdbAccountMongoServerVersion)(0),          // 7: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMongoServerVersion
+	(AzureCosmosdbAccountIdentityType)(0),                // 8: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentityType
+	(AzureCosmosdbAccountDefaultIdentityType)(0),         // 9: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentityType
+	(AzureCosmosdbAccountAnalyticalStorageSchemaType)(0), // 10: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorageSchemaType
+	(AzureCosmosdbAccountCreateMode)(0),                  // 11: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCreateMode
+	(*AzureCosmosdbAccountSpec)(nil),                     // 12: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec
+	(*AzureCosmosdbAccountConsistencyPolicy)(nil),        // 13: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyPolicy
+	(*AzureCosmosdbAccountGeoLocation)(nil),              // 14: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountGeoLocation
+	(*AzureCosmosdbAccountVirtualNetworkRule)(nil),       // 15: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountVirtualNetworkRule
+	(*AzureCosmosdbAccountBackup)(nil),                   // 16: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup
+	(*AzureCosmosdbAccountIdentity)(nil),                 // 17: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentity
+	(*AzureCosmosdbAccountDefaultIdentity)(nil),          // 18: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentity
+	(*AzureCosmosdbAccountAnalyticalStorage)(nil),        // 19: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorage
+	(*AzureCosmosdbAccountCapacity)(nil),                 // 20: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapacity
+	(*AzureCosmosdbAccountCorsRule)(nil),                 // 21: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCorsRule
+	(*AzureCosmosdbAccountRestore)(nil),                  // 22: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestore
+	(*AzureCosmosdbAccountRestoreDatabase)(nil),          // 23: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreDatabase
+	(*AzureCosmosdbAccountRestoreGremlinDatabase)(nil),   // 24: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreGremlinDatabase
+	nil,                         // 25: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 26: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_depIdxs = []int32{
-	25, // 0: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	26, // 0: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0,  // 1: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.kind:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountKind
-	12, // 2: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.consistency_policy:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyPolicy
-	13, // 3: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.geo_locations:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountGeoLocation
-	2,  // 4: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.capabilities:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapability
-	14, // 5: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.virtual_network_rules:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountVirtualNetworkRule
-	15, // 6: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.backup:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup
-	6,  // 7: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.mongo_server_version:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMongoServerVersion
-	16, // 8: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.identity:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentity
-	17, // 9: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.default_identity:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentity
-	25, // 10: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 11: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.analytical_storage:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorage
-	19, // 12: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.capacity:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapacity
-	20, // 13: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.cors_rule:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCorsRule
-	10, // 14: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.create_mode:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCreateMode
-	21, // 15: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.restore:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestore
-	24, // 16: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.tags:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.TagsEntry
-	1,  // 17: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyPolicy.consistency_level:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyLevel
-	25, // 18: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountVirtualNetworkRule.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 19: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup.type:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupType
-	4,  // 20: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup.tier:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountContinuousTier
-	5,  // 21: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup.storage_redundancy:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupStorageRedundancy
-	7,  // 22: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentity.type:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentityType
-	25, // 23: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 24: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentity.type:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentityType
-	25, // 25: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentity.user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 26: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorage.schema_type:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorageSchemaType
-	22, // 27: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestore.databases:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreDatabase
-	23, // 28: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestore.gremlin_databases:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreGremlinDatabase
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	13, // 2: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.consistency_policy:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyPolicy
+	14, // 3: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.geo_locations:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountGeoLocation
+	3,  // 4: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.capabilities:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapability
+	15, // 5: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.virtual_network_rules:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountVirtualNetworkRule
+	16, // 6: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.backup:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup
+	7,  // 7: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.mongo_server_version:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMongoServerVersion
+	17, // 8: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.identity:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentity
+	18, // 9: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.default_identity:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentity
+	26, // 10: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.key_vault_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 11: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.analytical_storage:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorage
+	20, // 12: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.capacity:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapacity
+	1,  // 13: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.minimal_tls_version:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMinimalTlsVersion
+	21, // 14: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.cors_rule:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCorsRule
+	11, // 15: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.create_mode:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCreateMode
+	22, // 16: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.restore:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestore
+	25, // 17: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.tags:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountSpec.TagsEntry
+	2,  // 18: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyPolicy.consistency_level:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountConsistencyLevel
+	26, // 19: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountVirtualNetworkRule.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 20: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup.type:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupType
+	5,  // 21: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup.tier:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountContinuousTier
+	6,  // 22: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackup.storage_redundancy:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountBackupStorageRedundancy
+	8,  // 23: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentity.type:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentityType
+	26, // 24: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 25: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentity.type:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentityType
+	26, // 26: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentity.user_assigned_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 27: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorage.schema_type:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorageSchemaType
+	23, // 28: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestore.databases:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreDatabase
+	24, // 29: dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestore.gremlin_databases:type_name -> dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountRestoreGremlinDatabase
+	30, // [30:30] is the sub-list for method output_type
+	30, // [30:30] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_init() }
@@ -2321,7 +2401,7 @@ func file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc)),
-			NumEnums:      11,
+			NumEnums:      12,
 			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,

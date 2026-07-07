@@ -132,6 +132,13 @@ func initializeLocals(ctx *pulumi.Context, stackInput *azurecosmosdbaccountv1.Az
 	// Metadata-derived identity tags first, then the user's spec tags
 	// merged over them: user tags deliberately win so an org's
 	// governance conventions can override the derived values.
+	//
+	// PARITY-EXCEPTION: resource_kind here is the lowered
+	// CloudResourceKind enum string and resource_id is omitted when
+	// metadata.id is empty, while the Terraform module uses the
+	// family-wide snake-case literal and falls back to metadata.name.
+	// Output-neutral (tags never feed stack outputs); aligning the two
+	// shapes is a family-wide convention change, not a per-kind fix.
 	locals.AzureTags = map[string]string{
 		"resource":      "true",
 		"resource_name": target.Metadata.Name,

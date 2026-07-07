@@ -7,17 +7,13 @@ spec:
   # Cosmos account (declared via extra-prerequisites -- account names
   # are globally unique), creates the SQL database with 400 RU/s shared
   # throughput, verifies it via the ARM API, destroys it, and verifies
-  # it is gone -- on both provisioners.
+  # it is gone -- on both provisioners. The scenario-local account pins
+  # westus3 (eastus rejects new Cosmos accounts under zonal-capacity
+  # pressure -- see e2e/README.md); the full scenario runs ~14 min per
+  # engine, dominated by the account fixture's provision + drain.
   tier: 1
-  status: skip
-  deferred_reason: >-
-    Live suite runs well beyond the 30-minute live-E2E boundary (Cosmos
-    accounts provision in ~5-10 minutes each and every scenario owns a
-    scenario-local account), so live validation waits for an approved
-    long-run window. The offline gate is fully green: 100% parity audit,
-    full tofu plan, and the pkg/outputs conformance case. Scenarios stay
-    wired and run unchanged. The first live attempt also hit an eastus
-    capacity constraint (ServiceUnavailable: zonal-account demand), so
-    re-region the account scenarios when running.
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 75

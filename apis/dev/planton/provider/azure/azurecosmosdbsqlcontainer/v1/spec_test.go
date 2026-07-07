@@ -63,6 +63,13 @@ var _ = ginkgo.Describe("AzureCosmosdbSqlContainerSpec Validation Tests", func()
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
+		ginkgo.It("should accept a single-path MULTI_HASH key (a one-level hierarchy is legal)", func() {
+			input := minimalSpec()
+			input.Spec.PartitionKeyKind = AzureCosmosdbSqlContainerPartitionKeyKind_MULTI_HASH
+			input.Spec.PartitionKeyVersion = proto.Int32(2)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("should accept fixed and autoscale throughput individually", func() {
 			fixed := minimalSpec()
 			fixed.Spec.Throughput = proto.Int32(400)
@@ -179,13 +186,6 @@ var _ = ginkgo.Describe("AzureCosmosdbSqlContainerSpec Validation Tests", func()
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject MULTI_HASH with a single path", func() {
-			input := minimalSpec()
-			input.Spec.PartitionKeyKind = AzureCosmosdbSqlContainerPartitionKeyKind_MULTI_HASH
-			input.Spec.PartitionKeyVersion = proto.Int32(2)
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
 		ginkgo.It("should reject MULTI_HASH without partition key version 2", func() {
 			input := minimalSpec()
 			input.Spec.PartitionKeyPaths = []string{"/tenantId", "/userId"}
@@ -234,6 +234,44 @@ var _ = ginkgo.Describe("AzureCosmosdbSqlContainerSpec Validation Tests", func()
 				CompositeIndexes: []*AzureCosmosdbSqlContainerCompositeIndex{{}},
 			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a NONE-mode policy that declares paths", func() {
+			input := minimalSpec()
+			input.Spec.IndexingPolicy = &AzureCosmosdbSqlContainerIndexingPolicy{
+				IndexingMode:  AzureCosmosdbSqlContainerIndexingMode_NONE,
+				IncludedPaths: []*AzureCosmosdbSqlContainerIndexPath{{Path: "/*"}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject declared paths that omit the root path '/*'", func() {
+			input := minimalSpec()
+			input.Spec.IndexingPolicy = &AzureCosmosdbSqlContainerIndexingPolicy{
+				IndexingMode:  AzureCosmosdbSqlContainerIndexingMode_CONSISTENT,
+				IncludedPaths: []*AzureCosmosdbSqlContainerIndexPath{{Path: "/tenantId/?"}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject the root path '/*' in both included and excluded paths", func() {
+			input := minimalSpec()
+			input.Spec.IndexingPolicy = &AzureCosmosdbSqlContainerIndexingPolicy{
+				IndexingMode:  AzureCosmosdbSqlContainerIndexingMode_CONSISTENT,
+				IncludedPaths: []*AzureCosmosdbSqlContainerIndexPath{{Path: "/*"}},
+				ExcludedPaths: []*AzureCosmosdbSqlContainerIndexPath{{Path: "/*"}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept the root path excluded with specific paths included", func() {
+			input := minimalSpec()
+			input.Spec.IndexingPolicy = &AzureCosmosdbSqlContainerIndexingPolicy{
+				IndexingMode:  AzureCosmosdbSqlContainerIndexingMode_CONSISTENT,
+				IncludedPaths: []*AzureCosmosdbSqlContainerIndexPath{{Path: "/tenantId/?"}},
+				ExcludedPaths: []*AzureCosmosdbSqlContainerIndexPath{{Path: "/*"}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject last-writer-wins carrying a procedure", func() {

@@ -16,7 +16,7 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: eastus
+  region: westus3
   resourceGroup:
     valueFrom:
       name: planton-oss-e2e-azure-fixture-rg
@@ -25,5 +25,5 @@ spec:
   consistencyPolicy:
     consistencyLevel: SESSION
   geoLocations:
-    - location: eastus
+    - location: westus3
       failoverPriority: 0
