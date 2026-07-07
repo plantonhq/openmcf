@@ -37,13 +37,19 @@ func authorizers(
 			args.IdentitySources = pulumi.ToStringArray(auth.IdentitySources)
 		}
 
-		// JWT configuration
+		// JWT configuration. Issuer and audiences are references: the issuer
+		// resolves to a user pool's OIDC issuer URL, each audience to an app
+		// client ID (or any literal value the deployer supplied).
 		if auth.AuthorizerType == "JWT" && auth.JwtConfiguration != nil {
 			jwtConfig := &apigatewayv2.AuthorizerJwtConfigurationArgs{
-				Issuer: pulumi.StringPtr(auth.JwtConfiguration.Issuer),
+				Issuer: pulumi.StringPtr(auth.JwtConfiguration.Issuer.GetValue()),
 			}
 			if len(auth.JwtConfiguration.Audiences) > 0 {
-				jwtConfig.Audiences = pulumi.ToStringArray(auth.JwtConfiguration.Audiences)
+				audiences := make([]string, 0, len(auth.JwtConfiguration.Audiences))
+				for _, audience := range auth.JwtConfiguration.Audiences {
+					audiences = append(audiences, audience.GetValue())
+				}
+				jwtConfig.Audiences = pulumi.ToStringArray(audiences)
 			}
 			args.JwtConfiguration = jwtConfig
 		}

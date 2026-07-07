@@ -1,15 +1,26 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
-  name: corp-oidc-idp
+  name: ${name}
+  org: ${org}
+  env: ${env}
+  id: ${id}
+  labels:
+    planton.dev/provisioner: pulumi
+    planton.dev/stack: ${env}.AwsCognitoIdentityProvider.${name}
 spec:
-  userPoolId: "${USER_POOL_ID}"
+  region: <aws-region>
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: <user-pool-name>
+      fieldPath: status.outputs.user_pool_id
   providerName: CorpSSO
   providerType: OIDC
   oidc:
-    clientId: "${OIDC_CLIENT_ID}"
-    clientSecret: "${OIDC_CLIENT_SECRET}"
-    oidcIssuer: "${OIDC_ISSUER_URL}"
+    clientId: <oidc-client-id>
+    clientSecret: <oidc-client-secret>
+    oidcIssuer: https://sso.example.com
     authorizeScopes: "openid email profile"
   attributeMapping:
     email: email

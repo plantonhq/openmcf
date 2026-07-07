@@ -654,6 +654,36 @@ func TestAwsHttpApiDomain_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awshttpapidomain", "terraform")
 }
 
+// --- AWS Cognito family (pool root + pool-scoped client/IdP/resource server) ---
+
+func TestAwsCognitoUserPool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitouserpool", "pulumi")
+}
+func TestAwsCognitoUserPool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitouserpool", "terraform")
+}
+
+func TestAwsCognitoUserPoolClient_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitouserpoolclient", "pulumi")
+}
+func TestAwsCognitoUserPoolClient_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitouserpoolclient", "terraform")
+}
+
+func TestAwsCognitoIdentityProvider_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitoidentityprovider", "pulumi")
+}
+func TestAwsCognitoIdentityProvider_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitoidentityprovider", "terraform")
+}
+
+func TestAwsCognitoResourceServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitoresourceserver", "pulumi")
+}
+func TestAwsCognitoResourceServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscognitoresourceserver", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

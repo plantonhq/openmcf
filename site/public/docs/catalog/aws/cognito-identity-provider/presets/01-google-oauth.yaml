@@ -1,14 +1,25 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
-  name: google-idp
+  name: ${name}
+  org: ${org}
+  env: ${env}
+  id: ${id}
+  labels:
+    planton.dev/provisioner: pulumi
+    planton.dev/stack: ${env}.AwsCognitoIdentityProvider.${name}
 spec:
-  userPoolId: "${USER_POOL_ID}"
+  region: <aws-region>
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: <user-pool-name>
+      fieldPath: status.outputs.user_pool_id
   providerName: Google
   providerType: Google
   google:
-    clientId: "${GOOGLE_CLIENT_ID}"
-    clientSecret: "${GOOGLE_CLIENT_SECRET}"
+    clientId: <google-oauth-client-id>
+    clientSecret: <google-oauth-client-secret>
     authorizeScopes: "email profile openid"
   attributeMapping:
     email: email

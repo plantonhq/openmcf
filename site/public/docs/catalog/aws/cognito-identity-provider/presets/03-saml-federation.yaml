@@ -1,13 +1,24 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
-  name: corp-saml-idp
+  name: ${name}
+  org: ${org}
+  env: ${env}
+  id: ${id}
+  labels:
+    planton.dev/provisioner: pulumi
+    planton.dev/stack: ${env}.AwsCognitoIdentityProvider.${name}
 spec:
-  userPoolId: "${USER_POOL_ID}"
+  region: <aws-region>
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: <user-pool-name>
+      fieldPath: status.outputs.user_pool_id
   providerName: CorpAD
   providerType: SAML
   saml:
-    metadataUrl: "${SAML_METADATA_URL}"
+    metadataUrl: https://idp.example.com/metadata.xml
     idpSignOut: true
   attributeMapping:
     email: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"

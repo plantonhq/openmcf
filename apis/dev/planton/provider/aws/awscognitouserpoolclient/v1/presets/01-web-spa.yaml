@@ -1,0 +1,35 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsCognitoUserPoolClient
+metadata:
+  name: ${name}
+  org: ${org}
+  env: ${env}
+  id: ${id}
+  labels:
+    planton.dev/provisioner: pulumi
+    planton.dev/stack: ${env}.AwsCognitoUserPoolClient.${name}
+spec:
+  region: <aws-region>
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: <user-pool-name>
+      fieldPath: status.outputs.user_pool_id
+  allowedOauthFlowsUserPoolClient: true
+  allowedOauthFlows:
+    - code
+  allowedOauthScopes:
+    - openid
+    - email
+    - profile
+  callbackUrls:
+    - https://app.example.com/callback
+  logoutUrls:
+    - https://app.example.com/logout
+  supportedIdentityProviders:
+    - value: COGNITO
+  explicitAuthFlows:
+    - ALLOW_USER_SRP_AUTH
+    - ALLOW_REFRESH_TOKEN_AUTH
+  enableTokenRevocation: true
+  preventUserExistenceErrors: ENABLED

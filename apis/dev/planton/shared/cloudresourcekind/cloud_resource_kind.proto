@@ -617,10 +617,34 @@ enum CloudResourceKind {
     id_prefix: "awscog"
   }];
 
+  // AwsCognitoUserPool is a prerequisite because an identity provider is
+  // created INTO a pool -- the spec's required user_pool_id reference must
+  // resolve before the CreateIdentityProvider call.
   AwsCognitoIdentityProvider = 302 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awscogidp"
+    prerequisites: [AwsCognitoUserPool]
+  }];
+
+  // AwsCognitoUserPool is a prerequisite because an app client is created
+  // INTO a pool -- the spec's required user_pool_id reference must resolve
+  // before the CreateUserPoolClient call.
+  AwsCognitoUserPoolClient = 358 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awscogclient"
+    prerequisites: [AwsCognitoUserPool]
+  }];
+
+  // AwsCognitoUserPool is a prerequisite because a resource server is created
+  // INTO a pool -- the spec's required user_pool_id reference must resolve
+  // before the CreateResourceServer call.
+  AwsCognitoResourceServer = 359 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awscogrs"
+    prerequisites: [AwsCognitoUserPool]
   }];
 
   // --- Security (WAF) ---

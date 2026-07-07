@@ -1224,6 +1224,70 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsCognitoUserPool: issuer is the JWT-authorizer join key (the
+			// scheme-carrying spelling of user_pool_endpoint); user_pool_domain
+			// is the RAW domain string ALB authenticate-cognito actions take;
+			// the CloudFront trio composes a custom domain's DNS alias record.
+			name: "AwsCognitoUserPool",
+			kind: cloudresourcekind.CloudResourceKind_AwsCognitoUserPool,
+			rawOutputs: map[string]interface{}{
+				"user_pool_id":                "us-west-2_Ab1Cd2EfG",
+				"user_pool_arn":               "arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_Ab1Cd2EfG",
+				"user_pool_endpoint":          "cognito-idp.us-west-2.amazonaws.com/us-west-2_Ab1Cd2EfG",
+				"issuer":                      "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_Ab1Cd2EfG",
+				"user_pool_domain":            "myapp-auth",
+				"hosted_ui_url":               "https://myapp-auth.auth.us-west-2.amazoncognito.com",
+				"cloudfront_distribution":     "d111abcdef8.cloudfront.net",
+				"cloudfront_distribution_arn": "arn:aws:cloudfront::123456789012:distribution/E1ABCDEF",
+				"cloudfront_hosted_zone_id":   "Z2FDTNDATAQYW2",
+			},
+			mustPopulate: []string{
+				"user_pool_id", "user_pool_arn", "user_pool_endpoint", "issuer",
+				"user_pool_domain", "hosted_ui_url",
+				"cloudfront_distribution", "cloudfront_distribution_arn", "cloudfront_hosted_zone_id",
+			},
+		},
+		{
+			// AwsCognitoIdentityProvider: provider_name is the sole
+			// integration identifier (IdPs have no ARN) -- app clients list it
+			// in supported_identity_providers.
+			name: "AwsCognitoIdentityProvider",
+			kind: cloudresourcekind.CloudResourceKind_AwsCognitoIdentityProvider,
+			rawOutputs: map[string]interface{}{
+				"provider_name": "Google",
+				"provider_type": "Google",
+				"user_pool_id":  "us-west-2_Ab1Cd2EfG",
+			},
+			mustPopulate: []string{"provider_name", "provider_type", "user_pool_id"},
+		},
+		{
+			// AwsCognitoUserPoolClient: client_id is the join key JWT
+			// authorizers list as an audience and ALB authenticate-cognito
+			// actions take as user_pool_client_id; the secret only exists for
+			// confidential clients.
+			name: "AwsCognitoUserPoolClient",
+			kind: cloudresourcekind.CloudResourceKind_AwsCognitoUserPoolClient,
+			rawOutputs: map[string]interface{}{
+				"client_id":     "1a2b3c4d5e6f7g8h9i0j",
+				"client_secret": "shhh-not-a-real-secret",
+				"user_pool_id":  "us-west-2_Ab1Cd2EfG",
+			},
+			mustPopulate: []string{"client_id", "client_secret", "user_pool_id"},
+		},
+		{
+			// AwsCognitoResourceServer: scope_identifiers are the exact
+			// strings app clients list in allowed_oauth_scopes; the identifier
+			// keys the E2E verifier within its pool.
+			name: "AwsCognitoResourceServer",
+			kind: cloudresourcekind.CloudResourceKind_AwsCognitoResourceServer,
+			rawOutputs: map[string]interface{}{
+				"resource_server_identifier": "https://api.example.com",
+				"scope_identifiers":          []interface{}{"https://api.example.com/read", "https://api.example.com/orders:write"},
+				"user_pool_id":               "us-west-2_Ab1Cd2EfG",
+			},
+			mustPopulate: []string{"resource_server_identifier", "scope_identifiers", "user_pool_id"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

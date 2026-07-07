@@ -1,0 +1,22 @@
+package module
+
+import (
+	awscognitoresourceserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitoresourceserver/v1"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// Locals holds pre-computed values derived from the stack input.
+//
+// Resource servers carry no AwsTags map: the aws_cognito_resource_server
+// resource is not taggable (identity tagging lives on the pool).
+type Locals struct {
+	Target *awscognitoresourceserverv1.AwsCognitoResourceServer
+	Spec   *awscognitoresourceserverv1.AwsCognitoResourceServerSpec
+}
+
+func initializeLocals(_ *pulumi.Context, in *awscognitoresourceserverv1.AwsCognitoResourceServerStackInput) *Locals {
+	return &Locals{
+		Target: in.Target,
+		Spec:   in.Target.Spec,
+	}
+}

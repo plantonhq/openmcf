@@ -1137,12 +1137,16 @@ func (x *AwsHttpApiGatewayAuthorizer) GetAuthorizerPayloadFormatVersion() string
 type AwsHttpApiGatewayJwtConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Token issuer URL. API Gateway validates that the JWT's "iss" claim matches
-	// this value. For Cognito: "https://cognito-idp.{region}.amazonaws.com/{userPoolId}".
-	// For Auth0: "https://{domain}/".
-	Issuer string `protobuf:"bytes,1,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	// this value. Accepts a direct issuer URL -- for Cognito,
+	// "https://cognito-idp.{region}.amazonaws.com/{userPoolId}"; for Auth0,
+	// "https://{domain}/" -- or a reference to an AwsCognitoUserPool resource
+	// (its issuer output carries exactly this URL).
+	Issuer *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=issuer,proto3" json:"issuer,omitempty"`
 	// Expected audiences. API Gateway validates that the JWT's "aud" claim matches
-	// one of these values. For Cognito this is the app client ID.
-	Audiences     []string `protobuf:"bytes,2,rep,name=audiences,proto3" json:"audiences,omitempty"`
+	// one of these values. Each entry accepts a direct value -- for Cognito, an
+	// app client ID -- or a reference to an AwsCognitoUserPoolClient resource;
+	// literals and references can be mixed.
+	Audiences     []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=audiences,proto3" json:"audiences,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1177,14 +1181,14 @@ func (*AwsHttpApiGatewayJwtConfig) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *AwsHttpApiGatewayJwtConfig) GetIssuer() string {
+func (x *AwsHttpApiGatewayJwtConfig) GetIssuer() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Issuer
 	}
-	return ""
+	return nil
 }
 
-func (x *AwsHttpApiGatewayJwtConfig) GetAudiences() []string {
+func (x *AwsHttpApiGatewayJwtConfig) GetAudiences() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.Audiences
 	}
@@ -1195,7 +1199,7 @@ var File_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto protoreflect.F
 
 const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/aws/awshttpapigateway/v1/spec.proto\x12-dev.planton.provider.aws.awshttpapigateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdc/\n" +
+	"8dev/planton/provider/aws/awshttpapigateway/v1/spec.proto\x12-dev.planton.provider.aws.awshttpapigateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbf2\n" +
 	"\x15AwsHttpApiGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12(\n" +
@@ -1206,7 +1210,7 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	"\x0fip_address_type\x18\x06 \x01(\tR\ripAddressType\x12a\n" +
 	"\x05stage\x18\a \x01(\v2K.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfigR\x05stage\x12g\n" +
 	"\x06routes\x18\b \x03(\v2E.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRouteB\b\xbaH\x05\x92\x01\x02\b\x01R\x06routes\x12l\n" +
-	"\vauthorizers\x18\t \x03(\v2J.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizerR\vauthorizers:\xad*\xbaH\xa9*\x1a\x9c\x01\n" +
+	"\vauthorizers\x18\t \x03(\v2J.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizerR\vauthorizers:\x90-\xbaH\x8c-\x1a\x9c\x01\n" +
 	"\x15ip_address_type_valid\x126ip_address_type must be 'ipv4' or 'dualstack' when set\x1aKthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']\x1a\xd7\x01\n" +
 	"\x11route_keys_unique\x12kroute_key values must be unique across routes -- two routes with the same key would conflict in API Gateway\x1aUthis.routes.all(r1, this.routes.filter(r2, r2.route_key == r1.route_key).size() == 1)\x1a\xe1\x01\n" +
 	"\x1eroute_authorization_type_valid\x12Oroute authorization_type must be 'NONE', 'JWT', 'AWS_IAM', or 'CUSTOM' when set\x1anthis.routes.all(r, r.authorization_type == '' || r.authorization_type in ['NONE', 'JWT', 'AWS_IAM', 'CUSTOM'])\x1a\xda\x01\n" +
@@ -1214,8 +1218,8 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	" route_authorizer_name_must_exist\x12:route authorizer_name must match a defined authorizer name\x1afthis.routes.all(r, r.authorizer_name == '' || this.authorizers.exists(a, a.name == r.authorizer_name))\x1a\xa7\x03\n" +
 	"\x1droute_authorizer_type_matches\x12\x96\x01a route's authorization_type must match its authorizer: 'JWT' routes reference JWT authorizers, 'CUSTOM' routes reference REQUEST (Lambda) authorizers\x1a\xec\x01this.routes.all(r, r.authorizer_name == '' || this.authorizers.all(a, a.name != r.authorizer_name || (r.authorization_type == 'JWT' && a.authorizer_type == 'JWT') || (r.authorization_type == 'CUSTOM' && a.authorizer_type == 'REQUEST')))\x1a\xb9\x01\n" +
 	"\x17authorizer_names_unique\x12Gauthorizer names must be unique -- routes reference authorizers by name\x1aUthis.authorizers.all(a1, this.authorizers.filter(a2, a2.name == a1.name).size() == 1)\x1a\x90\x01\n" +
-	"\x15authorizer_type_valid\x125authorizer authorizer_type must be 'JWT' or 'REQUEST'\x1a@this.authorizers.all(a, a.authorizer_type in ['JWT', 'REQUEST'])\x1a\xa3\x02\n" +
-	"\x1ejwt_authorizer_requires_config\x12]JWT authorizers must have jwt_configuration with a non-empty issuer and at least one audience\x1a\xa1\x01this.authorizers.all(a, a.authorizer_type != 'JWT' || (has(a.jwt_configuration) && a.jwt_configuration.issuer != '' && a.jwt_configuration.audiences.size() > 0))\x1a\xa5\x01\n" +
+	"\x15authorizer_type_valid\x125authorizer authorizer_type must be 'JWT' or 'REQUEST'\x1a@this.authorizers.all(a, a.authorizer_type in ['JWT', 'REQUEST'])\x1a\x99\x02\n" +
+	"\x1ejwt_authorizer_requires_config\x12TJWT authorizers must have jwt_configuration with an issuer and at least one audience\x1a\xa0\x01this.authorizers.all(a, a.authorizer_type != 'JWT' || (has(a.jwt_configuration) && has(a.jwt_configuration.issuer) && a.jwt_configuration.audiences.size() > 0))\x1a\xa5\x01\n" +
 	"\x1frequest_authorizer_requires_uri\x120REQUEST authorizers must have authorizer_uri set\x1aPthis.authorizers.all(a, a.authorizer_type != 'REQUEST' || has(a.authorizer_uri))\x1a\xb3\x01\n" +
 	"\x16integration_type_valid\x12Froute integration integration_type must be 'AWS_PROXY' or 'HTTP_PROXY'\x1aQthis.routes.all(r, r.integration.integration_type in ['AWS_PROXY', 'HTTP_PROXY'])\x1a\xa0\x03\n" +
 	"\x18integration_uri_per_mode\x12\xc9\x01integration_uri is required for Lambda and HTTP proxy integrations, and must be omitted when integration_subtype selects an AWS service action (the action's parameters go in request_parameters instead)\x1a\xb7\x01this.routes.all(r, (r.integration.integration_subtype == '' && has(r.integration.integration_uri)) || (r.integration.integration_subtype != '' && !has(r.integration.integration_uri)))\x1a\xa2\x02\n" +
@@ -1224,7 +1228,8 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	"!integration_connection_type_valid\x12Eintegration connection_type must be 'INTERNET' or 'VPC_LINK' when set\x1atthis.routes.all(r, r.integration.connection_type == '' || r.integration.connection_type in ['INTERNET', 'VPC_LINK'])\x1a\x99\x02\n" +
 	"\x1dintegration_vpc_link_coupling\x12\x90\x01integrations with connection_type 'VPC_LINK' must set connection_id (the VPC link to route through), and connection_id must not be set otherwise\x1aethis.routes.all(r, (r.integration.connection_type == 'VPC_LINK') == has(r.integration.connection_id))\x1a\xd2\x02\n" +
 	"(integration_vpc_link_requires_http_proxy\x12\xb2\x01integrations with connection_type 'VPC_LINK' must use integration_type 'HTTP_PROXY' -- private integrations proxy HTTP traffic to an ALB, NLB, or Cloud Map service inside the VPC\x1aqthis.routes.all(r, r.integration.connection_type != 'VPC_LINK' || r.integration.integration_type == 'HTTP_PROXY')\x1a\xe2\x01\n" +
-	"\x1cpayload_format_version_valid\x12Hroute integration payload_format_version must be '1.0' or '2.0' when set\x1axthis.routes.all(r, r.integration.payload_format_version == '' || r.integration.payload_format_version in ['1.0', '2.0'])\x1a\x84\x02\n" +
+	"\x1cpayload_format_version_valid\x12Hroute integration payload_format_version must be '1.0' or '2.0' when set\x1axthis.routes.all(r, r.integration.payload_format_version == '' || r.integration.payload_format_version in ['1.0', '2.0'])\x1a\xea\x02\n" +
+	"\"payload_format_version_lambda_only\x12\xa1\x01payload_format_version '2.0' applies only to Lambda proxy integrations -- HTTP_PROXY and AWS service integrations (integration_subtype) are fixed at '1.0' by AWS\x1a\x9f\x01this.routes.all(r, r.integration.payload_format_version != '2.0' || (r.integration.integration_type == 'AWS_PROXY' && r.integration.integration_subtype == ''))\x1a\x84\x02\n" +
 	"\x19integration_timeout_range\x12Lroute integration timeout_milliseconds must be between 50 and 30000 when set\x1a\x98\x01this.routes.all(r, r.integration.timeout_milliseconds == 0 || (r.integration.timeout_milliseconds >= 50 && r.integration.timeout_milliseconds <= 30000))\x1a\xad\x01\n" +
 	"\x14authorizer_ttl_range\x12Aauthorizer result_ttl_seconds must be between 0 and 3600 when set\x1aRthis.authorizers.all(a, a.result_ttl_seconds >= 0 && a.result_ttl_seconds <= 3600)\x1a\xf4\x01\n" +
 	"'authorizer_payload_format_version_valid\x12Lauthorizer authorizer_payload_format_version must be '1.0' or '2.0' when set\x1a{this.authorizers.all(a, a.authorizer_payload_format_version == '' || a.authorizer_payload_format_version in ['1.0', '2.0'])\x1a\xe3\x01\n" +
@@ -1306,10 +1311,10 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	"\x10identity_sources\x18\x06 \x03(\tR\x0fidentitySources\x12,\n" +
 	"\x12result_ttl_seconds\x18\a \x01(\x05R\x10resultTtlSeconds\x126\n" +
 	"\x17enable_simple_responses\x18\b \x01(\bR\x15enableSimpleResponses\x12I\n" +
-	"!authorizer_payload_format_version\x18\t \x01(\tR\x1eauthorizerPayloadFormatVersion\"[\n" +
-	"\x1aAwsHttpApiGatewayJwtConfig\x12\x1f\n" +
-	"\x06issuer\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06issuer\x12\x1c\n" +
-	"\taudiences\x18\x02 \x03(\tR\taudiencesB\xfe\x02\n" +
+	"!authorizer_payload_format_version\x18\t \x01(\tR\x1eauthorizerPayloadFormatVersion\"\x83\x02\n" +
+	"\x1aAwsHttpApiGatewayJwtConfig\x12p\n" +
+	"\x06issuer\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x15status.outputs.issuerR\x06issuer\x12s\n" +
+	"\taudiences\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe6\x02\x92\xd4a\x18status.outputs.client_idR\taudiencesB\xfe\x02\n" +
 	"1com.dev.planton.provider.aws.awshttpapigateway.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapigateway/v1;awshttpapigatewayv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Aws.Awshttpapigateway.V1\xca\x02-Dev\\Planton\\Provider\\Aws\\Awshttpapigateway\\V1\xe2\x029Dev\\Planton\\Provider\\Aws\\Awshttpapigateway\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Aws::Awshttpapigateway::V1b\x06proto3"
 
 var (
@@ -1362,11 +1367,13 @@ var file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_depIdxs = []in
 	10, // 16: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.jwt_configuration:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayJwtConfig
 	14, // 17: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.authorizer_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	14, // 18: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.authorizer_credentials_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	14, // 19: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayJwtConfig.issuer:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 20: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayJwtConfig.audiences:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_init() }

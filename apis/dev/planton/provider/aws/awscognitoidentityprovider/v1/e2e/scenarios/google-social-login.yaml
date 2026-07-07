@@ -1,0 +1,38 @@
+# Google social IdP against the registry-prerequisite pool. AWS validates the
+# shape of provider_details at create time but does NOT call Google to verify
+# the credentials, so placeholder client credentials deploy cleanly -- the
+# lane proves the full create/verify/destroy lifecycle without any external
+# IdP account. For social provider types AWS requires provider_name to equal
+# the type ("Google"); custom names are an OIDC/SAML feature.
+apiVersion: aws.planton.dev/v1
+kind: AwsCognitoIdentityProvider
+metadata:
+  name: planton-oss-e2e-awscogidp
+  id: planton-oss-e2e-awscogidp
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscognitoidentityprovider
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: planton-oss-e2e-awscog-prereq
+      fieldPath: status.outputs.user_pool_id
+  providerName: Google
+  providerType: Google
+  google:
+    clientId: "000000000000-e2eplaceholder.apps.googleusercontent.com"
+    clientSecret: "GOCSPX-e2e-placeholder-secret"
+    authorizeScopes: "email profile openid"
+  attributeMapping:
+    email: email
+    username: sub
+  idpIdentifiers:
+    - planton-e2e-google

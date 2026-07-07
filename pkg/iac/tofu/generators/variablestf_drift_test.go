@@ -126,6 +126,14 @@ var migratedKinds = []string{
 	"AwsHttpApiGateway",
 	"AwsHttpApiVpcLink",
 	"AwsHttpApiDomain",
+	// Cognito family: the user pool migrated off its region-only typed
+	// skeleton, the identity provider off its legacy type = any contract; the
+	// app client and resource server generator-owned from the day they were
+	// forged.
+	"AwsCognitoUserPool",
+	"AwsCognitoIdentityProvider",
+	"AwsCognitoUserPoolClient",
+	"AwsCognitoResourceServer",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

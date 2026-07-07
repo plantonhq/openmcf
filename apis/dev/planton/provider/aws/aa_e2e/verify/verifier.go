@@ -107,6 +107,10 @@ var verifiers = map[string]Verifier{
 	"awshttpapigateway":              &httpApiGatewayVerifier{},
 	"awshttpapivpclink":              &httpApiVpcLinkVerifier{},
 	"awshttpapidomain":               &httpApiDomainVerifier{},
+	"awscognitouserpool":             &cognitoUserPoolVerifier{},
+	"awscognitouserpoolclient":       &cognitoUserPoolClientVerifier{},
+	"awscognitoidentityprovider":     &cognitoIdentityProviderVerifier{},
+	"awscognitoresourceserver":       &cognitoResourceServerVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

@@ -62,7 +62,9 @@ import (
 	awscodebuildprojectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscodebuildproject/v1"
 	awscodepipelinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscodepipeline/v1"
 	awscognitoidentityproviderv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitoidentityprovider/v1"
+	awscognitoresourceserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitoresourceserver/v1"
 	awscognitouserpoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitouserpool/v1"
+	awscognitouserpoolclientv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitouserpoolclient/v1"
 	awsdocumentdbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsdocumentdb/v1"
 	awsdynamodbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsdynamodb/v1"
 	awsec2instancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsec2instance/v1"
@@ -520,7 +522,9 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsCodeBuildProject:              &awscodebuildprojectv1.AwsCodeBuildProject{},
 	cloudresourcekind.CloudResourceKind_AwsCodePipeline:                  &awscodepipelinev1.AwsCodePipeline{},
 	cloudresourcekind.CloudResourceKind_AwsCognitoIdentityProvider:       &awscognitoidentityproviderv1.AwsCognitoIdentityProvider{},
+	cloudresourcekind.CloudResourceKind_AwsCognitoResourceServer:         &awscognitoresourceserverv1.AwsCognitoResourceServer{},
 	cloudresourcekind.CloudResourceKind_AwsCognitoUserPool:               &awscognitouserpoolv1.AwsCognitoUserPool{},
+	cloudresourcekind.CloudResourceKind_AwsCognitoUserPoolClient:         &awscognitouserpoolclientv1.AwsCognitoUserPoolClient{},
 	cloudresourcekind.CloudResourceKind_AwsDocumentDb:                    &awsdocumentdbv1.AwsDocumentDb{},
 	cloudresourcekind.CloudResourceKind_AwsDynamodb:                      &awsdynamodbv1.AwsDynamodb{},
 	cloudresourcekind.CloudResourceKind_AwsEc2Instance:                   &awsec2instancev1.AwsEc2Instance{},

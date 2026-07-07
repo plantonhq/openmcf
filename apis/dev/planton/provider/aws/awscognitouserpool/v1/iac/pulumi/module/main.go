@@ -7,8 +7,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources orchestrates creation of a Cognito User Pool with app clients and
-// an optional domain, then exports outputs for downstream references.
+// Resources orchestrates creation of a Cognito User Pool with its folded
+// pool-scoped satellites (hosted-UI domain, log delivery), then exports
+// outputs for downstream references. App clients, identity providers, and
+// resource servers are separate kinds that compose onto the pool by
+// reference.
 func Resources(ctx *pulumi.Context, stackInput *awscognitouserpoolv1.AwsCognitoUserPoolStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
@@ -25,14 +28,14 @@ func Resources(ctx *pulumi.Context, stackInput *awscognitouserpoolv1.AwsCognitoU
 		return errors.Wrap(err, "cognito user pool")
 	}
 
-	// App clients (always created — at least one required by spec)
-	if err := clients(ctx, locals, createdPool, provider); err != nil {
-		return errors.Wrap(err, "cognito user pool clients")
-	}
-
-	// Domain (optional)
+	// Hosted-UI domain (optional; one per pool)
 	if err := domain(ctx, locals, createdPool, provider); err != nil {
 		return errors.Wrap(err, "cognito user pool domain")
+	}
+
+	// Log delivery (optional; one pool-scoped configuration)
+	if err := logDelivery(ctx, locals, createdPool, provider); err != nil {
+		return errors.Wrap(err, "cognito user pool log delivery")
 	}
 
 	return nil

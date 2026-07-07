@@ -1,0 +1,3 @@
+name: aws-cognito-user-pool-client
+runtime: go
+description: Deploy a Cognito User Pool app client using Planton

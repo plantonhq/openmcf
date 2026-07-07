@@ -19,4 +19,10 @@ message AwsCognitoIdentityProviderStackOutputs {
   // The type of the identity provider (e.g., "Google", "OIDC", "SAML").
   // Informational — useful for downstream tooling and display.
   string provider_type = 2;
+
+  // The user pool this identity provider is attached to, resolved from the
+  // spec reference. Providers are keyed by (pool id, provider name) in AWS,
+  // and a consumer holding only this resource gets both halves of that key
+  // from its outputs.
+  string user_pool_id = 3;
 }

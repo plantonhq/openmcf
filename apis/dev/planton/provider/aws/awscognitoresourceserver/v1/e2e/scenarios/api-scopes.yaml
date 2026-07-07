@@ -1,0 +1,31 @@
+# Resource server against the registry-prerequisite pool: an audience-URI
+# identifier minting a two-scope vocabulary -- the shape machine-to-machine
+# clients request through allowed_oauth_scopes.
+apiVersion: aws.planton.dev/v1
+kind: AwsCognitoResourceServer
+metadata:
+  name: planton-oss-e2e-awscogrs
+  id: planton-oss-e2e-awscogrs
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscognitoresourceserver
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: planton-oss-e2e-awscog-prereq
+      fieldPath: status.outputs.user_pool_id
+  identifier: https://e2e.planton-oss.example.com
+  name: Planton E2E API
+  scopes:
+    - scopeName: read
+      scopeDescription: Read access for the E2E smoke API
+    - scopeName: orders:write
+      scopeDescription: Write access to orders for the E2E smoke API

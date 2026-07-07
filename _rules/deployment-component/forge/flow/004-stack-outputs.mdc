@@ -60,5 +60,14 @@ message AwsCloudFrontStackOutputs {
 ```
 
 NOTES
-- Secrets belong in external secret managers, not in stack outputs.
+- Secrets belong in external secret managers, not in stack outputs. When the provider
+  offers a managed-secret indirection, export the secret's ARN/identifier instead of the
+  material (e.g. a managed master password exported as its Secrets Manager ARN).
+- Narrow exception -- provider-minted credentials with NO vault indirection: when the
+  cloud itself mints a credential at create time, offers no managed-secret handle for it,
+  and the stack output is the only wire to the consuming application (e.g. an IAM user's
+  secret access key, a Cognito app client secret), export it. Mark it clearly: a
+  "Sensitive -- treat as a credential" sentence in the proto field comment, and
+  `sensitive = true` on the Terraform output. Never apply this exception to material the
+  MODULE generates (keys/PEMs the module creates do not belong in outputs at all).
 - Keep field names stable; other modules/tests reference these outputs downstream.

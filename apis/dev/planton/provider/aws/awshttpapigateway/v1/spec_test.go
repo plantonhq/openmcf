@@ -142,8 +142,8 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 				Name:           "cognito",
 				AuthorizerType: "JWT",
 				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
-					Issuer:    "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_abc123",
-					Audiences: []string{"my-app-client-id"},
+					Issuer:    strRef("https://cognito-idp.us-east-1.amazonaws.com/us-east-1_abc123"),
+					Audiences: []*foreignkeyv1.StringValueOrRef{strRef("my-app-client-id")},
 				},
 				IdentitySources: []string{"$request.header.Authorization"},
 			},
@@ -239,8 +239,8 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 				Name:           "cognito",
 				AuthorizerType: "JWT",
 				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
-					Issuer:    "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_abc123",
-					Audiences: []string{"orders-client"},
+					Issuer:    strRef("https://cognito-idp.us-east-1.amazonaws.com/us-east-1_abc123"),
+					Audiences: []*foreignkeyv1.StringValueOrRef{strRef("orders-client")},
 				},
 				IdentitySources: []string{"$request.header.Authorization"},
 			},
@@ -379,7 +379,7 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 				Name:           "jwt-empty-issuer",
 				AuthorizerType: "JWT",
 				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
-					Issuer: "",
+					Issuer: nil,
 				},
 			},
 		}
@@ -476,7 +476,7 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 				Name:           "",
 				AuthorizerType: "JWT",
 				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
-					Issuer: "https://example.com",
+					Issuer: strRef("https://example.com"),
 				},
 			},
 		}
@@ -494,7 +494,7 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 				Name:           longName,
 				AuthorizerType: "JWT",
 				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
-					Issuer: "https://example.com",
+					Issuer: strRef("https://example.com"),
 				},
 			},
 		}
@@ -746,8 +746,8 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 				Name:           "auth",
 				AuthorizerType: "JWT",
 				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
-					Issuer:    "https://example.com",
-					Audiences: []string{"a"},
+					Issuer:    strRef("https://example.com"),
+					Audiences: []*foreignkeyv1.StringValueOrRef{strRef("a")},
 				},
 			},
 			{
@@ -766,7 +766,7 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 				Name:           "jwt-no-aud",
 				AuthorizerType: "JWT",
 				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
-					Issuer: "https://example.com",
+					Issuer: strRef("https://example.com"),
 				},
 			},
 		}

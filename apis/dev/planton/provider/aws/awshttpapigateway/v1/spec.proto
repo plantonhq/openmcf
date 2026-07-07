@@ -166,8 +166,8 @@ message AwsHttpApiGatewaySpec {
   // audience -- HTTP APIs validate both the "iss" and "aud" claims.
   option (buf.validate.message).cel = {
     id: "jwt_authorizer_requires_config"
-    message: "JWT authorizers must have jwt_configuration with a non-empty issuer and at least one audience"
-    expression: "this.authorizers.all(a, a.authorizer_type != 'JWT' || (has(a.jwt_configuration) && a.jwt_configuration.issuer != '' && a.jwt_configuration.audiences.size() > 0))"
+    message: "JWT authorizers must have jwt_configuration with an issuer and at least one audience"
+    expression: "this.authorizers.all(a, a.authorizer_type != 'JWT' || (has(a.jwt_configuration) && has(a.jwt_configuration.issuer) && a.jwt_configuration.audiences.size() > 0))"
   };
 
   // REQUEST authorizer requires authorizer_uri.
@@ -636,11 +636,22 @@ message AwsHttpApiGatewayAuthorizer {
 // AwsHttpApiGatewayJwtConfig configures JWT validation for a JWT authorizer.
 message AwsHttpApiGatewayJwtConfig {
   // Token issuer URL. API Gateway validates that the JWT's "iss" claim matches
-  // this value. For Cognito: "https://cognito-idp.{region}.amazonaws.com/{userPoolId}".
-  // For Auth0: "https://{domain}/".
-  string issuer = 1 [(buf.validate.field).string.min_len = 1];
+  // this value. Accepts a direct issuer URL -- for Cognito,
+  // "https://cognito-idp.{region}.amazonaws.com/{userPoolId}"; for Auth0,
+  // "https://{domain}/" -- or a reference to an AwsCognitoUserPool resource
+  // (its issuer output carries exactly this URL).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef issuer = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.issuer"
+  ];
 
   // Expected audiences. API Gateway validates that the JWT's "aud" claim matches
-  // one of these values. For Cognito this is the app client ID.
-  repeated string audiences = 2;
+  // one of these values. Each entry accepts a direct value -- for Cognito, an
+  // app client ID -- or a reference to an AwsCognitoUserPoolClient resource;
+  // literals and references can be mixed.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef audiences = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPoolClient,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.client_id"
+  ];
 }

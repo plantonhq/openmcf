@@ -21,24 +21,14 @@ func strRef(val string) *foreignkeyv1.StringValueOrRef {
 	}
 }
 
-// minimalClient returns a minimal valid app client for reuse in tests.
-func minimalClient(name string) *AwsCognitoUserPoolClient {
-	return &AwsCognitoUserPoolClient{
-		Name: name,
-	}
-}
-
 var _ = ginkgo.Describe("AwsCognitoUserPoolSpec validations", func() {
 	var spec *AwsCognitoUserPoolSpec
 
 	ginkgo.BeforeEach(func() {
-		// Minimal valid spec: email sign-in, one app client.
+		// Minimal valid spec: region + email sign-in.
 		spec = &AwsCognitoUserPoolSpec{
 			Region:             "us-west-2",
 			UsernameAttributes: []string{"email"},
-			Clients: []*AwsCognitoUserPoolClient{
-				minimalClient("web-app"),
-			},
 		}
 	})
 
@@ -46,449 +36,446 @@ var _ = ginkgo.Describe("AwsCognitoUserPoolSpec validations", func() {
 	// Happy path
 	// -------------------------------------------------------------------------
 
-	ginkgo.It("accepts a minimal spec with email sign-in and one client", func() {
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts phone_number as username attribute", func() {
-		spec.UsernameAttributes = []string{"phone_number"}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
+	ginkgo.It("accepts a minimal spec with email sign-in", func() {
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
 	ginkgo.It("accepts alias attributes instead of username attributes", func() {
 		spec.UsernameAttributes = nil
 		spec.AliasAttributes = []string{"email", "preferred_username"}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
 	ginkgo.It("accepts neither username nor alias attributes (username-based pool)", func() {
 		spec.UsernameAttributes = nil
 		spec.AliasAttributes = nil
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a password policy", func() {
+	ginkgo.It("accepts a full password policy with history", func() {
 		spec.PasswordPolicy = &AwsCognitoUserPoolPasswordPolicy{
 			MinimumLength:                 12,
 			RequireLowercase:              true,
 			RequireUppercase:              true,
 			RequireNumbers:                true,
 			RequireSymbols:                true,
+			PasswordHistorySize:           5,
 			TemporaryPasswordValidityDays: 7,
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts MFA OPTIONAL with software token", func() {
+	ginkgo.It("accepts a passwordless sign-in policy with email OTP and passkeys", func() {
+		spec.AllowedFirstAuthFactors = []string{"PASSWORD", "EMAIL_OTP", "WEB_AUTHN"}
+		spec.WebAuthn = &AwsCognitoUserPoolWebAuthnConfig{
+			RelyingPartyId:   "auth.example.com",
+			UserVerification: "required",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts SMS_OTP when sms_configuration is set", func() {
+		spec.AllowedFirstAuthFactors = []string{"PASSWORD", "SMS_OTP"}
+		spec.SmsConfiguration = &AwsCognitoUserPoolSmsConfig{
+			SnsCallerArn: strRef("arn:aws:iam::123456789012:role/cognito-sms"),
+			ExternalId:   "pool-external-id",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts email MFA alongside OPTIONAL mfa", func() {
 		spec.MfaConfiguration = "OPTIONAL"
-		spec.SoftwareTokenMfaEnabled = true
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts MFA ON with software token", func() {
-		spec.MfaConfiguration = "ON"
-		spec.SoftwareTokenMfaEnabled = true
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts auto_verified_attributes", func() {
-		spec.AutoVerifiedAttributes = []string{"email"}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts account recovery mechanisms", func() {
-		spec.AccountRecoveryMechanisms = []*AwsCognitoUserPoolRecoveryMechanism{
-			{Name: "verified_email", Priority: 1},
-			{Name: "verified_phone_number", Priority: 2},
+		spec.EmailMfa = &AwsCognitoUserPoolEmailMfaConfig{
+			Message: "Your code is {####}",
+			Subject: "Sign-in code",
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts email configuration with DEVELOPER mode and SES", func() {
-		spec.EmailConfiguration = &AwsCognitoUserPoolEmailConfig{
-			EmailSendingAccount: "DEVELOPER",
-			SourceArn:           strRef("arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"),
-			FromEmailAddress:    "No Reply <noreply@example.com>",
-			ReplyToEmailAddress: "support@example.com",
+	ginkgo.It("accepts a PLUS-tier pool with enforced threat protection and auth-event logging", func() {
+		spec.UserPoolTier = "PLUS"
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{
+			AdvancedSecurityMode: "ENFORCED",
+			CustomAuthMode:       "AUDIT",
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts email configuration with COGNITO_DEFAULT mode", func() {
-		spec.EmailConfiguration = &AwsCognitoUserPoolEmailConfig{
-			EmailSendingAccount: "COGNITO_DEFAULT",
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts admin-only user creation with deletion protection", func() {
-		spec.AllowAdminCreateUserOnly = true
-		spec.DeletionProtection = true
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts custom attributes", func() {
-		spec.CustomAttributes = []*AwsCognitoUserPoolSchemaAttribute{
+		spec.LogConfigurations = []*AwsCognitoUserPoolLogConfiguration{
 			{
-				Name:              "tenant_id",
-				AttributeDataType: "String",
-				Mutable:           true,
-				StringMinLength:   "1",
-				StringMaxLength:   "64",
-			},
-			{
-				Name:              "employee_number",
-				AttributeDataType: "Number",
-				Mutable:           false,
-				NumberMinValue:    "1",
-				NumberMaxValue:    "999999",
+				EventSource:           "userAuthEvents",
+				LogLevel:              "INFO",
+				CloudwatchLogGroupArn: strRef("arn:aws:logs:us-west-2:123456789012:log-group:/aws/cognito/pool"),
 			},
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts Lambda triggers", func() {
+	ginkgo.It("accepts verification and invite message templates with placeholders", func() {
+		spec.VerificationMessageTemplate = &AwsCognitoUserPoolVerificationMessageTemplate{
+			DefaultEmailOption: "CONFIRM_WITH_LINK",
+			EmailMessageByLink: "Click {##here##} to verify your address.",
+			EmailSubjectByLink: "Verify your address",
+			SmsMessage:         "Your verification code is {####}",
+		}
+		spec.InviteMessageTemplate = &AwsCognitoUserPoolInviteMessageTemplate{
+			EmailMessage: "Welcome {username}, your temporary password is {####}",
+			EmailSubject: "Your invitation",
+			SmsMessage:   "{username}, your temporary password is {####}",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a versioned pre-token-generation trigger with custom senders", func() {
 		spec.LambdaConfig = &AwsCognitoUserPoolLambdaConfig{
-			PreSignUp:          strRef("arn:aws:lambda:us-east-1:123456789012:function:pre-signup"),
-			PostConfirmation:   strRef("arn:aws:lambda:us-east-1:123456789012:function:post-confirm"),
-			PreTokenGeneration: strRef("arn:aws:lambda:us-east-1:123456789012:function:pre-token"),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts an OAuth-enabled client with callbacks", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{
-				Name:                            "web-app",
-				AllowedOauthFlowsUserPoolClient: true,
-				AllowedOauthFlows:               []string{"code"},
-				AllowedOauthScopes:              []string{"openid", "email", "profile"},
-				CallbackUrls:                    []string{"https://app.example.com/callback"},
-				LogoutUrls:                      []string{"https://app.example.com/logout"},
-				DefaultRedirectUri:              "https://app.example.com/callback",
-				SupportedIdentityProviders:      []string{"COGNITO"},
-				ExplicitAuthFlows:               []string{"ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"},
-				AccessTokenValidityMinutes:      60,
-				IdTokenValidityMinutes:          60,
-				RefreshTokenValidityDays:        30,
-				EnableTokenRevocation:           true,
-				PreventUserExistenceErrors:      "ENABLED",
+			PreTokenGenerationConfig: &AwsCognitoUserPoolPreTokenGenerationConfig{
+				LambdaArn:     strRef("arn:aws:lambda:us-west-2:123456789012:function:claims"),
+				LambdaVersion: "V2_0",
 			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts multiple clients", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{Name: "web-app"},
-			{Name: "api-server", GenerateSecret: true},
-			{Name: "mobile-app"},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a Cognito-hosted domain", func() {
-		spec.Domain = &AwsCognitoUserPoolDomainConfig{
-			Domain: "myapp-auth",
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a custom domain with certificate", func() {
-		spec.Domain = &AwsCognitoUserPoolDomainConfig{
-			Domain:         "auth.example.com",
-			CertificateArn: strRef("arn:aws:acm:us-east-1:123456789012:certificate/abc-def-ghi"),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts a production-ready full configuration", func() {
-		spec.UsernameAttributes = []string{"email"}
-		spec.UsernameCaseSensitive = false
-		spec.PasswordPolicy = &AwsCognitoUserPoolPasswordPolicy{
-			MinimumLength:                 12,
-			RequireLowercase:              true,
-			RequireUppercase:              true,
-			RequireNumbers:                true,
-			RequireSymbols:                true,
-			TemporaryPasswordValidityDays: 3,
-		}
-		spec.MfaConfiguration = "OPTIONAL"
-		spec.SoftwareTokenMfaEnabled = true
-		spec.AutoVerifiedAttributes = []string{"email"}
-		spec.AccountRecoveryMechanisms = []*AwsCognitoUserPoolRecoveryMechanism{
-			{Name: "verified_email", Priority: 1},
-		}
-		spec.EmailConfiguration = &AwsCognitoUserPoolEmailConfig{
-			EmailSendingAccount: "DEVELOPER",
-			SourceArn:           strRef("arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"),
-			FromEmailAddress:    "No Reply <noreply@example.com>",
-		}
-		spec.DeletionProtection = true
-		spec.AllowAdminCreateUserOnly = false
-		spec.LambdaConfig = &AwsCognitoUserPoolLambdaConfig{
-			PreSignUp: strRef("arn:aws:lambda:us-east-1:123456789012:function:pre-signup"),
-		}
-		spec.CustomAttributes = []*AwsCognitoUserPoolSchemaAttribute{
-			{Name: "tenant_id", AttributeDataType: "String", Mutable: true, StringMaxLength: "64"},
-		}
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{
-				Name:                            "web-app",
-				AllowedOauthFlowsUserPoolClient: true,
-				AllowedOauthFlows:               []string{"code"},
-				AllowedOauthScopes:              []string{"openid", "email", "profile"},
-				CallbackUrls:                    []string{"https://app.example.com/callback"},
-				LogoutUrls:                      []string{"https://app.example.com/logout"},
-				ExplicitAuthFlows:               []string{"ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"},
-				EnableTokenRevocation:           true,
-				PreventUserExistenceErrors:      "ENABLED",
+			CustomEmailSender: &AwsCognitoUserPoolCustomSenderConfig{
+				LambdaArn:     strRef("arn:aws:lambda:us-west-2:123456789012:function:mailer"),
+				LambdaVersion: "V1_0",
 			},
-			{
-				Name:                            "api-server",
-				GenerateSecret:                  true,
-				AllowedOauthFlowsUserPoolClient: true,
-				AllowedOauthFlows:               []string{"client_credentials"},
-				AllowedOauthScopes:              []string{"api/read", "api/write"},
-				ExplicitAuthFlows:               []string{"ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"},
-			},
+			KmsKeyId: strRef("arn:aws:kms:us-west-2:123456789012:key/abcd-1234"),
 		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a custom domain with a certificate and managed login", func() {
+		v := int32(2)
 		spec.Domain = &AwsCognitoUserPoolDomainConfig{
-			Domain: "myapp-auth",
+			Domain:              "auth.example.com",
+			CertificateArn:      strRef("arn:aws:acm:us-east-1:123456789012:certificate/abcd"),
+			ManagedLoginVersion: &v,
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
 	// -------------------------------------------------------------------------
-	// Failure scenarios
+	// Required / range validations
 	// -------------------------------------------------------------------------
 
-	ginkgo.It("rejects when both username_attributes and alias_attributes are set", func() {
-		spec.UsernameAttributes = []string{"email"}
-		spec.AliasAttributes = []string{"phone_number"}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails when region is empty", func() {
+		spec.Region = ""
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid username_attributes value", func() {
-		spec.UsernameAttributes = []string{"email", "invalid_attr"}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails when password minimum_length is below 6", func() {
+		spec.PasswordPolicy = &AwsCognitoUserPoolPasswordPolicy{MinimumLength: 4}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid alias_attributes value", func() {
+	ginkgo.It("fails when password_history_size exceeds 24", func() {
+		spec.PasswordPolicy = &AwsCognitoUserPoolPasswordPolicy{MinimumLength: 8, PasswordHistorySize: 25}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when managed_login_version is out of range", func() {
+		v := int32(3)
+		spec.Domain = &AwsCognitoUserPoolDomainConfig{Domain: "myapp-auth", ManagedLoginVersion: &v}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: identity model
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when both username and alias attributes are set", func() {
+		spec.AliasAttributes = []string{"preferred_username"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid username attribute", func() {
+		spec.UsernameAttributes = []string{"nickname"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid alias attribute", func() {
 		spec.UsernameAttributes = nil
-		spec.AliasAttributes = []string{"invalid_attr"}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		spec.AliasAttributes = []string{"given_name"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid auto_verified_attributes value", func() {
-		spec.AutoVerifiedAttributes = []string{"name"}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	// -------------------------------------------------------------------------
+	// CEL: tier, factors, MFA
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on an invalid user_pool_tier", func() {
+		spec.UserPoolTier = "PREMIUM"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid mfa_configuration value", func() {
-		spec.MfaConfiguration = "INVALID"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails on an invalid first auth factor", func() {
+		spec.AllowedFirstAuthFactors = []string{"MAGIC_LINK"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects software_token_mfa when MFA is OFF", func() {
-		spec.MfaConfiguration = "OFF"
+	ginkgo.It("fails when SMS_OTP is allowed without sms_configuration", func() {
+		spec.AllowedFirstAuthFactors = []string{"SMS_OTP"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid mfa_configuration", func() {
+		spec.MfaConfiguration = "REQUIRED"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when software token MFA is enabled with MFA off", func() {
 		spec.SoftwareTokenMfaEnabled = true
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects software_token_mfa when MFA is empty (default OFF)", func() {
-		spec.MfaConfiguration = ""
-		spec.SoftwareTokenMfaEnabled = true
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails when email MFA is configured with MFA off", func() {
+		spec.EmailMfa = &AwsCognitoUserPoolEmailMfaConfig{Subject: "Code"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects no clients (min_items = 1)", func() {
-		spec.Clients = nil
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails when the email MFA message lacks the code placeholder", func() {
+		spec.MfaConfiguration = "OPTIONAL"
+		spec.EmailMfa = &AwsCognitoUserPoolEmailMfaConfig{Message: "Your code is 123456"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects duplicate client names", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{Name: "web-app"},
-			{Name: "web-app"},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails on an invalid web_authn user_verification", func() {
+		spec.WebAuthn = &AwsCognitoUserPoolWebAuthnConfig{UserVerification: "always"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects client with empty name", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{Name: ""},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails when sms_authentication_message lacks the code placeholder", func() {
+		spec.SmsAuthenticationMessage = "Your sign-in code has been sent"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid allowed_oauth_flows value", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{Name: "web-app", AllowedOauthFlows: []string{"invalid_flow"}},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	// -------------------------------------------------------------------------
+	// CEL: verification and recovery
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on an invalid auto-verified attribute", func() {
+		spec.AutoVerifiedAttributes = []string{"address"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid explicit_auth_flows value", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{Name: "web-app", ExplicitAuthFlows: []string{"NOT_A_REAL_FLOW"}},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails on an invalid attributes_require_verification_before_update value", func() {
+		spec.AttributesRequireVerificationBeforeUpdate = []string{"nickname"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid prevent_user_existence_errors value", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{Name: "web-app", PreventUserExistenceErrors: "INVALID"},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("rejects password minimum_length below 6", func() {
-		spec.PasswordPolicy = &AwsCognitoUserPoolPasswordPolicy{MinimumLength: 3}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("rejects password minimum_length above 99", func() {
-		spec.PasswordPolicy = &AwsCognitoUserPoolPasswordPolicy{MinimumLength: 100}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("rejects temporary_password_validity_days above 365", func() {
-		spec.PasswordPolicy = &AwsCognitoUserPoolPasswordPolicy{
-			MinimumLength:                 8,
-			TemporaryPasswordValidityDays: 400,
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("rejects invalid account recovery mechanism name", func() {
+	ginkgo.It("fails on an invalid recovery mechanism name", func() {
 		spec.AccountRecoveryMechanisms = []*AwsCognitoUserPoolRecoveryMechanism{
-			{Name: "invalid_method", Priority: 1},
+			{Name: "security_questions", Priority: 1},
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects account recovery mechanism with priority 0", func() {
-		spec.AccountRecoveryMechanisms = []*AwsCognitoUserPoolRecoveryMechanism{
-			{Name: "verified_email", Priority: 0},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("rejects account recovery mechanism with priority 3", func() {
+	ginkgo.It("fails on a recovery priority outside 1-2", func() {
 		spec.AccountRecoveryMechanisms = []*AwsCognitoUserPoolRecoveryMechanism{
 			{Name: "verified_email", Priority: 3},
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects DEVELOPER email without source_arn", func() {
-		spec.EmailConfiguration = &AwsCognitoUserPoolEmailConfig{
-			EmailSendingAccount: "DEVELOPER",
+	ginkgo.It("fails when admin_only is combined with another recovery mechanism", func() {
+		spec.AccountRecoveryMechanisms = []*AwsCognitoUserPoolRecoveryMechanism{
+			{Name: "verified_email", Priority: 1},
+			{Name: "admin_only", Priority: 2},
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid email_sending_account value", func() {
-		spec.EmailConfiguration = &AwsCognitoUserPoolEmailConfig{
-			EmailSendingAccount: "INVALID",
+	ginkgo.It("accepts admin_only as the sole recovery mechanism", func() {
+		spec.AccountRecoveryMechanisms = []*AwsCognitoUserPoolRecoveryMechanism{
+			{Name: "admin_only", Priority: 1},
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects invalid custom attribute data type", func() {
-		spec.CustomAttributes = []*AwsCognitoUserPoolSchemaAttribute{
-			{Name: "test", AttributeDataType: "InvalidType"},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails on a prefix domain containing a reserved word", func() {
+		spec.Domain = &AwsCognitoUserPoolDomainConfig{Domain: "my-aws-auth"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects custom attribute with empty name", func() {
-		spec.CustomAttributes = []*AwsCognitoUserPoolSchemaAttribute{
-			{Name: "", AttributeDataType: "String"},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("rejects custom attribute with name longer than 20 chars", func() {
-		spec.CustomAttributes = []*AwsCognitoUserPoolSchemaAttribute{
-			{Name: "this_name_is_way_too_long_for_cognito", AttributeDataType: "String"},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-	})
-
-	ginkgo.It("rejects custom domain without certificate_arn", func() {
+	ginkgo.It("accepts a custom domain containing a reserved word", func() {
 		spec.Domain = &AwsCognitoUserPoolDomainConfig{
-			Domain: "auth.example.com",
+			Domain: "auth.aws-tooling.example.com",
+			CertificateArn: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:acm:us-east-1:123456789012:certificate/abc"},
+			},
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects domain with empty domain string", func() {
-		spec.Domain = &AwsCognitoUserPoolDomainConfig{
-			Domain: "",
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	// -------------------------------------------------------------------------
+	// CEL: email configuration
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on an invalid email_sending_account", func() {
+		spec.EmailConfiguration = &AwsCognitoUserPoolEmailConfig{EmailSendingAccount: "SES"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects access_token_validity_minutes above 1440", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{Name: "web-app", AccessTokenValidityMinutes: 2000},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+	ginkgo.It("fails when DEVELOPER email mode lacks source_arn", func() {
+		spec.EmailConfiguration = &AwsCognitoUserPoolEmailConfig{EmailSendingAccount: "DEVELOPER"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects refresh_token_validity_days above 3650", func() {
-		spec.Clients = []*AwsCognitoUserPoolClient{
-			{Name: "web-app", RefreshTokenValidityDays: 4000},
+	// -------------------------------------------------------------------------
+	// CEL: message templates
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on an invalid default_email_option", func() {
+		spec.VerificationMessageTemplate = &AwsCognitoUserPoolVerificationMessageTemplate{
+			DefaultEmailOption: "CONFIRM_WITH_OTP",
 		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when the code-based verification email lacks its placeholder", func() {
+		spec.VerificationMessageTemplate = &AwsCognitoUserPoolVerificationMessageTemplate{
+			EmailMessage: "Please verify your address",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when the link-based verification email lacks its placeholder pair", func() {
+		spec.VerificationMessageTemplate = &AwsCognitoUserPoolVerificationMessageTemplate{
+			EmailMessageByLink: "Click here to verify",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when the verification SMS lacks its placeholder", func() {
+		spec.VerificationMessageTemplate = &AwsCognitoUserPoolVerificationMessageTemplate{
+			SmsMessage: "Here is your code",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when the invite email lacks the username placeholder", func() {
+		spec.InviteMessageTemplate = &AwsCognitoUserPoolInviteMessageTemplate{
+			EmailMessage: "Your temporary password is {####}",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when the invite SMS lacks the password placeholder", func() {
+		spec.InviteMessageTemplate = &AwsCognitoUserPoolInviteMessageTemplate{
+			SmsMessage: "Welcome {username}",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: custom attributes
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on an invalid attribute_data_type", func() {
+		spec.CustomAttributes = []*AwsCognitoUserPoolSchemaAttribute{
+			{Name: "tenant_id", AttributeDataType: "Text"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: lambda triggers
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when both pre_token_generation spellings are set", func() {
+		spec.LambdaConfig = &AwsCognitoUserPoolLambdaConfig{
+			PreTokenGeneration: strRef("arn:aws:lambda:us-west-2:123456789012:function:claims"),
+			PreTokenGenerationConfig: &AwsCognitoUserPoolPreTokenGenerationConfig{
+				LambdaArn:     strRef("arn:aws:lambda:us-west-2:123456789012:function:claims"),
+				LambdaVersion: "V2_0",
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a custom sender is set without the KMS key", func() {
+		spec.LambdaConfig = &AwsCognitoUserPoolLambdaConfig{
+			CustomSmsSender: &AwsCognitoUserPoolCustomSenderConfig{
+				LambdaArn:     strRef("arn:aws:lambda:us-west-2:123456789012:function:sms"),
+				LambdaVersion: "V1_0",
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid pre_token_generation_config version", func() {
+		spec.LambdaConfig = &AwsCognitoUserPoolLambdaConfig{
+			PreTokenGenerationConfig: &AwsCognitoUserPoolPreTokenGenerationConfig{
+				LambdaArn:     strRef("arn:aws:lambda:us-west-2:123456789012:function:claims"),
+				LambdaVersion: "V4_0",
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid custom sender version", func() {
+		spec.LambdaConfig = &AwsCognitoUserPoolLambdaConfig{
+			CustomEmailSender: &AwsCognitoUserPoolCustomSenderConfig{
+				LambdaArn:     strRef("arn:aws:lambda:us-west-2:123456789012:function:mailer"),
+				LambdaVersion: "V2_0",
+			},
+			KmsKeyId: strRef("arn:aws:kms:us-west-2:123456789012:key/abcd-1234"),
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: threat protection
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on an invalid advanced_security_mode", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "MONITOR"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when custom_auth_mode is set with advanced security off", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{
+			AdvancedSecurityMode: "OFF",
+			CustomAuthMode:       "ENFORCED",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: log delivery
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on an invalid log event_source", func() {
+		spec.LogConfigurations = []*AwsCognitoUserPoolLogConfiguration{
+			{EventSource: "signIn", LogLevel: "ERROR", CloudwatchLogGroupArn: strRef("arn:aws:logs:us-west-2:1:log-group:x")},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a log configuration has no destination", func() {
+		spec.LogConfigurations = []*AwsCognitoUserPoolLogConfiguration{
+			{EventSource: "userNotification", LogLevel: "ERROR"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a log configuration has two destinations", func() {
+		spec.LogConfigurations = []*AwsCognitoUserPoolLogConfiguration{
+			{
+				EventSource:           "userNotification",
+				LogLevel:              "ERROR",
+				CloudwatchLogGroupArn: strRef("arn:aws:logs:us-west-2:1:log-group:x"),
+				S3BucketArn:           strRef("arn:aws:s3:::logs-bucket"),
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: domain
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when a custom domain lacks a certificate", func() {
+		spec.Domain = &AwsCognitoUserPoolDomainConfig{Domain: "auth.example.com"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a prefix domain without a certificate", func() {
+		spec.Domain = &AwsCognitoUserPoolDomainConfig{Domain: "myapp-auth"}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 })

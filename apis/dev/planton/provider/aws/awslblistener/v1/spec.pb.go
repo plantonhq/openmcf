@@ -695,12 +695,14 @@ type AwsLbListenerActionAuthenticateCognito struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Cognito user pool performing authentication.
 	UserPoolArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=user_pool_arn,json=userPoolArn,proto3" json:"user_pool_arn,omitempty"`
-	// The app client ID within the user pool.
-	UserPoolClientId string `protobuf:"bytes,2,opt,name=user_pool_client_id,json=userPoolClientId,proto3" json:"user_pool_client_id,omitempty"`
+	// The app client ID within the user pool. Accepts a direct client ID or a
+	// reference to an AwsCognitoUserPoolClient resource.
+	UserPoolClientId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=user_pool_client_id,json=userPoolClientId,proto3" json:"user_pool_client_id,omitempty"`
 	// The user pool's hosted-UI domain: the prefix of a Cognito domain (e.g.
 	// "my-app" for my-app.auth.us-west-2.amazoncognito.com) or a full custom
-	// domain.
-	UserPoolDomain string `protobuf:"bytes,3,opt,name=user_pool_domain,json=userPoolDomain,proto3" json:"user_pool_domain,omitempty"`
+	// domain. Accepts a direct domain string or a reference to the pool's
+	// user_pool_domain output.
+	UserPoolDomain *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=user_pool_domain,json=userPoolDomain,proto3" json:"user_pool_domain,omitempty"`
 	// Extra query parameters appended to the authorization-endpoint request.
 	AuthenticationRequestExtraParams map[string]string `protobuf:"bytes,4,rep,name=authentication_request_extra_params,json=authenticationRequestExtraParams,proto3" json:"authentication_request_extra_params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// What happens to an unauthenticated request: "authenticate" (AWS default
@@ -755,18 +757,18 @@ func (x *AwsLbListenerActionAuthenticateCognito) GetUserPoolArn() *v1.StringValu
 	return nil
 }
 
-func (x *AwsLbListenerActionAuthenticateCognito) GetUserPoolClientId() string {
+func (x *AwsLbListenerActionAuthenticateCognito) GetUserPoolClientId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.UserPoolClientId
 	}
-	return ""
+	return nil
 }
 
-func (x *AwsLbListenerActionAuthenticateCognito) GetUserPoolDomain() string {
+func (x *AwsLbListenerActionAuthenticateCognito) GetUserPoolDomain() *v1.StringValueOrRef {
 	if x != nil {
 		return x.UserPoolDomain
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsLbListenerActionAuthenticateCognito) GetAuthenticationRequestExtraParams() map[string]string {
@@ -1559,11 +1561,11 @@ const file_dev_planton_provider_aws_awslblistener_v1_spec_proto_rawDesc = "" +
 	"statusCode\x12+\n" +
 	"\fmessage_body\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vmessageBody:\xa2\x03\xbaH\x9e\x03\x1a\xf7\x01\n" +
 	"!fixed_response_content_type_valid\x12fcontent_type must be one of: text/plain, text/css, text/html, application/javascript, application/json\x1ajthis.content_type in ['text/plain', 'text/css', 'text/html', 'application/javascript', 'application/json']\x1a\xa1\x01\n" +
-	" fixed_response_status_code_valid\x124status_code must be a 2xx, 4xx, or 5xx code when set\x1aGthis.status_code == '' || this.status_code.matches('^[245][0-9][0-9]$')\"\xe4\a\n" +
+	" fixed_response_status_code_valid\x124status_code must be a 2xx, 4xx, or 5xx code when set\x1aGthis.status_code == '' || this.status_code.matches('^[245][0-9][0-9]$')\"\x97\t\n" +
 	"&AwsLbListenerActionAuthenticateCognito\x12\x83\x01\n" +
-	"\ruser_pool_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1cstatus.outputs.user_pool_arnR\vuserPoolArn\x125\n" +
-	"\x13user_pool_client_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10userPoolClientId\x120\n" +
-	"\x10user_pool_domain\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0euserPoolDomain\x12\xc6\x01\n" +
+	"\ruser_pool_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1cstatus.outputs.user_pool_arnR\vuserPoolArn\x12\x8a\x01\n" +
+	"\x13user_pool_client_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x02\x92\xd4a\x18status.outputs.client_idR\x10userPoolClientId\x12\x8c\x01\n" +
+	"\x10user_pool_domain\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1fstatus.outputs.user_pool_domainR\x0euserPoolDomain\x12\xc6\x01\n" +
 	"#authentication_request_extra_params\x18\x04 \x03(\v2w.dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateCognito.AuthenticationRequestExtraParamsEntryR authenticationRequestExtraParams\x12<\n" +
 	"\x1aon_unauthenticated_request\x18\x05 \x01(\tR\x18onUnauthenticatedRequest\x12\x14\n" +
 	"\x05scope\x18\x06 \x01(\tR\x05scope\x12.\n" +
@@ -1688,17 +1690,19 @@ var file_dev_planton_provider_aws_awslblistener_v1_spec_proto_depIdxs = []int32{
 	4,  // 13: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionForward.stickiness:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionForwardStickiness
 	17, // 14: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionForwardTargetGroup.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	17, // 15: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateCognito.user_pool_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // 16: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateCognito.authentication_request_extra_params:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateCognito.AuthenticationRequestExtraParamsEntry
-	16, // 17: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateOidc.authentication_request_extra_params:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateOidc.AuthenticationRequestExtraParamsEntry
-	10, // 18: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionJwtValidation.additional_claims:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionJwtClaim
-	17, // 19: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerMutualAuthentication.trust_store_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 20: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerHttpHeaders.request:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerHttpRequestHeaders
-	14, // 21: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerHttpHeaders.response:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerHttpResponseHeaders
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	17, // 16: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateCognito.user_pool_client_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 17: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateCognito.user_pool_domain:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 18: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateCognito.authentication_request_extra_params:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateCognito.AuthenticationRequestExtraParamsEntry
+	16, // 19: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateOidc.authentication_request_extra_params:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionAuthenticateOidc.AuthenticationRequestExtraParamsEntry
+	10, // 20: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionJwtValidation.additional_claims:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerActionJwtClaim
+	17, // 21: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerMutualAuthentication.trust_store_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 22: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerHttpHeaders.request:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerHttpRequestHeaders
+	14, // 23: dev.planton.provider.aws.awslblistener.v1.AwsLbListenerHttpHeaders.response:type_name -> dev.planton.provider.aws.awslblistener.v1.AwsLbListenerHttpResponseHeaders
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awslblistener_v1_spec_proto_init() }

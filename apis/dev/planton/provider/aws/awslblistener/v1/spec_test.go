@@ -465,8 +465,8 @@ var _ = ginkgo.Describe("AwsLbListenerSpec Validation Tests", func() {
 						Type: "authenticate-cognito",
 						AuthenticateCognito: &AwsLbListenerActionAuthenticateCognito{
 							UserPoolArn:              literalRef("arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_ABC"),
-							UserPoolClientId:         "client-id",
-							UserPoolDomain:           "my-app",
+							UserPoolClientId:         literalRef("client-id"),
+							UserPoolDomain:           literalRef("my-app"),
 							OnUnauthenticatedRequest: "reject",
 						},
 					},

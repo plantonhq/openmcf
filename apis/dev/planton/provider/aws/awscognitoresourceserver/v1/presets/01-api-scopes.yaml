@@ -1,0 +1,24 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsCognitoResourceServer
+metadata:
+  name: ${name}
+  org: ${org}
+  env: ${env}
+  id: ${id}
+  labels:
+    planton.dev/provisioner: pulumi
+    planton.dev/stack: ${env}.AwsCognitoResourceServer.${name}
+spec:
+  region: <aws-region>
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: <user-pool-name>
+      fieldPath: status.outputs.user_pool_id
+  identifier: https://api.example.com
+  name: <api-display-name>
+  scopes:
+    - scopeName: read
+      scopeDescription: Read access to the API
+    - scopeName: write
+      scopeDescription: Write access to the API

@@ -199,8 +199,8 @@ func actionArgs(actions []*awslblistenerrulev1.AwsLbListenerRuleAction) (lb.List
 			cognito := action.AuthenticateCognito
 			cognitoArgs := &lb.ListenerRuleActionAuthenticateCognitoArgs{
 				UserPoolArn:      pulumi.String(cognito.UserPoolArn.GetValue()),
-				UserPoolClientId: pulumi.String(cognito.UserPoolClientId),
-				UserPoolDomain:   pulumi.String(cognito.UserPoolDomain),
+				UserPoolClientId: pulumi.String(cognito.UserPoolClientId.GetValue()),
+				UserPoolDomain:   pulumi.String(cognito.UserPoolDomain.GetValue()),
 			}
 			if len(cognito.AuthenticationRequestExtraParams) > 0 {
 				cognitoArgs.AuthenticationRequestExtraParams = pulumi.ToStringMap(cognito.AuthenticationRequestExtraParams)

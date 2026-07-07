@@ -22,7 +22,7 @@ func identityProvider(ctx *pulumi.Context, locals *Locals, provider *aws.Provide
 	createdIdp, err := cognito.NewIdentityProvider(ctx, locals.Target.Metadata.Name, &cognito.IdentityProviderArgs{
 		UserPoolId:      pulumi.String(spec.UserPoolId.GetValue()),
 		ProviderName:    pulumi.String(spec.ProviderName),
-		ProviderType:    pulumi.String(spec.ProviderType.String()),
+		ProviderType:    pulumi.String(spec.ProviderType),
 		ProviderDetails: pulumi.ToStringMap(providerDetails),
 		AttributeMapping: func() pulumi.StringMap {
 			if len(spec.AttributeMapping) == 0 {
@@ -43,6 +43,8 @@ func identityProvider(ctx *pulumi.Context, locals *Locals, provider *aws.Provide
 
 	ctx.Export(OpProviderName, createdIdp.ProviderName)
 	ctx.Export(OpProviderType, createdIdp.ProviderType)
+	// Echo the resolved pool id: AWS keys providers by (pool id, provider name).
+	ctx.Export(OpUserPoolId, createdIdp.UserPoolId)
 
 	return nil
 }
@@ -57,13 +59,13 @@ func buildProviderDetails(spec *cogidpv1.AwsCognitoIdentityProviderSpec) (map[st
 	details := make(map[string]string)
 
 	switch spec.ProviderType {
-	case cogidpv1.AwsCognitoIdentityProviderType_Google:
+	case "Google":
 		cfg := spec.GetGoogle()
 		details["client_id"] = cfg.ClientId
 		details["client_secret"] = cfg.ClientSecret
 		details["authorize_scopes"] = cfg.AuthorizeScopes
 
-	case cogidpv1.AwsCognitoIdentityProviderType_Facebook:
+	case "Facebook":
 		cfg := spec.GetFacebook()
 		details["client_id"] = cfg.ClientId
 		details["client_secret"] = cfg.ClientSecret
@@ -72,13 +74,13 @@ func buildProviderDetails(spec *cogidpv1.AwsCognitoIdentityProviderSpec) (map[st
 			details["api_version"] = cfg.ApiVersion
 		}
 
-	case cogidpv1.AwsCognitoIdentityProviderType_LoginWithAmazon:
+	case "LoginWithAmazon":
 		cfg := spec.GetLoginWithAmazon()
 		details["client_id"] = cfg.ClientId
 		details["client_secret"] = cfg.ClientSecret
 		details["authorize_scopes"] = cfg.AuthorizeScopes
 
-	case cogidpv1.AwsCognitoIdentityProviderType_SignInWithApple:
+	case "SignInWithApple":
 		cfg := spec.GetSignInWithApple()
 		details["client_id"] = cfg.ClientId
 		details["team_id"] = cfg.TeamId
@@ -86,7 +88,7 @@ func buildProviderDetails(spec *cogidpv1.AwsCognitoIdentityProviderSpec) (map[st
 		details["private_key"] = cfg.PrivateKey
 		details["authorize_scopes"] = cfg.AuthorizeScopes
 
-	case cogidpv1.AwsCognitoIdentityProviderType_OIDC:
+	case "OIDC":
 		cfg := spec.GetOidc()
 		details["client_id"] = cfg.ClientId
 		details["oidc_issuer"] = cfg.OidcIssuer
@@ -111,8 +113,11 @@ func buildProviderDetails(spec *cogidpv1.AwsCognitoIdentityProviderSpec) (map[st
 		if cfg.JwksUri != "" {
 			details["jwks_uri"] = cfg.JwksUri
 		}
+		if cfg.AttributesUrlAddAttributes {
+			details["attributes_url_add_attributes"] = strconv.FormatBool(cfg.AttributesUrlAddAttributes)
+		}
 
-	case cogidpv1.AwsCognitoIdentityProviderType_SAML:
+	case "SAML":
 		cfg := spec.GetSaml()
 		if cfg.MetadataFile != "" {
 			details["MetadataFile"] = cfg.MetadataFile
@@ -134,7 +139,7 @@ func buildProviderDetails(spec *cogidpv1.AwsCognitoIdentityProviderSpec) (map[st
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported provider type: %s", spec.ProviderType.String())
+		return nil, fmt.Errorf("unsupported provider type: %s", spec.ProviderType)
 	}
 
 	return details, nil
