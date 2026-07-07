@@ -11,7 +11,8 @@ The module receives a `spec` object matching `GcpBigQueryTableSpec` (see
 ## Outputs
 
 See `outputs.tf` — `table_id`, `self_link`, `project`, `dataset_id`, `type`,
-`location`, `creation_time`.
+`location`, `creation_time`, and the pre-assembled dotted `qualified_name`
+(`{project}.{dataset}.{table}` — what Pub/Sub BigQuery delivery consumes).
 
 ## Provider
 

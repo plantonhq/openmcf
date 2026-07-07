@@ -22,6 +22,7 @@ go_library(
         "@org_golang_google_api//firestore/v1:firestore",
         "@org_golang_google_api//iam/v1:iam",
         "@org_golang_google_api//networkconnectivity/v1:networkconnectivity",
+        "@org_golang_google_api//pubsub/v1:pubsub",
         "@org_golang_google_api//redis/v1:redis",
         "@org_golang_google_api//run/v2:run",
         "@org_golang_google_api//spanner/v1:spanner",

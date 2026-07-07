@@ -1,0 +1,16 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpPubSubTopic
+metadata:
+  name: validated-order-events
+spec:
+  topicName: validated-order-events
+  # Publish-time contract enforcement: messages that do not conform to
+  # the referenced schema are rejected at the publisher with
+  # INVALID_ARGUMENT — they never reach subscribers.
+  schemaSettings:
+    schema:
+      valueFrom:
+        kind: GcpPubSubSchema
+        name: order-events-schema
+        fieldPath: status.outputs.schema_id
+    encoding: JSON

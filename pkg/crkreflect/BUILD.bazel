@@ -275,6 +275,7 @@ go_library(
         "//apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1:gcpmemorystoreinstance",
         "//apis/dev/planton/provider/gcp/gcpproject/v1:gcpproject",
         "//apis/dev/planton/provider/gcp/gcpprojectiammember/v1:gcpprojectiammember",
+        "//apis/dev/planton/provider/gcp/gcppubsubschema/v1:gcppubsubschema",
         "//apis/dev/planton/provider/gcp/gcppubsubsubscription/v1:gcppubsubsubscription",
         "//apis/dev/planton/provider/gcp/gcppubsubtopic/v1:gcppubsubtopic",
         "//apis/dev/planton/provider/gcp/gcpredisinstance/v1:gcpredisinstance",

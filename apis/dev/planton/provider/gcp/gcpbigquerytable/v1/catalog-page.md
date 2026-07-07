@@ -78,6 +78,7 @@ planton apply -f bigquery-table.yaml
 | `type` | TABLE, VIEW, MATERIALIZED_VIEW, or EXTERNAL |
 | `location` | Geographic location |
 | `creation_time` | Milliseconds since epoch |
+| `qualified_name` | Dotted `{project}.{dataset}.{table}` handle (what Pub/Sub BigQuery delivery consumes) |
 
 ## Examples
 

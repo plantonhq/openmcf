@@ -1,0 +1,13 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcppubsubschema
+spec:
+  # Leaf scenario: the schema is a pure control-plane object — create,
+  # posture-verify (type + definition), destroy in seconds.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

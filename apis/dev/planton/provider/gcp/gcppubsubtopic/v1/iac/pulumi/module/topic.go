@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	gcppubsubtopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubtopic/v1"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/pubsub"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -11,23 +12,50 @@ import (
 func topic(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpPubSubTopic.Spec
 
-	args := &pubsub.TopicArgs{
-		Name:    pulumi.String(spec.TopicName),
-		Project: pulumi.StringPtr(spec.ProjectId.GetValue()),
-		Labels:  pulumi.ToStringMap(locals.GcpLabels),
+	// Enable the Pub/Sub API — the control plane that owns the topic.
+	// disable_on_destroy stays false: tearing down one topic must never
+	// disable the API for everything else in the project.
+	pubsubApiArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("pubsub.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		pubsubApiArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdPubsubApi, err := projects.NewService(ctx,
+		"gcppst-pubsub.googleapis.com", pubsubApiArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable pubsub.googleapis.com api")
 	}
 
-	// CMEK encryption.
+	args := &pubsub.TopicArgs{
+		Name:   pulumi.String(spec.TopicName),
+		Labels: pulumi.ToStringMap(locals.GcpLabels),
+	}
+
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project.
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
+
+	// CMEK encryption. The Pub/Sub service agent must hold
+	// cloudkms.cryptoKeyEncrypterDecrypter on the key or publishes fail.
 	if spec.KmsKeyName != nil && spec.KmsKeyName.GetValue() != "" {
 		args.KmsKeyName = pulumi.StringPtr(spec.KmsKeyName.GetValue())
 	}
 
-	// Message retention.
+	// Topic-level message retention: independent of subscription
+	// retention, and the lever that lets any subscription seek back
+	// within the window.
 	if spec.MessageRetentionDuration != "" {
 		args.MessageRetentionDuration = pulumi.StringPtr(spec.MessageRetentionDuration)
 	}
 
-	// Message storage policy.
+	// Message storage policy: region pinning is enforced at publish
+	// time; enforce_in_transit additionally rejects publishes from
+	// non-allowed regions instead of rerouting them.
 	if spec.MessageStoragePolicy != nil && len(spec.MessageStoragePolicy.AllowedPersistenceRegions) > 0 {
 		policyArgs := &pubsub.TopicMessageStoragePolicyArgs{
 			AllowedPersistenceRegions: pulumi.ToStringArray(spec.MessageStoragePolicy.AllowedPersistenceRegions),
@@ -38,10 +66,11 @@ func topic(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error
 		args.MessageStoragePolicy = policyArgs
 	}
 
-	// Schema settings.
-	if spec.SchemaSettings != nil && spec.SchemaSettings.Schema != "" {
+	// Schema validation: the schema reference is resolved to the fully
+	// qualified projects/{p}/schemas/{name} path before the module runs.
+	if spec.SchemaSettings != nil && spec.SchemaSettings.Schema.GetValue() != "" {
 		schemaArgs := &pubsub.TopicSchemaSettingsArgs{
-			Schema: pulumi.String(spec.SchemaSettings.Schema),
+			Schema: pulumi.String(spec.SchemaSettings.Schema.GetValue()),
 		}
 		if spec.SchemaSettings.Encoding != "" {
 			schemaArgs.Encoding = pulumi.StringPtr(spec.SchemaSettings.Encoding)
@@ -60,7 +89,29 @@ func topic(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error
 		}
 	}
 
-	createdTopic, err := pubsub.NewTopic(ctx, "pubsub-topic", args, pulumi.Provider(gcpProvider))
+	// Ordered transform pipeline: transforms run in list order on every
+	// published message; a disabled transform keeps its position (the
+	// staging lever) without being applied.
+	if len(spec.MessageTransforms) > 0 {
+		transforms := pubsub.TopicMessageTransformArray{}
+		for _, transform := range spec.MessageTransforms {
+			transformArgs := &pubsub.TopicMessageTransformArgs{
+				JavascriptUdf: &pubsub.TopicMessageTransformJavascriptUdfArgs{
+					FunctionName: pulumi.String(transform.JavascriptUdf.FunctionName),
+					Code:         pulumi.String(transform.JavascriptUdf.Code),
+				},
+			}
+			if transform.Disabled {
+				transformArgs.Disabled = pulumi.BoolPtr(true)
+			}
+			transforms = append(transforms, transformArgs)
+		}
+		args.MessageTransforms = transforms
+	}
+
+	createdTopic, err := pubsub.NewTopic(ctx, "pubsub-topic", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdPubsubApi}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create pubsub topic")
 	}
@@ -75,13 +126,16 @@ func ingestionDataSourceSettings(ids *gcppubsubtopicv1.GcpPubSubTopicIngestionDa
 	result := &pubsub.TopicIngestionDataSourceSettingsArgs{}
 	hasContent := false
 
+	// All gcp_service_account references arrive resolved to literal
+	// emails (the FK resolver runs before the module).
+
 	// AWS Kinesis.
 	if ids.AwsKinesis != nil {
 		result.AwsKinesis = &pubsub.TopicIngestionDataSourceSettingsAwsKinesisArgs{
 			StreamArn:         pulumi.String(ids.AwsKinesis.StreamArn),
 			ConsumerArn:       pulumi.String(ids.AwsKinesis.ConsumerArn),
 			AwsRoleArn:        pulumi.String(ids.AwsKinesis.AwsRoleArn),
-			GcpServiceAccount: pulumi.String(ids.AwsKinesis.GcpServiceAccount),
+			GcpServiceAccount: pulumi.String(ids.AwsKinesis.GcpServiceAccount.GetValue()),
 		}
 		hasContent = true
 	}
@@ -92,7 +146,7 @@ func ingestionDataSourceSettings(ids *gcppubsubtopicv1.GcpPubSubTopicIngestionDa
 			ClusterArn:        pulumi.String(ids.AwsMsk.ClusterArn),
 			Topic:             pulumi.String(ids.AwsMsk.Topic),
 			AwsRoleArn:        pulumi.String(ids.AwsMsk.AwsRoleArn),
-			GcpServiceAccount: pulumi.String(ids.AwsMsk.GcpServiceAccount),
+			GcpServiceAccount: pulumi.String(ids.AwsMsk.GcpServiceAccount.GetValue()),
 		}
 		hasContent = true
 	}
@@ -118,8 +172,8 @@ func ingestionDataSourceSettings(ids *gcppubsubtopicv1.GcpPubSubTopicIngestionDa
 		if ids.AzureEventHubs.SubscriptionId != "" {
 			azArgs.SubscriptionId = pulumi.StringPtr(ids.AzureEventHubs.SubscriptionId)
 		}
-		if ids.AzureEventHubs.GcpServiceAccount != "" {
-			azArgs.GcpServiceAccount = pulumi.StringPtr(ids.AzureEventHubs.GcpServiceAccount)
+		if ids.AzureEventHubs.GcpServiceAccount.GetValue() != "" {
+			azArgs.GcpServiceAccount = pulumi.StringPtr(ids.AzureEventHubs.GcpServiceAccount.GetValue())
 		}
 		result.AzureEventHubs = azArgs
 		hasContent = true
@@ -160,7 +214,7 @@ func ingestionDataSourceSettings(ids *gcppubsubtopicv1.GcpPubSubTopicIngestionDa
 			BootstrapServer:   pulumi.String(ids.ConfluentCloud.BootstrapServer),
 			Topic:             pulumi.String(ids.ConfluentCloud.Topic),
 			IdentityPoolId:    pulumi.String(ids.ConfluentCloud.IdentityPoolId),
-			GcpServiceAccount: pulumi.String(ids.ConfluentCloud.GcpServiceAccount),
+			GcpServiceAccount: pulumi.String(ids.ConfluentCloud.GcpServiceAccount.GetValue()),
 		}
 		if ids.ConfluentCloud.ClusterId != "" {
 			ccArgs.ClusterId = pulumi.StringPtr(ids.ConfluentCloud.ClusterId)

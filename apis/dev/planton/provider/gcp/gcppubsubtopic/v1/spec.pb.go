@@ -89,9 +89,13 @@ func (x *GcpPubSubTopicMessageStoragePolicy) GetEnforceInTransit() bool {
 // published to the topic.
 type GcpPubSubTopicSchemaSettings struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The fully qualified name of the Pub/Sub schema that messages must conform to.
-	// Format: projects/{project}/schemas/{schema}
-	Schema string `protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`
+	// The Pub/Sub schema that published messages must conform to.
+	// Accepts a literal fully qualified path (projects/{project}/schemas/{schema})
+	// or a reference to a GcpPubSubSchema resource. If the schema is later
+	// deleted, the topic validates against the "_deleted-schema_" sentinel and
+	// publishes fail — destroy topics (or recreate them without validation)
+	// before destroying the schema they reference.
+	Schema *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`
 	// The encoding of messages validated against the schema.
 	// Valid values: "JSON" or "BINARY".
 	Encoding      string `protobuf:"bytes,2,opt,name=encoding,proto3" json:"encoding,omitempty"`
@@ -129,11 +133,11 @@ func (*GcpPubSubTopicSchemaSettings) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GcpPubSubTopicSchemaSettings) GetSchema() string {
+func (x *GcpPubSubTopicSchemaSettings) GetSchema() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Schema
 	}
-	return ""
+	return nil
 }
 
 func (x *GcpPubSubTopicSchemaSettings) GetEncoding() string {
@@ -154,7 +158,8 @@ type GcpPubSubTopicIngestionAwsKinesis struct {
 	// The ARN of the AWS IAM role used for cross-account access to the Kinesis stream.
 	AwsRoleArn string `protobuf:"bytes,3,opt,name=aws_role_arn,json=awsRoleArn,proto3" json:"aws_role_arn,omitempty"`
 	// The GCP service account used for Federated Identity authentication with AWS.
-	GcpServiceAccount string `protobuf:"bytes,4,opt,name=gcp_service_account,json=gcpServiceAccount,proto3" json:"gcp_service_account,omitempty"`
+	// Accepts a literal email or a reference to a GcpServiceAccount resource.
+	GcpServiceAccount *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=gcp_service_account,json=gcpServiceAccount,proto3" json:"gcp_service_account,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -210,11 +215,11 @@ func (x *GcpPubSubTopicIngestionAwsKinesis) GetAwsRoleArn() string {
 	return ""
 }
 
-func (x *GcpPubSubTopicIngestionAwsKinesis) GetGcpServiceAccount() string {
+func (x *GcpPubSubTopicIngestionAwsKinesis) GetGcpServiceAccount() *v1.StringValueOrRef {
 	if x != nil {
 		return x.GcpServiceAccount
 	}
-	return ""
+	return nil
 }
 
 // GcpPubSubTopicIngestionAwsMsk defines settings for ingesting data from
@@ -228,7 +233,8 @@ type GcpPubSubTopicIngestionAwsMsk struct {
 	// The ARN of the AWS IAM role used for cross-account access to the MSK cluster.
 	AwsRoleArn string `protobuf:"bytes,3,opt,name=aws_role_arn,json=awsRoleArn,proto3" json:"aws_role_arn,omitempty"`
 	// The GCP service account used for Federated Identity authentication with AWS.
-	GcpServiceAccount string `protobuf:"bytes,4,opt,name=gcp_service_account,json=gcpServiceAccount,proto3" json:"gcp_service_account,omitempty"`
+	// Accepts a literal email or a reference to a GcpServiceAccount resource.
+	GcpServiceAccount *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=gcp_service_account,json=gcpServiceAccount,proto3" json:"gcp_service_account,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -284,11 +290,11 @@ func (x *GcpPubSubTopicIngestionAwsMsk) GetAwsRoleArn() string {
 	return ""
 }
 
-func (x *GcpPubSubTopicIngestionAwsMsk) GetGcpServiceAccount() string {
+func (x *GcpPubSubTopicIngestionAwsMsk) GetGcpServiceAccount() *v1.StringValueOrRef {
 	if x != nil {
 		return x.GcpServiceAccount
 	}
-	return ""
+	return nil
 }
 
 // GcpPubSubTopicIngestionAzureEventHubs defines settings for ingesting data from
@@ -308,7 +314,8 @@ type GcpPubSubTopicIngestionAzureEventHubs struct {
 	// The Azure subscription ID.
 	SubscriptionId string `protobuf:"bytes,6,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
 	// The GCP service account used for Federated Identity authentication with Azure.
-	GcpServiceAccount string `protobuf:"bytes,7,opt,name=gcp_service_account,json=gcpServiceAccount,proto3" json:"gcp_service_account,omitempty"`
+	// Accepts a literal email or a reference to a GcpServiceAccount resource.
+	GcpServiceAccount *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=gcp_service_account,json=gcpServiceAccount,proto3" json:"gcp_service_account,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -385,11 +392,11 @@ func (x *GcpPubSubTopicIngestionAzureEventHubs) GetSubscriptionId() string {
 	return ""
 }
 
-func (x *GcpPubSubTopicIngestionAzureEventHubs) GetGcpServiceAccount() string {
+func (x *GcpPubSubTopicIngestionAzureEventHubs) GetGcpServiceAccount() *v1.StringValueOrRef {
 	if x != nil {
 		return x.GcpServiceAccount
 	}
-	return ""
+	return nil
 }
 
 // GcpPubSubTopicIngestionCloudStorageTextFormat defines the text format
@@ -631,8 +638,9 @@ type GcpPubSubTopicIngestionConfluentCloud struct {
 	// with Confluent Cloud.
 	IdentityPoolId string `protobuf:"bytes,3,opt,name=identity_pool_id,json=identityPoolId,proto3" json:"identity_pool_id,omitempty"`
 	// The GCP service account used for Federated Identity authentication
-	// with Confluent Cloud.
-	GcpServiceAccount string `protobuf:"bytes,4,opt,name=gcp_service_account,json=gcpServiceAccount,proto3" json:"gcp_service_account,omitempty"`
+	// with Confluent Cloud. Accepts a literal email or a reference to a
+	// GcpServiceAccount resource.
+	GcpServiceAccount *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=gcp_service_account,json=gcpServiceAccount,proto3" json:"gcp_service_account,omitempty"`
 	// The Confluent Cloud cluster ID. Optional.
 	ClusterId     string `protobuf:"bytes,5,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -690,11 +698,11 @@ func (x *GcpPubSubTopicIngestionConfluentCloud) GetIdentityPoolId() string {
 	return ""
 }
 
-func (x *GcpPubSubTopicIngestionConfluentCloud) GetGcpServiceAccount() string {
+func (x *GcpPubSubTopicIngestionConfluentCloud) GetGcpServiceAccount() *v1.StringValueOrRef {
 	if x != nil {
 		return x.GcpServiceAccount
 	}
-	return ""
+	return nil
 }
 
 func (x *GcpPubSubTopicIngestionConfluentCloud) GetClusterId() string {
@@ -854,6 +862,127 @@ func (x *GcpPubSubTopicIngestionDataSourceSettings) GetPlatformLogsSettings() *G
 	return nil
 }
 
+// GcpPubSubTopicMessageTransformJavascriptUdf defines a JavaScript
+// user-defined function transform. The function receives each message
+// (data + attributes) and returns the transformed message, or null/undefined
+// to filter the message out entirely.
+type GcpPubSubTopicMessageTransformJavascriptUdf struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the JavaScript function to invoke from the code below.
+	// Must be unique across all transforms on the resource.
+	FunctionName string `protobuf:"bytes,1,opt,name=function_name,json=functionName,proto3" json:"function_name,omitempty"`
+	// The JavaScript source code defining the function. The function
+	// signature is (message, metadata) => message; return null or undefined
+	// to drop the message.
+	Code          string `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpPubSubTopicMessageTransformJavascriptUdf) Reset() {
+	*x = GcpPubSubTopicMessageTransformJavascriptUdf{}
+	mi := &file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpPubSubTopicMessageTransformJavascriptUdf) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpPubSubTopicMessageTransformJavascriptUdf) ProtoMessage() {}
+
+func (x *GcpPubSubTopicMessageTransformJavascriptUdf) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpPubSubTopicMessageTransformJavascriptUdf.ProtoReflect.Descriptor instead.
+func (*GcpPubSubTopicMessageTransformJavascriptUdf) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GcpPubSubTopicMessageTransformJavascriptUdf) GetFunctionName() string {
+	if x != nil {
+		return x.FunctionName
+	}
+	return ""
+}
+
+func (x *GcpPubSubTopicMessageTransformJavascriptUdf) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+// GcpPubSubTopicMessageTransform is one step in the topic's ordered
+// transform pipeline, applied to every published message before it is
+// stored. Use transforms to redact fields, normalize payloads, or filter
+// messages at the topic boundary instead of in every subscriber.
+type GcpPubSubTopicMessageTransform struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A JavaScript user-defined function transform.
+	JavascriptUdf *GcpPubSubTopicMessageTransformJavascriptUdf `protobuf:"bytes,1,opt,name=javascript_udf,json=javascriptUdf,proto3" json:"javascript_udf,omitempty"`
+	// When true, this transform is kept in the pipeline definition but not
+	// applied — the staging lever for rolling a transform in or out without
+	// losing its position in the ordered list.
+	Disabled      bool `protobuf:"varint,2,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpPubSubTopicMessageTransform) Reset() {
+	*x = GcpPubSubTopicMessageTransform{}
+	mi := &file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpPubSubTopicMessageTransform) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpPubSubTopicMessageTransform) ProtoMessage() {}
+
+func (x *GcpPubSubTopicMessageTransform) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpPubSubTopicMessageTransform.ProtoReflect.Descriptor instead.
+func (*GcpPubSubTopicMessageTransform) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GcpPubSubTopicMessageTransform) GetJavascriptUdf() *GcpPubSubTopicMessageTransformJavascriptUdf {
+	if x != nil {
+		return x.JavascriptUdf
+	}
+	return nil
+}
+
+func (x *GcpPubSubTopicMessageTransform) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
 // GcpPubSubTopicSpec defines the configuration for a GCP Pub/Sub topic.
 //
 // A topic is a named resource to which messages are sent by publishers and
@@ -877,11 +1006,14 @@ func (x *GcpPubSubTopicIngestionDataSourceSettings) GetPlatformLogsSettings() *G
 type GcpPubSubTopicSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the topic will be created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the Pub/Sub topic.
 	// Must be 3-255 characters, start with a letter, and contain only letters,
-	// numbers, hyphens, underscores, periods, tildes, plus signs, and percent signs.
-	// Immutable after creation.
+	// numbers, hyphens, underscores, periods, tildes, plus signs, and percent
+	// signs. Names beginning with "goog" are reserved by Google and rejected
+	// at create time. Immutable after creation.
 	TopicName string `protobuf:"bytes,2,opt,name=topic_name,json=topicName,proto3" json:"topic_name,omitempty"`
 	// Cloud KMS key for encrypting messages at rest (CMEK).
 	// Format: projects/{project}/locations/{location}/keyRings/{keyRing}/cryptoKeys/{key}
@@ -906,13 +1038,22 @@ type GcpPubSubTopicSpec struct {
 	// Supports AWS Kinesis, AWS MSK, Azure Event Hubs, Cloud Storage, and
 	// Confluent Cloud. Typically one data source is configured per topic.
 	IngestionDataSourceSettings *GcpPubSubTopicIngestionDataSourceSettings `protobuf:"bytes,7,opt,name=ingestion_data_source_settings,json=ingestionDataSourceSettings,proto3" json:"ingestion_data_source_settings,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// User-defined labels attached to the topic, for cost attribution and
+	// fleet queries. Merged with Planton's platform labels (which win on
+	// key conflicts).
+	Labels map[string]string `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Ordered pipeline of transforms applied to every published message
+	// before it is stored — redact, normalize, or filter at the topic
+	// boundary instead of in every subscriber. Transforms run in list
+	// order; a transform returning null drops the message.
+	MessageTransforms []*GcpPubSubTopicMessageTransform `protobuf:"bytes,9,rep,name=message_transforms,json=messageTransforms,proto3" json:"message_transforms,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GcpPubSubTopicSpec) Reset() {
 	*x = GcpPubSubTopicSpec{}
-	mi := &file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -924,7 +1065,7 @@ func (x *GcpPubSubTopicSpec) String() string {
 func (*GcpPubSubTopicSpec) ProtoMessage() {}
 
 func (x *GcpPubSubTopicSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -937,7 +1078,7 @@ func (x *GcpPubSubTopicSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpPubSubTopicSpec.ProtoReflect.Descriptor instead.
 func (*GcpPubSubTopicSpec) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GcpPubSubTopicSpec) GetProjectId() *v1.StringValueOrRef {
@@ -989,6 +1130,20 @@ func (x *GcpPubSubTopicSpec) GetIngestionDataSourceSettings() *GcpPubSubTopicIng
 	return nil
 }
 
+func (x *GcpPubSubTopicSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpPubSubTopicSpec) GetMessageTransforms() []*GcpPubSubTopicMessageTransform {
+	if x != nil {
+		return x.MessageTransforms
+	}
+	return nil
+}
+
 var File_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
@@ -996,37 +1151,37 @@ const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
 	"5dev/planton/provider/gcp/gcppubsubtopic/v1/spec.proto\x12*dev.planton.provider.gcp.gcppubsubtopic.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9c\x01\n" +
 	"\"GcpPubSubTopicMessageStoragePolicy\x12H\n" +
 	"\x1ballowed_persistence_regions\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x19allowedPersistenceRegions\x12,\n" +
-	"\x12enforce_in_transit\x18\x02 \x01(\bR\x10enforceInTransit\"\xbd\x01\n" +
-	"\x1cGcpPubSubTopicSchemaSettings\x12\x1e\n" +
-	"\x06schema\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06schema\x12}\n" +
+	"\x12enforce_in_transit\x18\x02 \x01(\bR\x10enforceInTransit\"\x92\x02\n" +
+	"\x1cGcpPubSubTopicSchemaSettings\x12s\n" +
+	"\x06schema\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x98\x05\x92\xd4a\x18status.outputs.schema_idR\x06schema\x12}\n" +
 	"\bencoding\x18\x02 \x01(\tBa\xbaH^\xba\x01[\n" +
-	"\x0evalid_encoding\x12\x1fencoding must be JSON or BINARY\x1a(this == '' || this in ['JSON', 'BINARY']R\bencoding\"\xd7\x01\n" +
+	"\x0evalid_encoding\x12\x1fencoding must be JSON or BINARY\x1a(this == '' || this in ['JSON', 'BINARY']R\bencoding\"\xa9\x02\n" +
 	"!GcpPubSubTopicIngestionAwsKinesis\x12%\n" +
 	"\n" +
 	"stream_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tstreamArn\x12)\n" +
 	"\fconsumer_arn\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vconsumerArn\x12(\n" +
 	"\faws_role_arn\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"awsRoleArn\x126\n" +
-	"\x13gcp_service_account\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11gcpServiceAccount\"\xc8\x01\n" +
+	"awsRoleArn\x12\x87\x01\n" +
+	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"\x9a\x02\n" +
 	"\x1dGcpPubSubTopicIngestionAwsMsk\x12'\n" +
 	"\vcluster_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"clusterArn\x12\x1c\n" +
 	"\x05topic\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05topic\x12(\n" +
 	"\faws_role_arn\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"awsRoleArn\x126\n" +
-	"\x13gcp_service_account\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11gcpServiceAccount\"\x9c\x02\n" +
+	"awsRoleArn\x12\x87\x01\n" +
+	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"\xf0\x02\n" +
 	"%GcpPubSubTopicIngestionAzureEventHubs\x12%\n" +
 	"\x0eresource_group\x18\x01 \x01(\tR\rresourceGroup\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x1b\n" +
 	"\tevent_hub\x18\x03 \x01(\tR\beventHub\x12\x1b\n" +
 	"\tclient_id\x18\x04 \x01(\tR\bclientId\x12\x1b\n" +
 	"\ttenant_id\x18\x05 \x01(\tR\btenantId\x12'\n" +
-	"\x0fsubscription_id\x18\x06 \x01(\tR\x0esubscriptionId\x12.\n" +
-	"\x13gcp_service_account\x18\a \x01(\tR\x11gcpServiceAccount\"M\n" +
+	"\x0fsubscription_id\x18\x06 \x01(\tR\x0esubscriptionId\x12\x81\x01\n" +
+	"\x13gcp_service_account\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"M\n" +
 	"-GcpPubSubTopicIngestionCloudStorageTextFormat\x12\x1c\n" +
 	"\tdelimiter\x18\x01 \x01(\tR\tdelimiter\"/\n" +
 	"-GcpPubSubTopicIngestionCloudStorageAvroFormat\"5\n" +
-	"3GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat\"\xfe\x04\n" +
+	"3GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat\"\x81\a\n" +
 	"#GcpPubSubTopicIngestionCloudStorage\x12s\n" +
 	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x1d\n" +
 	"\n" +
@@ -1036,12 +1191,13 @@ const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
 	"avroFormat\x12\x8d\x01\n" +
 	"\x12pubsub_avro_format\x18\x05 \x01(\v2_.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStoragePubsubAvroFormatR\x10pubsubAvroFormat\x12z\n" +
 	"\vtext_format\x18\x06 \x01(\v2Y.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorageTextFormatR\n" +
-	"textFormat\"\x81\x02\n" +
+	"textFormat:\x80\x02\xbaH\xfc\x01\x1a\xf9\x01\n" +
+	"\x18exactly_one_input_format\x12lchoose exactly one input format for Cloud Storage ingestion: avro_format, pubsub_avro_format, or text_format\x1ao(has(this.avro_format) ? 1 : 0) + (has(this.pubsub_avro_format) ? 1 : 0) + (has(this.text_format) ? 1 : 0) == 1\"\xd3\x02\n" +
 	"%GcpPubSubTopicIngestionConfluentCloud\x121\n" +
 	"\x10bootstrap_server\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fbootstrapServer\x12\x1c\n" +
 	"\x05topic\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05topic\x120\n" +
-	"\x10identity_pool_id\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0eidentityPoolId\x126\n" +
-	"\x13gcp_service_account\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11gcpServiceAccount\x12\x1d\n" +
+	"\x10identity_pool_id\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0eidentityPoolId\x12\x87\x01\n" +
+	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\x12\x1d\n" +
 	"\n" +
 	"cluster_id\x18\x05 \x01(\tR\tclusterId\"\xee\x01\n" +
 	"+GcpPubSubTopicIngestionPlatformLogsSettings\x12\xbe\x01\n" +
@@ -1054,18 +1210,30 @@ const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
 	"\x10azure_event_hubs\x18\x03 \x01(\v2Q.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAzureEventHubsR\x0eazureEventHubs\x12t\n" +
 	"\rcloud_storage\x18\x04 \x01(\v2O.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorageR\fcloudStorage\x12z\n" +
 	"\x0fconfluent_cloud\x18\x05 \x01(\v2Q.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionConfluentCloudR\x0econfluentCloud\x12\x8d\x01\n" +
-	"\x16platform_logs_settings\x18\x06 \x01(\v2W.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionPlatformLogsSettingsR\x14platformLogsSettings\"\xaa\x06\n" +
-	"\x12GcpPubSubTopicSpec\x12{\n" +
+	"\x16platform_logs_settings\x18\x06 \x01(\v2W.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionPlatformLogsSettingsR\x14platformLogsSettings\"v\n" +
+	"+GcpPubSubTopicMessageTransformJavascriptUdf\x12+\n" +
+	"\rfunction_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ffunctionName\x12\x1a\n" +
+	"\x04code\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04code\"\xc5\x01\n" +
+	"\x1eGcpPubSubTopicMessageTransform\x12\x86\x01\n" +
+	"\x0ejavascript_udf\x18\x01 \x01(\v2W.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageTransformJavascriptUdfB\x06\xbaH\x03\xc8\x01\x01R\rjavascriptUdf\x12\x1a\n" +
+	"\bdisabled\x18\x02 \x01(\bR\bdisabled\"\xcf\t\n" +
+	"\x12GcpPubSubTopicSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12L\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xdc\x01\n" +
 	"\n" +
-	"topic_name\x18\x02 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x03\x18\xff\x012\x1e^[a-zA-Z][a-zA-Z0-9\\-_\\.~+%]*$R\ttopicName\x12t\n" +
+	"topic_name\x18\x02 \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\x8a\x01\n" +
+	"\x18topic_name_goog_reserved\x12Ttopic names beginning with 'goog' are reserved by Google — choose a different name\x1a\x18!this.startsWith('goog')\xc8\x01\x01r%\x10\x03\x18\xff\x012\x1e^[a-zA-Z][a-zA-Z0-9\\-_\\.~+%]*$R\ttopicName\x12t\n" +
 	"\fkms_key_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12<\n" +
 	"\x1amessage_retention_duration\x18\x04 \x01(\tR\x18messageRetentionDuration\x12\x84\x01\n" +
 	"\x16message_storage_policy\x18\x05 \x01(\v2N.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageStoragePolicyR\x14messageStoragePolicy\x12q\n" +
 	"\x0fschema_settings\x18\x06 \x01(\v2H.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSchemaSettingsR\x0eschemaSettings\x12\x9a\x01\n" +
-	"\x1eingestion_data_source_settings\x18\a \x01(\v2U.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettingsR\x1bingestionDataSourceSettingsB\xe9\x02\n" +
+	"\x1eingestion_data_source_settings\x18\a \x01(\v2U.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettingsR\x1bingestionDataSourceSettings\x12b\n" +
+	"\x06labels\x18\b \x03(\v2J.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.LabelsEntryR\x06labels\x12y\n" +
+	"\x12message_transforms\x18\t \x03(\v2J.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageTransformR\x11messageTransforms\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xe9\x02\n" +
 	".com.dev.planton.provider.gcp.gcppubsubtopic.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubtopic/v1;gcppubsubtopicv1\xa2\x02\x05DPPGG\xaa\x02*Dev.Planton.Provider.Gcp.Gcppubsubtopic.V1\xca\x02*Dev\\Planton\\Provider\\Gcp\\Gcppubsubtopic\\V1\xe2\x026Dev\\Planton\\Provider\\Gcp\\Gcppubsubtopic\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Gcp::Gcppubsubtopic::V1b\x06proto3"
 
 var (
@@ -1080,7 +1248,7 @@ func file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDescGZIP() []
 	return file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_goTypes = []any{
 	(*GcpPubSubTopicMessageStoragePolicy)(nil),                  // 0: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageStoragePolicy
 	(*GcpPubSubTopicSchemaSettings)(nil),                        // 1: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSchemaSettings
@@ -1094,30 +1262,41 @@ var file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_goTypes = []any{
 	(*GcpPubSubTopicIngestionConfluentCloud)(nil),               // 9: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionConfluentCloud
 	(*GcpPubSubTopicIngestionPlatformLogsSettings)(nil),         // 10: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionPlatformLogsSettings
 	(*GcpPubSubTopicIngestionDataSourceSettings)(nil),           // 11: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings
-	(*GcpPubSubTopicSpec)(nil),                                  // 12: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec
-	(*v1.StringValueOrRef)(nil),                                 // 13: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpPubSubTopicMessageTransformJavascriptUdf)(nil),         // 12: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageTransformJavascriptUdf
+	(*GcpPubSubTopicMessageTransform)(nil),                      // 13: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageTransform
+	(*GcpPubSubTopicSpec)(nil),                                  // 14: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec
+	nil,                                                         // 15: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                                 // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_depIdxs = []int32{
-	13, // 0: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 1: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage.avro_format:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorageAvroFormat
-	7,  // 2: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage.pubsub_avro_format:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat
-	5,  // 3: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage.text_format:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorageTextFormat
-	2,  // 4: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.aws_kinesis:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAwsKinesis
-	3,  // 5: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.aws_msk:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAwsMsk
-	4,  // 6: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.azure_event_hubs:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAzureEventHubs
-	8,  // 7: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.cloud_storage:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage
-	9,  // 8: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.confluent_cloud:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionConfluentCloud
-	10, // 9: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.platform_logs_settings:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionPlatformLogsSettings
-	13, // 10: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 11: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 12: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.message_storage_policy:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageStoragePolicy
-	1,  // 13: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.schema_settings:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSchemaSettings
-	11, // 14: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.ingestion_data_source_settings:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	16, // 0: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSchemaSettings.schema:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 1: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAwsKinesis.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 2: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAwsMsk.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 3: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAzureEventHubs.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 4: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 5: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage.avro_format:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorageAvroFormat
+	7,  // 6: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage.pubsub_avro_format:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat
+	5,  // 7: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage.text_format:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorageTextFormat
+	16, // 8: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionConfluentCloud.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 9: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.aws_kinesis:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAwsKinesis
+	3,  // 10: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.aws_msk:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAwsMsk
+	4,  // 11: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.azure_event_hubs:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionAzureEventHubs
+	8,  // 12: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.cloud_storage:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionCloudStorage
+	9,  // 13: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.confluent_cloud:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionConfluentCloud
+	10, // 14: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings.platform_logs_settings:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionPlatformLogsSettings
+	12, // 15: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageTransform.javascript_udf:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageTransformJavascriptUdf
+	16, // 16: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 17: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 18: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.message_storage_policy:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageStoragePolicy
+	1,  // 19: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.schema_settings:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSchemaSettings
+	11, // 20: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.ingestion_data_source_settings:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicIngestionDataSourceSettings
+	15, // 21: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.labels:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.LabelsEntry
+	13, // 22: dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicSpec.message_transforms:type_name -> dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageTransform
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_init() }
@@ -1131,7 +1310,7 @@ func file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

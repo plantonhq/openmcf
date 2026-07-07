@@ -28,4 +28,10 @@ message GcpBigQueryTableStackOutputs {
 
   // The creation time of the table in milliseconds since epoch.
   int64 creation_time = 7;
+
+  // The dotted fully qualified table name: {project}.{dataset}.{table}.
+  // Pre-assembled so consumers that address tables in SQL-style dotted
+  // form (Pub/Sub BigQuery delivery, query tooling) can reference the
+  // table without string assembly.
+  string qualified_name = 8;
 }

@@ -1013,11 +1013,16 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcppst"
+    // The schema is optional in the spec, but schema-validated topics are
+    // the composition the kind is designed around — installing the schema
+    // first lets the topic's schema reference resolve.
+    prerequisites: [GcpPubSubSchema]
   }];
   GcpPubSubSubscription = 661 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcppss"
+    prerequisites: [GcpPubSubTopic]
   }];
   GcpCloudTasksQueue = 662 [(kind_meta) = {
     provider: gcp
@@ -1028,6 +1033,11 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpcsj"
+  }];
+  GcpPubSubSchema = 664 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcppsch"
   }];
   GcpVertexAiNotebook = 670 [(kind_meta) = {
     provider: gcp

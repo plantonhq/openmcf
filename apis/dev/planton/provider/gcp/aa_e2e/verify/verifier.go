@@ -28,6 +28,7 @@ import (
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/networkconnectivity/v1"
+	pubsub "google.golang.org/api/pubsub/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
 	"google.golang.org/api/spanner/v1"
@@ -61,6 +62,7 @@ type Services struct {
 	Firestore           *firestore.Service
 	Dataproc            *dataproc.Service
 	Composer            *composer.Service
+	PubSub              *pubsub.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -138,6 +140,9 @@ var verifiers = map[string]Verifier{
 	"gcpcloudcomposerenvironment":            &composerEnvironmentVerifier{},
 	"gcpcloudcomposeruserworkloadssecret":    &composerUserWorkloadsSecretVerifier{},
 	"gcpcloudcomposeruserworkloadsconfigmap": &composerUserWorkloadsConfigMapVerifier{},
+	"gcppubsubschema":                        &pubSubSchemaVerifier{},
+	"gcppubsubtopic":                         &pubSubTopicVerifier{},
+	"gcppubsubsubscription":                  &pubSubSubscriptionVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

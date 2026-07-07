@@ -339,6 +339,17 @@ Serverless VPC Access connectors are slow: budget **≥15m per connector scenari
 (CREATING → READY is typically 5-10 minutes). Cloud Functions Gen 2 deploys
 (including Cloud Build) need **≥20m per scenario**.
 
+**One manifest per prerequisite kind — scenarios needing TWO instances of the
+same kind cannot express the second live.** The dependency resolver installs
+each prerequisite kind from exactly one manifest (consumer-scoped override,
+else the published profile, else the minimal scenario), so a scenario that
+composes two instances of one kind — e.g. a Pub/Sub subscription whose parent
+topic AND dead-letter topic are distinct topics — can only resolve the first
+by reference. Prove the second-instance arm with the offline converter plan
+(the reference-resolution mechanism is identical to the live-proven first
+instance) and record the exclusion, rather than pointing both references at
+one instance (semantically wrong) or hand-rolling a second install path.
+
 **Reservation-window resources need consumer-unique prerequisite names:**
 `${E2E_RUN_ID}` makes cloud-side names unique per run — but two scenario
 chains in the SAME run that install the same prerequisite profile still

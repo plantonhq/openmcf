@@ -534,6 +534,33 @@ func TestGcpCloudComposerUserWorkloadsConfigMap_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpcloudcomposeruserworkloadsconfigmap", "terraform")
 }
 
+// --- GCP Pub/Sub Schema (the message contract topics attach by reference) ---
+
+func TestGcpPubSubSchema_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcppubsubschema", "pulumi")
+}
+func TestGcpPubSubSchema_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcppubsubschema", "terraform")
+}
+
+// --- GCP Pub/Sub Topic (minimal + schema-validated on the schema prerequisite) ---
+
+func TestGcpPubSubTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcppubsubtopic", "pulumi")
+}
+func TestGcpPubSubTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcppubsubtopic", "terraform")
+}
+
+// --- GCP Pub/Sub Subscription (composed: schema -> topic -> subscription chain) ---
+
+func TestGcpPubSubSubscription_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcppubsubsubscription", "pulumi")
+}
+func TestGcpPubSubSubscription_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcppubsubsubscription", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

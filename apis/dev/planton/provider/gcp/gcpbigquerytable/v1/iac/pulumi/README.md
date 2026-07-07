@@ -28,6 +28,7 @@ Makefile        -- Build, preview, up, destroy targets
 | `type` | TABLE, VIEW, MATERIALIZED_VIEW, or EXTERNAL |
 | `location` | Table location (inherited from the dataset) |
 | `creation_time` | Creation timestamp (milliseconds since epoch) |
+| `qualified_name` | Dotted `{project}.{dataset}.{table}` handle (what Pub/Sub BigQuery delivery consumes) |
 
 ## Local Development
 

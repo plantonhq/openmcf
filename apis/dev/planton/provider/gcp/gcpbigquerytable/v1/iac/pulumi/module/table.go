@@ -258,6 +258,12 @@ func table(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error
 	ctx.Export(OpType, createdTable.Type)
 	ctx.Export(OpLocation, createdTable.Location)
 	ctx.Export(OpCreationTime, createdTable.CreationTime)
+	// The dotted {project}.{dataset}.{table} handle, pre-assembled from the
+	// created resource's attributes (correct under the ambient-project
+	// fallback) so consumers that address tables in SQL-style dotted form
+	// (Pub/Sub BigQuery delivery, query tooling) never do string assembly.
+	ctx.Export(OpQualifiedName, pulumi.Sprintf("%s.%s.%s",
+		createdTable.Project, createdTable.DatasetId, createdTable.TableId))
 
 	return nil
 }

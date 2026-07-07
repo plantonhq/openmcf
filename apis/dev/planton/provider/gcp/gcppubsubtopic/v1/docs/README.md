@@ -105,18 +105,21 @@ the topic (and all its subscriptions):
 - `message_storage_policy` -- regional constraints
 - `schema_settings` -- schema validation (changing may break existing publishers)
 - `ingestion_data_source_settings` -- ingestion configuration
-- `labels` -- managed by Planton framework
+- `message_transforms` -- the ordered JavaScript UDF pipeline
+- `labels` -- user labels merged beneath the platform attribution labels
 
 ### Labels Support
 
-Pub/Sub topics support GCP labels. The Planton framework applies standard labels:
+Pub/Sub topics support GCP labels. User labels from `spec.labels` are merged
+beneath the platform attribution labels (which win on key conflicts),
+identically on both engines:
 
-- `planton-resource: true`
-- `planton-resource-name: <topic_name>`
-- `planton-resource-kind: gcppubsubtopic`
-- `planton-organization: <metadata.org>` (if set)
-- `planton-environment: <metadata.env>` (if set)
-- `planton-resource-id: <metadata.id>` (if set)
+- `planton-ai_resource: true`
+- `planton-ai_name: <topic_name>`
+- `planton-ai_kind: gcppubsubtopic`
+- `planton-ai_organization: <metadata.org>` (if set)
+- `planton-ai_environment: <metadata.env>` (if set)
+- `planton-ai_id: <metadata.id>` (if set)
 
 ### Topic Name Constraints
 
@@ -404,16 +407,17 @@ GcpProject -> GcpKmsKeyRing -> GcpKmsKey -> GcpPubSubTopic (CMEK) -> Subscriptio
 
 | Feature | Reason |
 |---------|--------|
-| `message_transforms` | Message transformation pipelines. Advanced feature, evolving API. |
+| `tags` (resource-manager tags) | Absent from the released `google ~> 6.x` line (unreleased-line only); revisit when the catalog's provider line carries it. |
+| `message_transforms.ai_inference` | The Vertex AI transform arm is absent from the released `google ~> 6.x` line; only the JavaScript UDF arm is released and modeled. |
+| `schema_settings.first_revision_id`/`last_revision_id` | Revision pinning is absent from the released `google ~> 6.x` line; topics validate against all available schema revisions. |
+| `deletion_policy` | Client-side lever that conflicts with Planton-managed destroy (catalog-wide skip; also absent from the released 6.x line). |
 | Subscriptions | Separate lifecycle; modeled as GcpPubSubSubscription. |
 | Dead-letter topics | Configured on subscriptions, not topics. |
 | Ordering keys | Application-level concern set per-message, not per-topic. |
-| Resource tags | GCP resource tags (different from labels). Not widely adopted. |
-| IAM policy bindings | Topic-level IAM is typically project-scoped. Add if demand materializes. |
+| IAM trios (`google_pubsub_topic_iam_*`) | Resource-scoped IAM stays out pending concrete pull; the additive project-level grant (GcpProjectIamMember) covers the real cases. |
+| Pub/Sub Lite resources | A retired-by-Google product class. |
 | Snapshots | Operational concern, not infrastructure provisioning. |
 | Seek operations | Operational concern, not infrastructure provisioning. |
-
-These can be added in future versions if demand materializes.
 
 ## Best Practices
 

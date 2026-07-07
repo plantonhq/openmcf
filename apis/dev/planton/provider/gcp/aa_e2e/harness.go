@@ -40,6 +40,7 @@ import (
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/networkconnectivity/v1"
+	pubsub "google.golang.org/api/pubsub/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
 	"google.golang.org/api/spanner/v1"
@@ -163,6 +164,10 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create composer client")
 	}
+	pubsubService, err := pubsub.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create pubsub client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -200,6 +205,7 @@ func (h *Harness) Setup(ctx context.Context) error {
 		Firestore:           firestoreService,
 		Dataproc:            dataprocService,
 		Composer:            composerService,
+		PubSub:              pubsubService,
 		RestClient:          restClient,
 	}
 	return nil

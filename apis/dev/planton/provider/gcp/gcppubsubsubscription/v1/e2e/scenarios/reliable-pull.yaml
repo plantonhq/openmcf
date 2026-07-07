@@ -1,0 +1,37 @@
+# GcpPubSubSubscription scenario: the production-reliability levers on
+# one subscription — extended ack deadline, deep retention with acked
+# messages kept, exactly-once delivery, backoff retries, and the
+# never-expire sentinel. Exercises every delivery-neutral knob live.
+# (Dead-lettering needs a SECOND topic instance, which the one-manifest-
+# per-prerequisite-kind install model cannot express — the DLQ arm is
+# proven by the offline converter plan instead.)
+apiVersion: gcp.planton.dev/v1
+kind: GcpPubSubSubscription
+metadata:
+  name: planton-oss-e2e-gcppss-reliable
+  id: planton-oss-e2e-gcppss-reliable
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcppubsubsubscription
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  subscriptionName: e2e-pss-reliable-${E2E_RUN_ID}
+  topic:
+    valueFrom:
+      kind: GcpPubSubTopic
+      name: planton-oss-e2e-gcppst-prereq
+      fieldPath: status.outputs.topic_id
+  ackDeadlineSeconds: 60
+  messageRetentionDuration: "1209600s"
+  retainAckedMessages: true
+  enableExactlyOnceDelivery: true
+  retryPolicy:
+    minimumBackoff: "30s"
+    maximumBackoff: "300s"
+  expirationPolicy:
+    ttl: ""

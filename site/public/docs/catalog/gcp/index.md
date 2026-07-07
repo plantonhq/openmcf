@@ -56,6 +56,7 @@ The following GCP resources can be deployed using Planton:
 - [Memorystore Instance](/docs/catalog/gcp/memorystore-instance)
 - [Project](/docs/catalog/gcp/project)
 - [Project IAM Member](/docs/catalog/gcp/project-iam-member)
+- [Pub/Sub Schema](/docs/catalog/gcp/pubsub-schema)
 - [Pub/Sub Subscription](/docs/catalog/gcp/pubsub-subscription)
 - [Pub/Sub Topic](/docs/catalog/gcp/pubsub-topic)
 - [Redis Instance](/docs/catalog/gcp/redis-instance)

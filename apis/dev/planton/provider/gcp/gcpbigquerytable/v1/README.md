@@ -75,6 +75,7 @@ and external GCS tables.
 | `type` | `TABLE`, `VIEW`, `MATERIALIZED_VIEW`, or `EXTERNAL` |
 | `location` | Geographic location (inherited from dataset) |
 | `creation_time` | Creation time in milliseconds since epoch |
+| `qualified_name` | Dotted `{project}.{dataset}.{table}` handle (what Pub/Sub BigQuery delivery and query tooling consume) |
 
 ## Related Components
 

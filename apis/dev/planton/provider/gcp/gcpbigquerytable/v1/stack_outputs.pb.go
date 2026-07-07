@@ -41,7 +41,12 @@ type GcpBigQueryTableStackOutputs struct {
 	// Geographic location of the table (inherited from the dataset).
 	Location string `protobuf:"bytes,6,opt,name=location,proto3" json:"location,omitempty"`
 	// The creation time of the table in milliseconds since epoch.
-	CreationTime  int64 `protobuf:"varint,7,opt,name=creation_time,json=creationTime,proto3" json:"creation_time,omitempty"`
+	CreationTime int64 `protobuf:"varint,7,opt,name=creation_time,json=creationTime,proto3" json:"creation_time,omitempty"`
+	// The dotted fully qualified table name: {project}.{dataset}.{table}.
+	// Pre-assembled so consumers that address tables in SQL-style dotted
+	// form (Pub/Sub BigQuery delivery, query tooling) can reference the
+	// table without string assembly.
+	QualifiedName string `protobuf:"bytes,8,opt,name=qualified_name,json=qualifiedName,proto3" json:"qualified_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -125,11 +130,18 @@ func (x *GcpBigQueryTableStackOutputs) GetCreationTime() int64 {
 	return 0
 }
 
+func (x *GcpBigQueryTableStackOutputs) GetQualifiedName() string {
+	if x != nil {
+		return x.QualifiedName
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpbigquerytable_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpbigquerytable_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/gcp/gcpbigquerytable/v1/stack_outputs.proto\x12,dev.planton.provider.gcp.gcpbigquerytable.v1\"\xe4\x01\n" +
+	"@dev/planton/provider/gcp/gcpbigquerytable/v1/stack_outputs.proto\x12,dev.planton.provider.gcp.gcpbigquerytable.v1\"\x8b\x02\n" +
 	"\x1cGcpBigQueryTableStackOutputs\x12\x19\n" +
 	"\btable_id\x18\x01 \x01(\tR\atableId\x12\x1b\n" +
 	"\tself_link\x18\x02 \x01(\tR\bselfLink\x12\x18\n" +
@@ -138,7 +150,8 @@ const file_dev_planton_provider_gcp_gcpbigquerytable_v1_stack_outputs_proto_rawD
 	"dataset_id\x18\x04 \x01(\tR\tdatasetId\x12\x12\n" +
 	"\x04type\x18\x05 \x01(\tR\x04type\x12\x1a\n" +
 	"\blocation\x18\x06 \x01(\tR\blocation\x12#\n" +
-	"\rcreation_time\x18\a \x01(\x03R\fcreationTimeB\xff\x02\n" +
+	"\rcreation_time\x18\a \x01(\x03R\fcreationTime\x12%\n" +
+	"\x0equalified_name\x18\b \x01(\tR\rqualifiedNameB\xff\x02\n" +
 	"0com.dev.planton.provider.gcp.gcpbigquerytable.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigquerytable/v1;gcpbigquerytablev1\xa2\x02\x05DPPGG\xaa\x02,Dev.Planton.Provider.Gcp.Gcpbigquerytable.V1\xca\x02,Dev\\Planton\\Provider\\Gcp\\Gcpbigquerytable\\V1\xe2\x028Dev\\Planton\\Provider\\Gcp\\Gcpbigquerytable\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Gcp::Gcpbigquerytable::V1b\x06proto3"
 
 var (

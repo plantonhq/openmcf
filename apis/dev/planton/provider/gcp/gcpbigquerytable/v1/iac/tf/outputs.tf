@@ -34,3 +34,12 @@ output "creation_time" {
   description = "The creation time of the table in milliseconds since epoch"
   value       = google_bigquery_table.this.creation_time
 }
+
+# The dotted {project}.{dataset}.{table} handle, pre-assembled from the
+# created resource's attributes (correct under the ambient-project fallback)
+# so consumers that address tables in SQL-style dotted form (Pub/Sub
+# BigQuery delivery, query tooling) never do string assembly.
+output "qualified_name" {
+  description = "The dotted fully qualified table name ({project}.{dataset}.{table})"
+  value       = "${google_bigquery_table.this.project}.${google_bigquery_table.this.dataset_id}.${google_bigquery_table.this.table_id}"
+}

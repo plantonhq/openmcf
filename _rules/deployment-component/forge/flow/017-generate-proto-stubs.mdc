@@ -41,6 +41,17 @@ SEQUENTIAL STEPS
    - Run: `make protos` from project root
    - This command generates stubs for Go, Java, and TypeScript from proto files
    - May take 30-60 seconds to complete
+   - TRANSIENT FAILURE MODE — `Failure: deadline_exceeded: context deadline
+     exceeded` from the `buf generate` step: the stub generation uses REMOTE
+     buf.build plugins, and each plugin's generation RPC carries its own
+     ~2-minute server-side deadline that a slow network or a loaded buf.build
+     can exceed. This is NOT caused by your proto changes. Retry `buf generate`
+     (from `apis/`, with the same flags the Makefile uses) until it succeeds —
+     flakes typically clear within a retry or two — then finish the remaining
+     pipeline steps the Makefile would have run (copy the generated Go stubs
+     into place, regenerate the Java stub BUILD file, build the Java stub
+     gate, run gazelle). Batch proto edits so the whole spec change set rides
+     one regeneration rather than paying this per edit.
 
 3) Parse Output:
    - Check exit code (0 = success, non-zero = failure)

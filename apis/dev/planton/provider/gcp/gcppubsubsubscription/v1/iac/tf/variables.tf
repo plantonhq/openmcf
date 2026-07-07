@@ -1,23 +1,62 @@
-variable "spec" {
-  description = "GcpPubSubSubscription spec"
+variable "metadata" {
+  description = "Metadata for the resource, including name and labels"
   type = object({
-    project_id        = object({ value = string })
-    subscription_name = string
-    topic             = object({ value = string })
+    name    = string,
+    id      = optional(string),
+    org     = optional(string),
+    env     = optional(string),
+    labels  = optional(map(string)),
+    tags    = optional(list(string)),
+    version = optional(object({ id = string, message = string }))
+  })
+}
 
-    ack_deadline_seconds       = optional(number, 0)
+variable "spec" {
+  description = "Specification for the GCP Pub/Sub subscription"
+  type = object({
+    # StringValueOrRef fields arrive from the proto→tfvars converter as
+    # plain strings (already resolved), never as object({value}). If
+    # project_id is empty, the provider's default project is used
+    # (see locals.tf).
+    project_id = optional(string, "")
+
+    # Subscription name (the GCP resource name). Immutable (ForceNew).
+    subscription_name = string
+
+    # The parent topic (resolved from a GcpPubSubTopic reference to the
+    # fully qualified projects/{project}/topics/{name} path). Immutable
+    # (ForceNew) — repointing replaces the subscription.
+    topic = string
+
+    # 0 accepts the API default (10s); otherwise 10-600 seconds.
+    ack_deadline_seconds = optional(number, 0)
+
+    # Backlog retention window (e.g. "604800s" for 7 days).
     message_retention_duration = optional(string, "")
-    retain_acked_messages      = optional(bool, false)
-    filter                     = optional(string, "")
-    enable_message_ordering    = optional(bool, false)
+
+    retain_acked_messages = optional(bool, false)
+
+    # The attribute filter. Immutable (ForceNew).
+    filter = optional(string, "")
+
+    # Immutable (ForceNew) — changes how Pub/Sub stores the backlog.
+    enable_message_ordering = optional(bool, false)
+
     enable_exactly_once_delivery = optional(bool, false)
 
+    # User labels, merged beneath the platform attribution labels
+    # (see locals.tf).
+    labels = optional(map(string), {})
+
     expiration_policy = optional(object({
-      ttl = string
+      # "" means the subscription never expires.
+      ttl = optional(string, "")
     }), null)
 
     dead_letter_policy = optional(object({
-      dead_letter_topic   = optional(object({ value = string }), null)
+      # Resolved from a GcpPubSubTopic reference to the fully qualified
+      # topic path.
+      dead_letter_topic     = optional(string, "")
       max_delivery_attempts = optional(number, 0)
     }), null)
 
@@ -30,25 +69,30 @@ variable "spec" {
       push_endpoint = string
       attributes    = optional(map(string), {})
       oidc_token = optional(object({
+        # Resolved from a GcpServiceAccount reference to a literal email.
         service_account_email = string
         audience              = optional(string, "")
       }), null)
       no_wrapper = optional(object({
-        write_metadata = bool
+        write_metadata = optional(bool, false)
       }), null)
     }), null)
 
     bigquery_config = optional(object({
-      table                 = string
-      use_topic_schema      = optional(bool, false)
-      use_table_schema      = optional(bool, false)
-      drop_unknown_fields   = optional(bool, false)
-      write_metadata        = optional(bool, false)
+      # Resolved from a GcpBigQueryTable reference to the dotted
+      # {project}.{dataset}.{table} form the Pub/Sub API expects.
+      table               = string
+      use_topic_schema    = optional(bool, false)
+      use_table_schema    = optional(bool, false)
+      drop_unknown_fields = optional(bool, false)
+      write_metadata      = optional(bool, false)
+      # Resolved from a GcpServiceAccount reference to a literal email.
       service_account_email = optional(string, "")
     }), null)
 
     cloud_storage_config = optional(object({
-      bucket                   = object({ value = string })
+      # Resolved from a GcpGcsBucket reference (no "gs://" prefix).
+      bucket                   = string
       filename_prefix          = optional(string, "")
       filename_suffix          = optional(string, "")
       filename_datetime_format = optional(string, "")
@@ -59,15 +103,27 @@ variable "spec" {
         use_topic_schema = optional(bool, false)
         write_metadata   = optional(bool, false)
       }), null)
+      # Resolved from a GcpServiceAccount reference to a literal email.
       service_account_email = optional(string, "")
     }), null)
-  })
-}
 
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
+    # Ordered transform pipeline applied to every message before delivery.
+    message_transforms = optional(list(object({
+      javascript_udf = object({
+        function_name = string
+        code          = string
+      })
+      disabled = optional(bool, false)
+    })), [])
   })
-  default = { service_account_key = "" }
+
+  validation {
+    condition     = var.spec.subscription_name != ""
+    error_message = "subscription_name is required."
+  }
+
+  validation {
+    condition     = var.spec.topic != ""
+    error_message = "topic is required."
+  }
 }

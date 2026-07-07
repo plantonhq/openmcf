@@ -3,6 +3,7 @@ package module
 import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/pubsub"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -10,51 +11,78 @@ import (
 func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpPubSubSubscription.Spec
 
-	args := &pubsub.SubscriptionArgs{
-		Name:    pulumi.String(spec.SubscriptionName),
-		Topic:   pulumi.String(spec.Topic.GetValue()),
-		Project: pulumi.StringPtr(spec.ProjectId.GetValue()),
-		Labels:  pulumi.ToStringMap(locals.GcpLabels),
+	// Enable the Pub/Sub API — the control plane that owns the
+	// subscription. disable_on_destroy stays false: tearing down one
+	// subscription must never disable the API for everything else in the
+	// project.
+	pubsubApiArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("pubsub.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		pubsubApiArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdPubsubApi, err := projects.NewService(ctx,
+		"gcppss-pubsub.googleapis.com", pubsubApiArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable pubsub.googleapis.com api")
 	}
 
-	// Ack deadline.
+	// The topic attachment is ForceNew: repointing a subscription at a
+	// different topic replaces the subscription (and its backlog).
+	args := &pubsub.SubscriptionArgs{
+		Name:   pulumi.String(spec.SubscriptionName),
+		Topic:  pulumi.String(spec.Topic.GetValue()),
+		Labels: pulumi.ToStringMap(locals.GcpLabels),
+	}
+
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project.
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
+
+	// Ack deadline: 0 accepts the API default (10s).
 	if spec.AckDeadlineSeconds > 0 {
 		args.AckDeadlineSeconds = pulumi.IntPtr(int(spec.AckDeadlineSeconds))
 	}
 
-	// Message retention.
+	// Backlog retention window; with retain_acked_messages it also
+	// bounds how far back a seek can replay.
 	if spec.MessageRetentionDuration != "" {
 		args.MessageRetentionDuration = pulumi.StringPtr(spec.MessageRetentionDuration)
 	}
 
-	// Retain acknowledged messages.
 	if spec.RetainAckedMessages {
 		args.RetainAckedMessages = pulumi.BoolPtr(true)
 	}
 
-	// Expiration policy.
+	// Expiration policy: an empty ttl string means "never expires" —
+	// send it as-is; the API treats empty as the never-expire sentinel.
 	if spec.ExpirationPolicy != nil {
 		args.ExpirationPolicy = &pubsub.SubscriptionExpirationPolicyArgs{
 			Ttl: pulumi.String(spec.ExpirationPolicy.Ttl),
 		}
 	}
 
-	// Filter.
+	// The attribute filter is ForceNew: changing it replaces the
+	// subscription. Non-matching messages are auto-acked, never delivered.
 	if spec.Filter != "" {
 		args.Filter = pulumi.StringPtr(spec.Filter)
 	}
 
-	// Message ordering.
+	// Ordering is ForceNew: it changes how Pub/Sub stores the backlog.
 	if spec.EnableMessageOrdering {
 		args.EnableMessageOrdering = pulumi.BoolPtr(true)
 	}
 
-	// Exactly-once delivery.
 	if spec.EnableExactlyOnceDelivery {
 		args.EnableExactlyOnceDelivery = pulumi.BoolPtr(true)
 	}
 
-	// Dead letter policy.
+	// Dead-letter policy: the Pub/Sub service agent needs Subscriber on
+	// this subscription and Publisher on the dead-letter topic.
 	if spec.DeadLetterPolicy != nil {
 		dlpArgs := &pubsub.SubscriptionDeadLetterPolicyArgs{}
 		if spec.DeadLetterPolicy.DeadLetterTopic != nil && spec.DeadLetterPolicy.DeadLetterTopic.GetValue() != "" {
@@ -66,7 +94,7 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 		args.DeadLetterPolicy = dlpArgs
 	}
 
-	// Retry policy.
+	// Retry backoff between delivery attempts after NACK/deadline events.
 	if spec.RetryPolicy != nil {
 		rpArgs := &pubsub.SubscriptionRetryPolicyArgs{}
 		if spec.RetryPolicy.MinimumBackoff != "" {
@@ -78,7 +106,8 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 		args.RetryPolicy = rpArgs
 	}
 
-	// Push config.
+	// Delivery mode: at most one of push/bigquery/cloud-storage (spec CEL
+	// enforces exclusivity); none set = pull.
 	if spec.PushConfig != nil {
 		pushArgs := &pubsub.SubscriptionPushConfigArgs{
 			PushEndpoint: pulumi.String(spec.PushConfig.PushEndpoint),
@@ -87,8 +116,10 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 			pushArgs.Attributes = pulumi.ToStringMap(spec.PushConfig.Attributes)
 		}
 		if spec.PushConfig.OidcToken != nil {
+			// The service-account reference arrives resolved to a literal
+			// email (the FK resolver runs before the module).
 			oidcArgs := &pubsub.SubscriptionPushConfigOidcTokenArgs{
-				ServiceAccountEmail: pulumi.String(spec.PushConfig.OidcToken.ServiceAccountEmail),
+				ServiceAccountEmail: pulumi.String(spec.PushConfig.OidcToken.ServiceAccountEmail.GetValue()),
 			}
 			if spec.PushConfig.OidcToken.Audience != "" {
 				oidcArgs.Audience = pulumi.StringPtr(spec.PushConfig.OidcToken.Audience)
@@ -103,10 +134,11 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 		args.PushConfig = pushArgs
 	}
 
-	// BigQuery config.
 	if spec.BigqueryConfig != nil {
+		// The table reference arrives resolved to the dotted
+		// {project}.{dataset}.{table} form the Pub/Sub API expects.
 		bqArgs := &pubsub.SubscriptionBigqueryConfigArgs{
-			Table: pulumi.String(spec.BigqueryConfig.Table),
+			Table: pulumi.String(spec.BigqueryConfig.Table.GetValue()),
 		}
 		if spec.BigqueryConfig.UseTopicSchema {
 			bqArgs.UseTopicSchema = pulumi.BoolPtr(true)
@@ -120,13 +152,12 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 		if spec.BigqueryConfig.WriteMetadata {
 			bqArgs.WriteMetadata = pulumi.BoolPtr(true)
 		}
-		if spec.BigqueryConfig.ServiceAccountEmail != "" {
-			bqArgs.ServiceAccountEmail = pulumi.StringPtr(spec.BigqueryConfig.ServiceAccountEmail)
+		if spec.BigqueryConfig.ServiceAccountEmail.GetValue() != "" {
+			bqArgs.ServiceAccountEmail = pulumi.StringPtr(spec.BigqueryConfig.ServiceAccountEmail.GetValue())
 		}
 		args.BigqueryConfig = bqArgs
 	}
 
-	// Cloud Storage config.
 	if spec.CloudStorageConfig != nil {
 		csArgs := &pubsub.SubscriptionCloudStorageConfigArgs{
 			Bucket: pulumi.String(spec.CloudStorageConfig.Bucket.GetValue()),
@@ -155,13 +186,36 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 				WriteMetadata:  pulumi.BoolPtr(spec.CloudStorageConfig.AvroConfig.WriteMetadata),
 			}
 		}
-		if spec.CloudStorageConfig.ServiceAccountEmail != "" {
-			csArgs.ServiceAccountEmail = pulumi.StringPtr(spec.CloudStorageConfig.ServiceAccountEmail)
+		if spec.CloudStorageConfig.ServiceAccountEmail.GetValue() != "" {
+			csArgs.ServiceAccountEmail = pulumi.StringPtr(spec.CloudStorageConfig.ServiceAccountEmail.GetValue())
 		}
 		args.CloudStorageConfig = csArgs
 	}
 
-	createdSubscription, err := pubsub.NewSubscription(ctx, "pubsub-subscription", args, pulumi.Provider(gcpProvider))
+	// Ordered transform pipeline: transforms run in list order on every
+	// message before delivery to THIS subscription only; a disabled
+	// transform keeps its position (the staging lever) without being
+	// applied.
+	if len(spec.MessageTransforms) > 0 {
+		transforms := pubsub.SubscriptionMessageTransformArray{}
+		for _, transform := range spec.MessageTransforms {
+			transformArgs := &pubsub.SubscriptionMessageTransformArgs{
+				JavascriptUdf: &pubsub.SubscriptionMessageTransformJavascriptUdfArgs{
+					FunctionName: pulumi.String(transform.JavascriptUdf.FunctionName),
+					Code:         pulumi.String(transform.JavascriptUdf.Code),
+				},
+			}
+			if transform.Disabled {
+				transformArgs.Disabled = pulumi.BoolPtr(true)
+			}
+			transforms = append(transforms, transformArgs)
+		}
+		args.MessageTransforms = transforms
+	}
+
+	createdSubscription, err := pubsub.NewSubscription(ctx, "pubsub-subscription", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdPubsubApi}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create pubsub subscription")
 	}

@@ -253,6 +253,7 @@ const (
 	CloudResourceKind_GcpPubSubSubscription                  CloudResourceKind = 661
 	CloudResourceKind_GcpCloudTasksQueue                     CloudResourceKind = 662
 	CloudResourceKind_GcpCloudSchedulerJob                   CloudResourceKind = 663
+	CloudResourceKind_GcpPubSubSchema                        CloudResourceKind = 664
 	CloudResourceKind_GcpVertexAiNotebook                    CloudResourceKind = 670
 	CloudResourceKind_GcpVertexAiEndpoint                    CloudResourceKind = 671
 	CloudResourceKind_GcpCloudComposerEnvironment            CloudResourceKind = 680
@@ -714,6 +715,7 @@ var (
 		661:  "GcpPubSubSubscription",
 		662:  "GcpCloudTasksQueue",
 		663:  "GcpCloudSchedulerJob",
+		664:  "GcpPubSubSchema",
 		670:  "GcpVertexAiNotebook",
 		671:  "GcpVertexAiEndpoint",
 		680:  "GcpCloudComposerEnvironment",
@@ -1155,6 +1157,7 @@ var (
 		"GcpPubSubSubscription":                   661,
 		"GcpCloudTasksQueue":                      662,
 		"GcpCloudSchedulerJob":                    663,
+		"GcpPubSubSchema":                         664,
 		"GcpVertexAiNotebook":                     670,
 		"GcpVertexAiEndpoint":                     671,
 		"GcpCloudComposerEnvironment":             680,
@@ -1683,7 +1686,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xe0\x9d\x01\n" +
+	"\x02v1\x10\x01*\x91\x9e\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1868,11 +1871,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x12GcpDataprocCluster\x10\x8b\x05\x1a\x1c\xa2\xf7\x04\x18\b\x12\x10\x01\"\x06gcpdpc:\n" +
 	"\xe2\x04\xe3\x04\xec\x04\xe6\x04\x8c\x05\x125\n" +
 	"\x1cGcpDataprocAutoscalingPolicy\x10\x8c\x05\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\bgcpdpasp\x12-\n" +
-	"\x10GcpBigQueryTable\x10\x8d\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpbqtbl:\x02\x8a\x05\x12%\n" +
-	"\x0eGcpPubSubTopic\x10\x94\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcppst\x12,\n" +
-	"\x15GcpPubSubSubscription\x10\x95\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcppss\x12(\n" +
+	"\x10GcpBigQueryTable\x10\x8d\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpbqtbl:\x02\x8a\x05\x12)\n" +
+	"\x0eGcpPubSubTopic\x10\x94\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcppst:\x02\x98\x05\x120\n" +
+	"\x15GcpPubSubSubscription\x10\x95\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcppss:\x02\x94\x05\x12(\n" +
 	"\x12GcpCloudTasksQueue\x10\x96\x05\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcptq\x12+\n" +
-	"\x14GcpCloudSchedulerJob\x10\x97\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcsj\x12*\n" +
+	"\x14GcpCloudSchedulerJob\x10\x97\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcsj\x12'\n" +
+	"\x0fGcpPubSubSchema\x10\x98\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcppsch\x12*\n" +
 	"\x13GcpVertexAiNotebook\x10\x9e\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpvnb\x12*\n" +
 	"\x13GcpVertexAiEndpoint\x10\x9f\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpvep\x12:\n" +
 	"\x1bGcpCloudComposerEnvironment\x10\xa8\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\x06gcpcce:\x06\xe2\x04\xe3\x04\xe6\x04\x12?\n" +

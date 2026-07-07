@@ -259,6 +259,7 @@ import (
 	gcpmemorystoreinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1"
 	gcpprojectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpproject/v1"
 	gcpprojectiammemberv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpprojectiammember/v1"
+	gcppubsubschemav1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubschema/v1"
 	gcppubsubsubscriptionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubsubscription/v1"
 	gcppubsubtopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcppubsubtopic/v1"
 	gcpredisinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpredisinstance/v1"
@@ -742,6 +743,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpMemorystoreInstance:                 &gcpmemorystoreinstancev1.GcpMemorystoreInstance{},
 	cloudresourcekind.CloudResourceKind_GcpProject:                             &gcpprojectv1.GcpProject{},
 	cloudresourcekind.CloudResourceKind_GcpProjectIamMember:                    &gcpprojectiammemberv1.GcpProjectIamMember{},
+	cloudresourcekind.CloudResourceKind_GcpPubSubSchema:                        &gcppubsubschemav1.GcpPubSubSchema{},
 	cloudresourcekind.CloudResourceKind_GcpPubSubSubscription:                  &gcppubsubsubscriptionv1.GcpPubSubSubscription{},
 	cloudresourcekind.CloudResourceKind_GcpPubSubTopic:                         &gcppubsubtopicv1.GcpPubSubTopic{},
 	cloudresourcekind.CloudResourceKind_GcpRedisInstance:                       &gcpredisinstancev1.GcpRedisInstance{},

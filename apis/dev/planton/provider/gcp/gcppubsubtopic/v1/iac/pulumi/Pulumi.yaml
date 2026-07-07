@@ -1,6 +1,4 @@
-name: gcp-pubsub-topic
+name: gcppubsubtopic-pulumi-project
 runtime:
   name: go
-  options:
-    binary: ./pulumi
 description: Planton GcpPubSubTopic Pulumi module

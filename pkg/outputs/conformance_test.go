@@ -717,19 +717,54 @@ func TestStackOutputsConformance(t *testing.T) {
 		},
 		{
 			// GcpBigQueryTable: the short table id, self link, resolved project,
-			// parent dataset, table type, location, and creation time.
+			// parent dataset, table type, location, creation time, and the
+			// pre-assembled dotted handle Pub/Sub BigQuery delivery consumes.
 			name: "GcpBigQueryTable",
 			kind: cloudresourcekind.CloudResourceKind_GcpBigQueryTable,
 			rawOutputs: map[string]interface{}{
-				"table_id":      "events_raw",
-				"self_link":     "https://bigquery.googleapis.com/bigquery/v2/projects/prod-project/datasets/analytics_prod/tables/events_raw",
-				"project":       "prod-project",
-				"dataset_id":    "analytics_prod",
-				"type":          "TABLE",
-				"location":      "US",
-				"creation_time": int64(1700000000000),
+				"table_id":       "events_raw",
+				"self_link":      "https://bigquery.googleapis.com/bigquery/v2/projects/prod-project/datasets/analytics_prod/tables/events_raw",
+				"project":        "prod-project",
+				"dataset_id":     "analytics_prod",
+				"type":           "TABLE",
+				"location":       "US",
+				"creation_time":  int64(1700000000000),
+				"qualified_name": "prod-project.analytics_prod.events_raw",
 			},
-			mustPopulate: []string{"table_id", "self_link", "project", "dataset_id", "type", "location", "creation_time"},
+			mustPopulate: []string{"table_id", "self_link", "project", "dataset_id", "type", "location", "creation_time", "qualified_name"},
+		},
+		{
+			// GcpPubSubSchema: the fully qualified schema path a topic's
+			// schema_settings.schema reference consumes, and the short name.
+			name: "GcpPubSubSchema",
+			kind: cloudresourcekind.CloudResourceKind_GcpPubSubSchema,
+			rawOutputs: map[string]interface{}{
+				"schema_id":   "projects/prod-project/schemas/order-events",
+				"schema_name": "order-events",
+			},
+			mustPopulate: []string{"schema_id", "schema_name"},
+		},
+		{
+			// GcpPubSubTopic: the fully qualified topic path subscriptions
+			// and event triggers consume, and the short name.
+			name: "GcpPubSubTopic",
+			kind: cloudresourcekind.CloudResourceKind_GcpPubSubTopic,
+			rawOutputs: map[string]interface{}{
+				"topic_id":   "projects/prod-project/topics/order-events",
+				"topic_name": "order-events",
+			},
+			mustPopulate: []string{"topic_id", "topic_name"},
+		},
+		{
+			// GcpPubSubSubscription: the fully qualified subscription path
+			// consumers and monitoring reference, and the short name.
+			name: "GcpPubSubSubscription",
+			kind: cloudresourcekind.CloudResourceKind_GcpPubSubSubscription,
+			rawOutputs: map[string]interface{}{
+				"subscription_id":   "projects/prod-project/subscriptions/order-events-worker",
+				"subscription_name": "order-events-worker",
+			},
+			mustPopulate: []string{"subscription_id", "subscription_name"},
 		},
 		{
 			// GcpServerlessVpcConnector: the short connector name, the fully
