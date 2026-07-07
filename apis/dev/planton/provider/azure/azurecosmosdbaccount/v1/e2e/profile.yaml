@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurecosmosdbaccount
+spec:
+  # The harness deploys the fixture resource group, creates a single-region
+  # SQL API account with session consistency (never free_tier -- one per
+  # subscription), verifies it via the ARM API, destroys it, and verifies
+  # it is gone -- on both provisioners.
+  #
+  # Cosmos accounts provision in ~5-10 minutes; teardown can take several
+  # minutes more while Azure drains the account.
+  tier: 1
+  status: skip
+  deferred_reason: >-
+    Live suite runs well beyond the 30-minute live-E2E boundary (Cosmos
+    accounts provision in ~5-10 minutes each and every scenario owns a
+    scenario-local account), so live validation waits for an approved
+    long-run window. The offline gate is fully green: 100% parity audit,
+    full tofu plan, and the pkg/outputs conformance case. Scenarios stay
+    wired and run unchanged. The first live attempt also hit an eastus
+    capacity constraint (ServiceUnavailable: zonal-account demand), so
+    re-region the account scenarios when running.
+  validated_provisioners: []
+  timeout_minutes: 60

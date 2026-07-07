@@ -309,7 +309,9 @@ const (
 	// a referenced resource group (VNet injection additionally references a
 	// dedicated subnet, but only the Premium tier supports it, so it is not a
 	// registry prerequisite).
-	CloudResourceKind_AzureRedisCache      CloudResourceKind = 431
+	CloudResourceKind_AzureRedisCache CloudResourceKind = 431
+	// AzureResourceGroup is a prerequisite because the account is created
+	// inside a referenced resource group.
 	CloudResourceKind_AzureCosmosdbAccount CloudResourceKind = 432
 	// AzureResourceGroup is a prerequisite because the logical server is
 	// created inside a referenced resource group.
@@ -328,19 +330,22 @@ const (
 	// a referenced logical server (the server's resource group is transitive).
 	CloudResourceKind_AzureMssqlElasticPool CloudResourceKind = 436
 	// The target and linked caches are referenced via ARM ids, not
-	// auto-deployed: cache names are globally unique DNS names that Azure
-	// holds after deletion, so E2E scenarios declare their own cache fixtures
-	// instead of a registry prerequisite recreating the same name per run.
+	// auto-deployed: caches are the slowest-provisioning resources in the
+	// Azure catalog and their names are globally unique, so E2E scenarios
+	// declare their own cache fixtures instead of a registry prerequisite
+	// recreating a shared one per run.
 	CloudResourceKind_AzureRedisLinkedServer CloudResourceKind = 437
 	// The parent cache is referenced via redis_cache_id, not auto-deployed:
-	// cache names are globally unique DNS names that Azure holds after
-	// deletion, so E2E scenarios declare their own cache fixtures instead of
-	// a registry prerequisite recreating the same name per run.
+	// caches are the slowest-provisioning resources in the Azure catalog and
+	// their names are globally unique, so E2E scenarios declare their own
+	// cache fixtures instead of a registry prerequisite recreating a shared
+	// one per run.
 	CloudResourceKind_AzureRedisCacheAccessPolicy CloudResourceKind = 438
 	// The parent cache is referenced via redis_cache_id, not auto-deployed:
-	// cache names are globally unique DNS names that Azure holds after
-	// deletion, so E2E scenarios declare their own cache fixtures instead of
-	// a registry prerequisite recreating the same name per run.
+	// caches are the slowest-provisioning resources in the Azure catalog and
+	// their names are globally unique, so E2E scenarios declare their own
+	// cache fixtures instead of a registry prerequisite recreating a shared
+	// one per run.
 	CloudResourceKind_AzureRedisCacheAccessPolicyAssignment CloudResourceKind = 439
 	CloudResourceKind_AzureContainerAppEnvironment          CloudResourceKind = 440
 	CloudResourceKind_AzureContainerApp                     CloudResourceKind = 441
@@ -382,6 +387,17 @@ const (
 	CloudResourceKind_AzureStorageQueue           CloudResourceKind = 492
 	CloudResourceKind_AzureStorageTable           CloudResourceKind = 493
 	CloudResourceKind_AzureStorageEncryptionScope CloudResourceKind = 494
+	// None of the Cosmos DB data-service kinds declares a registry
+	// prerequisite on AzureCosmosdbAccount: account names are GLOBALLY
+	// unique DNS labels, so a recreate-per-scenario fixture would risk
+	// name-reuse hangs -- their E2E scenarios declare scenario-local
+	// account fixtures instead. Deploy ordering in composed environments
+	// still flows from the cosmosdb_account_id / parent-database
+	// references themselves.
+	CloudResourceKind_AzureCosmosdbSqlDatabase     CloudResourceKind = 500
+	CloudResourceKind_AzureCosmosdbSqlContainer    CloudResourceKind = 501
+	CloudResourceKind_AzureCosmosdbMongoDatabase   CloudResourceKind = 502
+	CloudResourceKind_AzureCosmosdbMongoCollection CloudResourceKind = 503
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -839,6 +855,10 @@ var (
 		492:  "AzureStorageQueue",
 		493:  "AzureStorageTable",
 		494:  "AzureStorageEncryptionScope",
+		500:  "AzureCosmosdbSqlDatabase",
+		501:  "AzureCosmosdbSqlContainer",
+		502:  "AzureCosmosdbMongoDatabase",
+		503:  "AzureCosmosdbMongoCollection",
 		600:  "GcpArtifactRegistryRepo",
 		601:  "GcpCloudCdn",
 		602:  "GcpCloudFunction",
@@ -1280,6 +1300,10 @@ var (
 		"AzureStorageQueue":                       492,
 		"AzureStorageTable":                       493,
 		"AzureStorageEncryptionScope":             494,
+		"AzureCosmosdbSqlDatabase":                500,
+		"AzureCosmosdbSqlContainer":               501,
+		"AzureCosmosdbMongoDatabase":              502,
+		"AzureCosmosdbMongoCollection":            503,
 		"GcpArtifactRegistryRepo":                 600,
 		"GcpCloudCdn":                             601,
 		"GcpCloudFunction":                        602,
@@ -1832,7 +1856,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xbf\x9d\x01\n" +
+	"\x02v1\x10\x01*\x96\x9f\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1954,8 +1978,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x18AzureKeyVaultCertificate\x10\xaa\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazkvcert:\x02\x95\x03\x12>\n" +
 	"!AzureWebApplicationFirewallPolicy\x10\xab\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazwafpol:\x02\x90\x03\x126\n" +
 	"\x1dAzurePostgresqlFlexibleServer\x10\xae\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azpg:\x02\x90\x03\x12)\n" +
-	"\x0fAzureRedisCache\x10\xaf\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azred:\x02\x90\x03\x12*\n" +
-	"\x14AzureCosmosdbAccount\x10\xb0\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azcdb\x12+\n" +
+	"\x0fAzureRedisCache\x10\xaf\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azred:\x02\x90\x03\x12.\n" +
+	"\x14AzureCosmosdbAccount\x10\xb0\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azcdb:\x02\x90\x03\x12+\n" +
 	"\x10AzureMssqlServer\x10\xb1\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azmsql:\x02\x90\x03\x124\n" +
 	"\x18AzureMysqlFlexibleServer\x10\xb2\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazmysql:\x02\x90\x03\x12+\n" +
 	"\x12AzureMssqlDatabase\x10\xb3\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazmsqldb\x124\n" +
@@ -1992,7 +2016,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\b\r\x10\x01\"\x04azsq\x12&\n" +
 	"\x11AzureStorageTable\x10\xed\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azst\x121\n" +
-	"\x1bAzureStorageEncryptionScope\x10\xee\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azses\x12.\n" +
+	"\x1bAzureStorageEncryptionScope\x10\xee\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azses\x121\n" +
+	"\x18AzureCosmosdbSqlDatabase\x10\xf4\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcsqldb\x122\n" +
+	"\x19AzureCosmosdbSqlContainer\x10\xf5\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcsqlct\x123\n" +
+	"\x1aAzureCosmosdbMongoDatabase\x10\xf6\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcmgodb\x125\n" +
+	"\x1cAzureCosmosdbMongoCollection\x10\xf7\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcmgocl\x12.\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
 	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +

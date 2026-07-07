@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbMongoDatabase
+metadata:
+  name: my-serverless-database
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      kind: AzureCosmosdbAccount
+      # A MONGO_DB-kind account (ENABLE_MONGO) that ALSO carries the
+      # ENABLE_SERVERLESS capability -- serverless is an account-level
+      # billing mode, chosen there, not here.
+      name: <serverless-account-resource-name>
+      fieldPath: status.outputs.cosmosdb_account_id
+  databaseName: <database-name>
+  # No throughput, no autoscale -- REQUIRED on serverless accounts, not
+  # just conventional: Azure rejects provisioned throughput on
+  # serverless at apply. The account bills per request instead.

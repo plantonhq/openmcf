@@ -1,0 +1,35 @@
+# Minimal AzureCosmosdbAccount scenario: a single-region SQL (NoSQL) API
+# account with session consistency -- the production-default posture for
+# most applications. Never enables free_tier (one per subscription).
+#
+# Account names are globally unique across Azure; this scenario owns its
+# name and both engine runs recreate it only after the previous delete
+# fully completes.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbAccount
+metadata:
+  name: planton-oss-e2e-azurecosmosdbaccount-smoke
+  id: planton-oss-e2e-azurecosmosdbaccount-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2ecossmok
+  kind: GLOBAL_DOCUMENT_DB
+  consistencyPolicy:
+    consistencyLevel: SESSION
+  geoLocations:
+    - location: eastus
+      failoverPriority: 0
+  tags:
+    e2e-suite: azure

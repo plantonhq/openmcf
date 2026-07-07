@@ -463,6 +463,56 @@ func TestAzureRedisLinkedServer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureredislinkedserver", "terraform")
 }
 
+// --- Azure Cosmos DB account (fixture RG -> single-region SQL API account;
+// Cosmos accounts provision in ~5-10 min each) ---
+
+func TestAzureCosmosdbAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbaccount", "pulumi")
+}
+func TestAzureCosmosdbAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbaccount", "terraform")
+}
+
+// --- Azure Cosmos DB SQL database (fixture RG -> scenario-local account ->
+// database with shared throughput) ---
+
+func TestAzureCosmosdbSqlDatabase_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbsqldatabase", "pulumi")
+}
+func TestAzureCosmosdbSqlDatabase_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbsqldatabase", "terraform")
+}
+
+// --- Azure Cosmos DB SQL container (composed chain: scenario-local account
+// -> database -> container with partition key) ---
+
+func TestAzureCosmosdbSqlContainer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbsqlcontainer", "pulumi")
+}
+func TestAzureCosmosdbSqlContainer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbsqlcontainer", "terraform")
+}
+
+// --- Azure Cosmos DB Mongo database (fixture RG -> scenario-local Mongo
+// account -> database with shared throughput) ---
+
+func TestAzureCosmosdbMongoDatabase_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbmongodatabase", "pulumi")
+}
+func TestAzureCosmosdbMongoDatabase_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbmongodatabase", "terraform")
+}
+
+// --- Azure Cosmos DB Mongo collection (composed chain: scenario-local Mongo
+// account -> database -> collection with shard key) ---
+
+func TestAzureCosmosdbMongoCollection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbmongocollection", "pulumi")
+}
+func TestAzureCosmosdbMongoCollection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbmongocollection", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

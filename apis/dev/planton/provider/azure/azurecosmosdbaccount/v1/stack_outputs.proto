@@ -3,64 +3,88 @@ syntax = "proto3";
 package dev.planton.provider.azure.azurecosmosdbaccount.v1;
 
 // **AzureCosmosdbAccountStackOutputs** captures the outputs of provisioning
-// an Azure Cosmos DB account with its databases and containers/collections.
+// an Azure Cosmos DB account.
 //
-// The primary outputs are `account_id` for resource identification, `endpoint`
-// for SDK connectivity, and `primary_key`/`primary_connection_string` for
-// authentication. The `database_ids` map provides individual database resource
-// IDs for downstream references.
+// Cosmos DB authenticates with auto-generated account keys rather than
+// login/password pairs, so the keys and the ready-made connection strings
+// ARE the credential surface. Every key and connection string below is
+// secret-bearing: platform consumers treat them like passwords (they are
+// stored and surfaced through secret-aware paths, never logged). When the
+// account disables local authentication, the keys stop authenticating and
+// data-plane access rides Entra ID instead.
 //
-// Unlike relational databases (PostgreSQL, MySQL, MSSQL) which use login/password
-// authentication, Cosmos DB uses auto-generated access keys. Applications connect
-// using the `endpoint` + `primary_key` or the `primary_connection_string`.
-//
-// In the database-stack infra chart, the `account_id` output is referenced by
-// AzurePrivateEndpoint for establishing private connectivity. The
-// `primary_connection_string` or `primary_mongodb_connection_string` is consumed
-// by applications for database access.
+// `cosmosdb_account_id` is the ARM identity downstream resources reference
+// -- e.g. AzurePrivateEndpoint's private_connection_resource_id (private-
+// endpoint subresource names: "Sql" for SQL-API accounts, "MongoDB" for
+// Mongo accounts). Databases and containers are their own kinds
+// (AzureCosmosdbSqlDatabase / AzureCosmosdbSqlContainer /
+// AzureCosmosdbMongoDatabase / AzureCosmosdbMongoCollection) referencing
+// this account, so this kind exports no database ids.
 message AzureCosmosdbAccountStackOutputs {
-  // The Azure Resource Manager ID of the Cosmos DB account.
+  // The Azure Resource Manager ID of the account.
   // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DocumentDB/databaseAccounts/{name}
-  //
-  // Referenced by AzurePrivateEndpoint (private_connection_resource_id)
-  // for establishing private connectivity.
-  // Subresource names for private endpoint: ["Sql"] for SQL API, ["MongoDB"] for Mongo API.
-  string account_id = 1;
+  string cosmosdb_account_id = 1;
 
-  // The name of the Cosmos DB account.
-  string account_name = 2;
+  // The account's name -- the globally unique DNS label.
+  string cosmosdb_account_name = 2;
 
-  // The document endpoint URI.
+  // The document endpoint SDKs connect to.
   // Format: https://{name}.documents.azure.com:443/
-  //
-  // Used by Cosmos DB SDKs to connect to the account.
-  // Combined with `primary_key` for authentication.
   string endpoint = 3;
 
-  // The primary access key for the account.
-  // Used for key-based authentication with the Cosmos DB SDK.
-  //
-  // For production workloads, consider using RBAC-based authentication
-  // (Azure AD) instead of access keys.
-  string primary_key = 4;
+  // Per-region read endpoints, ordered by the account's failover
+  // priorities -- what latency-sensitive readers pin to.
+  repeated string read_endpoints = 4;
 
-  // The primary connection string for the SQL/NoSQL API.
-  // Format: AccountEndpoint={endpoint};AccountKey={key};
-  //
-  // Ready-to-use connection string for SQL API SDKs.
-  // Always populated regardless of account kind.
-  string primary_connection_string = 5;
+  // Per-region write endpoints. One entry for single-write accounts;
+  // one per region when multiple_write_locations_enabled is true.
+  repeated string write_endpoints = 5;
 
-  // The primary connection string for the MongoDB API.
-  // Format: mongodb://{name}:{key}@{name}.mongo.cosmos.azure.com:10255/?ssl=true&...
-  //
-  // Only populated when `kind` is "MongoDB".
-  // Empty string for GlobalDocumentDB accounts.
-  string primary_mongodb_connection_string = 6;
+  // The primary read-write account key (secret-bearing).
+  string primary_key = 6;
 
-  // Map of database names to their Azure Resource Manager IDs.
-  // Includes both SQL databases and MongoDB databases, depending on the
-  // account kind.
-  // Format: { "mydb": "/subscriptions/.../sqlDatabases/mydb" }
-  map<string, string> database_ids = 7;
+  // The secondary read-write account key (secret-bearing) -- the
+  // rotation partner: applications move to the secondary, the primary
+  // is regenerated, and back.
+  string secondary_key = 7;
+
+  // The primary read-only account key (secret-bearing) -- for consumers
+  // that must never write.
+  string primary_readonly_key = 8;
+
+  // The secondary read-only account key (secret-bearing).
+  string secondary_readonly_key = 9;
+
+  // Ready-made SQL-API connection strings (secret-bearing), populated
+  // for every account kind. Format:
+  // AccountEndpoint={endpoint};AccountKey={key};
+  string primary_sql_connection_string = 10;
+
+  // The secondary SQL-API connection string (secret-bearing).
+  string secondary_sql_connection_string = 11;
+
+  // The read-only primary SQL-API connection string (secret-bearing).
+  string primary_readonly_sql_connection_string = 12;
+
+  // The read-only secondary SQL-API connection string (secret-bearing).
+  string secondary_readonly_sql_connection_string = 13;
+
+  // Ready-made MongoDB connection strings (secret-bearing), meaningful
+  // on MONGO_DB accounts. Format:
+  // mongodb://{name}:{key}@{name}.mongo.cosmos.azure.com:10255/?ssl=true...
+  string primary_mongodb_connection_string = 14;
+
+  // The secondary MongoDB connection string (secret-bearing).
+  string secondary_mongodb_connection_string = 15;
+
+  // The read-only primary MongoDB connection string (secret-bearing).
+  string primary_readonly_mongodb_connection_string = 16;
+
+  // The read-only secondary MongoDB connection string (secret-bearing).
+  string secondary_readonly_mongodb_connection_string = 17;
+
+  // The principal ID of the account's system-assigned identity, when
+  // `identity` requests one -- the subject for role assignments the
+  // account needs against other services.
+  string identity_principal_id = 18;
 }

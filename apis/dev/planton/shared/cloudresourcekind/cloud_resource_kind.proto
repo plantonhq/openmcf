@@ -866,10 +866,13 @@ enum CloudResourceKind {
     id_prefix: "azred"
     prerequisites: [AzureResourceGroup]
   }];
+  // AzureResourceGroup is a prerequisite because the account is created
+  // inside a referenced resource group.
   AzureCosmosdbAccount = 432 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azcdb"
+    prerequisites: [AzureResourceGroup]
   }];
   // AzureResourceGroup is a prerequisite because the logical server is
   // created inside a referenced resource group.
@@ -907,27 +910,30 @@ enum CloudResourceKind {
     prerequisites: [AzureMssqlServer]
   }];
   // The target and linked caches are referenced via ARM ids, not
-  // auto-deployed: cache names are globally unique DNS names that Azure
-  // holds after deletion, so E2E scenarios declare their own cache fixtures
-  // instead of a registry prerequisite recreating the same name per run.
+  // auto-deployed: caches are the slowest-provisioning resources in the
+  // Azure catalog and their names are globally unique, so E2E scenarios
+  // declare their own cache fixtures instead of a registry prerequisite
+  // recreating a shared one per run.
   AzureRedisLinkedServer = 437 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azredlink"
   }];
   // The parent cache is referenced via redis_cache_id, not auto-deployed:
-  // cache names are globally unique DNS names that Azure holds after
-  // deletion, so E2E scenarios declare their own cache fixtures instead of
-  // a registry prerequisite recreating the same name per run.
+  // caches are the slowest-provisioning resources in the Azure catalog and
+  // their names are globally unique, so E2E scenarios declare their own
+  // cache fixtures instead of a registry prerequisite recreating a shared
+  // one per run.
   AzureRedisCacheAccessPolicy = 438 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azredpol"
   }];
   // The parent cache is referenced via redis_cache_id, not auto-deployed:
-  // cache names are globally unique DNS names that Azure holds after
-  // deletion, so E2E scenarios declare their own cache fixtures instead of
-  // a registry prerequisite recreating the same name per run.
+  // caches are the slowest-provisioning resources in the Azure catalog and
+  // their names are globally unique, so E2E scenarios declare their own
+  // cache fixtures instead of a registry prerequisite recreating a shared
+  // one per run.
   AzureRedisCacheAccessPolicyAssignment = 439 [(kind_meta) = {
     provider: azure
     version: v1
@@ -1061,6 +1067,36 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azses"
+  }];
+
+  // --- Cosmos DB data services ---
+
+  // None of the Cosmos DB data-service kinds declares a registry
+  // prerequisite on AzureCosmosdbAccount: account names are GLOBALLY
+  // unique DNS labels, so a recreate-per-scenario fixture would risk
+  // name-reuse hangs -- their E2E scenarios declare scenario-local
+  // account fixtures instead. Deploy ordering in composed environments
+  // still flows from the cosmosdb_account_id / parent-database
+  // references themselves.
+  AzureCosmosdbSqlDatabase = 500 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcsqldb"
+  }];
+  AzureCosmosdbSqlContainer = 501 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcsqlct"
+  }];
+  AzureCosmosdbMongoDatabase = 502 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcmgodb"
+  }];
+  AzureCosmosdbMongoCollection = 503 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcmgocl"
   }];
 
   // 600–799: GCP resources

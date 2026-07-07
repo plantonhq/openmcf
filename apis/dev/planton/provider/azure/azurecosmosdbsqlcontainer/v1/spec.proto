@@ -1,0 +1,293 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureCosmosdbSqlContainerSpec** defines the configuration for creating
+// a SQL (NoSQL) API container inside a Cosmos DB database: the unit of
+// storage, indexing, and scale-out. Documents live in containers; Azure
+// distributes them across physical partitions by the partition key and
+// indexes them by the container's indexing policy.
+//
+// **The partition key is the single most consequential design decision**
+// for Cosmos DB performance and cost. Choose a property with high
+// cardinality (many distinct values), even request distribution, and
+// frequent use in query filters -- tenantId, userId, deviceId. Avoid
+// timestamps (hot partition) and low-cardinality flags. The key is fixed
+// at creation: changing it means a new container and a data migration.
+//
+// **Throughput**: a container either shares its database's provisioned
+// throughput (leave both fields unset), or brings its own dedicated
+// fixed/autoscale throughput. On serverless accounts neither may be set.
+message AzureCosmosdbSqlContainerSpec {
+  // The SQL database the container lives in, by ARM ID. References an
+  // AzureCosmosdbSqlDatabase's sql_database_id output so the account,
+  // database, and containers compose in one manifest set. Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef sql_database_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureCosmosdbSqlDatabase,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.sql_database_id"
+  ];
+
+  // The container's name -- unique within the database, 1-255 characters
+  // (Azure's only constraint on Cosmos entity names). Changing the name
+  // replaces the container and its data.
+  string container_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // The partition key paths. Each starts with "/" and names a document
+  // property. One path is the normal case (kind HASH); two or three
+  // paths form a HIERARCHICAL key (kind MULTI_HASH, e.g. ["/tenantId",
+  // "/userId"]) that routes queries carrying any prefix of the hierarchy
+  // efficiently. Fixed at creation.
+  repeated string partition_key_paths = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 3,
+    (buf.validate.field).repeated.items.cel = {
+      id: "cosmosdb_sql_container_pk_path_format"
+      message: "partition key paths must start with '/'"
+      expression: "this.startsWith('/')"
+    }
+  ];
+
+  // How the partition key hashes documents to partitions. Unspecified
+  // means HASH (a single path). MULTI_HASH enables the hierarchical
+  // (multi-path) key and requires partition key version 2. Fixed at
+  // creation.
+  AzureCosmosdbSqlContainerPartitionKeyKind partition_key_kind = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // The partition key definition version. 1 (the classic default)
+  // caps partition key values at 101 bytes; 2 supports large keys and
+  // is REQUIRED for MULTI_HASH hierarchical keys. Fixed at creation
+  // (Azure tolerates only the unset -> 1 transition in place).
+  optional int32 partition_key_version = 5 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 2
+  }];
+
+  // Fixed dedicated throughput in RU/s for this container. Minimum 400,
+  // in increments of 100. Mutually exclusive with
+  // `autoscale_max_throughput`; leave both unset to share the database's
+  // throughput (or on serverless accounts).
+  optional int32 throughput = 6 [
+    (buf.validate.field).int32.gte = 400,
+    (buf.validate.field).cel = {
+      id: "cosmosdb_sql_container_throughput_increment"
+      message: "throughput must be set in increments of 100 RU/s"
+      expression: "this % 100 == 0"
+    }
+  ];
+
+  // Autoscale ceiling in RU/s for this container: Azure scales between
+  // 10% of this value and this value. Minimum 1000, in increments of
+  // 1000. Mutually exclusive with `throughput`.
+  optional int32 autoscale_max_throughput = 7 [
+    (buf.validate.field).int32.gte = 1000,
+    (buf.validate.field).cel = {
+      id: "cosmosdb_sql_container_autoscale_increment"
+      message: "autoscale_max_throughput must be set in increments of 1000 RU/s"
+      expression: "this % 1000 == 0"
+    }
+  ];
+
+  // Default time-to-live for documents, in seconds. -1 turns TTL on
+  // with no default expiry (documents expire only if they carry their
+  // own ttl property); a positive value expires documents that many
+  // seconds after their last write unless overridden per document.
+  // Unset leaves TTL off entirely.
+  optional int32 default_ttl = 8 [(buf.validate.field).int32.gte = -1];
+
+  // How long documents stay in the ANALYTICAL store, in seconds
+  // (requires analytical storage on the account). -1 keeps analytical
+  // data forever -- the common choice; a positive value ages it out.
+  // Turning analytical storage OFF on an existing container (unsetting
+  // a previously set value) forces a replacement.
+  optional int32 analytical_storage_ttl = 9 [(buf.validate.field).int32.gte = -1];
+
+  // Unique key constraints: within each logical partition, no two
+  // documents may share the same values for a constraint's paths.
+  // Uniqueness is scoped to the partition key, not the whole container.
+  // Fixed at creation.
+  repeated AzureCosmosdbSqlContainerUniqueKey unique_keys = 10;
+
+  // How the container indexes documents. Unset applies Azure's default:
+  // consistent indexing of every path. Tuning the policy -- excluding
+  // bulky payload paths, adding composite indexes for multi-property
+  // ORDER BY -- is the main lever for write RU cost and query
+  // performance, and it updates in place.
+  AzureCosmosdbSqlContainerIndexingPolicy indexing_policy = 11;
+
+  // How conflicting writes are resolved on multi-region-write accounts.
+  // Unset applies Azure's default: last-writer-wins on the document's
+  // _ts timestamp. Fixed at creation.
+  AzureCosmosdbSqlContainerConflictResolutionPolicy conflict_resolution_policy = 12;
+
+  option (buf.validate.message).cel = {
+    id: "cosmosdb_sql_container_throughput_xor"
+    message: "throughput and autoscale_max_throughput are mutually exclusive"
+    expression: "!(has(this.throughput) && has(this.autoscale_max_throughput))"
+  };
+  option (buf.validate.message).cel = {
+    id: "cosmosdb_sql_container_multihash_paths"
+    message: "MULTI_HASH is for hierarchical keys (more than one path) and requires partition_key_version 2; HASH takes exactly one path"
+    expression: "(this.partition_key_kind == 2) ? (this.partition_key_paths.size() > 1 && has(this.partition_key_version) && this.partition_key_version == 2) : this.partition_key_paths.size() == 1"
+  };
+}
+
+// How the partition key hashes documents to physical partitions.
+enum AzureCosmosdbSqlContainerPartitionKeyKind {
+  // Not specified: Hash.
+  azure_cosmosdb_sql_container_partition_key_kind_unspecified = 0;
+
+  // A single-path hash key -- the normal case. Wire value: "Hash".
+  HASH = 1;
+
+  // A hierarchical (multi-path) key of up to three levels. Requires
+  // partition_key_version 2. Wire value: "MultiHash".
+  MULTI_HASH = 2;
+}
+
+// One unique key constraint.
+message AzureCosmosdbSqlContainerUniqueKey {
+  // The document paths whose combined values must be unique within each
+  // logical partition, e.g. ["/email"] or ["/firstName", "/lastName"].
+  repeated string paths = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// The container's indexing policy.
+message AzureCosmosdbSqlContainerIndexingPolicy {
+  // CONSISTENT (the default) indexes synchronously with writes; NONE
+  // disables indexing entirely -- only point reads by id work, which
+  // suits pure key-value containers and bulk-load staging.
+  AzureCosmosdbSqlContainerIndexingMode indexing_mode = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // The paths to index, e.g. "/*" (everything -- Azure's default) or
+  // "/tenantId/?". When any included or excluded path is declared, the
+  // policy replaces Azure's default wholesale, so a tuned policy
+  // normally includes "/*" and excludes the bulky exceptions.
+  repeated AzureCosmosdbSqlContainerIndexPath included_paths = 2;
+
+  // The paths NOT to index, e.g. "/payload/*" for a large blob property
+  // that is never filtered on -- the main write-RU saver.
+  repeated AzureCosmosdbSqlContainerIndexPath excluded_paths = 3;
+
+  // Composite indexes: ordered property sets that make multi-property
+  // ORDER BY (and some multi-filter queries) efficient. Each composite
+  // index lists two or more (path, order) entries.
+  repeated AzureCosmosdbSqlContainerCompositeIndex composite_indexes = 4;
+
+  // Spatial indexes for GeoJSON geometry queries on the given paths.
+  repeated AzureCosmosdbSqlContainerSpatialIndex spatial_indexes = 5;
+}
+
+// The indexing mode.
+enum AzureCosmosdbSqlContainerIndexingMode {
+  // Not specified: consistent.
+  azure_cosmosdb_sql_container_indexing_mode_unspecified = 0;
+
+  // Index synchronously with every write -- Azure's default. Wire
+  // value: "consistent".
+  CONSISTENT = 1;
+
+  // No indexing: only point reads by id. Wire value: "none".
+  NONE = 2;
+}
+
+// One indexed (or excluded) path.
+message AzureCosmosdbSqlContainerIndexPath {
+  // The path, in Cosmos DB index-path syntax: "/*" for everything,
+  // "/prop/?" for a scalar, "/prop/*" for a subtree.
+  string path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// One composite index (an ordered set of paths).
+message AzureCosmosdbSqlContainerCompositeIndex {
+  // The (path, order) entries composing the index, in significance
+  // order. Cosmos DB requires at least two entries for a composite
+  // index to be meaningful; queries must match the declared orders (or
+  // their exact reverse).
+  repeated AzureCosmosdbSqlContainerCompositeIndexEntry entries = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One entry of a composite index.
+message AzureCosmosdbSqlContainerCompositeIndexEntry {
+  // The document path, e.g. "/lastName". Composite-index paths name a
+  // scalar property directly (no "/?" or "/*" suffix).
+  string path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The sort order this entry is indexed in.
+  AzureCosmosdbSqlContainerCompositeIndexOrder order = 2 [(buf.validate.field).enum.defined_only = true];
+}
+
+// The sort order of a composite-index entry.
+enum AzureCosmosdbSqlContainerCompositeIndexOrder {
+  // Not specified: ascending.
+  azure_cosmosdb_sql_container_composite_index_order_unspecified = 0;
+
+  // Wire value: "Ascending".
+  ASCENDING = 1;
+
+  // Wire value: "Descending".
+  DESCENDING = 2;
+}
+
+// One spatial index.
+message AzureCosmosdbSqlContainerSpatialIndex {
+  // The path holding GeoJSON geometry to index, e.g. "/location/*".
+  string path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// How conflicting writes are resolved on multi-region-write accounts.
+message AzureCosmosdbSqlContainerConflictResolutionPolicy {
+  // LAST_WRITER_WINS picks the document with the highest value at
+  // `conflict_resolution_path` (default /_ts); CUSTOM hands conflicts to
+  // the stored procedure named in `conflict_resolution_procedure` (or to
+  // the conflict feed when none is registered).
+  AzureCosmosdbSqlContainerConflictResolutionMode mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // For LAST_WRITER_WINS: the numeric document path compared to pick the
+  // winner. Unset means Azure's default, "/_ts" (the write timestamp).
+  string conflict_resolution_path = 2;
+
+  // For CUSTOM: the stored procedure that resolves conflicts, e.g.
+  // "dbs/{db}/colls/{coll}/sprocs/{name}". Unset routes conflicts to the
+  // conflict feed for the application to resolve.
+  string conflict_resolution_procedure = 3;
+
+  option (buf.validate.message).cel = {
+    id: "cosmosdb_sql_container_conflict_fields_match_mode"
+    message: "conflict_resolution_path applies to LAST_WRITER_WINS and conflict_resolution_procedure to CUSTOM"
+    expression: "(this.mode == 1 || this.conflict_resolution_path == '') && (this.mode == 2 || this.conflict_resolution_procedure == '')"
+  };
+}
+
+// The conflict-resolution mode.
+enum AzureCosmosdbSqlContainerConflictResolutionMode {
+  azure_cosmosdb_sql_container_conflict_resolution_mode_unspecified = 0;
+
+  // The highest value at conflict_resolution_path wins. Wire value:
+  // "LastWriterWins".
+  LAST_WRITER_WINS = 1;
+
+  // A stored procedure (or the conflict feed) resolves conflicts. Wire
+  // value: "Custom".
+  CUSTOM = 2;
+}

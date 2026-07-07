@@ -1,28 +1,35 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureCosmosdbAccount
 metadata:
-  name: my-cosmosdb-account
+  name: my-app-cosmos
 spec:
-  region: <azure-region>
+  region: eastus
   resourceGroup:
-    value: "<your-resource-group-name>"
-  name: <your-account-name>
-  kind: GlobalDocumentDB  # default from spec; SQL/NoSQL API
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-data-rg
+      fieldPath: status.outputs.resource_group_name
+  accountName: <globally-unique-account-name>
+  # The SQL (NoSQL) API -- the default, stated for clarity.
+  kind: GLOBAL_DOCUMENT_DB
+  # Session consistency: read-your-writes within a session -- Azure's
+  # recommendation for most applications.
   consistencyPolicy:
-    consistencyLevel: Session  # default from spec
+    consistencyLevel: SESSION
+  # Two regions: eastus writes, westus2 reads and takes over on
+  # failover. Adding regions later is an in-place update.
   geoLocations:
-    - location: <azure-region>
+    - location: eastus
       failoverPriority: 0
-      zoneRedundant: false  # default from spec
-  freeTierEnabled: false  # default from spec
-  automaticFailoverEnabled: false  # default from spec
-  multipleWriteLocationsEnabled: false  # default from spec
-  publicNetworkAccessEnabled: true  # default from spec
-  sqlDatabases:
-    - name: <your-database-name>
-      throughput: 400
-      containers:
-        - name: <your-container-name>
-          partitionKeyPaths:
-            - /partitionKey
-          partitionKeyKind: Hash  # default from spec
+    - location: westus2
+      failoverPriority: 1
+  # Promote westus2 automatically if eastus goes down.
+  automaticFailoverEnabled: true
+  # Point-in-time restore for the last 30 days -- the production-grade
+  # backup posture (upgrading from Periodic later is in-place; going
+  # back is not).
+  backup:
+    type: CONTINUOUS
+    tier: CONTINUOUS_30_DAYS
+  tags:
+    workload: app-documents

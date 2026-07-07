@@ -23,11 +23,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AzureCosmosdbAccount is the top-level API resource for an Azure Cosmos DB
-// account.
-// Azure Cosmos DB is a globally distributed, multi-model database service
-// supporting SQL/NoSQL and MongoDB APIs with configurable consistency,
-// automatic global distribution, and elastic scalability.
+// AzureCosmosdbAccount is the top-level API resource for an Azure Cosmos
+// DB account -- the globally distributed, multi-model database account
+// that owns regions, consistency, network posture, encryption, and backup.
+// The data containers are first-class kinds referencing the account:
+// AzureCosmosdbSqlDatabase / AzureCosmosdbSqlContainer for the SQL (NoSQL)
+// API and AzureCosmosdbMongoDatabase / AzureCosmosdbMongoCollection for
+// the MongoDB API.
 type AzureCosmosdbAccount struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

@@ -10,16 +10,16 @@ order: 200
 presets:
   - slug: "01-sql-api"
     rank: "01"
-    title: "Cosmos DB with SQL API"
-    excerpt: "This preset creates an Azure Cosmos DB account with the SQL (NoSQL) API, Session consistency, a single geo-location, and one SQL database containing a container with a partition key. The SQL API is..."
+    title: "Production SQL API Account"
+    excerpt: "This preset creates a two-region SQL (NoSQL) API account with automatic failover and continuous backup -- the production baseline for document workloads. Databases and containers are deployed as..."
   - slug: "02-mongodb-api"
     rank: "02"
-    title: "Cosmos DB with MongoDB API"
-    excerpt: "This preset creates an Azure Cosmos DB account with the MongoDB wire-protocol API, MongoDB server version 6.0, Session consistency, and one MongoDB database containing a sharded collection...."
+    title: "MongoDB API Account"
+    excerpt: "This preset creates a MongoDB-compatible account: existing MongoDB drivers, tools, and code work unchanged against a fully managed, globally distributable backend. Databases and collections are..."
   - slug: "03-serverless"
     rank: "03"
-    title: "Cosmos DB Serverless (SQL API)"
-    excerpt: "This preset creates an Azure Cosmos DB account in serverless mode with the SQL (NoSQL) API. Serverless mode uses pay-per-request pricing with no provisioned throughput -- you only pay for the Request..."
+    title: "Serverless, Entra-Only Account"
+    excerpt: "This preset creates a serverless SQL-API account with the fully locked-down access posture: pay-per-request billing, no public endpoint, and no key-based authentication -- every data-plane caller..."
 ---
 
 # Cosmos DB Account Presets

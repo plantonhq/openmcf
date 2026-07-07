@@ -1,28 +1,30 @@
 apiVersion: azure.planton.dev/v1
 kind: AzureCosmosdbAccount
 metadata:
-  name: my-cosmosdb-serverless
+  name: my-serverless-cosmos
 spec:
-  region: <azure-region>
+  region: eastus
   resourceGroup:
-    value: "<your-resource-group-name>"
-  name: <your-account-name>
-  kind: GlobalDocumentDB  # default from spec; SQL/NoSQL API
+    valueFrom:
+      kind: AzureResourceGroup
+      name: my-data-rg
+      fieldPath: status.outputs.resource_group_name
+  accountName: <globally-unique-account-name>
+  # Serverless billing: pay per request, no provisioned RU/s anywhere
+  # in the account. Databases and containers must not declare
+  # throughput.
   capabilities:
-    - EnableServerless
+    - ENABLE_SERVERLESS
   consistencyPolicy:
-    consistencyLevel: Session  # default from spec
+    consistencyLevel: SESSION
   geoLocations:
-    - location: <azure-region>
+    - location: eastus
       failoverPriority: 0
-      zoneRedundant: false  # default from spec
-  freeTierEnabled: false  # default from spec
-  publicNetworkAccessEnabled: true  # default from spec
-  sqlDatabases:
-    - name: <your-database-name>
-      # No throughput fields -- serverless uses pay-per-request pricing
-      containers:
-        - name: <your-container-name>
-          partitionKeyPaths:
-            - /partitionKey
-          partitionKeyKind: Hash  # default from spec
+  # The locked-down posture: no public endpoint, no key-based access --
+  # every data-plane caller authenticates through Entra ID and reaches
+  # the account through a private endpoint.
+  publicNetworkAccessEnabled: false
+  localAuthenticationEnabled: false
+  accessKeyMetadataWritesEnabled: false
+  tags:
+    workload: spiky-dev

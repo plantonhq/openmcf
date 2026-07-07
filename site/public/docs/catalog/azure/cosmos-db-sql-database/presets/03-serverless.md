@@ -1,0 +1,62 @@
+---
+title: "Serverless Database"
+description: "This preset creates a database on a serverless Cosmos DB account -- one whose AzureCosmosdbAccount declares the ENABLE_SERVERLESS capability. Serverless accounts bill per request instead of per..."
+type: "preset"
+rank: "03"
+presetSlug: "03-serverless"
+componentSlug: "cosmos-db-sql-database"
+componentTitle: "Cosmos DB SQL Database"
+provider: "azure"
+icon: "package"
+order: 3
+---
+
+# Serverless Database
+
+This preset creates a database on a serverless Cosmos DB account --
+one whose AzureCosmosdbAccount declares the ENABLE_SERVERLESS
+capability. Serverless accounts bill per request instead of per
+provisioned RU/s, so the database (and its containers) must not
+declare throughput at all: Azure rejects provisioned throughput on
+serverless at apply.
+
+## When to Use
+
+- Intermittent or unpredictable traffic where provisioned capacity
+  would sit idle (internal tools, prototypes, event-driven jobs)
+- New workloads whose traffic profile is still unknown -- measure on
+  serverless, move to provisioned throughput when the profile settles
+- Cost floors matter more than throughput ceilings
+
+## Key Configuration Choices
+
+- **No `throughput`, no `autoscaleMaxThroughput`** -- a hard
+  requirement on serverless, not a stylistic choice; Azure rejects
+  either at apply
+- **The billing mode lives on the ACCOUNT** -- the referenced
+  AzureCosmosdbAccount must carry the ENABLE_SERVERLESS capability;
+  nothing on the database selects serverless
+- **Containers inherit the constraint** -- AzureCosmosdbSqlContainer
+  resources in this database must also leave both throughput fields
+  unset
+
+## Placeholders to Replace
+
+| Placeholder | Description | Where to Find |
+| --- | --- | --- |
+| `<serverless-account-resource-name>` | An AzureCosmosdbAccount with the ENABLE_SERVERLESS capability | Your Cosmos composition |
+| `<database-name>` | 1-255 characters, unique within the account | Your naming convention |
+
+## Downstream Wiring
+
+Containers reference the database the usual way -- and, on serverless,
+also omit throughput:
+
+```yaml
+# On an AzureCosmosdbSqlContainer
+sqlDatabaseId:
+  valueFrom:
+    kind: AzureCosmosdbSqlDatabase
+    name: my-serverless-database
+    fieldPath: status.outputs.sql_database_id
+```

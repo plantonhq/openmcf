@@ -1,71 +1,55 @@
 # AzureCosmosdbAccount - Terraform Module
 
-## Overview
-
-This Terraform module provisions an Azure Cosmos DB account with optional SQL API
-databases/containers or MongoDB API databases/collections using the `azurerm`
-provider (~> 4.0).
+Terraform implementation for the AzureCosmosdbAccount deployment
+component.
 
 ## Resources Created
 
-| Resource | Type | For Each |
-|----------|------|----------|
-| Cosmos DB Account | `azurerm_cosmosdb_account` | 1 |
-| SQL Database | `azurerm_cosmosdb_sql_database` | Per `spec.sql_databases` (when kind = GlobalDocumentDB) |
-| SQL Container | `azurerm_cosmosdb_sql_container` | Per container in sql_databases |
-| Mongo Database | `azurerm_cosmosdb_mongo_database` | Per `spec.mongo_databases` (when kind = MongoDB) |
-| Mongo Collection | `azurerm_cosmosdb_mongo_collection` | Per collection in mongo_databases |
+- `azurerm_cosmosdb_account.main` -- the Cosmos DB account: API kind,
+  regions, consistency, capabilities, network posture, managed
+  identity, customer-managed-key encryption, backup, and tags.
+  Databases and containers are their own kinds referencing this
+  account, so this module creates exactly one resource.
 
-## Required Variables
+## Variable Highlights
 
-- `metadata` - Resource metadata (name, org, env, etc.)
-- `spec.region` - Azure region
-- `spec.resource_group` - Resource group name
-- `spec.name` - Cosmos DB account name (globally unique)
-- `spec.geo_locations` - At least one geo location with failover_priority
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `account_id` | ARM resource ID of the Cosmos DB account |
-| `account_name` | Account name |
-| `endpoint` | Document endpoint URI |
-| `primary_key` | Primary access key (sensitive) |
-| `primary_connection_string` | SQL API connection string (sensitive) |
-| `primary_mongodb_connection_string` | MongoDB API connection string (sensitive) |
-| `database_ids` | Map of database names to ARM IDs |
+| Variable | Notes |
+| --- | --- |
+| `spec.account_name` | The globally unique DNS label; ForceNew |
+| `spec.kind` | Spec enum name strings (GLOBAL_DOCUMENT_DB/MONGO_DB); unset materializes GlobalDocumentDB; ForceNew |
+| `spec.consistency_policy` | Level enum defaulting Session; the BoundedStaleness dials carry the proto defaults (5/100) when unset; the multi-region floors are enforced by the spec before the plan |
+| `spec.capabilities` | Spec enum name strings mapped to ARM's exact wire values (including MongoDBv3.4 and mongoEnableDocLevelTTL, which break the EnableX convention); never injected -- a MONGO_DB account declares ENABLE_MONGO itself |
+| `spec.backup` | Type/tier/redundancy enum names; per-mode field pairings enforced by the spec; unset dials omitted so Azure's defaults apply |
+| `spec.identity` + `spec.default_identity` | The default identity composes the "UserAssignedIdentity=<id>" wire string from the type enum + identity reference |
+| `spec.key_vault_key_id` | The resolved versionless Key Vault key URI; sent only when set; ForceNew |
+| `spec.local_authentication_enabled` | Inverted onto azurerm's `local_authentication_disabled` (the v4 surviving input) |
+| `spec.restore` + `spec.create_mode` | RESTORE creates the account from a continuous-backup restore point; every restore field ForceNew |
+| `spec.tags` | Merged over the platform's identity tags; user values win |
 
 ## Usage
 
 ```hcl
-module "cosmos" {
+module "cosmosdb_account" {
   source = "./path/to/module"
 
   metadata = {
-    name = "my-cosmos"
+    name = "app-cosmos"
     org  = "mycompany"
-    env  = "production"
   }
 
   spec = {
-    region        = "eastus"
-    resource_group = "my-rg"
-    name          = "my-cosmos-account"
-    kind          = "GlobalDocumentDB"
-    geo_locations = [{
-      location          = "eastus"
-      failover_priority = 0
-    }]
-    sql_databases = [{
-      name       = "myapp"
-      throughput = 400
-      containers = [{
-        name                = "items"
-        partition_key_paths = ["/tenantId"]
-        throughput          = 400
-      }]
-    }]
+    region         = "eastus"
+    resource_group = "data-rg"
+    account_name   = "mycompany-app-cosmos"
+    consistency_policy = {
+      consistency_level = "SESSION"
+    }
+    geo_locations = [
+      { location = "eastus", failover_priority = 0 }
+    ]
   }
 }
 ```
+
+`offer_type` is hardcoded to `Standard` -- ARM accepts no other value,
+so there is nothing to model.

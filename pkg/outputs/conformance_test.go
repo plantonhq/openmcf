@@ -1540,6 +1540,110 @@ func TestStackOutputsConformance(t *testing.T) {
 				"access_policy_assignment_id", "access_policy_assignment_name",
 			},
 		},
+		{
+			// AzureCosmosdbAccount: cosmosdb_account_id is what the SQL/Mongo
+			// database kinds and private endpoints reference; the keys and
+			// ready-made connection strings are the credential surface; the
+			// per-region endpoint lists are repeated string outputs.
+			name: "AzureCosmosdbAccount",
+			kind: cloudresourcekind.CloudResourceKind_AzureCosmosdbAccount,
+			rawOutputs: map[string]interface{}{
+				"cosmosdb_account_id":                          "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.DocumentDB/databaseAccounts/app-cosmos",
+				"cosmosdb_account_name":                        "app-cosmos",
+				"endpoint":                                     "https://app-cosmos.documents.azure.com:443/",
+				"read_endpoints":                               []interface{}{"https://app-cosmos-eastus.documents.azure.com:443/", "https://app-cosmos-westus2.documents.azure.com:443/"},
+				"write_endpoints":                              []interface{}{"https://app-cosmos-eastus.documents.azure.com:443/"},
+				"primary_key":                                  "primary-key-value",
+				"secondary_key":                                "secondary-key-value",
+				"primary_readonly_key":                         "primary-readonly-key-value",
+				"secondary_readonly_key":                       "secondary-readonly-key-value",
+				"primary_sql_connection_string":                "AccountEndpoint=https://app-cosmos.documents.azure.com:443/;AccountKey=primary-key-value;",
+				"secondary_sql_connection_string":              "AccountEndpoint=https://app-cosmos.documents.azure.com:443/;AccountKey=secondary-key-value;",
+				"primary_readonly_sql_connection_string":       "AccountEndpoint=https://app-cosmos.documents.azure.com:443/;AccountKey=primary-readonly-key-value;",
+				"secondary_readonly_sql_connection_string":     "AccountEndpoint=https://app-cosmos.documents.azure.com:443/;AccountKey=secondary-readonly-key-value;",
+				"primary_mongodb_connection_string":            "mongodb://app-cosmos:primary-key-value@app-cosmos.mongo.cosmos.azure.com:10255/?ssl=true",
+				"secondary_mongodb_connection_string":          "mongodb://app-cosmos:secondary-key-value@app-cosmos.mongo.cosmos.azure.com:10255/?ssl=true",
+				"primary_readonly_mongodb_connection_string":   "mongodb://app-cosmos:primary-readonly-key-value@app-cosmos.mongo.cosmos.azure.com:10255/?ssl=true",
+				"secondary_readonly_mongodb_connection_string": "mongodb://app-cosmos:secondary-readonly-key-value@app-cosmos.mongo.cosmos.azure.com:10255/?ssl=true",
+				"identity_principal_id":                        "11111111-2222-3333-4444-555555555555",
+			},
+			mustPopulate: []string{
+				"cosmosdb_account_id", "cosmosdb_account_name", "endpoint",
+				"read_endpoints", "write_endpoints",
+				"primary_key", "secondary_key",
+				"primary_readonly_key", "secondary_readonly_key",
+				"primary_sql_connection_string", "secondary_sql_connection_string",
+				"primary_readonly_sql_connection_string", "secondary_readonly_sql_connection_string",
+				"primary_mongodb_connection_string", "secondary_mongodb_connection_string",
+				"primary_readonly_mongodb_connection_string", "secondary_readonly_mongodb_connection_string",
+				"identity_principal_id",
+			},
+		},
+		{
+			// AzureCosmosdbSqlDatabase: sql_database_id is the seam
+			// containers (AzureCosmosdbSqlContainer.sql_database_id)
+			// reference; the account/database name pair is what SDK calls
+			// consume inside the account's connection.
+			name: "AzureCosmosdbSqlDatabase",
+			kind: cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlDatabase,
+			rawOutputs: map[string]interface{}{
+				"sql_database_id":       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.DocumentDB/databaseAccounts/app-cosmos/sqlDatabases/app-data",
+				"sql_database_name":     "app-data",
+				"cosmosdb_account_name": "app-cosmos",
+			},
+			mustPopulate: []string{
+				"sql_database_id", "sql_database_name", "cosmosdb_account_name",
+			},
+		},
+		{
+			// AzureCosmosdbSqlContainer: sql_container_id is the
+			// management identity and the container-level data-plane RBAC
+			// scope; the name triple addresses the container inside the
+			// account's connection.
+			name: "AzureCosmosdbSqlContainer",
+			kind: cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlContainer,
+			rawOutputs: map[string]interface{}{
+				"sql_container_id":      "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.DocumentDB/databaseAccounts/app-cosmos/sqlDatabases/app-data/containers/orders",
+				"sql_container_name":    "orders",
+				"sql_database_name":     "app-data",
+				"cosmosdb_account_name": "app-cosmos",
+			},
+			mustPopulate: []string{
+				"sql_container_id", "sql_container_name",
+				"sql_database_name", "cosmosdb_account_name",
+			},
+		},
+		{
+			// AzureCosmosdbMongoDatabase: mongo_database_id is the seam
+			// collections (AzureCosmosdbMongoCollection.mongo_database_id)
+			// reference.
+			name: "AzureCosmosdbMongoDatabase",
+			kind: cloudresourcekind.CloudResourceKind_AzureCosmosdbMongoDatabase,
+			rawOutputs: map[string]interface{}{
+				"mongo_database_id":     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.DocumentDB/databaseAccounts/app-cosmos-mongo/mongodbDatabases/app-data",
+				"mongo_database_name":   "app-data",
+				"cosmosdb_account_name": "app-cosmos-mongo",
+			},
+			mustPopulate: []string{
+				"mongo_database_id", "mongo_database_name", "cosmosdb_account_name",
+			},
+		},
+		{
+			// AzureCosmosdbMongoCollection: the name triple addresses the
+			// collection inside the account's Mongo connection string.
+			name: "AzureCosmosdbMongoCollection",
+			kind: cloudresourcekind.CloudResourceKind_AzureCosmosdbMongoCollection,
+			rawOutputs: map[string]interface{}{
+				"mongo_collection_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.DocumentDB/databaseAccounts/app-cosmos-mongo/mongodbDatabases/app-data/collections/events",
+				"mongo_collection_name": "events",
+				"mongo_database_name":   "app-data",
+				"cosmosdb_account_name": "app-cosmos-mongo",
+			},
+			mustPopulate: []string{
+				"mongo_collection_id", "mongo_collection_name",
+				"mongo_database_name", "cosmosdb_account_name",
+			},
+		},
 	}
 
 	for _, tc := range cases {

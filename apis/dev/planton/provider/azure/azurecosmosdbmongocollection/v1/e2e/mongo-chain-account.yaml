@@ -1,0 +1,29 @@
+# Scenario-local Mongo API account for the collection chain.
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbAccount
+metadata:
+  name: planton-oss-e2e-cosmosmgchain-fixture-account
+  id: planton-oss-e2e-cosmosmgchain-fixture-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2ecosmgch
+  kind: MONGO_DB
+  capabilities:
+    - ENABLE_MONGO
+  consistencyPolicy:
+    consistencyLevel: SESSION
+  geoLocations:
+    - location: eastus
+      failoverPriority: 0

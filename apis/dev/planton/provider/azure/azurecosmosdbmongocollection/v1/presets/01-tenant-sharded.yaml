@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureCosmosdbMongoCollection
+metadata:
+  name: my-tenant-events
+spec:
+  mongoDatabaseId:
+    valueFrom:
+      kind: AzureCosmosdbMongoDatabase
+      name: <database-resource-name>
+      fieldPath: status.outputs.mongo_database_id
+  collectionName: events
+  # High-cardinality, evenly distributed -- the production default for
+  # multi-tenant event streams.
+  shardKey: tenantId
+  autoscaleMaxThroughput: 4000
+  # Azure requires the _id index on every Mongo collection (it is
+  # always unique); compound indexes serve the hot query paths.
+  indexes:
+    - keys:
+        - _id
+      unique: true
+    - keys:
+        - tenantId
+        - createdAt
