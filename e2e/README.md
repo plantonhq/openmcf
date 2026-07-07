@@ -444,7 +444,14 @@ owns two responsibilities beyond wiring verifiers:
   OUTSIDE `e2e/scenarios/`, which the discoverer treats as test cases), and
   drop the registry prerequisite if it would force the shared fixture chain in
   anyway. Registry prerequisites are for parents a kind cannot exist without
-  AND that are safe to recreate per scenario.
+  AND that are safe to recreate per scenario. The post-delete name hold is
+  SERVICE-SPECIFIC: SQL logical servers hold the name after the delete
+  returns, while Azure Cache for Redis frees the name the moment its (slow,
+  several-minute) delete completes — same-name recreates across sequential
+  engine runs verified live. Scenario-local parents are still the right shape
+  for very expensive fixtures regardless of name-hold behavior: a Redis cache
+  runs 15-40 minutes per creation, and a scenario that owns its parent never
+  serializes against another scenario recreating a shared one.
 - **The tfvars wire format drops zero-valued proto fields — TF object attributes
   where zero is meaningful must be `optional()` with the zero default.**
   `ProtoToTFVars()` serializes from protojson, which omits scalar zeros

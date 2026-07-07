@@ -68,8 +68,8 @@ planton apply -f cache.yaml
 ```
 
 Provisioning takes 15-40 minutes -- Redis is the slowest-provisioning
-service in the Azure catalog. Note also that a deleted cache's globally
-unique name is held by Azure for a while before it can be reused.
+service in the Azure catalog. Deletion also runs several minutes; the
+globally unique name becomes reusable once the delete completes.
 
 ## Key Outputs
 

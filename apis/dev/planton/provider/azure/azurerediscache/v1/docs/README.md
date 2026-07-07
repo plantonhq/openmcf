@@ -13,6 +13,17 @@ Redis ENTERPRISE (`Microsoft.Cache/redisEnterprise`) is a different ARM
 family with different SKUs, modules, and CMK support -- deliberately NOT
 this kind; it is a separate breadth evaluation.
 
+**Retirement notice (live-verified):** Azure has announced the
+retirement of classic Azure Cache for Redis in favor of Azure Managed
+Redis (the `redisEnterprise` family), and ARM has begun rejecting NEW
+cache creations region by region with 400 "Azure Cache for Redis is
+retiring, create Azure Managed Redis instance instead" -- observed live
+on new PREMIUM creations in some regions while Basic/Standard creations
+elsewhere still succeed. Existing caches keep running and azurerm fully
+supports the resource, so this kind remains the right surface for
+managing them; treat Azure Managed Redis as the target for NEW
+deployments once its kind exists.
+
 ## Field Mapping (azurerm → spec)
 
 | azurerm | spec | Notes |
@@ -67,9 +78,12 @@ this kind; it is a separate breadth evaluation.
 - **Managed-identity persistence** needs the identity granted "Storage
   Blob Data Contributor" on the persistence account -- the exported
   `identity_principal_id` is the grant target.
-- **A just-deleted cache name is held by Azure** -- sequential
-  delete-recreate of the same name fails; the E2E scenarios use
-  scenario-local fixtures for exactly this reason.
+- **Deletion is slow but frees the name cleanly** -- destroys poll for
+  several minutes, and the globally unique name is reusable as soon as
+  the delete completes (no soft-delete hold; live-verified by
+  sequential same-name recreates across both engine runs). E2E
+  scenarios still use scenario-local cache fixtures so each scenario
+  owns its expensive parent instead of recreating a shared one.
 
 ## Composition
 

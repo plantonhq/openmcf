@@ -314,8 +314,8 @@ type AzureRedisCacheSpec struct {
 	// The cache's name -- GLOBALLY unique across all of Azure, because it
 	// becomes the public DNS endpoint `{cache_name}.redis.cache.windows.net`.
 	// 1-63 letters, digits, and hyphens; must start and end with a letter or
-	// digit; no consecutive hyphens. Azure holds a just-deleted name for a
-	// while, so a destroyed cache's name cannot be reused immediately.
+	// digit; no consecutive hyphens. Deletion runs several minutes but frees
+	// the name as soon as it completes -- there is no soft-delete hold.
 	// Changing the name replaces the cache.
 	CacheName string `protobuf:"bytes,3,opt,name=cache_name,json=cacheName,proto3" json:"cache_name,omitempty"`
 	// The pricing/capability tier. Unspecified deploys STANDARD -- the

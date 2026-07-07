@@ -3,19 +3,23 @@ kind: ComponentE2EProfile
 metadata:
   name: azureredislinkedserver
 spec:
-  # The harness deploys the fixture resource group and TWO scenario-local
-  # PREMIUM P1 caches in different regions (Azure's requirements for a
-  # geo pair), links them, verifies the link via the ARM API, destroys
-  # the link (Azure's own failover operation -- proving it detaches
-  # cleanly), and verifies it is gone before the caches tear down.
-  #
-  # This is the most expensive scenario in the Azure suite: two Premium
-  # caches at the slowest provisioning time in the catalog (15-40
-  # minutes EACH, sequential), plus several minutes to establish and
-  # detach replication -- which sizes the timeout.
+  # The geo-link scenario (two scenario-local PREMIUM P1 caches in
+  # different regions joined by the link under test) stays fully wired
+  # and runs unchanged the moment a subscription/region pair that can
+  # still provision two Premium caches is available. The kind stands on
+  # its green offline gate meanwhile: 100% parity audit, full tofu plan
+  # (parent RG/name parsed from the cache ARM id, role enum mapped), and
+  # the pkg/outputs conformance case.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: deferred
+  deferred_reason: >-
+    Un-provisionable dependency, verified live on BOTH engines: a
+    geo-replication link requires two PREMIUM caches, and ARM now
+    rejects new Premium cache creation with 400 "Azure Cache for Redis
+    is retiring, create Azure Managed Redis instance instead". The
+    retirement is rolling out region by region (the eastus P1 primary
+    still provisioned; the westus2 P1 secondary was rejected on every
+    attempt). Existing Premium pairs keep working and azurerm fully
+    supports the resource.
+  validated_provisioners: []
   timeout_minutes: 150
