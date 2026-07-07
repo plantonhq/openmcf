@@ -74,6 +74,7 @@ A machine-to-machine client can now list `https://api.example.com/read` in its `
 |--------|------|-------------|
 | `resource_server_identifier` | `string` | The identifier -- the scope prefix access tokens carry. |
 | `scope_identifiers` | `string[]` | Fully-qualified scope strings (`{identifier}/{scope_name}`) -- the exact values app clients list in `allowedOauthScopes`. |
+| `user_pool_id` | `string` | The pool this resource server belongs to, resolved from the spec reference. |
 
 ## Related Components
 

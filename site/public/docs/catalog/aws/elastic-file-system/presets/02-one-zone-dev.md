@@ -32,6 +32,7 @@ One Zone storage (us-east-1a), encrypted, bursting throughput. Lower cost for de
 
 ## What to Customize
 
-- Change `availabilityZoneName` to match your region (e.g., us-west-2a, eu-west-1a)
+- Change `region` and `availabilityZoneName` to match your region (e.g., us-west-2 / us-west-2a)
+- Replace placeholders: `<subnet-id-us-east-1a>` (must belong to the named AZ), `<security-group-id>`
 - Enable `backupEnabled: true` if dev data should be backed up
-- Add access points if multiple apps share the file system
+- Create `AwsEfsAccessPoint` resources referencing this file system if multiple apps share it

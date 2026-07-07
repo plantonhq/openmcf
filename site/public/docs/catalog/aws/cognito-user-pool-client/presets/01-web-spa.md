@@ -30,5 +30,5 @@ order: 1
 ## What You Might Add
 
 - Federated providers in `supportedIdentityProviders` -- reference `AwsCognitoIdentityProvider` resources
-- `refreshTokenRotation: {feature: ENABLED}` to make refresh tokens one-time-use
+- `refreshTokenRotation: {feature: ENABLED}` to make refresh tokens one-time-use (drop `ALLOW_REFRESH_TOKEN_AUTH` from `explicitAuthFlows` when you do -- AWS rejects the combination)
 - Tighter `accessTokenValidity` / `idTokenValidity` for sensitive applications

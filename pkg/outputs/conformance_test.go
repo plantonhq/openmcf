@@ -1288,6 +1288,53 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"resource_server_identifier", "scope_identifiers", "user_pool_id"},
 		},
 		{
+			// AwsElasticFileSystem: both engines emit the file system identity,
+			// the regional DNS name, the four per-subnet mount-target maps
+			// (keyed by resolved subnet ID), and the replication destination
+			// (empty string when replication is not configured — the shape must
+			// stay stable across the arms).
+			name: "AwsElasticFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsElasticFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":  "fs-0123456789abcdef0",
+				"file_system_arn": "arn:aws:elasticfilesystem:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"dns_name":        "fs-0123456789abcdef0.efs.us-west-2.amazonaws.com",
+				"mount_target_ids": map[string]interface{}{
+					"subnet-0aaa": "fsmt-0123456789abcdef0",
+					"subnet-0bbb": "fsmt-0123456789abcdef1",
+				},
+				"mount_target_ips": map[string]interface{}{
+					"subnet-0aaa": "10.0.1.50",
+					"subnet-0bbb": "10.0.2.51",
+				},
+				"mount_target_ipv6_addresses": map[string]interface{}{
+					"subnet-0aaa": "",
+					"subnet-0bbb": "",
+				},
+				"mount_target_dns_names": map[string]interface{}{
+					"subnet-0aaa": "us-west-2a.fs-0123456789abcdef0.efs.us-west-2.amazonaws.com",
+					"subnet-0bbb": "us-west-2b.fs-0123456789abcdef0.efs.us-west-2.amazonaws.com",
+				},
+				"replication_destination_file_system_id": "",
+			},
+			mustPopulate: []string{"file_system_id", "file_system_arn", "dns_name", "mount_target_ids", "mount_target_ips", "mount_target_dns_names"},
+		},
+		{
+			// AwsEfsAccessPoint: both engines emit the access point identity
+			// (Lambda takes the ARN, ECS volume authorization the ID) plus the
+			// file system it enters, so consumers can wire everything from
+			// this one node.
+			name: "AwsEfsAccessPoint",
+			kind: cloudresourcekind.CloudResourceKind_AwsEfsAccessPoint,
+			rawOutputs: map[string]interface{}{
+				"access_point_id":  "fsap-0123456789abcdef0",
+				"access_point_arn": "arn:aws:elasticfilesystem:us-west-2:123456789012:access-point/fsap-0123456789abcdef0",
+				"file_system_id":   "fs-0123456789abcdef0",
+				"file_system_arn":  "arn:aws:elasticfilesystem:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+			},
+			mustPopulate: []string{"access_point_id", "access_point_arn", "file_system_id", "file_system_arn"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

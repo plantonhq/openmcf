@@ -134,6 +134,10 @@ var migratedKinds = []string{
 	"AwsCognitoIdentityProvider",
 	"AwsCognitoUserPoolClient",
 	"AwsCognitoResourceServer",
+	// EFS family: the file system migrated off its legacy hand-written flat
+	// contract; the access point generator-owned from the day it was forged.
+	"AwsElasticFileSystem",
+	"AwsEfsAccessPoint",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

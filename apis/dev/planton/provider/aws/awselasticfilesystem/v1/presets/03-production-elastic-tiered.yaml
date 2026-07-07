@@ -1,0 +1,24 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsElasticFileSystem
+metadata:
+  org: example-org
+  env: prod
+  name: prod-efs-elastic
+  id: prod-efs-elastic-id
+spec:
+  region: us-east-1
+  encrypted: true
+  throughputMode: elastic
+  backupEnabled: true
+  transitionToIa: AFTER_30_DAYS
+  transitionToArchive: AFTER_90_DAYS
+  transitionToPrimaryStorageClass: AFTER_1_ACCESS
+  mountTargets:
+    - subnetId:
+        value: "<subnet-id-az-a>"
+    - subnetId:
+        value: "<subnet-id-az-b>"
+  securityGroupIds:
+    - value: "<security-group-id>"
+  replication:
+    destinationRegion: us-west-2

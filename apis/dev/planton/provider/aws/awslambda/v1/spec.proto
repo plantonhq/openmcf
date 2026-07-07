@@ -440,12 +440,11 @@ message AwsLambdaImageConfig {
 // execution environment at a /mnt path.
 message AwsLambdaFileSystemConfig {
   // The EFS ACCESS POINT ARN (not the file system ARN). Reference an
-  // AwsElasticFileSystem access-point output by name -- e.g. valueFrom
-  // fieldPath "status.outputs.access_point_arns.<access-point-name>"
-  // -- or pass a literal access point ARN.
+  // AwsEfsAccessPoint resource or pass a literal access point ARN.
   dev.planton.shared.foreignkey.v1.StringValueOrRef access_point_arn = 1 [
     (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticFileSystem
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEfsAccessPoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.access_point_arn"
   ];
 
   // Where the file system appears inside the execution environment.

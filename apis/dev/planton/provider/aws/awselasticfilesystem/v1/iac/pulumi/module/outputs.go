@@ -1,13 +1,14 @@
 package module
 
-// Output key constants exported by this Pulumi module.
+// Output key constants exported by this Pulumi module. These mirror
+// AwsElasticFileSystemStackOutputs field names one-to-one.
 const (
-	OpFileSystemId        = "file_system_id"
-	OpFileSystemArn       = "file_system_arn"
-	OpDnsName             = "dns_name"
-	OpMountTargetIds      = "mount_target_ids"
-	OpMountTargetIps      = "mount_target_ips"
-	OpMountTargetDnsNames = "mount_target_dns_names"
-	OpAccessPointIds      = "access_point_ids"
-	OpAccessPointArns     = "access_point_arns"
+	OpFileSystemId                       = "file_system_id"
+	OpFileSystemArn                      = "file_system_arn"
+	OpDnsName                            = "dns_name"
+	OpMountTargetIds                     = "mount_target_ids"
+	OpMountTargetIps                     = "mount_target_ips"
+	OpMountTargetIpv6Addresses           = "mount_target_ipv6_addresses"
+	OpMountTargetDnsNames                = "mount_target_dns_names"
+	OpReplicationDestinationFileSystemId = "replication_destination_file_system_id"
 )

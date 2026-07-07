@@ -29,9 +29,10 @@ spec:
     - https://app.example.com/auth/logout
   supportedIdentityProviders:
     - value: COGNITO
+  # ALLOW_REFRESH_TOKEN_AUTH is deliberately absent: with rotation ENABLED,
+  # AWS rejects the explicit refresh flow on the same client.
   explicitAuthFlows:
     - ALLOW_USER_SRP_AUTH
-    - ALLOW_REFRESH_TOKEN_AUTH
   refreshTokenRotation:
     feature: ENABLED
     retryGracePeriodSeconds: 30

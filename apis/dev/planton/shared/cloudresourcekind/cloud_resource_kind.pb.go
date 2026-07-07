@@ -222,9 +222,17 @@ const (
 	// AwsInternetGateway is a prerequisite because a public NAT gateway can only
 	// become available once the VPC it sits in has an internet gateway attached
 	// (AWS rejects the create otherwise) -- so the gateway must be deployed first.
-	CloudResourceKind_AwsNatGateway                    CloudResourceKind = 286
-	CloudResourceKind_AwsEgressOnlyInternetGateway     CloudResourceKind = 287
-	CloudResourceKind_AwsElasticFileSystem             CloudResourceKind = 290
+	CloudResourceKind_AwsNatGateway                CloudResourceKind = 286
+	CloudResourceKind_AwsEgressOnlyInternetGateway CloudResourceKind = 287
+	// AwsSubnet and AwsSecurityGroup are prerequisites because mount targets
+	// (required, min 1) place the file system's NFS endpoints into subnets and
+	// attach security groups -- both references must resolve before the
+	// CreateMountTarget calls.
+	CloudResourceKind_AwsElasticFileSystem CloudResourceKind = 290
+	// AwsElasticFileSystem is a prerequisite because an access point is created
+	// INTO a file system -- the spec's required file_system_id reference must
+	// resolve before the CreateAccessPoint call.
+	CloudResourceKind_AwsEfsAccessPoint                CloudResourceKind = 360
 	CloudResourceKind_AwsFsxLustreFileSystem           CloudResourceKind = 291
 	CloudResourceKind_AwsFsxOpenzfsFileSystem          CloudResourceKind = 292
 	CloudResourceKind_AwsFsxWindowsFileSystem          CloudResourceKind = 293
@@ -719,6 +727,7 @@ var (
 		286:  "AwsNatGateway",
 		287:  "AwsEgressOnlyInternetGateway",
 		290:  "AwsElasticFileSystem",
+		360:  "AwsEfsAccessPoint",
 		291:  "AwsFsxLustreFileSystem",
 		292:  "AwsFsxOpenzfsFileSystem",
 		293:  "AwsFsxWindowsFileSystem",
@@ -1155,6 +1164,7 @@ var (
 		"AwsNatGateway":                           286,
 		"AwsEgressOnlyInternetGateway":            287,
 		"AwsElasticFileSystem":                    290,
+		"AwsEfsAccessPoint":                       360,
 		"AwsFsxLustreFileSystem":                  291,
 		"AwsFsxOpenzfsFileSystem":                 292,
 		"AwsFsxWindowsFileSystem":                 293,
@@ -1774,7 +1784,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xbb\x9b\x01\n" +
+	"\x02v1\x10\x01*\xf1\x9b\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1850,8 +1860,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\tAwsSubnet\x10\x9c\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awssn:\x02\xd8\x01\x12-\n" +
 	"\x12AwsInternetGateway\x10\x9d\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsigw:\x02\xd8\x01\x12,\n" +
 	"\rAwsNatGateway\x10\x9e\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x10\x01\"\x06awsnat:\x06\x9c\x02\x99\x02\x9d\x02\x128\n" +
-	"\x1cAwsEgressOnlyInternetGateway\x10\x9f\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawseigw:\x02\xd8\x01\x12+\n" +
-	"\x14AwsElasticFileSystem\x10\xa2\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsefs\x12-\n" +
+	"\x1cAwsEgressOnlyInternetGateway\x10\x9f\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawseigw:\x02\xd8\x01\x121\n" +
+	"\x14AwsElasticFileSystem\x10\xa2\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsefs:\x04\x9c\x02\xd7\x01\x12.\n" +
+	"\x11AwsEfsAccessPoint\x10\xe8\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsefsap:\x02\xa2\x02\x12-\n" +
 	"\x16AwsFsxLustreFileSystem\x10\xa3\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxl\x12.\n" +
 	"\x17AwsFsxOpenzfsFileSystem\x10\xa4\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxz\x12.\n" +
 	"\x17AwsFsxWindowsFileSystem\x10\xa5\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxw\x12,\n" +

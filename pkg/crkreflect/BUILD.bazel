@@ -88,6 +88,7 @@ go_library(
         "//apis/dev/planton/provider/aws/awsecscluster/v1:awsecscluster",
         "//apis/dev/planton/provider/aws/awsecsservice/v1:awsecsservice",
         "//apis/dev/planton/provider/aws/awsecstaskdefinition/v1:awsecstaskdefinition",
+        "//apis/dev/planton/provider/aws/awsefsaccesspoint/v1:awsefsaccesspoint",
         "//apis/dev/planton/provider/aws/awsegressonlyinternetgateway/v1:awsegressonlyinternetgateway",
         "//apis/dev/planton/provider/aws/awseksaccessentry/v1:awseksaccessentry",
         "//apis/dev/planton/provider/aws/awseksaddon/v1:awseksaddon",

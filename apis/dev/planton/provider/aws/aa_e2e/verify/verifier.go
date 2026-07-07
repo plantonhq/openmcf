@@ -111,6 +111,8 @@ var verifiers = map[string]Verifier{
 	"awscognitouserpoolclient":       &cognitoUserPoolClientVerifier{},
 	"awscognitoidentityprovider":     &cognitoIdentityProviderVerifier{},
 	"awscognitoresourceserver":       &cognitoResourceServerVerifier{},
+	"awselasticfilesystem":           &efsFileSystemVerifier{},
+	"awsefsaccesspoint":              &efsAccessPointVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

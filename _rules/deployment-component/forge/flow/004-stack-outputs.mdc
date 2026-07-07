@@ -71,3 +71,12 @@ NOTES
   `sensitive = true` on the Terraform output. Never apply this exception to material the
   MODULE generates (keys/PEMs the module creates do not belong in outputs at all).
 - Keep field names stable; other modules/tests reference these outputs downstream.
+- Map-typed outputs (`map<string, string>`, e.g. per-subnet mount-target IDs) are
+  first-class: both engines emit them as nested objects, the flattener dot-flattens
+  each entry (`field.some-key = value`), and the transformer routes the remaining
+  path segments back into the proto map with the key VERBATIM -- so map keys may
+  freely contain hyphens and dots (subnet IDs, object paths). Always add a
+  `pkg/outputs/conformance_test.go` case that includes the map fields in
+  `mustPopulate`; the conformance case is the only guard proving the map shape
+  round-trips (an un-cased map field can silently arrive empty in the platform's
+  typed outputs).

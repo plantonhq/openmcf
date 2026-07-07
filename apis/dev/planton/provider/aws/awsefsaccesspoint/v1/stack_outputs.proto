@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsefsaccesspoint.v1;
+
+// AwsEfsAccessPointStackOutputs captures observable identifiers from a
+// provisioned EFS access point.
+//
+// Primary consumers:
+// - Lambda (file_system_config): needs `access_point_arn`
+// - ECS (task definition EFS volumes): needs `access_point_id`
+// - IAM policies conditioning on elasticfilesystem:AccessPointArn: need
+//   `access_point_arn`
+message AwsEfsAccessPointStackOutputs {
+  // The ID of the access point (e.g., "fsap-0123456789abcdef0"). ECS task
+  // definition EFS volume authorization references this.
+  string access_point_id = 1;
+
+  // The Amazon Resource Name of the access point. Lambda file system
+  // configurations and IAM policy conditions reference this.
+  string access_point_arn = 2;
+
+  // The ID of the file system this access point enters (e.g.,
+  // "fs-0123456789abcdef0"). Exported so a consumer composing on the access
+  // point (an ECS EFS volume needs both) can wire everything from this one
+  // node.
+  string file_system_id = 3;
+
+  // The ARN of the file system this access point enters. Used in IAM policies
+  // that scope permissions to the file system while mounting through the
+  // access point.
+  string file_system_arn = 4;
+}

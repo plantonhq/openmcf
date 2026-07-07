@@ -567,10 +567,28 @@ enum CloudResourceKind {
 
   // --- Storage ---
 
+  // AwsSubnet and AwsSecurityGroup are prerequisites because mount targets
+  // (required, min 1) place the file system's NFS endpoints into subnets and
+  // attach security groups -- both references must resolve before the
+  // CreateMountTarget calls.
   AwsElasticFileSystem = 290 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsefs"
+    prerequisites: [
+      AwsSubnet,
+      AwsSecurityGroup
+    ]
+  }];
+
+  // AwsElasticFileSystem is a prerequisite because an access point is created
+  // INTO a file system -- the spec's required file_system_id reference must
+  // resolve before the CreateAccessPoint call.
+  AwsEfsAccessPoint = 360 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsefsap"
+    prerequisites: [AwsElasticFileSystem]
   }];
 
   AwsFsxLustreFileSystem = 291 [(kind_meta) = {

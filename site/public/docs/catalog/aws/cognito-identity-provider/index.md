@@ -200,6 +200,7 @@ spec:
 |--------|------|-------------|
 | `provider_name` | `string` | Name of the identity provider. Add this value to the User Pool Client's `supportedIdentityProviders` to enable federated sign-in. |
 | `provider_type` | `string` | Provider type (e.g., `Google`, `OIDC`, `SAML`). Informational. |
+| `user_pool_id` | `string` | The pool this provider is attached to, resolved from the spec reference. |
 
 ## Related Components
 

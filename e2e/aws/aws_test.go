@@ -684,6 +684,22 @@ func TestAwsCognitoResourceServer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awscognitoresourceserver", "terraform")
 }
 
+// --- AWS EFS family (file system root + file-system-scoped access point) ---
+
+func TestAwsElasticFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticfilesystem", "pulumi")
+}
+func TestAwsElasticFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticfilesystem", "terraform")
+}
+
+func TestAwsEfsAccessPoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsefsaccesspoint", "pulumi")
+}
+func TestAwsEfsAccessPoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsefsaccesspoint", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

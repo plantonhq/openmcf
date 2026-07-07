@@ -467,9 +467,13 @@ message AwsEcsTaskDefinitionVolume {
 // authorization is used (AWS requires it), and defaults on otherwise too --
 // there is no good reason to mount EFS unencrypted in transit.
 message AwsEcsTaskDefinitionEfsVolume {
-  // The EFS file system ID (e.g. "fs-0123456789abcdef0"). A literal ID --
-  // Planton has no EFS kind yet, so there is nothing to reference.
-  string file_system_id = 1 [(buf.validate.field).required = true];
+  // The EFS file system backing the volume. Reference an AwsElasticFileSystem
+  // resource or pass a literal file system ID (e.g. "fs-0123456789abcdef0").
+  dev.planton.shared.foreignkey.v1.StringValueOrRef file_system_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticFileSystem,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.file_system_id"
+  ];
 
   // The path within the file system to mount as the volume root. Ignored
   // when access_point_id is set (the access point defines the root).
@@ -478,8 +482,12 @@ message AwsEcsTaskDefinitionEfsVolume {
 
   // Mount through this EFS access point -- the recommended pattern:
   // the access point pins the POSIX identity and root path, so tasks
-  // cannot wander the file system.
-  string access_point_id = 3;
+  // cannot wander the file system. Reference an AwsEfsAccessPoint resource
+  // or pass a literal access point ID (e.g. "fsap-0123456789abcdef0").
+  dev.planton.shared.foreignkey.v1.StringValueOrRef access_point_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEfsAccessPoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.access_point_id"
+  ];
 
   // Authorize the mount with the task's IAM role (execution/task role
   // must carry elasticfilesystem:ClientMount/ClientWrite). Requires

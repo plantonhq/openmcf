@@ -81,7 +81,7 @@ planton apply -f client.yaml
 | `accessTokenValidity` / `idTokenValidity` | `int` | 1 hour (AWS) | Token lifetimes in `tokenValidityUnits` units. AWS bounds: 5 minutes - 24 hours. |
 | `refreshTokenValidity` | `int` | 30 days (AWS) | Refresh lifetime. AWS bounds: 60 minutes - 10 years. |
 | `tokenValidityUnits.accessToken` / `idToken` / `refreshToken` | `string` | `hours`/`hours`/`days` | `"seconds"`, `"minutes"`, `"hours"`, `"days"`. |
-| `refreshTokenRotation.feature` | `string` | — | `"ENABLED"` / `"DISABLED"` -- each refresh issues a new refresh token and retires the old one. |
+| `refreshTokenRotation.feature` | `string` | — | `"ENABLED"` / `"DISABLED"` -- each refresh issues a new refresh token and retires the old one. When ENABLED, do not also list `"ALLOW_REFRESH_TOKEN_AUTH"` in `explicitAuthFlows` (AWS rejects the combination). |
 | `refreshTokenRotation.retryGracePeriodSeconds` | `int` | 0 | 0-60 seconds the retired token stays usable after rotation. |
 | `enableTokenRevocation` | `bool` | `true` (AWS) | Sign-out revokes the refresh token and tokens minted from it. |
 | `enablePropagateAdditionalUserContextData` | `bool` | `false` | Forward client IP/user-agent to threat protection in server-side flows. Requires a client secret. |
@@ -171,6 +171,7 @@ The custom scopes come from an AwsCognitoResourceServer with identifier `https:/
 |--------|------|-------------|
 | `client_id` | `string` | The app client ID -- the JWT `aud` claim JWT authorizers validate, the ALB `user_pool_client_id`, and the SDK client identifier. |
 | `client_secret` | `string` | The client secret; populated only when `generateSecret: true`. Sensitive -- treat as a credential. |
+| `user_pool_id` | `string` | The pool this client belongs to, resolved from the spec reference -- application configs typically need the (pool id, client id) pair together. |
 
 ## Related Components
 
