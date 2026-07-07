@@ -8,7 +8,9 @@ metadata:
 spec:
   region: <aws-region>
   type: STANDARD
-  description: <workflow-description>
+  # Publish an immutable version on every configuration change so consumers
+  # (EventBridge targets, aliases) can pin to a snapshot for safe rollbacks.
+  publish: true
   roleArn:
     valueFrom:
       kind: AwsIamRole

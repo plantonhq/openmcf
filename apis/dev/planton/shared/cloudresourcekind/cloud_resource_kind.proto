@@ -409,10 +409,33 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awshttpapigw"
   }];
+  // AwsIamRole is a prerequisite because a state machine cannot be created
+  // without an execution role it can assume -- the spec's role_arn reference
+  // must resolve before the CreateStateMachine call.
   AwsStepFunction = 241 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awssfn"
+    prerequisites: [AwsIamRole]
+  }];
+  // AwsSubnet is a prerequisite because a VPC link is a set of managed ENIs
+  // provisioned into referenced subnets -- the subnet references must resolve
+  // before the link can be created. Security groups are optional on the link,
+  // so they compose per-scenario rather than as a registry prerequisite.
+  AwsHttpApiVpcLink = 356 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awshttpvpcl"
+    prerequisites: [AwsSubnet]
+  }];
+  // AwsCertManagerCert is a prerequisite because a custom domain cannot be
+  // created without a TLS certificate in the same region covering the domain
+  // -- the spec's certificate_arn reference must resolve first.
+  AwsHttpApiDomain = 357 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awshttpdom"
+    prerequisites: [AwsCertManagerCert]
   }];
   // AwsVpcEndpoint's composed E2E scenarios reference the AwsVpc
   // prerequisite's outputs (vpc_id + default_route_table_id for gateway

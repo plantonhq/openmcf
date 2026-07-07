@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAwsHttpApiGatewaySpec(t *testing.T) {
@@ -96,10 +97,18 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 	ginkgo.It("accepts a spec with stage configuration", func() {
 		spec.Stage = &AwsHttpApiGatewayStageConfig{
 			Name:       "prod",
-			AutoDeploy: true,
+			AutoDeploy: proto.Bool(true),
 			StageVariables: map[string]string{
 				"env": "production",
 			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a stage with auto_deploy explicitly disabled", func() {
+		spec.Stage = &AwsHttpApiGatewayStageConfig{
+			AutoDeploy: proto.Bool(false),
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
@@ -159,7 +168,7 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 				AuthorizerPayloadFormatVersion: "2.0",
 			},
 		}
-		spec.Routes[0].AuthorizationType = "JWT"
+		spec.Routes[0].AuthorizationType = "CUSTOM"
 		spec.Routes[0].AuthorizerName = "custom-lambda"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
@@ -206,7 +215,7 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 			AllowCredentials: true,
 		}
 		spec.Stage = &AwsHttpApiGatewayStageConfig{
-			AutoDeploy: true,
+			AutoDeploy: proto.Bool(true),
 			AccessLog: &AwsHttpApiGatewayAccessLogConfig{
 				DestinationArn: strRef("arn:aws:logs:us-east-1:123456789012:log-group:/aws/apigateway/orders"),
 				Format:         `{"requestId":"$context.requestId"}`,
@@ -214,6 +223,15 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 			DefaultThrottle: &AwsHttpApiGatewayThrottleConfig{
 				BurstLimit: 500,
 				RateLimit:  100.0,
+			},
+			DetailedMetricsEnabled: true,
+			RouteSettings: []*AwsHttpApiGatewayRouteSettings{
+				{
+					RouteKey:               "GET /orders",
+					ThrottlingBurstLimit:   50,
+					ThrottlingRateLimit:    25.0,
+					DetailedMetricsEnabled: true,
+				},
 			},
 		}
 		spec.Authorizers = []*AwsHttpApiGatewayAuthorizer{
@@ -511,6 +529,291 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 			longDesc += "a"
 		}
 		spec.Description = longDesc
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// AWS service integrations (integration_subtype)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an SQS service integration (subtype + credentials + request_parameters, no URI)", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType:    "AWS_PROXY",
+			IntegrationSubtype: "SQS-SendMessage",
+			CredentialsArn:     strRef("arn:aws:iam::123456789012:role/apigw-sqs-role"),
+			RequestParameters: map[string]string{
+				"QueueUrl":    "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+				"MessageBody": "$request.body",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a Step Functions service integration", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType:    "AWS_PROXY",
+			IntegrationSubtype: "StepFunctions-StartExecution",
+			CredentialsArn:     strRef("arn:aws:iam::123456789012:role/apigw-sfn-role"),
+			RequestParameters: map[string]string{
+				"StateMachineArn": "arn:aws:states:us-east-1:123456789012:stateMachine:orders",
+				"Input":           "$request.body",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a service integration also sets integration_uri", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType:    "AWS_PROXY",
+			IntegrationSubtype: "SQS-SendMessage",
+			IntegrationUri:     strRef("arn:aws:lambda:us-east-1:123456789012:function:x"),
+			CredentialsArn:     strRef("arn:aws:iam::123456789012:role/apigw-sqs-role"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a service integration omits credentials_arn", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType:    "AWS_PROXY",
+			IntegrationSubtype: "SQS-SendMessage",
+			RequestParameters:  map[string]string{"QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/q"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a service integration uses HTTP_PROXY", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType:    "HTTP_PROXY",
+			IntegrationSubtype: "SQS-SendMessage",
+			CredentialsArn:     strRef("arn:aws:iam::123456789012:role/apigw-sqs-role"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a proxy integration omits integration_uri", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType: "AWS_PROXY",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Private integrations (VPC link)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a private HTTP_PROXY integration through a VPC link", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType:       "HTTP_PROXY",
+			IntegrationUri:        strRef("arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/internal/50dc6c495c0c9188/f2f7dc8efc522ab2"),
+			ConnectionType:        "VPC_LINK",
+			ConnectionId:          strRef("vpclink-abc123"),
+			TlsServerNameToVerify: "api.internal.example.com",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when VPC_LINK is set without connection_id", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType: "HTTP_PROXY",
+			IntegrationUri:  strRef("https://internal.example.com"),
+			ConnectionType:  "VPC_LINK",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when connection_id is set without VPC_LINK", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType: "HTTP_PROXY",
+			IntegrationUri:  strRef("https://internal.example.com"),
+			ConnectionId:    strRef("vpclink-abc123"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a VPC_LINK integration uses AWS_PROXY", func() {
+		spec.Routes[0].Integration = &AwsHttpApiGatewayIntegration{
+			IntegrationType: "AWS_PROXY",
+			IntegrationUri:  strRef("arn:aws:lambda:us-east-1:123456789012:function:x"),
+			ConnectionType:  "VPC_LINK",
+			ConnectionId:    strRef("vpclink-abc123"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when connection_type is invalid", func() {
+		spec.Routes[0].Integration.ConnectionType = "PRIVATE"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Response parameters
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts response parameter mappings", func() {
+		spec.Routes[0].Integration.ResponseParameters = []*AwsHttpApiGatewayResponseParameters{
+			{
+				StatusCode: "500",
+				Mappings: map[string]string{
+					"overwrite:statuscode":    "503",
+					"append:header.x-request": "$context.requestId",
+				},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when response parameter status_code is not a status code", func() {
+		spec.Routes[0].Integration.ResponseParameters = []*AwsHttpApiGatewayResponseParameters{
+			{StatusCode: "5xx", Mappings: map[string]string{"overwrite:statuscode": "503"}},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when response parameter mappings are empty", func() {
+		spec.Routes[0].Integration.ResponseParameters = []*AwsHttpApiGatewayResponseParameters{
+			{StatusCode: "500"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// API-level fields
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts ip_address_type dualstack and an api_version", func() {
+		spec.IpAddressType = "dualstack"
+		spec.ApiVersion = "2026-07-07"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when ip_address_type is invalid", func() {
+		spec.IpAddressType = "ipv6"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when route keys are duplicated", func() {
+		spec.Routes = append(spec.Routes, &AwsHttpApiGatewayRoute{
+			RouteKey: "$default",
+			Integration: &AwsHttpApiGatewayIntegration{
+				IntegrationType: "HTTP_PROXY",
+				IntegrationUri:  strRef("https://example.com"),
+			},
+		})
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an operation_name on a route", func() {
+		spec.Routes[0].OperationName = "handleDefault"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when operation_name exceeds 64 characters", func() {
+		longName := ""
+		for i := 0; i < 65; i++ {
+			longName += "a"
+		}
+		spec.Routes[0].OperationName = longName
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Authorizer cross-checks
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when authorizer names are duplicated", func() {
+		spec.Authorizers = []*AwsHttpApiGatewayAuthorizer{
+			{
+				Name:           "auth",
+				AuthorizerType: "JWT",
+				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
+					Issuer:    "https://example.com",
+					Audiences: []string{"a"},
+				},
+			},
+			{
+				Name:           "auth",
+				AuthorizerType: "REQUEST",
+				AuthorizerUri:  strRef("arn:aws:lambda:us-east-1:123456789012:function:auth"),
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a JWT authorizer has no audiences", func() {
+		spec.Authorizers = []*AwsHttpApiGatewayAuthorizer{
+			{
+				Name:           "jwt-no-aud",
+				AuthorizerType: "JWT",
+				JwtConfiguration: &AwsHttpApiGatewayJwtConfig{
+					Issuer: "https://example.com",
+				},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a JWT route references a REQUEST authorizer", func() {
+		spec.Authorizers = []*AwsHttpApiGatewayAuthorizer{
+			{
+				Name:           "lambda-auth",
+				AuthorizerType: "REQUEST",
+				AuthorizerUri:  strRef("arn:aws:lambda:us-east-1:123456789012:function:auth"),
+			},
+		}
+		spec.Routes[0].AuthorizationType = "JWT"
+		spec.Routes[0].AuthorizerName = "lambda-auth"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a CUSTOM route has no authorizer_name", func() {
+		spec.Routes[0].AuthorizationType = "CUSTOM"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Stage route settings
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when route_settings target an unknown route key", func() {
+		spec.Stage = &AwsHttpApiGatewayStageConfig{
+			RouteSettings: []*AwsHttpApiGatewayRouteSettings{
+				{RouteKey: "GET /nonexistent"},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a route setting has an empty route_key", func() {
+		spec.Stage = &AwsHttpApiGatewayStageConfig{
+			RouteSettings: []*AwsHttpApiGatewayRouteSettings{
+				{RouteKey: ""},
+			},
+		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})

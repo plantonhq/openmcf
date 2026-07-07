@@ -103,6 +103,10 @@ var verifiers = map[string]Verifier{
 	"awscloudwatchloggroup":          &cloudwatchLogGroupVerifier{},
 	"awscloudwatchalarm":             &cloudwatchAlarmVerifier{},
 	"awscloudwatchcompositealarm":    &cloudwatchCompositeAlarmVerifier{},
+	"awsstepfunction":                &stepFunctionVerifier{},
+	"awshttpapigateway":              &httpApiGatewayVerifier{},
+	"awshttpapivpclink":              &httpApiVpcLinkVerifier{},
+	"awshttpapidomain":               &httpApiDomainVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

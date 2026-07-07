@@ -90,7 +90,9 @@ import (
 	awsfsxwindowsfilesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxwindowsfilesystem/v1"
 	awsglobalacceleratorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsglobalaccelerator/v1"
 	awsgluecatalogdatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsgluecatalogdatabase/v1"
+	awshttpapidomainv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapidomain/v1"
 	awshttpapigatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapigateway/v1"
+	awshttpapivpclinkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapivpclink/v1"
 	awsiaminstanceprofilev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiaminstanceprofile/v1"
 	awsiamoidcproviderv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamoidcprovider/v1"
 	awsiampolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiampolicy/v1"
@@ -546,7 +548,9 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsFsxWindowsFileSystem:          &awsfsxwindowsfilesystemv1.AwsFsxWindowsFileSystem{},
 	cloudresourcekind.CloudResourceKind_AwsGlobalAccelerator:             &awsglobalacceleratorv1.AwsGlobalAccelerator{},
 	cloudresourcekind.CloudResourceKind_AwsGlueCatalogDatabase:           &awsgluecatalogdatabasev1.AwsGlueCatalogDatabase{},
+	cloudresourcekind.CloudResourceKind_AwsHttpApiDomain:                 &awshttpapidomainv1.AwsHttpApiDomain{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiGateway:                &awshttpapigatewayv1.AwsHttpApiGateway{},
+	cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink:                &awshttpapivpclinkv1.AwsHttpApiVpcLink{},
 	cloudresourcekind.CloudResourceKind_AwsIamInstanceProfile:            &awsiaminstanceprofilev1.AwsIamInstanceProfile{},
 	cloudresourcekind.CloudResourceKind_AwsIamOidcProvider:               &awsiamoidcproviderv1.AwsIamOidcProvider{},
 	cloudresourcekind.CloudResourceKind_AwsIamPolicy:                     &awsiampolicyv1.AwsIamPolicy{},

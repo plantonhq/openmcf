@@ -84,8 +84,8 @@ var _ = ginkgo.Describe("AwsStepFunctionSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a spec with description", func() {
-		spec.Description = "Order processing workflow"
+	ginkgo.It("accepts a spec with publish enabled", func() {
+		spec.Publish = true
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -152,7 +152,7 @@ var _ = ginkgo.Describe("AwsStepFunctionSpec validations", func() {
 	ginkgo.It("accepts a full production-ready spec", func() {
 		spec.Type = "STANDARD"
 		spec.Definition = lambdaTaskDefinition()
-		spec.Description = "Production order processing workflow"
+		spec.Publish = true
 		spec.TracingEnabled = true
 		spec.Logging = &AwsStepFunctionLoggingConfig{
 			Level:                "ALL",

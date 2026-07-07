@@ -7,13 +7,14 @@ The **AwsHttpApiGateway** component provides a declarative way to deploy AWS API
 AWS API Gateway HTTP APIs (API Gateway v2) are designed for building low-latency, cost-effective REST APIs and HTTP proxy APIs. They support:
 
 - **Lambda proxy integration** — Direct invocation of Lambda functions with automatic request/response transformation
-- **HTTP proxy integration** — Forward requests to upstream HTTP endpoints
+- **HTTP proxy integration** — Forward requests to upstream HTTP endpoints, publicly or privately through a VPC link
+- **AWS service integrations** — First-class routes into SQS, EventBridge, Step Functions, Kinesis, and AppConfig with no Lambda glue
 - **JWT authorization** — Native integration with Cognito, Auth0, or any OIDC provider
-- **Lambda REQUEST authorizers** — Custom authorization logic via Lambda functions
+- **Lambda (CUSTOM) authorizers** — Custom authorization logic via Lambda functions
 - **Automatic deployments** — Changes to routes and integrations are automatically deployed to the stage
 - **Native CORS support** — Built-in CORS configuration without custom integration responses
 
-This component bundles the API, a single stage, routes with inline integrations, and optional authorizers into one declarative resource. The underlying IaC modules create and wire together the necessary API Gateway resources automatically.
+This component bundles the API, a single stage, routes with inline integrations, and optional authorizers into one declarative resource. The underlying IaC modules create and wire together the necessary API Gateway resources automatically. Custom domains are the separate `AwsHttpApiDomain` component (a domain outlives any one API and maps many APIs); VPC links are the separate `AwsHttpApiVpcLink` component (one link is shared by many APIs).
 
 ## When to Use
 
@@ -28,9 +29,10 @@ Use **AwsHttpApiGateway** when you need to:
 
 **When not to use:**
 
-- WebSocket APIs (use `AwsWebSocketApiGateway` instead)
-- APIs requiring advanced features like API keys, usage plans, or request/response transformations (use REST APIs)
-- APIs needing custom domain configuration (not supported in v1)
+- WebSocket APIs (a separate protocol surface with its own route/response model)
+- APIs requiring API keys and usage plans (a REST API feature; use JWT/IAM/Lambda authorizers instead)
+
+**Custom domains** are configured with the `AwsHttpApiDomain` component, which maps one or more APIs (by `api_id`) onto an owned domain with an ACM certificate. **Private backends** are reached through an `AwsHttpApiVpcLink` referenced from the integration's `connection_id`.
 
 ## Prerequisites
 
@@ -71,12 +73,15 @@ The root specification for the HTTP API Gateway.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `region` | `string` | **Yes** | AWS region for the API |
 | `description` | `string` | No | Human-readable description of the API (max 1024 characters) |
+| `api_version` | `string` | No | Informational version label surfaced in the console and OpenAPI exports (max 64 characters) |
 | `cors_configuration` | `AwsHttpApiGatewayCorsConfig` | No | CORS configuration for cross-origin requests |
-| `disable_execute_api_endpoint` | `bool` | No | Disable the default execute-api endpoint (set to true when using custom domains) |
+| `disable_execute_api_endpoint` | `bool` | No | Disable the default execute-api endpoint (set to true when an AwsHttpApiDomain fronts this API) |
+| `ip_address_type` | `string` | No | `ipv4` or `dualstack` (AWS defaults new APIs to dualstack) |
 | `stage` | `AwsHttpApiGatewayStageConfig` | No | Stage configuration (defaults to "$default" with auto_deploy=true) |
-| `routes` | `AwsHttpApiGatewayRoute[]` | **Yes** | API routes mapping request patterns to backend integrations (at least one required) |
-| `authorizers` | `AwsHttpApiGatewayAuthorizer[]` | No | Named authorizers referenced by routes |
+| `routes` | `AwsHttpApiGatewayRoute[]` | **Yes** | API routes mapping request patterns to backend integrations (at least one required; route keys must be unique) |
+| `authorizers` | `AwsHttpApiGatewayAuthorizer[]` | No | Named authorizers referenced by routes (names must be unique) |
 
 ### AwsHttpApiGatewayCorsConfig
 
@@ -98,10 +103,24 @@ Configures the deployment stage for the API.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | `string` | No | Stage name (defaults to "$default" when empty) |
-| `auto_deploy` | `bool` | No | Enable automatic deployment when routes/integrations change (defaults to true for "$default" stage) |
+| `auto_deploy` | `bool` | No | Enable automatic deployment when routes/integrations change. Defaults to **true** whenever omitted; set explicitly to `false` to manage deployments outside this resource |
+| `description` | `string` | No | Human-readable stage description (max 1024 characters) |
 | `access_log` | `AwsHttpApiGatewayAccessLogConfig` | No | Access logging configuration for CloudWatch Logs |
 | `default_throttle` | `AwsHttpApiGatewayThrottleConfig` | No | Default throttling settings applied to all routes |
+| `detailed_metrics_enabled` | `bool` | No | Emit per-route CloudWatch metrics as the stage default (extra CloudWatch cost) |
+| `route_settings` | `AwsHttpApiGatewayRouteSettings[]` | No | Per-route overrides of throttling and detailed metrics (each entry's `route_key` must match a defined route) |
 | `stage_variables` | `map<string, string>` | No | Stage variables passed to integrations |
+
+### AwsHttpApiGatewayRouteSettings
+
+Overrides stage defaults for a single route.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `route_key` | `string` | **Yes** | The route to override, exactly as defined in `routes` (e.g., "GET /search") |
+| `throttling_burst_limit` | `int32` | No | Burst limit for this route (zero inherits the stage default) |
+| `throttling_rate_limit` | `double` | No | Rate limit for this route (zero inherits the stage default) |
+| `detailed_metrics_enabled` | `bool` | No | Emit detailed metrics for this route regardless of the stage default |
 
 ### AwsHttpApiGatewayAccessLogConfig
 
@@ -129,21 +148,39 @@ Maps a request pattern to a backend integration.
 |-------|------|----------|-------------|
 | `route_key` | `string` | **Yes** | Route key defining the request pattern (e.g., "GET /users", "POST /orders/{id}", "$default") |
 | `integration` | `AwsHttpApiGatewayIntegration` | **Yes** | Backend integration that processes requests matching this route |
-| `authorization_type` | `string` | No | Authorization type: "NONE" (default), "JWT", or "AWS_IAM" |
-| `authorizer_name` | `string` | No | Name of the authorizer to use (required when authorization_type is "JWT") |
+| `authorization_type` | `string` | No | Authorization type: "NONE" (default), "JWT", "AWS_IAM", or "CUSTOM" (Lambda authorizer) |
+| `authorizer_name` | `string` | No | Name of the authorizer to bind ("JWT" routes reference JWT authorizers; "CUSTOM" routes reference REQUEST authorizers) |
 | `authorization_scopes` | `string[]` | No | OAuth 2.0 scopes required for JWT authorization |
+| `operation_name` | `string` | No | Stable operationId for OpenAPI exports and generated clients (max 64 characters) |
 
 ### AwsHttpApiGatewayIntegration
 
-Defines the backend target for a route.
+Defines the backend target for a route. Three backend shapes are supported: Lambda proxy, HTTP proxy (public or private through a VPC link), and direct AWS service integrations.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `integration_type` | `string` | **Yes** | Integration type: "AWS_PROXY" (Lambda) or "HTTP_PROXY" (HTTP endpoint) |
-| `integration_uri` | `StringValueOrRef` | **Yes** | Integration URI: Lambda function ARN for AWS_PROXY, HTTP URL for HTTP_PROXY |
-| `payload_format_version` | `string` | No | Payload format version: "2.0" (recommended) or "1.0" (defaults to "2.0" when empty) |
+| `integration_type` | `string` | **Yes** | Integration type: "AWS_PROXY" (Lambda or service integration) or "HTTP_PROXY" (HTTP endpoint) |
+| `integration_uri` | `StringValueOrRef` | Conditional | Target for proxy integrations (Lambda function ARN / HTTP URL / private ALB-NLB listener ARN). Required unless `integration_subtype` is set, in which case it must be omitted |
+| `integration_subtype` | `string` | No | AWS service action (e.g., "SQS-SendMessage", "EventBridge-PutEvents", "StepFunctions-StartExecution"). Requires "AWS_PROXY" type and `credentials_arn`; action parameters go in `request_parameters` |
+| `payload_format_version` | `string` | No | "2.0" (recommended, Lambda only) or "1.0". Defaults to "2.0" for Lambda; service integrations are fixed at "1.0" by AWS |
 | `integration_method` | `string` | No | HTTP method for integration request (defaults to route's HTTP method for HTTP_PROXY) |
 | `timeout_milliseconds` | `int32` | No | Integration timeout in milliseconds (50-30000, default: 30000) |
+| `connection_type` | `string` | No | "INTERNET" (default) or "VPC_LINK" for private integrations (requires `connection_id` and HTTP_PROXY) |
+| `connection_id` | `StringValueOrRef` | Conditional | The AwsHttpApiVpcLink to route through; required with "VPC_LINK", forbidden otherwise |
+| `credentials_arn` | `StringValueOrRef` | Conditional | IAM role API Gateway assumes to call the target; required for service integrations |
+| `request_parameters` | `map<string, string>` | No | Parameter mappings (proxy) or service-action parameters (subtype integrations) |
+| `response_parameters` | `AwsHttpApiGatewayResponseParameters[]` | No | Response transforms keyed by backend status code |
+| `tls_server_name_to_verify` | `string` | No | SNI override for private integrations whose internal ALB serves a public-domain certificate |
+| `description` | `string` | No | Human-readable integration description (max 1024 characters) |
+
+### AwsHttpApiGatewayResponseParameters
+
+Transforms the response returned to the caller for one backend status code.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status_code` | `string` | **Yes** | The backend status code the mappings apply to (e.g., "500") |
+| `mappings` | `map<string, string>` | **Yes** | Mapping instructions (e.g., "overwrite:statuscode" → "503", "append:header.x-request" → "$context.requestId") |
 
 ### AwsHttpApiGatewayAuthorizer
 
@@ -168,7 +205,7 @@ Configures JWT validation for a JWT authorizer.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `issuer` | `string` | **Yes** | Token issuer URL (e.g., Cognito: "https://cognito-idp.{region}.amazonaws.com/{userPoolId}") |
-| `audiences` | `string[]` | No | Expected audiences (e.g., Cognito app client ID) |
+| `audiences` | `string[]` | **Yes** | Expected audiences (e.g., Cognito app client ID). HTTP APIs validate both the `iss` and `aud` claims, so at least one audience is required |
 
 ## Stack Outputs
 
@@ -275,16 +312,87 @@ spec:
         - "$request.header.Authorization"
 ```
 
+## AWS Service Integration Example
+
+Route requests straight into SQS and Step Functions with no Lambda glue:
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsHttpApiGateway
+metadata:
+  name: ingest-api
+spec:
+  region: us-east-1
+  routes:
+    - route_key: "POST /enqueue"
+      integration:
+        integration_type: "AWS_PROXY"
+        integration_subtype: "SQS-SendMessage"
+        credentials_arn:
+          valueFrom:
+            kind: AwsIamRole
+            name: apigw-service-role
+            fieldPath: status.outputs.role_arn
+        request_parameters:
+          QueueUrl: "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+          MessageBody: "$request.body"
+    - route_key: "POST /workflows"
+      integration:
+        integration_type: "AWS_PROXY"
+        integration_subtype: "StepFunctions-StartExecution"
+        credentials_arn:
+          valueFrom:
+            kind: AwsIamRole
+            name: apigw-service-role
+            fieldPath: status.outputs.role_arn
+        request_parameters:
+          StateMachineArn: "arn:aws:states:us-east-1:123456789012:stateMachine:orders"
+          Input: "$request.body"
+```
+
+## Private Integration Example
+
+Proxy to an internal ALB through a VPC link:
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsHttpApiGateway
+metadata:
+  name: private-backend-api
+spec:
+  region: us-east-1
+  routes:
+    - route_key: "$default"
+      integration:
+        integration_type: "HTTP_PROXY"
+        integration_uri:
+          value: "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/internal/50dc6c495c0c9188/f2f7dc8efc522ab2"
+        connection_type: "VPC_LINK"
+        connection_id:
+          valueFrom:
+            kind: AwsHttpApiVpcLink
+            name: private-services-link
+            fieldPath: status.outputs.vpc_link_id
+```
+
 ## Related Components
 
 - [AwsLambda](/docs/catalog/aws/awslambda) — Lambda functions used as backend integrations
-- [AwsIamRole](/docs/catalog/aws/awsiamrole) — IAM roles for Lambda authorizers
+- [AwsHttpApiVpcLink](/docs/catalog/aws/awshttpapivpclink) — VPC links for private integrations
+- [AwsHttpApiDomain](/docs/catalog/aws/awshttpapidomain) — Custom domains mapping APIs under owned DNS names
+- [AwsStepFunction](/docs/catalog/aws/awsstepfunction) — State machines invoked via service integrations
+- [AwsSqsQueue](/docs/catalog/aws/awssqsqueue) — Queues fed via SQS-SendMessage service integrations
+- [AwsIamRole](/docs/catalog/aws/awsiamrole) — IAM roles for authorizers and service integrations
 - [AwsCloudwatchLogGroup](/docs/catalog/aws/awscloudwatchloggroup) — CloudWatch Log Groups for access logging
-- [AwsWebSocketApiGateway](/docs/catalog/aws/awswebsocketapigateway) — WebSocket APIs (separate component)
+
+## Deliberately Omitted
+
+- **API keys / usage plans**: Not supported by HTTP APIs (a REST API feature); use JWT/IAM/Lambda authorizers.
+- **WebSocket-only stage knobs** (`logging_level`, `data_trace_enabled`): silently ignored by AWS for HTTP APIs, so modeling them would be dishonest surface.
+- **Quick-create fields** (`route_key`/`target`/`credentials_arn` on the API): produce AWS-managed route/stage/integration objects that cannot be managed declaratively; the folded routes cover the same outcome honestly.
+- **OpenAPI `body` import**: conflicts with the declarative routes fold (two owners for the same routes); revisit on concrete pull.
 
 ## Additional Resources
 
 - [AWS API Gateway HTTP API Documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html)
-- [Planton Documentation](https://planton.dev/docs)
-- See `examples.md` for more detailed examples
 - See `docs/README.md` for architecture deep-dive

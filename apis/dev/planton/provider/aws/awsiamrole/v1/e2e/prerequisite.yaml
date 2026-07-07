@@ -317,3 +317,32 @@ spec:
         Principal:
           Service: logs.amazonaws.com
         Action: sts:AssumeRole
+---
+# Step Functions execution role: trusts states.amazonaws.com. Carries no
+# permission policies -- the E2E state machine is a Pass-state workflow that
+# invokes no services, so an empty-permission role is the honest minimal
+# fixture.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-sfn-execution-role
+  id: planton-oss-e2e-sfn-execution-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for Step Functions execution
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: states.amazonaws.com
+        Action: sts:AssumeRole

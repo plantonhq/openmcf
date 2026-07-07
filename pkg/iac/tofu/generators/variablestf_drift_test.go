@@ -119,6 +119,13 @@ var migratedKinds = []string{
 	"AwsCloudwatchLogGroup",
 	"AwsCloudwatchAlarm",
 	"AwsCloudwatchCompositeAlarm",
+	// Serverless front door: Step Functions migrated off its legacy type = any
+	// contract, the HTTP API off its hand-written typed contract; the VPC link
+	// and custom domain generator-owned from the day they were forged.
+	"AwsStepFunction",
+	"AwsHttpApiGateway",
+	"AwsHttpApiVpcLink",
+	"AwsHttpApiDomain",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

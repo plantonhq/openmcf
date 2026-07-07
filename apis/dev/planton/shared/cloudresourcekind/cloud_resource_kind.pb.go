@@ -173,7 +173,19 @@ const (
 	// registration time without an execution role the agent can assume.
 	CloudResourceKind_AwsEcsTaskDefinition CloudResourceKind = 239
 	CloudResourceKind_AwsHttpApiGateway    CloudResourceKind = 240
-	CloudResourceKind_AwsStepFunction      CloudResourceKind = 241
+	// AwsIamRole is a prerequisite because a state machine cannot be created
+	// without an execution role it can assume -- the spec's role_arn reference
+	// must resolve before the CreateStateMachine call.
+	CloudResourceKind_AwsStepFunction CloudResourceKind = 241
+	// AwsSubnet is a prerequisite because a VPC link is a set of managed ENIs
+	// provisioned into referenced subnets -- the subnet references must resolve
+	// before the link can be created. Security groups are optional on the link,
+	// so they compose per-scenario rather than as a registry prerequisite.
+	CloudResourceKind_AwsHttpApiVpcLink CloudResourceKind = 356
+	// AwsCertManagerCert is a prerequisite because a custom domain cannot be
+	// created without a TLS certificate in the same region covering the domain
+	// -- the spec's certificate_arn reference must resolve first.
+	CloudResourceKind_AwsHttpApiDomain CloudResourceKind = 357
 	// AwsVpcEndpoint's composed E2E scenarios reference the AwsVpc
 	// prerequisite's outputs (vpc_id + default_route_table_id for gateway
 	// endpoints) and the AwsSubnet pair's subnet_id outputs (interface
@@ -676,6 +688,8 @@ var (
 		239:  "AwsEcsTaskDefinition",
 		240:  "AwsHttpApiGateway",
 		241:  "AwsStepFunction",
+		356:  "AwsHttpApiVpcLink",
+		357:  "AwsHttpApiDomain",
 		242:  "AwsVpcEndpoint",
 		243:  "AwsElasticacheUser",
 		244:  "AwsElasticacheUserGroup",
@@ -1108,6 +1122,8 @@ var (
 		"AwsEcsTaskDefinition":                    239,
 		"AwsHttpApiGateway":                       240,
 		"AwsStepFunction":                         241,
+		"AwsHttpApiVpcLink":                       356,
+		"AwsHttpApiDomain":                        357,
 		"AwsVpcEndpoint":                          242,
 		"AwsElasticacheUser":                      243,
 		"AwsElasticacheUserGroup":                 244,
@@ -1743,7 +1759,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*ݙ\x01\n" +
+	"\x02v1\x10\x01*Ś\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1797,8 +1813,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14AwsEksFargateProfile\x10\xed\x01\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\x05eksfp:\x06\xcf\x01\xd0\x01\x9c\x02\x12-\n" +
 	"\x11AwsEksAccessEntry\x10\xee\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05eksae:\x04\xcf\x01\xd0\x01\x12.\n" +
 	"\x14AwsEcsTaskDefinition\x10\xef\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05ecstd:\x02\xd0\x01\x12.\n" +
-	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12&\n" +
-	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awssfn\x12)\n" +
+	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\fawshttpapigw\x12*\n" +
+	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awssfn:\x02\xd0\x01\x121\n" +
+	"\x11AwsHttpApiVpcLink\x10\xe4\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x10\x01\"\vawshttpvpcl:\x02\x9c\x02\x12/\n" +
+	"\x10AwsHttpApiDomain\x10\xe5\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x10\x01\"\n" +
+	"awshttpdom:\x02\xc9\x01\x12)\n" +
 	"\x0eAwsVpcEndpoint\x10\xf2\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x04vpce:\x04\xd8\x01\x9c\x02\x12)\n" +
 	"\x12AwsElasticacheUser\x10\xf3\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06ecuser\x120\n" +
 	"\x17AwsElasticacheUserGroup\x10\xf4\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\x04ecug:\x02\xf3\x01\x123\n" +

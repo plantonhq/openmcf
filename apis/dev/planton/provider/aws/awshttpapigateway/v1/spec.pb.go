@@ -26,8 +26,10 @@ const (
 // AwsHttpApiGatewaySpec defines the desired configuration for an AWS API Gateway HTTP API.
 //
 // HTTP APIs (API Gateway v2) are optimized for building low-latency, cost-effective
-// REST APIs and HTTP proxy APIs. They support Lambda proxy integration and HTTP proxy
-// integration with automatic deployments, native CORS, and JWT/IAM authorization.
+// REST APIs and HTTP proxy APIs. They support Lambda proxy integration, HTTP proxy
+// integration, first-class AWS service integrations (SQS, EventBridge, Step Functions,
+// Kinesis, AppConfig), private integrations through VPC links, automatic deployments,
+// native CORS, and JWT/IAM/Lambda authorization.
 //
 // This component bundles the API, a single stage, routes with inline integrations,
 // and optional authorizers into one declarative resource. The IaC modules create the
@@ -35,12 +37,17 @@ const (
 // and wire them together automatically.
 //
 // Key design choices:
-//   - HTTP APIs only (WebSocket APIs are a separate component: AwsWebSocketApiGateway)
-//   - Routes carry inline integration config; the module deduplicates shared backends
+//   - HTTP APIs only (WebSocket APIs are a separate protocol surface with their own
+//     route/response model and would be their own component).
+//   - Routes carry inline integration config; the module deduplicates shared backends.
 //   - A single stage (defaults to "$default" with auto-deploy) since Planton resources
-//     are already environment-scoped
-//   - Authorizers are named and referenced by routes for clean separation
-//   - Custom domains and VPC links are out of scope for v1
+//     are already environment-scoped.
+//   - Authorizers are named and referenced by routes for clean separation.
+//   - Custom domains are the AwsHttpApiDomain component (a domain outlives any one API
+//     and maps many APIs); VPC links are the AwsHttpApiVpcLink component (one link is
+//     shared by many APIs and owns its own network attachment).
+//   - API keys and usage plans are deliberately not modeled: HTTP APIs do not support
+//     them (they are a REST API feature); use JWT/IAM/Lambda authorizers instead.
 //
 // Credentials, region, and deployment workflow live outside this spec in stack inputs.
 type AwsHttpApiGatewaySpec struct {
@@ -50,16 +57,27 @@ type AwsHttpApiGatewaySpec struct {
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// Human-readable description of the API (max 1024 characters).
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// A version identifier for the API (max 64 characters). Purely informational
+	// metadata surfaced in the AWS console and exports -- it does not create
+	// stages or affect routing.
+	ApiVersion string `protobuf:"bytes,3,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
 	// CORS configuration for cross-origin requests. When not set, no CORS
 	// headers are returned by the API.
-	CorsConfiguration *AwsHttpApiGatewayCorsConfig `protobuf:"bytes,3,opt,name=cors_configuration,json=corsConfiguration,proto3" json:"cors_configuration,omitempty"`
+	CorsConfiguration *AwsHttpApiGatewayCorsConfig `protobuf:"bytes,4,opt,name=cors_configuration,json=corsConfiguration,proto3" json:"cors_configuration,omitempty"`
 	// Disable the default execute-api endpoint. Set to true when a custom domain
-	// is configured externally to prevent direct access via the default endpoint.
-	DisableExecuteApiEndpoint bool `protobuf:"varint,4,opt,name=disable_execute_api_endpoint,json=disableExecuteApiEndpoint,proto3" json:"disable_execute_api_endpoint,omitempty"`
+	// (AwsHttpApiDomain) fronts this API to prevent callers from bypassing the
+	// domain (and its TLS policy / WAF) via the default endpoint.
+	DisableExecuteApiEndpoint bool `protobuf:"varint,5,opt,name=disable_execute_api_endpoint,json=disableExecuteApiEndpoint,proto3" json:"disable_execute_api_endpoint,omitempty"`
+	// IP address type for the API's default endpoint.
+	// - "ipv4": Resolve the endpoint to IPv4 addresses only.
+	// - "dualstack": Resolve to both IPv4 and IPv6.
+	// When omitted, AWS defaults new APIs to dualstack. Changing the value
+	// updates the endpoint in place.
+	IpAddressType string `protobuf:"bytes,6,opt,name=ip_address_type,json=ipAddressType,proto3" json:"ip_address_type,omitempty"`
 	// Stage configuration for the deployed API. When not set, a "$default" stage
 	// with auto_deploy=true is created automatically, which is the recommended
 	// configuration for most HTTP APIs.
-	Stage *AwsHttpApiGatewayStageConfig `protobuf:"bytes,5,opt,name=stage,proto3" json:"stage,omitempty"`
+	Stage *AwsHttpApiGatewayStageConfig `protobuf:"bytes,7,opt,name=stage,proto3" json:"stage,omitempty"`
 	// API routes mapping request patterns to backend integrations. Each route
 	// specifies a route key (e.g., "GET /users", "$default") and an inline
 	// integration that defines the backend target.
@@ -69,11 +87,11 @@ type AwsHttpApiGatewaySpec struct {
 	// create a single integration resource.
 	//
 	// At least one route is required -- an API without routes has no function.
-	Routes []*AwsHttpApiGatewayRoute `protobuf:"bytes,6,rep,name=routes,proto3" json:"routes,omitempty"`
+	Routes []*AwsHttpApiGatewayRoute `protobuf:"bytes,8,rep,name=routes,proto3" json:"routes,omitempty"`
 	// Named authorizers that can be referenced by routes. Define JWT authorizers
 	// for Cognito/Auth0/OIDC integration, or Lambda (REQUEST) authorizers for
 	// custom authorization logic. Routes reference authorizers by name.
-	Authorizers   []*AwsHttpApiGatewayAuthorizer `protobuf:"bytes,7,rep,name=authorizers,proto3" json:"authorizers,omitempty"`
+	Authorizers   []*AwsHttpApiGatewayAuthorizer `protobuf:"bytes,9,rep,name=authorizers,proto3" json:"authorizers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -122,6 +140,13 @@ func (x *AwsHttpApiGatewaySpec) GetDescription() string {
 	return ""
 }
 
+func (x *AwsHttpApiGatewaySpec) GetApiVersion() string {
+	if x != nil {
+		return x.ApiVersion
+	}
+	return ""
+}
+
 func (x *AwsHttpApiGatewaySpec) GetCorsConfiguration() *AwsHttpApiGatewayCorsConfig {
 	if x != nil {
 		return x.CorsConfiguration
@@ -134,6 +159,13 @@ func (x *AwsHttpApiGatewaySpec) GetDisableExecuteApiEndpoint() bool {
 		return x.DisableExecuteApiEndpoint
 	}
 	return false
+}
+
+func (x *AwsHttpApiGatewaySpec) GetIpAddressType() string {
+	if x != nil {
+		return x.IpAddressType
+	}
+	return ""
 }
 
 func (x *AwsHttpApiGatewaySpec) GetStage() *AwsHttpApiGatewayStageConfig {
@@ -262,18 +294,33 @@ type AwsHttpApiGatewayStageConfig struct {
 	// the stage name to the invoke URL path.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Enable automatic deployment when routes, integrations, or authorizers
-	// change. Defaults to true when the stage name is "$default" or empty.
-	// Set to false to require explicit deployments.
-	AutoDeploy bool `protobuf:"varint,2,opt,name=auto_deploy,json=autoDeploy,proto3" json:"auto_deploy,omitempty"`
+	// change. When omitted, the modules default to true -- the configuration
+	// that makes a declarative spec self-applying. Set explicitly to false to
+	// require deployments to be created outside this resource (an advanced
+	// pattern; changes to routes then have no effect until a deployment is
+	// published).
+	AutoDeploy *bool `protobuf:"varint,2,opt,name=auto_deploy,json=autoDeploy,proto3,oneof" json:"auto_deploy,omitempty"`
+	// Human-readable description of the stage (max 1024 characters).
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	// Access logging configuration. When set, API Gateway streams access logs
 	// to the specified CloudWatch Log Group.
-	AccessLog *AwsHttpApiGatewayAccessLogConfig `protobuf:"bytes,3,opt,name=access_log,json=accessLog,proto3" json:"access_log,omitempty"`
+	AccessLog *AwsHttpApiGatewayAccessLogConfig `protobuf:"bytes,4,opt,name=access_log,json=accessLog,proto3" json:"access_log,omitempty"`
 	// Default throttling settings applied to all routes unless overridden
-	// per route in the stage route settings.
-	DefaultThrottle *AwsHttpApiGatewayThrottleConfig `protobuf:"bytes,4,opt,name=default_throttle,json=defaultThrottle,proto3" json:"default_throttle,omitempty"`
+	// per route in route_settings.
+	DefaultThrottle *AwsHttpApiGatewayThrottleConfig `protobuf:"bytes,5,opt,name=default_throttle,json=defaultThrottle,proto3" json:"default_throttle,omitempty"`
+	// Emit detailed CloudWatch metrics for all routes (per-route dimensions for
+	// count, latency, and errors). Applies as the stage default; can be
+	// overridden per route in route_settings. Detailed metrics carry additional
+	// CloudWatch cost.
+	DetailedMetricsEnabled bool `protobuf:"varint,6,opt,name=detailed_metrics_enabled,json=detailedMetricsEnabled,proto3" json:"detailed_metrics_enabled,omitempty"`
+	// Per-route overrides of throttling and detailed metrics. Each entry targets
+	// one route (by its route_key) and overrides the stage defaults for that
+	// route only -- e.g. a lower rate limit on an expensive search route, or
+	// detailed metrics on just the checkout path.
+	RouteSettings []*AwsHttpApiGatewayRouteSettings `protobuf:"bytes,7,rep,name=route_settings,json=routeSettings,proto3" json:"route_settings,omitempty"`
 	// Stage variables passed to integrations. These act as environment-specific
 	// configuration values accessible in integration request parameters.
-	StageVariables map[string]string `protobuf:"bytes,5,rep,name=stage_variables,json=stageVariables,proto3" json:"stage_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	StageVariables map[string]string `protobuf:"bytes,8,rep,name=stage_variables,json=stageVariables,proto3" json:"stage_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -316,10 +363,17 @@ func (x *AwsHttpApiGatewayStageConfig) GetName() string {
 }
 
 func (x *AwsHttpApiGatewayStageConfig) GetAutoDeploy() bool {
-	if x != nil {
-		return x.AutoDeploy
+	if x != nil && x.AutoDeploy != nil {
+		return *x.AutoDeploy
 	}
 	return false
+}
+
+func (x *AwsHttpApiGatewayStageConfig) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
 }
 
 func (x *AwsHttpApiGatewayStageConfig) GetAccessLog() *AwsHttpApiGatewayAccessLogConfig {
@@ -332,6 +386,20 @@ func (x *AwsHttpApiGatewayStageConfig) GetAccessLog() *AwsHttpApiGatewayAccessLo
 func (x *AwsHttpApiGatewayStageConfig) GetDefaultThrottle() *AwsHttpApiGatewayThrottleConfig {
 	if x != nil {
 		return x.DefaultThrottle
+	}
+	return nil
+}
+
+func (x *AwsHttpApiGatewayStageConfig) GetDetailedMetricsEnabled() bool {
+	if x != nil {
+		return x.DetailedMetricsEnabled
+	}
+	return false
+}
+
+func (x *AwsHttpApiGatewayStageConfig) GetRouteSettings() []*AwsHttpApiGatewayRouteSettings {
+	if x != nil {
+		return x.RouteSettings
 	}
 	return nil
 }
@@ -463,6 +531,85 @@ func (x *AwsHttpApiGatewayThrottleConfig) GetRateLimit() float64 {
 	return 0
 }
 
+// AwsHttpApiGatewayRouteSettings overrides stage-level defaults for a single
+// route. Only the fields that are set override the defaults; a zero burst or
+// rate limit means "inherit the stage default".
+type AwsHttpApiGatewayRouteSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The route to override, addressed by its route_key exactly as defined in
+	// routes (e.g. "GET /search", "$default").
+	RouteKey string `protobuf:"bytes,1,opt,name=route_key,json=routeKey,proto3" json:"route_key,omitempty"`
+	// Maximum number of concurrent requests for this route (token bucket size).
+	// Zero inherits the stage default.
+	ThrottlingBurstLimit int32 `protobuf:"varint,2,opt,name=throttling_burst_limit,json=throttlingBurstLimit,proto3" json:"throttling_burst_limit,omitempty"`
+	// Steady-state request rate limit for this route (requests per second).
+	// Zero inherits the stage default.
+	ThrottlingRateLimit float64 `protobuf:"fixed64,3,opt,name=throttling_rate_limit,json=throttlingRateLimit,proto3" json:"throttling_rate_limit,omitempty"`
+	// Emit detailed CloudWatch metrics for this route regardless of the stage
+	// default.
+	DetailedMetricsEnabled bool `protobuf:"varint,4,opt,name=detailed_metrics_enabled,json=detailedMetricsEnabled,proto3" json:"detailed_metrics_enabled,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AwsHttpApiGatewayRouteSettings) Reset() {
+	*x = AwsHttpApiGatewayRouteSettings{}
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsHttpApiGatewayRouteSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsHttpApiGatewayRouteSettings) ProtoMessage() {}
+
+func (x *AwsHttpApiGatewayRouteSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsHttpApiGatewayRouteSettings.ProtoReflect.Descriptor instead.
+func (*AwsHttpApiGatewayRouteSettings) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsHttpApiGatewayRouteSettings) GetRouteKey() string {
+	if x != nil {
+		return x.RouteKey
+	}
+	return ""
+}
+
+func (x *AwsHttpApiGatewayRouteSettings) GetThrottlingBurstLimit() int32 {
+	if x != nil {
+		return x.ThrottlingBurstLimit
+	}
+	return 0
+}
+
+func (x *AwsHttpApiGatewayRouteSettings) GetThrottlingRateLimit() float64 {
+	if x != nil {
+		return x.ThrottlingRateLimit
+	}
+	return 0
+}
+
+func (x *AwsHttpApiGatewayRouteSettings) GetDetailedMetricsEnabled() bool {
+	if x != nil {
+		return x.DetailedMetricsEnabled
+	}
+	return false
+}
+
 // AwsHttpApiGatewayRoute maps a request pattern to a backend integration.
 // Each route defines a route key (HTTP method + path or "$default") and the
 // integration configuration that processes matching requests.
@@ -478,22 +625,28 @@ type AwsHttpApiGatewayRoute struct {
 	// - "NONE" (default): No authorization required.
 	// - "JWT": JSON Web Token authorization using a JWT authorizer.
 	// - "AWS_IAM": AWS IAM authorization using SigV4 signatures.
+	// - "CUSTOM": Lambda authorization using a REQUEST authorizer.
 	AuthorizationType string `protobuf:"bytes,3,opt,name=authorization_type,json=authorizationType,proto3" json:"authorization_type,omitempty"`
 	// Name of the authorizer to use for this route. Must match the name of an
 	// authorizer defined in the `authorizers` field. Required when
-	// `authorization_type` is "JWT".
+	// `authorization_type` is "JWT" (bind a JWT authorizer) or "CUSTOM" (bind
+	// a REQUEST authorizer).
 	AuthorizerName string `protobuf:"bytes,4,opt,name=authorizer_name,json=authorizerName,proto3" json:"authorizer_name,omitempty"`
 	// OAuth 2.0 scopes required for JWT authorization. The request must include
 	// all specified scopes to be authorized. Only applicable when
 	// `authorization_type` is "JWT".
 	AuthorizationScopes []string `protobuf:"bytes,5,rep,name=authorization_scopes,json=authorizationScopes,proto3" json:"authorization_scopes,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Operation name for this route (max 64 characters). Surfaced in OpenAPI
+	// exports as the operationId -- useful when generated client SDKs need
+	// stable method names.
+	OperationName string `protobuf:"bytes,6,opt,name=operation_name,json=operationName,proto3" json:"operation_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsHttpApiGatewayRoute) Reset() {
 	*x = AwsHttpApiGatewayRoute{}
-	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +658,7 @@ func (x *AwsHttpApiGatewayRoute) String() string {
 func (*AwsHttpApiGatewayRoute) ProtoMessage() {}
 
 func (x *AwsHttpApiGatewayRoute) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +671,7 @@ func (x *AwsHttpApiGatewayRoute) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsHttpApiGatewayRoute.ProtoReflect.Descriptor instead.
 func (*AwsHttpApiGatewayRoute) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AwsHttpApiGatewayRoute) GetRouteKey() string {
@@ -556,44 +709,115 @@ func (x *AwsHttpApiGatewayRoute) GetAuthorizationScopes() []string {
 	return nil
 }
 
+func (x *AwsHttpApiGatewayRoute) GetOperationName() string {
+	if x != nil {
+		return x.OperationName
+	}
+	return ""
+}
+
 // AwsHttpApiGatewayIntegration defines the backend target for a route.
-// For HTTP APIs, the two primary integration types are AWS_PROXY (Lambda) and
-// HTTP_PROXY (upstream HTTP service).
+// HTTP APIs support three backend shapes:
+//   - Lambda proxy (integration_type AWS_PROXY, integration_uri = function ARN)
+//   - HTTP proxy (integration_type HTTP_PROXY, integration_uri = URL), publicly
+//     or -- through a VPC link -- privately to an ALB/NLB/Cloud Map service
+//   - AWS service actions (integration_type AWS_PROXY + integration_subtype,
+//     e.g. "SQS-SendMessage"), where API Gateway calls the service directly
+//     with no Lambda in between
 type AwsHttpApiGatewayIntegration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Integration type. Valid values:
-	//   - "AWS_PROXY": Lambda proxy integration -- API Gateway invokes a Lambda
-	//     function and passes the HTTP request as the event.
+	//   - "AWS_PROXY": Lambda proxy integration or (with integration_subtype)
+	//     a first-class AWS service integration.
 	//   - "HTTP_PROXY": HTTP proxy integration -- API Gateway forwards the
 	//     request to an upstream HTTP endpoint.
 	IntegrationType string `protobuf:"bytes,1,opt,name=integration_type,json=integrationType,proto3" json:"integration_type,omitempty"`
-	// Integration URI. For AWS_PROXY integrations this is the Lambda function
-	// ARN. For HTTP_PROXY integrations this is the upstream HTTP URL.
-	// Accepts a direct value or a reference to another resource's output
-	// (e.g., an AwsLambda function_arn).
+	// Integration URI for proxy integrations. For AWS_PROXY (Lambda) this is
+	// the Lambda function ARN; for HTTP_PROXY this is the upstream URL (for
+	// private integrations through a VPC link, the ALB/NLB listener ARN or
+	// Cloud Map service ARN). Accepts a direct value or a reference to another
+	// resource's output. Must be omitted for AWS service integrations
+	// (integration_subtype set) -- their target is expressed in
+	// request_parameters instead.
 	IntegrationUri *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=integration_uri,json=integrationUri,proto3" json:"integration_uri,omitempty"`
+	// AWS service integration subtype. Selects a first-class service action
+	// that API Gateway invokes directly -- no Lambda glue required. Known
+	// subtypes include: "EventBridge-PutEvents", "SQS-SendMessage",
+	// "SQS-ReceiveMessage", "SQS-DeleteMessage", "SQS-PurgeQueue",
+	// "Kinesis-PutRecord", "StepFunctions-StartExecution",
+	// "StepFunctions-StartSyncExecution", "StepFunctions-StopExecution",
+	// "AppConfig-GetConfiguration". The action's parameters (e.g. QueueUrl and
+	// MessageBody for SQS-SendMessage, StateMachineArn and Input for
+	// StepFunctions-StartExecution) are supplied via request_parameters, and
+	// credentials_arn must grant API Gateway permission to call the action.
+	IntegrationSubtype string `protobuf:"bytes,3,opt,name=integration_subtype,json=integrationSubtype,proto3" json:"integration_subtype,omitempty"`
 	// Payload format version for Lambda integrations. Controls the format of the
 	// event sent to the Lambda function.
 	// - "2.0" (recommended): Simplified event structure with direct body access.
 	// - "1.0": Legacy format with multi-value headers and base64 encoding.
 	// Defaults to "2.0" when empty. Only applicable to AWS_PROXY integrations.
-	PayloadFormatVersion string `protobuf:"bytes,3,opt,name=payload_format_version,json=payloadFormatVersion,proto3" json:"payload_format_version,omitempty"`
+	// AWS service integrations (integration_subtype) always use "1.0".
+	PayloadFormatVersion string `protobuf:"bytes,4,opt,name=payload_format_version,json=payloadFormatVersion,proto3" json:"payload_format_version,omitempty"`
 	// HTTP method used for the integration request. Defaults to the route's HTTP
 	// method for HTTP_PROXY integrations. For AWS_PROXY (Lambda) integrations,
 	// this is always POST regardless of the value set here.
-	IntegrationMethod string `protobuf:"bytes,4,opt,name=integration_method,json=integrationMethod,proto3" json:"integration_method,omitempty"`
+	IntegrationMethod string `protobuf:"bytes,5,opt,name=integration_method,json=integrationMethod,proto3" json:"integration_method,omitempty"`
 	// Integration timeout in milliseconds. If the backend does not respond within
 	// this duration, API Gateway returns a 504 Gateway Timeout.
 	// Range: 50-30000 (50ms to 30s). AWS default: 30000 (30s).
 	// Leave at 0 to use the AWS default.
-	TimeoutMilliseconds int32 `protobuf:"varint,5,opt,name=timeout_milliseconds,json=timeoutMilliseconds,proto3" json:"timeout_milliseconds,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	TimeoutMilliseconds int32 `protobuf:"varint,6,opt,name=timeout_milliseconds,json=timeoutMilliseconds,proto3" json:"timeout_milliseconds,omitempty"`
+	// Connection type for the integration.
+	//   - "INTERNET" (default): Route to the target over the public internet.
+	//   - "VPC_LINK": Route through a VPC link to a private ALB, NLB, or Cloud
+	//     Map service inside a VPC. Requires connection_id and integration_type
+	//     HTTP_PROXY.
+	ConnectionType string `protobuf:"bytes,7,opt,name=connection_type,json=connectionType,proto3" json:"connection_type,omitempty"`
+	// The VPC link to route through for private integrations. Accepts a direct
+	// VPC link ID or a reference to an AwsHttpApiVpcLink resource. Required
+	// when connection_type is "VPC_LINK"; must be omitted otherwise.
+	ConnectionId *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	// IAM role that API Gateway assumes to invoke the integration target.
+	// Required for AWS service integrations (integration_subtype set) -- the
+	// role must trust apigateway.amazonaws.com and grant the service action
+	// (e.g. sqs:SendMessage on the target queue). Optional for Lambda proxy
+	// integrations, which normally authorize through the function's resource
+	// policy instead.
+	CredentialsArn *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=credentials_arn,json=credentialsArn,proto3" json:"credentials_arn,omitempty"`
+	// Parameter mappings applied to the integration request.
+	//
+	// For proxy integrations (Lambda / HTTP), keys are mapping instructions of
+	// the form "append:header.<name>", "overwrite:header.<name>",
+	// "remove:querystring.<name>", "overwrite:path", etc., and values are
+	// static strings or context expressions (e.g. "$context.requestId",
+	// "$request.header.Authorization").
+	//
+	// For AWS service integrations (integration_subtype set), keys are the
+	// service action's parameter names (e.g. "QueueUrl", "MessageBody" for
+	// SQS-SendMessage; "StateMachineArn", "Input" for
+	// StepFunctions-StartExecution) and values are static strings or request
+	// expressions like "$request.body".
+	RequestParameters map[string]string `protobuf:"bytes,10,rep,name=request_parameters,json=requestParameters,proto3" json:"request_parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Response parameter mappings, keyed by the backend status code they apply
+	// to. Each entry transforms the response API Gateway returns to the caller
+	// for that status code -- e.g. overwriting the status code or injecting a
+	// header. Supported by proxy and service integrations on HTTP APIs.
+	ResponseParameters []*AwsHttpApiGatewayResponseParameters `protobuf:"bytes,11,rep,name=response_parameters,json=responseParameters,proto3" json:"response_parameters,omitempty"`
+	// Server name TLS verification for private HTTP_PROXY integrations. When
+	// set, API Gateway verifies the target's certificate against this server
+	// name (SNI) instead of the resolved address -- required when a private
+	// ALB terminates TLS with a certificate issued for the public domain name.
+	// Maps to the integration's tls_config block.
+	TlsServerNameToVerify string `protobuf:"bytes,12,opt,name=tls_server_name_to_verify,json=tlsServerNameToVerify,proto3" json:"tls_server_name_to_verify,omitempty"`
+	// Human-readable description of the integration (max 1024 characters).
+	Description   string `protobuf:"bytes,13,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsHttpApiGatewayIntegration) Reset() {
 	*x = AwsHttpApiGatewayIntegration{}
-	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -605,7 +829,7 @@ func (x *AwsHttpApiGatewayIntegration) String() string {
 func (*AwsHttpApiGatewayIntegration) ProtoMessage() {}
 
 func (x *AwsHttpApiGatewayIntegration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -618,7 +842,7 @@ func (x *AwsHttpApiGatewayIntegration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsHttpApiGatewayIntegration.ProtoReflect.Descriptor instead.
 func (*AwsHttpApiGatewayIntegration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AwsHttpApiGatewayIntegration) GetIntegrationType() string {
@@ -633,6 +857,13 @@ func (x *AwsHttpApiGatewayIntegration) GetIntegrationUri() *v1.StringValueOrRef 
 		return x.IntegrationUri
 	}
 	return nil
+}
+
+func (x *AwsHttpApiGatewayIntegration) GetIntegrationSubtype() string {
+	if x != nil {
+		return x.IntegrationSubtype
+	}
+	return ""
 }
 
 func (x *AwsHttpApiGatewayIntegration) GetPayloadFormatVersion() string {
@@ -654,6 +885,115 @@ func (x *AwsHttpApiGatewayIntegration) GetTimeoutMilliseconds() int32 {
 		return x.TimeoutMilliseconds
 	}
 	return 0
+}
+
+func (x *AwsHttpApiGatewayIntegration) GetConnectionType() string {
+	if x != nil {
+		return x.ConnectionType
+	}
+	return ""
+}
+
+func (x *AwsHttpApiGatewayIntegration) GetConnectionId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return nil
+}
+
+func (x *AwsHttpApiGatewayIntegration) GetCredentialsArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.CredentialsArn
+	}
+	return nil
+}
+
+func (x *AwsHttpApiGatewayIntegration) GetRequestParameters() map[string]string {
+	if x != nil {
+		return x.RequestParameters
+	}
+	return nil
+}
+
+func (x *AwsHttpApiGatewayIntegration) GetResponseParameters() []*AwsHttpApiGatewayResponseParameters {
+	if x != nil {
+		return x.ResponseParameters
+	}
+	return nil
+}
+
+func (x *AwsHttpApiGatewayIntegration) GetTlsServerNameToVerify() string {
+	if x != nil {
+		return x.TlsServerNameToVerify
+	}
+	return ""
+}
+
+func (x *AwsHttpApiGatewayIntegration) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// AwsHttpApiGatewayResponseParameters transforms the response API Gateway
+// returns to the caller for one backend status code.
+type AwsHttpApiGatewayResponseParameters struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The backend response status code these mappings apply to (e.g. "403",
+	// "500").
+	StatusCode string `protobuf:"bytes,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
+	// Mapping instructions applied to the response. Keys are instructions such
+	// as "overwrite:statuscode", "append:header.<name>",
+	// "overwrite:header.<name>", "remove:header.<name>"; values are static
+	// strings or context expressions (e.g. "$context.requestId").
+	Mappings      map[string]string `protobuf:"bytes,2,rep,name=mappings,proto3" json:"mappings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsHttpApiGatewayResponseParameters) Reset() {
+	*x = AwsHttpApiGatewayResponseParameters{}
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsHttpApiGatewayResponseParameters) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsHttpApiGatewayResponseParameters) ProtoMessage() {}
+
+func (x *AwsHttpApiGatewayResponseParameters) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsHttpApiGatewayResponseParameters.ProtoReflect.Descriptor instead.
+func (*AwsHttpApiGatewayResponseParameters) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsHttpApiGatewayResponseParameters) GetStatusCode() string {
+	if x != nil {
+		return x.StatusCode
+	}
+	return ""
+}
+
+func (x *AwsHttpApiGatewayResponseParameters) GetMappings() map[string]string {
+	if x != nil {
+		return x.Mappings
+	}
+	return nil
 }
 
 // AwsHttpApiGatewayAuthorizer defines a named authorizer that can be referenced
@@ -702,7 +1042,7 @@ type AwsHttpApiGatewayAuthorizer struct {
 
 func (x *AwsHttpApiGatewayAuthorizer) Reset() {
 	*x = AwsHttpApiGatewayAuthorizer{}
-	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -714,7 +1054,7 @@ func (x *AwsHttpApiGatewayAuthorizer) String() string {
 func (*AwsHttpApiGatewayAuthorizer) ProtoMessage() {}
 
 func (x *AwsHttpApiGatewayAuthorizer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -727,7 +1067,7 @@ func (x *AwsHttpApiGatewayAuthorizer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsHttpApiGatewayAuthorizer.ProtoReflect.Descriptor instead.
 func (*AwsHttpApiGatewayAuthorizer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AwsHttpApiGatewayAuthorizer) GetName() string {
@@ -809,7 +1149,7 @@ type AwsHttpApiGatewayJwtConfig struct {
 
 func (x *AwsHttpApiGatewayJwtConfig) Reset() {
 	*x = AwsHttpApiGatewayJwtConfig{}
-	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -821,7 +1161,7 @@ func (x *AwsHttpApiGatewayJwtConfig) String() string {
 func (*AwsHttpApiGatewayJwtConfig) ProtoMessage() {}
 
 func (x *AwsHttpApiGatewayJwtConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -834,7 +1174,7 @@ func (x *AwsHttpApiGatewayJwtConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsHttpApiGatewayJwtConfig.ProtoReflect.Descriptor instead.
 func (*AwsHttpApiGatewayJwtConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AwsHttpApiGatewayJwtConfig) GetIssuer() string {
@@ -855,44 +1195,62 @@ var File_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto protoreflect.F
 
 const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/aws/awshttpapigateway/v1/spec.proto\x12-dev.planton.provider.aws.awshttpapigateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x98\x16\n" +
+	"8dev/planton/provider/aws/awshttpapigateway/v1/spec.proto\x12-dev.planton.provider.aws.awshttpapigateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdc/\n" +
 	"\x15AwsHttpApiGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
-	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12y\n" +
-	"\x12cors_configuration\x18\x03 \x01(\v2J.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayCorsConfigR\x11corsConfiguration\x12?\n" +
-	"\x1cdisable_execute_api_endpoint\x18\x04 \x01(\bR\x19disableExecuteApiEndpoint\x12a\n" +
-	"\x05stage\x18\x05 \x01(\v2K.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfigR\x05stage\x12g\n" +
-	"\x06routes\x18\x06 \x03(\v2E.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRouteB\b\xbaH\x05\x92\x01\x02\b\x01R\x06routes\x12l\n" +
-	"\vauthorizers\x18\a \x03(\v2J.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizerR\vauthorizers:\xbb\x11\xbaH\xb7\x11\x1a\xcd\x01\n" +
-	"\x1eroute_authorization_type_valid\x12Eroute authorization_type must be 'NONE', 'JWT', or 'AWS_IAM' when set\x1adthis.routes.all(r, r.authorization_type == '' || r.authorization_type in ['NONE', 'JWT', 'AWS_IAM'])\x1a\xb8\x01\n" +
-	"\"jwt_route_requires_authorizer_name\x12Droutes with authorization_type 'JWT' must specify an authorizer_name\x1aLthis.routes.all(r, r.authorization_type != 'JWT' || r.authorizer_name != '')\x1a\xc6\x01\n" +
-	" route_authorizer_name_must_exist\x12:route authorizer_name must match a defined authorizer name\x1afthis.routes.all(r, r.authorizer_name == '' || this.authorizers.exists(a, a.name == r.authorizer_name))\x1a\x90\x01\n" +
-	"\x15authorizer_type_valid\x125authorizer authorizer_type must be 'JWT' or 'REQUEST'\x1a@this.authorizers.all(a, a.authorizer_type in ['JWT', 'REQUEST'])\x1a\xdc\x01\n" +
-	"\x1ejwt_authorizer_requires_config\x12CJWT authorizers must have jwt_configuration with a non-empty issuer\x1authis.authorizers.all(a, a.authorizer_type != 'JWT' || (has(a.jwt_configuration) && a.jwt_configuration.issuer != ''))\x1a\xa5\x01\n" +
+	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12(\n" +
+	"\vapi_version\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
+	"apiVersion\x12y\n" +
+	"\x12cors_configuration\x18\x04 \x01(\v2J.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayCorsConfigR\x11corsConfiguration\x12?\n" +
+	"\x1cdisable_execute_api_endpoint\x18\x05 \x01(\bR\x19disableExecuteApiEndpoint\x12&\n" +
+	"\x0fip_address_type\x18\x06 \x01(\tR\ripAddressType\x12a\n" +
+	"\x05stage\x18\a \x01(\v2K.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfigR\x05stage\x12g\n" +
+	"\x06routes\x18\b \x03(\v2E.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRouteB\b\xbaH\x05\x92\x01\x02\b\x01R\x06routes\x12l\n" +
+	"\vauthorizers\x18\t \x03(\v2J.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizerR\vauthorizers:\xad*\xbaH\xa9*\x1a\x9c\x01\n" +
+	"\x15ip_address_type_valid\x126ip_address_type must be 'ipv4' or 'dualstack' when set\x1aKthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']\x1a\xd7\x01\n" +
+	"\x11route_keys_unique\x12kroute_key values must be unique across routes -- two routes with the same key would conflict in API Gateway\x1aUthis.routes.all(r1, this.routes.filter(r2, r2.route_key == r1.route_key).size() == 1)\x1a\xe1\x01\n" +
+	"\x1eroute_authorization_type_valid\x12Oroute authorization_type must be 'NONE', 'JWT', 'AWS_IAM', or 'CUSTOM' when set\x1anthis.routes.all(r, r.authorization_type == '' || r.authorization_type in ['NONE', 'JWT', 'AWS_IAM', 'CUSTOM'])\x1a\xda\x01\n" +
+	")authorized_route_requires_authorizer_name\x12Proutes with authorization_type 'JWT' or 'CUSTOM' must specify an authorizer_name\x1a[this.routes.all(r, !(r.authorization_type in ['JWT', 'CUSTOM']) || r.authorizer_name != '')\x1a\xc6\x01\n" +
+	" route_authorizer_name_must_exist\x12:route authorizer_name must match a defined authorizer name\x1afthis.routes.all(r, r.authorizer_name == '' || this.authorizers.exists(a, a.name == r.authorizer_name))\x1a\xa7\x03\n" +
+	"\x1droute_authorizer_type_matches\x12\x96\x01a route's authorization_type must match its authorizer: 'JWT' routes reference JWT authorizers, 'CUSTOM' routes reference REQUEST (Lambda) authorizers\x1a\xec\x01this.routes.all(r, r.authorizer_name == '' || this.authorizers.all(a, a.name != r.authorizer_name || (r.authorization_type == 'JWT' && a.authorizer_type == 'JWT') || (r.authorization_type == 'CUSTOM' && a.authorizer_type == 'REQUEST')))\x1a\xb9\x01\n" +
+	"\x17authorizer_names_unique\x12Gauthorizer names must be unique -- routes reference authorizers by name\x1aUthis.authorizers.all(a1, this.authorizers.filter(a2, a2.name == a1.name).size() == 1)\x1a\x90\x01\n" +
+	"\x15authorizer_type_valid\x125authorizer authorizer_type must be 'JWT' or 'REQUEST'\x1a@this.authorizers.all(a, a.authorizer_type in ['JWT', 'REQUEST'])\x1a\xa3\x02\n" +
+	"\x1ejwt_authorizer_requires_config\x12]JWT authorizers must have jwt_configuration with a non-empty issuer and at least one audience\x1a\xa1\x01this.authorizers.all(a, a.authorizer_type != 'JWT' || (has(a.jwt_configuration) && a.jwt_configuration.issuer != '' && a.jwt_configuration.audiences.size() > 0))\x1a\xa5\x01\n" +
 	"\x1frequest_authorizer_requires_uri\x120REQUEST authorizers must have authorizer_uri set\x1aPthis.authorizers.all(a, a.authorizer_type != 'REQUEST' || has(a.authorizer_uri))\x1a\xb3\x01\n" +
-	"\x16integration_type_valid\x12Froute integration integration_type must be 'AWS_PROXY' or 'HTTP_PROXY'\x1aQthis.routes.all(r, r.integration.integration_type in ['AWS_PROXY', 'HTTP_PROXY'])\x1a\xe2\x01\n" +
+	"\x16integration_type_valid\x12Froute integration integration_type must be 'AWS_PROXY' or 'HTTP_PROXY'\x1aQthis.routes.all(r, r.integration.integration_type in ['AWS_PROXY', 'HTTP_PROXY'])\x1a\xa0\x03\n" +
+	"\x18integration_uri_per_mode\x12\xc9\x01integration_uri is required for Lambda and HTTP proxy integrations, and must be omitted when integration_subtype selects an AWS service action (the action's parameters go in request_parameters instead)\x1a\xb7\x01this.routes.all(r, (r.integration.integration_subtype == '' && has(r.integration.integration_uri)) || (r.integration.integration_subtype != '' && !has(r.integration.integration_uri)))\x1a\xa2\x02\n" +
+	"&integration_subtype_requires_aws_proxy\x12\x89\x01integration_subtype (AWS service integrations like SQS-SendMessage or StepFunctions-StartExecution) requires integration_type 'AWS_PROXY'\x1althis.routes.all(r, r.integration.integration_subtype == '' || r.integration.integration_type == 'AWS_PROXY')\x1a\x91\x02\n" +
+	"(integration_subtype_requires_credentials\x12\x81\x01AWS service integrations (integration_subtype set) require credentials_arn -- an IAM role API Gateway assumes to call the service\x1aathis.routes.all(r, r.integration.integration_subtype == '' || has(r.integration.credentials_arn))\x1a\xe0\x01\n" +
+	"!integration_connection_type_valid\x12Eintegration connection_type must be 'INTERNET' or 'VPC_LINK' when set\x1atthis.routes.all(r, r.integration.connection_type == '' || r.integration.connection_type in ['INTERNET', 'VPC_LINK'])\x1a\x99\x02\n" +
+	"\x1dintegration_vpc_link_coupling\x12\x90\x01integrations with connection_type 'VPC_LINK' must set connection_id (the VPC link to route through), and connection_id must not be set otherwise\x1aethis.routes.all(r, (r.integration.connection_type == 'VPC_LINK') == has(r.integration.connection_id))\x1a\xd2\x02\n" +
+	"(integration_vpc_link_requires_http_proxy\x12\xb2\x01integrations with connection_type 'VPC_LINK' must use integration_type 'HTTP_PROXY' -- private integrations proxy HTTP traffic to an ALB, NLB, or Cloud Map service inside the VPC\x1aqthis.routes.all(r, r.integration.connection_type != 'VPC_LINK' || r.integration.integration_type == 'HTTP_PROXY')\x1a\xe2\x01\n" +
 	"\x1cpayload_format_version_valid\x12Hroute integration payload_format_version must be '1.0' or '2.0' when set\x1axthis.routes.all(r, r.integration.payload_format_version == '' || r.integration.payload_format_version in ['1.0', '2.0'])\x1a\x84\x02\n" +
 	"\x19integration_timeout_range\x12Lroute integration timeout_milliseconds must be between 50 and 30000 when set\x1a\x98\x01this.routes.all(r, r.integration.timeout_milliseconds == 0 || (r.integration.timeout_milliseconds >= 50 && r.integration.timeout_milliseconds <= 30000))\x1a\xad\x01\n" +
 	"\x14authorizer_ttl_range\x12Aauthorizer result_ttl_seconds must be between 0 and 3600 when set\x1aRthis.authorizers.all(a, a.result_ttl_seconds >= 0 && a.result_ttl_seconds <= 3600)\x1a\xf4\x01\n" +
-	"'authorizer_payload_format_version_valid\x12Lauthorizer authorizer_payload_format_version must be '1.0' or '2.0' when set\x1a{this.authorizers.all(a, a.authorizer_payload_format_version == '' || a.authorizer_payload_format_version in ['1.0', '2.0'])\"\x95\x02\n" +
+	"'authorizer_payload_format_version_valid\x12Lauthorizer authorizer_payload_format_version must be '1.0' or '2.0' when set\x1a{this.authorizers.all(a, a.authorizer_payload_format_version == '' || a.authorizer_payload_format_version in ['1.0', '2.0'])\x1a\xe3\x01\n" +
+	"*stage_route_settings_target_defined_routes\x12Jstage.route_settings route_key values must match a route defined in routes\x1ai!has(this.stage) || this.stage.route_settings.all(rs, this.routes.exists(r, r.route_key == rs.route_key))\"\x95\x02\n" +
 	"\x1bAwsHttpApiGatewayCorsConfig\x12#\n" +
 	"\rallow_origins\x18\x01 \x03(\tR\fallowOrigins\x12#\n" +
 	"\rallow_methods\x18\x02 \x03(\tR\fallowMethods\x12#\n" +
 	"\rallow_headers\x18\x03 \x03(\tR\fallowHeaders\x12%\n" +
 	"\x0eexpose_headers\x18\x04 \x03(\tR\rexposeHeaders\x123\n" +
 	"\x0fmax_age_seconds\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\xa3\x05(\x00R\rmaxAgeSeconds\x12+\n" +
-	"\x11allow_credentials\x18\x06 \x01(\bR\x10allowCredentials\"\x8c\x04\n" +
+	"\x11allow_credentials\x18\x06 \x01(\bR\x10allowCredentials\"\xfd\x05\n" +
 	"\x1cAwsHttpApiGatewayStageConfig\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1f\n" +
-	"\vauto_deploy\x18\x02 \x01(\bR\n" +
-	"autoDeploy\x12n\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12$\n" +
+	"\vauto_deploy\x18\x02 \x01(\bH\x00R\n" +
+	"autoDeploy\x88\x01\x01\x12*\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12n\n" +
 	"\n" +
-	"access_log\x18\x03 \x01(\v2O.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAccessLogConfigR\taccessLog\x12y\n" +
-	"\x10default_throttle\x18\x04 \x01(\v2N.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayThrottleConfigR\x0fdefaultThrottle\x12\x88\x01\n" +
-	"\x0fstage_variables\x18\x05 \x03(\v2_.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.StageVariablesEntryR\x0estageVariables\x1aA\n" +
+	"access_log\x18\x04 \x01(\v2O.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAccessLogConfigR\taccessLog\x12y\n" +
+	"\x10default_throttle\x18\x05 \x01(\v2N.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayThrottleConfigR\x0fdefaultThrottle\x128\n" +
+	"\x18detailed_metrics_enabled\x18\x06 \x01(\bR\x16detailedMetricsEnabled\x12t\n" +
+	"\x0eroute_settings\x18\a \x03(\v2M.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRouteSettingsR\rrouteSettings\x12\x88\x01\n" +
+	"\x0fstage_variables\x18\b \x03(\v2_.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.StageVariablesEntryR\x0estageVariables\x1aA\n" +
 	"\x13StageVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xce\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0e\n" +
+	"\f_auto_deploy\"\xce\x01\n" +
 	" AwsHttpApiGatewayAccessLogConfig\x12\x88\x01\n" +
 	"\x0fdestination_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x0edestinationArn\x12\x1f\n" +
 	"\x06format\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06format\"j\n" +
@@ -900,19 +1258,44 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	"\vburst_limit\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\n" +
 	"burstLimit\x12\x1d\n" +
 	"\n" +
-	"rate_limit\x18\x02 \x01(\x01R\trateLimit\"\xc0\x02\n" +
+	"rate_limit\x18\x02 \x01(\x01R\trateLimit\"\xf3\x01\n" +
+	"\x1eAwsHttpApiGatewayRouteSettings\x12$\n" +
+	"\troute_key\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\brouteKey\x12=\n" +
+	"\x16throttling_burst_limit\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x14throttlingBurstLimit\x122\n" +
+	"\x15throttling_rate_limit\x18\x03 \x01(\x01R\x13throttlingRateLimit\x128\n" +
+	"\x18detailed_metrics_enabled\x18\x04 \x01(\bR\x16detailedMetricsEnabled\"\xf0\x02\n" +
 	"\x16AwsHttpApiGatewayRoute\x12$\n" +
 	"\troute_key\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\brouteKey\x12u\n" +
 	"\vintegration\x18\x02 \x01(\v2K.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegrationB\x06\xbaH\x03\xc8\x01\x01R\vintegration\x12-\n" +
 	"\x12authorization_type\x18\x03 \x01(\tR\x11authorizationType\x12'\n" +
 	"\x0fauthorizer_name\x18\x04 \x01(\tR\x0eauthorizerName\x121\n" +
-	"\x14authorization_scopes\x18\x05 \x03(\tR\x13authorizationScopes\"\xcf\x02\n" +
+	"\x14authorization_scopes\x18\x05 \x03(\tR\x13authorizationScopes\x12.\n" +
+	"\x0eoperation_name\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18@R\roperationName\"\x95\t\n" +
 	"\x1cAwsHttpApiGatewayIntegration\x122\n" +
-	"\x10integration_type\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fintegrationType\x12c\n" +
-	"\x0fintegration_uri\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x0eintegrationUri\x124\n" +
-	"\x16payload_format_version\x18\x03 \x01(\tR\x14payloadFormatVersion\x12-\n" +
-	"\x12integration_method\x18\x04 \x01(\tR\x11integrationMethod\x121\n" +
-	"\x14timeout_milliseconds\x18\x05 \x01(\x05R\x13timeoutMilliseconds\"\xd9\x05\n" +
+	"\x10integration_type\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fintegrationType\x12\x81\x01\n" +
+	"\x0fintegration_uri\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x0eintegrationUri\x129\n" +
+	"\x13integration_subtype\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x12integrationSubtype\x124\n" +
+	"\x16payload_format_version\x18\x04 \x01(\tR\x14payloadFormatVersion\x12-\n" +
+	"\x12integration_method\x18\x05 \x01(\tR\x11integrationMethod\x121\n" +
+	"\x14timeout_milliseconds\x18\x06 \x01(\x05R\x13timeoutMilliseconds\x12'\n" +
+	"\x0fconnection_type\x18\a \x01(\tR\x0econnectionType\x12|\n" +
+	"\rconnection_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xe4\x02\x92\xd4a\x1astatus.outputs.vpc_link_idR\fconnectionId\x12}\n" +
+	"\x0fcredentials_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x0ecredentialsArn\x12\x91\x01\n" +
+	"\x12request_parameters\x18\n" +
+	" \x03(\v2b.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.RequestParametersEntryR\x11requestParameters\x12\x83\x01\n" +
+	"\x13response_parameters\x18\v \x03(\v2R.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayResponseParametersR\x12responseParameters\x128\n" +
+	"\x19tls_server_name_to_verify\x18\f \x01(\tR\x15tlsServerNameToVerify\x12*\n" +
+	"\vdescription\x18\r \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x1aD\n" +
+	"\x16RequestParametersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa6\x02\n" +
+	"#AwsHttpApiGatewayResponseParameters\x129\n" +
+	"\vstatus_code\x18\x01 \x01(\tB\x18\xbaH\x15r\x132\x11^[1-5][0-9][0-9]$R\n" +
+	"statusCode\x12\x86\x01\n" +
+	"\bmappings\x18\x02 \x03(\v2`.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayResponseParameters.MappingsEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\bmappings\x1a;\n" +
+	"\rMappingsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd9\x05\n" +
 	"\x1bAwsHttpApiGatewayAuthorizer\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x04name\x120\n" +
@@ -941,39 +1324,49 @@ func file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescGZIP()
 	return file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_goTypes = []any{
-	(*AwsHttpApiGatewaySpec)(nil),            // 0: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewaySpec
-	(*AwsHttpApiGatewayCorsConfig)(nil),      // 1: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayCorsConfig
-	(*AwsHttpApiGatewayStageConfig)(nil),     // 2: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig
-	(*AwsHttpApiGatewayAccessLogConfig)(nil), // 3: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAccessLogConfig
-	(*AwsHttpApiGatewayThrottleConfig)(nil),  // 4: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayThrottleConfig
-	(*AwsHttpApiGatewayRoute)(nil),           // 5: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRoute
-	(*AwsHttpApiGatewayIntegration)(nil),     // 6: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration
-	(*AwsHttpApiGatewayAuthorizer)(nil),      // 7: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer
-	(*AwsHttpApiGatewayJwtConfig)(nil),       // 8: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayJwtConfig
-	nil,                                      // 9: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.StageVariablesEntry
-	(*v1.StringValueOrRef)(nil),              // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsHttpApiGatewaySpec)(nil),               // 0: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewaySpec
+	(*AwsHttpApiGatewayCorsConfig)(nil),         // 1: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayCorsConfig
+	(*AwsHttpApiGatewayStageConfig)(nil),        // 2: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig
+	(*AwsHttpApiGatewayAccessLogConfig)(nil),    // 3: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAccessLogConfig
+	(*AwsHttpApiGatewayThrottleConfig)(nil),     // 4: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayThrottleConfig
+	(*AwsHttpApiGatewayRouteSettings)(nil),      // 5: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRouteSettings
+	(*AwsHttpApiGatewayRoute)(nil),              // 6: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRoute
+	(*AwsHttpApiGatewayIntegration)(nil),        // 7: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration
+	(*AwsHttpApiGatewayResponseParameters)(nil), // 8: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayResponseParameters
+	(*AwsHttpApiGatewayAuthorizer)(nil),         // 9: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer
+	(*AwsHttpApiGatewayJwtConfig)(nil),          // 10: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayJwtConfig
+	nil,                                         // 11: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.StageVariablesEntry
+	nil,                                         // 12: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.RequestParametersEntry
+	nil,                                         // 13: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayResponseParameters.MappingsEntry
+	(*v1.StringValueOrRef)(nil),                 // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewaySpec.cors_configuration:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayCorsConfig
 	2,  // 1: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewaySpec.stage:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig
-	5,  // 2: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewaySpec.routes:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRoute
-	7,  // 3: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewaySpec.authorizers:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer
+	6,  // 2: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewaySpec.routes:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRoute
+	9,  // 3: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewaySpec.authorizers:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer
 	3,  // 4: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.access_log:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAccessLogConfig
 	4,  // 5: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.default_throttle:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayThrottleConfig
-	9,  // 6: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.stage_variables:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.StageVariablesEntry
-	10, // 7: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAccessLogConfig.destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 8: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRoute.integration:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration
-	10, // 9: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.integration_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 10: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.jwt_configuration:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayJwtConfig
-	10, // 11: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.authorizer_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 12: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.authorizer_credentials_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	5,  // 6: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.route_settings:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRouteSettings
+	11, // 7: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.stage_variables:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayStageConfig.StageVariablesEntry
+	14, // 8: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAccessLogConfig.destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 9: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayRoute.integration:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration
+	14, // 10: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.integration_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 11: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.connection_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 12: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.credentials_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 13: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.request_parameters:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.RequestParametersEntry
+	8,  // 14: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.response_parameters:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayResponseParameters
+	13, // 15: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayResponseParameters.mappings:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayResponseParameters.MappingsEntry
+	10, // 16: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.jwt_configuration:type_name -> dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayJwtConfig
+	14, // 17: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.authorizer_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 18: dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayAuthorizer.authorizer_credentials_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_init() }
@@ -981,13 +1374,14 @@ func file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_init() {
 	if File_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

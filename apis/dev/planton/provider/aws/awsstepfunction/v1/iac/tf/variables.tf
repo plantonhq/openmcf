@@ -1,9 +1,33 @@
 variable "metadata" {
-  description = "Resource metadata (name, org, env, id, labels)."
-  type        = any
+  description = "Cloud resource metadata"
+  type = object({
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
+  })
 }
 
 variable "spec" {
-  description = "AwsStepFunctionSpec — desired configuration for the state machine."
-  type        = any
+  description = "AwsStepFunction specification"
+  type = object({
+    region = string
+    type = optional(string, "")
+    definition = any
+    role_arn = string
+    publish = optional(bool, false)
+    logging = optional(object({
+      level = optional(string, "")
+      include_execution_data = optional(bool, false)
+      log_destination = optional(string, "")
+    }))
+    tracing_enabled = optional(bool, false)
+    encryption = optional(object({
+      kms_key_id = string
+      kms_data_key_reuse_period_seconds = optional(number, 0)
+    }))
+  })
 }

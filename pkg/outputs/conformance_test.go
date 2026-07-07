@@ -1157,6 +1157,73 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsStepFunction: state_machine_arn is the FK target for
+			// EventBridge targets and API Gateway service integrations;
+			// state_machine_version_arn pins consumers to a published
+			// snapshot when spec.publish is set. The name keys the E2E
+			// verifier.
+			name: "AwsStepFunction",
+			kind: cloudresourcekind.CloudResourceKind_AwsStepFunction,
+			rawOutputs: map[string]interface{}{
+				"state_machine_arn":         "arn:aws:states:us-west-2:123456789012:stateMachine:orders",
+				"state_machine_name":        "orders",
+				"state_machine_version_arn": "arn:aws:states:us-west-2:123456789012:stateMachine:orders:1",
+				"revision_id":               "aaaa1111-bbbb-2222-cccc-333344445555",
+				"status":                    "ACTIVE",
+				"creation_date":             "2026-07-07T00:00:00Z",
+			},
+			mustPopulate: []string{
+				"state_machine_arn", "state_machine_name",
+				"state_machine_version_arn", "revision_id", "status", "creation_date",
+			},
+		},
+		{
+			// AwsHttpApiGateway: api_id is the join key domain mappings
+			// reference; execution_arn feeds Lambda resource policies;
+			// stage_name composes into domain mappings.
+			name: "AwsHttpApiGateway",
+			kind: cloudresourcekind.CloudResourceKind_AwsHttpApiGateway,
+			rawOutputs: map[string]interface{}{
+				"api_id":           "a1b2c3d4",
+				"api_endpoint":     "https://a1b2c3d4.execute-api.us-west-2.amazonaws.com",
+				"api_arn":          "arn:aws:apigateway:us-west-2::/apis/a1b2c3d4",
+				"execution_arn":    "arn:aws:execute-api:us-west-2:123456789012:a1b2c3d4",
+				"stage_invoke_url": "https://a1b2c3d4.execute-api.us-west-2.amazonaws.com",
+				"stage_name":       "$default",
+			},
+			mustPopulate: []string{
+				"api_id", "api_endpoint", "api_arn",
+				"execution_arn", "stage_invoke_url", "stage_name",
+			},
+		},
+		{
+			// AwsHttpApiVpcLink: vpc_link_id is what private integrations set
+			// as connection_id; it also keys the E2E verifier.
+			name: "AwsHttpApiVpcLink",
+			kind: cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink,
+			rawOutputs: map[string]interface{}{
+				"vpc_link_id":  "abc123",
+				"vpc_link_arn": "arn:aws:apigateway:us-west-2::/vpclinks/abc123",
+			},
+			mustPopulate: []string{"vpc_link_id", "vpc_link_arn"},
+		},
+		{
+			// AwsHttpApiDomain: target_domain_name + hosted_zone_id are the
+			// DNS composition surface (a Route 53 alias record targets them);
+			// domain_name is the domain's join key and keys the E2E verifier.
+			name: "AwsHttpApiDomain",
+			kind: cloudresourcekind.CloudResourceKind_AwsHttpApiDomain,
+			rawOutputs: map[string]interface{}{
+				"domain_name":        "api.example.com",
+				"domain_name_arn":    "arn:aws:apigateway:us-west-2::/domainnames/api.example.com",
+				"target_domain_name": "d-abc123.execute-api.us-west-2.amazonaws.com",
+				"hosted_zone_id":     "Z2OJLYMUO9EFXC",
+			},
+			mustPopulate: []string{
+				"domain_name", "domain_name_arn", "target_domain_name", "hosted_zone_id",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

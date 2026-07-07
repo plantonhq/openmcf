@@ -624,6 +624,36 @@ func TestAwsCloudwatchCompositeAlarm_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awscloudwatchcompositealarm", "terraform")
 }
 
+// --- AWS serverless front door (Step Functions + HTTP API family) ---
+
+func TestAwsStepFunction_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsstepfunction", "pulumi")
+}
+func TestAwsStepFunction_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsstepfunction", "terraform")
+}
+
+func TestAwsHttpApiGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapigateway", "pulumi")
+}
+func TestAwsHttpApiGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapigateway", "terraform")
+}
+
+func TestAwsHttpApiVpcLink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapivpclink", "pulumi")
+}
+func TestAwsHttpApiVpcLink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapivpclink", "terraform")
+}
+
+func TestAwsHttpApiDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapidomain", "pulumi")
+}
+func TestAwsHttpApiDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awshttpapidomain", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
