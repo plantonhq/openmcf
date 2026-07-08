@@ -327,6 +327,22 @@ default-rule-set IDs are bare numerics (`942100`) -- an inferred bare
 `300700` was rejected by ARM on both engines with "managed rule IDs are
 not supported".
 
+### Vendor-constant casing: an SDK constant's Go identifier is not its wire value
+
+When a module maps a spec enum to a provider's string vocabulary, read
+the SDK constant's STRING VALUE, never its Go identifier -- the two can
+differ in casing, and provider schemas validate case-sensitively (e.g.
+azurerm's `StringInSlice(..., false)`). The trap that motivated this:
+the frontdoor SDK declares `TransformTypeURLDecode TransformType =
+"UrlDecode"` -- an identifier-derived `"URLDecode"` passes every offline
+gate that does not render a plan and fails at plan time on both
+engines. Two defenses: (1) verify every enum map row against the SDK
+constants file (or the provider schema's validator list), and (2) make
+sure at least one scenario or hack manifest exercises every mapping row
+whose casing is irregular, so the offline plan gate and the live suite
+keep it covered -- a mapping row no fixture uses is dead code that
+validation cannot see.
+
 ### How the Terraform path works
 
 The Terraform runner uses [Terratest](https://github.com/gruntwork-io/terratest)

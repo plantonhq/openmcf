@@ -44,7 +44,7 @@ The provider's schema validates transforms with a case-sensitive `StringInSlice`
 ## Impact
 
 - Custom rules using the URL-decode/encode transforms -- a standard evasion-hardening pattern (`LOWERCASE` + `URL_DECODE`) -- now deploy on both engines instead of failing plan validation.
-- The vendor-constant trap (SDK identifier casing vs wire value) is now documented at both mapping sites, and the transform rows can no longer silently regress: they are exercised by the offline plan gate and the minimal live scenario.
+- The vendor-constant trap (SDK identifier casing vs wire value) is now documented at both mapping sites and taught as a failure class in `e2e/README.md` (verify enum map rows against the SDK constants' string values; keep every irregular-casing row exercised by a fixture), and the transform rows can no longer silently regress: they are exercised by the offline plan gate and the minimal live scenario.
 
 ## Related Work
 
