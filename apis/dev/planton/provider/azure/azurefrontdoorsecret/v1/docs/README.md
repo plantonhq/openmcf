@@ -54,6 +54,15 @@ parity-verified against pulumi-azure v6 (`cdn.FrontdoorSecret`).
   operational prerequisite -- not expressible in a spec rule, recorded
   on the spec comment, the README, and the presets. The E2E harness
   bootstraps it for the test subscription.
+- **CA-issued certificates only**: Azure validates the wrapped
+  certificate's CONTENT at create time and rejects self-signed
+  certificates with `BadRequest: "The certificate chain includes an
+  invalid number of certificates. The number of certificates should be
+  at least 2."` (live-verified). The chain requirement -- leaf plus
+  issuer -- means the certificate must come from a CA (a Key Vault CA
+  integration, or an imported PKCS#12 carrying its full chain). Not
+  statically checkable: the spec holds a reference, and the content
+  lives in the vault.
 
 ## Outputs
 

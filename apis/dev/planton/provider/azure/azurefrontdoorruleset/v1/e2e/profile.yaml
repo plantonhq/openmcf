@@ -7,10 +7,14 @@ spec:
   # Door profile (registry prerequisite), creates the rule set with a
   # three-rule delivery policy (redirect, security headers, caching
   # override), verifies it via the ARM API, destroys it, and verifies it
-  # is gone -- on both provisioners. Expect ~21 min per engine (the
-  # profile fixture's ~18-min deletion dominates, the Front Door family
-  # timing class).
+  # is gone -- on both provisioners. Observed runs 21-24 min per engine
+  # (the profile fixture's ~18-min deletion dominates, the Front Door
+  # family timing class). The route's rule-set-attach scenario
+  # additionally live-proves the attach seam through this kind's install
+  # profile.
   tier: 1
-  status: pending
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 45

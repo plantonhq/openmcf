@@ -17,8 +17,11 @@ spec:
   # subscription owns none. The pending-validation create/destroy cycle
   # plus the offline gate (spec CELs, tofu plan rendering every TLS
   # seam, outputs conformance) is the honest boundary of automated proof
-  # for this kind.
+  # for this kind. Observed runs 22-24 min per engine; all four outputs
+  # incl. the validation_token challenge populated on both.
   tier: 1
-  status: pending
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 45

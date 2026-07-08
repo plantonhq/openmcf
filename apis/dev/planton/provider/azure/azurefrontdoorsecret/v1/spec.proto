@@ -30,6 +30,13 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // User" role on an RBAC-mode vault -- before a secret can deploy. This
 // is a grant on YOUR vault to Microsoft's principal; no module can
 // create the principal itself.
+//
+// **Certificate content requirement**: Azure rejects SELF-SIGNED
+// certificates ("the certificate chain includes an invalid number of
+// certificates") -- the wrapped certificate must be CA-issued with a
+// complete chain (leaf plus issuer, at least two certificates). Use a
+// Key Vault certificate enrolled through a CA integration or an
+// imported PKCS#12 that carries its full chain.
 message AzureFrontDoorSecretSpec {
   // The Front Door profile the secret lives in, by ARM ID. References
   // an AzureFrontDoorProfile's profile_id output so the profile and its

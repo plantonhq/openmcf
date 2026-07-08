@@ -8,6 +8,11 @@
 # service principal (Microsoft.AzureFrontDoor-Cdn) is instantiated in
 # the tenant and granted "Key Vault Secrets User" at the subscription
 # scope, the one-time bootstrap without which Azure rejects the create.
+#
+# CURRENTLY DEFERRED (see profile.yaml): Azure rejects the fixture's
+# self-signed certificate at create time (BYO TLS requires a CA-issued
+# chain of >= 2 certificates). The scenario runs unchanged once a
+# CA-issued certificate is importable into the fixture vault.
 apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorSecret
 metadata:

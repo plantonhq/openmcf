@@ -442,6 +442,19 @@ owns two responsibilities beyond wiring verifiers:
   verification, check whether the control plane exposes a read proxy first
   (Azure vault KEYS have one; CERTIFICATES do not) and fall back to the service's
   data-plane SDK only when it does not.
+- **Some services access customer resources with the PROVIDER'S OWN service
+  principal, which needs its own bootstrap.** E.g. Azure Front Door reads
+  customer Key Vaults for bring-your-own TLS certificates as the
+  `Microsoft.AzureFrontDoor-Cdn` enterprise application (a well-known,
+  tenant-invariant app id) — NOT as the deploying credential. Two one-time
+  steps, both idempotent harness-Setup bootstraps in the same class as the
+  test-principal grant above: (1) the principal may not exist in a fresh
+  tenant until instantiated (`az ad sp create --id <well-known-app-id>`;
+  resolve with `az ad sp show` first — create fails when it already exists),
+  and (2) it needs the read role granted at the subscription scope
+  (`--assignee-principal-type ServicePrincipal`). Without both, the dependent
+  resource's create fails with an access-denied error naming the vault, which
+  looks like a module defect but is tenant bootstrap.
 - **Soft-delete/retention services add an orphan class the resource list does not
   show.** A destroyed Azure Key Vault lingers soft-deleted (its globally unique
   name stays reserved) unless purged; both IaC engines purge on destroy by

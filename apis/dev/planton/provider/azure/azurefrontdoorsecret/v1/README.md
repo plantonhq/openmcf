@@ -42,6 +42,14 @@ Front Door reads Key Vault with Microsoft's own service principal (the
 access on the vault -- e.g. "Key Vault Secrets User" on an RBAC-mode
 vault -- before the first secret deploys.
 
+## Certificate Content Requirement
+
+Azure rejects SELF-SIGNED certificates for Front Door BYO TLS: the
+wrapped certificate must be CA-issued with a complete chain (leaf plus
+issuer -- at least two certificates). Enroll the Key Vault certificate
+through a CA integration, or import a PKCS#12 that carries its full
+chain.
+
 ## Composition
 
 ```yaml

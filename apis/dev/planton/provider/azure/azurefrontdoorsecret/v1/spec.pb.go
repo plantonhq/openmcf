@@ -48,6 +48,13 @@ const (
 // User" role on an RBAC-mode vault -- before a secret can deploy. This
 // is a grant on YOUR vault to Microsoft's principal; no module can
 // create the principal itself.
+//
+// **Certificate content requirement**: Azure rejects SELF-SIGNED
+// certificates ("the certificate chain includes an invalid number of
+// certificates") -- the wrapped certificate must be CA-issued with a
+// complete chain (leaf plus issuer, at least two certificates). Use a
+// Key Vault certificate enrolled through a CA integration or an
+// imported PKCS#12 that carries its full chain.
 type AzureFrontDoorSecretSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Front Door profile the secret lives in, by ARM ID. References

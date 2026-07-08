@@ -8,9 +8,15 @@ spec:
   # origin (registry prerequisites, transitively deduplicated), creates
   # the route with caching and HTTPS redirect, verifies it via the ARM
   # API, destroys it, and verifies it is gone -- on both provisioners.
-  # This scenario live-proves the whole traffic-serving graph. Observed
-  # runs ~25-27 min per engine (four fixtures + the route; teardown
-  # dominated by the profile fixture's ~18-min deletion).
+  # This scenario live-proves the whole traffic-serving graph. The
+  # second scenario (rule-set-attach) adds a scenario-declared
+  # AzureFrontDoorRuleSet fixture and proves the rule_set_ids delivery-
+  # policy seam live. Observed runs ~26-28 min per scenario per engine
+  # (teardown dominated by the profile fixture's ~18-min deletion).
+  # The custom-domain attach seam is excluded: it requires a
+  # DNS-VALIDATED domain, and the test subscription owns no delegated
+  # zone to publish the TXT challenge in (recorded in the custom-domain
+  # kind's profile); the seam is proven offline (spec CEL + both plans).
   tier: 1
   status: green
   validated_provisioners:

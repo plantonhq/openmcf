@@ -51,6 +51,8 @@ planton apply -f front-door-secret.yaml
 
 The versionless reference (the default) makes Front Door follow the certificate's latest Key Vault version -- renewals propagate with zero redeploys. Reference the versioned `certificate_id` output instead to pin one exact version for change-controlled rollouts.
 
+Note that Azure rejects self-signed certificates for Front Door BYO TLS: the certificate must be CA-issued with a complete chain (leaf plus issuer). Enroll through a Key Vault CA integration or import a PKCS#12 carrying its full chain.
+
 ## Key Outputs
 
 | Output | Purpose |
