@@ -1199,6 +1199,33 @@ enum CloudResourceKind {
     id_prefix: "azcmgocl"
   }];
 
+  // --- Azure Managed Redis (the Microsoft.Cache/redisEnterprise family) ---
+
+  // AzureResourceGroup is the cluster's only registry prerequisite: the
+  // cluster is created inside a referenced resource group. The
+  // geo-replication and access-policy-assignment children declare NO
+  // prerequisite on AzureManagedRedis: clusters are expensive,
+  // slow-provisioning parents, so their E2E scenarios declare
+  // scenario-local cluster fixtures instead of recreating a shared one
+  // per scenario. Deploy ordering in composed environments still flows
+  // from the managed_redis_id references themselves.
+  AzureManagedRedis = 510 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmredis"
+    prerequisites: [AzureResourceGroup]
+  }];
+  AzureManagedRedisGeoReplication = 511 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmredisgeo"
+  }];
+  AzureManagedRedisAccessPolicyAssignment = 512 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azmredisgrant"
+  }];
+
   // 600–799: GCP resources
   GcpArtifactRegistryRepo = 600 [(kind_meta) = {
     provider: gcp

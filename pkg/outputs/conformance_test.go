@@ -1527,6 +1527,60 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureManagedRedis: managed_redis_id is what the
+			// geo-replication and access-policy-assignment kinds
+			// reference; database_id is the grant/link scope; the keys
+			// populate only while access-keys authentication is enabled
+			// (keyless is the default).
+			name: "AzureManagedRedis",
+			kind: cloudresourcekind.CloudResourceKind_AzureManagedRedis,
+			rawOutputs: map[string]interface{}{
+				"managed_redis_id":      "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cache/redisEnterprise/app-cache",
+				"managed_redis_name":    "app-cache",
+				"region":                "eastus",
+				"resource_group_name":   "app-rg",
+				"hostname":              "app-cache.eastus.redis.azure.net",
+				"database_id":           "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cache/redisEnterprise/app-cache/databases/default",
+				"port":                  10000,
+				"primary_access_key":    "primary-key-value",
+				"secondary_access_key":  "secondary-key-value",
+				"identity_principal_id": "11111111-2222-3333-4444-555555555555",
+			},
+			mustPopulate: []string{
+				"managed_redis_id", "managed_redis_name", "region",
+				"resource_group_name", "hostname", "database_id", "port",
+				"primary_access_key", "secondary_access_key",
+				"identity_principal_id",
+			},
+		},
+		{
+			// AzureManagedRedisGeoReplication: the group has no ARM
+			// object of its own -- its resource ID is the managing
+			// cluster's ARM ID.
+			name: "AzureManagedRedisGeoReplication",
+			kind: cloudresourcekind.CloudResourceKind_AzureManagedRedisGeoReplication,
+			rawOutputs: map[string]interface{}{
+				"geo_replication_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-east/providers/Microsoft.Cache/redisEnterprise/app-cache-east",
+			},
+			mustPopulate: []string{
+				"geo_replication_id",
+			},
+		},
+		{
+			// AzureManagedRedisAccessPolicyAssignment: Azure names the
+			// assignment after the granted object ID, so the name equals
+			// the principal's GUID.
+			name: "AzureManagedRedisAccessPolicyAssignment",
+			kind: cloudresourcekind.CloudResourceKind_AzureManagedRedisAccessPolicyAssignment,
+			rawOutputs: map[string]interface{}{
+				"access_policy_assignment_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cache/redisEnterprise/app-cache/databases/default/accessPolicyAssignments/11111111-2222-3333-4444-555555555555",
+				"access_policy_assignment_name": "11111111-2222-3333-4444-555555555555",
+			},
+			mustPopulate: []string{
+				"access_policy_assignment_id", "access_policy_assignment_name",
+			},
+		},
+		{
 			// AzureRedisCacheAccessPolicyAssignment: the grant half of the
 			// keyless cache story -- id and name identify the grant for
 			// audits and teardown.

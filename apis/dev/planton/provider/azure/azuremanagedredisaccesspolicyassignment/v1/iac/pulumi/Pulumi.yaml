@@ -1,0 +1,3 @@
+name: azure-managed-redis-access-policy-assignment
+runtime: go
+description: Pulumi program for Azure Managed Redis access policy assignment (data-plane grant)

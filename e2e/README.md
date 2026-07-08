@@ -515,6 +515,18 @@ owns two responsibilities beyond wiring verifiers:
   and verify-exists should require the ENABLED state, not mere presence. No
   recycle-bin sweep exists for this class — the object intentionally persists;
   parent teardown is what actually removes it.
+- **A sibling of the state-flip class: some association resources have NO ARM
+  object at all — their state lives in a property of the resources they
+  associate.** An Azure Managed Redis geo-replication group is the canonical
+  case: creating it links existing databases (no new ARM object; the resource ID
+  is just the managing cluster's ID) and destroying it unlinks them (nothing is
+  deleted, so a 404 probe can NEVER pass verify-absent — and verify-exists
+  against the resource ID would pass even when the association never took
+  effect). The verifier must GET the carrying resource and read the association
+  property (here `properties.geoReplication.linkedDatabases` on the managing
+  default database): verify-exists requires the association to be genuinely
+  established, verify-absent requires it collapsed. Read the provider's Read
+  source to find which resource carries the property.
 - **Never let sequential scenarios destroy and recreate the same globally unique
   parent name.** When a kind's registry prerequisite chain deploys a fixture
   whose name is globally unique (an Azure SQL logical server, a Key Vault),

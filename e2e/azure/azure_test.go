@@ -465,6 +465,39 @@ func TestAzureRedisLinkedServer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureredislinkedserver", "terraform")
 }
 
+// --- Azure Managed Redis (fixture RG -> Balanced_B0 instance with access
+// keys enabled; Managed Redis clusters provision and delete in tens of
+// minutes) ---
+
+func TestAzureManagedRedis_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremanagedredis", "pulumi")
+}
+func TestAzureManagedRedis_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremanagedredis", "terraform")
+}
+
+// --- Azure Managed Redis geo-replication (fixture RG -> two scenario-local
+// Balanced_B3 clusters in different regions declaring the same group name ->
+// the group link; the most expensive fixture pair in the suite) ---
+
+func TestAzureManagedRedisGeoReplication_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremanagedredisgeoreplication", "pulumi")
+}
+func TestAzureManagedRedisGeoReplication_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremanagedredisgeoreplication", "terraform")
+}
+
+// --- Azure Managed Redis access policy assignment (fixture RG + identity ->
+// scenario-local KEYLESS cluster -> the data-plane grant; proves the
+// cluster-reference and identity-principal FK seams) ---
+
+func TestAzureManagedRedisAccessPolicyAssignment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremanagedredisaccesspolicyassignment", "pulumi")
+}
+func TestAzureManagedRedisAccessPolicyAssignment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremanagedredisaccesspolicyassignment", "terraform")
+}
+
 // --- Azure Cosmos DB account (fixture RG -> single-region SQL API account;
 // Cosmos accounts provision in ~5-10 min each) ---
 

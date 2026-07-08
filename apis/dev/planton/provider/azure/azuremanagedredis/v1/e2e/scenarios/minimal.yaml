@@ -1,0 +1,35 @@
+# Minimal AzureManagedRedis scenario: the smallest general-purpose size
+# (BALANCED_B0) with access keys enabled -- proving the cluster, its
+# default database, the key outputs (the non-default auth path; keyless
+# is the default), an eviction-policy enum seam, and user tags.
+#
+# The cluster name is a DNS label; this scenario owns it and both engine
+# runs recreate it only after the previous delete fully completes.
+apiVersion: azure.planton.dev/v1
+kind: AzureManagedRedis
+metadata:
+  name: planton-oss-e2e-azuremanagedredis-smoke
+  id: planton-oss-e2e-azuremanagedredis-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremanagedredis
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  clusterName: pltn-oss-e2e-amr-smoke
+  skuName: BALANCED_B0
+  defaultDatabase:
+    # Keys ON here to prove the key outputs populate; the keyless
+    # default posture is proven by the access-policy-assignment chain.
+    accessKeysAuthenticationEnabled: true
+    evictionPolicy: ALL_KEYS_LRU
+  tags:
+    e2e-suite: azure

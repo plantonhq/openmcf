@@ -1,0 +1,31 @@
+# AzureManagedRedisGeoReplication scenario: two scenario-local
+# BALANCED_B3 clusters in different regions declaring the same group
+# name, linked by the group resource under test. ONE resource manages
+# the whole group (linking is reciprocal); the state-aware verifier
+# reads the managing database's linkedDatabases, and the destroy
+# force-unlinks both members.
+#
+# Extra fixtures deploy in declared order (east before west); both are
+# path-declared because clusters are expensive scenario-local parents.
+apiVersion: azure.planton.dev/v1
+kind: AzureManagedRedisGeoReplication
+metadata:
+  name: planton-oss-e2e-azuremanagedredisgeoreplication-pair
+  id: planton-oss-e2e-azuremanagedredisgeoreplication-pair
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremanagedredisgeoreplication
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azuremanagedredisgeoreplication/v1/e2e/geo-cluster-east.yaml, apis/dev/planton/provider/azure/azuremanagedredisgeoreplication/v1/e2e/geo-cluster-west.yaml"
+  tags:
+    - planton-e2e
+spec:
+  managedRedisId:
+    valueFrom:
+      name: planton-oss-e2e-amrgeo-fixture-east
+  linkedManagedRedisIds:
+    - valueFrom:
+        name: planton-oss-e2e-amrgeo-fixture-west

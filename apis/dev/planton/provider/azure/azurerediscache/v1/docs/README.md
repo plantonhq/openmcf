@@ -21,8 +21,8 @@ retiring, create Azure Managed Redis instance instead" -- observed live
 on new PREMIUM creations in some regions while Basic/Standard creations
 elsewhere still succeed. Existing caches keep running and azurerm fully
 supports the resource, so this kind remains the right surface for
-managing them; treat Azure Managed Redis as the target for NEW
-deployments once its kind exists.
+managing them; **AzureManagedRedis is the kind for NEW deployments** --
+keyless by default, with modules, active geo-replication, and CMK.
 
 ## Field Mapping (azurerm → spec)
 

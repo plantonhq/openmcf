@@ -41,8 +41,9 @@ one operation that happens during an outage.
   rejecting new Premium cache creations region by region ("Azure Cache
   for Redis is retiring, create Azure Managed Redis instance instead"),
   so standing up a brand-new geo pair may fail in affected regions.
-  Links on EXISTING Premium caches keep working; Azure Managed Redis
-  carries its own geo-replication model for new deployments.
+  Links on EXISTING Premium caches keep working; for new deployments,
+  AzureManagedRedis carries its own ACTIVE (multi-primary)
+  geo-replication model, linked by AzureManagedRedisGeoReplication.
 - **The secondary rejects writes while linked** -- it serves reads in
   its region.
 - **Everything is ForceNew** -- replacing the link re-establishes

@@ -47,6 +47,6 @@ spec:
       overrides:
         - ruleGroupName: UnknownBots
           rules:
-            - ruleId: "300700"
+            - ruleId: Bot300700
               enabled: true
               action: OVERRIDE_JS_CHALLENGE

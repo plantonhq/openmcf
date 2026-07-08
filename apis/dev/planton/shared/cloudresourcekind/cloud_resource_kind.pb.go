@@ -445,6 +445,17 @@ const (
 	CloudResourceKind_AzureCosmosdbSqlContainer    CloudResourceKind = 501
 	CloudResourceKind_AzureCosmosdbMongoDatabase   CloudResourceKind = 502
 	CloudResourceKind_AzureCosmosdbMongoCollection CloudResourceKind = 503
+	// AzureResourceGroup is the cluster's only registry prerequisite: the
+	// cluster is created inside a referenced resource group. The
+	// geo-replication and access-policy-assignment children declare NO
+	// prerequisite on AzureManagedRedis: clusters are expensive,
+	// slow-provisioning parents, so their E2E scenarios declare
+	// scenario-local cluster fixtures instead of recreating a shared one
+	// per scenario. Deploy ordering in composed environments still flows
+	// from the managed_redis_id references themselves.
+	CloudResourceKind_AzureManagedRedis                       CloudResourceKind = 510
+	CloudResourceKind_AzureManagedRedisGeoReplication         CloudResourceKind = 511
+	CloudResourceKind_AzureManagedRedisAccessPolicyAssignment CloudResourceKind = 512
 	// 600–799: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
 	CloudResourceKind_GcpCloudCdn                   CloudResourceKind = 601
@@ -915,6 +926,9 @@ var (
 		501:  "AzureCosmosdbSqlContainer",
 		502:  "AzureCosmosdbMongoDatabase",
 		503:  "AzureCosmosdbMongoCollection",
+		510:  "AzureManagedRedis",
+		511:  "AzureManagedRedisGeoReplication",
+		512:  "AzureManagedRedisAccessPolicyAssignment",
 		600:  "GcpArtifactRegistryRepo",
 		601:  "GcpCloudCdn",
 		602:  "GcpCloudFunction",
@@ -1369,6 +1383,9 @@ var (
 		"AzureCosmosdbSqlContainer":               501,
 		"AzureCosmosdbMongoDatabase":              502,
 		"AzureCosmosdbMongoCollection":            503,
+		"AzureManagedRedis":                       510,
+		"AzureManagedRedisGeoReplication":         511,
+		"AzureManagedRedisAccessPolicyAssignment": 512,
 		"GcpArtifactRegistryRepo":                 600,
 		"GcpCloudCdn":                             601,
 		"GcpCloudFunction":                        602,
@@ -1921,7 +1938,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xfa\xa2\x01\n" +
+	"\x02v1\x10\x01*\xae\xa4\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2095,6 +2112,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x19AzureCosmosdbSqlContainer\x10\xf5\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcsqlct\x123\n" +
 	"\x1aAzureCosmosdbMongoDatabase\x10\xf6\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcmgodb\x125\n" +
 	"\x1cAzureCosmosdbMongoCollection\x10\xf7\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcmgocl\x12.\n" +
+	"\x11AzureManagedRedis\x10\xfe\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\bazmredis:\x02\x90\x03\x12;\n" +
+	"\x1fAzureManagedRedisGeoReplication\x10\xff\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\vazmredisgeo\x12E\n" +
+	"'AzureManagedRedisAccessPolicyAssignment\x10\x80\x04\x1a\x17\xa2\xf7\x04\x13\b\r\x10\x01\"\razmredisgrant\x12.\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpart\x12\"\n" +
 	"\vGcpCloudCdn\x10\xd9\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpcdn\x12(\n" +
 	"\x10GcpCloudFunction\x10\xda\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\acldfunc\x12\"\n" +
