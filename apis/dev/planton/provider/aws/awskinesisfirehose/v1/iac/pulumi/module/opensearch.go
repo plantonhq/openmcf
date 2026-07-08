@@ -28,6 +28,13 @@ func buildOpenSearchArgs(dest *awskinesisfirehose.AwsKinesisFirehoseOpenSearchDe
 		args.TypeName = pulumi.StringPtr(dest.TypeName)
 	}
 
+	// Document ID assignment (FIREHOSE_DEFAULT vs NO_DOCUMENT_ID)
+	if dest.DefaultDocumentIdFormat != "" {
+		args.DocumentIdOptions = &kinesis.FirehoseDeliveryStreamOpensearchConfigurationDocumentIdOptionsArgs{
+			DefaultDocumentIdFormat: pulumi.String(dest.DefaultDocumentIdFormat),
+		}
+	}
+
 	// Buffering
 	if b := dest.Buffering; b != nil {
 		if b.IntervalInSeconds > 0 {
@@ -52,9 +59,9 @@ func buildOpenSearchArgs(dest *awskinesisfirehose.AwsKinesisFirehoseOpenSearchDe
 		args.S3Configuration = buildOpenSearchS3Config(cfg)
 	}
 
-	// Processing
-	if dest.Processing != nil && dest.Processing.Enabled {
-		args.ProcessingConfiguration = buildOpenSearchProcessingConfig(dest.Processing)
+	// Processing pipeline (normalized typed processors)
+	if proc := buildOpenSearchProcessing(dest.Processing); proc != nil {
+		args.ProcessingConfiguration = proc
 	}
 
 	// CloudWatch logging
@@ -113,25 +120,30 @@ func buildOpenSearchS3Config(cfg *awskinesisfirehose.AwsKinesisFirehoseS3Config)
 	return args
 }
 
-// buildOpenSearchProcessingConfig constructs Lambda processing for OpenSearch.
-func buildOpenSearchProcessingConfig(proc *awskinesisfirehose.AwsKinesisFirehoseLambdaProcessing) *kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationArgs {
-	if proc == nil || !proc.Enabled {
+// buildOpenSearchProcessing adapts the normalized processor pipeline to the
+// OpenSearch destination's SDK types.
+func buildOpenSearchProcessing(processing *awskinesisfirehose.AwsKinesisFirehoseProcessing) *kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationArgs {
+	normalized := normalizeProcessors(processing)
+	if normalized == nil {
 		return nil
 	}
-	params := kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationProcessorParameterArray{
-		&kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationProcessorParameterArgs{
-			ParameterName:  pulumi.String("LambdaArn"),
-			ParameterValue: pulumi.String(proc.LambdaArn.GetValue()),
-		},
+	processors := kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationProcessorArray{}
+	for _, p := range normalized {
+		params := kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationProcessorParameterArray{}
+		for _, param := range p.Parameters {
+			params = append(params, &kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationProcessorParameterArgs{
+				ParameterName:  pulumi.String(param.Name),
+				ParameterValue: pulumi.String(param.Value),
+			})
+		}
+		processors = append(processors, &kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationProcessorArgs{
+			Type:       pulumi.String(p.Type),
+			Parameters: params,
+		})
 	}
 	return &kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationArgs{
-		Enabled: pulumi.Bool(true),
-		Processors: kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationProcessorArray{
-			&kinesis.FirehoseDeliveryStreamOpensearchConfigurationProcessingConfigurationProcessorArgs{
-				Type:       pulumi.String("Lambda"),
-				Parameters: params,
-			},
-		},
+		Enabled:    pulumi.Bool(true),
+		Processors: processors,
 	}
 }
 

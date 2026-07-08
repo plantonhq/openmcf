@@ -1,3 +1,16 @@
+---
+title: "S3 Parquet Analytics Preset"
+description: "Extended S3 destination with Parquet format conversion for data lake analytics. Consumes from a Kinesis stream, converts JSON to Parquet using a Glue catalog schema, and delivers with dynamic..."
+type: "preset"
+rank: "04"
+presetSlug: "04-s3-parquet-analytics"
+componentSlug: "kinesis-firehose"
+componentTitle: "Kinesis Firehose"
+provider: "aws"
+icon: "package"
+order: 4
+---
+
 # S3 Parquet Analytics Preset
 
 Extended S3 destination with Parquet format conversion for data lake analytics. Consumes from a Kinesis stream, converts JSON to Parquet using a Glue catalog schema, and delivers with dynamic partitioning.
@@ -14,7 +27,7 @@ Extended S3 destination with Parquet format conversion for data lake analytics. 
 - **Kinesis stream source** — `valueFrom` references an AwsKinesisStream; Firehose consumes with automatic checkpointing
 - **Data format conversion** — OPENX_JSON → PARQUET with SNAPPY compression
 - **Glue catalog schema** — `analytics_db.events` table defines the Parquet schema
-- **Dynamic partitioning** — Enables partition key extraction from record fields
+- **Metadata extraction + dynamic partitioning** — a JQ processor extracts `event_type` from each record; the S3 prefix references it as `!{partitionKeyFromQuery:event_type}` so data lands in query-prunable partitions
 - **File extension** — `.parquet` for delivered objects
 
 ## Prerequisites

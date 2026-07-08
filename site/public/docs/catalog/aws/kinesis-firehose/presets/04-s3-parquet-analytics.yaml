@@ -6,6 +6,7 @@ metadata:
   env: prod
   id: analytics-parquet-firehose-prod
 spec:
+  region: us-east-1
   # Kinesis stream source — Firehose consumes from an existing stream
   kinesisStreamSource:
     streamArn:
@@ -23,12 +24,22 @@ spec:
       value: arn:aws:s3:::my-analytics-data-lake
     roleArn:
       value: arn:aws:iam::123456789012:role/firehose-glue-s3-role
-    prefix: analytics/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/
+    # Partition by a record field (extracted below) plus the event date —
+    # the layout Athena/Spark prune on.
+    prefix: analytics/event_type=!{partitionKeyFromQuery:event_type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/
     compressionFormat: UNCOMPRESSED
     fileExtension: .parquet
     buffering:
       intervalInSeconds: 60
       sizeInMbs: 64
+    # Extract the partition key from each JSON record with a JQ expression;
+    # the prefix references it as !{partitionKeyFromQuery:event_type}.
+    processing:
+      enabled: true
+      processors:
+        - metadataExtraction:
+            query: '{event_type: .event_type}'
+            jsonParsingEngine: JQ-1.6
     dynamicPartitioning:
       enabled: true
       retryDurationInSeconds: 300

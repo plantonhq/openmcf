@@ -1,0 +1,36 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsKinesisFirehose
+metadata:
+  name: iceberg-lakehouse-firehose
+  org: my-org
+  env: prod
+  id: iceberg-lakehouse-firehose-prod
+spec:
+  region: us-east-1
+  # Direct PUT source — applications send data via PutRecord/PutRecordBatch
+  iceberg:
+    # The Glue Data Catalog that owns the Iceberg tables. The catalog ARN
+    # embeds the owning account ID.
+    catalogArn:
+      value: arn:aws:glue:us-east-1:123456789012:catalog
+    roleArn:
+      value: arn:aws:iam::123456789012:role/firehose-iceberg-role
+    # Upsert semantics: records whose order_id matches an existing row
+    # UPDATE it instead of appending — change-data-capture straight into
+    # the lakehouse.
+    destinationTables:
+      - databaseName: lakehouse
+        tableName: orders
+        uniqueKeys:
+          - order_id
+        s3ErrorOutputPrefix: errors/orders/
+    buffering:
+      intervalInSeconds: 120
+      sizeInMbs: 64
+    s3BackupMode: FailedDataOnly
+    s3Config:
+      bucketArn:
+        value: arn:aws:s3:::my-firehose-backup-bucket
+      roleArn:
+        value: arn:aws:iam::123456789012:role/firehose-s3-backup-role
+      prefix: iceberg-failed/

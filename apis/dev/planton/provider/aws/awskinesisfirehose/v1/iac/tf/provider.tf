@@ -1,11 +1,12 @@
 terraform {
   required_providers {
     aws = {
-      # v6 family floor: every attribute this module renders predates 6.0,
-      # so the floor is the family baseline rather than a feature-driven
-      # minimum.
+      # Feature-driven floor: iceberg_configuration.append_only landed in
+      # 6.8.0 (the newest attribute this module renders; the Snowflake,
+      # Iceberg, MSK-source, and secrets-manager blocks themselves all
+      # predate the v6 line).
       source  = "hashicorp/aws"
-      version = ">= 6.0.0"
+      version = ">= 6.8.0"
     }
   }
 }

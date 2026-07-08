@@ -6,6 +6,7 @@ metadata:
   env: prod
   id: datadog-logs-firehose-prod
 spec:
+  region: us-east-1
   # Direct PUT source — applications send logs via PutRecord/PutRecordBatch
   httpEndpoint:
     url: https://http-intake.logs.datadoghq.com/v1/input

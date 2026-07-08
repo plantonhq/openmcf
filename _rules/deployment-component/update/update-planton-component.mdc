@@ -84,6 +84,14 @@ Use update when you need to:
 2. Validates component tests: `go test ./apis/dev/planton/provider/<provider>/<component>/v1/`
 3. Updates Terraform variables.tf to match spec.proto
 4. **Validates existing presets against new schema** (if `v1/presets/` exists):
+   - Checks the LAYOUT first: presets must be flat `{NN}-{name}.yaml` + `{NN}-{name}.md`
+     pairs directly under `v1/presets/` (rule 022's convention). A legacy
+     subdirectory layout (`{NN}-{name}/manifest.yaml` + `README.md`) is invisible
+     to the public-site catalog mirror (its preset scanner only reads the flat
+     pairs), so the presets silently never publish — flatten them as part of the
+     update. Also verify every preset carries the spec's required fields (e.g.
+     `region`): presets predating a requiredness change can be invalid without
+     anything failing until a user copies one.
    - Checks for renamed fields (preset uses old field names that no longer exist in spec.proto)
    - Checks for removed fields (preset references fields deleted from spec.proto)
    - Checks for new required fields (preset may need them added)

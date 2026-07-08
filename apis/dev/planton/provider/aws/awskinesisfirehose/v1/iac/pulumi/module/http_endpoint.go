@@ -22,6 +22,19 @@ func buildHttpEndpointArgs(dest *awskinesisfirehose.AwsKinesisFirehoseHttpEndpoi
 		args.RoleArn = pulumi.StringPtr(dest.RoleArn.GetValue())
 	}
 
+	// Secrets Manager credentials (XOR with access_key — CEL-enforced;
+	// setting the block IS the enable switch, ForceNew)
+	if sm := dest.SecretsManager; sm != nil {
+		smArgs := &kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationSecretsManagerConfigurationArgs{
+			Enabled:   pulumi.BoolPtr(true),
+			SecretArn: pulumi.StringPtr(sm.SecretArn.GetValue()),
+		}
+		if sm.RoleArn != nil {
+			smArgs.RoleArn = pulumi.StringPtr(sm.RoleArn.GetValue())
+		}
+		args.SecretsManagerConfiguration = smArgs
+	}
+
 	// Buffering
 	if b := dest.Buffering; b != nil {
 		if b.IntervalInSeconds > 0 {
@@ -45,9 +58,9 @@ func buildHttpEndpointArgs(dest *awskinesisfirehose.AwsKinesisFirehoseHttpEndpoi
 		args.S3Configuration = buildHttpS3Config(cfg)
 	}
 
-	// Processing
-	if dest.Processing != nil && dest.Processing.Enabled {
-		args.ProcessingConfiguration = buildHttpProcessingConfig(dest.Processing)
+	// Processing pipeline (normalized typed processors)
+	if proc := buildHttpProcessing(dest.Processing); proc != nil {
+		args.ProcessingConfiguration = proc
 	}
 
 	// CloudWatch logging
@@ -106,25 +119,30 @@ func buildHttpS3Config(cfg *awskinesisfirehose.AwsKinesisFirehoseS3Config) *kine
 	return args
 }
 
-// buildHttpProcessingConfig constructs Lambda processing for HTTP endpoint.
-func buildHttpProcessingConfig(proc *awskinesisfirehose.AwsKinesisFirehoseLambdaProcessing) *kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationArgs {
-	if proc == nil || !proc.Enabled {
+// buildHttpProcessing adapts the normalized processor pipeline to the HTTP
+// endpoint destination's SDK types.
+func buildHttpProcessing(processing *awskinesisfirehose.AwsKinesisFirehoseProcessing) *kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationArgs {
+	normalized := normalizeProcessors(processing)
+	if normalized == nil {
 		return nil
 	}
-	params := kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationProcessorParameterArray{
-		&kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationProcessorParameterArgs{
-			ParameterName:  pulumi.String("LambdaArn"),
-			ParameterValue: pulumi.String(proc.LambdaArn.GetValue()),
-		},
+	processors := kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationProcessorArray{}
+	for _, p := range normalized {
+		params := kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationProcessorParameterArray{}
+		for _, param := range p.Parameters {
+			params = append(params, &kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationProcessorParameterArgs{
+				ParameterName:  pulumi.String(param.Name),
+				ParameterValue: pulumi.String(param.Value),
+			})
+		}
+		processors = append(processors, &kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationProcessorArgs{
+			Type:       pulumi.String(p.Type),
+			Parameters: params,
+		})
 	}
 	return &kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationArgs{
-		Enabled: pulumi.Bool(true),
-		Processors: kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationProcessorArray{
-			&kinesis.FirehoseDeliveryStreamHttpEndpointConfigurationProcessingConfigurationProcessorArgs{
-				Type:       pulumi.String("Lambda"),
-				Parameters: params,
-			},
-		},
+		Enabled:    pulumi.Bool(true),
+		Processors: processors,
 	}
 }
 

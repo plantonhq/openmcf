@@ -6,6 +6,7 @@ metadata:
   env: prod
   id: log-analytics-firehose-prod
 spec:
+  region: us-east-1
   # Direct PUT source — logs sent via PutRecord/PutRecordBatch
   opensearch:
     domainArn:

@@ -6,6 +6,7 @@ metadata:
   env: prod
   id: data-lake-firehose-prod
 spec:
+  region: us-east-1
   # Direct PUT source (default) — applications send data via PutRecord/PutRecordBatch
   extendedS3:
     bucketArn:

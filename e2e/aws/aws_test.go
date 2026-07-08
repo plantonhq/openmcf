@@ -301,7 +301,7 @@ func TestAwsKinesisStreamConsumer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awskinesisstreamconsumer", "terraform")
 }
 
-// --- AWS Kinesis Firehose (Direct PUT -> extended_s3; S3 bucket + IAM role prerequisite chain) ---
+// --- AWS Kinesis Firehose (Direct PUT -> extended_s3 + Splunk-with-processors; S3 bucket + IAM role prerequisite chain) ---
 
 func TestAwsKinesisFirehose_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "awskinesisfirehose", "pulumi")

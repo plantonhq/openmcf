@@ -1035,15 +1035,18 @@ func TestStackOutputsConformance(t *testing.T) {
 		{
 			// AwsKinesisFirehose: delivery_stream_arn is the IAM/EventBridge
 			// join key; delivery_stream_name keys the E2E verifier and the
-			// MSK broker-log delivery reference.
+			// MSK broker-log delivery reference; destination_id + version_id
+			// are the UpdateDestination coordinates AWS assigns at creation.
 			name: "AwsKinesisFirehose",
 			kind: cloudresourcekind.CloudResourceKind_AwsKinesisFirehose,
 			rawOutputs: map[string]interface{}{
 				"delivery_stream_arn":  "arn:aws:firehose:us-west-2:123456789012:deliverystream/planton-oss-e2e-firehose-smoke",
 				"delivery_stream_name": "planton-oss-e2e-firehose-smoke",
+				"destination_id":       "destinationId-000000000001",
+				"version_id":           "1",
 			},
 			mustPopulate: []string{
-				"delivery_stream_arn", "delivery_stream_name",
+				"delivery_stream_arn", "delivery_stream_name", "destination_id", "version_id",
 			},
 		},
 		{
