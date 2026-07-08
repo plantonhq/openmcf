@@ -151,6 +151,9 @@ var migratedKinds = []string{
 	"AwsBatchJobQueue",
 	"AwsBatchSchedulingPolicy",
 	"AwsBatchJobDefinition",
+	// SES family, generator-owned from the day it was forged.
+	"AwsSesConfigurationSet",
+	"AwsSesEmailIdentity",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed
@@ -210,6 +213,10 @@ func moduleVariablesPath(root string, msg proto.Message) string {
 }
 
 // repoRoot walks up from this test file to the directory containing go.mod.
+// Under the Bazel sandbox the repo checkout (and its committed variables.tf
+// files) is not present, so the drift guard cannot run there -- it is
+// enforced by the plain `go test` lane, and skips explicitly under Bazel
+// instead of failing on the unreachable go.mod.
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -223,6 +230,9 @@ func repoRoot(t *testing.T) string {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
+			if os.Getenv("TEST_WORKSPACE") != "" {
+				t.Skip("skipping drift guard under the Bazel sandbox: the repo checkout (go.mod + committed variables.tf) is not available; the guard runs via `go test`")
+			}
 			t.Fatal("could not locate repo root (go.mod)")
 		}
 		dir = parent
