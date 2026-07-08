@@ -429,11 +429,14 @@ const (
 	// declare scenario-local account fixtures instead. Deploy ordering in
 	// composed environments still flows from the storage_account_id
 	// reference itself.
-	CloudResourceKind_AzureStorageContainer       CloudResourceKind = 490
-	CloudResourceKind_AzureStorageShare           CloudResourceKind = 491
-	CloudResourceKind_AzureStorageQueue           CloudResourceKind = 492
-	CloudResourceKind_AzureStorageTable           CloudResourceKind = 493
-	CloudResourceKind_AzureStorageEncryptionScope CloudResourceKind = 494
+	CloudResourceKind_AzureStorageContainer              CloudResourceKind = 490
+	CloudResourceKind_AzureStorageShare                  CloudResourceKind = 491
+	CloudResourceKind_AzureStorageQueue                  CloudResourceKind = 492
+	CloudResourceKind_AzureStorageTable                  CloudResourceKind = 493
+	CloudResourceKind_AzureStorageEncryptionScope        CloudResourceKind = 494
+	CloudResourceKind_AzureStorageDataLakeGen2Filesystem CloudResourceKind = 495
+	CloudResourceKind_AzureStorageLocalUser              CloudResourceKind = 496
+	CloudResourceKind_AzureStorageObjectReplication      CloudResourceKind = 497
 	// None of the Cosmos DB data-service kinds declares a registry
 	// prerequisite on AzureCosmosdbAccount: account names are GLOBALLY
 	// unique DNS labels, so a recreate-per-scenario fixture would risk
@@ -922,6 +925,9 @@ var (
 		492:  "AzureStorageQueue",
 		493:  "AzureStorageTable",
 		494:  "AzureStorageEncryptionScope",
+		495:  "AzureStorageDataLakeGen2Filesystem",
+		496:  "AzureStorageLocalUser",
+		497:  "AzureStorageObjectReplication",
 		500:  "AzureCosmosdbSqlDatabase",
 		501:  "AzureCosmosdbSqlContainer",
 		502:  "AzureCosmosdbMongoDatabase",
@@ -1379,6 +1385,9 @@ var (
 		"AzureStorageQueue":                       492,
 		"AzureStorageTable":                       493,
 		"AzureStorageEncryptionScope":             494,
+		"AzureStorageDataLakeGen2Filesystem":      495,
+		"AzureStorageLocalUser":                   496,
+		"AzureStorageObjectReplication":           497,
 		"AzureCosmosdbSqlDatabase":                500,
 		"AzureCosmosdbSqlContainer":               501,
 		"AzureCosmosdbMongoDatabase":              502,
@@ -1938,7 +1947,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xae\xa4\x01\n" +
+	"\x02v1\x10\x01*ͥ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2107,7 +2116,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\b\r\x10\x01\"\x04azsq\x12&\n" +
 	"\x11AzureStorageTable\x10\xed\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azst\x121\n" +
-	"\x1bAzureStorageEncryptionScope\x10\xee\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azses\x121\n" +
+	"\x1bAzureStorageEncryptionScope\x10\xee\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azses\x12;\n" +
+	"\"AzureStorageDataLakeGen2Filesystem\x10\xef\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazadlsfs\x12+\n" +
+	"\x15AzureStorageLocalUser\x10\xf0\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azslu\x123\n" +
+	"\x1dAzureStorageObjectReplication\x10\xf1\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azsor\x121\n" +
 	"\x18AzureCosmosdbSqlDatabase\x10\xf4\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcsqldb\x122\n" +
 	"\x19AzureCosmosdbSqlContainer\x10\xf5\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcsqlct\x123\n" +
 	"\x1aAzureCosmosdbMongoDatabase\x10\xf6\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\bazcmgodb\x125\n" +

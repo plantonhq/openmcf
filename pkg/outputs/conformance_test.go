@@ -1444,6 +1444,54 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureStorageDataLakeGen2Filesystem: filesystem_id is the ARM
+			// container-proxy ID data-plane role assignments scope to
+			// (ADLS filesystems surface in ARM as blob containers).
+			name: "AzureStorageDataLakeGen2Filesystem",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageDataLakeGen2Filesystem,
+			rawOutputs: map[string]interface{}{
+				"filesystem_id":        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/lake-rg/providers/Microsoft.Storage/storageAccounts/plantonlake/blobServices/default/containers/raw-zone",
+				"filesystem_name":      "raw-zone",
+				"storage_account_name": "plantonlake",
+			},
+			mustPopulate: []string{
+				"filesystem_id", "filesystem_name", "storage_account_name",
+			},
+		},
+		{
+			// AzureStorageLocalUser: sftp_username is the composed login
+			// clients connect with; sid and password are the
+			// secret-bearing credential outputs.
+			name: "AzureStorageLocalUser",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageLocalUser,
+			rawOutputs: map[string]interface{}{
+				"local_user_id":        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/exchange-rg/providers/Microsoft.Storage/storageAccounts/plantonsftp/localUsers/partner01",
+				"user_name":            "partner01",
+				"sftp_username":        "plantonsftp.partner01",
+				"sid":                  "S-1-2-0-3895023191-1105595861-2277418014-1116",
+				"password":             "generated-once-by-azure",
+				"storage_account_name": "plantonsftp",
+			},
+			mustPopulate: []string{
+				"local_user_id", "user_name", "sftp_username", "sid", "password", "storage_account_name",
+			},
+		},
+		{
+			// AzureStorageObjectReplication: one logical policy
+			// materialized on BOTH accounts under one GUID -- two ARM IDs
+			// plus the shared policy_id monitoring keys on.
+			name: "AzureStorageObjectReplication",
+			kind: cloudresourcekind.CloudResourceKind_AzureStorageObjectReplication,
+			rawOutputs: map[string]interface{}{
+				"source_object_replication_id":      "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dr-rg/providers/Microsoft.Storage/storageAccounts/plantonorsrc/objectReplicationPolicies/6a2f5b7e-1c3d-4e5f-8a9b-0c1d2e3f4a5b",
+				"destination_object_replication_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dr-rg/providers/Microsoft.Storage/storageAccounts/plantonordst/objectReplicationPolicies/6a2f5b7e-1c3d-4e5f-8a9b-0c1d2e3f4a5b",
+				"policy_id":                         "6a2f5b7e-1c3d-4e5f-8a9b-0c1d2e3f4a5b",
+			},
+			mustPopulate: []string{
+				"source_object_replication_id", "destination_object_replication_id", "policy_id",
+			},
+		},
+		{
 			// AzureKeyVaultCertificate: the secret face
 			// (versionless_secret_id) is the seam TLS terminators
 			// (Application Gateway) consume so renewals propagate; the

@@ -423,6 +423,37 @@ func TestAzureStorageEncryptionScope_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurestorageencryptionscope", "terraform")
 }
 
+// --- Azure Data Lake Gen2 filesystem (fixture RG -> scenario-local HNS
+// account -> filesystem with a root POSIX ACL; verified via the ARM
+// blob-container proxy) ---
+
+func TestAzureStorageDataLakeGen2Filesystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragedatalakegen2filesystem", "pulumi")
+}
+func TestAzureStorageDataLakeGen2Filesystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragedatalakegen2filesystem", "terraform")
+}
+
+// --- Azure storage local user (fixture RG -> scenario-local SFTP account +
+// container -> user with both auth methods and a container-scoped grant) ---
+
+func TestAzureStorageLocalUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragelocaluser", "pulumi")
+}
+func TestAzureStorageLocalUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestoragelocaluser", "terraform")
+}
+
+// --- Azure storage object replication (fixture RG -> two scenario-local
+// versioned accounts + a container on each -> the two-sided policy) ---
+
+func TestAzureStorageObjectReplication_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestorageobjectreplication", "pulumi")
+}
+func TestAzureStorageObjectReplication_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurestorageobjectreplication", "terraform")
+}
+
 // --- Azure Redis cache (fixture RG -> Standard C0 cache with Entra auth,
 // firewall rule, patch window; Redis provisioning runs 15-40 min per cache) ---
 

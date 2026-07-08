@@ -1168,6 +1168,21 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azses"
   }];
+  AzureStorageDataLakeGen2Filesystem = 495 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azadlsfs"
+  }];
+  AzureStorageLocalUser = 496 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azslu"
+  }];
+  AzureStorageObjectReplication = 497 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azsor"
+  }];
 
   // --- Cosmos DB data services ---
 

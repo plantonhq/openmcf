@@ -343,6 +343,30 @@ whose casing is irregular, so the offline plan gate and the live suite
 keep it covered -- a mapping row no fixture uses is dead code that
 validation cannot see.
 
+### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
+
+When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for
+dependency ...: no stack named '<stack>' found` -- for a fixture whose
+`pulumi up` just returned success (or one that "deployed and verified"
+moments earlier, then fails teardown the same way) -- the suite's LOCAL
+PULUMI FILE BACKEND has lost its stack state mid-run. Nothing is wrong
+with the module, the manifest, or the cloud: the resources were created,
+but the state tracking them vanished. The backend lives in a per-run temp
+directory (`TestMain` creates it with `os.MkdirTemp`), so it is exposed to
+anything that disturbs temp storage on the host. Diagnose by the
+signature: SEVERAL stacks of the same scenario reporting "no stack named"
+at once -- including ones that already deployed and verified cleanly (a
+real per-stack failure never spreads to unrelated stacks) -- and an
+identical re-run passing end to end.
+
+Recovery: the stackless fixtures' destroys were skipped, so sweep the
+cloud for the failed run's fixtures before re-running. A same-named
+fixture RESOURCE GROUP in a later scenario can mask the orphans -- ARM's
+resource-group PUT is an upsert, so the later run's fixture "creates" the
+existing group and its teardown then deletes it, orphans included -- but
+never rely on that; sweep explicitly (`az group list`, plus the service's
+own list for account-level orphans).
+
 ### How the Terraform path works
 
 The Terraform runner uses [Terratest](https://github.com/gruntwork-io/terratest)

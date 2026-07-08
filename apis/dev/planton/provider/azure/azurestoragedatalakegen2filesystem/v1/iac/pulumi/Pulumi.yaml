@@ -1,0 +1,3 @@
+name: azure-storage-data-lake-gen2-filesystem
+runtime: go
+description: Pulumi program for Azure Storage Data Lake Gen2 filesystem

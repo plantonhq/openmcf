@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1;
+
+// **AzureStorageDataLakeGen2FilesystemStackOutputs** captures the outputs
+// of provisioning a Data Lake Gen2 filesystem.
+message AzureStorageDataLakeGen2FilesystemStackOutputs {
+  // The filesystem's Azure Resource Manager ID -- ADLS filesystems
+  // surface in ARM as blob containers, so this is the container-proxy
+  // ID and the scope data-plane role assignments (Storage Blob Data
+  // Reader/Contributor/Owner) target for filesystem-level access.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{account}/blobServices/default/containers/{name}
+  string filesystem_id = 1;
+
+  // The filesystem's name -- the container segment of every abfss://
+  // and dfs URL (abfss://{name}@{account}.dfs.core.windows.net/).
+  string filesystem_name = 2;
+
+  // The name of the storage account the filesystem lives in, parsed
+  // from the resolved account ID -- saves consumers a second reference
+  // when they need the account/filesystem pair (abfss URLs, Spark
+  // configs, mount definitions).
+  string storage_account_name = 3;
+}

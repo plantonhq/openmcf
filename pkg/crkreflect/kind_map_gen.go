@@ -187,7 +187,10 @@ import (
 	azureserviceplanv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureserviceplan/v1"
 	azurestorageaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageaccount/v1"
 	azurestoragecontainerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestoragecontainer/v1"
+	azurestoragedatalakegen2filesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestoragedatalakegen2filesystem/v1"
 	azurestorageencryptionscopev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageencryptionscope/v1"
+	azurestoragelocaluserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestoragelocaluser/v1"
+	azurestorageobjectreplicationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageobjectreplication/v1"
 	azurestoragequeuev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestoragequeue/v1"
 	azurestoragesharev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestorageshare/v1"
 	azurestoragetablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurestoragetable/v1"
@@ -671,7 +674,10 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureServicePlan:                        &azureserviceplanv1.AzureServicePlan{},
 	cloudresourcekind.CloudResourceKind_AzureStorageAccount:                     &azurestorageaccountv1.AzureStorageAccount{},
 	cloudresourcekind.CloudResourceKind_AzureStorageContainer:                   &azurestoragecontainerv1.AzureStorageContainer{},
+	cloudresourcekind.CloudResourceKind_AzureStorageDataLakeGen2Filesystem:      &azurestoragedatalakegen2filesystemv1.AzureStorageDataLakeGen2Filesystem{},
 	cloudresourcekind.CloudResourceKind_AzureStorageEncryptionScope:             &azurestorageencryptionscopev1.AzureStorageEncryptionScope{},
+	cloudresourcekind.CloudResourceKind_AzureStorageLocalUser:                   &azurestoragelocaluserv1.AzureStorageLocalUser{},
+	cloudresourcekind.CloudResourceKind_AzureStorageObjectReplication:           &azurestorageobjectreplicationv1.AzureStorageObjectReplication{},
 	cloudresourcekind.CloudResourceKind_AzureStorageQueue:                       &azurestoragequeuev1.AzureStorageQueue{},
 	cloudresourcekind.CloudResourceKind_AzureStorageShare:                       &azurestoragesharev1.AzureStorageShare{},
 	cloudresourcekind.CloudResourceKind_AzureStorageTable:                       &azurestoragetablev1.AzureStorageTable{},

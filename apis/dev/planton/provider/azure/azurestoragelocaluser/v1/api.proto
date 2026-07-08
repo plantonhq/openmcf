@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragelocaluser.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurestoragelocaluser/v1/spec.proto";
+import "dev/planton/provider/azure/azurestoragelocaluser/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureStorageLocalUser is the top-level API resource for a storage
+// local user -- the credential identity an AzureStorageAccount's SFTP
+// endpoint authenticates (referenced via storage_account_id). Each user
+// carries its own SSH credentials, home directory, and per-container
+// permission scopes -- the isolation unit that lets one account serve
+// many file-exchange partners.
+message AzureStorageLocalUser {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureStorageLocalUser'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureStorageLocalUserSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureStorageLocalUserStatus status = 5;
+}
+
+// AzureStorageLocalUserStatus holds the deployment status and outputs.
+message AzureStorageLocalUserStatus {
+  // stack-outputs
+  AzureStorageLocalUserStackOutputs outputs = 1;
+}
