@@ -59,7 +59,7 @@ This creates a 2.5 TiB SSD-backed NFS server named `my-nfs` (the instance name f
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `projectId` | StringValueOrRef | Yes | Target project; reference a `GcpProject` or set a literal value |
+| `projectId` | StringValueOrRef | No | Target project; reference a `GcpProject` or set a literal value. Empty falls back to the provider's default project. Immutable |
 | `instanceName` | string | No | GCP resource name; empty falls back to `metadata.name`. Immutable |
 | `location` | string | Yes | Zone for zonal tiers, region for `REGIONAL`/`ENTERPRISE`. Immutable |
 | `tier` | string | Yes | `STANDARD`, `PREMIUM`, `BASIC_HDD`, `BASIC_SSD`, `HIGH_SCALE_SSD`, `ZONAL`, `REGIONAL`, `ENTERPRISE`. Immutable |
