@@ -1,0 +1,40 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awstransitgatewayroutetable
+spec:
+  # A Transit Gateway route table under live E2E: the composed lane proves
+  # the isolated-routing-domain story -- custom table + explicit
+  # association + propagation + attachment-forwarded static route +
+  # blackhole route -- against the attachment fixture declared via the
+  # scenario's e2e-prerequisites annotation (the registry stays honest
+  # with the gateway alone: an empty table deploys). Teardown ordering is
+  # safe by construction: the associations/routes live in this lane's
+  # stack, which the harness destroys before the attachment and gateway
+  # fixtures. Verification is DescribeTransitGatewayRouteTables keyed on
+  # the table ID, state-aware (deleting/deleted count as absent).
+  # Expected lane time: ~10-13 min per engine including the fixture chain
+  # (table + members create/delete in seconds-to-a-minute each).
+  #
+  # Deliberately not in the live lane: a prefix_list_references entry --
+  # it needs a managed prefix list, which no catalog kind provisions yet;
+  # the fold is proven by spec tests and the offline contract gate.
+  #
+  # deferred: both engines validated offline only this session -- spec/CEL
+  # tests, generator-owned contract + drift guard, outputs conformance,
+  # tofu init + validate, Pulumi module + entrypoint compile -- because no
+  # usable AWS credentials were reachable on the ambient chain
+  # (InvalidClientTokenId; the e2e SSO session had expired). The scenario
+  # and verifier are live-ready; flip to green after the first full
+  # deploy -> verify -> destroy run on both provisioners.
+  tier: 1
+  status: deferred
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30
+  deferred_reason: >-
+    No usable AWS credentials on the ambient chain at session time
+    (InvalidClientTokenId / expired SSO token). Offline gate fully green;
+    artifacts live-ready -- run with AWS_PROFILE=planton-aws-e2e after
+    aws sso login.

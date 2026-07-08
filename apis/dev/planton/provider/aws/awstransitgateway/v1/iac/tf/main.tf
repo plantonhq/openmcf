@@ -1,40 +1,45 @@
+# AWS Transit Gateway -- the pure hub.
+#
+# The gateway owns the BGP/routing defaults, the feature dials, and the
+# default route table pair. Everything that composes onto it -- VPC
+# attachments, custom route tables with their associations/propagations/
+# routes -- is its own resource kind referencing this gateway's outputs, so
+# spokes and routing domains come and go without touching the hub.
 resource "aws_ec2_transit_gateway" "this" {
-  description = var.spec.description
+  # Empty string means "not set": send null so both engines omit the
+  # attribute identically instead of pinning an empty description.
+  description = var.spec.description == "" ? null : var.spec.description
 
-  amazon_side_asn = var.spec.amazon_side_asn
+  # 0 means "not set" (proto3 scalar zero value): fall through to the
+  # provider default of 64512 rather than sending an out-of-range ASN.
+  # Changing the ASN after creation replaces the gateway.
+  amazon_side_asn = var.spec.amazon_side_asn == 0 ? null : var.spec.amazon_side_asn
 
-  auto_accept_shared_attachments     = local.enable_disable[var.spec.auto_accept_shared_attachments]
-  default_route_table_association    = local.enable_disable[var.spec.default_route_table_association]
-  default_route_table_propagation    = local.enable_disable[var.spec.default_route_table_propagation]
-  dns_support                        = local.enable_disable[var.spec.dns_support]
-  vpn_ecmp_support                   = local.enable_disable[var.spec.vpn_ecmp_support]
-  security_group_referencing_support = local.enable_disable[var.spec.security_group_referencing_support]
-  multicast_support                  = local.enable_disable[var.spec.multicast_support]
+  # Tri-state dials: null falls through to the provider default ("enable"
+  # for DNS/ECMP and the default-table pair). AWS QUIRK on the default-table
+  # pair: flipping disable -> enable REPLACES the gateway (the provider's
+  # asymmetric ForceNew), while enable -> disable updates in place -- state
+  # a topology's posture up front rather than tightening later.
+  default_route_table_association = local.default_route_table_association
+  default_route_table_propagation = local.default_route_table_propagation
+  dns_support                     = local.dns_support
+  vpn_ecmp_support                = local.vpn_ecmp_support
 
+  # Left null unless the spec pins it: AWS computes the effective in-transit
+  # encryption posture on its own when unset.
+  encryption_support = local.encryption_support
+
+  # Plain-bool dials whose spec default (false) matches the AWS default
+  # ("disable"): always sent explicitly, so the applied state is exactly the
+  # spec with no inheritance ambiguity. multicast_support is create-time
+  # immutable -- changing it replaces the gateway.
+  auto_accept_shared_attachments     = var.spec.auto_accept_shared_attachments ? "enable" : "disable"
+  security_group_referencing_support = var.spec.security_group_referencing_support ? "enable" : "disable"
+  multicast_support                  = var.spec.multicast_support ? "enable" : "disable"
+
+  # Only needed for TGW Connect (GRE appliance integration); empty for the
+  # overwhelming majority of hubs.
   transit_gateway_cidr_blocks = var.spec.transit_gateway_cidr_blocks
 
-  tags = merge(local.tags, {
-    Name = local.name
-  })
-}
-
-resource "aws_ec2_transit_gateway_vpc_attachment" "this" {
-  for_each = local.vpc_attachments_map
-
-  transit_gateway_id = aws_ec2_transit_gateway.this.id
-  vpc_id             = each.value.vpc_id
-  subnet_ids         = each.value.subnet_ids
-
-  dns_support          = local.enable_disable[each.value.dns_support]
-  ipv6_support         = local.enable_disable[each.value.ipv6_support]
-  appliance_mode_support = local.enable_disable[each.value.appliance_mode_support]
-
-  transit_gateway_default_route_table_association = each.value.default_route_table_association
-  transit_gateway_default_route_table_propagation = each.value.default_route_table_propagation
-
-  tags = merge(local.tags, {
-    Name = "${local.name}-${each.key}"
-  })
-
-  depends_on = [aws_ec2_transit_gateway.this]
+  tags = local.aws_tags
 }

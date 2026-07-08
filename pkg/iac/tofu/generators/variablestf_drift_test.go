@@ -161,6 +161,12 @@ var migratedKinds = []string{
 	"AwsAppRunnerAutoScalingConfiguration",
 	"AwsAppRunnerVpcConnector",
 	"AwsAppRunnerObservabilityConfiguration",
+	// Transit Gateway family: the gateway migrated off its hand-written
+	// contract; the VPC attachment and route table generator-owned from the
+	// day they were forged.
+	"AwsTransitGateway",
+	"AwsTransitGatewayVpcAttachment",
+	"AwsTransitGatewayRouteTable",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

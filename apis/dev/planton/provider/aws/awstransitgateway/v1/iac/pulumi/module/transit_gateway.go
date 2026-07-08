@@ -7,41 +7,61 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// transitGatewayResult holds the outputs from TGW creation needed by
-// downstream resources (VPC attachments, output exports).
-type transitGatewayResult struct {
-	TransitGateway *ec2transitgateway.TransitGateway
-}
-
-// transitGateway creates the AWS Transit Gateway resource from the spec's
-// core configuration and feature toggles.
-func transitGateway(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*transitGatewayResult, error) {
+// transitGateway creates the AWS Transit Gateway -- the pure hub. Everything
+// that composes onto it (VPC attachments, custom route tables) is its own
+// resource kind referencing this gateway's outputs, so spokes and routing
+// domains come and go without touching the hub.
+func transitGateway(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*ec2transitgateway.TransitGateway, error) {
 	spec := locals.TransitGateway.Spec
 
 	args := &ec2transitgateway.TransitGatewayArgs{
+		// Tri-state dials: nil falls through to the provider default
+		// ("enable" for DNS/ECMP and the default-table pair). AWS QUIRK on
+		// the default-table pair: flipping disable -> enable REPLACES the
+		// gateway (the provider's asymmetric ForceNew), while
+		// enable -> disable updates in place -- state a topology's posture
+		// up front rather than tightening later.
+		DefaultRouteTableAssociation: enableDisableTriState(spec.DefaultRouteTableAssociation),
+		DefaultRouteTablePropagation: enableDisableTriState(spec.DefaultRouteTablePropagation),
+		DnsSupport:                   enableDisableTriState(spec.DnsSupport),
+		VpnEcmpSupport:               enableDisableTriState(spec.VpnEcmpSupport),
+
+		// Left nil unless the spec pins it: AWS computes the effective
+		// in-transit encryption posture on its own when unset.
+		EncryptionSupport: enableDisableTriState(spec.EncryptionSupport),
+
+		// Plain-bool dials whose spec default (false) matches the AWS
+		// default ("disable"): always sent explicitly, so the applied state
+		// is exactly the spec with no inheritance ambiguity.
+		// multicast_support is create-time immutable -- changing it
+		// replaces the gateway.
 		AutoAcceptSharedAttachments:     pulumi.StringPtr(enableDisable(spec.AutoAcceptSharedAttachments)),
-		DefaultRouteTableAssociation:    pulumi.StringPtr(enableDisable(spec.DefaultRouteTableAssociation)),
-		DefaultRouteTablePropagation:    pulumi.StringPtr(enableDisable(spec.DefaultRouteTablePropagation)),
-		DnsSupport:                      pulumi.StringPtr(enableDisable(spec.DnsSupport)),
-		VpnEcmpSupport:                  pulumi.StringPtr(enableDisable(spec.VpnEcmpSupport)),
 		SecurityGroupReferencingSupport: pulumi.StringPtr(enableDisable(spec.SecurityGroupReferencingSupport)),
 		MulticastSupport:                pulumi.StringPtr(enableDisable(spec.MulticastSupport)),
-		Tags:                            pulumi.ToStringMap(locals.AwsTags),
+
+		Tags: pulumi.ToStringMap(locals.AwsTags),
 	}
 
 	if spec.Description != "" {
 		args.Description = pulumi.StringPtr(spec.Description)
 	}
 
+	// 0 means "not set" (proto3 scalar zero value): fall through to the
+	// provider default of 64512 rather than sending an out-of-range ASN.
+	// Changing the ASN after creation replaces the gateway.
 	if spec.AmazonSideAsn != 0 {
 		args.AmazonSideAsn = pulumi.IntPtr(int(spec.AmazonSideAsn))
 	}
 
+	// Only needed for TGW Connect (GRE appliance integration); empty for
+	// the overwhelming majority of hubs.
 	if len(spec.TransitGatewayCidrBlocks) > 0 {
 		args.TransitGatewayCidrBlocks = pulumi.ToStringArray(spec.TransitGatewayCidrBlocks)
 	}
 
-	createdTgw, err := ec2transitgateway.NewTransitGateway(
+	// The cloud name is carried by the Name tag (set in locals); the Pulumi
+	// resource name below is only the URN segment.
+	createdTransitGateway, err := ec2transitgateway.NewTransitGateway(
 		ctx,
 		locals.TransitGateway.Metadata.Name,
 		args,
@@ -51,5 +71,5 @@ func transitGateway(ctx *pulumi.Context, locals *Locals, provider *aws.Provider)
 		return nil, errors.Wrap(err, "failed to create transit gateway")
 	}
 
-	return &transitGatewayResult{TransitGateway: createdTgw}, nil
+	return createdTransitGateway, nil
 }

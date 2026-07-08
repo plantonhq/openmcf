@@ -110,6 +110,8 @@ The following AWS resources can be deployed using Planton:
 - [Step Functions](/docs/catalog/aws/step-functions)
 - [Subnet](/docs/catalog/aws/subnet)
 - [Transit Gateway](/docs/catalog/aws/transit-gateway)
+- [Transit Gateway Route Table](/docs/catalog/aws/transit-gateway-route-table)
+- [Transit Gateway VPC Attachment](/docs/catalog/aws/transit-gateway-vpc-attachment)
 - [VPC](/docs/catalog/aws/vpc)
 - [VPC Endpoint](/docs/catalog/aws/vpc-endpoint)
 - [WAF IP Set](/docs/catalog/aws/waf-ip-set)

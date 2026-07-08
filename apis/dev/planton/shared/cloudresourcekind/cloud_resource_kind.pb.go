@@ -282,6 +282,16 @@ const (
 	CloudResourceKind_AwsAppRunnerAutoScalingConfiguration   CloudResourceKind = 368
 	CloudResourceKind_AwsAppRunnerVpcConnector               CloudResourceKind = 369
 	CloudResourceKind_AwsAppRunnerObservabilityConfiguration CloudResourceKind = 370
+	// AwsTransitGateway is a prerequisite because an attachment cannot exist
+	// without the gateway it attaches to; AwsSubnet because the attachment
+	// provisions an ENI into at least one subnet (the VPC arrives transitively
+	// through the subnet's own prerequisites).
+	CloudResourceKind_AwsTransitGatewayVpcAttachment CloudResourceKind = 371
+	// Only the gateway is a hard prerequisite: a route table can exist empty.
+	// Associations, propagations, and routes referencing attachments are
+	// optional composition -- scenarios declare them via the e2e-prerequisites
+	// annotation.
+	CloudResourceKind_AwsTransitGatewayRouteTable CloudResourceKind = 372
 	// A MANAGED compute environment always launches into VPC subnets, so the
 	// subnet is a hard deploy prerequisite (security groups are required only
 	// for the Fargate types -- scenario-declared, not a registry edge).
@@ -778,6 +788,8 @@ var (
 		368:  "AwsAppRunnerAutoScalingConfiguration",
 		369:  "AwsAppRunnerVpcConnector",
 		370:  "AwsAppRunnerObservabilityConfiguration",
+		371:  "AwsTransitGatewayVpcAttachment",
+		372:  "AwsTransitGatewayRouteTable",
 		321:  "AwsBatchComputeEnvironment",
 		363:  "AwsBatchJobQueue",
 		364:  "AwsBatchSchedulingPolicy",
@@ -1225,6 +1237,8 @@ var (
 		"AwsAppRunnerAutoScalingConfiguration":    368,
 		"AwsAppRunnerVpcConnector":                369,
 		"AwsAppRunnerObservabilityConfiguration":  370,
+		"AwsTransitGatewayVpcAttachment":          371,
+		"AwsTransitGatewayRouteTable":             372,
 		"AwsBatchComputeEnvironment":              321,
 		"AwsBatchJobQueue":                        363,
 		"AwsBatchSchedulingPolicy":                364,
@@ -1827,7 +1841,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf7\x9f\x01\n" +
+	"\x02v1\x10\x01*\xeb\xa0\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1932,7 +1946,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x12=\n" +
 	"$AwsAppRunnerAutoScalingConfiguration\x10\xf0\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsarasc\x126\n" +
 	"\x18AwsAppRunnerVpcConnector\x10\xf1\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawsarvc:\x04\x9c\x02\xd7\x01\x12>\n" +
-	"&AwsAppRunnerObservabilityConfiguration\x10\xf2\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsaroc\x125\n" +
+	"&AwsAppRunnerObservabilityConfiguration\x10\xf2\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsaroc\x12<\n" +
+	"\x1eAwsTransitGatewayVpcAttachment\x10\xf3\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawstgwa:\x04\x9a\x02\x9c\x02\x124\n" +
+	"\x1bAwsTransitGatewayRouteTable\x10\xf4\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawstgwrt\x125\n" +
 	"\x1aAwsBatchComputeEnvironment\x10\xc1\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsbat:\x02\x9c\x02\x12-\n" +
 	"\x10AwsBatchJobQueue\x10\xeb\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsbatjq:\x02\xc1\x02\x121\n" +
 	"\x18AwsBatchSchedulingPolicy\x10\xec\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsbatsp\x12.\n" +

@@ -6,25 +6,21 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAwsTransitGatewaySpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "AwsTransitGatewaySpec Validation Suite")
+	ginkgo.RunSpecs(t, "AwsTransitGateway Validation Suite")
 }
 
-func strRef(val string) *foreignkeyv1.StringValueOrRef {
-	return &foreignkeyv1.StringValueOrRef{
-		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
-	}
-}
-
-func minimalAttachment(name, vpcId, subnetId string) *AwsTransitGatewayVpcAttachment {
-	return &AwsTransitGatewayVpcAttachment{
-		Name:      name,
-		VpcId:     strRef(vpcId),
-		SubnetIds: []*foreignkeyv1.StringValueOrRef{strRef(subnetId)},
+func validEnvelope(spec *AwsTransitGatewaySpec) *AwsTransitGateway {
+	return &AwsTransitGateway{
+		ApiVersion: "aws.planton.dev/v1",
+		Kind:       "AwsTransitGateway",
+		Metadata:   &shared.CloudResourceMetadata{Name: "test-tgw"},
+		Spec:       spec,
 	}
 }
 
@@ -32,271 +28,118 @@ var _ = ginkgo.Describe("AwsTransitGatewaySpec validations", func() {
 	var spec *AwsTransitGatewaySpec
 
 	ginkgo.BeforeEach(func() {
+		// Minimal valid spec: the gateway is a pure hub, so region alone is
+		// a deployable manifest (every dial has an AWS-side default).
 		spec = &AwsTransitGatewaySpec{
 			Region: "us-west-2",
-			VpcAttachments: []*AwsTransitGatewayVpcAttachment{
-				minimalAttachment("primary-vpc", "vpc-abc123", "subnet-abc123"),
-			},
 		}
 	})
 
-	// =========================================================================
-	// Happy path — Spec level
-	// =========================================================================
+	// -------------------------------------------------------------------------
+	// Happy path
+	// -------------------------------------------------------------------------
 
-	ginkgo.It("accepts a minimal valid spec (one VPC attachment)", func() {
-		err := protovalidate.Validate(spec)
+	ginkgo.It("accepts a minimal spec (region only)", func() {
+		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts a spec with description", func() {
-		spec.Description = "Production multi-VPC hub"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts custom 16-bit ASN", func() {
-		spec.AmazonSideAsn = 65000
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts custom 32-bit ASN", func() {
-		spec.AmazonSideAsn = 4200000001
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts default ASN (64512)", func() {
-		spec.AmazonSideAsn = 64512
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts multiple VPC attachments", func() {
-		spec.VpcAttachments = []*AwsTransitGatewayVpcAttachment{
-			minimalAttachment("vpc-a", "vpc-111", "subnet-111"),
-			minimalAttachment("vpc-b", "vpc-222", "subnet-222"),
-			minimalAttachment("vpc-c", "vpc-333", "subnet-333"),
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts attachment with multiple subnets (multi-AZ)", func() {
-		spec.VpcAttachments = []*AwsTransitGatewayVpcAttachment{
-			{
-				Name:  "multi-az-vpc",
-				VpcId: strRef("vpc-abc123"),
-				SubnetIds: []*foreignkeyv1.StringValueOrRef{
-					strRef("subnet-az1"),
-					strRef("subnet-az2"),
-					strRef("subnet-az3"),
-				},
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts transit gateway CIDR blocks", func() {
-		spec.TransitGatewayCidrBlocks = []string{
-			"10.99.0.0/24",
-			"10.99.1.0/24",
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts maximum 5 CIDR blocks", func() {
-		spec.TransitGatewayCidrBlocks = []string{
-			"10.99.0.0/24", "10.99.1.0/24", "10.99.2.0/24",
-			"10.99.3.0/24", "10.99.4.0/24",
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts all feature toggles enabled", func() {
-		spec.DefaultRouteTableAssociation = true
-		spec.DefaultRouteTablePropagation = true
-		spec.DnsSupport = true
-		spec.VpnEcmpSupport = true
+	ginkgo.It("accepts a fully-dialed spec", func() {
+		spec.Description = "hub for the shared-services topology"
+		spec.AmazonSideAsn = 64513
+		spec.DefaultRouteTableAssociation = proto.Bool(false)
+		spec.DefaultRouteTablePropagation = proto.Bool(false)
+		spec.DnsSupport = proto.Bool(true)
+		spec.VpnEcmpSupport = proto.Bool(false)
 		spec.AutoAcceptSharedAttachments = true
 		spec.SecurityGroupReferencingSupport = true
 		spec.MulticastSupport = true
-		err := protovalidate.Validate(spec)
+		spec.EncryptionSupport = proto.Bool(true)
+		spec.TransitGatewayCidrBlocks = []string{"10.255.0.0/24", "fd00:1::/64"}
+		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
-	ginkgo.It("accepts attachment with appliance mode for firewall VPC", func() {
-		spec.VpcAttachments = []*AwsTransitGatewayVpcAttachment{
-			{
-				Name:                 "inspection-vpc",
-				VpcId:                strRef("vpc-fw123"),
-				SubnetIds:            []*foreignkeyv1.StringValueOrRef{strRef("subnet-fw1")},
-				ApplianceModeSupport: true,
-				DnsSupport:           true,
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
+	// -------------------------------------------------------------------------
+	// Required field validations
+	// -------------------------------------------------------------------------
 
-	ginkgo.It("accepts attachment with IPv6 support", func() {
-		spec.VpcAttachments[0].Ipv6Support = true
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	ginkgo.It("accepts attachment with explicit route table overrides", func() {
-		spec.VpcAttachments[0].DefaultRouteTableAssociation = false
-		spec.VpcAttachments[0].DefaultRouteTablePropagation = false
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Happy path — Production-ready configuration
-	// =========================================================================
-
-	ginkgo.It("accepts a production-ready multi-VPC configuration", func() {
-		spec = &AwsTransitGatewaySpec{
-			Region:                       "us-west-2",
-			Description:                  "Production hub connecting application and shared-services VPCs",
-			AmazonSideAsn:                64512,
-			DefaultRouteTableAssociation: true,
-			DefaultRouteTablePropagation: true,
-			DnsSupport:                   true,
-			VpnEcmpSupport:               true,
-			VpcAttachments: []*AwsTransitGatewayVpcAttachment{
-				{
-					Name:  "app-vpc",
-					VpcId: strRef("vpc-app001"),
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						strRef("subnet-app-az1"),
-						strRef("subnet-app-az2"),
-					},
-					DnsSupport:                   true,
-					DefaultRouteTableAssociation: true,
-					DefaultRouteTablePropagation: true,
-				},
-				{
-					Name:  "shared-services-vpc",
-					VpcId: strRef("vpc-shared001"),
-					SubnetIds: []*foreignkeyv1.StringValueOrRef{
-						strRef("subnet-shared-az1"),
-						strRef("subnet-shared-az2"),
-					},
-					DnsSupport:                   true,
-					DefaultRouteTableAssociation: true,
-					DefaultRouteTablePropagation: true,
-				},
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).To(gomega.BeNil())
-	})
-
-	// =========================================================================
-	// Failure — Spec level
-	// =========================================================================
-
-	ginkgo.It("rejects empty vpc_attachments", func() {
-		spec.VpcAttachments = nil
-		err := protovalidate.Validate(spec)
+	ginkgo.It("fails when region is empty", func() {
+		spec.Region = ""
+		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("vpc_attachments"))
 	})
 
-	ginkgo.It("rejects more than 5 CIDR blocks", func() {
+	// -------------------------------------------------------------------------
+	// amazon_side_asn range
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts the 16-bit private ASN bounds", func() {
+		spec.AmazonSideAsn = 64512
+		gomega.Expect(protovalidate.Validate(validEnvelope(spec))).To(gomega.BeNil())
+		spec.AmazonSideAsn = 65534
+		gomega.Expect(protovalidate.Validate(validEnvelope(spec))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts the 32-bit private ASN bounds", func() {
+		spec.AmazonSideAsn = 4200000000
+		gomega.Expect(protovalidate.Validate(validEnvelope(spec))).To(gomega.BeNil())
+		spec.AmazonSideAsn = 4294967294
+		gomega.Expect(protovalidate.Validate(validEnvelope(spec))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an ASN below the 16-bit private range", func() {
+		spec.AmazonSideAsn = 64511
+		err := protovalidate.Validate(validEnvelope(spec))
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an ASN between the private ranges", func() {
+		spec.AmazonSideAsn = 65535
+		err := protovalidate.Validate(validEnvelope(spec))
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an ASN above the 32-bit private range", func() {
+		spec.AmazonSideAsn = 4294967295
+		err := protovalidate.Validate(validEnvelope(spec))
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// transit_gateway_cidr_blocks
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on more than 5 CIDR blocks", func() {
 		spec.TransitGatewayCidrBlocks = []string{
-			"10.99.0.0/24", "10.99.1.0/24", "10.99.2.0/24",
-			"10.99.3.0/24", "10.99.4.0/24", "10.99.5.0/24",
+			"10.0.0.0/24", "10.1.0.0/24", "10.2.0.0/24",
+			"10.3.0.0/24", "10.4.0.0/24", "10.5.0.0/24",
 		}
-		err := protovalidate.Validate(spec)
+		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("transit_gateway_cidr_blocks"))
 	})
 
-	ginkgo.It("rejects ASN below valid 16-bit range", func() {
-		spec.AmazonSideAsn = 100
-		err := protovalidate.Validate(spec)
+	ginkgo.It("fails on an IPv4 block smaller than /24", func() {
+		spec.TransitGatewayCidrBlocks = []string{"10.0.0.0/25"}
+		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("amazon_side_asn"))
 	})
 
-	ginkgo.It("rejects ASN between 16-bit and 32-bit ranges", func() {
-		spec.AmazonSideAsn = 100000
-		err := protovalidate.Validate(spec)
+	ginkgo.It("fails on an IPv6 block smaller than /64", func() {
+		spec.TransitGatewayCidrBlocks = []string{"fd00:1::/80"}
+		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("amazon_side_asn"))
 	})
 
-	// =========================================================================
-	// Failure — VPC attachment validations
-	// =========================================================================
-
-	ginkgo.It("rejects attachment without name", func() {
-		spec.VpcAttachments = []*AwsTransitGatewayVpcAttachment{
-			{
-				VpcId:     strRef("vpc-abc123"),
-				SubnetIds: []*foreignkeyv1.StringValueOrRef{strRef("subnet-abc123")},
-			},
-		}
-		err := protovalidate.Validate(spec)
+	ginkgo.It("fails on a link-local CIDR block", func() {
+		spec.TransitGatewayCidrBlocks = []string{"169.254.10.0/24"}
+		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("name"))
 	})
 
-	ginkgo.It("rejects attachment with invalid name format (uppercase)", func() {
-		spec.VpcAttachments[0].Name = "Primary-VPC"
-		err := protovalidate.Validate(spec)
+	ginkgo.It("fails on a CIDR block without a prefix length", func() {
+		spec.TransitGatewayCidrBlocks = []string{"10.0.0.0"}
+		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("name"))
-	})
-
-	ginkgo.It("rejects attachment with invalid name format (starts with number)", func() {
-		spec.VpcAttachments[0].Name = "1st-vpc"
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("name"))
-	})
-
-	ginkgo.It("rejects attachment without vpc_id", func() {
-		spec.VpcAttachments = []*AwsTransitGatewayVpcAttachment{
-			{
-				Name:      "test-vpc",
-				SubnetIds: []*foreignkeyv1.StringValueOrRef{strRef("subnet-abc123")},
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("vpc_id"))
-	})
-
-	ginkgo.It("rejects attachment without subnet_ids", func() {
-		spec.VpcAttachments = []*AwsTransitGatewayVpcAttachment{
-			{
-				Name:  "test-vpc",
-				VpcId: strRef("vpc-abc123"),
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("subnet_ids"))
-	})
-
-	ginkgo.It("rejects attachment with empty subnet_ids", func() {
-		spec.VpcAttachments = []*AwsTransitGatewayVpcAttachment{
-			{
-				Name:      "test-vpc",
-				VpcId:     strRef("vpc-abc123"),
-				SubnetIds: []*foreignkeyv1.StringValueOrRef{},
-			},
-		}
-		err := protovalidate.Validate(spec)
-		gomega.Expect(err).NotTo(gomega.BeNil())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("subnet_ids"))
 	})
 })

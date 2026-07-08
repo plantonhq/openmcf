@@ -1554,6 +1554,44 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"configuration_arn", "configuration_revision", "latest"},
 		},
 		{
+			// AwsTransitGateway: the gateway ID is the join key attachments,
+			// route tables, and subnet routes reference; the default route
+			// table pair lets tooling address the built-in tables.
+			name: "AwsTransitGateway",
+			kind: cloudresourcekind.CloudResourceKind_AwsTransitGateway,
+			rawOutputs: map[string]interface{}{
+				"transit_gateway_id":                 "tgw-0123456789abcdef0",
+				"transit_gateway_arn":                "arn:aws:ec2:us-west-2:123456789012:transit-gateway/tgw-0123456789abcdef0",
+				"owner_id":                           "123456789012",
+				"association_default_route_table_id": "tgw-rtb-0123456789abcdef0",
+				"propagation_default_route_table_id": "tgw-rtb-0123456789abcdef0",
+			},
+			mustPopulate: []string{"transit_gateway_id", "transit_gateway_arn", "owner_id", "association_default_route_table_id", "propagation_default_route_table_id"},
+		},
+		{
+			// AwsTransitGatewayVpcAttachment: the attachment ID is the join
+			// key route tables associate, propagate, and route against.
+			name: "AwsTransitGatewayVpcAttachment",
+			kind: cloudresourcekind.CloudResourceKind_AwsTransitGatewayVpcAttachment,
+			rawOutputs: map[string]interface{}{
+				"attachment_id":  "tgw-attach-0123456789abcdef0",
+				"attachment_arn": "arn:aws:ec2:us-west-2:123456789012:transit-gateway-attachment/tgw-attach-0123456789abcdef0",
+				"vpc_owner_id":   "123456789012",
+			},
+			mustPopulate: []string{"attachment_id", "attachment_arn", "vpc_owner_id"},
+		},
+		{
+			// AwsTransitGatewayRouteTable: the table ID keys the E2E verifier
+			// and any route-management tooling.
+			name: "AwsTransitGatewayRouteTable",
+			kind: cloudresourcekind.CloudResourceKind_AwsTransitGatewayRouteTable,
+			rawOutputs: map[string]interface{}{
+				"route_table_id":  "tgw-rtb-0123456789abcdef0",
+				"route_table_arn": "arn:aws:ec2:us-west-2:123456789012:transit-gateway-route-table/tgw-rtb-0123456789abcdef0",
+			},
+			mustPopulate: []string{"route_table_id", "route_table_arn"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

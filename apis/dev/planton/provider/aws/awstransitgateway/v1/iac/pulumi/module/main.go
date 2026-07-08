@@ -8,8 +8,9 @@ import (
 )
 
 // Resources is the primary entry point for the AwsTransitGateway Pulumi
-// module. It creates the Transit Gateway, attaches VPCs, and exports
-// all outputs for downstream consumption.
+// module. It creates the Transit Gateway hub and exports its outputs for
+// downstream consumption; VPC attachments and route tables are their own
+// resource kinds composing onto the exported gateway ID.
 func Resources(ctx *pulumi.Context, stackInput *awstgwv1.AwsTransitGatewayStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
@@ -20,29 +21,16 @@ func Resources(ctx *pulumi.Context, stackInput *awstgwv1.AwsTransitGatewayStackI
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	tgwResult, err := transitGateway(ctx, locals, provider)
+	createdTransitGateway, err := transitGateway(ctx, locals, provider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create transit gateway")
 	}
 
-	attachmentResult, err := vpcAttachments(ctx, locals, provider, tgwResult.TransitGateway)
-	if err != nil {
-		return errors.Wrap(err, "failed to create vpc attachments")
-	}
-
-	// Export TGW-level outputs.
-	ctx.Export(OpTransitGatewayId, tgwResult.TransitGateway.ID())
-	ctx.Export(OpTransitGatewayArn, tgwResult.TransitGateway.Arn)
-	ctx.Export(OpOwnerId, tgwResult.TransitGateway.OwnerId)
-	ctx.Export(OpAssociationDefaultRouteTableId, tgwResult.TransitGateway.AssociationDefaultRouteTableId)
-	ctx.Export(OpPropagationDefaultRouteTableId, tgwResult.TransitGateway.PropagationDefaultRouteTableId)
-
-	// Build and export the VPC attachment ID map.
-	attachmentIdMap := pulumi.StringMap{}
-	for name, att := range attachmentResult.Attachments {
-		attachmentIdMap[name] = att.ID().ToStringOutput()
-	}
-	ctx.Export(OpVpcAttachmentIds, attachmentIdMap)
+	ctx.Export(OpTransitGatewayId, createdTransitGateway.ID())
+	ctx.Export(OpTransitGatewayArn, createdTransitGateway.Arn)
+	ctx.Export(OpOwnerId, createdTransitGateway.OwnerId)
+	ctx.Export(OpAssociationDefaultRouteTableId, createdTransitGateway.AssociationDefaultRouteTableId)
+	ctx.Export(OpPropagationDefaultRouteTableId, createdTransitGateway.PropagationDefaultRouteTableId)
 
 	return nil
 }

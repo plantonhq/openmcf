@@ -797,6 +797,32 @@ func TestAwsAppRunnerObservabilityConfiguration_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsapprunnerobservabilityconfiguration", "terraform")
 }
 
+// --- AWS Transit Gateway family (hub, VPC attachment, route table) ---
+
+func TestAwsTransitGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgateway", "pulumi")
+}
+
+func TestAwsTransitGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgateway", "terraform")
+}
+
+func TestAwsTransitGatewayVpcAttachment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgatewayvpcattachment", "pulumi")
+}
+
+func TestAwsTransitGatewayVpcAttachment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgatewayvpcattachment", "terraform")
+}
+
+func TestAwsTransitGatewayRouteTable_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgatewayroutetable", "pulumi")
+}
+
+func TestAwsTransitGatewayRouteTable_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awstransitgatewayroutetable", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

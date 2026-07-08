@@ -799,6 +799,30 @@ enum CloudResourceKind {
     id_prefix: "awsaroc"
   }];
 
+  // AwsTransitGateway is a prerequisite because an attachment cannot exist
+  // without the gateway it attaches to; AwsSubnet because the attachment
+  // provisions an ENI into at least one subnet (the VPC arrives transitively
+  // through the subnet's own prerequisites).
+  AwsTransitGatewayVpcAttachment = 371 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awstgwa"
+    prerequisites: [
+      AwsTransitGateway,
+      AwsSubnet
+    ]
+  }];
+
+  // Only the gateway is a hard prerequisite: a route table can exist empty.
+  // Associations, propagations, and routes referencing attachments are
+  // optional composition -- scenarios declare them via the e2e-prerequisites
+  // annotation.
+  AwsTransitGatewayRouteTable = 372 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awstgwrt"
+  }];
+
   // Batch Processing
 
   // A MANAGED compute environment always launches into VPC subnets, so the

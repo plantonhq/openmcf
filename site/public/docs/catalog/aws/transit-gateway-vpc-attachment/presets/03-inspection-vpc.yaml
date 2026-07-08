@@ -1,0 +1,31 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsTransitGatewayVpcAttachment
+metadata:
+  org: example-org
+  env: prod
+  name: inspection-vpc-attachment
+  id: inspection-vpc-attachment-id
+spec:
+  region: <aws-region>
+  transitGatewayId:
+    valueFrom:
+      kind: AwsTransitGateway
+      name: segmented-hub
+      fieldPath: status.outputs.transit_gateway_id
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: inspection-vpc
+      fieldPath: status.outputs.vpc_id
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: inspection-tgw-subnet-az1
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: inspection-tgw-subnet-az2
+        fieldPath: status.outputs.subnet_id
+  applianceModeSupport: true
+  defaultRouteTableAssociation: false
+  defaultRouteTablePropagation: false

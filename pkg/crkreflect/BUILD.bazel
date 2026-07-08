@@ -165,6 +165,8 @@ go_library(
         "//apis/dev/planton/provider/aws/awsstepfunction/v1:awsstepfunction",
         "//apis/dev/planton/provider/aws/awssubnet/v1:awssubnet",
         "//apis/dev/planton/provider/aws/awstransitgateway/v1:awstransitgateway",
+        "//apis/dev/planton/provider/aws/awstransitgatewayroutetable/v1:awstransitgatewayroutetable",
+        "//apis/dev/planton/provider/aws/awstransitgatewayvpcattachment/v1:awstransitgatewayvpcattachment",
         "//apis/dev/planton/provider/aws/awsvpc/v1:awsvpc",
         "//apis/dev/planton/provider/aws/awsvpcendpoint/v1:awsvpcendpoint",
         "//apis/dev/planton/provider/aws/awswafipset/v1:awswafipset",

@@ -127,6 +127,10 @@ var verifiers = map[string]Verifier{
 	"awsapprunnerautoscalingconfiguration":   &appRunnerAutoScalingConfigurationVerifier{},
 	"awsapprunnervpcconnector":               &appRunnerVpcConnectorVerifier{},
 	"awsapprunnerobservabilityconfiguration": &appRunnerObservabilityConfigurationVerifier{},
+
+	"awstransitgateway":              &transitGatewayVerifier{},
+	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},
+	"awstransitgatewayroutetable":    &transitGatewayRouteTableVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

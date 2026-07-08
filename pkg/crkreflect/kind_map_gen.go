@@ -149,6 +149,8 @@ import (
 	awsstepfunctionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsstepfunction/v1"
 	awssubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1"
 	awstransitgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgateway/v1"
+	awstransitgatewayroutetablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgatewayroutetable/v1"
+	awstransitgatewayvpcattachmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgatewayvpcattachment/v1"
 	awsvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1"
 	awsvpcendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpcendpoint/v1"
 	awswafipsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awswafipset/v1"
@@ -620,6 +622,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsStepFunction:                        &awsstepfunctionv1.AwsStepFunction{},
 	cloudresourcekind.CloudResourceKind_AwsSubnet:                              &awssubnetv1.AwsSubnet{},
 	cloudresourcekind.CloudResourceKind_AwsTransitGateway:                      &awstransitgatewayv1.AwsTransitGateway{},
+	cloudresourcekind.CloudResourceKind_AwsTransitGatewayRouteTable:            &awstransitgatewayroutetablev1.AwsTransitGatewayRouteTable{},
+	cloudresourcekind.CloudResourceKind_AwsTransitGatewayVpcAttachment:         &awstransitgatewayvpcattachmentv1.AwsTransitGatewayVpcAttachment{},
 	cloudresourcekind.CloudResourceKind_AwsVpc:                                 &awsvpcv1.AwsVpc{},
 	cloudresourcekind.CloudResourceKind_AwsVpcEndpoint:                         &awsvpcendpointv1.AwsVpcEndpoint{},
 	cloudresourcekind.CloudResourceKind_AwsWafIpSet:                            &awswafipsetv1.AwsWafIpSet{},
