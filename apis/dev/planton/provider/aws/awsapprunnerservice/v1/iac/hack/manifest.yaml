@@ -2,28 +2,24 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAppRunnerService
 metadata:
   name: apprunner-demo
+  org: test-org
+  env: dev
+  id: apprunner-demo-dev
 spec:
-  region: us-east-1
+  region: us-west-2
   imageSource:
-    imageIdentifier: "public.ecr.aws/nginx/nginx:latest"
+    imageIdentifier: "public.ecr.aws/aws-containers/hello-app-runner:latest"
     imageRepositoryType: "ECR_PUBLIC"
-  port: "80"
+  port: "8000"
   cpu: "1024"
   memory: "2048"
   environmentVariables:
     EXAMPLE: "true"
-  # healthCheck:
-  #   protocol: "HTTP"
-  #   path: "/health"
-  # autoScaling:
-  #   minSize: 1
-  #   maxSize: 5
-  #   maxConcurrency: 100
-  # instanceRoleArn:
-  #   value: "arn:aws:iam::123456789012:role/apprunner-instance-role"
-  # subnetIds:
-  #   - value: "subnet-abc123"
-  # securityGroupIds:
-  #   - value: "sg-abc123"
-  # kmsKeyArn:
-  #   value: "arn:aws:kms:us-east-1:123456789012:key/abc123"
+  healthCheck:
+    protocol: "HTTP"
+    path: "/"
+    interval: 10
+    timeout: 5
+  customDomains:
+    - domainName: "app.example.com"
+      enableWwwSubdomain: false

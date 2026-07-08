@@ -4,6 +4,7 @@ go_library(
     name = "verify",
     srcs = [
         "acm_certificate.go",
+        "app_runner.go",
         "autoscaling_group.go",
         "batch.go",
         "cloudfront_distribution.go",
@@ -82,6 +83,8 @@ go_library(
         "@com_github_aws_aws_sdk_go_v2_service_acm//types",
         "@com_github_aws_aws_sdk_go_v2_service_apigatewayv2//:apigatewayv2",
         "@com_github_aws_aws_sdk_go_v2_service_apigatewayv2//types",
+        "@com_github_aws_aws_sdk_go_v2_service_apprunner//:apprunner",
+        "@com_github_aws_aws_sdk_go_v2_service_apprunner//types",
         "@com_github_aws_aws_sdk_go_v2_service_autoscaling//:autoscaling",
         "@com_github_aws_aws_sdk_go_v2_service_batch//:batch",
         "@com_github_aws_aws_sdk_go_v2_service_batch//types",

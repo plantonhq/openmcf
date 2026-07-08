@@ -122,6 +122,11 @@ var verifiers = map[string]Verifier{
 	"awsbatchjobqueue":               &batchJobQueueVerifier{},
 	"awsbatchschedulingpolicy":       &batchSchedulingPolicyVerifier{},
 	"awsbatchjobdefinition":          &batchJobDefinitionVerifier{},
+
+	"awsapprunnerservice":                    &appRunnerServiceVerifier{},
+	"awsapprunnerautoscalingconfiguration":   &appRunnerAutoScalingConfigurationVerifier{},
+	"awsapprunnervpcconnector":               &appRunnerVpcConnectorVerifier{},
+	"awsapprunnerobservabilityconfiguration": &appRunnerObservabilityConfigurationVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

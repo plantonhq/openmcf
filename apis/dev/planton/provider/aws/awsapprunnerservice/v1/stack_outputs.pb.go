@@ -21,36 +21,35 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// AwsAppRunnerServiceStackOutputs captures observable identifiers produced after
-// provisioning an AWS App Runner Service. These outputs are used for:
-//   - Cross-resource references via StringValueOrRef (e.g., service_arn in IAM policies)
-//   - Infra chart wiring (e.g., service_url as an API endpoint)
-//   - Operational visibility (e.g., service_status for monitoring)
+// AwsAppRunnerServiceStackOutputs captures the observable identifiers of a
+// deployed App Runner service -- the join keys downstream resources and
+// operators reference, plus the DNS material custom domains need.
 type AwsAppRunnerServiceStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// service_arn is the full ARN of the App Runner Service.
-	// Format: arn:aws:apprunner:REGION:ACCOUNT:service/SERVICE_NAME/SERVICE_ID
+	// The full ARN of the App Runner service (e.g. "arn:aws:apprunner:
+	// us-west-2:123456789012:service/my-api/abc123"). The handle IAM
+	// policies, VPC Ingress Connections, and deployment triggers reference.
 	ServiceArn string `protobuf:"bytes,1,opt,name=service_arn,json=serviceArn,proto3" json:"service_arn,omitempty"`
-	// service_id is the unique identifier assigned by App Runner (e.g., "8fe1e10b7ffa4d...").
+	// The service ID -- the AWS-assigned identifier unique within the
+	// account and region (the trailing component of the ARN).
 	ServiceId string `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
-	// service_url is the public HTTPS URL for the service
-	// (e.g., "abc123.us-east-1.awsapprunner.com"). Requests to this URL are
-	// automatically load-balanced across running instances.
+	// The default HTTPS endpoint of the service (e.g.
+	// "abc123.us-west-2.awsapprunner.com", without scheme). For private
+	// services this is the domain a VPC Ingress Connection resolves to.
 	ServiceUrl string `protobuf:"bytes,3,opt,name=service_url,json=serviceUrl,proto3" json:"service_url,omitempty"`
-	// service_name is the computed name of the App Runner Service (derived from metadata).
+	// The service name (metadata.name) the service was created under.
 	ServiceName string `protobuf:"bytes,4,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	// service_status is the current operational status of the service
-	// (e.g., "RUNNING", "CREATE_FAILED", "OPERATION_IN_PROGRESS").
+	// The service's lifecycle status at the end of the deployment
+	// ("RUNNING" when serving traffic).
 	ServiceStatus string `protobuf:"bytes,5,opt,name=service_status,json=serviceStatus,proto3" json:"service_status,omitempty"`
-	// vpc_connector_arn is the ARN of the VPC Connector, if VPC egress was configured
-	// (either via inline subnet_ids or an existing vpc_connector_arn). Empty when
-	// the service uses default internet egress.
-	VpcConnectorArn string `protobuf:"bytes,6,opt,name=vpc_connector_arn,json=vpcConnectorArn,proto3" json:"vpc_connector_arn,omitempty"`
-	// auto_scaling_configuration_arn is the ARN of the Auto Scaling Configuration
-	// Version created for this service.
-	AutoScalingConfigurationArn string `protobuf:"bytes,7,opt,name=auto_scaling_configuration_arn,json=autoScalingConfigurationArn,proto3" json:"auto_scaling_configuration_arn,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// Per-domain DNS material for the associated custom_domains -- one entry
+	// per spec entry. Create the certificate-validation CNAMEs (and a CNAME
+	// or alias from the domain to dns_target) in your DNS -- each record
+	// composes directly into an AwsRoute53DnsRecord resource. Empty when the
+	// spec associates no custom domains.
+	CustomDomains []*AwsAppRunnerServiceCustomDomainOutput `protobuf:"bytes,6,rep,name=custom_domains,json=customDomains,proto3" json:"custom_domains,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsAppRunnerServiceStackOutputs) Reset() {
@@ -118,16 +117,155 @@ func (x *AwsAppRunnerServiceStackOutputs) GetServiceStatus() string {
 	return ""
 }
 
-func (x *AwsAppRunnerServiceStackOutputs) GetVpcConnectorArn() string {
+func (x *AwsAppRunnerServiceStackOutputs) GetCustomDomains() []*AwsAppRunnerServiceCustomDomainOutput {
 	if x != nil {
-		return x.VpcConnectorArn
+		return x.CustomDomains
+	}
+	return nil
+}
+
+// AwsAppRunnerServiceCustomDomainOutput carries the DNS material App Runner
+// issues for one associated custom domain.
+type AwsAppRunnerServiceCustomDomainOutput struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The associated domain (matches the spec entry's domain_name).
+	DomainName string `protobuf:"bytes,1,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
+	// The App Runner subdomain to point the custom domain at -- create a
+	// CNAME (subdomains) or ALIAS (apex) from domain_name to this target.
+	DnsTarget string `protobuf:"bytes,2,opt,name=dns_target,json=dnsTarget,proto3" json:"dns_target,omitempty"`
+	// The association status at the end of the deployment. The resting state
+	// right after creation is "pending_certificate_dns_validation" -- the
+	// association completes on its own once the validation records below are
+	// resolvable in DNS.
+	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	// The certificate-validation CNAME records proving domain ownership.
+	// Keep them in place after validation so App Runner can renew the
+	// certificate automatically.
+	CertificateValidationRecords []*AwsAppRunnerServiceCertificateValidationRecord `protobuf:"bytes,4,rep,name=certificate_validation_records,json=certificateValidationRecords,proto3" json:"certificate_validation_records,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
+}
+
+func (x *AwsAppRunnerServiceCustomDomainOutput) Reset() {
+	*x = AwsAppRunnerServiceCustomDomainOutput{}
+	mi := &file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAppRunnerServiceCustomDomainOutput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAppRunnerServiceCustomDomainOutput) ProtoMessage() {}
+
+func (x *AwsAppRunnerServiceCustomDomainOutput) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAppRunnerServiceCustomDomainOutput.ProtoReflect.Descriptor instead.
+func (*AwsAppRunnerServiceCustomDomainOutput) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsAppRunnerServiceCustomDomainOutput) GetDomainName() string {
+	if x != nil {
+		return x.DomainName
 	}
 	return ""
 }
 
-func (x *AwsAppRunnerServiceStackOutputs) GetAutoScalingConfigurationArn() string {
+func (x *AwsAppRunnerServiceCustomDomainOutput) GetDnsTarget() string {
 	if x != nil {
-		return x.AutoScalingConfigurationArn
+		return x.DnsTarget
+	}
+	return ""
+}
+
+func (x *AwsAppRunnerServiceCustomDomainOutput) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AwsAppRunnerServiceCustomDomainOutput) GetCertificateValidationRecords() []*AwsAppRunnerServiceCertificateValidationRecord {
+	if x != nil {
+		return x.CertificateValidationRecords
+	}
+	return nil
+}
+
+// AwsAppRunnerServiceCertificateValidationRecord is one DNS record App
+// Runner requires to validate (and later renew) a custom domain's TLS
+// certificate.
+type AwsAppRunnerServiceCertificateValidationRecord struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The DNS record name to create (a "_<hash>.<domain>." CNAME).
+	RecordName string `protobuf:"bytes,1,opt,name=record_name,json=recordName,proto3" json:"record_name,omitempty"`
+	// The DNS record type (always "CNAME" today).
+	RecordType string `protobuf:"bytes,2,opt,name=record_type,json=recordType,proto3" json:"record_type,omitempty"`
+	// The DNS record value the name must resolve to.
+	RecordValue   string `protobuf:"bytes,3,opt,name=record_value,json=recordValue,proto3" json:"record_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsAppRunnerServiceCertificateValidationRecord) Reset() {
+	*x = AwsAppRunnerServiceCertificateValidationRecord{}
+	mi := &file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAppRunnerServiceCertificateValidationRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAppRunnerServiceCertificateValidationRecord) ProtoMessage() {}
+
+func (x *AwsAppRunnerServiceCertificateValidationRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAppRunnerServiceCertificateValidationRecord.ProtoReflect.Descriptor instead.
+func (*AwsAppRunnerServiceCertificateValidationRecord) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsAppRunnerServiceCertificateValidationRecord) GetRecordName() string {
+	if x != nil {
+		return x.RecordName
+	}
+	return ""
+}
+
+func (x *AwsAppRunnerServiceCertificateValidationRecord) GetRecordType() string {
+	if x != nil {
+		return x.RecordType
+	}
+	return ""
+}
+
+func (x *AwsAppRunnerServiceCertificateValidationRecord) GetRecordValue() string {
+	if x != nil {
+		return x.RecordValue
 	}
 	return ""
 }
@@ -136,7 +274,7 @@ var File_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto pro
 
 const file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/aws/awsapprunnerservice/v1/stack_outputs.proto\x12/dev.planton.provider.aws.awsapprunnerservice.v1\"\xbd\x02\n" +
+	"Cdev/planton/provider/aws/awsapprunnerservice/v1/stack_outputs.proto\x12/dev.planton.provider.aws.awsapprunnerservice.v1\"\xcb\x02\n" +
 	"\x1fAwsAppRunnerServiceStackOutputs\x12\x1f\n" +
 	"\vservice_arn\x18\x01 \x01(\tR\n" +
 	"serviceArn\x12\x1d\n" +
@@ -145,9 +283,21 @@ const file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_r
 	"\vservice_url\x18\x03 \x01(\tR\n" +
 	"serviceUrl\x12!\n" +
 	"\fservice_name\x18\x04 \x01(\tR\vserviceName\x12%\n" +
-	"\x0eservice_status\x18\x05 \x01(\tR\rserviceStatus\x12*\n" +
-	"\x11vpc_connector_arn\x18\x06 \x01(\tR\x0fvpcConnectorArn\x12C\n" +
-	"\x1eauto_scaling_configuration_arn\x18\a \x01(\tR\x1bautoScalingConfigurationArnB\x94\x03\n" +
+	"\x0eservice_status\x18\x05 \x01(\tR\rserviceStatus\x12}\n" +
+	"\x0ecustom_domains\x18\x06 \x03(\v2V.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCustomDomainOutputR\rcustomDomains\"\xa7\x02\n" +
+	"%AwsAppRunnerServiceCustomDomainOutput\x12\x1f\n" +
+	"\vdomain_name\x18\x01 \x01(\tR\n" +
+	"domainName\x12\x1d\n" +
+	"\n" +
+	"dns_target\x18\x02 \x01(\tR\tdnsTarget\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\xa5\x01\n" +
+	"\x1ecertificate_validation_records\x18\x04 \x03(\v2_.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCertificateValidationRecordR\x1ccertificateValidationRecords\"\x95\x01\n" +
+	".AwsAppRunnerServiceCertificateValidationRecord\x12\x1f\n" +
+	"\vrecord_name\x18\x01 \x01(\tR\n" +
+	"recordName\x12\x1f\n" +
+	"\vrecord_type\x18\x02 \x01(\tR\n" +
+	"recordType\x12!\n" +
+	"\frecord_value\x18\x03 \x01(\tR\vrecordValueB\x94\x03\n" +
 	"3com.dev.planton.provider.aws.awsapprunnerservice.v1B\x11StackOutputsProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsapprunnerservice/v1;awsapprunnerservicev1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Aws.Awsapprunnerservice.V1\xca\x02/Dev\\Planton\\Provider\\Aws\\Awsapprunnerservice\\V1\xe2\x02;Dev\\Planton\\Provider\\Aws\\Awsapprunnerservice\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Aws::Awsapprunnerservice::V1b\x06proto3"
 
 var (
@@ -162,16 +312,20 @@ func file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_ra
 	return file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_goTypes = []any{
-	(*AwsAppRunnerServiceStackOutputs)(nil), // 0: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceStackOutputs
+	(*AwsAppRunnerServiceStackOutputs)(nil),                // 0: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceStackOutputs
+	(*AwsAppRunnerServiceCustomDomainOutput)(nil),          // 1: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCustomDomainOutput
+	(*AwsAppRunnerServiceCertificateValidationRecord)(nil), // 2: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCertificateValidationRecord
 }
 var file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceStackOutputs.custom_domains:type_name -> dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCustomDomainOutput
+	2, // 1: dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCustomDomainOutput.certificate_validation_records:type_name -> dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCertificateValidationRecord
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_init() }
@@ -185,7 +339,7 @@ func file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_in
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_rawDesc), len(file_dev_planton_provider_aws_awsapprunnerservice_v1_stack_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

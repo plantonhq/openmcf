@@ -11,6 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
 	github.com/aws/aws-sdk-go-v2/service/acm v1.30.6
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.36.0
+	github.com/aws/aws-sdk-go-v2/service/apprunner v1.41.0
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1
 	github.com/aws/aws-sdk-go-v2/service/batch v1.67.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4

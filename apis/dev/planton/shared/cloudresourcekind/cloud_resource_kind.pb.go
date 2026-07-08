@@ -272,8 +272,16 @@ const (
 	CloudResourceKind_AwsRedshiftCluster       CloudResourceKind = 265
 	// AI/ML
 	CloudResourceKind_AwsSagemakerDomain CloudResourceKind = 270
-	// Containers
-	CloudResourceKind_AwsAppRunnerService CloudResourceKind = 320
+	// A service can run entirely on companion defaults, so the App Runner
+	// family's kinds are dependency-free leaves except the VPC connector
+	// (which cannot exist without subnets and security groups). A service's
+	// companion references (auto scaling / VPC connector / observability /
+	// WAF) are optional composition -- scenarios declare them via the
+	// e2e-prerequisites annotation.
+	CloudResourceKind_AwsAppRunnerService                    CloudResourceKind = 320
+	CloudResourceKind_AwsAppRunnerAutoScalingConfiguration   CloudResourceKind = 368
+	CloudResourceKind_AwsAppRunnerVpcConnector               CloudResourceKind = 369
+	CloudResourceKind_AwsAppRunnerObservabilityConfiguration CloudResourceKind = 370
 	// A MANAGED compute environment always launches into VPC subnets, so the
 	// subnet is a hard deploy prerequisite (security groups are required only
 	// for the Fargate types -- scenario-declared, not a registry edge).
@@ -767,6 +775,9 @@ var (
 		265:  "AwsRedshiftCluster",
 		270:  "AwsSagemakerDomain",
 		320:  "AwsAppRunnerService",
+		368:  "AwsAppRunnerAutoScalingConfiguration",
+		369:  "AwsAppRunnerVpcConnector",
+		370:  "AwsAppRunnerObservabilityConfiguration",
 		321:  "AwsBatchComputeEnvironment",
 		363:  "AwsBatchJobQueue",
 		364:  "AwsBatchSchedulingPolicy",
@@ -1211,6 +1222,9 @@ var (
 		"AwsRedshiftCluster":                      265,
 		"AwsSagemakerDomain":                      270,
 		"AwsAppRunnerService":                     320,
+		"AwsAppRunnerAutoScalingConfiguration":    368,
+		"AwsAppRunnerVpcConnector":                369,
+		"AwsAppRunnerObservabilityConfiguration":  370,
 		"AwsBatchComputeEnvironment":              321,
 		"AwsBatchJobQueue":                        363,
 		"AwsBatchSchedulingPolicy":                364,
@@ -1813,7 +1827,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xc0\x9e\x01\n" +
+	"\x02v1\x10\x01*\xf7\x9f\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1915,7 +1929,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x16AwsGlueCatalogDatabase\x10\x88\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsglue\x12,\n" +
 	"\x12AwsRedshiftCluster\x10\x89\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awsrs:\x02\x9c\x02\x12(\n" +
 	"\x12AwsSagemakerDomain\x10\x8e\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05sgmkd\x12)\n" +
-	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x125\n" +
+	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x12=\n" +
+	"$AwsAppRunnerAutoScalingConfiguration\x10\xf0\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsarasc\x126\n" +
+	"\x18AwsAppRunnerVpcConnector\x10\xf1\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawsarvc:\x04\x9c\x02\xd7\x01\x12>\n" +
+	"&AwsAppRunnerObservabilityConfiguration\x10\xf2\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsaroc\x125\n" +
 	"\x1aAwsBatchComputeEnvironment\x10\xc1\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsbat:\x02\x9c\x02\x12-\n" +
 	"\x10AwsBatchJobQueue\x10\xeb\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsbatjq:\x02\xc1\x02\x121\n" +
 	"\x18AwsBatchSchedulingPolicy\x10\xec\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsbatsp\x12.\n" +

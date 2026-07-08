@@ -10,7 +10,10 @@ order: 10
 The following AWS resources can be deployed using Planton:
 
 - [ALB](/docs/catalog/aws/alb)
+- [App Runner Auto Scaling Configuration](/docs/catalog/aws/app-runner-auto-scaling-configuration)
+- [App Runner Observability Configuration](/docs/catalog/aws/app-runner-observability-configuration)
 - [App Runner Service](/docs/catalog/aws/app-runner-service)
+- [App Runner VPC Connector](/docs/catalog/aws/app-runner-vpc-connector)
 - [Athena Workgroup](/docs/catalog/aws/athena-workgroup)
 - [Auto Scaling Group](/docs/catalog/aws/auto-scaling-group)
 - [Batch Compute Environment](/docs/catalog/aws/batch-compute-environment)

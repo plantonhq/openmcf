@@ -1479,6 +1479,78 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"identity_arn", "email_identity", "identity_type", "verification_status", "dkim_tokens"},
 		},
 		{
+			// AwsAppRunnerService: service_arn is the join key (VPC ingress
+			// connections, deployment triggers, WAF association); service_url
+			// is the endpoint consumers point DNS at; custom_domains guards
+			// the two-level repeated-message shape (per-domain DNS target +
+			// certificate-validation records) Route53 compositions consume.
+			name: "AwsAppRunnerService",
+			kind: cloudresourcekind.CloudResourceKind_AwsAppRunnerService,
+			rawOutputs: map[string]interface{}{
+				"service_arn":    "arn:aws:apprunner:us-west-2:123456789012:service/my-api/abc123",
+				"service_id":     "abc123",
+				"service_url":    "abc123.us-west-2.awsapprunner.com",
+				"service_name":   "my-api",
+				"service_status": "RUNNING",
+				"custom_domains": []interface{}{
+					map[string]interface{}{
+						"domain_name": "app.example.com",
+						"dns_target":  "abc123.us-west-2.awsapprunner.com",
+						"status":      "pending_certificate_dns_validation",
+						"certificate_validation_records": []interface{}{
+							map[string]interface{}{
+								"record_name":  "_abc123.app.example.com.",
+								"record_type":  "CNAME",
+								"record_value": "_def456.acm-validations.aws.",
+							},
+						},
+					},
+				},
+			},
+			mustPopulate: []string{
+				"service_arn", "service_id", "service_url", "service_name",
+				"service_status", "custom_domains",
+			},
+		},
+		{
+			// AwsAppRunnerAutoScalingConfiguration: the revision-carrying ARN
+			// is what services reference (and what rolls them when a new
+			// revision registers); it also keys the E2E verifier.
+			name: "AwsAppRunnerAutoScalingConfiguration",
+			kind: cloudresourcekind.CloudResourceKind_AwsAppRunnerAutoScalingConfiguration,
+			rawOutputs: map[string]interface{}{
+				"configuration_arn":      "arn:aws:apprunner:us-west-2:123456789012:autoscalingconfiguration/my-asc/3/abc123",
+				"configuration_revision": 3,
+				"latest":                 true,
+			},
+			mustPopulate: []string{"configuration_arn", "configuration_revision", "latest"},
+		},
+		{
+			// AwsAppRunnerVpcConnector: the ARN is the egress join key App
+			// Runner services reference; it also keys the E2E verifier.
+			name: "AwsAppRunnerVpcConnector",
+			kind: cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector,
+			rawOutputs: map[string]interface{}{
+				"vpc_connector_arn":      "arn:aws:apprunner:us-west-2:123456789012:vpcconnector/my-vc/1/abc123",
+				"vpc_connector_revision": 1,
+				"status":                 "ACTIVE",
+			},
+			mustPopulate: []string{"vpc_connector_arn", "vpc_connector_revision", "status"},
+		},
+		{
+			// AwsAppRunnerObservabilityConfiguration: the revision-carrying
+			// ARN is what services reference to enable tracing; it also keys
+			// the E2E verifier.
+			name: "AwsAppRunnerObservabilityConfiguration",
+			kind: cloudresourcekind.CloudResourceKind_AwsAppRunnerObservabilityConfiguration,
+			rawOutputs: map[string]interface{}{
+				"configuration_arn":      "arn:aws:apprunner:us-west-2:123456789012:observabilityconfiguration/my-oc/2/abc123",
+				"configuration_revision": 2,
+				"latest":                 true,
+			},
+			mustPopulate: []string{"configuration_arn", "configuration_revision", "latest"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

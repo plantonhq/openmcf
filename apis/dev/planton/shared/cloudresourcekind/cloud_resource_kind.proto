@@ -764,10 +764,39 @@ enum CloudResourceKind {
   }];
 
   // Containers
+
+  // A service can run entirely on companion defaults, so the App Runner
+  // family's kinds are dependency-free leaves except the VPC connector
+  // (which cannot exist without subnets and security groups). A service's
+  // companion references (auto scaling / VPC connector / observability /
+  // WAF) are optional composition -- scenarios declare them via the
+  // e2e-prerequisites annotation.
   AwsAppRunnerService = 320 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsar"
+  }];
+
+  AwsAppRunnerAutoScalingConfiguration = 368 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsarasc"
+  }];
+
+  AwsAppRunnerVpcConnector = 369 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsarvc"
+    prerequisites: [
+      AwsSubnet,
+      AwsSecurityGroup
+    ]
+  }];
+
+  AwsAppRunnerObservabilityConfiguration = 370 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsaroc"
   }];
 
   // Batch Processing

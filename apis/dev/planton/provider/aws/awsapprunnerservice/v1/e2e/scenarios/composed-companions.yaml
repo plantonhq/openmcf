@@ -1,0 +1,48 @@
+# The composed production shape: the service adopts a shared auto scaling
+# configuration and observability configuration by reference and sits
+# behind a WAF web ACL -- the three optional companion edges, each declared
+# through the e2e-prerequisites annotation because none is a registry-level
+# deploy requirement.
+apiVersion: aws.planton.dev/v1
+kind: AwsAppRunnerService
+metadata:
+  name: planton-oss-e2e-awsar-full
+  id: planton-oss-e2e-awsar-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsapprunnerservice
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsAppRunnerAutoScalingConfiguration,AwsAppRunnerObservabilityConfiguration,AwsWafWebAcl"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  imageSource:
+    imageIdentifier: "public.ecr.aws/aws-containers/hello-app-runner:latest"
+    imageRepositoryType: "ECR_PUBLIC"
+  port: "8000"
+  cpu: "1024"
+  memory: "2048"
+  healthCheck:
+    protocol: "HTTP"
+    path: "/"
+    interval: 10
+    timeout: 5
+  autoScalingConfigurationArn:
+    valueFrom:
+      kind: AwsAppRunnerAutoScalingConfiguration
+      name: planton-oss-e2e-awsarasc
+      fieldPath: status.outputs.configuration_arn
+  observabilityConfigurationArn:
+    valueFrom:
+      kind: AwsAppRunnerObservabilityConfiguration
+      name: planton-oss-e2e-awsaroc
+      fieldPath: status.outputs.configuration_arn
+  webAclArn:
+    valueFrom:
+      kind: AwsWafWebAcl
+      name: planton-oss-e2e-awswafwebacl-prereq
+      fieldPath: status.outputs.web_acl_arn

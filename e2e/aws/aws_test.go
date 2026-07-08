@@ -765,6 +765,38 @@ func TestAwsSesEmailIdentity_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awssesemailidentity", "terraform")
 }
 
+func TestAwsAppRunnerService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerservice", "pulumi")
+}
+
+func TestAwsAppRunnerService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerservice", "terraform")
+}
+
+func TestAwsAppRunnerAutoScalingConfiguration_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerautoscalingconfiguration", "pulumi")
+}
+
+func TestAwsAppRunnerAutoScalingConfiguration_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerautoscalingconfiguration", "terraform")
+}
+
+func TestAwsAppRunnerVpcConnector_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnervpcconnector", "pulumi")
+}
+
+func TestAwsAppRunnerVpcConnector_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnervpcconnector", "terraform")
+}
+
+func TestAwsAppRunnerObservabilityConfiguration_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerobservabilityconfiguration", "pulumi")
+}
+
+func TestAwsAppRunnerObservabilityConfiguration_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapprunnerobservabilityconfiguration", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

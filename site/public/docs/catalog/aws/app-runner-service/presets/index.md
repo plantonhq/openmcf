@@ -19,7 +19,7 @@ presets:
   - slug: "03-github-code-source"
     rank: "03"
     title: "GitHub Code Source (Node.js)"
-    excerpt: "This preset creates an App Runner service that deploys directly from a GitHub repository using the Node.js 18 managed runtime. App Runner clones the repository, runs the build command, and starts the..."
+    excerpt: "This preset creates an App Runner service that deploys directly from a GitHub repository using the Node.js 22 managed runtime. App Runner clones the repository, runs the build command, and starts the..."
 ---
 
 # App Runner Service Presets

@@ -154,6 +154,13 @@ var migratedKinds = []string{
 	// SES family, generator-owned from the day it was forged.
 	"AwsSesConfigurationSet",
 	"AwsSesEmailIdentity",
+	// App Runner family: the service migrated off its legacy hand-written
+	// contract; the three companion kinds generator-owned from the day they
+	// were forged.
+	"AwsAppRunnerService",
+	"AwsAppRunnerAutoScalingConfiguration",
+	"AwsAppRunnerVpcConnector",
+	"AwsAppRunnerObservabilityConfiguration",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

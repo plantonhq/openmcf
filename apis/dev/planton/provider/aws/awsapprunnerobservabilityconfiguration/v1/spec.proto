@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsapprunnerobservabilityconfiguration.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsAppRunnerObservabilityConfigurationSpec defines the desired
+// configuration for an AWS App Runner observability configuration -- the
+// reusable tracing policy that App Runner services reference to enable
+// distributed request tracing.
+//
+// An observability configuration is deliberately its own resource rather
+// than a field on the service: one configuration is shared by any number of
+// App Runner services (each service references it by ARN), so a fleet of
+// services adopts a common tracing posture that is tuned in one place.
+//
+// Revision semantics (important): AWS versions these configurations. The
+// trace settings are create-time immutable -- changing them registers a NEW
+// revision under the same configuration name. The exported ARN carries the
+// revision, so a change here rolls referencing services naturally through
+// the resource graph.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsAppRunnerObservabilityConfigurationSpec {
+  // The AWS region where the observability configuration will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Distributed tracing configuration. When set, services referencing this
+  // configuration send request traces to the configured vendor -- each
+  // instance runs an OpenTelemetry collector sidecar that forwards spans.
+  // When omitted, the configuration is registered without tracing (a valid
+  // but inert configuration; set trace_configuration to get value from this
+  // resource).
+  AwsAppRunnerObservabilityConfigurationTraceConfiguration trace_configuration = 2;
+}
+
+// AwsAppRunnerObservabilityConfigurationTraceConfiguration selects the
+// tracing implementation App Runner forwards request traces to.
+message AwsAppRunnerObservabilityConfigurationTraceConfiguration {
+  // The tracing vendor. "AWSXRAY" (AWS X-Ray) is the only vendor App Runner
+  // supports today; the application must be instrumented with the AWS
+  // Distro for OpenTelemetry (ADOT) SDK to emit spans the collector can
+  // forward.
+  optional string vendor = 1 [
+    (dev.planton.shared.options.default) = "AWSXRAY",
+    (buf.validate.field).string.in = "AWSXRAY"
+  ];
+}

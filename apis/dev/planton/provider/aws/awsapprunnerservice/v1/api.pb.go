@@ -23,18 +23,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// aws-app-runner-service
+// AwsAppRunnerService is the API envelope for an AWS App Runner service --
+// the fully managed path from a container image or source repository to a
+// scaled, load-balanced HTTPS endpoint.
 type AwsAppRunnerService struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// api-version
+	// api-version must be set to "aws.planton.dev/v1".
 	ApiVersion string `protobuf:"bytes,1,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
-	// resource-kind
+	// resource-kind for this resource, must be "AwsAppRunnerService".
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	// metadata
+	// metadata captures identifying information (name, org, environment,
+	// labels) and must pass standard validations for resource naming.
+	// The service's AWS name is metadata.name (ForceNew: renaming replaces
+	// the service).
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec
+	// spec holds the desired configuration of the App Runner service.
 	Spec *AwsAppRunnerServiceSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
-	// status
+	// status holds post-deployment information.
 	Status        *AwsAppRunnerServiceStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -105,10 +110,12 @@ func (x *AwsAppRunnerService) GetStatus() *AwsAppRunnerServiceStatus {
 	return nil
 }
 
-// aws-app-runner-service status
+// AwsAppRunnerServiceStatus describes the status of an App Runner service
+// resource.
 type AwsAppRunnerServiceStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack-outputs
+	// outputs captures the observable values returned by Pulumi/Terraform
+	// after provisioning.
 	Outputs       *AwsAppRunnerServiceStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

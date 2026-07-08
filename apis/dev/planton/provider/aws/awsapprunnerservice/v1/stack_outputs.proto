@@ -2,37 +2,71 @@ syntax = "proto3";
 
 package dev.planton.provider.aws.awsapprunnerservice.v1;
 
-// AwsAppRunnerServiceStackOutputs captures observable identifiers produced after
-// provisioning an AWS App Runner Service. These outputs are used for:
-//   - Cross-resource references via StringValueOrRef (e.g., service_arn in IAM policies)
-//   - Infra chart wiring (e.g., service_url as an API endpoint)
-//   - Operational visibility (e.g., service_status for monitoring)
+// AwsAppRunnerServiceStackOutputs captures the observable identifiers of a
+// deployed App Runner service -- the join keys downstream resources and
+// operators reference, plus the DNS material custom domains need.
 message AwsAppRunnerServiceStackOutputs {
-  // service_arn is the full ARN of the App Runner Service.
-  // Format: arn:aws:apprunner:REGION:ACCOUNT:service/SERVICE_NAME/SERVICE_ID
+  // The full ARN of the App Runner service (e.g. "arn:aws:apprunner:
+  // us-west-2:123456789012:service/my-api/abc123"). The handle IAM
+  // policies, VPC Ingress Connections, and deployment triggers reference.
   string service_arn = 1;
 
-  // service_id is the unique identifier assigned by App Runner (e.g., "8fe1e10b7ffa4d...").
+  // The service ID -- the AWS-assigned identifier unique within the
+  // account and region (the trailing component of the ARN).
   string service_id = 2;
 
-  // service_url is the public HTTPS URL for the service
-  // (e.g., "abc123.us-east-1.awsapprunner.com"). Requests to this URL are
-  // automatically load-balanced across running instances.
+  // The default HTTPS endpoint of the service (e.g.
+  // "abc123.us-west-2.awsapprunner.com", without scheme). For private
+  // services this is the domain a VPC Ingress Connection resolves to.
   string service_url = 3;
 
-  // service_name is the computed name of the App Runner Service (derived from metadata).
+  // The service name (metadata.name) the service was created under.
   string service_name = 4;
 
-  // service_status is the current operational status of the service
-  // (e.g., "RUNNING", "CREATE_FAILED", "OPERATION_IN_PROGRESS").
+  // The service's lifecycle status at the end of the deployment
+  // ("RUNNING" when serving traffic).
   string service_status = 5;
 
-  // vpc_connector_arn is the ARN of the VPC Connector, if VPC egress was configured
-  // (either via inline subnet_ids or an existing vpc_connector_arn). Empty when
-  // the service uses default internet egress.
-  string vpc_connector_arn = 6;
+  // Per-domain DNS material for the associated custom_domains -- one entry
+  // per spec entry. Create the certificate-validation CNAMEs (and a CNAME
+  // or alias from the domain to dns_target) in your DNS -- each record
+  // composes directly into an AwsRoute53DnsRecord resource. Empty when the
+  // spec associates no custom domains.
+  repeated AwsAppRunnerServiceCustomDomainOutput custom_domains = 6;
+}
 
-  // auto_scaling_configuration_arn is the ARN of the Auto Scaling Configuration
-  // Version created for this service.
-  string auto_scaling_configuration_arn = 7;
+// AwsAppRunnerServiceCustomDomainOutput carries the DNS material App Runner
+// issues for one associated custom domain.
+message AwsAppRunnerServiceCustomDomainOutput {
+  // The associated domain (matches the spec entry's domain_name).
+  string domain_name = 1;
+
+  // The App Runner subdomain to point the custom domain at -- create a
+  // CNAME (subdomains) or ALIAS (apex) from domain_name to this target.
+  string dns_target = 2;
+
+  // The association status at the end of the deployment. The resting state
+  // right after creation is "pending_certificate_dns_validation" -- the
+  // association completes on its own once the validation records below are
+  // resolvable in DNS.
+  string status = 3;
+
+  // The certificate-validation CNAME records proving domain ownership.
+  // Keep them in place after validation so App Runner can renew the
+  // certificate automatically.
+  repeated AwsAppRunnerServiceCertificateValidationRecord certificate_validation_records = 4;
+}
+
+// AwsAppRunnerServiceCertificateValidationRecord is one DNS record App
+// Runner requires to validate (and later renew) a custom domain's TLS
+// certificate.
+message AwsAppRunnerServiceCertificateValidationRecord {
+  // The DNS record name to create (a "_<hash>.<domain>." CNAME).
+  string record_name = 1;
+
+  // The DNS record type (always "CNAME" today).
+  string record_type = 2;
+
+  // The DNS record value the name must resolve to.
+  string record_value = 3;
 }

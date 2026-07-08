@@ -27,11 +27,13 @@ This preset creates a production-grade App Runner service with private ECR image
 - **Private ECR image** (`imageRepositoryType: ECR`) -- Uses your own container registry. The `accessRoleArn` grants App Runner permission to pull images.
 - **2 vCPU / 4 GB memory** (`cpu: 2048`, `memory: 4096`) -- Sized for production API workloads. Adjust based on your application's resource profile.
 - **Instance role** (`instanceRoleArn`) -- IAM role assumed at runtime for calling AWS APIs. Follow least-privilege: only grant permissions your application actually needs.
-- **VPC Connector** (`subnetIds`, `securityGroupIds`) -- Creates an inline VPC Connector so the service can reach private resources. Subnets must have a NAT Gateway for outbound internet access.
+- **VPC Connector** (`vpcConnectorArn`) -- References a shared first-class `AwsAppRunnerVpcConnector` so the service can reach private resources; one connector serves many services. The connector's subnets need a NAT Gateway for outbound internet access.
+- **Auto scaling configuration** (`autoScalingConfigurationArn`) -- References a shared `AwsAppRunnerAutoScalingConfiguration`; a warm floor of 2+ instances eliminates cold starts, and a lowered concurrency ceiling gives each instance headroom.
+- **Observability** (`observabilityConfigurationArn`) -- References a shared `AwsAppRunnerObservabilityConfiguration`; the reference itself enables X-Ray tracing.
 - **KMS encryption** (`kmsKeyArn`) -- Encrypts stored image copies and data logs with your key. **ForceNew**: changing this value replaces the entire service.
-- **Tuned auto scaling** -- `minSize: 2` keeps 2 warm instances at all times (eliminates cold starts). `maxConcurrency: 50` scales out earlier, giving each instance more headroom.
+- **WAF inspection** (`webAclArn`) -- Associates a REGIONAL `AwsWafWebAcl`; every request passes WAF before reaching the application.
 - **HTTP health check** -- Validates application-level readiness, not just port availability.
-- **Auto-deploy disabled** (`autoDeploymentsEnabled: false`) -- Production deployments should be triggered deliberately, not by image pushes.
+- **Auto-deploy enabled** (`autoDeploymentsEnabled: true`) -- New pushes to the tracked private-ECR tag deploy automatically. Set to false where deployments must be deliberate.
 
 ## Placeholders to Replace
 
@@ -41,13 +43,15 @@ This preset creates a production-grade App Runner service with private ECR image
 | `<region>` | AWS region (e.g., `us-east-1`) | Your deployment region |
 | `<repo>` | ECR repository name | AWS ECR Console |
 | `<tag>` | Image tag (e.g., `v1.0.0`, `latest`) | Your CI/CD pipeline |
-| `<ecr-access-role-arn>` | IAM role ARN for ECR image pulling | IAM Console or `AwsIamRole` outputs |
+| `<ecr-access-role>` | Name of the `AwsIamRole` granting ECR pull access | Your resource graph |
 | `<application-port>` | Port your app listens on (e.g., `8080`) | Your Dockerfile or app config |
-| `<instance-role-arn>` | IAM role ARN for runtime AWS API access | IAM Console or `AwsIamRole` outputs |
+| `<instance-role>` | Name of the `AwsIamRole` for runtime AWS API access | Your resource graph |
 | `<secrets-manager-arn-or-ssm-parameter-arn>` | ARN of the secret or parameter to inject | Secrets Manager or SSM Console |
-| `<private-subnet-1>`, `<private-subnet-2>` | Private subnet IDs in 2+ AZs | VPC Console or `AwsVpc` outputs |
-| `<security-group-id>` | Security group ID for the VPC Connector | VPC Console or `AwsSecurityGroup` outputs |
-| `<kms-key-arn>` | KMS key ARN for encryption at rest | KMS Console or `AwsKmsKey` outputs |
+| `<vpc-connector>` | Name of the `AwsAppRunnerVpcConnector` to route egress through | Your resource graph |
+| `<auto-scaling-configuration>` | Name of the `AwsAppRunnerAutoScalingConfiguration` to adopt | Your resource graph |
+| `<observability-configuration>` | Name of the `AwsAppRunnerObservabilityConfiguration` to adopt | Your resource graph |
+| `<kms-key>` | Name of the `AwsKmsKey` for encryption at rest | Your resource graph |
+| `<web-acl>` | Name of the REGIONAL `AwsWafWebAcl` to associate | Your resource graph |
 | `<health-check-path>` | HTTP health check path (e.g., `/health`, `/healthz`) | Your application's health endpoint |
 
 ## Related Presets

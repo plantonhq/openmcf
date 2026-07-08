@@ -1,6 +1,6 @@
 # GitHub Code Source (Node.js)
 
-This preset creates an App Runner service that deploys directly from a GitHub repository using the Node.js 18 managed runtime. App Runner clones the repository, runs the build command, and starts the application -- no container image or CI/CD pipeline required. Build and runtime configuration is provided inline via `configurationSource: API`.
+This preset creates an App Runner service that deploys directly from a GitHub repository using the Node.js 22 managed runtime. App Runner clones the repository, runs the build command, and starts the application -- no container image or CI/CD pipeline required. Build and runtime configuration is provided inline via `configurationSource: API`.
 
 ## When to Use
 
@@ -13,7 +13,7 @@ This preset creates an App Runner service that deploys directly from a GitHub re
 
 - **GitHub code source** (`codeSource`) -- App Runner clones the repo and manages the entire build-to-deploy lifecycle.
 - **API configuration** (`configurationSource: API`) -- Build and runtime settings are defined in this manifest. Use `REPOSITORY` instead if you prefer an `apprunner.yaml` file in your repo.
-- **Node.js 18 runtime** (`runtime: NODEJS_18`) -- Change to `PYTHON_3`, `CORRETTO_11`, `GO_1`, `DOTNET_6`, `PHP_81`, or `RUBY_31` for other languages.
+- **Node.js 22 runtime** (`runtime: NODEJS_22`) -- Change to `PYTHON_311`, `CORRETTO_11`, `GO_1`, `DOTNET_6`, `PHP_81`, or `RUBY_31` for other languages.
 - **Build command** (`buildCommand: npm ci && npm run build`) -- Installs dependencies and compiles the application. Adjust for your build tool (e.g., `yarn install && yarn build`).
 - **Auto-deploy enabled** (`autoDeploymentsEnabled: true`) -- Every push to the configured branch triggers an automatic build and deployment. Disable for production environments where deployments should be deliberate.
 - **Default auto scaling and health check** -- Uses App Runner defaults (1--25 instances, TCP health check). Customize for production.
