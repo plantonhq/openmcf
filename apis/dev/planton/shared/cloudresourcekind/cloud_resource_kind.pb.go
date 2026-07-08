@@ -395,7 +395,21 @@ const (
 	// origin group whose origins must exist before ARM accepts the route --
 	// so both the endpoint and the origin chain are genuine deploy-order
 	// prerequisites.
-	CloudResourceKind_AzureFrontDoorRoute CloudResourceKind = 484 // --- Storage data services ---
+	CloudResourceKind_AzureFrontDoorRoute CloudResourceKind = 484
+	// AzureFrontDoorProfile is a prerequisite because a rule set is an ARM
+	// child of a referenced profile. The rules live inside the set (they
+	// form one ordered policy document); routes attach the set by ARM ID.
+	CloudResourceKind_AzureFrontDoorRuleSet CloudResourceKind = 485
+	// AzureFrontDoorProfile is a prerequisite because a custom domain is an
+	// ARM child of a referenced profile. The DNS zone and (for
+	// bring-your-own certificates) the Front Door secret are optional
+	// references, not deploy-order prerequisites.
+	CloudResourceKind_AzureFrontDoorCustomDomain CloudResourceKind = 486
+	// AzureFrontDoorSecret is a prerequisite-light kind: only the profile
+	// (its ARM parent) must exist. The Key Vault certificate it wraps is a
+	// reference resolved before the module runs; its vault chain is
+	// exercised through scenario-local fixtures in E2E.
+	CloudResourceKind_AzureFrontDoorSecret CloudResourceKind = 487 // --- Storage data services ---
 	// None of the storage data-service kinds declares a registry
 	// prerequisite on AzureStorageAccount: account names are GLOBALLY
 	// unique and Azure holds a just-deleted name, so a
@@ -875,6 +889,9 @@ var (
 		482:  "AzureFrontDoorOriginGroup",
 		483:  "AzureFrontDoorOrigin",
 		484:  "AzureFrontDoorRoute",
+		485:  "AzureFrontDoorRuleSet",
+		486:  "AzureFrontDoorCustomDomain",
+		487:  "AzureFrontDoorSecret",
 		490:  "AzureStorageContainer",
 		491:  "AzureStorageShare",
 		492:  "AzureStorageQueue",
@@ -1324,6 +1341,9 @@ var (
 		"AzureFrontDoorOriginGroup":               482,
 		"AzureFrontDoorOrigin":                    483,
 		"AzureFrontDoorRoute":                     484,
+		"AzureFrontDoorRuleSet":                   485,
+		"AzureFrontDoorCustomDomain":              486,
+		"AzureFrontDoorSecret":                    487,
 		"AzureStorageContainer":                   490,
 		"AzureStorageShare":                       491,
 		"AzureStorageQueue":                       492,
@@ -1885,7 +1905,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xe6\xa0\x01\n" +
+	"\x02v1\x10\x01*\x81\xa2\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2040,7 +2060,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x16AzureFrontDoorEndpoint\x10\xe1\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfde:\x02\xe0\x03\x124\n" +
 	"\x19AzureFrontDoorOriginGroup\x10\xe2\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azfdog:\x02\xe0\x03\x12.\n" +
 	"\x14AzureFrontDoorOrigin\x10\xe3\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azfdo:\x02\xe2\x03\x120\n" +
-	"\x13AzureFrontDoorRoute\x10\xe4\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\x06azfdrt:\x04\xe1\x03\xe3\x03\x12*\n" +
+	"\x13AzureFrontDoorRoute\x10\xe4\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x10\x01\"\x06azfdrt:\x04\xe1\x03\xe3\x03\x120\n" +
+	"\x15AzureFrontDoorRuleSet\x10\xe5\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azfdrs:\x02\xe0\x03\x125\n" +
+	"\x1aAzureFrontDoorCustomDomain\x10\xe6\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x10\x01\"\x06azfdcd:\x02\xe0\x03\x120\n" +
+	"\x14AzureFrontDoorSecret\x10\xe7\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x10\x01\"\aazfdsec:\x02\xe0\x03\x12*\n" +
 	"\x15AzureStorageContainer\x10\xea\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azsc\x12)\n" +
 	"\x11AzureStorageShare\x10\xeb\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\aazshare\x12&\n" +

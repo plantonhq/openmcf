@@ -60,6 +60,8 @@ planton apply -f route.yaml
 
 This serves everything on the endpoint's hostname with the default HTTPS redirect (HTTP arrives only to be 301'd). Add a `cache` block for static content -- its absence means caching is off, a deliberate switch, not a defaults bundle. Front Door picks the most specific pattern across an endpoint's routes, so "/api/*" and "/*" cleanly split traffic.
 
+Attach delivery policies through `ruleSetIds` (AzureFrontDoorRuleSet references) and serve your own hostnames through `customDomainIds` (validated AzureFrontDoorCustomDomain references); set `linkToDefaultDomain: false` once custom domains are attached to stop answering on the generated *.azurefd.net name.
+
 ## Key Outputs
 
 | Output | Purpose |
@@ -74,3 +76,5 @@ The client-facing hostname deliberately lives on the ENDPOINT's outputs, not her
 - [Azure Front Door Endpoint](/docs/catalog/azure/azurefrontdoorendpoint) -- the parent entry hostname
 - [Azure Front Door Origin Group](/docs/catalog/azure/azurefrontdoororigingroup) -- the destination pool
 - [Azure Front Door Origin](/docs/catalog/azure/azurefrontdoororigin) -- the backends the pool serves
+- [Azure Front Door Rule Set](/docs/catalog/azure/azurefrontdoorruleset) -- the delivery policies this route attaches
+- [Azure Front Door Custom Domain](/docs/catalog/azure/azurefrontdoorcustomdomain) -- the hostnames this route serves

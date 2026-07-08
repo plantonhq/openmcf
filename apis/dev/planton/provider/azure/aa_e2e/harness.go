@@ -130,6 +130,16 @@ func (h *Harness) Setup(ctx context.Context) error {
 	// and any data-plane scenario fails attributably with a 403.
 	ensureKeyVaultDataPlaneGrant(ctx, subscriptionID)
 
+	// Front Door BYO-certificate bootstrap: Front Door reads Key Vault
+	// with Microsoft's own service principal (the
+	// "Microsoft.AzureFrontDoor-Cdn" enterprise application), which (a)
+	// must exist in the tenant and (b) must hold vault read access
+	// before a Front Door secret can deploy. Same one-time bootstrap
+	// class and best-effort semantics as the grant above: on failure the
+	// run proceeds and any BYO-certificate scenario fails attributably
+	// with an access-denied error naming the vault.
+	ensureFrontDoorKeyVaultGrant(ctx, subscriptionID)
+
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load the ambient Azure credential chain "+
@@ -235,6 +245,74 @@ func ensureKeyVaultDataPlaneGrant(ctx context.Context, subscriptionID string) {
 	fmt.Printf("  [azure] granted %q to the test principal at %s "+
 		"(one-time bootstrap; data-plane propagation may take a minute)\n",
 		keyVaultDataPlaneRole, scope)
+}
+
+// frontDoorAppId is the well-known application id of Azure Front Door's
+// service principal (the "Microsoft.AzureFrontDoor-Cdn" enterprise
+// application) -- the identity Front Door uses to READ customer Key
+// Vaults for bring-your-own TLS certificates. The id is a Microsoft
+// constant, identical in every tenant.
+const frontDoorAppId = "205478c0-bd83-4e1b-a9d6-db63a3e1e1c8"
+
+// frontDoorKeyVaultRole is the built-in role granting read access to
+// vault secret material -- what Front Door needs to fetch a wrapped
+// certificate (certificates' key material is read through the secret
+// face) on RBAC-mode vaults.
+const frontDoorKeyVaultRole = "Key Vault Secrets User"
+
+// ensureFrontDoorKeyVaultGrant ensures Azure Front Door's own service
+// principal exists in the tenant (first use of Front Door BYO
+// certificates in a tenant requires instantiating it) and holds vault
+// read access at the subscription scope. Subscription-scoped for the
+// same reason as the test principal's Key Vault grant: data-plane RBAC
+// propagates in minutes, so per-ephemeral-vault grants would race
+// authorization on every scenario.
+func ensureFrontDoorKeyVaultGrant(ctx context.Context, subscriptionID string) {
+	// Resolve (or instantiate) the Front Door service principal. `az ad sp
+	// create` fails when the principal already exists, so resolve first.
+	oidOut, err := exec.CommandContext(ctx, "az", "ad", "sp", "show",
+		"--id", frontDoorAppId, "--query", "id", "--output", "tsv").Output()
+	objectID := strings.TrimSpace(string(oidOut))
+	if err != nil || objectID == "" {
+		if out, createErr := exec.CommandContext(ctx, "az", "ad", "sp", "create",
+			"--id", frontDoorAppId, "--output", "none").CombinedOutput(); createErr != nil {
+			fmt.Printf("  [azure] note: could not instantiate the Front Door service principal "+
+				"(BYO-certificate scenarios may fail): %v: %s\n", createErr, strings.TrimSpace(string(out)))
+			return
+		}
+		oidOut, err = exec.CommandContext(ctx, "az", "ad", "sp", "show",
+			"--id", frontDoorAppId, "--query", "id", "--output", "tsv").Output()
+		if err != nil {
+			fmt.Printf("  [azure] note: could not resolve the Front Door service principal "+
+				"after creating it (BYO-certificate scenarios may fail): %v\n", err)
+			return
+		}
+		objectID = strings.TrimSpace(string(oidOut))
+	}
+	if objectID == "" {
+		return
+	}
+
+	scope := "/subscriptions/" + subscriptionID
+	listOut, err := exec.CommandContext(ctx, "az", "role", "assignment", "list",
+		"--assignee", objectID, "--role", frontDoorKeyVaultRole, "--scope", scope,
+		"--query", "[].id", "--output", "tsv").Output()
+	if err == nil && strings.TrimSpace(string(listOut)) != "" {
+		return // grant already in place
+	}
+
+	if out, err := exec.CommandContext(ctx, "az", "role", "assignment", "create",
+		"--assignee-object-id", objectID, "--assignee-principal-type", "ServicePrincipal",
+		"--role", frontDoorKeyVaultRole, "--scope", scope,
+		"--output", "none").CombinedOutput(); err != nil {
+		fmt.Printf("  [azure] note: could not grant the Front Door service principal "+
+			"vault read access (BYO-certificate scenarios may fail): %v: %s\n",
+			err, strings.TrimSpace(string(out)))
+		return
+	}
+	fmt.Printf("  [azure] granted %q to the Front Door service principal at %s "+
+		"(one-time bootstrap; data-plane propagation may take a minute)\n",
+		frontDoorKeyVaultRole, scope)
 }
 
 // azAccount is the subset of `az account show` output the harness consumes.

@@ -12,6 +12,13 @@ resource "azurerm_cdn_frontdoor_route" "main" {
   # whose origin group has no origins yet).
   cdn_frontdoor_origin_ids = var.spec.origin_ids
 
+  # Attached delivery policies and custom domains. Front Door treats an
+  # EMPTY collection differently from an absent one (empty means
+  # "disassociate", which only matters on update), so empty lists are
+  # normalized to null -- absence and emptiness then agree.
+  cdn_frontdoor_rule_set_ids      = var.spec.rule_set_ids != null && length(coalesce(var.spec.rule_set_ids, [])) > 0 ? var.spec.rule_set_ids : null
+  cdn_frontdoor_custom_domain_ids = var.spec.custom_domain_ids != null && length(coalesce(var.spec.custom_domain_ids, [])) > 0 ? var.spec.custom_domain_ids : null
+
   patterns_to_match   = var.spec.patterns_to_match
   supported_protocols = local.supported_protocols
   forwarding_protocol = local.forwarding_protocol

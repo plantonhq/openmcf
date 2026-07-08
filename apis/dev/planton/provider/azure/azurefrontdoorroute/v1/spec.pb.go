@@ -242,46 +242,62 @@ type AzureFrontDoorRouteSpec struct {
 	// deploying the whole chain in one manifest set; omit when the origins
 	// already exist.
 	OriginIds []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=origin_ids,json=originIds,proto3" json:"origin_ids,omitempty"`
+	// The rule sets whose delivery policies apply to traffic on this
+	// route, by ARM ID -- each references an AzureFrontDoorRuleSet's
+	// rule_set_id output. Rule sets and the route must live in the same
+	// profile. Order here does not matter: WITHIN a set, rules run by
+	// their own order; ACROSS sets, Azure evaluates all attached sets'
+	// rules together. One rule set is commonly attached to many routes --
+	// that sharing is why the policy is its own kind.
+	RuleSetIds []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=rule_set_ids,json=ruleSetIds,proto3" json:"rule_set_ids,omitempty"`
 	// The URL path patterns this route matches, e.g. "/*" (everything),
 	// "/api/*", "/images/*". At least one; every pattern starts with "/".
 	// Route matching picks the most specific pattern across the
 	// endpoint's routes, so "/api/*" on one route and "/*" on another
 	// cleanly split API and catch-all traffic.
-	PatternsToMatch []string `protobuf:"bytes,5,rep,name=patterns_to_match,json=patternsToMatch,proto3" json:"patterns_to_match,omitempty"`
+	PatternsToMatch []string `protobuf:"bytes,6,rep,name=patterns_to_match,json=patternsToMatch,proto3" json:"patterns_to_match,omitempty"`
 	// The client-facing protocols the route accepts: HTTP, HTTPS, or both.
 	// At least one. Serving both with https_redirect_enabled (the
 	// default) is the standard production posture -- HTTP arrives only to
 	// be redirected.
-	SupportedProtocols []AzureFrontDoorRouteProtocol `protobuf:"varint,6,rep,packed,name=supported_protocols,json=supportedProtocols,proto3,enum=dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteProtocol" json:"supported_protocols,omitempty"`
+	SupportedProtocols []AzureFrontDoorRouteProtocol `protobuf:"varint,7,rep,packed,name=supported_protocols,json=supportedProtocols,proto3,enum=dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteProtocol" json:"supported_protocols,omitempty"`
 	// The protocol Front Door uses toward the ORIGIN (independent of what
 	// the client used). Unspecified deploys MATCH_REQUEST -- mirror the
 	// client's protocol. HTTPS_ONLY keeps the origin leg encrypted even
 	// for HTTP clients; HTTP_ONLY is for origins without TLS (pair it
 	// with Private Link rather than sending plaintext over the internet).
-	ForwardingProtocol AzureFrontDoorRouteForwardingProtocol `protobuf:"varint,7,opt,name=forwarding_protocol,json=forwardingProtocol,proto3,enum=dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteForwardingProtocol" json:"forwarding_protocol,omitempty"`
+	ForwardingProtocol AzureFrontDoorRouteForwardingProtocol `protobuf:"varint,8,opt,name=forwarding_protocol,json=forwardingProtocol,proto3,enum=dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteForwardingProtocol" json:"forwarding_protocol,omitempty"`
 	// Redirect HTTP requests to HTTPS at the edge (301). Default true.
 	// Requires the route to accept BOTH protocols -- the redirect needs
 	// HTTP to arrive and HTTPS to land on.
-	HttpsRedirectEnabled *bool `protobuf:"varint,8,opt,name=https_redirect_enabled,json=httpsRedirectEnabled,proto3,oneof" json:"https_redirect_enabled,omitempty"`
+	HttpsRedirectEnabled *bool `protobuf:"varint,9,opt,name=https_redirect_enabled,json=httpsRedirectEnabled,proto3,oneof" json:"https_redirect_enabled,omitempty"`
+	// The custom domains this route serves, by ARM ID -- each references
+	// an AzureFrontDoorCustomDomain's custom_domain_id output. The route
+	// side owns the domain attachment (a domain lists no routes); every
+	// referenced domain must belong to the route's profile and should be
+	// DNS-validated before traffic can flow. Empty means the route serves
+	// only the endpoint's generated *.azurefd.net hostname.
+	CustomDomainIds []*v1.StringValueOrRef `protobuf:"bytes,10,rep,name=custom_domain_ids,json=customDomainIds,proto3" json:"custom_domain_ids,omitempty"`
 	// Serve this route on the endpoint's generated *.azurefd.net
-	// hostname. Default true. Azure only allows disabling it when the
-	// route has custom domains associated -- otherwise the route would be
-	// unreachable -- so leave it true until custom domains are attached.
-	LinkToDefaultDomain *bool `protobuf:"varint,9,opt,name=link_to_default_domain,json=linkToDefaultDomain,proto3,oneof" json:"link_to_default_domain,omitempty"`
+	// hostname. Default true. Disabling requires at least one custom
+	// domain in custom_domain_ids -- otherwise the route would serve no
+	// hostname at all. Disable it for production routes that should only
+	// answer on their custom domains.
+	LinkToDefaultDomain *bool `protobuf:"varint,11,opt,name=link_to_default_domain,json=linkToDefaultDomain,proto3,oneof" json:"link_to_default_domain,omitempty"`
 	// Whether the route matches traffic. Disabling stops matching without
 	// deleting the route's configuration. Default true.
-	Enabled *bool `protobuf:"varint,10,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	Enabled *bool `protobuf:"varint,12,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
 	// A path prepended on the ORIGIN side before forwarding, e.g.
 	// "/site1". A request for "/page.html" on a route with origin_path
 	// "/site1" fetches "/site1/page.html" from the origin -- how one
 	// backend hosts many routes' content in subdirectories. Unset
 	// forwards the client path unchanged.
-	OriginPath *string `protobuf:"bytes,11,opt,name=origin_path,json=originPath,proto3,oneof" json:"origin_path,omitempty"`
+	OriginPath *string `protobuf:"bytes,13,opt,name=origin_path,json=originPath,proto3,oneof" json:"origin_path,omitempty"`
 	// Cache matched responses at Front Door's edge locations. Omit the
 	// block to disable caching entirely (every request hits the origin) --
 	// Azure treats the ABSENCE of cache settings as caching off, so this
 	// is a real switch, not a defaults bundle.
-	Cache         *AzureFrontDoorRouteCache `protobuf:"bytes,12,opt,name=cache,proto3" json:"cache,omitempty"`
+	Cache         *AzureFrontDoorRouteCache `protobuf:"bytes,14,opt,name=cache,proto3" json:"cache,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -344,6 +360,13 @@ func (x *AzureFrontDoorRouteSpec) GetOriginIds() []*v1.StringValueOrRef {
 	return nil
 }
 
+func (x *AzureFrontDoorRouteSpec) GetRuleSetIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.RuleSetIds
+	}
+	return nil
+}
+
 func (x *AzureFrontDoorRouteSpec) GetPatternsToMatch() []string {
 	if x != nil {
 		return x.PatternsToMatch
@@ -370,6 +393,13 @@ func (x *AzureFrontDoorRouteSpec) GetHttpsRedirectEnabled() bool {
 		return *x.HttpsRedirectEnabled
 	}
 	return false
+}
+
+func (x *AzureFrontDoorRouteSpec) GetCustomDomainIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.CustomDomainIds
+	}
+	return nil
 }
 
 func (x *AzureFrontDoorRouteSpec) GetLinkToDefaultDomain() bool {
@@ -491,7 +521,7 @@ var File_dev_planton_provider_azure_azurefrontdoorroute_v1_spec_proto protorefle
 
 const file_dev_planton_provider_azure_azurefrontdoorroute_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/azure/azurefrontdoorroute/v1/spec.proto\x121dev.planton.provider.azure.azurefrontdoorroute.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x97\x0f\n" +
+	"<dev/planton/provider/azure/azurefrontdoorroute/v1/spec.proto\x121dev.planton.provider.azure.azurefrontdoorroute.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xce\x13\n" +
 	"\x17AzureFrontDoorRouteSpec\x12~\n" +
 	"\vendpoint_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x03\x92\xd4a\x1astatus.outputs.endpoint_idR\n" +
 	"endpointId\x12\x84\x02\n" +
@@ -500,19 +530,23 @@ const file_dev_planton_provider_azure_azurefrontdoorroute_v1_spec_proto_rawDesc 
 	"\x1cfront_door_route_name_format\x12wroute_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18ZR\trouteName\x12\x89\x01\n" +
 	"\x0forigin_group_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x03\x92\xd4a\x1estatus.outputs.origin_group_idR\roriginGroupId\x12t\n" +
 	"\n" +
-	"origin_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe3\x03\x92\xd4a\x18status.outputs.origin_idR\toriginIds\x12\x92\x01\n" +
-	"\x11patterns_to_match\x18\x05 \x03(\tBf\xbaHc\x92\x01`\b\x01\"\\\xba\x01Y\n" +
+	"origin_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe3\x03\x92\xd4a\x18status.outputs.origin_idR\toriginIds\x12y\n" +
+	"\frule_set_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xe5\x03\x92\xd4a\x1astatus.outputs.rule_set_idR\n" +
+	"ruleSetIds\x12\x92\x01\n" +
+	"\x11patterns_to_match\x18\x06 \x03(\tBf\xbaHc\x92\x01`\b\x01\"\\\xba\x01Y\n" +
 	"\x1ffront_door_route_pattern_format\x12 each pattern must start with '/'\x1a\x14this.startsWith('/')R\x0fpatternsToMatch\x12\x96\x01\n" +
-	"\x13supported_protocols\x18\x06 \x03(\x0e2N.dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteProtocolB\x15\xbaH\x12\x92\x01\x0f\b\x01\x10\x02\x18\x01\"\a\x82\x01\x04\x10\x01 \x00R\x12supportedProtocols\x12\x93\x01\n" +
-	"\x13forwarding_protocol\x18\a \x01(\x0e2X.dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteForwardingProtocolB\b\xbaH\x05\x82\x01\x02\x10\x01R\x12forwardingProtocol\x12C\n" +
-	"\x16https_redirect_enabled\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x14httpsRedirectEnabled\x88\x01\x01\x12B\n" +
-	"\x16link_to_default_domain\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x13linkToDefaultDomain\x88\x01\x01\x12'\n" +
-	"\aenabled\x18\n" +
-	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\aenabled\x88\x01\x01\x12-\n" +
-	"\vorigin_path\x18\v \x01(\tB\a\xbaH\x04r\x02\x10\x01H\x03R\n" +
+	"\x13supported_protocols\x18\a \x03(\x0e2N.dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteProtocolB\x15\xbaH\x12\x92\x01\x0f\b\x01\x10\x02\x18\x01\"\a\x82\x01\x04\x10\x01 \x00R\x12supportedProtocols\x12\x93\x01\n" +
+	"\x13forwarding_protocol\x18\b \x01(\x0e2X.dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteForwardingProtocolB\b\xbaH\x05\x82\x01\x02\x10\x01R\x12forwardingProtocol\x12C\n" +
+	"\x16https_redirect_enabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x14httpsRedirectEnabled\x88\x01\x01\x12\x88\x01\n" +
+	"\x11custom_domain_ids\x18\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xe6\x03\x92\xd4a\x1fstatus.outputs.custom_domain_idR\x0fcustomDomainIds\x12B\n" +
+	"\x16link_to_default_domain\x18\v \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x13linkToDefaultDomain\x88\x01\x01\x12'\n" +
+	"\aenabled\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\aenabled\x88\x01\x01\x12-\n" +
+	"\vorigin_path\x18\r \x01(\tB\a\xbaH\x04r\x02\x10\x01H\x03R\n" +
 	"originPath\x88\x01\x01\x12a\n" +
-	"\x05cache\x18\f \x01(\v2K.dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteCacheR\x05cache:\x98\x03\xbaH\x94\x03\x1a\x91\x03\n" +
-	"4front_door_route_https_redirect_needs_both_protocols\x12\xb5\x01https_redirect_enabled requires supported_protocols to include both HTTP and HTTPS (the redirect needs HTTP to arrive and HTTPS to land on); either list both or disable the redirect\x1a\xa0\x01(has(this.https_redirect_enabled) && !this.https_redirect_enabled) || (this.supported_protocols.exists(p, p == 1) && this.supported_protocols.exists(p, p == 2))B\x19\n" +
+	"\x05cache\x18\x0e \x01(\v2K.dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteCacheR\x05cache:\xc9\x05\xbaH\xc5\x05\x1a\x91\x03\n" +
+	"4front_door_route_https_redirect_needs_both_protocols\x12\xb5\x01https_redirect_enabled requires supported_protocols to include both HTTP and HTTPS (the redirect needs HTTP to arrive and HTTPS to land on); either list both or disable the redirect\x1a\xa0\x01(has(this.https_redirect_enabled) && !this.https_redirect_enabled) || (this.supported_protocols.exists(p, p == 1) && this.supported_protocols.exists(p, p == 2))\x1a\xae\x02\n" +
+	"1front_door_route_default_domain_or_custom_domains\x12\x8f\x01link_to_default_domain can only be disabled when the route serves at least one custom domain -- otherwise it would answer on no hostname at all\x1ag(!has(this.link_to_default_domain) || this.link_to_default_domain) || this.custom_domain_ids.size() > 0B\x19\n" +
 	"\x17_https_redirect_enabledB\x19\n" +
 	"\x17_link_to_default_domainB\n" +
 	"\n" +
@@ -570,15 +604,17 @@ var file_dev_planton_provider_azure_azurefrontdoorroute_v1_spec_proto_depIdxs = 
 	5, // 0: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.endpoint_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	5, // 1: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.origin_group_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	5, // 2: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.origin_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 3: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.supported_protocols:type_name -> dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteProtocol
-	1, // 4: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.forwarding_protocol:type_name -> dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteForwardingProtocol
-	4, // 5: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.cache:type_name -> dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteCache
-	2, // 6: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteCache.query_string_caching_behavior:type_name -> dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteQueryStringCachingBehavior
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	5, // 3: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.rule_set_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0, // 4: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.supported_protocols:type_name -> dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteProtocol
+	1, // 5: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.forwarding_protocol:type_name -> dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteForwardingProtocol
+	5, // 6: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.custom_domain_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 7: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.cache:type_name -> dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteCache
+	2, // 8: dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteCache.query_string_caching_behavior:type_name -> dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteQueryStringCachingBehavior
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurefrontdoorroute_v1_spec_proto_init() }

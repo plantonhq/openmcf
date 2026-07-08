@@ -11,6 +11,14 @@ spec:
   # Exercises the deploy-ordering seam (never sent to Azure).
   originIds:
     - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor/originGroups/api-backends/origins/primary-app
+  # Exercises the attached delivery policy.
+  ruleSetIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor/ruleSets/deliverypolicy
+  # Exercises the custom-domain attachment with the default domain
+  # disabled (legal only because a domain is attached).
+  customDomainIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor/customDomains/www-example-com
+  linkToDefaultDomain: false
   patternsToMatch:
     - /api/*
   supportedProtocols:

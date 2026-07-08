@@ -10,6 +10,8 @@ type Locals struct {
 	EndpointId          string
 	OriginGroupId       string
 	OriginIds           []string
+	RuleSetIds          []string
+	CustomDomainIds     []string
 }
 
 // protocolStrings maps the client-facing protocol enum to ARM's values.
@@ -46,6 +48,14 @@ func initializeLocals(ctx *pulumi.Context, stackInput *azurefrontdoorroutev1.Azu
 
 	for _, originId := range spec.OriginIds {
 		locals.OriginIds = append(locals.OriginIds, originId.GetValue())
+	}
+
+	for _, ruleSetId := range spec.RuleSetIds {
+		locals.RuleSetIds = append(locals.RuleSetIds, ruleSetId.GetValue())
+	}
+
+	for _, customDomainId := range spec.CustomDomainIds {
+		locals.CustomDomainIds = append(locals.CustomDomainIds, customDomainId.GetValue())
 	}
 
 	// No Azure tags: ARM does not support tags on Front Door routes, so

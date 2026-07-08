@@ -1080,6 +1080,35 @@ enum CloudResourceKind {
       AzureFrontDoorOrigin
     ]
   }];
+  // AzureFrontDoorProfile is a prerequisite because a rule set is an ARM
+  // child of a referenced profile. The rules live inside the set (they
+  // form one ordered policy document); routes attach the set by ARM ID.
+  AzureFrontDoorRuleSet = 485 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdrs"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureFrontDoorProfile is a prerequisite because a custom domain is an
+  // ARM child of a referenced profile. The DNS zone and (for
+  // bring-your-own certificates) the Front Door secret are optional
+  // references, not deploy-order prerequisites.
+  AzureFrontDoorCustomDomain = 486 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdcd"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
+  // AzureFrontDoorSecret is a prerequisite-light kind: only the profile
+  // (its ARM parent) must exist. The Key Vault certificate it wraps is a
+  // reference resolved before the module runs; its vault chain is
+  // exercised through scenario-local fixtures in E2E.
+  AzureFrontDoorSecret = 487 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdsec"
+    prerequisites: [AzureFrontDoorProfile]
+  }];
   // --- Storage data services ---
 
   // None of the storage data-service kinds declares a registry

@@ -17,6 +17,8 @@ component.
 | `spec.route_name` | Required; 2-90 chars; ForceNew |
 | `spec.origin_group_id` | The destination pool; updatable in place |
 | `spec.origin_ids` | Never sent to Azure -- pure provisioning-order references, because ARM rejects a route whose origin group has no origins yet |
+| `spec.rule_set_ids` | Attached AzureFrontDoorRuleSet delivery policies; empty lists normalize to null (Front Door treats empty as "disassociate" on update) |
+| `spec.custom_domain_ids` | The custom domains the route serves; same empty-to-null normalization; `link_to_default_domain: false` requires at least one (spec CEL) |
 | `spec.supported_protocols` / `spec.forwarding_protocol` | Spec enum value names mapped to ARM's casing in `locals.tf`; absent forwarding protocol deploys MatchRequest |
 | `spec.cache` | Rendered only when set: absent cache settings mean caching DISABLED (the provider transmits an explicit null) -- a real behavior switch |
 

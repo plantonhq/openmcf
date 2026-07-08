@@ -1,0 +1,36 @@
+# Minimal AzureFrontDoorSecret scenario -- the BYO-certificate chain:
+# fixture RG -> fixture Front Door profile (registry prerequisite) plus
+# a scenario-declared Key Vault certificate fixture (which brings the
+# vault transitively). The secret wraps the certificate's VERSIONLESS id
+# -- the rotation-follows-latest posture the kind teaches.
+#
+# Live prerequisite handled by the harness Setup: Front Door's own
+# service principal (Microsoft.AzureFrontDoor-Cdn) is instantiated in
+# the tenant and granted "Key Vault Secrets User" at the subscription
+# scope, the one-time bootstrap without which Azure rejects the create.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorSecret
+metadata:
+  name: planton-oss-e2e-azurefrontdoorsecret-smoke
+  id: planton-oss-e2e-azurefrontdoorsecret-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorsecret
+  annotations:
+    planton.dev/e2e: "true"
+    # The certificate fixture resolves through its kind's minimal
+    # scenario; its vault prerequisite (and the vault's resource group)
+    # chain transitively and deduplicate against the profile's chain.
+    planton.dev/e2e-extra-prerequisites: "AzureKeyVaultCertificate"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-fd-profile-prereq
+  secretName: e2e-byo-cert-smoke
+  keyVaultCertificateId:
+    valueFrom:
+      name: planton-oss-e2e-azurekeyvaultcertificate-smoke

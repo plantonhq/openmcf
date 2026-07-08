@@ -21,11 +21,13 @@ parity-verified against pulumi-azure v6 (`cdn.FrontdoorRoute`).
 | `route_name` | `name` | ForceNew; 2-90 chars (the provider's own regex) |
 | `origin_group_id` | `cdn_frontdoor_origin_group_id` | FK to AzureFrontDoorOriginGroup; updatable in place |
 | `origin_ids` | `cdn_frontdoor_origin_ids` | Repeated FKs to AzureFrontDoorOrigin; NEVER sent to the API -- pure provisioning-order references (ARM rejects a route whose group has no origins) |
+| `rule_set_ids` | `cdn_frontdoor_rule_set_ids` | Repeated FKs to AzureFrontDoorRuleSet -- the attached delivery policies; same-profile membership is Azure's apply-time contract |
 | `patterns_to_match` | `patterns_to_match` | min 1; each starts with "/" |
 | `supported_protocols` | `supported_protocols` | closed enum, 1-2 unique values |
 | `forwarding_protocol` | `forwarding_protocol` | closed enum; unspecified deploys MatchRequest |
 | `https_redirect_enabled` | `https_redirect_enabled` | default true |
-| `link_to_default_domain` | `link_to_default_domain` | default true; false requires associated custom domains (Azure apply-time error until the custom-domain kind exists) |
+| `custom_domain_ids` | `cdn_frontdoor_custom_domain_ids` | Repeated FKs to AzureFrontDoorCustomDomain -- the route side owns the attachment; domains must be DNS-validated before traffic flows |
+| `link_to_default_domain` | `link_to_default_domain` | default true; false requires at least one custom domain (spec CEL) |
 | `enabled` | `enabled` | default true |
 | `origin_path` | `cdn_frontdoor_origin_path` | prepended on the origin side |
 | `cache.*` | `cache` block | absence disables caching (the provider transmits an explicit null) |
@@ -41,19 +43,16 @@ parity-verified against pulumi-azure v6 (`cdn.FrontdoorRoute`).
   a typo fails at validation, not at apply.
 - **Query-string names must not contain commas** -- Azure transports
   the list as a CSV string; provider-validated, spec-front-loaded.
-- **`link_to_default_domain: false` without custom domains** is an
-  apply-time Azure error, deliberately NOT a spec CEL: the field's
-  contract changes when custom-domain references land with that kind,
-  and inventing a stricter interim rule would be a false constraint.
+- **`link_to_default_domain: false` requires at least one custom
+  domain** -- azurerm's exact create/update contract (a route must
+  answer on SOME hostname), front-loaded as a message CEL.
 
-## Deferred references (recorded)
+## Empty-vs-absent collections (both modules)
 
-- `rule_set_ids` and `custom_domain_ids` -- azurerm carries both; they
-  reference kinds that do not exist in the catalog yet (Front Door rule
-  sets, custom domains). They land WITH those kinds, wired as typed
-  references, in the sessions that forge them. Until then a route
-  serves the endpoint's default domain, which is also azurerm's default
-  posture.
+Front Door treats an EMPTY `rule_set_ids`/`custom_domain_ids`
+collection differently from an ABSENT one (empty means "disassociate",
+which only matters on update). Both modules normalize empty lists to
+null/omitted so absence and emptiness agree.
 
 ## Outputs
 
@@ -67,9 +66,10 @@ ENDPOINT's outputs; the route is policy attached to that hostname.
 
 ## Recorded skips (with reasons)
 
-- `cdn_frontdoor_custom_domain_ids` / `cdn_frontdoor_rule_set_ids` --
-  see "Deferred references" above.
 - The `cdn_frontdoor_custom_domain_association` resource is a
-  Terraform-side ordering construct with no server-side object; when
-  custom domains land, the association is realized inside module logic,
-  never as a catalog kind.
+  Terraform-side ordering construct with no server-side object -- it
+  exists to break dependency cycles when domains and routes live in
+  separate Terraform configurations. Planton's decomposed kinds have no
+  such cycle (a domain never references a route), so the route's
+  `custom_domain_ids` field IS the attachment; no association resource
+  exists in either module and no catalog kind models it.

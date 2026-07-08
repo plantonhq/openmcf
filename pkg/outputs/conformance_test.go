@@ -1716,6 +1716,51 @@ func TestStackOutputsConformance(t *testing.T) {
 				"route_id", "route_name",
 			},
 		},
+		{
+			// AzureFrontDoorRuleSet: rule_set_id is what routes reference
+			// in rule_set_ids to attach the delivery policy; the folded
+			// rules export no ids on purpose (nothing references a rule).
+			name: "AzureFrontDoorRuleSet",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorRuleSet,
+			rawOutputs: map[string]interface{}{
+				"rule_set_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd/ruleSets/deliverypolicy",
+				"rule_set_name": "deliverypolicy",
+			},
+			mustPopulate: []string{
+				"rule_set_id", "rule_set_name",
+			},
+		},
+		{
+			// AzureFrontDoorCustomDomain: custom_domain_id is the route
+			// attach seam; validation_token is the DNS TXT challenge the
+			// operator publishes at _dnsauth.<host_name>.
+			name: "AzureFrontDoorCustomDomain",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorCustomDomain,
+			rawOutputs: map[string]interface{}{
+				"custom_domain_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd/customDomains/www-example-com",
+				"host_name":        "www.example.com",
+				"validation_token": "_zy4mhfvswrqzeqmnyv6gjr26xk1mbrv",
+				"expiration_date":  "2026-07-16T00:00:00.000Z",
+			},
+			mustPopulate: []string{
+				"custom_domain_id", "host_name", "validation_token", "expiration_date",
+			},
+		},
+		{
+			// AzureFrontDoorSecret: secret_id is the custom domain's
+			// tls.secret_id seam; the SANs are read back from the wrapped
+			// Key Vault certificate.
+			name: "AzureFrontDoorSecret",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_id":                 "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd/secrets/wildcard-example-com",
+				"secret_name":               "wildcard-example-com",
+				"subject_alternative_names": []interface{}{"*.example.com", "example.com"},
+			},
+			mustPopulate: []string{
+				"secret_id", "secret_name", "subject_alternative_names",
+			},
+		},
 	}
 
 	for _, tc := range cases {

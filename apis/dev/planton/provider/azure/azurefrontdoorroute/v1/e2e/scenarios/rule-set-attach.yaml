@@ -1,0 +1,43 @@
+# Rule-set-attach AzureFrontDoorRoute scenario -- the delivery-policy
+# seam: the composed traffic chain (fixture RG -> profile -> endpoint +
+# origin group -> origin -> route) with a rule set attached through
+# rule_set_ids. Attaching a set is an OPTIONAL seam, so the fixture rule
+# set arrives as a scenario-declared extra prerequisite, never a
+# registry one.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorRoute
+metadata:
+  name: planton-oss-e2e-azurefrontdoorroute-ruleset
+  id: planton-oss-e2e-azurefrontdoorroute-ruleset
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorroute
+  annotations:
+    planton.dev/e2e: "true"
+    # The fixture rule set (an empty policy -- attachment is what this
+    # scenario proves) resolves through the kind's install profile; its
+    # own prerequisites deduplicate against the chain's.
+    planton.dev/e2e-extra-prerequisites: "AzureFrontDoorRuleSet"
+  tags:
+    - planton-e2e
+spec:
+  endpointId:
+    valueFrom:
+      name: planton-oss-e2e-fd-endpoint-prereq
+  routeName: e2e-ruleset-smoke
+  originGroupId:
+    valueFrom:
+      name: planton-oss-e2e-fd-og-prereq
+  originIds:
+    - valueFrom:
+        name: planton-oss-e2e-fd-origin-prereq
+  ruleSetIds:
+    - valueFrom:
+        name: planton-oss-e2e-fd-ruleset-prereq
+  patternsToMatch:
+    - /*
+  supportedProtocols:
+    - HTTP
+    - HTTPS

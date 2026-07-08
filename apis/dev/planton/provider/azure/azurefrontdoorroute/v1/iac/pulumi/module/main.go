@@ -52,6 +52,17 @@ func Resources(ctx *pulumi.Context, stackInput *azurefrontdoorroutev1.AzureFront
 		routeArgs.CdnFrontdoorOriginIds = pulumi.ToStringArray(locals.OriginIds)
 	}
 
+	// Attached delivery policies and custom domains. Front Door treats
+	// an EMPTY collection differently from an absent one (empty means
+	// "disassociate", which only matters on update), so the lists are
+	// sent only when populated -- absence and emptiness then agree.
+	if len(locals.RuleSetIds) > 0 {
+		routeArgs.CdnFrontdoorRuleSetIds = pulumi.ToStringArray(locals.RuleSetIds)
+	}
+	if len(locals.CustomDomainIds) > 0 {
+		routeArgs.CdnFrontdoorCustomDomainIds = pulumi.ToStringArray(locals.CustomDomainIds)
+	}
+
 	// Booleans are sent only when explicitly set: Azure's defaults
 	// (https redirect on, linked to the default domain, enabled) apply
 	// when omitted, and the platform materializes the documented

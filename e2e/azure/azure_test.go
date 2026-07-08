@@ -564,6 +564,39 @@ func TestAzureFrontDoorRoute_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurefrontdoorroute", "terraform")
 }
 
+// --- Azure Front Door rule set (fixture RG -> fixture profile -> a
+// three-rule delivery policy: redirect, security headers, caching
+// override; the route's rule-set-attach scenario proves the attach seam) ---
+
+func TestAzureFrontDoorRuleSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorruleset", "pulumi")
+}
+func TestAzureFrontDoorRuleSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorruleset", "terraform")
+}
+
+// --- Azure Front Door custom domain (fixture RG -> fixture profile -> a
+// managed-certificate domain in the pending-validation state; proves the
+// validation_token challenge surfaces as an output) ---
+
+func TestAzureFrontDoorCustomDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorcustomdomain", "pulumi")
+}
+func TestAzureFrontDoorCustomDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorcustomdomain", "terraform")
+}
+
+// --- Azure Front Door secret (fixture RG -> fixture profile + the Key
+// Vault certificate fixture chain -> a BYO-certificate secret wrapping
+// the certificate's versionless id) ---
+
+func TestAzureFrontDoorSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorsecret", "pulumi")
+}
+func TestAzureFrontDoorSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorsecret", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

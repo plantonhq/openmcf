@@ -1,0 +1,25 @@
+package module
+
+import (
+	azurefrontdoorsecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorsecret/v1"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+type Locals struct {
+	AzureFrontDoorSecret  *azurefrontdoorsecretv1.AzureFrontDoorSecret
+	ProfileId             string
+	KeyVaultCertificateId string
+}
+
+func initializeLocals(ctx *pulumi.Context, stackInput *azurefrontdoorsecretv1.AzureFrontDoorSecretStackInput) *Locals {
+	locals := &Locals{}
+
+	locals.AzureFrontDoorSecret = stackInput.Target
+	locals.ProfileId = stackInput.Target.Spec.ProfileId.GetValue()
+	locals.KeyVaultCertificateId = stackInput.Target.Spec.KeyVaultCertificateId.GetValue()
+
+	// No Azure tags: ARM does not support tags on Front Door secrets,
+	// so the platform's identity tags live on the profile.
+
+	return locals
+}

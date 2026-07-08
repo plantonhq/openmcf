@@ -30,6 +30,9 @@ variable "spec" {
     # sequence provisioning after the group's origins exist.
     origin_ids = optional(list(string))
 
+    # Rule set ARM IDs whose delivery policies apply on this route.
+    rule_set_ids = optional(list(string))
+
     # URL path patterns this route matches (each starts with "/").
     patterns_to_match = list(string)
 
@@ -45,8 +48,13 @@ variable "spec" {
     # protocols (enforced by the spec CEL).
     https_redirect_enabled = optional(bool)
 
+    # Custom domain ARM IDs this route serves. The route side owns the
+    # domain attachment.
+    custom_domain_ids = optional(list(string))
+
     # Serve on the endpoint's generated *.azurefd.net hostname. Azure
-    # defaults to true; false requires associated custom domains.
+    # defaults to true; false requires at least one custom domain
+    # (enforced by the spec CEL).
     link_to_default_domain = optional(bool)
 
     # Whether the route matches traffic. Azure defaults to true.

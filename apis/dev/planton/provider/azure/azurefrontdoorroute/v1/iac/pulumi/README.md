@@ -23,6 +23,10 @@ cdn.FrontdoorRoute (single resource)
   absent cache settings as caching disabled (the provider transmits an
   explicit null), so omitting the block is a real behavior switch, not a
   defaults bundle.
+- **Rule sets and custom domains are sent only when populated** --
+  Front Door distinguishes an EMPTY collection ("disassociate") from an
+  absent one, so empty `rule_set_ids`/`custom_domain_ids` lists are
+  omitted and absence and emptiness agree.
 - **Enum defaults are materialized in the module** -- stack inputs never
   carry proto defaults, so unspecified `forwarding_protocol` deploys
   `MatchRequest` and unspecified `query_string_caching_behavior` deploys

@@ -41,6 +41,12 @@ Use AzureFrontDoorRoute when you need:
   redirect requires both (spec-enforced)
 - `forwarding_protocol` -- the origin-leg protocol; HTTPS_ONLY keeps
   the origin leg encrypted regardless of the client protocol
+- `rule_set_ids` -- the AzureFrontDoorRuleSet delivery policies applied
+  to this route's traffic (redirects, header edits, cache overrides)
+- `custom_domain_ids` + `link_to_default_domain` -- the hostnames the
+  route serves: validated AzureFrontDoorCustomDomain references, the
+  generated *.azurefd.net hostname (default), or both; disabling the
+  default domain requires at least one custom domain (spec-enforced)
 - `cache` -- ABSENT means caching disabled (a real switch); configure
   query-string keying and compression when present
 

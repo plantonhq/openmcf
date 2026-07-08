@@ -133,6 +133,23 @@ var _ = ginkgo.Describe("AzureFrontDoorRouteSpec Validation Tests", func() {
 			input.Spec.RouteName = "a" + strings.Repeat("b", 88) + "c"
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
+
+		ginkgo.It("should accept attached rule sets", func() {
+			input := minimalSpec()
+			input.Spec.RuleSetIds = []*foreignkeyv1.StringValueOrRef{
+				literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Cdn/profiles/planton-fd/ruleSets/deliverypolicy"),
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept custom domains with the default domain disabled", func() {
+			input := minimalSpec()
+			input.Spec.CustomDomainIds = []*foreignkeyv1.StringValueOrRef{
+				literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Cdn/profiles/planton-fd/customDomains/www-example-com"),
+			}
+			input.Spec.LinkToDefaultDomain = proto.Bool(false)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
@@ -251,6 +268,12 @@ var _ = ginkgo.Describe("AzureFrontDoorRouteSpec Validation Tests", func() {
 			input.Spec.Cache = &AzureFrontDoorRouteCache{
 				QueryStringCachingBehavior: AzureFrontDoorRouteQueryStringCachingBehavior(99),
 			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject disabling the default domain without custom domains", func() {
+			input := minimalSpec()
+			input.Spec.LinkToDefaultDomain = proto.Bool(false)
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 

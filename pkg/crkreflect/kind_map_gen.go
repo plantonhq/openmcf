@@ -141,11 +141,14 @@ import (
 	azurednszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednszone/v1"
 	azureeventhubnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubnamespace/v1"
 	azurefederatedidentitycredentialv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefederatedidentitycredential/v1"
+	azurefrontdoorcustomdomainv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorcustomdomain/v1"
 	azurefrontdoorendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorendpoint/v1"
 	azurefrontdoororiginv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoororigin/v1"
 	azurefrontdoororigingroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoororigingroup/v1"
 	azurefrontdoorprofilev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorprofile/v1"
 	azurefrontdoorroutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorroute/v1"
+	azurefrontdoorrulesetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorruleset/v1"
+	azurefrontdoorsecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorsecret/v1"
 	azurefunctionappv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefunctionapp/v1"
 	azurekeyvaultv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurekeyvault/v1"
 	azurekeyvaultcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurekeyvaultcertificate/v1"
@@ -617,11 +620,14 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:                          &azurednszonev1.AzureDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzureEventHubNamespace:                &azureeventhubnamespacev1.AzureEventHubNamespace{},
 	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential:      &azurefederatedidentitycredentialv1.AzureFederatedIdentityCredential{},
+	cloudresourcekind.CloudResourceKind_AzureFrontDoorCustomDomain:            &azurefrontdoorcustomdomainv1.AzureFrontDoorCustomDomain{},
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorEndpoint:                &azurefrontdoorendpointv1.AzureFrontDoorEndpoint{},
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorOrigin:                  &azurefrontdoororiginv1.AzureFrontDoorOrigin{},
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorOriginGroup:             &azurefrontdoororigingroupv1.AzureFrontDoorOriginGroup{},
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorProfile:                 &azurefrontdoorprofilev1.AzureFrontDoorProfile{},
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorRoute:                   &azurefrontdoorroutev1.AzureFrontDoorRoute{},
+	cloudresourcekind.CloudResourceKind_AzureFrontDoorRuleSet:                 &azurefrontdoorrulesetv1.AzureFrontDoorRuleSet{},
+	cloudresourcekind.CloudResourceKind_AzureFrontDoorSecret:                  &azurefrontdoorsecretv1.AzureFrontDoorSecret{},
 	cloudresourcekind.CloudResourceKind_AzureFunctionApp:                      &azurefunctionappv1.AzureFunctionApp{},
 	cloudresourcekind.CloudResourceKind_AzureKeyVault:                         &azurekeyvaultv1.AzureKeyVault{},
 	cloudresourcekind.CloudResourceKind_AzureKeyVaultCertificate:              &azurekeyvaultcertificatev1.AzureKeyVaultCertificate{},
