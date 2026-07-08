@@ -323,21 +323,21 @@ locals {
       for custom_key in try(s.rate_based.custom_keys, []) : jsondecode(
         can(custom_key.header.name) ? jsonencode({ Header = {
           Name                = custom_key.header.name
-          TextTransformations = [for transformation in custom_key.header.text_transformations : { Priority = try(transformation.priority, 0), Type = transformation.type }]
+          TextTransformations = [for transformation in try(custom_key.header.text_transformations, []) : { Priority = try(transformation.priority, 0), Type = transformation.type }]
         } }) :
         can(custom_key.cookie.name) ? jsonencode({ Cookie = {
           Name                = custom_key.cookie.name
-          TextTransformations = [for transformation in custom_key.cookie.text_transformations : { Priority = try(transformation.priority, 0), Type = transformation.type }]
+          TextTransformations = [for transformation in try(custom_key.cookie.text_transformations, []) : { Priority = try(transformation.priority, 0), Type = transformation.type }]
         } }) :
         can(custom_key.query_argument.name) ? jsonencode({ QueryArgument = {
           Name                = custom_key.query_argument.name
-          TextTransformations = [for transformation in custom_key.query_argument.text_transformations : { Priority = try(transformation.priority, 0), Type = transformation.type }]
+          TextTransformations = [for transformation in try(custom_key.query_argument.text_transformations, []) : { Priority = try(transformation.priority, 0), Type = transformation.type }]
         } }) :
         can(custom_key.query_string.text_transformations) ? jsonencode({ QueryString = {
-          TextTransformations = [for transformation in custom_key.query_string.text_transformations : { Priority = try(transformation.priority, 0), Type = transformation.type }]
+          TextTransformations = [for transformation in try(custom_key.query_string.text_transformations, []) : { Priority = try(transformation.priority, 0), Type = transformation.type }]
         } }) :
         can(custom_key.uri_path.text_transformations) ? jsonencode({ UriPath = {
-          TextTransformations = [for transformation in custom_key.uri_path.text_transformations : { Priority = try(transformation.priority, 0), Type = transformation.type }]
+          TextTransformations = [for transformation in try(custom_key.uri_path.text_transformations, []) : { Priority = try(transformation.priority, 0), Type = transformation.type }]
         } }) :
         try(custom_key.http_method, false) ? jsonencode({ HTTPMethod = {} }) :
         try(custom_key.ip, false) ? jsonencode({ IP = {} }) :

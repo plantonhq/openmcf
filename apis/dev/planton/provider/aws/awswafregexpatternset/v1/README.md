@@ -62,7 +62,7 @@ spec:
     - ^/wp-admin/.*
     - ^/\.env$
     - ^/phpmyadmin/.*
-  description: Common scanner probe paths — owned by SecEng
+  description: Common scanner probe paths, owned by SecEng
 ```
 
 Reference it from a web ACL rule:

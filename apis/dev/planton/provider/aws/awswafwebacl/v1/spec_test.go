@@ -600,6 +600,68 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("jb", 1, statement)))).To(gomega.BeNil())
 	})
 
+	ginkgo.It("accepts JA3/JA4 fingerprint and header-order inspections", func() {
+		ja3 := byteMatchStatement("d41d8cd98f00b204e9800998ecf8427e")
+		ja3.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_Ja3Fingerprint{Ja3Fingerprint: &AwsWafWebAclFingerprintMatch{FallbackBehavior: "NO_MATCH"}},
+		}
+		ja4 := byteMatchStatement("t13d1516h2_8daaf6152771_e5627efa2ab1")
+		ja4.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_Ja4Fingerprint{Ja4Fingerprint: &AwsWafWebAclFingerprintMatch{FallbackBehavior: "MATCH"}},
+		}
+		order := byteMatchStatement("host,user-agent,accept")
+		order.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_HeaderOrder{HeaderOrder: &AwsWafWebAclHeaderOrderMatch{OversizeHandling: "CONTINUE"}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(
+			matchRule("ja3", 1, ja3),
+			matchRule("ja4", 2, ja4),
+			matchRule("order", 3, order),
+		))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a JA3 fingerprint inspection without a fallback behavior", func() {
+		statement := byteMatchStatement("d41d8cd98f00b204e9800998ecf8427e")
+		statement.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_Ja3Fingerprint{Ja3Fingerprint: &AwsWafWebAclFingerprintMatch{}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("ja3", 1, statement)))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a uri-fragment inspection with and without a fallback behavior", func() {
+		withFallback := byteMatchStatement("section")
+		withFallback.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_UriFragment{UriFragment: &AwsWafWebAclUriFragmentMatch{FallbackBehavior: "NO_MATCH"}},
+		}
+		withoutFallback := byteMatchStatement("section")
+		withoutFallback.GetByteMatch().FieldToMatch = &AwsWafWebAclFieldToMatch{
+			Field: &AwsWafWebAclFieldToMatch_UriFragment{UriFragment: &AwsWafWebAclUriFragmentMatch{}},
+		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(
+			matchRule("frag1", 1, withFallback),
+			matchRule("frag2", 2, withoutFallback),
+		))).To(gomega.BeNil())
+	})
+
+	// The scope-down group-statement exclusion CELs guard the IMMEDIATE child
+	// only: a managed rule group nested one logical level deeper (inside an
+	// AND under the scope-down) passes spec validation by design, and AWS
+	// rejects it at deploy time. This case documents that acknowledged
+	// boundary — if it starts failing, the spec grew a deep-walk guard and
+	// the modules' comments should be updated to match.
+	ginkgo.It("accepts (deferring to AWS) a group statement nested below a scope-down's immediate child", func() {
+		rule := managedRuleGroupRule("common", 1, "AWSManagedRulesCommonRuleSet")
+		rule.Statement.GetManagedRuleGroup().ScopeDownStatement = stmt(&AwsWafWebAclStatement_AndStatement{
+			AndStatement: &AwsWafWebAclAndStatement{Statements: []*AwsWafWebAclStatement{
+				byteMatchStatement("/admin"),
+				stmt(&AwsWafWebAclStatement_ManagedRuleGroup{
+					ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{Name: "x", VendorName: "AWS"},
+				}),
+			}},
+		})
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).To(gomega.BeNil())
+	})
+
 	ginkgo.It("rejects an invalid sqli sensitivity level", func() {
 		statement := stmt(&AwsWafWebAclStatement_SqliMatch{SqliMatch: &AwsWafWebAclSqliMatchStatement{
 			FieldToMatch:        &AwsWafWebAclFieldToMatch{Field: &AwsWafWebAclFieldToMatch_Body{Body: &AwsWafWebAclBodyMatch{}}},
@@ -649,9 +711,9 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 	})
 
 	ginkgo.It("rejects an asn match with more than 100 entries", func() {
-		asns := make([]int64, 101)
+		asns := make([]uint32, 101)
 		for i := range asns {
-			asns[i] = int64(64500 + i)
+			asns[i] = uint32(64500 + i)
 		}
 		statement := stmt(&AwsWafWebAclStatement_AsnMatch{AsnMatch: &AwsWafWebAclAsnMatchStatement{AsnList: asns}})
 		gomega.Expect(protovalidate.Validate(aclWithRules(matchRule("asn", 1, statement)))).NotTo(gomega.BeNil())

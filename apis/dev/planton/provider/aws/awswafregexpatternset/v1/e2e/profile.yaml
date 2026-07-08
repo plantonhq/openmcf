@@ -10,8 +10,10 @@ spec:
   # scope (same API surface, pinned to us-east-1 while the shared fixtures
   # live in us-west-2 -- the REGIONAL lane exercises the identical resource
   # shape). Proven by CEL spec tests and the offline gate.
+  # Live dual-engine run 2026-07-08: Pulumi 26s / Terraform 37s.
   tier: 1
-  status: deferred
-  deferral_reason: "AWS SSO token expired on the ambient credential chain (2026-07-07) — re-run with AWS_PROFILE=planton-aws-e2e after `aws sso login`"
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

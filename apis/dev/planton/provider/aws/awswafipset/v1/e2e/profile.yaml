@@ -11,8 +11,10 @@ spec:
   # us-west-2 -- the REGIONAL lane exercises the identical resource shape)
   # and IPV6 sets (a second run of the same two-field surface). Both are
   # proven by CEL spec tests and the offline gate.
+  # Live dual-engine run 2026-07-08: Pulumi 28s / Terraform 43s.
   tier: 1
-  status: deferred
-  deferral_reason: "AWS SSO token expired on the ambient credential chain (2026-07-07) — re-run with AWS_PROFILE=planton-aws-e2e after `aws sso login`"
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

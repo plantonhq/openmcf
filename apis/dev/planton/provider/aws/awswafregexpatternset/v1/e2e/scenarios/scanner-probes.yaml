@@ -22,4 +22,4 @@ spec:
     - ^/wp-admin/.*
     - ^/\.env$
     - ^/phpmyadmin/.*
-  description: Common scanner probe paths (E2E)
+  description: Common scanner probe paths for e2e

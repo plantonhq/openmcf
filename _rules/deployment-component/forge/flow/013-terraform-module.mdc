@@ -234,3 +234,11 @@ HANDLING RECURSIVE PROTO MESSAGES (self-referential statement trees)
   in HCL, or a Go builder in Pulumi) rather than expecting typed nested Terraform
   resources for every statement variant. Add a unit test on the serializer and a
   regression test in `variablestf_test.go` when introducing a new recursive spec.
+- **NO 64-bit integers inside an `any`-typed subtree that feeds a JSON provider
+  argument.** protojson stringifies int64/uint64 ("16384", not 16384) — the
+  typed-contract path never notices, but a provider that unmarshals the
+  serialized JSON into typed Go structs rejects it at APPLY time ("cannot
+  unmarshal string into ... of type int64"), and Pulumi's Go builder (which
+  marshals real ints) silently diverges. Type such fields int32/uint32 when the
+  domain fits (it almost always does — sizes cap at int32 max, ASNs are uint32);
+  only a live Terraform run catches the mismatch, never `tofu validate`.

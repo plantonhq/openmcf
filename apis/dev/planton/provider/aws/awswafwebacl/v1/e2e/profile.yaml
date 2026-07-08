@@ -23,8 +23,11 @@ spec:
   #     is locked by the module unit tests.
   #   - CAPTCHA/challenge rule actions and token_domains: need a JS client
   #     integration to observe; the immunity-time configs ARE deployed live.
+  # Live dual-engine run 2026-07-08 (with both set fixtures deployed by the
+  # prerequisite chain): Pulumi 1m09s / Terraform 1m27s.
   tier: 1
-  status: deferred
-  deferral_reason: "AWS SSO token expired on the ambient credential chain (2026-07-07) — re-run with AWS_PROFILE=planton-aws-e2e after `aws sso login`; expect ~6 lanes (IP set + regex set leaves + composed web ACL full-surface × both engines), each under 15 min"
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 15

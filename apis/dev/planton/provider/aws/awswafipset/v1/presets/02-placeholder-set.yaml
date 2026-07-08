@@ -10,4 +10,4 @@ spec:
   scope: REGIONAL
   ipAddressVersion: IPV4
   addresses: []
-  description: Partner integration ranges — populate before go-live
+  description: Partner integration ranges, populate before go-live

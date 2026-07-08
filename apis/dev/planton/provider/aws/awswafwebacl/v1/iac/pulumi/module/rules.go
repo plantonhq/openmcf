@@ -75,6 +75,12 @@ func buildRulesJSON(spec *awswafwebaclv1.AwsWafWebAclSpec) (string, error) {
 // buildStatement converts one statement-tree node to the AWS API JSON format.
 // The tree is recursive through and/or/not and scope-down statements; the
 // recursion terminates because the spec value is finite.
+//
+// PARITY-EXCEPTION: this Go recursion handles arbitrary nesting depth, while
+// the Terraform twin (iac/tf/locals.tf) unrolls the tree to THREE levels below
+// the root — HCL cannot recurse — and fails the plan loudly beyond that. The
+// divergence is depth-only (identical JSON for any tree Terraform accepts) and
+// is documented on both sides; see locals.tf for the full rationale.
 func buildStatement(statement *awswafwebaclv1.AwsWafWebAclStatement) (map[string]interface{}, error) {
 	if statement == nil {
 		return nil, errors.New("statement is required")

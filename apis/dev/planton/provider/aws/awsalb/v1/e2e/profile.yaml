@@ -8,7 +8,10 @@ spec:
   # requires subnets in at least two availability zones), then runs deploy ->
   # DescribeLoadBalancers verify -> destroy -> verify-destroyed on both
   # provisioners. ALB creation takes 2-3 minutes and deletion similar; the
-  # timeout budgets for both plus the prerequisite chain.
+  # timeout budgets for both plus the prerequisite chain. The scenario also
+  # declares an AwsWafWebAcl prerequisite (the e2e-prerequisites annotation)
+  # and attaches it via web_acl_arn, proving the wafv2 web-ACL association
+  # live on both engines (run 2026-07-08: Pulumi 5m35s / Terraform 5m41s).
   tier: 1
   status: green
   validated_provisioners:

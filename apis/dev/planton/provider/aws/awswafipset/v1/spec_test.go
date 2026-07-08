@@ -92,4 +92,16 @@ var _ = ginkgo.Describe("AwsWafIpSetSpec validations", func() {
 		}
 		gomega.Expect(protovalidate.Validate(minimalIpSet(spec))).NotTo(gomega.BeNil())
 	})
+
+	ginkgo.It("rejects a description with characters outside AWS's WAF charset", func() {
+		spec := minimalSpec()
+		spec.Description = "Corporate ranges (E2E)"
+		gomega.Expect(protovalidate.Validate(minimalIpSet(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a two-character description", func() {
+		spec := minimalSpec()
+		spec.Description = "ab"
+		gomega.Expect(protovalidate.Validate(minimalIpSet(spec))).NotTo(gomega.BeNil())
+	})
 })

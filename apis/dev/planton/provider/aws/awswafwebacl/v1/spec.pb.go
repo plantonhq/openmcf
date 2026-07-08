@@ -86,7 +86,11 @@ type AwsWafWebAclSpec struct {
 	//   - "block" (restrictive): block all traffic unless a rule allows it.
 	//     Use when most traffic should be denied (e.g., private API).
 	DefaultAction *AwsWafWebAclDefaultAction `protobuf:"bytes,3,opt,name=default_action,json=defaultAction,proto3" json:"default_action,omitempty"`
-	// Human-readable description of the Web ACL. Max 256 characters.
+	// Human-readable description of the Web ACL. AWS restricts the character
+	// set: letters, digits, whitespace, and _ + = : # @ / - , . only (notably
+	// NO parentheses), 3-256 characters — WAF rejects anything else at create
+	// time, so the constraint is enforced here where the failure is immediate
+	// and readable.
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	// Ordered set of rules evaluated against each incoming request. Rules are
 	// evaluated by priority (lowest number first). When a rule matches, its
@@ -3292,8 +3296,12 @@ type AwsWafWebAclSizeConstraintStatement struct {
 	// The comparison: "EQ", "NE", "LE", "LT", "GE", or "GT"
 	// (component_size <op> size).
 	ComparisonOperator string `protobuf:"bytes,1,opt,name=comparison_operator,json=comparisonOperator,proto3" json:"comparison_operator,omitempty"`
-	// The size threshold in bytes (0 to 21,474,836,480).
-	Size int64 `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	// The size threshold in bytes. The provider caps this at 2,147,483,647
+	// (int32 max) even though the AWS API documents a 21,474,836,480 ceiling —
+	// the tighter bound is what a deployment can actually carry. Typed int32
+	// deliberately: protojson stringifies 64-bit integers, which would corrupt
+	// the rule-JSON document both engines build from this tree.
+	Size int32 `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
 	// The request component to measure.
 	FieldToMatch *AwsWafWebAclFieldToMatch `protobuf:"bytes,3,opt,name=field_to_match,json=fieldToMatch,proto3" json:"field_to_match,omitempty"`
 	// Normalizations applied (in priority order) before measuring. Use one
@@ -3340,7 +3348,7 @@ func (x *AwsWafWebAclSizeConstraintStatement) GetComparisonOperator() string {
 	return ""
 }
 
-func (x *AwsWafWebAclSizeConstraintStatement) GetSize() int64 {
+func (x *AwsWafWebAclSizeConstraintStatement) GetSize() int32 {
 	if x != nil {
 		return x.Size
 	}
@@ -3495,8 +3503,11 @@ func (x *AwsWafWebAclLabelMatchStatement) GetKey() string {
 // or hosting providers (e.g. traffic from bulletproof-hosting ASNs).
 type AwsWafWebAclAsnMatchStatement struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ASNs to match (1–100 entries), e.g. 64496.
-	AsnList []int64 `protobuf:"varint,1,rep,packed,name=asn_list,json=asnList,proto3" json:"asn_list,omitempty"`
+	// The ASNs to match (1–100 entries), e.g. 64496. Typed uint32 — ASNs are
+	// 32-bit unsigned (4-byte ASNs reach 4,294,967,295), and protojson
+	// stringifies 64-bit integers, which would corrupt the rule-JSON document
+	// both engines build from this tree.
+	AsnList []uint32 `protobuf:"varint,1,rep,packed,name=asn_list,json=asnList,proto3" json:"asn_list,omitempty"`
 	// Optional forwarded IP configuration — derive the ASN from a forwarded
 	// client IP instead of the source address.
 	ForwardedIpConfig *AwsWafWebAclForwardedIpConfig `protobuf:"bytes,2,opt,name=forwarded_ip_config,json=forwardedIpConfig,proto3" json:"forwarded_ip_config,omitempty"`
@@ -3534,7 +3545,7 @@ func (*AwsWafWebAclAsnMatchStatement) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awswafwebacl_v1_spec_proto_rawDescGZIP(), []int{40}
 }
 
-func (x *AwsWafWebAclAsnMatchStatement) GetAsnList() []int64 {
+func (x *AwsWafWebAclAsnMatchStatement) GetAsnList() []uint32 {
 	if x != nil {
 		return x.AsnList
 	}
@@ -4583,8 +4594,10 @@ func (x *AwsWafWebAclVisibilityConfig) GetMetricName() string {
 type AwsWafWebAclImmunityTimeConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Immunity time in seconds. CAPTCHA: 60–259,200 (AWS default 300).
-	// Challenge: 300–259,200 (AWS default 300).
-	ImmunityTimeSec int64 `protobuf:"varint,1,opt,name=immunity_time_sec,json=immunityTimeSec,proto3" json:"immunity_time_sec,omitempty"`
+	// Challenge: 300–259,200 (AWS default 300). Typed int32 (the max fits) —
+	// protojson stringifies 64-bit integers, which would corrupt the rule-JSON
+	// document for the per-rule configs living inside the rules subtree.
+	ImmunityTimeSec int32 `protobuf:"varint,1,opt,name=immunity_time_sec,json=immunityTimeSec,proto3" json:"immunity_time_sec,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -4619,7 +4632,7 @@ func (*AwsWafWebAclImmunityTimeConfig) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awswafwebacl_v1_spec_proto_rawDescGZIP(), []int{54}
 }
 
-func (x *AwsWafWebAclImmunityTimeConfig) GetImmunityTimeSec() int64 {
+func (x *AwsWafWebAclImmunityTimeConfig) GetImmunityTimeSec() int32 {
 	if x != nil {
 		return x.ImmunityTimeSec
 	}
@@ -5142,12 +5155,13 @@ var File_dev_planton_provider_aws_awswafwebacl_v1_spec_proto protoreflect.FileDe
 
 const file_dev_planton_provider_aws_awswafwebacl_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3dev/planton/provider/aws/awswafwebacl/v1/spec.proto\x12(dev.planton.provider.aws.awswafwebacl.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xae\f\n" +
+	"3dev/planton/provider/aws/awswafwebacl/v1/spec.proto\x12(dev.planton.provider.aws.awswafwebacl.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xa2\x0e\n" +
 	"\x10AwsWafWebAclSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1c\n" +
 	"\x05scope\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05scope\x12r\n" +
-	"\x0edefault_action\x18\x03 \x01(\v2C.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclDefaultActionB\x06\xbaH\x03\xc8\x01\x01R\rdefaultAction\x12*\n" +
-	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12P\n" +
+	"\x0edefault_action\x18\x03 \x01(\v2C.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclDefaultActionB\x06\xbaH\x03\xc8\x01\x01R\rdefaultAction\x12\x9d\x02\n" +
+	"\vdescription\x18\x04 \x01(\tB\xfa\x01\xbaH\xf6\x01\xba\x01\xed\x01\n" +
+	"\x13description_charset\x12\x85\x01description may only contain letters, digits, whitespace, and _+=:#@/-,. (no parentheses), and must be at least 3 characters when set\x1aNthis == '' || this.matches('^[\\\\w+=:#@/,.-][\\\\w+=:#@/,.\\\\s-]+[\\\\w+=:#@/,.-]$')r\x03\x18\x80\x02R\vdescription\x12P\n" +
 	"\x05rules\x18\x05 \x03(\v2:.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclRuleR\x05rules\x12s\n" +
 	"\x11visibility_config\x18\x06 \x01(\v2F.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclVisibilityConfigR\x10visibilityConfig\x12~\n" +
 	"\x16custom_response_bodies\x18\a \x03(\v2H.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclCustomResponseBodyR\x14customResponseBodies\x12m\n" +
@@ -5387,8 +5401,8 @@ const file_dev_planton_provider_aws_awswafwebacl_v1_spec_proto_rawDesc = "" +
 	"\x14text_transformations\x18\x02 \x03(\v2H.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclTextTransformationB\b\xbaH\x05\x92\x01\x02\b\x01R\x13textTransformations\"\x95\x03\n" +
 	"#AwsWafWebAclSizeConstraintStatement\x12Q\n" +
 	"\x13comparison_operator\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x18R\x02EQR\x02NER\x02LER\x02LTR\x02GER\x02GTR\x12comparisonOperator\x12!\n" +
-	"\x04size\x18\x02 \x01(\x03B\r\xbaH\n" +
-	"\"\b\x18\x80\x80\x80\x80P(\x00R\x04size\x12p\n" +
+	"\x04size\x18\x02 \x01(\x05B\r\xbaH\n" +
+	"\x1a\b\x18\xff\xff\xff\xff\a(\x00R\x04size\x12p\n" +
 	"\x0efield_to_match\x18\x03 \x01(\v2B.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclFieldToMatchB\x06\xbaH\x03\xc8\x01\x01R\ffieldToMatch\x12\x85\x01\n" +
 	"\x14text_transformations\x18\x04 \x03(\v2H.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclTextTransformationB\b\xbaH\x05\x92\x01\x02\b\x01R\x13textTransformations\"\xcd\x02\n" +
 	"\x1fAwsWafWebAclRegexMatchStatement\x120\n" +
@@ -5401,7 +5415,7 @@ const file_dev_planton_provider_aws_awswafwebacl_v1_spec_proto_rawDesc = "" +
 	"\x03key\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\bR\x03key\"\xbf\x01\n" +
 	"\x1dAwsWafWebAclAsnMatchStatement\x12%\n" +
-	"\basn_list\x18\x01 \x03(\x03B\n" +
+	"\basn_list\x18\x01 \x03(\rB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10dR\aasnList\x12w\n" +
 	"\x13forwarded_ip_config\x18\x02 \x01(\v2G.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclForwardedIpConfigR\x11forwardedIpConfig\"\xfa\t\n" +
 	"\x18AwsWafWebAclFieldToMatch\x12$\n" +
@@ -5477,7 +5491,7 @@ const file_dev_planton_provider_aws_awswafwebacl_v1_spec_proto_rawDesc = "" +
 	"\vmetric_name\x18\x03 \x01(\tR\n" +
 	"metricName\"\\\n" +
 	"\x1eAwsWafWebAclImmunityTimeConfig\x12:\n" +
-	"\x11immunity_time_sec\x18\x01 \x01(\x03B\x0e\xbaH\v\xc8\x01\x01\"\x06\x18\x80\xe9\x0f(<R\x0fimmunityTimeSec\"\xf0\t\n" +
+	"\x11immunity_time_sec\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\x80\xe9\x0f(<R\x0fimmunityTimeSec\"\xf0\t\n" +
 	"\x1dAwsWafWebAclAssociationConfig\x12\xe9\x01\n" +
 	"\x1dcloudfront_request_body_limit\x18\x01 \x01(\tB\xa5\x01\xbaH\xa1\x01\xba\x01\x9d\x01\n" +
 	"\x10body_limit_valid\x12Mthe request body limit must be 'KB_16', 'KB_32', 'KB_48', or 'KB_64' when set\x1a:this == '' || this in ['KB_16', 'KB_32', 'KB_48', 'KB_64']R\x1acloudfrontRequestBodyLimit\x12\xea\x01\n" +

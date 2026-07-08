@@ -80,4 +80,20 @@ var _ = ginkgo.Describe("AwsWafRegexPatternSetSpec validations", func() {
 		spec.Region = ""
 		gomega.Expect(protovalidate.Validate(minimalPatternSet(spec))).NotTo(gomega.BeNil())
 	})
+
+	ginkgo.It("rejects a description over 256 characters", func() {
+		spec := minimalSpec()
+		long := ""
+		for i := 0; i < 26; i++ {
+			long += "0123456789"
+		}
+		spec.Description = long
+		gomega.Expect(protovalidate.Validate(minimalPatternSet(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a description with characters outside AWS's WAF charset", func() {
+		spec := minimalSpec()
+		spec.Description = "Probe paths (E2E)"
+		gomega.Expect(protovalidate.Validate(minimalPatternSet(spec))).NotTo(gomega.BeNil())
+	})
 })

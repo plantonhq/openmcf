@@ -95,7 +95,7 @@ spec:
   ipAddressVersion: IPV4
   addresses:
     - 203.0.113.55/32
-  description: Known abusive clients — SecOps maintained
+  description: Known abusive clients, SecOps maintained
 ```
 
 ## Stack Outputs

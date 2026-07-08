@@ -66,9 +66,11 @@ type AwsWafIpSetSpec struct {
 	// entries. An empty list is valid (a placeholder set that rules can
 	// reference before the ranges are known) — an empty set matches nothing.
 	Addresses []string `protobuf:"bytes,4,rep,name=addresses,proto3" json:"addresses,omitempty"`
-	// Free-form description of what the set represents and who maintains it
-	// (e.g. "Corporate office egress ranges — owned by NetEng"). 1–256
-	// characters when set.
+	// Description of what the set represents and who maintains it. AWS
+	// restricts the character set: letters, digits, whitespace, and
+	// _ + = : # @ / - , . only (notably NO parentheses), 3-256 characters —
+	// WAF rejects anything else at create time, so the constraint is enforced
+	// here where the failure is immediate and readable.
 	Description   string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -143,15 +145,16 @@ var File_dev_planton_provider_aws_awswafipset_v1_spec_proto protoreflect.FileDes
 
 const file_dev_planton_provider_aws_awswafipset_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2dev/planton/provider/aws/awswafipset/v1/spec.proto\x12'dev.planton.provider.aws.awswafipset.v1\x1a\x1bbuf/validate/validate.proto\"\x9b\x05\n" +
+	"2dev/planton/provider/aws/awswafipset/v1/spec.proto\x12'dev.planton.provider.aws.awswafipset.v1\x1a\x1bbuf/validate/validate.proto\"\x8f\a\n" +
 	"\x0fAwsWafIpSetSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x124\n" +
 	"\x05scope\x18\x02 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x16R\bREGIONALR\n" +
 	"CLOUDFRONTR\x05scope\x12B\n" +
 	"\x12ip_address_version\x18\x03 \x01(\tB\x14\xbaH\x11\xc8\x01\x01r\fR\x04IPV4R\x04IPV6R\x10ipAddressVersion\x12\xd7\x01\n" +
 	"\taddresses\x18\x04 \x03(\tB\xb8\x01\xbaH\xb4\x01\x92\x01\xb0\x01\x10\x90N\"\xaa\x01\xba\x01\xa6\x01\n" +
-	"\x0faddress_is_cidr\x12reach address must be in CIDR notation — write a single IPv4 host as x.x.x.x/32 and a single IPv6 host as ::x/128\x1a\x1fthis.matches('^.+/[0-9]{1,3}$')R\taddresses\x12*\n" +
-	"\vdescription\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription:\xe6\x01\xbaH\xe2\x01\x1a\xdf\x01\n" +
+	"\x0faddress_is_cidr\x12reach address must be in CIDR notation — write a single IPv4 host as x.x.x.x/32 and a single IPv6 host as ::x/128\x1a\x1fthis.matches('^.+/[0-9]{1,3}$')R\taddresses\x12\x9d\x02\n" +
+	"\vdescription\x18\x05 \x01(\tB\xfa\x01\xbaH\xf6\x01\xba\x01\xed\x01\n" +
+	"\x13description_charset\x12\x85\x01description may only contain letters, digits, whitespace, and _+=:#@/-,. (no parentheses), and must be at least 3 characters when set\x1aNthis == '' || this.matches('^[\\\\w+=:#@/,.-][\\\\w+=:#@/,.\\\\s-]+[\\\\w+=:#@/,.-]$')r\x03\x18\x80\x02R\vdescription:\xe6\x01\xbaH\xe2\x01\x1a\xdf\x01\n" +
 	"#cloudfront_scope_requires_us_east_1\x12~CloudFront-scoped WAF resources live in the global (us-east-1) region — set region to 'us-east-1' when scope is 'CLOUDFRONT'\x1a8this.scope != 'CLOUDFRONT' || this.region == 'us-east-1'B\xd4\x02\n" +
 	"+com.dev.planton.provider.aws.awswafipset.v1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awswafipset/v1;awswafipsetv1\xa2\x02\x05DPPAA\xaa\x02'Dev.Planton.Provider.Aws.Awswafipset.V1\xca\x02'Dev\\Planton\\Provider\\Aws\\Awswafipset\\V1\xe2\x023Dev\\Planton\\Provider\\Aws\\Awswafipset\\V1\\GPBMetadata\xea\x02,Dev::Planton::Provider::Aws::Awswafipset::V1b\x06proto3"
 

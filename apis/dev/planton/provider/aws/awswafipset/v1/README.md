@@ -65,7 +65,7 @@ spec:
   addresses:
     - 203.0.113.0/24
     - 198.51.100.44/32
-  description: Corporate office egress ranges — owned by NetEng
+  description: Corporate office egress ranges, owned by NetEng
 ```
 
 Reference it from a web ACL rule:

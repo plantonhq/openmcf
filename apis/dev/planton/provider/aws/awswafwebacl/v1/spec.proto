@@ -78,8 +78,19 @@ message AwsWafWebAclSpec {
   //   Use when most traffic should be denied (e.g., private API).
   AwsWafWebAclDefaultAction default_action = 3 [(buf.validate.field).required = true];
 
-  // Human-readable description of the Web ACL. Max 256 characters.
-  string description = 4 [(buf.validate.field).string.max_len = 256];
+  // Human-readable description of the Web ACL. AWS restricts the character
+  // set: letters, digits, whitespace, and _ + = : # @ / - , . only (notably
+  // NO parentheses), 3-256 characters — WAF rejects anything else at create
+  // time, so the constraint is enforced here where the failure is immediate
+  // and readable.
+  string description = 4 [
+    (buf.validate.field).string.max_len = 256,
+    (buf.validate.field).cel = {
+      id: "description_charset"
+      message: "description may only contain letters, digits, whitespace, and _+=:#@/-,. (no parentheses), and must be at least 3 characters when set"
+      expression: "this == '' || this.matches('^[\\\\w+=:#@/,.-][\\\\w+=:#@/,.\\\\s-]+[\\\\w+=:#@/,.-]$')"
+    }
+  ];
 
   // ---------------------------------------------------------------------------
   // Rules
@@ -1264,10 +1275,14 @@ message AwsWafWebAclSizeConstraintStatement {
     }
   ];
 
-  // The size threshold in bytes (0 to 21,474,836,480).
-  int64 size = 2 [(buf.validate.field).int64 = {
+  // The size threshold in bytes. The provider caps this at 2,147,483,647
+  // (int32 max) even though the AWS API documents a 21,474,836,480 ceiling —
+  // the tighter bound is what a deployment can actually carry. Typed int32
+  // deliberately: protojson stringifies 64-bit integers, which would corrupt
+  // the rule-JSON document both engines build from this tree.
+  int32 size = 2 [(buf.validate.field).int32 = {
     gte: 0
-    lte: 21474836480
+    lte: 2147483647
   }];
 
   // The request component to measure.
@@ -1333,8 +1348,11 @@ message AwsWafWebAclLabelMatchStatement {
 // number (ASN) of the source address — block or rate-limit entire networks
 // or hosting providers (e.g. traffic from bulletproof-hosting ASNs).
 message AwsWafWebAclAsnMatchStatement {
-  // The ASNs to match (1–100 entries), e.g. 64496.
-  repeated int64 asn_list = 1 [
+  // The ASNs to match (1–100 entries), e.g. 64496. Typed uint32 — ASNs are
+  // 32-bit unsigned (4-byte ASNs reach 4,294,967,295), and protojson
+  // stringifies 64-bit integers, which would corrupt the rule-JSON document
+  // both engines build from this tree.
+  repeated uint32 asn_list = 1 [
     (buf.validate.field).repeated.min_items = 1,
     (buf.validate.field).repeated.max_items = 100
   ];
@@ -1706,10 +1724,12 @@ message AwsWafWebAclVisibilityConfig {
 // re-challenged.
 message AwsWafWebAclImmunityTimeConfig {
   // Immunity time in seconds. CAPTCHA: 60–259,200 (AWS default 300).
-  // Challenge: 300–259,200 (AWS default 300).
-  int64 immunity_time_sec = 1 [
+  // Challenge: 300–259,200 (AWS default 300). Typed int32 (the max fits) —
+  // protojson stringifies 64-bit integers, which would corrupt the rule-JSON
+  // document for the per-rule configs living inside the rules subtree.
+  int32 immunity_time_sec = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).int64 = {
+    (buf.validate.field).int32 = {
       gte: 60
       lte: 259200
     }
