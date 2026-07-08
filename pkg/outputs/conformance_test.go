@@ -243,6 +243,70 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpComputeInstance: flat scalar outputs from both engines (the
+			// cloud-side name, numeric id, self link the disk/instance-group
+			// consumers reference, both IPs — external empty for private
+			// VMs — status, zone, machine type, CPU platform) must each land
+			// on the StackOutputs proto.
+			name: "GcpComputeInstance",
+			kind: cloudresourcekind.CloudResourceKind_GcpComputeInstance,
+			rawOutputs: map[string]interface{}{
+				"instance_name": "pg-primary",
+				"instance_id":   "4123456789012345678",
+				"self_link":     "https://www.googleapis.com/compute/v1/projects/prod-project/zones/us-central1-a/instances/pg-primary",
+				"internal_ip":   "10.10.0.5",
+				"external_ip":   "",
+				"status":        "RUNNING",
+				"zone":          "us-central1-a",
+				"machine_type":  "n2-standard-8",
+				"cpu_platform":  "Intel Ice Lake",
+			},
+			mustPopulate: []string{
+				"instance_name", "instance_id", "self_link", "internal_ip",
+				"status", "zone", "machine_type", "cpu_platform",
+			},
+		},
+		{
+			// GcpComputeDisk: flat scalar outputs from both engines (the
+			// cloud-side name, numeric id, the self link attached_disks
+			// consume, the plain zone, size, and the normalized plain type
+			// name) must each land on the StackOutputs proto.
+			name: "GcpComputeDisk",
+			kind: cloudresourcekind.CloudResourceKind_GcpComputeDisk,
+			rawOutputs: map[string]interface{}{
+				"name":      "pg-data",
+				"disk_id":   "7123456789012345678",
+				"self_link": "https://www.googleapis.com/compute/v1/projects/prod-project/zones/us-central1-a/disks/pg-data",
+				"zone":      "us-central1-a",
+				"size_gb":   500,
+				"type":      "pd-ssd",
+			},
+			mustPopulate: []string{
+				"name", "disk_id", "self_link", "zone", "size_gb", "type",
+			},
+		},
+		{
+			// GcpFilestoreInstance: the fully qualified instance path
+			// (replication peers consume it), the short name, the share's
+			// mount addresses, the share name, timestamps, the GCP-resolved
+			// reserved range, and the concurrency ETag.
+			name: "GcpFilestoreInstance",
+			kind: cloudresourcekind.CloudResourceKind_GcpFilestoreInstance,
+			rawOutputs: map[string]interface{}{
+				"instance_id":       "projects/prod-project/locations/us-central1-a/instances/shared-nfs",
+				"instance_name":     "shared-nfs",
+				"ip_addresses":      []interface{}{"10.20.0.2"},
+				"file_share_name":   "vol1",
+				"create_time":       "2026-07-08T10:00:00Z",
+				"reserved_ip_range": "10.20.0.0/29",
+				"etag":              "abc123",
+			},
+			mustPopulate: []string{
+				"instance_id", "instance_name", "ip_addresses", "file_share_name",
+				"create_time", "reserved_ip_range", "etag",
+			},
+		},
+		{
 			// GcpBackendBucket: flat scalar outputs from both engines (the
 			// self-link URL maps reference, the cloud-side name, and the origin
 			// bucket) must each land on the StackOutputs proto.

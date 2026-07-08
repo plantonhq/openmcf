@@ -815,6 +815,12 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpvm"
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork,
+      GcpServiceAccount,
+      GcpComputeDisk
+    ]
   }];
   GcpDnsRecord = 618 [(kind_meta) = {
     provider: gcp
@@ -1107,6 +1113,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpnfs"
+    prerequisites: [GcpVpcNetwork]
   }];
   // 701–709: IAM/identity family (overflow block; the 600–622
   // foundation/security sub-band is fully allocated)
@@ -1184,6 +1191,14 @@ enum CloudResourceKind {
       GcpVpcNetwork,
       GcpSubnetwork
     ]
+  }];
+
+  // 730–739: GCP compute overflow (the 600–622 foundation sub-band that
+  // holds GcpComputeInstance is fully allocated)
+  GcpComputeDisk = 730 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpdisk"
   }];
 
   // 800–999: Kubernetes resources

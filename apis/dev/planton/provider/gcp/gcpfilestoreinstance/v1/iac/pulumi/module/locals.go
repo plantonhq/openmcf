@@ -14,16 +14,31 @@ type Locals struct {
 	GcpProviderConfig    *gcpprovider.GcpProviderConfig
 	GcpFilestoreInstance *gcpfilestoreinstancev1.GcpFilestoreInstance
 	GcpLabels            map[string]string
+	// InstanceName is the cloud-side name: spec.instance_name when set,
+	// metadata.name otherwise — the same explicit conditional as the
+	// Terraform module, so both engines derive the identical name.
+	InstanceName string
 }
 
 func initializeLocals(_ *pulumi.Context, stackInput *gcpfilestoreinstancev1.GcpFilestoreInstanceStackInput) *Locals {
 	locals := &Locals{}
 	locals.GcpFilestoreInstance = stackInput.Target
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     "true",
-		gcplabelkeys.ResourceName: locals.GcpFilestoreInstance.Spec.InstanceName,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpFilestoreInstance.String()),
+	locals.GcpProviderConfig = stackInput.ProviderConfig
+
+	locals.InstanceName = stackInput.Target.Spec.InstanceName
+	if locals.InstanceName == "" {
+		locals.InstanceName = stackInput.Target.Metadata.Name
 	}
+
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range stackInput.Target.Spec.Labels {
+		locals.GcpLabels[key] = value
+	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.InstanceName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpFilestoreInstance.String())
 
 	if locals.GcpFilestoreInstance.Metadata.Org != "" {
 		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpFilestoreInstance.Metadata.Org
@@ -35,6 +50,5 @@ func initializeLocals(_ *pulumi.Context, stackInput *gcpfilestoreinstancev1.GcpF
 		locals.GcpLabels[gcplabelkeys.ResourceId] = locals.GcpFilestoreInstance.Metadata.Id
 	}
 
-	locals.GcpProviderConfig = stackInput.ProviderConfig
 	return locals
 }

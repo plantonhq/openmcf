@@ -10,16 +10,16 @@ order: 200
 presets:
   - slug: "01-dev-basic"
     rank: "01"
-    title: "Preset: Dev Basic"
-    excerpt: "**Tier**: BASIC_SSD (single-zone SSD) **Use case**: Development, testing, CI/CD pipelines"
+    title: "Dev Basic"
+    excerpt: "The minimal working Filestore instance for development, testing, and CI: SSD-backed, on the default VPC, easy to tear down."
   - slug: "02-production-enterprise"
     rank: "02"
-    title: "Preset: Production Enterprise"
-    excerpt: "**Tier**: ENTERPRISE (regional HA) **Use case**: Production workloads requiring high availability and security"
+    title: "Production Enterprise"
+    excerpt: "The production posture: a regional tier that survives zone failures, deletion protection as the destroy guard, private-services networking, and locked-down NFS exports."
   - slug: "03-high-performance-zonal"
     rank: "03"
-    title: "Preset: High Performance Zonal"
-    excerpt: "**Tier**: ZONAL (modern SSD with IOPS tuning) **Use case**: Performance-sensitive workloads requiring high throughput"
+    title: "High Performance Zonal"
+    excerpt: "The throughput posture: the modern ZONAL tier with IOPS provisioned per terabyte, so performance scales automatically as the share grows, plus customer-managed encryption."
 ---
 
 # Filestore Instance Presets

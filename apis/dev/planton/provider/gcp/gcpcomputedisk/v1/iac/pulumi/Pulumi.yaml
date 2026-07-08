@@ -1,0 +1,4 @@
+name: gcpcomputedisk-pulumi-project
+runtime:
+  name: go
+description: Planton GcpComputeDisk Pulumi module

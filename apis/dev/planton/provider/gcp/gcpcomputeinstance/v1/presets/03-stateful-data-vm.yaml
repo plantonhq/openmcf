@@ -1,0 +1,40 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpComputeInstance
+metadata:
+  name: stateful-data-vm
+spec:
+  zone: us-central1-a # replace — the attached disk must live in this zone
+  machineType: n2-standard-4
+  bootDisk:
+    image: debian-cloud/debian-12
+    sizeGb: 50
+    type: pd-balanced
+  attachedDisks:
+    # The data lives on a first-class GcpComputeDisk with its own
+    # lifecycle — it survives this VM. Attach it by self link.
+    - source:
+        valueFrom:
+          kind: GcpComputeDisk
+          name: postgres-data # replace with your GcpComputeDisk resource
+          fieldPath: status.outputs.self_link
+      deviceName: data
+  networkInterfaces:
+    - network:
+        value: default # replace with your VPC/subnetwork references
+      # Static internal IP reserved as a GcpAddress — clients keep the
+      # same address across VM rebuilds. No external IP.
+      networkIp:
+        valueFrom:
+          kind: GcpAddress
+          name: data-vm-ip # replace with your INTERNAL GcpAddress
+          fieldPath: status.outputs.address
+  scheduling:
+    # Live-migrate during host maintenance — zero downtime for the
+    # database.
+    onHostMaintenance: MIGRATE
+  # Guards the VM object against accidental deletion. The data disk is
+  # protected by its own GcpComputeDisk configuration.
+  deletionProtection: true
+  allowStoppingForUpdate: true
+  labels:
+    env: production # replace with your cost-attribution labels

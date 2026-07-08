@@ -8,14 +8,18 @@ provider: "gcp"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-standard-production"
+  - slug: "01-dev-spot-vm"
     rank: "01"
-    title: "Standard Production VM"
-    excerpt: "This preset creates a production Compute Engine instance with an SSD boot disk, a dedicated service account, deletion protection, and no external IP (private-only networking). It follows GCP security..."
-  - slug: "02-spot-development"
+    title: "Dev Spot VM"
+    excerpt: "The cheapest way to get a full Linux machine on GCP: an `e2-medium` Spot VM booting the latest Debian 12, on the default network with an ephemeral external IP, deleted outright when GCP reclaims the..."
+  - slug: "02-hardened-web-server"
     rank: "02"
-    title: "Spot VM for Development"
-    excerpt: "This preset creates a cost-optimized Spot VM with SSH access for development and testing. Spot VMs cost 60-91% less than on-demand but can be preempted. The instance is configured to stop (not..."
+    title: "Hardened Web Server"
+    excerpt: "The production security posture for an internet-facing workload: a Shielded VM on a custom-mode subnetwork with no external IP, a dedicated least-privilege service account, OS Login instead of static..."
+  - slug: "03-stateful-data-vm"
+    rank: "03"
+    title: "Stateful Data VM"
+    excerpt: "A database-on-VM pattern where everything durable outlives the instance: data on a referenced `GcpComputeDisk`, a stable internal address from a referenced `GcpAddress`, deletion protection on the VM..."
 ---
 
 # Compute Instance Presets

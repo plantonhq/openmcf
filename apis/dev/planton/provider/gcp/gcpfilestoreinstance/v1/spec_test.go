@@ -343,19 +343,18 @@ var _ = ginkgo.Describe("GcpFilestoreInstanceSpec", func() {
 
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject missing project_id", func() {
+	ginkgo.It("should accept missing project_id (ambient project contract)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
-		gomega.Expect(err.Error()).To(gomega.ContainSubstring("project_id"))
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject missing instance_name", func() {
+	ginkgo.It("should accept empty instance_name (falls back to metadata.name)", func() {
 		msg := minimal()
 		msg.Spec.InstanceName = ""
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject instance_name starting with digit", func() {
@@ -543,6 +542,98 @@ var _ = ginkgo.Describe("GcpFilestoreInstanceSpec", func() {
 		msg.Spec.PerformanceConfig = &GcpFilestoreInstancePerformanceConfig{
 			IopsPerTb: &GcpFilestoreInstanceIopsPerTb{
 				MaxIopsPerTb: 0,
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Floor-completion fields ────────────────
+
+	ginkgo.It("should accept user labels and resource manager tags", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"env": "prod", "team": "data"}
+		msg.Spec.Tags = map[string]string{"tagKeys/123": "tagValues/456"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a file share restored from a backup", func() {
+		msg := minimal()
+		msg.Spec.FileShare.SourceBackup = "projects/my-gcp-project/locations/us-central1/backups/nightly"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept explicit network modes", func() {
+		msg := minimal()
+		msg.Spec.NetworkConfig.Modes = []string{"MODE_IPV4"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid network mode", func() {
+		msg := minimal()
+		msg.Spec.NetworkConfig.Modes = []string{"MODE_DUAL"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject duplicate network modes", func() {
+		msg := minimal()
+		msg.Spec.NetworkConfig.Modes = []string{"MODE_IPV4", "MODE_IPV4"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject more than 10 nfs export options", func() {
+		msg := minimal()
+		opts := make([]*GcpFilestoreInstanceNfsExportOption, 11)
+		for i := range opts {
+			opts[i] = &GcpFilestoreInstanceNfsExportOption{AccessMode: "READ_WRITE"}
+		}
+		msg.Spec.FileShare.NfsExportOptions = opts
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept STANDBY replication with a peer reference", func() {
+		msg := minimal()
+		msg.Spec.Tier = "ENTERPRISE"
+		msg.Spec.Location = "us-central1"
+		msg.Spec.FileShare.CapacityGb = 1024
+		msg.Spec.InitialReplication = &GcpFilestoreInstanceInitialReplication{
+			Role: "STANDBY",
+			PeerInstances: []*foreignkeyv1.StringValueOrRef{
+				{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+						ValueFrom: &foreignkeyv1.ValueFromRef{
+							Name:      "primary-nfs",
+							FieldPath: "status.outputs.instance_id",
+						},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject replication without any peer instance", func() {
+		msg := minimal()
+		msg.Spec.InitialReplication = &GcpFilestoreInstanceInitialReplication{
+			Role: "STANDBY",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid replication role", func() {
+		msg := minimal()
+		msg.Spec.InitialReplication = &GcpFilestoreInstanceInitialReplication{
+			Role: "PRIMARY",
+			PeerInstances: []*foreignkeyv1.StringValueOrRef{
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "projects/p/locations/l/instances/i"}},
 			},
 		}
 		err := validator.Validate(msg)

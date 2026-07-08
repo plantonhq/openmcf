@@ -10,6 +10,7 @@ go_library(
         "//e2e/framework/provider",
         "@com_github_pkg_errors//:errors",
         "@org_golang_google_api//alloydb/v1:alloydb",
+        "@org_golang_google_api//artifactregistry/v1:artifactregistry",
         "@org_golang_google_api//bigquery/v2:bigquery",
         "@org_golang_google_api//bigtableadmin/v2:bigtableadmin",
         "@org_golang_google_api//cloudfunctions/v2:cloudfunctions",

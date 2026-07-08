@@ -636,6 +636,34 @@ func TestGcpGcsBucket_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpgcsbucket", "terraform")
 }
 
+// GcpComputeDisk scenario: the minimal empty data volume (leaf; creates in
+// seconds). Its attachment role is proven by the compute instance chain.
+func TestGcpComputeDisk_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcomputedisk", "pulumi")
+}
+func TestGcpComputeDisk_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcomputedisk", "terraform")
+}
+
+// GcpComputeInstance scenarios: minimal (subnetwork chain + ephemeral
+// external IP) + features (Spot + shielded + SA identity + a pre-created
+// GcpComputeDisk attached by self-link reference).
+func TestGcpComputeInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcomputeinstance", "pulumi")
+}
+func TestGcpComputeInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcomputeinstance", "terraform")
+}
+
+// GcpFilestoreInstance scenario: BASIC_HDD share on the chained VPC via
+// DIRECT_PEERING (~5-12m per create — under the plan-only threshold).
+func TestGcpFilestoreInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfilestoreinstance", "pulumi")
+}
+func TestGcpFilestoreInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfilestoreinstance", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

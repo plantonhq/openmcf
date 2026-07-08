@@ -36,7 +36,12 @@ type GcpFilestoreInstanceStackOutputs struct {
 	// Name of the file share. Used to construct the NFS mount path.
 	FileShareName string `protobuf:"bytes,4,opt,name=file_share_name,json=fileShareName,proto3" json:"file_share_name,omitempty"`
 	// Timestamp when the instance was created (RFC3339 format).
-	CreateTime    string `protobuf:"bytes,5,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime string `protobuf:"bytes,5,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// The /29 CIDR block reserved for this instance on its VPC network, as
+	// resolved by GCP (also populated when the spec left it to GCP to pick).
+	ReservedIpRange string `protobuf:"bytes,6,opt,name=reserved_ip_range,json=reservedIpRange,proto3" json:"reserved_ip_range,omitempty"`
+	// Server-specified ETag guarding against conflicting concurrent updates.
+	Etag          string `protobuf:"bytes,7,opt,name=etag,proto3" json:"etag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -106,11 +111,25 @@ func (x *GcpFilestoreInstanceStackOutputs) GetCreateTime() string {
 	return ""
 }
 
+func (x *GcpFilestoreInstanceStackOutputs) GetReservedIpRange() string {
+	if x != nil {
+		return x.ReservedIpRange
+	}
+	return ""
+}
+
+func (x *GcpFilestoreInstanceStackOutputs) GetEtag() string {
+	if x != nil {
+		return x.Etag
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpfilestoreinstance_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/gcp/gcpfilestoreinstance/v1/stack_outputs.proto\x120dev.planton.provider.gcp.gcpfilestoreinstance.v1\"\xd4\x01\n" +
+	"Ddev/planton/provider/gcp/gcpfilestoreinstance/v1/stack_outputs.proto\x120dev.planton.provider.gcp.gcpfilestoreinstance.v1\"\x94\x02\n" +
 	" GcpFilestoreInstanceStackOutputs\x12\x1f\n" +
 	"\vinstance_id\x18\x01 \x01(\tR\n" +
 	"instanceId\x12#\n" +
@@ -118,7 +137,9 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_stack_outputs_proto_
 	"\fip_addresses\x18\x03 \x03(\tR\vipAddresses\x12&\n" +
 	"\x0ffile_share_name\x18\x04 \x01(\tR\rfileShareName\x12\x1f\n" +
 	"\vcreate_time\x18\x05 \x01(\tR\n" +
-	"createTimeB\x9b\x03\n" +
+	"createTime\x12*\n" +
+	"\x11reserved_ip_range\x18\x06 \x01(\tR\x0freservedIpRange\x12\x12\n" +
+	"\x04etag\x18\a \x01(\tR\x04etagB\x9b\x03\n" +
 	"4com.dev.planton.provider.gcp.gcpfilestoreinstance.v1B\x11StackOutputsProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfilestoreinstance/v1;gcpfilestoreinstancev1\xa2\x02\x05DPPGG\xaa\x020Dev.Planton.Provider.Gcp.Gcpfilestoreinstance.V1\xca\x020Dev\\Planton\\Provider\\Gcp\\Gcpfilestoreinstance\\V1\xe2\x02<Dev\\Planton\\Provider\\Gcp\\Gcpfilestoreinstance\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Gcp::Gcpfilestoreinstance::V1b\x06proto3"
 
 var (

@@ -1,6 +1,6 @@
 ---
-title: "Preset: High Performance Zonal"
-description: "**Tier**: ZONAL (modern SSD with IOPS tuning) **Use case**: Performance-sensitive workloads requiring high throughput"
+title: "High Performance Zonal"
+description: "The throughput posture: the modern ZONAL tier with IOPS provisioned per terabyte, so performance scales automatically as the share grows, plus customer-managed encryption."
 type: "preset"
 rank: "03"
 presetSlug: "03-high-performance-zonal"
@@ -11,31 +11,40 @@ icon: "package"
 order: 3
 ---
 
-# Preset: High Performance Zonal
+# High Performance Zonal
 
-**Tier**: ZONAL (modern SSD with IOPS tuning)
-**Use case**: Performance-sensitive workloads requiring high throughput
+The throughput posture: the modern ZONAL tier with IOPS provisioned per
+terabyte, so performance scales automatically as the share grows, plus
+customer-managed encryption.
 
-## What This Preset Provides
+## What this preset creates
 
-A high-performance Filestore instance optimized for throughput:
+A ZONAL instance whose `performanceConfig.iopsPerTb` ties IOPS to
+capacity — 2 TiB × 4000 IOPS/TiB = 8000 IOPS at creation, rising
+automatically with every capacity increase (capacity only ever grows).
+Data at rest is encrypted with a customer-managed key referenced from a
+`GcpKmsKey` resource.
 
-- **ZONAL tier**: modern SSD-backed storage with performance tuning support
-- **2.5 TiB capacity**: SSD-backed with room for working datasets
-- **20,000 fixed IOPS**: guaranteed IOPS regardless of capacity changes
-- **CMEK encryption**: customer-managed encryption keys for compliance
-- **PRIVATE_SERVICE_ACCESS**: secure network connectivity
+## Prerequisites
 
-## When to Use
+- A `GcpKmsKey` named `storage-cmek` that the Filestore service agent
+  can use (replace with yours, or drop `kmsKeyName` for Google-managed
+  keys).
+- A VPC network named `ml-vpc` (replace, or reference a `GcpVpcNetwork`
+  via `valueFrom`).
 
-- Media rendering and transcoding pipelines
-- EDA (Electronic Design Automation) workloads
-- Genomics and scientific computing
-- Machine learning training data staging
-- Any workload where NFS IOPS is the bottleneck
+## iopsPerTb vs. fixedIops
 
-## When NOT to Use
+`iopsPerTb` is the set-and-forget model: grow the share, get more IOPS.
+`fixedIops` pins a constant number (a multiple of 1000) regardless of
+capacity — right when the working set grows but the IOPS demand does
+not, so you stop paying for performance you don't use. They are mutually
+exclusive; the spec rejects both at once.
 
-- Archival or cold storage (use GCS or BASIC_HDD instead)
-- Workloads that don't benefit from IOPS tuning (use BASIC_SSD)
-- Multi-zone HA required (use ENTERPRISE or REGIONAL)
+## Remix ideas
+
+- Add `protocol: NFS_V4_1` — supported on ZONAL — for NFSv4.1 semantics.
+- Add `nfsExportOptions` to restrict mounts to the training subnets.
+- Need zone-failure tolerance at this performance level? Move to
+  `REGIONAL` with a region `location` — but note tier and location are
+  immutable, so that is a new instance, not an edit.

@@ -70,6 +70,19 @@ matching `pulumi/module/*.go`), confirm both sides agree on:
   (e.g. a wildcard-location search by name) while the other reads the spec field -- the
   two resolution paths diverge the moment names collide across locations or projects,
   and the data-source path silently ignores the spec contract.
+- **Optional-output exports in the Pulumi module.** Two failure modes surface only at
+  live deploy (never at `go build`, never in `pulumi preview`'s early phase):
+  (1) an `ApplyT` callback whose input type mismatches the bridged field's
+  optionality — many bridged computed attributes are `*string`/`*int` even when they
+  feel always-present, and a `func(v string)` callback panics at runtime
+  ("applier's first input parameter must be assignable from *string"); and
+  (2) chaining lazy accessors through a possibly-empty nested list
+  (`.NetworkInterfaces.Index(0).AccessConfigs().Index(0)...`) — the index panics
+  the whole program when the list is empty (e.g. a private VM with no access
+  config). Export optional nested outputs with ONE struct-slice `ApplyT` carrying
+  explicit `len(...)`/nil guards that degrade to `""`, and mirror the same
+  empty-value contract in the Terraform module with `try(..., "")` so both engines
+  export identical values for the absent case.
 - **Labels.** Same keys and values. The resource-identity labels are the
   `kuberneteslabelkeys` set (`planton.ai/resource`, `planton.ai/name`, `planton.ai/kind`,
   `planton.ai/id`, `planton.ai/organization`, `planton.ai/environment`); the kind value

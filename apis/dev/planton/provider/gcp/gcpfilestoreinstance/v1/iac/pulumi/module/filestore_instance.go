@@ -4,11 +4,46 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/filestore"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// filestoreInstance enables the Filestore API and creates the instance.
+//
+// Sharp edges, all taught by the API rather than invented here:
+//
+//   - name, location, tier, protocol, network attachment, KMS key, and
+//     replication are immutable — changing any of them replaces the
+//     instance (and its data). File share capacity grows in place but
+//     never shrinks.
+//
+//   - deletion_protection_enabled must be flipped false before a
+//     protected instance can be destroyed.
+//
+//   - connect_mode defaults to DIRECT_PEERING; PRIVATE_SERVICE_ACCESS is
+//     required for Shared VPC consumers and rides an existing
+//     service-networking connection on the VPC.
 func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpFilestoreInstance.Spec
+
+	// Enable the Filestore API — the control plane that owns instances.
+	// DisableOnDestroy stays false: tearing down one instance must never
+	// disable the API for everything else in the project.
+	fileApiArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("file.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project.
+	if spec.ProjectId.GetValue() != "" {
+		fileApiArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdFileApi, err := projects.NewService(ctx,
+		"gcpnfs-file.googleapis.com", fileApiArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable file.googleapis.com api")
+	}
 
 	// Build NFS export options for the file share.
 	var nfsExportOptions filestore.InstanceFileSharesNfsExportOptionArray
@@ -34,7 +69,7 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		nfsExportOptions = append(nfsExportOptions, exportOpt)
 	}
 
-	// Build the file share configuration (singular -- one per instance).
+	// Build the file share configuration (singular — one per instance).
 	fileShareArgs := &filestore.InstanceFileSharesArgs{
 		Name:       pulumi.String(spec.FileShare.Name),
 		CapacityGb: pulumi.Int(int(spec.FileShare.CapacityGb)),
@@ -42,11 +77,23 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 	if len(nfsExportOptions) > 0 {
 		fileShareArgs.NfsExportOptions = nfsExportOptions
 	}
+	// Restore-from-backup is create-time only; the share's capacity must
+	// cover the backup's source capacity.
+	if spec.FileShare.SourceBackup != "" {
+		fileShareArgs.SourceBackup = pulumi.StringPtr(spec.FileShare.SourceBackup)
+	}
 
-	// Build the network configuration (singular -- one per instance).
+	// Build the network configuration (singular — one per instance).
+	// Empty modes follow the spec's documented default: IPv4 service.
+	modes := pulumi.StringArray{}
+	if len(spec.NetworkConfig.Modes) > 0 {
+		modes = pulumi.ToStringArray(spec.NetworkConfig.Modes)
+	} else {
+		modes = pulumi.StringArray{pulumi.String("MODE_IPV4")}
+	}
 	networkArgs := &filestore.InstanceNetworkArgs{
 		Network: pulumi.String(spec.NetworkConfig.Network.GetValue()),
-		Modes:   pulumi.StringArray{pulumi.String("MODE_IPV4")},
+		Modes:   modes,
 	}
 	if spec.NetworkConfig.ConnectMode != "" {
 		networkArgs.ConnectMode = pulumi.StringPtr(spec.NetworkConfig.ConnectMode)
@@ -56,39 +103,40 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 	}
 
 	args := &filestore.InstanceArgs{
-		Name:       pulumi.String(spec.InstanceName),
-		Project:    pulumi.StringPtr(spec.ProjectId.GetValue()),
+		Name:       pulumi.String(locals.InstanceName),
 		Location:   pulumi.StringPtr(spec.Location),
 		Tier:       pulumi.String(spec.Tier),
 		FileShares: fileShareArgs,
 		Networks:   filestore.InstanceNetworkArray{networkArgs},
 		Labels:     pulumi.ToStringMap(locals.GcpLabels),
+		// PARITY: the bridged provider ships a client-side deletion_policy
+		// flag that the released Terraform line does not have. Pinning it
+		// to DELETE keeps destroy semantics identical on both engines
+		// (deletion_protection_enabled remains the real guard).
+		DeletionPolicy: pulumi.StringPtr("DELETE"),
 	}
 
-	// Description.
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
 	if spec.Description != "" {
 		args.Description = pulumi.StringPtr(spec.Description)
 	}
-
-	// NFS protocol version.
 	if spec.Protocol != "" {
 		args.Protocol = pulumi.StringPtr(spec.Protocol)
 	}
-
-	// CMEK encryption.
-	if spec.KmsKeyName != nil && spec.KmsKeyName.GetValue() != "" {
+	if spec.KmsKeyName.GetValue() != "" {
 		args.KmsKeyName = pulumi.StringPtr(spec.KmsKeyName.GetValue())
 	}
-
-	// Deletion protection.
-	if spec.DeletionProtectionEnabled {
-		args.DeletionProtectionEnabled = pulumi.BoolPtr(true)
-	}
+	args.DeletionProtectionEnabled = pulumi.BoolPtr(spec.DeletionProtectionEnabled)
 	if spec.DeletionProtectionReason != "" {
 		args.DeletionProtectionReason = pulumi.StringPtr(spec.DeletionProtectionReason)
 	}
+	if len(spec.Tags) > 0 {
+		args.Tags = pulumi.ToStringMap(spec.Tags)
+	}
 
-	// Performance configuration.
+	// IOPS tuning (ZONAL/REGIONAL/ENTERPRISE tiers).
 	if spec.PerformanceConfig != nil {
 		perfArgs := &filestore.InstancePerformanceConfigArgs{}
 		if spec.PerformanceConfig.FixedIops != nil {
@@ -104,18 +152,45 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		args.PerformanceConfig = perfArgs
 	}
 
-	createdInstance, err := filestore.NewInstance(ctx, "filestore-instance", args, pulumi.Provider(gcpProvider))
+	// Create-time replication: this instance joins as ACTIVE source or
+	// STANDBY replica of the referenced peers. Backups cannot be taken
+	// from a STANDBY replica.
+	if spec.InitialReplication != nil {
+		replicas := filestore.InstanceInitialReplicationReplicaArray{}
+		for _, peer := range spec.InitialReplication.PeerInstances {
+			replicas = append(replicas, &filestore.InstanceInitialReplicationReplicaArgs{
+				PeerInstance: pulumi.String(peer.GetValue()),
+			})
+		}
+		replicationArgs := &filestore.InstanceInitialReplicationArgs{
+			Replicas: replicas,
+		}
+		if spec.InitialReplication.Role != "" {
+			replicationArgs.Role = pulumi.StringPtr(spec.InitialReplication.Role)
+		}
+		args.InitialReplication = replicationArgs
+	}
+
+	createdInstance, err := filestore.NewInstance(ctx,
+		"filestore-instance",
+		args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdFileApi}),
+	)
 	if err != nil {
 		return errors.Wrap(err, "failed to create filestore instance")
 	}
 
-	// Export outputs.
+	// Semantic outputs — names and shapes byte-identical to the Terraform
+	// module's outputs.
 	ctx.Export(OpInstanceId, createdInstance.ID())
 	ctx.Export(OpInstanceName, createdInstance.Name)
 	ctx.Export(OpFileShareName, pulumi.String(spec.FileShare.Name))
 	ctx.Export(OpCreateTime, createdInstance.CreateTime)
+	ctx.Export(OpEtag, createdInstance.Etag)
 
-	// Extract IP addresses from the first (only) network.
+	// Extract addresses and the GCP-resolved reserved range from the
+	// first (only) network.
 	ipAddresses := createdInstance.Networks.ApplyT(func(networks []filestore.InstanceNetwork) []string {
 		if len(networks) > 0 && len(networks[0].IpAddresses) > 0 {
 			return networks[0].IpAddresses
@@ -123,6 +198,14 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		return []string{}
 	}).(pulumi.StringArrayOutput)
 	ctx.Export(OpIpAddresses, ipAddresses)
+
+	reservedIpRange := createdInstance.Networks.ApplyT(func(networks []filestore.InstanceNetwork) string {
+		if len(networks) > 0 && networks[0].ReservedIpRange != nil {
+			return *networks[0].ReservedIpRange
+		}
+		return ""
+	}).(pulumi.StringOutput)
+	ctx.Export(OpReservedIpRange, reservedIpRange)
 
 	return nil
 }

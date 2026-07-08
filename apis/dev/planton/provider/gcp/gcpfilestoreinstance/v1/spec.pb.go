@@ -148,8 +148,13 @@ type GcpFilestoreInstanceFileShare struct {
 	// Maximum 10 export options per file share.
 	// If empty, all clients are allowed with READ_WRITE access and NO_ROOT_SQUASH.
 	NfsExportOptions []*GcpFilestoreInstanceNfsExportOption `protobuf:"bytes,3,rep,name=nfs_export_options,json=nfsExportOptions,proto3" json:"nfs_export_options,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Restore this file share from an existing Filestore backup, in the
+	// format projects/{project}/locations/{location}/backups/{backup}.
+	// The share's capacity must be at least the backup's source capacity.
+	// Create-time only.
+	SourceBackup  string `protobuf:"bytes,4,opt,name=source_backup,json=sourceBackup,proto3" json:"source_backup,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpFilestoreInstanceFileShare) Reset() {
@@ -203,6 +208,13 @@ func (x *GcpFilestoreInstanceFileShare) GetNfsExportOptions() []*GcpFilestoreIns
 	return nil
 }
 
+func (x *GcpFilestoreInstanceFileShare) GetSourceBackup() string {
+	if x != nil {
+		return x.SourceBackup
+	}
+	return ""
+}
+
 // GcpFilestoreInstanceNetworkConfig defines the VPC network configuration
 // for a Filestore instance. Each instance connects to exactly one VPC network.
 //
@@ -210,7 +222,10 @@ func (x *GcpFilestoreInstanceFileShare) GetNfsExportOptions() []*GcpFilestoreIns
 // replacing the instance.
 type GcpFilestoreInstanceNetworkConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// VPC network to which the Filestore instance is connected.
+	// VPC network to which the Filestore instance is connected, as the
+	// network NAME (e.g. "prod-vpc") — the Filestore API rejects self-link
+	// URLs for same-project networks, so the reference resolves the
+	// GcpVpcNetwork's plain name output.
 	// Immutable after creation.
 	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
 	// Network connection mode.
@@ -227,8 +242,12 @@ type GcpFilestoreInstanceNetworkConfig struct {
 	// If not specified, GCP automatically selects an unused range.
 	// Immutable after creation.
 	ReservedIpRange string `protobuf:"bytes,3,opt,name=reserved_ip_range,json=reservedIpRange,proto3" json:"reserved_ip_range,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// IP address versions the instance serves. Values: "MODE_IPV4",
+	// "MODE_IPV6". When empty, ["MODE_IPV4"] is used — the standard NFS
+	// posture. Immutable after creation.
+	Modes         []string `protobuf:"bytes,4,rep,name=modes,proto3" json:"modes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpFilestoreInstanceNetworkConfig) Reset() {
@@ -280,6 +299,13 @@ func (x *GcpFilestoreInstanceNetworkConfig) GetReservedIpRange() string {
 		return x.ReservedIpRange
 	}
 	return ""
+}
+
+func (x *GcpFilestoreInstanceNetworkConfig) GetModes() []string {
+	if x != nil {
+		return x.Modes
+	}
+	return nil
 }
 
 // GcpFilestoreInstanceFixedIops configures a fixed IOPS provisioning model
@@ -471,12 +497,15 @@ func (x *GcpFilestoreInstancePerformanceConfig) GetIopsPerTb() *GcpFilestoreInst
 //   - NFS export options can be updated after creation.
 type GcpFilestoreInstanceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GCP project where the Filestore instance will be created.
+	// The GCP project where the Filestore instance is created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
+	// Immutable after creation.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the Filestore instance. This becomes the GCP resource name.
 	// Must start with a lowercase letter, contain only lowercase letters, numbers,
-	// and hyphens, and be 1-63 characters long.
-	// Immutable after creation.
+	// and hyphens, and be 2-63 characters long. When omitted, metadata.name
+	// is used. Immutable after creation.
 	InstanceName string `protobuf:"bytes,2,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
 	// Location where the instance will be deployed.
 	// For BASIC_HDD, BASIC_SSD, STANDARD, PREMIUM, HIGH_SCALE_SSD, and ZONAL
@@ -521,8 +550,19 @@ type GcpFilestoreInstanceSpec struct {
 	// Available on ZONAL, REGIONAL, and ENTERPRISE tiers.
 	// If not specified, the instance uses the default performance for its tier.
 	PerformanceConfig *GcpFilestoreInstancePerformanceConfig `protobuf:"bytes,12,opt,name=performance_config,json=performanceConfig,proto3" json:"performance_config,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Cross-instance replication established at create time: this instance
+	// becomes the STANDBY replica of an existing ACTIVE peer (the common
+	// DR posture). Create-time only.
+	InitialReplication *GcpFilestoreInstanceInitialReplication `protobuf:"bytes,13,opt,name=initial_replication,json=initialReplication,proto3" json:"initial_replication,omitempty"`
+	// User labels merged with Planton attribution labels (which win on key
+	// conflicts). Keys and values must match GCP label constraints.
+	Labels map[string]string `protobuf:"bytes,14,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Resource Manager tags bound to the instance for org-policy and IAM
+	// conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+	// Create-time only.
+	Tags          map[string]string `protobuf:"bytes,15,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpFilestoreInstanceSpec) Reset() {
@@ -639,6 +679,91 @@ func (x *GcpFilestoreInstanceSpec) GetPerformanceConfig() *GcpFilestoreInstanceP
 	return nil
 }
 
+func (x *GcpFilestoreInstanceSpec) GetInitialReplication() *GcpFilestoreInstanceInitialReplication {
+	if x != nil {
+		return x.InitialReplication
+	}
+	return nil
+}
+
+func (x *GcpFilestoreInstanceSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpFilestoreInstanceSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// GcpFilestoreInstanceInitialReplication configures create-time
+// cross-instance replication. Backups cannot be taken from a STANDBY
+// replica, and the peer relationship is fixed at create time.
+type GcpFilestoreInstanceInitialReplication struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Replication role of THIS instance:
+	//
+	//	""        -- same as "STANDBY" (GCP default; this instance receives
+	//	             replication from the peer)
+	//	"STANDBY" -- this instance is the read-only replica
+	//	"ACTIVE"  -- this instance is the replication source
+	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	// Peer Filestore instances in the replication relationship, each as a
+	// reference to a GcpFilestoreInstance (or a literal full resource path
+	// projects/{project}/locations/{location}/instances/{instance}).
+	PeerInstances []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=peer_instances,json=peerInstances,proto3" json:"peer_instances,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpFilestoreInstanceInitialReplication) Reset() {
+	*x = GcpFilestoreInstanceInitialReplication{}
+	mi := &file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpFilestoreInstanceInitialReplication) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpFilestoreInstanceInitialReplication) ProtoMessage() {}
+
+func (x *GcpFilestoreInstanceInitialReplication) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpFilestoreInstanceInitialReplication.ProtoReflect.Descriptor instead.
+func (*GcpFilestoreInstanceInitialReplication) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GcpFilestoreInstanceInitialReplication) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *GcpFilestoreInstanceInitialReplication) GetPeerInstances() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.PeerInstances
+	}
+	return nil
+}
+
 var File_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc = "" +
@@ -655,17 +780,20 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc =
 	"\banon_uid\x18\x04 \x01(\x05H\x00R\aanonUid\x88\x01\x01\x12\x1e\n" +
 	"\banon_gid\x18\x05 \x01(\x05H\x01R\aanonGid\x88\x01\x01B\v\n" +
 	"\t_anon_uidB\v\n" +
-	"\t_anon_gid\"\x91\x02\n" +
+	"\t_anon_gid\"\xc0\x02\n" +
 	"\x1dGcpFilestoreInstanceFileShare\x12<\n" +
 	"\x04name\x18\x01 \x01(\tB(\xbaH%\xc8\x01\x01r \x18\x102\x1c^[a-zA-Z][a-zA-Z0-9_]{0,15}$R\x04name\x12,\n" +
 	"\vcapacity_gb\x18\x02 \x01(\x05B\v\xbaH\b\xc8\x01\x01\x1a\x03(\x80\bR\n" +
-	"capacityGb\x12\x83\x01\n" +
-	"\x12nfs_export_options\x18\x03 \x03(\v2U.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNfsExportOptionR\x10nfsExportOptions\"\xcf\x03\n" +
-	"!GcpFilestoreInstanceNetworkConfig\x12}\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\xfe\x01\n" +
+	"capacityGb\x12\x8d\x01\n" +
+	"\x12nfs_export_options\x18\x03 \x03(\v2U.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNfsExportOptionB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\x10nfsExportOptions\x12#\n" +
+	"\rsource_backup\x18\x04 \x01(\tR\fsourceBackup\"\x86\x04\n" +
+	"!GcpFilestoreInstanceNetworkConfig\x12x\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x1bstatus.outputs.network_nameR\anetwork\x12\xfe\x01\n" +
 	"\fconnect_mode\x18\x02 \x01(\tB\xda\x01\xbaH\xd6\x01\xba\x01\xd2\x01\n" +
 	"\x18connect_mode_valid_value\x12Wconnect_mode must be DIRECT_PEERING, PRIVATE_SERVICE_ACCESS, or PRIVATE_SERVICE_CONNECT\x1a]this == '' || this in ['DIRECT_PEERING', 'PRIVATE_SERVICE_ACCESS', 'PRIVATE_SERVICE_CONNECT']R\vconnectMode\x12*\n" +
-	"\x11reserved_ip_range\x18\x03 \x01(\tR\x0freservedIpRange\"G\n" +
+	"\x11reserved_ip_range\x18\x03 \x01(\tR\x0freservedIpRange\x12:\n" +
+	"\x05modes\x18\x04 \x03(\tB$\xbaH!\x92\x01\x1e\x10\x02\x18\x01\"\x18r\x16R\tMODE_IPV4R\tMODE_IPV6R\x05modes\"G\n" +
 	"\x1dGcpFilestoreInstanceFixedIops\x12&\n" +
 	"\bmax_iops\x18\x01 \x01(\x05B\v\xbaH\b\xc8\x01\x01\x1a\x03(\xe8\aR\amaxIops\"R\n" +
 	"\x1dGcpFilestoreInstanceIopsPerTb\x121\n" +
@@ -675,11 +803,12 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc =
 	"\n" +
 	"fixed_iops\x18\x01 \x01(\v2O.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFixedIopsR\tfixedIops\x12o\n" +
 	"\viops_per_tb\x18\x02 \x01(\v2O.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceIopsPerTbR\tiopsPerTb:\x9e\x01\xbaH\x9a\x01\x1a\x97\x01\n" +
-	"#performance_config_mutual_exclusion\x12?fixed_iops and iops_per_tb are mutually exclusive; set only one\x1a/!has(this.fixed_iops) || !has(this.iops_per_tb)\"\xac\t\n" +
-	"\x18GcpFilestoreInstanceSpec\x12{\n" +
+	"#performance_config_mutual_exclusion\x12?fixed_iops and iops_per_tb are mutually exclusive; set only one\x1a/!has(this.fixed_iops) || !has(this.iops_per_tb)\"\xc0\x0e\n" +
+	"\x18GcpFilestoreInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
-	"\rinstance_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x02\x18?2\x1e^[a-z][a-z0-9-]{0,61}[a-z0-9]$R\finstanceName\x12\"\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x90\x02\n" +
+	"\rinstance_name\x18\x02 \x01(\tB\xea\x01\xbaH\xe6\x01\xba\x01\xe2\x01\n" +
+	"\x14instance_name_format\x12\x8b\x01instance_name must be 2-63 characters of lowercase letters, numbers, and hyphens, starting with a letter and ending with a letter or number\x1a<this == '' || this.matches('^[a-z][a-z0-9-]{0,61}[a-z0-9]$')R\finstanceName\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12r\n" +
 	"\x04tier\x18\x04 \x01(\tB^\xbaH[\xc8\x01\x01rVR\bSTANDARDR\aPREMIUMR\tBASIC_HDDR\tBASIC_SSDR\x0eHIGH_SCALE_SSDR\x05ZONALR\bREGIONALR\n" +
 	"ENTERPRISER\x04tier\x12 \n" +
@@ -694,7 +823,20 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc =
 	"file_share\x18\n" +
 	" \x01(\v2O.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFileShareB\x06\xbaH\x03\xc8\x01\x01R\tfileShare\x12\x82\x01\n" +
 	"\x0enetwork_config\x18\v \x01(\v2S.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNetworkConfigB\x06\xbaH\x03\xc8\x01\x01R\rnetworkConfig\x12\x86\x01\n" +
-	"\x12performance_config\x18\f \x01(\v2W.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfigR\x11performanceConfigB\x93\x03\n" +
+	"\x12performance_config\x18\f \x01(\v2W.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfigR\x11performanceConfig\x12\x89\x01\n" +
+	"\x13initial_replication\x18\r \x01(\v2X.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceInitialReplicationR\x12initialReplication\x12n\n" +
+	"\x06labels\x18\x0e \x03(\v2V.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.LabelsEntryR\x06labels\x12h\n" +
+	"\x04tags\x18\x0f \x03(\v2T.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.TagsEntryR\x04tags\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xbf\x02\n" +
+	"&GcpFilestoreInstanceInitialReplication\x12\x8b\x01\n" +
+	"\x04role\x18\x01 \x01(\tBw\xbaHt\xba\x01q\n" +
+	"\x16valid_replication_role\x12*replication role must be ACTIVE or STANDBY\x1a+this == '' || this in ['ACTIVE', 'STANDBY']R\x04role\x12\x86\x01\n" +
+	"\x0epeer_instances\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\x05\x92\xd4a\x1astatus.outputs.instance_idR\rpeerInstancesB\x93\x03\n" +
 	"4com.dev.planton.provider.gcp.gcpfilestoreinstance.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfilestoreinstance/v1;gcpfilestoreinstancev1\xa2\x02\x05DPPGG\xaa\x020Dev.Planton.Provider.Gcp.Gcpfilestoreinstance.V1\xca\x020Dev\\Planton\\Provider\\Gcp\\Gcpfilestoreinstance\\V1\xe2\x02<Dev\\Planton\\Provider\\Gcp\\Gcpfilestoreinstance\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Gcp::Gcpfilestoreinstance::V1b\x06proto3"
 
 var (
@@ -709,32 +851,39 @@ func file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDescGZI
 	return file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_goTypes = []any{
-	(*GcpFilestoreInstanceNfsExportOption)(nil),   // 0: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNfsExportOption
-	(*GcpFilestoreInstanceFileShare)(nil),         // 1: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFileShare
-	(*GcpFilestoreInstanceNetworkConfig)(nil),     // 2: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNetworkConfig
-	(*GcpFilestoreInstanceFixedIops)(nil),         // 3: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFixedIops
-	(*GcpFilestoreInstanceIopsPerTb)(nil),         // 4: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceIopsPerTb
-	(*GcpFilestoreInstancePerformanceConfig)(nil), // 5: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfig
-	(*GcpFilestoreInstanceSpec)(nil),              // 6: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec
-	(*v1.StringValueOrRef)(nil),                   // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpFilestoreInstanceNfsExportOption)(nil),    // 0: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNfsExportOption
+	(*GcpFilestoreInstanceFileShare)(nil),          // 1: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFileShare
+	(*GcpFilestoreInstanceNetworkConfig)(nil),      // 2: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNetworkConfig
+	(*GcpFilestoreInstanceFixedIops)(nil),          // 3: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFixedIops
+	(*GcpFilestoreInstanceIopsPerTb)(nil),          // 4: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceIopsPerTb
+	(*GcpFilestoreInstancePerformanceConfig)(nil),  // 5: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfig
+	(*GcpFilestoreInstanceSpec)(nil),               // 6: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec
+	(*GcpFilestoreInstanceInitialReplication)(nil), // 7: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceInitialReplication
+	nil,                         // 8: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.LabelsEntry
+	nil,                         // 9: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_depIdxs = []int32{
-	0, // 0: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFileShare.nfs_export_options:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNfsExportOption
-	7, // 1: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNetworkConfig.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfig.fixed_iops:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFixedIops
-	4, // 3: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfig.iops_per_tb:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceIopsPerTb
-	7, // 4: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7, // 5: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 6: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.file_share:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFileShare
-	2, // 7: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.network_config:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNetworkConfig
-	5, // 8: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.performance_config:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfig
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	0,  // 0: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFileShare.nfs_export_options:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNfsExportOption
+	10, // 1: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNetworkConfig.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 2: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfig.fixed_iops:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFixedIops
+	4,  // 3: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfig.iops_per_tb:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceIopsPerTb
+	10, // 4: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 5: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 6: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.file_share:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceFileShare
+	2,  // 7: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.network_config:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNetworkConfig
+	5,  // 8: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.performance_config:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstancePerformanceConfig
+	7,  // 9: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.initial_replication:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceInitialReplication
+	8,  // 10: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.labels:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.LabelsEntry
+	9,  // 11: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.tags:type_name -> dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceSpec.TagsEntry
+	10, // 12: dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceInitialReplication.peer_instances:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_init() }
@@ -749,7 +898,7 @@ func file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

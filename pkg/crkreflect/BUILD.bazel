@@ -251,6 +251,7 @@ go_library(
         "//apis/dev/planton/provider/gcp/gcpcloudsqldatabase/v1:gcpcloudsqldatabase",
         "//apis/dev/planton/provider/gcp/gcpcloudsqluser/v1:gcpcloudsqluser",
         "//apis/dev/planton/provider/gcp/gcpcloudtasksqueue/v1:gcpcloudtasksqueue",
+        "//apis/dev/planton/provider/gcp/gcpcomputedisk/v1:gcpcomputedisk",
         "//apis/dev/planton/provider/gcp/gcpcomputeinstance/v1:gcpcomputeinstance",
         "//apis/dev/planton/provider/gcp/gcpdataprocautoscalingpolicy/v1:gcpdataprocautoscalingpolicy",
         "//apis/dev/planton/provider/gcp/gcpdataproccluster/v1:gcpdataproccluster",

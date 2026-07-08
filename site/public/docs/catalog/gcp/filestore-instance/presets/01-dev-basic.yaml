@@ -4,13 +4,17 @@ metadata:
   name: dev-nfs
 spec:
   projectId:
-    value: "<gcp-project-id>"
-  instanceName: <instance-name>
-  location: <gcp-zone>
+    value: acme-dev-project # replace with your GCP project id
+  # instanceName omitted — the instance is named after metadata.name.
+  location: us-central1-a # replace — a zone (BASIC_SSD is a zonal tier)
   tier: BASIC_SSD
   fileShare:
     name: vol1
-    capacityGb: 2560
+    capacityGb: 2560 # BASIC_SSD minimum; grows in place, never shrinks
   networkConfig:
+    # The project's default VPC over DIRECT_PEERING (the default connect
+    # mode) — the simplest working setup.
     network:
       value: default
+  labels:
+    team: platform # replace with your cost-attribution labels

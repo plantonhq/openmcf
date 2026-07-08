@@ -277,6 +277,9 @@ const (
 	// 720–729: GCP serverless overflow
 	CloudResourceKind_GcpCloudRunJob            CloudResourceKind = 720
 	CloudResourceKind_GcpServerlessVpcConnector CloudResourceKind = 721
+	// 730–739: GCP compute overflow (the 600–622 foundation sub-band that
+	// holds GcpComputeInstance is fully allocated)
+	CloudResourceKind_GcpComputeDisk CloudResourceKind = 730
 	// 800–999: Kubernetes resources
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 800
 	CloudResourceKind_KubernetesCronJob                     CloudResourceKind = 801
@@ -734,6 +737,7 @@ var (
 		715:  "GcpServiceConnectionPolicy",
 		720:  "GcpCloudRunJob",
 		721:  "GcpServerlessVpcConnector",
+		730:  "GcpComputeDisk",
 		800:  "KubernetesArgocd",
 		801:  "KubernetesCronJob",
 		802:  "KubernetesElasticsearch",
@@ -1176,6 +1180,7 @@ var (
 		"GcpServiceConnectionPolicy":              715,
 		"GcpCloudRunJob":                          720,
 		"GcpServerlessVpcConnector":               721,
+		"GcpComputeDisk":                          730,
 		"KubernetesArgocd":                        800,
 		"KubernetesCronJob":                       801,
 		"KubernetesElasticsearch":                 802,
@@ -1686,7 +1691,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xaf\x9e\x01\n" +
+	"\x02v1\x10\x01*\xe5\x9e\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1837,8 +1842,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0eGcpGkeNodePool\x10\xe5\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\x05gkenp:\x02\xdf\x04\x12%\n" +
 	"\x11GcpServiceAccount\x10\xe6\x04\x1a\r\xa2\xf7\x04\t\b\x12\x10\x01\"\x03gsa\x124\n" +
 	"\x1dGcpGkeWorkloadIdentityBinding\x10\xe7\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gkewib\x12*\n" +
-	"\x12GcpCertManagerCert\x10\xe8\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpcert\x12(\n" +
-	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpvm\x12$\n" +
+	"\x12GcpCertManagerCert\x10\xe8\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpcert\x122\n" +
+	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x19\xa2\xf7\x04\x15\b\x12\x10\x01\"\x05gcpvm:\b\xe2\x04\xe3\x04\xe6\x04\xda\x05\x12$\n" +
 	"\fGcpDnsRecord\x10\xea\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdrec\x120\n" +
 	"\x13GcpProjectIamMember\x10\xeb\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcppim:\x04\xe6\x04\xe0\x04\x12&\n" +
 	"\x0fGcpFirewallRule\x10\xec\x04\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpfwr\x12'\n" +
@@ -1883,8 +1888,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"#GcpCloudComposerUserWorkloadsSecret\x10\xa9\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpcuws:\x02\xa8\x05\x12C\n" +
 	"&GcpCloudComposerUserWorkloadsConfigMap\x10\xaa\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpcuwcm:\x02\xa8\x05\x12#\n" +
 	"\rGcpKmsKeyRing\x10\xb2\x05\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpkr\x12$\n" +
-	"\tGcpKmsKey\x10\xb3\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpkms:\x02\xb2\x05\x12+\n" +
-	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpnfs\x12.\n" +
+	"\tGcpKmsKey\x10\xb3\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpkms:\x02\xb2\x05\x12/\n" +
+	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpnfs:\x02\xe2\x04\x12.\n" +
 	"\x17GcpWorkloadIdentityPool\x10\xbd\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpwip\x12;\n" +
 	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpwipp:\x02\xbd\x05\x124\n" +
 	"\x17GcpGlobalForwardingRule\x10\xc6\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpgfr:\x04\xd9\x04\xed\x04\x12&\n" +
@@ -1897,7 +1902,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1aGcpServiceConnectionPolicy\x10\xcb\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpscp:\x04\xe2\x04\xe3\x04\x12(\n" +
 	"\x0eGcpCloudRunJob\x10\xd0\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\tcldrunjob\x12:\n" +
 	"\x19GcpServerlessVpcConnector\x10\xd1\x05\x1a\x1a\xa2\xf7\x04\x16\b\x12\x10\x01\"\n" +
-	"gcpvpcconn:\x04\xe2\x04\xe3\x04\x12(\n" +
+	"gcpvpcconn:\x04\xe2\x04\xe3\x04\x12&\n" +
+	"\x0eGcpComputeDisk\x10\xda\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdisk\x12(\n" +
 	"\x10KubernetesArgocd\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x12)\n" +
 	"\x11KubernetesCronJob\x10\xa1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8scron\x121\n" +
 	"\x17KubernetesElasticsearch\x10\xa2\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\xb6\x06\x12&\n" +

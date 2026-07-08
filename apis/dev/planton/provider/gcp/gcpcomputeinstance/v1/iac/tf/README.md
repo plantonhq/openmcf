@@ -1,255 +1,42 @@
-# GCP Compute Instance Terraform Module
+# GcpComputeInstance - Terraform Module
 
-This Terraform module deploys Google Compute Engine instances using the Planton framework.
+This Terraform/OpenTofu module provisions a Compute Engine virtual machine (`google_compute_instance`). It is the Terraform-side implementation of the Planton `GcpComputeInstance` resource kind and has feature parity with the Pulumi module.
 
 ## Overview
 
-The module creates a Compute Engine VM instance with configurable:
-- Machine type and zone
-- Boot disk (image, size, type)
-- Network interfaces with optional external IPs
-- Service account and OAuth scopes
-- Scheduling options (Spot/Preemptible VMs)
-- Labels, tags, and metadata
-- Startup scripts
-- Additional attached disks
+The module enables the Compute Engine API (`disable_on_destroy=false`) so a fresh project works first try and teardown never disables the API project-wide. The instance name falls back to `metadata.name`, user labels are merged beneath the platform attribution labels (`planton-ai_*`), and SSH keys fold into the metadata `ssh-keys` key (newline-joined) — all identically to the Pulumi module.
 
-## Usage
+**Spot is the sharp edge**: `provisioning_model = "SPOT"` requires the API's legacy preemptible flag and forbids automatic restart — both derived in locals so the spec's single switch stays honest. The boot disk honors the exactly-one-source contract (an existing disk attaches via `source`; image/snapshot create a fresh disk through `initialize_params`), attached disks are pre-existing `GcpComputeDisk` resources attached by reference, and `desired_status` starts/suspends/stops the VM in place. Updates that need a stop/restart (machine type, service account, ...) are performed only when `allow_stopping_for_update` is true.
 
-### With Planton CLI
+## Usage with Planton CLI
 
-```bash
-# Deploy using Terraform
-planton tofu apply --manifest manifest.yaml --auto-approve
-
-# Plan changes
-planton tofu plan --manifest manifest.yaml
-
-# Destroy resources
-planton tofu destroy --manifest manifest.yaml --auto-approve
+```shell
+planton tofu init --manifest ../hack/manifest.yaml --module-dir .
+planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
+planton tofu apply --manifest ../hack/manifest.yaml --module-dir . --auto-approve
+planton tofu destroy --manifest ../hack/manifest.yaml --module-dir . --auto-approve
 ```
 
-### Standalone Usage
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
 
-1. Create a `terraform.tfvars` file:
+## Module Layout
 
-```hcl
-metadata = {
-  name = "my-vm"
-}
-
-spec = {
-  project_id = {
-    value = "my-gcp-project"
-  }
-  zone         = "us-central1-a"
-  machine_type = "e2-medium"
-
-  boot_disk = {
-    image   = "debian-cloud/debian-11"
-    size_gb = 20
-    type    = "pd-ssd"
-  }
-
-  network_interfaces = [
-    {
-      network = {
-        value = "default"
-      }
-      access_configs = [
-        {
-          network_tier = "PREMIUM"
-        }
-      ]
-    }
-  ]
-}
-```
-
-2. Run Terraform:
-
-```bash
-terraform init
-terraform plan
-terraform apply
-```
-
-## Requirements
-
-| Name | Version |
-|------|---------|
-| terraform | >= 1.0 |
-| google | >= 6.0 |
-
-## Providers
-
-| Name | Version |
-|------|---------|
-| google | >= 6.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| metadata | Metadata for the resource | object | n/a | yes |
-| spec | Specification for GCP Compute Instance | object | n/a | yes |
-
-### Metadata Object
-
-| Name | Description | Type | Required |
-|------|-------------|------|:--------:|
-| name | Instance name | string | yes |
-| id | Resource ID | string | no |
-| org | Organization | string | no |
-| env | Environment | string | no |
-| labels | Additional labels | map(string) | no |
-| tags | Additional tags | list(string) | no |
-
-### Spec Object
-
-| Name | Description | Type | Required |
-|------|-------------|------|:--------:|
-| project_id | GCP project ID (StringValueOrRef) | object | yes |
-| zone | Deployment zone | string | yes |
-| machine_type | Machine type | string | yes |
-| boot_disk | Boot disk configuration | object | yes |
-| network_interfaces | Network interface configurations | list(object) | yes |
-| attached_disks | Additional disks | list(object) | no |
-| service_account | Service account configuration | object | no |
-| preemptible | Use preemptible VM | bool | no |
-| spot | Use Spot VM | bool | no |
-| deletion_protection | Enable deletion protection | bool | no |
-| metadata | Custom metadata | map(string) | no |
-| labels | Instance labels | map(string) | no |
-| tags | Network tags | list(string) | no |
-| ssh_keys | SSH keys | list(string) | no |
-| startup_script | Startup script | string | no |
-| allow_stopping_for_update | Allow stopping for updates | bool | no |
-| scheduling | Scheduling configuration | object | no |
+- `provider.tf` — google provider pin (`~> 6.0`; all fields GA on the released line)
+- `variables.tf` — the converter-contract `metadata`/`spec` variables
+- `locals.tf` — ambient-project fallback, `instance_name` fallback to `metadata.name`, label merge, ssh-keys fold, Spot derivation (`preemptible` + `automatic_restart`)
+- `main.tf` — API enablement + the instance (boot disk, attached/scratch disks, NICs, scheduling, shielded/confidential, GPUs, reservation affinity)
+- `outputs.tf` — `instance_name`, `instance_id`, `self_link`, `internal_ip`, `external_ip`, `status`, `zone`, `machine_type`, `cpu_platform`
 
 ## Outputs
 
-| Name | Description |
-|------|-------------|
-| instance_name | Name of the instance |
-| instance_id | Unique instance ID |
-| self_link | Full self-link URL |
-| internal_ip | Internal (private) IP |
-| external_ip | External (public) IP |
-| status | Instance status |
-| zone | Deployment zone |
-| machine_type | Machine type |
-| cpu_platform | CPU platform |
-
-## Examples
-
-### Basic Instance
-
-```hcl
-metadata = {
-  name = "basic-vm"
-}
-
-spec = {
-  project_id = { value = "my-project" }
-  zone       = "us-central1-a"
-  machine_type = "e2-micro"
-  
-  boot_disk = {
-    image = "debian-cloud/debian-11"
-  }
-  
-  network_interfaces = [
-    { network = { value = "default" } }
-  ]
-}
-```
-
-### Spot VM
-
-```hcl
-metadata = {
-  name = "spot-vm"
-}
-
-spec = {
-  project_id   = { value = "my-project" }
-  zone         = "us-central1-a"
-  machine_type = "e2-standard-4"
-  spot         = true
-  
-  boot_disk = {
-    image = "debian-cloud/debian-11"
-  }
-  
-  network_interfaces = [
-    { network = { value = "default" } }
-  ]
-  
-  scheduling = {
-    preemptible                 = true
-    automatic_restart           = false
-    on_host_maintenance         = "TERMINATE"
-    provisioning_model          = "SPOT"
-    instance_termination_action = "STOP"
-  }
-}
-```
-
-### Production Instance
-
-```hcl
-metadata = {
-  name = "prod-server"
-  org  = "my-org"
-  env  = "production"
-}
-
-spec = {
-  project_id   = { value = "prod-project" }
-  zone         = "us-central1-a"
-  machine_type = "n2-standard-4"
-  
-  boot_disk = {
-    image   = "debian-cloud/debian-11"
-    size_gb = 100
-    type    = "pd-ssd"
-  }
-  
-  network_interfaces = [
-    {
-      network    = { value = "projects/prod-project/global/networks/prod-vpc" }
-      subnetwork = { value = "projects/prod-project/regions/us-central1/subnetworks/prod-subnet" }
-      access_configs = [
-        { network_tier = "PREMIUM" }
-      ]
-    }
-  ]
-  
-  service_account = {
-    email  = "prod-sa@prod-project.iam.gserviceaccount.com"
-    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
-  }
-  
-  deletion_protection       = true
-  allow_stopping_for_update = true
-  
-  labels = {
-    app  = "webserver"
-    team = "platform"
-  }
-  
-  tags = ["web-server", "https-server"]
-  
-  metadata = {
-    enable-oslogin = "TRUE"
-  }
-}
-```
-
-## Notes
-
-- **StringValueOrRef**: Currently only literal values are supported. Reference resolution (value_from) is planned for a future release.
-- **Service Account**: If not specified, the default Compute Engine service account is used.
-- **External IP**: To create an instance without external IP, provide an empty `access_configs` array.
-- **Spot VMs**: When using Spot VMs, `automatic_restart` must be false and `on_host_maintenance` must be "TERMINATE".
+| Output | Description |
+|--------|-------------|
+| `instance_name` | Name of the instance |
+| `instance_id` | Server-assigned unique numeric identifier |
+| `self_link` | API self link |
+| `internal_ip` | Primary internal IP (first interface) |
+| `external_ip` | External IP of the first interface; `""` when the VM is private |
+| `status` | Current status (RUNNING, TERMINATED, ...) |
+| `zone` | Zone of the instance |
+| `machine_type` | Machine type |
+| `cpu_platform` | CPU platform the instance landed on |
