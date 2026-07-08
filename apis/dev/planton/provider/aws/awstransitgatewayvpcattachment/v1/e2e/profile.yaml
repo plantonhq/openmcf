@@ -8,25 +8,13 @@ spec:
   # scenario attaches two AZs with appliance mode and pinned-off
   # default-table membership. Verification is
   # DescribeTransitGatewayVpcAttachments keyed on the attachment ID,
-  # state-aware (deleting/deleted count as absent). Expected lane time:
-  # ~8-12 min per engine including the fixture chain (attachment create
-  # ~2-5 min, delete ~2-5 min).
-  #
-  # deferred: both engines validated offline only this session -- spec/CEL
-  # tests, generator-owned contract + drift guard, outputs conformance,
-  # tofu init + validate, Pulumi module + entrypoint compile -- because no
-  # usable AWS credentials were reachable on the ambient chain
-  # (InvalidClientTokenId; the e2e SSO session had expired). The scenario,
-  # prerequisite fixture, and verifier are live-ready; flip to green after
-  # the first full deploy -> verify -> destroy run on both provisioners.
+  # state-aware (deleting/deleted count as absent).
+  # Live dual-engine run 2026-07-08 (incl. the TGW + VPC -> two-AZ subnet
+  # fixture chain): Pulumi ~8m11s / Terraform 7m45s (deploy 1m59s, destroy
+  # 1m08s); zero-orphan sweep clean.
   tier: 1
-  status: deferred
+  status: green
   validated_provisioners:
     - pulumi
     - terraform
   timeout_minutes: 30
-  deferred_reason: >-
-    No usable AWS credentials on the ambient chain at session time
-    (InvalidClientTokenId / expired SSO token). Offline gate fully green;
-    artifacts live-ready -- run with AWS_PROFILE=planton-aws-e2e after
-    aws sso login.

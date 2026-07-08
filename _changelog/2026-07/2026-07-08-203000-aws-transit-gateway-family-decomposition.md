@@ -35,7 +35,7 @@ The Transit Gateway surface grows from one bundled kind to a composable three-ki
 - Three state-aware verifiers on the EC2 SDK (deleting/deleted lifecycle states count as absent; typed NotFound codes mirror the provider's finders).
 - Gateway and attachment prerequisite fixtures ship in the SEGMENTED posture (default-table dials off) so consumer lanes fully control route-table membership.
 - The route-table scenario proves the isolated-domain story: explicit association + propagation + attachment-forwarded static route + blackhole.
-- Live lanes are recorded as deferred in the three profiles (no usable AWS credentials on the ambient chain at session time); the artifacts are live-ready and re-runnable.
+- **Live dual-engine E2E 6/6 green** (2026-07-08): gateway ~4m17s/4m44s; attachment ~8m11s/7m45s incl. the TGW + VPC -> two-AZ subnet fixture chain; route table ~10m11s/10m58s incl. the composed attachment chain, proving association + propagation + static route + blackhole live. Zero-orphan sweep clean (no non-deleted gateways, attachments, route tables, or fixture VPCs remain; tagging-index residue verified stale, not live).
 
 ## Breaking Changes
 

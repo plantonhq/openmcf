@@ -13,28 +13,19 @@ spec:
   # stack, which the harness destroys before the attachment and gateway
   # fixtures. Verification is DescribeTransitGatewayRouteTables keyed on
   # the table ID, state-aware (deleting/deleted count as absent).
-  # Expected lane time: ~10-13 min per engine including the fixture chain
-  # (table + members create/delete in seconds-to-a-minute each).
   #
   # Deliberately not in the live lane: a prefix_list_references entry --
   # it needs a managed prefix list, which no catalog kind provisions yet;
   # the fold is proven by spec tests and the offline contract gate.
   #
-  # deferred: both engines validated offline only this session -- spec/CEL
-  # tests, generator-owned contract + drift guard, outputs conformance,
-  # tofu init + validate, Pulumi module + entrypoint compile -- because no
-  # usable AWS credentials were reachable on the ambient chain
-  # (InvalidClientTokenId; the e2e SSO session had expired). The scenario
-  # and verifier are live-ready; flip to green after the first full
-  # deploy -> verify -> destroy run on both provisioners.
+  # Live dual-engine run 2026-07-08 (incl. the TGW -> attachment -> VPC ->
+  # subnet fixture chain; the composed lane proved association +
+  # propagation + static route + blackhole live): Pulumi ~10m11s /
+  # Terraform 10m58s (deploy 1m12s, destroy 1m14s); zero-orphan sweep
+  # clean.
   tier: 1
-  status: deferred
+  status: green
   validated_provisioners:
     - pulumi
     - terraform
-  timeout_minutes: 30
-  deferred_reason: >-
-    No usable AWS credentials on the ambient chain at session time
-    (InvalidClientTokenId / expired SSO token). Offline gate fully green;
-    artifacts live-ready -- run with AWS_PROFILE=planton-aws-e2e after
-    aws sso login.
+  timeout_minutes: 40

@@ -10,23 +10,11 @@ spec:
   # false, SG referencing, and a TGW Connect CIDR block. Verification is
   # DescribeTransitGateways keyed on the gateway ID, state-aware
   # (deleting/deleted count as absent -- the NAT-gateway lifecycle class).
-  # Expected lane time: ~3-5 min per engine (create ~2 min, delete ~2 min).
-  #
-  # deferred: both engines validated offline only this session -- spec/CEL
-  # tests, generator-owned contract + drift guard, outputs conformance,
-  # tofu init + validate, Pulumi module + entrypoint compile -- because no
-  # usable AWS credentials were reachable on the ambient chain
-  # (InvalidClientTokenId; the e2e SSO session had expired). The scenario,
-  # prerequisite fixture, and verifier are live-ready; flip to green after
-  # the first full deploy -> verify -> destroy run on both provisioners.
+  # Live dual-engine run 2026-07-08: Pulumi ~4m17s / Terraform 4m44s
+  # (deploy 1m26s, destroy 3m16s); zero-orphan sweep clean.
   tier: 1
-  status: deferred
+  status: green
   validated_provisioners:
     - pulumi
     - terraform
   timeout_minutes: 25
-  deferred_reason: >-
-    No usable AWS credentials on the ambient chain at session time
-    (InvalidClientTokenId / expired SSO token). Offline gate fully green;
-    artifacts live-ready -- run with AWS_PROFILE=planton-aws-e2e after
-    aws sso login.
