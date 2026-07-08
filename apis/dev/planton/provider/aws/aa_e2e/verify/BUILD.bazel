@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "acm_certificate.go",
         "autoscaling_group.go",
+        "batch.go",
         "cloudfront_distribution.go",
         "cloudwatch_alarm.go",
         "cloudwatch_composite_alarm.go",
@@ -81,6 +82,8 @@ go_library(
         "@com_github_aws_aws_sdk_go_v2_service_apigatewayv2//:apigatewayv2",
         "@com_github_aws_aws_sdk_go_v2_service_apigatewayv2//types",
         "@com_github_aws_aws_sdk_go_v2_service_autoscaling//:autoscaling",
+        "@com_github_aws_aws_sdk_go_v2_service_batch//:batch",
+        "@com_github_aws_aws_sdk_go_v2_service_batch//types",
         "@com_github_aws_aws_sdk_go_v2_service_cloudfront//:cloudfront",
         "@com_github_aws_aws_sdk_go_v2_service_cloudfront//types",
         "@com_github_aws_aws_sdk_go_v2_service_cloudwatch//:cloudwatch",

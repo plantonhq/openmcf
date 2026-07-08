@@ -144,6 +144,13 @@ var migratedKinds = []string{
 	"AwsWafWebAcl",
 	"AwsWafIpSet",
 	"AwsWafRegexPatternSet",
+	// Batch family: the compute environment migrated off its legacy
+	// hand-written contract; the job queue, scheduling policy, and job
+	// definition generator-owned from the day they were forged.
+	"AwsBatchComputeEnvironment",
+	"AwsBatchJobQueue",
+	"AwsBatchSchedulingPolicy",
+	"AwsBatchJobDefinition",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

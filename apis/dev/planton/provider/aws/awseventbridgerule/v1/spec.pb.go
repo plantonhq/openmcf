@@ -753,12 +753,18 @@ func (x *AwsEventBridgeTargetHttpConfig) GetHeaderParameters() map[string]string
 }
 
 // AwsEventBridgeTargetBatchConfig provides AWS Batch parameters for targets
-// pointing to Batch job queues.
+// pointing to Batch job queues. The target's `arn` is the JOB QUEUE
+// (an AwsBatchJobQueue's job_queue_arn output); the job definition each
+// event submits lives here.
 type AwsEventBridgeTargetBatchConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Batch job definition (name, name:revision, or ARN) each matched
-	// event submits.
-	JobDefinition string `protobuf:"bytes,1,opt,name=job_definition,json=jobDefinition,proto3" json:"job_definition,omitempty"`
+	// The Batch job definition each matched event submits. Accepts a
+	// reference to an AwsBatchJobDefinition resource (its revision-carrying
+	// ARN output, so a new revision rolls the rule's submissions) or a
+	// literal value -- a bare name or name:revision literal tracks the
+	// name's latest ACTIVE revision on the Batch side instead of pinning
+	// one.
+	JobDefinition *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=job_definition,json=jobDefinition,proto3" json:"job_definition,omitempty"`
 	// Name assigned to the submitted jobs (visible in the Batch console and
 	// APIs). Maximum 128 characters.
 	JobName string `protobuf:"bytes,2,opt,name=job_name,json=jobName,proto3" json:"job_name,omitempty"`
@@ -802,11 +808,11 @@ func (*AwsEventBridgeTargetBatchConfig) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *AwsEventBridgeTargetBatchConfig) GetJobDefinition() string {
+func (x *AwsEventBridgeTargetBatchConfig) GetJobDefinition() *v1.StringValueOrRef {
 	if x != nil {
 		return x.JobDefinition
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsEventBridgeTargetBatchConfig) GetJobName() string {
@@ -1311,9 +1317,9 @@ const file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_rawDesc = "
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aC\n" +
 	"\x15HeaderParametersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd7\x01\n" +
-	"\x1fAwsEventBridgeTargetBatchConfig\x12-\n" +
-	"\x0ejob_definition\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rjobDefinition\x12&\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb6\x02\n" +
+	"\x1fAwsEventBridgeTargetBatchConfig\x12\x8b\x01\n" +
+	"\x0ejob_definition\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xed\x02\x92\xd4a!status.outputs.job_definition_arnR\rjobDefinition\x12&\n" +
 	"\bjob_name\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\x01R\ajobName\x12,\n" +
 	"\n" +
 	"array_size\x18\x03 \x01(\x05B\r\xbaH\n" +
@@ -1417,18 +1423,19 @@ var file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_depIdxs = []i
 	17, // 15: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetDeadLetterConfig.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	15, // 16: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetHttpConfig.query_string_parameters:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetHttpConfig.QueryStringParametersEntry
 	16, // 17: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetHttpConfig.header_parameters:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetHttpConfig.HeaderParametersEntry
-	17, // 18: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.task_definition_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 19: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.capacity_provider_strategy:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsCapacityProviderStrategy
-	11, // 20: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.network_configuration:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsNetworkConfiguration
-	12, // 21: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.ordered_placement_strategy:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsPlacementStrategy
-	13, // 22: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.placement_constraints:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsPlacementConstraint
-	17, // 23: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsNetworkConfiguration.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 24: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsNetworkConfiguration.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	17, // 18: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetBatchConfig.job_definition:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 19: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.task_definition_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 20: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.capacity_provider_strategy:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsCapacityProviderStrategy
+	11, // 21: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.network_configuration:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsNetworkConfiguration
+	12, // 22: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.ordered_placement_strategy:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsPlacementStrategy
+	13, // 23: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetEcsConfig.placement_constraints:type_name -> dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsPlacementConstraint
+	17, // 24: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsNetworkConfiguration.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 25: dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsNetworkConfiguration.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_init() }

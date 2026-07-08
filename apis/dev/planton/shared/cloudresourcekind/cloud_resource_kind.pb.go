@@ -274,8 +274,15 @@ const (
 	CloudResourceKind_AwsSagemakerDomain CloudResourceKind = 270
 	// Containers
 	CloudResourceKind_AwsAppRunnerService CloudResourceKind = 320
-	// Batch Processing
+	// A MANAGED compute environment always launches into VPC subnets, so the
+	// subnet is a hard deploy prerequisite (security groups are required only
+	// for the Fargate types -- scenario-declared, not a registry edge).
 	CloudResourceKind_AwsBatchComputeEnvironment CloudResourceKind = 321
+	// A job queue cannot exist without at least one VALID compute environment
+	// to map onto.
+	CloudResourceKind_AwsBatchJobQueue         CloudResourceKind = 363
+	CloudResourceKind_AwsBatchSchedulingPolicy CloudResourceKind = 364
+	CloudResourceKind_AwsBatchJobDefinition    CloudResourceKind = 365
 	// CI/CD
 	CloudResourceKind_AwsCodeBuildProject CloudResourceKind = 330
 	CloudResourceKind_AwsCodePipeline     CloudResourceKind = 331
@@ -755,6 +762,9 @@ var (
 		270:  "AwsSagemakerDomain",
 		320:  "AwsAppRunnerService",
 		321:  "AwsBatchComputeEnvironment",
+		363:  "AwsBatchJobQueue",
+		364:  "AwsBatchSchedulingPolicy",
+		365:  "AwsBatchJobDefinition",
 		330:  "AwsCodeBuildProject",
 		331:  "AwsCodePipeline",
 		340:  "AwsMwaaEnvironment",
@@ -1194,6 +1204,9 @@ var (
 		"AwsSagemakerDomain":                      270,
 		"AwsAppRunnerService":                     320,
 		"AwsBatchComputeEnvironment":              321,
+		"AwsBatchJobQueue":                        363,
+		"AwsBatchSchedulingPolicy":                364,
+		"AwsBatchJobDefinition":                   365,
 		"AwsCodeBuildProject":                     330,
 		"AwsCodePipeline":                         331,
 		"AwsMwaaEnvironment":                      340,
@@ -1790,7 +1803,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*˜\x01\n" +
+	"\x02v1\x10\x01*\xe1\x9d\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1892,8 +1905,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x16AwsGlueCatalogDatabase\x10\x88\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsglue\x12,\n" +
 	"\x12AwsRedshiftCluster\x10\x89\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awsrs:\x02\x9c\x02\x12(\n" +
 	"\x12AwsSagemakerDomain\x10\x8e\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05sgmkd\x12)\n" +
-	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x121\n" +
-	"\x1aAwsBatchComputeEnvironment\x10\xc1\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsbat\x12)\n" +
+	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x125\n" +
+	"\x1aAwsBatchComputeEnvironment\x10\xc1\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsbat:\x02\x9c\x02\x12-\n" +
+	"\x10AwsBatchJobQueue\x10\xeb\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsbatjq:\x02\xc1\x02\x121\n" +
+	"\x18AwsBatchSchedulingPolicy\x10\xec\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsbatsp\x12.\n" +
+	"\x15AwsBatchJobDefinition\x10\xed\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsbatjd\x12)\n" +
 	"\x13AwsCodeBuildProject\x10\xca\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscb\x12%\n" +
 	"\x0fAwsCodePipeline\x10\xcb\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awscp\x120\n" +
 	"\x12AwsMwaaEnvironment\x10\xd4\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawsmwaa:\x04\x9c\x02\xd7\x01\x12,\n" +

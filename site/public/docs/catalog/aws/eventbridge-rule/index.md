@@ -95,7 +95,7 @@ This creates a scheduled rule on the default event bus that triggers a Lambda fu
 | `targets[].sqsTarget.messageGroupId` | `string` | Message group ID for FIFO SQS queues. Required when targeting a FIFO queue. |
 | `targets[].kinesisTarget.partitionKeyPath` | `string` | JSONPath extracting the partition key from the event (shard routing). Max 256 chars. When unset, EventBridge uses the event ID. |
 | `targets[].httpTarget` | `object` | API destination parameters: `pathParameterValues` (path wildcards), `queryStringParameters`, and `headerParameters`. |
-| `targets[].batchTarget` | `object` | Batch job submission: `jobDefinition` and `jobName` (required), `arraySize` (2–10000), `jobAttempts` (1–10). |
+| `targets[].batchTarget` | `object` | Batch job submission: `jobDefinition` (StringValueOrRef → AwsBatchJobDefinition's revision-carrying ARN) and `jobName` (required), `arraySize` (2–10000), `jobAttempts` (1–10). The target `arn` is the job queue. |
 | `targets[].ecsTarget` | `object` | ECS RunTask parameters — the target `arn` is the CLUSTER. Carries `taskDefinitionArn` (required, references AwsEcsTaskDefinition), `taskCount` (1–10), `launchType` XOR `capacityProviderStrategy`, `networkConfiguration` (subnets required, references AwsSubnet/AwsSecurityGroup), `orderedPlacementStrategy` (max 5), `placementConstraints` (max 10), `propagateTags`, `enableEcsManagedTags`, `enableExecuteCommand`. The target's `roleArn` is required for ECS. |
 
 ## Examples

@@ -53,6 +53,9 @@ import (
 	awsathenaworkgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsathenaworkgroup/v1"
 	awsautoscalinggroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsautoscalinggroup/v1"
 	awsbatchcomputeenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchcomputeenvironment/v1"
+	awsbatchjobdefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchjobdefinition/v1"
+	awsbatchjobqueuev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchjobqueue/v1"
+	awsbatchschedulingpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsbatchschedulingpolicy/v1"
 	awscertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscertmanagercert/v1"
 	awsclientvpnv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsclientvpn/v1"
 	awscloudfrontv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscloudfront/v1"
@@ -516,6 +519,9 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:               &awsathenaworkgroupv1.AwsAthenaWorkgroup{},
 	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:              &awsautoscalinggroupv1.AwsAutoScalingGroup{},
 	cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment:       &awsbatchcomputeenvironmentv1.AwsBatchComputeEnvironment{},
+	cloudresourcekind.CloudResourceKind_AwsBatchJobDefinition:            &awsbatchjobdefinitionv1.AwsBatchJobDefinition{},
+	cloudresourcekind.CloudResourceKind_AwsBatchJobQueue:                 &awsbatchjobqueuev1.AwsBatchJobQueue{},
+	cloudresourcekind.CloudResourceKind_AwsBatchSchedulingPolicy:         &awsbatchschedulingpolicyv1.AwsBatchSchedulingPolicy{},
 	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:               &awscertmanagercertv1.AwsCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                     &awsclientvpnv1.AwsClientVpn{},
 	cloudresourcekind.CloudResourceKind_AwsCloudFront:                    &awscloudfrontv1.AwsCloudFront{},

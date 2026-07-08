@@ -771,10 +771,36 @@ enum CloudResourceKind {
   }];
 
   // Batch Processing
+
+  // A MANAGED compute environment always launches into VPC subnets, so the
+  // subnet is a hard deploy prerequisite (security groups are required only
+  // for the Fargate types -- scenario-declared, not a registry edge).
   AwsBatchComputeEnvironment = 321 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsbat"
+    prerequisites: [AwsSubnet]
+  }];
+
+  // A job queue cannot exist without at least one VALID compute environment
+  // to map onto.
+  AwsBatchJobQueue = 363 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsbatjq"
+    prerequisites: [AwsBatchComputeEnvironment]
+  }];
+
+  AwsBatchSchedulingPolicy = 364 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsbatsp"
+  }];
+
+  AwsBatchJobDefinition = 365 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsbatjd"
   }];
 
   // CI/CD

@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsBatchJobQueue
+metadata:
+  org: example-org
+  env: prod
+  name: batch-queue
+  id: batch-queue-id
+spec:
+  region: <aws-region>
+  priority: 10
+  computeEnvironmentOrder:
+    - order: 1
+      computeEnvironment:
+        valueFrom:
+          kind: AwsBatchComputeEnvironment
+          name: <compute-environment-name>
+          fieldPath: status.outputs.compute_environment_arn
+  jobStateTimeLimitActions:
+    - action: CANCEL
+      maxTimeSeconds: 3600
+      reason: Job stuck in RUNNABLE for over 1 hour
+      state: RUNNABLE

@@ -121,7 +121,9 @@ func targets(ctx *pulumi.Context, locals *Locals, createdRule *cloudwatch.EventR
 		// AWS Batch: job submission parameters.
 		if target.BatchTarget != nil {
 			batchArgs := &cloudwatch.EventTargetBatchTargetArgs{
-				JobDefinition: pulumi.String(target.BatchTarget.JobDefinition),
+				// The job definition is a reference (an AwsBatchJobDefinition's
+				// revision-carrying ARN output) or a literal name/name:revision.
+				JobDefinition: pulumi.String(target.BatchTarget.JobDefinition.GetValue()),
 				JobName:       pulumi.String(target.BatchTarget.JobName),
 			}
 			if target.BatchTarget.ArraySize != 0 {

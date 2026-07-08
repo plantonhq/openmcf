@@ -1162,6 +1162,67 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsBatchComputeEnvironment: compute_environment_arn is what job
+			// queues reference in their compute_environment_order; the name
+			// keys the E2E verifier and ecs_cluster_arn exposes the ECS
+			// cluster Batch runs tasks on.
+			name: "AwsBatchComputeEnvironment",
+			kind: cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment,
+			rawOutputs: map[string]interface{}{
+				"compute_environment_arn":  "arn:aws:batch:us-west-2:123456789012:compute-environment/etl-fargate",
+				"compute_environment_name": "etl-fargate",
+				"ecs_cluster_arn":          "arn:aws:ecs:us-west-2:123456789012:cluster/AWSBatch-etl-fargate-11111111-2222-3333-4444-555555555555",
+				"status":                   "VALID",
+			},
+			mustPopulate: []string{
+				"compute_environment_arn", "compute_environment_name", "ecs_cluster_arn", "status",
+			},
+		},
+		{
+			// AwsBatchJobQueue: job_queue_arn is the submission handle and
+			// the target EventBridge Batch targets point at; the name keys
+			// the E2E verifier and name-addressed SubmitJob calls.
+			name: "AwsBatchJobQueue",
+			kind: cloudresourcekind.CloudResourceKind_AwsBatchJobQueue,
+			rawOutputs: map[string]interface{}{
+				"job_queue_arn":  "arn:aws:batch:us-west-2:123456789012:job-queue/etl-queue",
+				"job_queue_name": "etl-queue",
+			},
+			mustPopulate: []string{
+				"job_queue_arn", "job_queue_name",
+			},
+		},
+		{
+			// AwsBatchSchedulingPolicy: scheduling_policy_arn is what job
+			// queues reference through their scheduling_policy field.
+			name: "AwsBatchSchedulingPolicy",
+			kind: cloudresourcekind.CloudResourceKind_AwsBatchSchedulingPolicy,
+			rawOutputs: map[string]interface{}{
+				"scheduling_policy_arn":  "arn:aws:batch:us-west-2:123456789012:scheduling-policy/fair-share",
+				"scheduling_policy_name": "fair-share",
+			},
+			mustPopulate: []string{
+				"scheduling_policy_arn", "scheduling_policy_name",
+			},
+		},
+		{
+			// AwsBatchJobDefinition: the revision-carrying job_definition_arn
+			// is what EventBridge Batch targets reference (a new revision
+			// rolls the rule); arn_without_revision serves latest-ACTIVE
+			// consumers and revision is int64-typed.
+			name: "AwsBatchJobDefinition",
+			kind: cloudresourcekind.CloudResourceKind_AwsBatchJobDefinition,
+			rawOutputs: map[string]interface{}{
+				"job_definition_arn":   "arn:aws:batch:us-west-2:123456789012:job-definition/etl:7",
+				"arn_without_revision": "arn:aws:batch:us-west-2:123456789012:job-definition/etl",
+				"job_definition_name":  "etl",
+				"revision":             7,
+			},
+			mustPopulate: []string{
+				"job_definition_arn", "arn_without_revision", "job_definition_name", "revision",
+			},
+		},
+		{
 			// AwsCloudwatchLogGroup: log_group_arn is the FK target for Step
 			// Functions logging, Route 53 query logging, API Gateway access
 			// logs, and OpenSearch log publishing; log_group_name is the join

@@ -471,7 +471,7 @@ var _ = ginkgo.Describe("AwsEventBridgeRuleSpec validations", func() {
 
 	ginkgo.It("accepts target with batch_target", func() {
 		spec.Targets[0].BatchTarget = &AwsEventBridgeTargetBatchConfig{
-			JobDefinition: "video-transcode:3",
+			JobDefinition: strRef("video-transcode:3"),
 			JobName:       "event-transcode",
 			ArraySize:     100,
 			JobAttempts:   3,
@@ -490,7 +490,7 @@ var _ = ginkgo.Describe("AwsEventBridgeRuleSpec validations", func() {
 
 	ginkgo.It("fails when batch_target is missing job_name", func() {
 		spec.Targets[0].BatchTarget = &AwsEventBridgeTargetBatchConfig{
-			JobDefinition: "video-transcode:3",
+			JobDefinition: strRef("video-transcode:3"),
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
@@ -498,7 +498,7 @@ var _ = ginkgo.Describe("AwsEventBridgeRuleSpec validations", func() {
 
 	ginkgo.It("fails when batch array_size is below 2", func() {
 		spec.Targets[0].BatchTarget = &AwsEventBridgeTargetBatchConfig{
-			JobDefinition: "video-transcode:3",
+			JobDefinition: strRef("video-transcode:3"),
 			JobName:       "event-transcode",
 			ArraySize:     1,
 		}
@@ -508,7 +508,7 @@ var _ = ginkgo.Describe("AwsEventBridgeRuleSpec validations", func() {
 
 	ginkgo.It("fails when batch job_attempts exceeds 10", func() {
 		spec.Targets[0].BatchTarget = &AwsEventBridgeTargetBatchConfig{
-			JobDefinition: "video-transcode:3",
+			JobDefinition: strRef("video-transcode:3"),
 			JobName:       "event-transcode",
 			JobAttempts:   11,
 		}

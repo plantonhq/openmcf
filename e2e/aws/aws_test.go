@@ -723,6 +723,34 @@ func TestAwsWafWebAcl_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awswafwebacl", "terraform")
 }
 
+func TestAwsBatchComputeEnvironment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchcomputeenvironment", "pulumi")
+}
+func TestAwsBatchComputeEnvironment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchcomputeenvironment", "terraform")
+}
+
+func TestAwsBatchJobQueue_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchjobqueue", "pulumi")
+}
+func TestAwsBatchJobQueue_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchjobqueue", "terraform")
+}
+
+func TestAwsBatchSchedulingPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchschedulingpolicy", "pulumi")
+}
+func TestAwsBatchSchedulingPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchschedulingpolicy", "terraform")
+}
+
+func TestAwsBatchJobDefinition_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchjobdefinition", "pulumi")
+}
+func TestAwsBatchJobDefinition_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbatchjobdefinition", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

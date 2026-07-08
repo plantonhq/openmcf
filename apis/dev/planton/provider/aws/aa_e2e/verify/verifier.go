@@ -116,6 +116,10 @@ var verifiers = map[string]Verifier{
 	"awswafwebacl":                   &wafWebAclVerifier{},
 	"awswafipset":                    &wafIpSetVerifier{},
 	"awswafregexpatternset":          &wafRegexPatternSetVerifier{},
+	"awsbatchcomputeenvironment":     &batchComputeEnvironmentVerifier{},
+	"awsbatchjobqueue":               &batchJobQueueVerifier{},
+	"awsbatchschedulingpolicy":       &batchSchedulingPolicyVerifier{},
+	"awsbatchjobdefinition":          &batchJobDefinitionVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.
