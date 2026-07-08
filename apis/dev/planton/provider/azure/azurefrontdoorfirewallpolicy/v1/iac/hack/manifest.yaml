@@ -1,0 +1,99 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorFirewallPolicy
+metadata:
+  name: test-front-door-firewall-policy
+spec:
+  resourceGroup:
+    value: test-rg
+  policyName: testedgewaf
+  # PREMIUM so the plan exercises the managed rules, the challenge
+  # lifetimes, and the JS_CHALLENGE custom-rule action -- the deepest
+  # rendering path.
+  sku: PREMIUM
+  mode: PREVENTION
+  requestBodyCheckEnabled: true
+  redirectUrl: https://example.com/blocked
+  customBlockResponseStatusCode: 429
+  # base64 of "<h1>blocked</h1>"
+  customBlockResponseBody: PGgxPmJsb2NrZWQ8L2gxPg==
+  jsChallengeCookieExpirationInMinutes: 45
+  captchaCookieExpirationInMinutes: 60
+  customRules:
+    # Exercises: rate limiting with explicit window/threshold, IP_MATCH,
+    # and priority ordering.
+    - name: ratelimitapi
+      priority: 10
+      ruleType: RATE_LIMIT_RULE
+      rateLimitDurationInMinutes: 5
+      rateLimitThreshold: 300
+      action: BLOCK
+      matchConditions:
+        - matchVariable: REQUEST_URI
+          operator: BEGINS_WITH
+          matchValues: ["/api/"]
+    # Exercises: the keyed-variable selector, negation, transforms, and
+    # the Premium-only JS_CHALLENGE action.
+    - name: botgate
+      priority: 20
+      ruleType: MATCH_RULE
+      action: JS_CHALLENGE
+      matchConditions:
+        - matchVariable: REQUEST_HEADER
+          selector: User-Agent
+          operator: CONTAINS
+          matchValues: [curl, python-requests]
+          negateCondition: false
+          transforms: [LOWERCASE, TRIM]
+    # Exercises: geo allowlisting through negation and a disabled rule.
+    - name: geoblock
+      enabled: false
+      priority: 30
+      ruleType: MATCH_RULE
+      action: LOG
+      matchConditions:
+        - matchVariable: SOCKET_ADDR
+          operator: GEO_MATCH
+          matchValues: [US, DE, IN]
+          negateCondition: true
+  managedRules:
+    # Exercises: the 2.x anomaly-scoring model with a set-wide
+    # exclusion, a group override, and a per-rule LOG override.
+    - type: Microsoft_DefaultRuleSet
+      version: "2.1"
+      action: RULE_SET_BLOCK
+      exclusions:
+        - matchVariable: EXCLUDE_REQUEST_COOKIE_NAMES
+          operator: SELECTOR_EQUALS
+          selector: session-token
+      overrides:
+        - ruleGroupName: SQLI
+          exclusions:
+            - matchVariable: EXCLUDE_REQUEST_BODY_POST_ARG_NAMES
+              operator: SELECTOR_STARTS_WITH
+              selector: comment
+          rules:
+            - ruleId: "942100"
+              enabled: true
+              action: OVERRIDE_LOG
+    # Exercises: the bot manager set with the JSChallenge override
+    # dialect.
+    - type: Microsoft_BotManagerRuleSet
+      version: "1.1"
+      action: RULE_SET_LOG
+      overrides:
+        - ruleGroupName: UnknownBots
+          rules:
+            - ruleId: Bot300700
+              enabled: true
+              action: OVERRIDE_JS_CHALLENGE
+  logScrubbing:
+    scrubbingRules:
+      # Keyed rule with an explicit selector.
+      - matchVariable: SCRUB_REQUEST_HEADER_NAMES
+        operator: SELECTOR_EQUALS
+        selector: Authorization
+      # Equals-any rule on a non-keyed variable.
+      - matchVariable: SCRUB_REQUEST_IP_ADDRESS
+        operator: SELECTOR_EQUALS_ANY
+  tags:
+    team: edge-security

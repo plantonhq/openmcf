@@ -310,6 +310,23 @@ before ARM confirms). Consequences for scenario budgeting:
   ~3.7 h total) rather than assuming CDN-family resources are cheap
   because they create quickly.
 
+### Vendor-catalog IDs in fixtures: look them up, never infer them
+
+When a scenario (or preset, or hack manifest) carries an ID from a
+provider-curated catalog -- a managed WAF rule ID, a curated rule-set
+name/version, any value whose legal vocabulary lives server-side -- look
+the real IDs up before writing the fixture; a plausible-looking ID
+passes every offline gate (the schema types it as a free string) and
+fails only at live apply. The lookup sources, in order: the service's
+own catalog API (e.g. Azure's
+`GET .../providers/Microsoft.Network/frontDoorWebApplicationFirewallManagedRuleSets`
+lists every rule group and rule ID per set version) and the provider
+clone's acceptance-test fixtures. The trap that motivated this: Azure
+bot-manager rule IDs carry a `Bot` prefix (`Bot300700`) while the
+default-rule-set IDs are bare numerics (`942100`) -- an inferred bare
+`300700` was rejected by ARM on both engines with "managed rule IDs are
+not supported".
+
 ### How the Terraform path works
 
 The Terraform runner uses [Terratest](https://github.com/gruntwork-io/terratest)

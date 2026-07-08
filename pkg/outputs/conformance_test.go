@@ -1761,6 +1761,34 @@ func TestStackOutputsConformance(t *testing.T) {
 				"secret_id", "secret_name", "subject_alternative_names",
 			},
 		},
+		{
+			// AzureFrontDoorFirewallPolicy: firewall_policy_id is what the
+			// security policy references in firewall_policy_id to attach
+			// the WAF to a profile's domains.
+			name: "AzureFrontDoorFirewallPolicy",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorFirewallPolicy,
+			rawOutputs: map[string]interface{}{
+				"firewall_policy_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/frontDoorWebApplicationFirewallPolicies/edgewaf",
+				"firewall_policy_name": "edgewaf",
+			},
+			mustPopulate: []string{
+				"firewall_policy_id", "firewall_policy_name",
+			},
+		},
+		{
+			// AzureFrontDoorSecurityPolicy: the association itself --
+			// nothing composes on it; the id serves operational
+			// addressing.
+			name: "AzureFrontDoorSecurityPolicy",
+			kind: cloudresourcekind.CloudResourceKind_AzureFrontDoorSecurityPolicy,
+			rawOutputs: map[string]interface{}{
+				"security_policy_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Cdn/profiles/app-fd/securityPolicies/edge-waf-attach",
+				"security_policy_name": "edge-waf-attach",
+			},
+			mustPopulate: []string{
+				"security_policy_id", "security_policy_name",
+			},
+		},
 	}
 
 	for _, tc := range cases {

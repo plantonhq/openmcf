@@ -599,6 +599,28 @@ func TestAzureFrontDoorSecret_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurefrontdoorsecret", "terraform")
 }
 
+// --- Azure Front Door firewall policy (fixture RG -> the WAF policy;
+// resource-group-scoped, NO profile fixture -- two scenarios cover the
+// STANDARD custom-rules smoke and the PREMIUM managed-rules depth) ---
+
+func TestAzureFrontDoorFirewallPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorfirewallpolicy", "pulumi")
+}
+func TestAzureFrontDoorFirewallPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorfirewallpolicy", "terraform")
+}
+
+// --- Azure Front Door security policy (the enforcement seam: fixture RG
+// -> profile -> endpoint + STANDARD WAF policy -> the association
+// protecting the endpoint's default domain) ---
+
+func TestAzureFrontDoorSecurityPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorsecuritypolicy", "pulumi")
+}
+func TestAzureFrontDoorSecurityPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefrontdoorsecuritypolicy", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

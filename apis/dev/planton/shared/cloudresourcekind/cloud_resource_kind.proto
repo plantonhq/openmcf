@@ -1109,6 +1109,31 @@ enum CloudResourceKind {
     id_prefix: "azfdsec"
     prerequisites: [AzureFrontDoorProfile]
   }];
+  // AzureResourceGroup is a prerequisite because the Front Door WAF
+  // policy is created inside a referenced resource group -- it is a
+  // GLOBAL resource, not a profile child (a different ARM type than the
+  // regional Application Gateway WAF policy). Security policies attach
+  // it to profiles; the policy itself depends on nothing else.
+  AzureFrontDoorFirewallPolicy = 488 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdwaf"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // A security policy is an ARM child of a profile that associates a
+  // referenced WAF policy with referenced domains -- so the endpoint
+  // (the default-domain association target; the profile arrives
+  // transitively through it) and the WAF policy are genuine
+  // deploy-order prerequisites.
+  AzureFrontDoorSecurityPolicy = 489 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azfdsecpol"
+    prerequisites: [
+      AzureFrontDoorEndpoint,
+      AzureFrontDoorFirewallPolicy
+    ]
+  }];
   // --- Storage data services ---
 
   // None of the storage data-service kinds declares a registry

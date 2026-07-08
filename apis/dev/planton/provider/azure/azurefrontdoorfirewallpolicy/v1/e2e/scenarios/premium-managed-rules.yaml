@@ -1,0 +1,70 @@
+# Premium AzureFrontDoorFirewallPolicy scenario: the marquee tier --
+# Microsoft_DefaultRuleSet 2.1 on the anomaly-scoring model with a
+# set-wide exclusion and a per-rule LOG override, the bot manager with
+# the JSChallenge override dialect, tuned challenge lifetimes, and log
+# scrubbing (keyed + equals-any rules). Proves every Premium-only seam
+# the spec gates.
+apiVersion: azure.planton.dev/v1
+kind: AzureFrontDoorFirewallPolicy
+metadata:
+  name: planton-oss-e2e-azurefrontdoorfirewallpolicy-premium
+  id: planton-oss-e2e-azurefrontdoorfirewallpolicy-premium
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorfirewallpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  policyName: plantonosse2ewafpremium
+  sku: PREMIUM
+  mode: PREVENTION
+  jsChallengeCookieExpirationInMinutes: 45
+  captchaCookieExpirationInMinutes: 60
+  customRules:
+    - name: botgate
+      priority: 10
+      ruleType: MATCH_RULE
+      action: JS_CHALLENGE
+      matchConditions:
+        - matchVariable: REQUEST_HEADER
+          selector: User-Agent
+          operator: CONTAINS
+          matchValues: [curl]
+          transforms: [LOWERCASE]
+  managedRules:
+    - type: Microsoft_DefaultRuleSet
+      version: "2.1"
+      action: RULE_SET_BLOCK
+      exclusions:
+        - matchVariable: EXCLUDE_REQUEST_COOKIE_NAMES
+          operator: SELECTOR_EQUALS
+          selector: session-token
+      overrides:
+        - ruleGroupName: SQLI
+          rules:
+            - ruleId: "942100"
+              enabled: true
+              action: OVERRIDE_LOG
+    - type: Microsoft_BotManagerRuleSet
+      version: "1.1"
+      action: RULE_SET_LOG
+      overrides:
+        - ruleGroupName: UnknownBots
+          rules:
+            - ruleId: Bot300700
+              enabled: true
+              action: OVERRIDE_JS_CHALLENGE
+  logScrubbing:
+    scrubbingRules:
+      - matchVariable: SCRUB_REQUEST_HEADER_NAMES
+        operator: SELECTOR_EQUALS
+        selector: Authorization
+      - matchVariable: SCRUB_REQUEST_IP_ADDRESS
+        operator: SELECTOR_EQUALS_ANY

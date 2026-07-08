@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefrontdoorsecuritypolicy.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureFrontDoorSecurityPolicySpec** defines the configuration for
+// creating a security policy inside an Azure Front Door
+// (Standard/Premium) profile -- the association that attaches a Front
+// Door WAF policy (AzureFrontDoorFirewallPolicy) to the hostnames the
+// profile serves. A WAF policy enforces nothing until a security policy
+// associates it; this kind is the enforcement seam.
+//
+// The `domain_ids` list names the hostnames the WAF protects. Each
+// entry is either an AzureFrontDoorEndpoint's ARM ID (protect the
+// endpoint's generated *.azurefd.net hostname) or an
+// AzureFrontDoorCustomDomain's ARM ID (protect that custom hostname) --
+// Azure accepts both resource types interchangeably here.
+//
+// **Path scope**: the WAF applies to ALL paths (`/*`) on every
+// associated domain -- Azure's security policies accept no other
+// pattern, so it is not configurable. Scope enforcement by choosing
+// WHICH domains to associate, not which paths.
+//
+// **Domain caps ride the profile's sku**: a STANDARD profile allows up
+// to 100 domains per association, PREMIUM up to 500 (checked at deploy
+// time -- the cap lives on the profile, not this resource). The WAF
+// policy's own sku must also MATCH the profile's sku; Azure rejects a
+// mismatched pairing.
+//
+// **ForceNew fields**: `profile_id`, `security_policy_name`, and
+// `firewall_policy_id` -- swapping the WAF policy replaces the security
+// policy (a fast, metadata-only operation). The domain list updates in
+// place.
+message AzureFrontDoorSecurityPolicySpec {
+  // The Front Door profile the security policy lives in, by ARM ID.
+  // References an AzureFrontDoorProfile's profile_id output so the
+  // profile and its security policies compose in one manifest set.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef profile_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.profile_id"
+  ];
+
+  // The security policy's name -- unique within the profile. Must
+  // begin and end with a letter or digit and may contain only letters,
+  // digits, and hyphens.
+  //
+  // **ForceNew**: changing the name replaces the security policy (a
+  // brief enforcement gap while the old association tears down).
+  string security_policy_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "front_door_security_policy_name_format"
+      message: "security_policy_name must begin and end with a letter or digit and may contain only letters, digits, and hyphens"
+      expression: "this.matches('^[0-9a-zA-Z]([-0-9a-zA-Z]*[0-9a-zA-Z])?$')"
+    }
+  ];
+
+  // The Front Door WAF policy to enforce, by ARM ID. References an
+  // AzureFrontDoorFirewallPolicy's firewall_policy_id output. The WAF
+  // policy's sku must match the profile's sku (Azure rejects the
+  // pairing otherwise, at deploy time).
+  //
+  // **ForceNew**: pointing at a different WAF policy replaces the
+  // security policy.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef firewall_policy_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorFirewallPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.firewall_policy_id"
+  ];
+
+  // The hostnames the WAF protects, each by ARM ID: an
+  // AzureFrontDoorEndpoint's endpoint_id (the generated *.azurefd.net
+  // hostname) or an AzureFrontDoorCustomDomain's custom_domain_id --
+  // Azure accepts both types here, and a list can mix them. At least
+  // one; at most 500 (a STANDARD profile caps the list at 100 -- the
+  // cap rides the profile's sku and is checked at deploy time).
+  // Updatable in place: adding a domain extends protection without
+  // touching the others.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef domain_ids = 4 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 500
+    },
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.endpoint_id"
+  ];
+}
