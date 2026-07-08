@@ -1,9 +1,14 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
-  name: my-global-key-ring
+  name: global-shared-keys
 spec:
+  # An explicit project, shown as a literal ID. This can also be a
+  # reference to a GcpProject resource via valueFrom.
   projectId:
-    value: "<gcp-project-id>"
-  keyRingName: <your-key-ring-name>  # e.g., global-shared-keys
+    value: my-gcp-project # replace with your project ID
+  keyRingName: global-shared-keys # replace with your ring name
+  # "global" suits keys consumed from many regions (e.g. signing keys);
+  # CMEK keys usually must be co-located with the data they protect —
+  # prefer the regional preset for those.
   location: global

@@ -1,0 +1,41 @@
+# GcpKmsKey scenario: the CMEK workhorse with the version-template arm
+# folded in — a symmetric key with automatic rotation and an HSM-protected
+# version template, composed onto the ring prerequisite by reference (the
+# designed composition path). The verifier asserts the planton-ai_resource
+# label (label parity live) and an ENABLED primary version.
+#
+# Deliberately the component's ONLY live scenario: the ring prerequisite
+# is an undeletable resource, so a second scenario in the same engine run
+# would re-create the just-"destroyed" (state-only) ring and 409. Keys are
+# PERMANENT too — destroy destroys versions only — so key_name carries
+# ${E2E_RUN_ID}.
+apiVersion: gcp.planton.dev/v1
+kind: GcpKmsKey
+metadata:
+  name: planton-oss-e2e-gcpkms-smoke
+  id: planton-oss-e2e-gcpkms-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpkmskey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  keyRingId:
+    valueFrom:
+      kind: GcpKmsKeyRing
+      name: planton-oss-e2e-gcpkr-prereq
+      fieldPath: status.outputs.key_ring_id
+  keyName: e2e-cmek-${E2E_RUN_ID}
+  rotationPeriod: "7776000s"
+  # The version-template branch, proven live with HSM protection (the
+  # single HSM version is destroy-scheduled at teardown — cents of
+  # prorated cost).
+  versionTemplate:
+    algorithm: GOOGLE_SYMMETRIC_ENCRYPTION
+    protectionLevel: HSM
+  labels:
+    e2e-scenario: symmetric-rotation

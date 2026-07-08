@@ -1083,6 +1083,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpkms"
+    prerequisites: [GcpKmsKeyRing]
   }];
   GcpFilestoreInstance = 700 [(kind_meta) = {
     provider: gcp

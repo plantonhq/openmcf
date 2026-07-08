@@ -1,43 +1,29 @@
-# Preset: HSM-Protected Symmetric Encryption Key
+# HSM-Protected Symmetric Key
 
-## When to Use
+The compliance-grade CMEK key: identical to the symmetric workhorse but
+with every key version generated and held inside Cloud HSM
+(FIPS 140-2 Level 3 validated hardware).
 
-Use this preset when you need a customer-managed encryption key that is protected
-by hardware security modules (HSM). This is required for compliance scenarios
-that mandate FIPS 140-2 Level 3 certified key protection.
+## What this preset creates
 
-Common compliance frameworks that require or recommend HSM:
-- **PCI DSS** -- payment card data encryption
-- **HIPAA** -- healthcare data protection
-- **FedRAMP** -- US federal government workloads
-- **SOC 2 Type II** -- with enhanced security controls
+A symmetric `ENCRYPT_DECRYPT` key whose version template pins
+`protectionLevel: HSM`. Protection level is immutable — an HSM key can
+never be quietly downgraded to software protection, which is exactly the
+guarantee auditors ask for.
 
-## What It Creates
+## Prerequisites
 
-- A KMS key with purpose `ENCRYPT_DECRYPT`
-- Algorithm: `GOOGLE_SYMMETRIC_ENCRYPTION`
-- Protection level: `HSM` (Cloud HSM, FIPS 140-2 Level 3)
-- Automatic rotation every 90 days
+- A `GcpKmsKeyRing` named `compliance-keys` in the location where your
+  data lives (see the `GcpKmsKeyRing` presets).
 
-## Configuration
+## Cost note
 
-| Field | Value | Notes |
-|-------|-------|-------|
-| Purpose | ENCRYPT_DECRYPT | Default |
-| Algorithm | GOOGLE_SYMMETRIC_ENCRYPTION | Explicit for clarity |
-| Protection Level | HSM | Hardware security module |
-| Rotation | 90 days | Creates new primary version automatically |
+HSM key versions carry a higher per-version monthly price than software
+versions, and rotation accumulates versions until old ones are destroyed
+— factor the rotation cadence into cost planning.
 
-## Cost Considerations
+## Remix ideas
 
-HSM-protected keys are significantly more expensive than software-protected keys:
-- HSM key versions have per-use and per-version costs
-- Use HSM only when compliance requirements mandate it
-- Software-protected keys are sufficient for most workloads
-
-## How to Use
-
-1. Ensure the key ring is in a region that supports Cloud HSM
-2. Replace `<key-ring-id>` with your fully qualified key ring path
-3. Replace `<your-key-name>` with a descriptive name (e.g., `compliance-cmek`)
-4. Protection level is **immutable** -- choose carefully at creation time
+- Drop `rotationPeriod` for a manually rotated HSM key.
+- Use this template for `MAC` or asymmetric purposes by switching
+  `purpose` and the algorithm together.

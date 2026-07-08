@@ -131,6 +131,23 @@ service-networking-connection verifier: the peering is created via the
 Service Networking API but read back through the Compute API, and that
 cross-API view is eventually consistent).
 
+**Undeletable resource classes redefine "zero orphans".** Some GCP resources
+have NO delete API — KMS key rings and crypto keys are the canonical class:
+destroy removes a ring from state only, and destroys a key's *versions*
+(disabling rotation) while the key object persists forever. For these
+classes: (1) every cloud-side name MUST carry `${E2E_RUN_ID}` — the leftover
+objects are permanent, so a fixed name can never deploy twice; (2) the
+verifier's absent-check asserts the honest destroyed posture (all key
+versions `DESTROYED`/`DESTROY_SCHEDULED`, rotation off) instead of absence;
+(3) the post-run sweep expectation is "no ACTIVE material", not "no objects"
+— run-scoped rings/keys accumulate in the test project as inert, zero-cost
+residue by GCP design. Do not hand-sweep them; there is nothing to sweep.
+(4) A component whose PREREQUISITE is undeletable gets ONE live scenario:
+prerequisites redeploy per scenario with the same engine-scoped run id, so
+a second scenario re-creates the just-"destroyed" (state-only) prerequisite
+and 409s on its own leftover. Fold the arms into one scenario and record
+the rest as offline-proven.
+
 **Retries cannot cover releases the cloud documents in HOURS.** The retry
 budget is bounded (~6 minutes) on purpose: some cloud-side holds outlive any
 reasonable wait — a direct-VPC Cloud Run service leaves a serverless address

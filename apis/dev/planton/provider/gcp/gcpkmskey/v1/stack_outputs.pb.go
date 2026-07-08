@@ -29,9 +29,21 @@ type GcpKmsKeyStackOutputs struct {
 	// This is the primary CMEK reference used by BigQuery, Spanner, GKE, CloudSQL,
 	// and other downstream resources for customer-managed encryption.
 	KeyId string `protobuf:"bytes,1,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	// The short name of the key (same as the spec's key_name input).
-	// Useful for display, logging, and human-readable references.
-	KeyName       string `protobuf:"bytes,2,opt,name=key_name,json=keyName,proto3" json:"key_name,omitempty"`
+	// The short name of the key (the last segment of key_id).
+	// Useful for display, logging, and consumers that take the bare key name
+	// alongside a separately supplied project and location.
+	KeyName string `protobuf:"bytes,2,opt,name=key_name,json=keyName,proto3" json:"key_name,omitempty"`
+	// Fully qualified resource name of the key's current primary
+	// CryptoKeyVersion — the version GCP uses to encrypt new data.
+	// Format: projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}/cryptoKeyVersions/{n}
+	// Populated by GCP only for ENCRYPT_DECRYPT keys; empty for asymmetric,
+	// raw, and MAC keys (which have no primary-version concept) and for keys
+	// created with skip_initial_version_creation.
+	PrimaryVersionName string `protobuf:"bytes,3,opt,name=primary_version_name,json=primaryVersionName,proto3" json:"primary_version_name,omitempty"`
+	// Lifecycle state of the primary CryptoKeyVersion (e.g. "ENABLED").
+	// Same population rules as primary_version_name — the quick health probe
+	// that a CMEK key is actually able to encrypt.
+	PrimaryState  string `protobuf:"bytes,4,opt,name=primary_state,json=primaryState,proto3" json:"primary_state,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -80,14 +92,30 @@ func (x *GcpKmsKeyStackOutputs) GetKeyName() string {
 	return ""
 }
 
+func (x *GcpKmsKeyStackOutputs) GetPrimaryVersionName() string {
+	if x != nil {
+		return x.PrimaryVersionName
+	}
+	return ""
+}
+
+func (x *GcpKmsKeyStackOutputs) GetPrimaryState() string {
+	if x != nil {
+		return x.PrimaryState
+	}
+	return ""
+}
+
 var File_dev_planton_provider_gcp_gcpkmskey_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpkmskey_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/gcp/gcpkmskey/v1/stack_outputs.proto\x12%dev.planton.provider.gcp.gcpkmskey.v1\"I\n" +
+	"9dev/planton/provider/gcp/gcpkmskey/v1/stack_outputs.proto\x12%dev.planton.provider.gcp.gcpkmskey.v1\"\xa0\x01\n" +
 	"\x15GcpKmsKeyStackOutputs\x12\x15\n" +
 	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x12\x19\n" +
-	"\bkey_name\x18\x02 \x01(\tR\akeyNameB\xce\x02\n" +
+	"\bkey_name\x18\x02 \x01(\tR\akeyName\x120\n" +
+	"\x14primary_version_name\x18\x03 \x01(\tR\x12primaryVersionName\x12#\n" +
+	"\rprimary_state\x18\x04 \x01(\tR\fprimaryStateB\xce\x02\n" +
 	")com.dev.planton.provider.gcp.gcpkmskey.v1B\x11StackOutputsProtoP\x01ZSgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskey/v1;gcpkmskeyv1\xa2\x02\x05DPPGG\xaa\x02%Dev.Planton.Provider.Gcp.Gcpkmskey.V1\xca\x02%Dev\\Planton\\Provider\\Gcp\\Gcpkmskey\\V1\xe2\x021Dev\\Planton\\Provider\\Gcp\\Gcpkmskey\\V1\\GPBMetadata\xea\x02*Dev::Planton::Provider::Gcp::Gcpkmskey::V1b\x06proto3"
 
 var (

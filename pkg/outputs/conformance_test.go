@@ -767,6 +767,33 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"subscription_id", "subscription_name"},
 		},
 		{
+			// GcpKmsKeyRing: the fully qualified ring path a GcpKmsKey's
+			// key_ring_id reference consumes, the short name for bare-name
+			// consumers, and the location they pair it with.
+			name: "GcpKmsKeyRing",
+			kind: cloudresourcekind.CloudResourceKind_GcpKmsKeyRing,
+			rawOutputs: map[string]interface{}{
+				"key_ring_id":   "projects/prod-project/locations/us-central1/keyRings/prod-encryption",
+				"key_ring_name": "prod-encryption",
+				"location":      "us-central1",
+			},
+			mustPopulate: []string{"key_ring_id", "key_ring_name", "location"},
+		},
+		{
+			// GcpKmsKey: the fully qualified key path every CMEK consumer
+			// takes, the short name for bare-name consumers, and the primary
+			// version handle + state (populated for ENCRYPT_DECRYPT keys).
+			name: "GcpKmsKey",
+			kind: cloudresourcekind.CloudResourceKind_GcpKmsKey,
+			rawOutputs: map[string]interface{}{
+				"key_id":               "projects/prod-project/locations/us-central1/keyRings/prod-encryption/cryptoKeys/cmek-data-key",
+				"key_name":             "cmek-data-key",
+				"primary_version_name": "projects/prod-project/locations/us-central1/keyRings/prod-encryption/cryptoKeys/cmek-data-key/cryptoKeyVersions/1",
+				"primary_state":        "ENABLED",
+			},
+			mustPopulate: []string{"key_id", "key_name", "primary_version_name", "primary_state"},
+		},
+		{
 			// GcpServerlessVpcConnector: the short connector name, the fully
 			// qualified path serverless workloads attach to, the reconciled
 			// state, and the plain region name.

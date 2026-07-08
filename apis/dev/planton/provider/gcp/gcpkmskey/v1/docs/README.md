@@ -1,147 +1,81 @@
-# GcpKmsKey — Research & Design Documentation
+# GcpKmsKey — Deep Dive
 
-## Architecture Decision: Key vs CryptoKey Naming
+## The problem this resource solves
 
-The GCP KMS API uses the term "CryptoKey" (`projects.locations.keyRings.cryptoKeys`),
-and the Terraform resource is `google_kms_crypto_key`. Planton uses the shortened
-name **GcpKmsKey** because:
+Customer-managed encryption is the control plane of data trust on GCP: whoever controls the key controls access to everything encrypted under it, regardless of storage IAM. This kind models that key as a first-class node so every CMEK relationship in an environment is an explicit, reviewable reference — a BigQuery dataset, a Spanner database, a GKE cluster's etcd, a Pub/Sub topic all pointing at the same auditable key resource — instead of a string pasted into twenty specs.
 
-1. "Crypto" is redundant in the KMS (Key Management Service) context
-2. Users naturally say "KMS key" in conversation
-3. Planton already abbreviates (GcpGcsBucket, GcpGkeCluster)
-4. `kind: GcpKmsKey` is cleaner in YAML manifests
+## Where it sits in the composition
 
-The Terraform and Pulumi implementations still use their native resource names
-(`google_kms_crypto_key` and `kms.CryptoKey`).
+- **GcpKmsKeyRing** — the parent container; this key references its `status.outputs.key_ring_id` and inherits project + location.
+- **GcpKmsKey** — this resource: purpose, rotation, protection level, version lifecycle.
+- **CMEK consumers** — 20+ catalog kinds reference this key's `status.outputs.key_id` (the fully qualified `projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}` path) from their CMEK fields.
+- **Bare-name consumers** — components that take a key name plus separately supplied project/location (for example OpenBao's GCP KMS seal) compose from `key_name`.
+- **IAM** — each consumer's service agent needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key; model those grants as first-class IAM nodes next to the consumers.
 
-## GCP KMS Key Hierarchy
+## Lifecycle contract
 
-```
-GCP Project
-  └── KMS Key Ring (permanent container, scoped to a location)
-        └── Crypto Key (permanent key with immutable purpose)
-              └── Crypto Key Version (actual key material, rotatable)
-```
+| Property | Behavior |
+|---|---|
+| `keyRingId`, `keyName`, `purpose`, `destroyScheduledDuration`, `importOnly`, `cryptoKeyBackend`, `versionTemplate.protectionLevel` | Immutable (ForceNew) — for an undeletable resource, "change" means abandon and create under a new name |
+| `rotationPeriod`, `versionTemplate.algorithm`, `labels` | Mutable in place |
+| Deletion | **The key object can never be deleted.** Destroy schedules every version for destruction, disables rotation, and removes the key from state; the key remains (inert, free) in the ring forever |
+| Version destruction | Destroyed versions sit in `DESTROY_SCHEDULED` for the recovery window (default 30 days), then the material is gone — and with it, everything encrypted under those versions |
 
-Planton models the first two levels: GcpKmsKeyRing and GcpKmsKey. Key versions
-are operational concerns managed by rotation policies or the GCP console, not IaC.
+## The version model (what rotation actually does)
 
-## Field Analysis
+A crypto key is a container of versions. Exactly one version is *primary* (ENCRYPT_DECRYPT keys only): it encrypts all new data. Decryption automatically selects the version that encrypted the ciphertext, so **rotation never re-encrypts anything** — it caps how much data any single version protects going forward. Consequences worth designing for:
 
-### Immutable Fields (ForceNew)
+- Old versions must stay ENABLED as long as any data encrypted under them lives.
+- Cost scales with live versions (each HSM version bills individually) — rotation cadence is a cost lever, not just a security one.
+- Asymmetric/MAC keys have no primary and never rotate automatically: verifiers pin exact versions, so new versions are minted deliberately.
 
-These fields cannot be changed after creation. Any change destroys and recreates
-the resource (which creates a new key, since GCP keys are permanent):
+## Protection levels and the external arms
 
-- `key_ring_id` -- the parent key ring
-- `key_name` -- the GCP resource name
-- `purpose` -- determines supported operations
-- `destroy_scheduled_duration` -- version destruction delay
-- `version_template.protection_level` -- SOFTWARE vs HSM
+| Level | Material lives | Use |
+|---|---|---|
+| `SOFTWARE` (default) | Google's software fleet | Standard CMEK |
+| `HSM` | Cloud HSM (FIPS 140-2 L3) | Compliance-grade CMEK/signing |
+| `EXTERNAL` | An external key manager, linked per version via external key URIs | Cloud EKM over the internet |
+| `EXTERNAL_VPC` | An external key manager reached over VPC; the key-level `cryptoKeyBackend` names the EKM connection | Cloud EKM, private path |
 
-### Mutable Fields
+`importOnly` is orthogonal: a BYOK container GCP never generates material for (requires `skipInitialVersionCreation`, enforced pre-deploy). The import ceremony itself (key ring import jobs, 3-day wrapping keys) is operational, not durable infrastructure — deliberately outside this kind.
 
-- `rotation_period` -- can be added, changed, or removed
-- `version_template.algorithm` -- can be updated for new versions
-- `labels` -- managed by Planton framework
+## Pre-deploy coherence rules
 
-### Labels Support
+The spec enforces before any cloud call what the API would reject or silently mishandle at create time:
 
-Unlike GcpKmsKeyRing (which does not support GCP labels), CryptoKeys do support
-labels. The Planton framework applies standard labels automatically:
+- `rotation_period` only on ENCRYPT_DECRYPT keys (and ≥ 86400s with ≤ 9 fractional digits — the provider's own validator, applied earlier).
+- `import_only` ⇒ `skip_initial_version_creation` (an auto-generated version would violate the import-only guarantee).
+- `crypto_key_backend` ⇔ `EXTERNAL_VPC` protection (EXTERNAL keys link material per version instead).
+- `purpose` and `versionTemplate.algorithm` are deliberately free strings: GCP adds purposes and algorithms over time (post-quantum schemes being the current example), and a hardcoded allowlist would reject valid new values while the API accepts them. The API remains the validator of record for those two.
 
-- `planton-resource: true`
-- `planton-resource-name: <key_name>`
-- `planton-resource-kind: gcpkmskey`
-- `planton-organization: <metadata.org>` (if set)
-- `planton-environment: <metadata.env>` (if set)
-- `planton-resource-id: <metadata.id>` (if set)
+## 90/10 coverage vs the provider resource
 
-## Purpose and Algorithm Compatibility
+| Provider field (`google_kms_crypto_key`) | Modeled | Notes |
+|---|---|---|
+| `key_ring` | ✅ `keyRingId` (ref → GcpKmsKeyRing) | ForceNew |
+| `name` | ✅ `keyName` | ForceNew |
+| `purpose` | ✅ `purpose` | free string, ForceNew |
+| `rotation_period` | ✅ `rotationPeriod` | provider-validator CEL |
+| `destroy_scheduled_duration` | ✅ `destroyScheduledDuration` | ForceNew |
+| `version_template.algorithm` | ✅ | mutable |
+| `version_template.protection_level` | ✅ (all four levels) | ForceNew |
+| `skip_initial_version_creation` | ✅ | create-time only |
+| `import_only` | ✅ | ForceNew |
+| `crypto_key_backend` | ✅ `cryptoKeyBackend` (un-defaulted ref) | ForceNew |
+| `labels` | ✅ `labels` (merged beneath attribution labels) | mutable |
+| `primary` (computed) | ✅ outputs `primary_version_name` / `primary_state` | ENCRYPT_DECRYPT only |
 
-The `purpose` field determines which algorithms are valid in `version_template`:
+## Deliberately not modeled (recorded reasons)
 
-| Purpose | Valid Algorithms |
-|---------|-----------------|
-| ENCRYPT_DECRYPT | GOOGLE_SYMMETRIC_ENCRYPTION (default), EXTERNAL_SYMMETRIC_ENCRYPTION |
-| ASYMMETRIC_SIGN | EC_SIGN_P256_SHA256, EC_SIGN_P384_SHA384, EC_SIGN_SECP256K1_SHA256, RSA_SIGN_PSS_*, RSA_SIGN_PKCS1_* |
-| ASYMMETRIC_DECRYPT | RSA_DECRYPT_OAEP_2048_SHA256, RSA_DECRYPT_OAEP_3072_SHA256, RSA_DECRYPT_OAEP_4096_SHA256, etc. |
-| MAC | HMAC_SHA1, HMAC_SHA224, HMAC_SHA256, HMAC_SHA384, HMAC_SHA512 |
-| RAW_ENCRYPT_DECRYPT | AES_128_GCM, AES_256_GCM, AES_128_CBC, AES_256_CBC, AES_128_CTR, AES_256_CTR |
+- **`deletion_policy`** — absent from the released `google ~> 6.x` GA resource (it exists on the provider's unreleased line); modeling it would create a one-engine field. The bridged Pulumi provider *does* carry it client-side, so the Pulumi module pins it explicitly to `DELETE` — the released Terraform destroy behavior — keeping destroy semantics byte-identical across engines.
+- **`key_access_justifications_policy`** — beta-only (google-beta / unreleased GA); revisit when it reaches the released GA line.
+- **`google_kms_crypto_key_version` as a kind** — versions are the rotation *product*, managed by the service; IaC-pinned versions matter only for EXTERNAL key URIs (Tier-2 with the EKM family).
+- **`google_kms_ekm_connection`** — the external-key-manager connection is a Tier-2 kind candidate; `cryptoKeyBackend` is already ref-shaped (un-defaulted) so the future kind attaches with a one-line `default_kind`.
+- **Autokey (`google_kms_autokey_config`, `google_kms_key_handle`)** — folder-scoped singletons on a different provisioning philosophy (GCP creates keys on demand); revisit on concrete pull.
+- **`google_kms_secret_ciphertext`** — a one-shot encryption transform, not durable infrastructure.
+- **Per-key IAM (`google_kms_crypto_key_iam_*`)** — resource-scoped IAM stays out of the catalog pending concrete pull.
 
-The full matrix is complex (20+ valid combinations), so Planton delegates
-purpose-to-algorithm validation to the GCP API, which returns clear error messages.
+## Provider mapping
 
-## Deletion Behavior
-
-**Keys cannot be deleted from GCP.** This is a fundamental property of the KMS
-service, designed to prevent accidental loss of encryption capability.
-
-When a GcpKmsKey is destroyed (via Planton, Terraform, or Pulumi):
-
-1. All CryptoKeyVersions are scheduled for destruction
-2. Automatic rotation is disabled
-3. The key is removed from the IaC state
-4. **The key remains in GCP** as a permanent resource in the key ring
-
-This means:
-- Key names cannot be reused in the same key ring
-- Plan key names carefully before creation
-- Consider using naming conventions that include purpose and date
-
-## Rotation Strategy
-
-### Symmetric Keys (ENCRYPT_DECRYPT)
-
-Set `rotation_period` to automatically create new key versions:
-
-- **Recommended**: 90 days (`7776000s`) for most use cases
-- **Minimum**: 1 day (`86400s`)
-- **Maximum**: No maximum, but longer periods increase exposure risk
-
-When rotation occurs:
-1. A new CryptoKeyVersion is created
-2. The new version becomes the primary (used for new encrypt operations)
-3. Previous versions remain active (can still decrypt data encrypted with them)
-
-### Asymmetric Keys
-
-Asymmetric keys do NOT support automatic rotation. Version management is manual:
-1. Create a new key version in the GCP console or via API
-2. Update consumers to use the new version's public key
-3. Optionally disable the old version
-
-## Infra-Chart Composability
-
-GcpKmsKey is a **Layer 1-2** resource in infra chart topology:
-
-```
-Layer 0: GcpProject
-Layer 0-1: GcpKmsKeyRing (references Project)
-Layer 1-2: GcpKmsKey (references KeyRing) ← this resource
-Layer 2+: BigQuery, Spanner, GKE, CloudSQL, etc. (reference Key for CMEK)
-```
-
-The `key_id` output is the most-referenced output in the CMEK ecosystem. It
-provides the fully qualified path that all downstream CMEK consumers expect.
-
-## Deliberate Exclusions
-
-These Terraform/Pulumi fields are deliberately excluded from the Planton spec:
-
-| Field | Reason |
-|-------|--------|
-| `import_only` | BYOK via import jobs -- requires infrastructure we don't model |
-| `crypto_key_backend` | EXTERNAL_VPC -- requires EKM connections we don't model |
-| `key_access_justifications_policy` | Beta feature, subject to change |
-
-These can be added in future versions if demand materializes.
-
-## Best Practices
-
-1. **Use descriptive key names** -- keys are permanent, so names should convey purpose
-2. **Set rotation for symmetric keys** -- 90 days is a reasonable default
-3. **Use HSM only when required** -- significantly more expensive than SOFTWARE
-4. **Separate key rings by environment** -- prod keys in prod key ring, dev in dev
-5. **Use CMEK for sensitive data** -- BigQuery, Spanner, CloudSQL with PII/financial data
-6. **Document key purposes** -- use metadata labels and naming conventions
+Maps to `google_kms_crypto_key` (`google/services/kms/resource_kms_crypto_key.go`). The provider's Delete destroys all versions and disables rotation, then removes the key from state — the key object persists in GCP. Only `rotation_period`, `version_template.algorithm`, and `labels` are in the resource's update mask; everything else is ForceNew.

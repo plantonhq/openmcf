@@ -31,6 +31,7 @@ import (
 	"google.golang.org/api/bigquery/v2"
 	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
+	cloudkms "google.golang.org/api/cloudkms/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	composer "google.golang.org/api/composer/v1"
 	"google.golang.org/api/compute/v1"
@@ -168,6 +169,10 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create pubsub client")
 	}
+	cloudKmsService, err := cloudkms.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create cloudkms client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -206,6 +211,7 @@ func (h *Harness) Setup(ctx context.Context) error {
 		Dataproc:            dataprocService,
 		Composer:            composerService,
 		PubSub:              pubsubService,
+		CloudKms:            cloudKmsService,
 		RestClient:          restClient,
 	}
 	return nil

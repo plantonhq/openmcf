@@ -27,12 +27,16 @@ This preset creates a KMS key ring in a specific GCP region. It is the most comm
 - **Regional location** (`us-central1`) — change to match your workload region. Keys are stored exclusively in this region.
 - **No multi-region replication** — keys exist in one region only. Use the multi-region preset if you need continental availability.
 
-## Placeholders to Replace
+## Values to Adjust
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID where the key ring will be created | GCP Console or `GcpProject` outputs |
-| `<your-key-ring-name>` | Permanent name for this key ring (1-63 chars, letters/digits/hyphens/underscores) | Choose a descriptive name (e.g., `prod-encryption`) |
+- `keyRingName` — the permanent GCP name for this ring (1-63 chars,
+  letters/digits/hyphens/underscores). The sample `prod-encryption` works
+  as written; pick a name you will never need to recycle.
+- `location` — your workload region. Multi-digit regions (e.g.
+  `europe-west12`) are valid.
+- `projectId` — omitted here, so the ring lands in the provider
+  connection's default project. Add it (literal or a `GcpProject`
+  reference) to target another project.
 
 ## Important
 

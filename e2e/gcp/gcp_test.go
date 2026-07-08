@@ -561,6 +561,26 @@ func TestGcpPubSubSubscription_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcppubsubsubscription", "terraform")
 }
 
+// --- GCP KMS Key Ring (the permanent container for crypto keys; destroy is
+// state-only by GCP design — run-scoped names keep the leftover rings inert) ---
+
+func TestGcpKmsKeyRing_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpkmskeyring", "pulumi")
+}
+func TestGcpKmsKeyRing_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpkmskeyring", "terraform")
+}
+
+// --- GCP KMS Key (composed on the ring prerequisite; destroy destroys key
+// VERSIONS and disables rotation — the verifier asserts exactly that) ---
+
+func TestGcpKmsKey_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpkmskey", "pulumi")
+}
+func TestGcpKmsKey_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpkmskey", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

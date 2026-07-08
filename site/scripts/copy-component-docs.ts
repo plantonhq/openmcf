@@ -218,6 +218,7 @@ function generateTitle(component: string, provider: string): string {
     'dnszone': 'DNS Zone',
     'keyvault': 'Key Vault',
     'kmskey': 'KMS Key',
+    'kmskeyring': 'KMS Key Ring',
     'securitygroup': 'Security Group',
     'sslpolicy': 'SSL Policy',
     'sslcertificate': 'SSL Certificate',

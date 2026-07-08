@@ -8,20 +8,20 @@ componentName: "gcpkmskeyring"
 
 # GCP KMS Key Ring
 
-Creates an organizational container for cryptographic keys in Google Cloud KMS. A key ring groups CryptoKeys by project and location, providing IAM scoping and logical organization for encryption, signing, and MAC operations. Key rings are permanent resources — once created, they cannot be deleted from GCP.
+Creates a Cloud KMS key ring — the permanent, location-anchored container that groups cryptographic keys. IAM granted on the ring flows down to every key inside it, making the ring the blast-radius boundary for customer-managed encryption.
 
 ## What Gets Created
 
-When you deploy a GcpKmsKeyRing resource, Planton provisions:
+- The Cloud KMS API is enabled on the target project (never disabled on destroy)
+- A `google_kms_key_ring` resource in the specified project and location
 
-- **KMS Key Ring** — a `google_kms_key_ring` resource in the specified project and location, serving as the parent container for CryptoKeys
+The key ring API has no labels surface, so no attribution labels are stamped — identically on both engines.
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **An existing GCP project** — referenced via `projectId`
-- **Cloud KMS API enabled** (`cloudkms.googleapis.com`) on the target project
-- **IAM permissions** — `roles/cloudkms.admin` or `roles/cloudkms.keyRingCreator` on the target project
+- **A GCP project** (the Cloud KMS API is enabled automatically)
+- **IAM permissions** — `roles/cloudkms.admin` or `roles/cloudkms.keyRingCreator`
 
 ## Quick Start
 
@@ -32,14 +32,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
   name: prod-encryption
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpKmsKeyRing.prod-encryption
 spec:
-  projectId:
-    value: my-gcp-project-123
   keyRingName: prod-encryption
   location: us-central1
 ```
@@ -50,123 +43,34 @@ Deploy:
 planton apply -f key-ring.yaml
 ```
 
-This creates a KMS key ring named `prod-encryption` in the `us-central1` region, ready to hold CryptoKeys for encryption, signing, or MAC operations.
+With `projectId` omitted, the ring lands in the provider connection's default project.
 
 ## Configuration Reference
 
-### Required Fields
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `projectId` | `StringValueOrRef` | No | GCP project for the ring. Omitted rides the provider default; reference a `GcpProject` to compose. Immutable. |
+| `keyRingName` | `string` | Yes | The permanent GCP name (1-63 chars: letters, digits, hyphens, underscores). Immutable — and never reusable within the project+location, because rings cannot be deleted. |
+| `location` | `string` | Yes | Region (`us-central1`), multi-region (`us`, `europe`, `asia`), or `global`. Immutable. Keys inherit it, and most CMEK integrations require co-location with the protected data. |
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project ID where the key ring is created. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `keyRingName` | `string` | Name of the key ring in GCP. Permanent — cannot be changed or reused after creation. | 1-63 chars: letters, digits, hyphens, underscores. Pattern: `^[a-zA-Z0-9_-]{1,63}$` |
-| `location` | `string` | GCP location where the key ring resides. Permanent — cannot be changed after creation. Use a region (`us-central1`), multi-region (`us`, `europe`, `asia`), or `global`. | Required |
+## Permanence
 
-### Optional Fields
+**Key rings cannot be deleted from GCP.** Destroying this resource removes the ring from IaC state only; the (free, inert) ring remains in the project forever and its name is permanently consumed. Every field is ForceNew — a change abandons the old ring and creates a new one.
 
-This component has no optional fields. All three fields are required and immutable after creation.
+## Design Guidance
 
-## Examples
-
-### Regional Key Ring
-
-A key ring scoped to a single GCP region, suitable for most production workloads:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpKmsKeyRing
-metadata:
-  name: prod-keys
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpKmsKeyRing.prod-keys
-spec:
-  projectId:
-    value: my-prod-project-123
-  keyRingName: prod-encryption
-  location: us-central1
-```
-
-### Global Key Ring
-
-A key ring available in all GCP regions, useful for cross-region encryption or when data residency is not a constraint:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpKmsKeyRing
-metadata:
-  name: shared-keys
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpKmsKeyRing.shared-keys
-spec:
-  projectId:
-    value: my-security-project-456
-  keyRingName: global-shared-keys
-  location: global
-```
-
-### Multi-Region Key Ring (EU Compliance)
-
-A key ring scoped to the `europe` multi-region for data residency compliance:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpKmsKeyRing
-metadata:
-  name: eu-compliance-keys
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpKmsKeyRing.eu-compliance-keys
-spec:
-  projectId:
-    value: my-eu-project-789
-  keyRingName: eu-compliance-keys
-  location: europe
-```
-
-### Using Foreign Key References
-
-Reference a project ID from a GcpProject resource instead of hardcoding:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpKmsKeyRing
-metadata:
-  name: data-encryption
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpKmsKeyRing.data-encryption
-spec:
-  projectId:
-    valueFrom:
-      kind: GcpProject
-      name: data-project
-      field: status.outputs.project_id
-  keyRingName: data-encryption
-  location: us-central1
-```
+- **One ring per environment or data domain**, not one per key — ring-level IAM is the unit of access review.
+- **Location follows data**: regional rings for regional CMEK, `us`/`europe`/`asia` for multi-region BigQuery/Spanner, `global` for signing keys consumed everywhere.
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `key_ring_id` | `string` | Fully qualified resource path (e.g., `projects/my-project/locations/us-central1/keyRings/prod-encryption`). This is the primary reference used by GcpKmsKey and other downstream resources. |
-| `key_ring_name` | `string` | Short name of the key ring as it exists in GCP. |
+| Output | Description |
+|--------|-------------|
+| `key_ring_id` | Fully qualified ring path (`projects/{p}/locations/{l}/keyRings/{name}`) — what a `GcpKmsKey`'s `keyRingId` reference consumes |
+| `key_ring_name` | The short name of the ring |
+| `location` | The ring's location, for consumers that take a bare name + location pair |
 
 ## Related Components
 
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — creates encryption keys within this key ring for CMEK
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project where the key ring is created
-- [GcpBigQueryDataset](/docs/catalog/gcp/bigquery-dataset) — uses CryptoKeys from this key ring for customer-managed encryption
-- [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — uses CryptoKeys from this key ring for CMEK encryption
+- [GcpKmsKey](../kms-key/) — the cryptographic keys grouped by this ring
+- [GcpProject](../project/) — provides the GCP project by reference

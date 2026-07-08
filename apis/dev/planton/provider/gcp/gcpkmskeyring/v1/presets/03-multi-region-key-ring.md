@@ -14,12 +14,13 @@ This preset creates a KMS key ring in a multi-region location (e.g., `us`, `euro
 - **Multi-region `us`** — keys replicated across all US regions. Change to `europe` or `asia` based on your compliance requirements.
 - **Continental data residency** — unlike `global`, multi-region locations keep key material within the specified geography.
 
-## Placeholders to Replace
+## Values to Adjust
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID where the key ring will be created | GCP Console or `GcpProject` outputs |
-| `<your-key-ring-name>` | Permanent name for this key ring (1-63 chars, letters/digits/hyphens/underscores) | Choose a descriptive name (e.g., `us-compliance-keys`) |
+- `keyRingName` — the permanent GCP name for this ring (1-63 chars,
+  letters/digits/hyphens/underscores).
+- `location` — `us`, `europe`, or `asia` per your compliance boundary.
+- `projectId` — omitted here (provider default project); add it to
+  target another project.
 
 ## Multi-Region Options
 

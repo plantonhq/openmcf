@@ -19,6 +19,7 @@ import (
 	"google.golang.org/api/bigquery/v2"
 	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
+	cloudkms "google.golang.org/api/cloudkms/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	composer "google.golang.org/api/composer/v1"
 	"google.golang.org/api/compute/v1"
@@ -63,6 +64,7 @@ type Services struct {
 	Dataproc            *dataproc.Service
 	Composer            *composer.Service
 	PubSub              *pubsub.Service
+	CloudKms            *cloudkms.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -143,6 +145,8 @@ var verifiers = map[string]Verifier{
 	"gcppubsubschema":                        &pubSubSchemaVerifier{},
 	"gcppubsubtopic":                         &pubSubTopicVerifier{},
 	"gcppubsubsubscription":                  &pubSubSubscriptionVerifier{},
+	"gcpkmskeyring":                          &kmsKeyRingVerifier{},
+	"gcpkmskey":                              &kmsKeyVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

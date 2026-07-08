@@ -87,7 +87,21 @@ var _ = ginkgo.Describe("GcpKmsKeySpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept valid rotation_period", func() {
+	ginkgo.It("should accept a future purpose value the API adds (free-string contract)", func() {
+		msg := minimal()
+		msg.Spec.Purpose = "KEY_ENCAPSULATION"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept rotation_period at exactly the 24h minimum", func() {
+		msg := minimal()
+		msg.Spec.RotationPeriod = "86400s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a 90-day rotation_period", func() {
 		msg := minimal()
 		msg.Spec.RotationPeriod = "7776000s"
 		err := validator.Validate(msg)
@@ -101,6 +115,14 @@ var _ = ginkgo.Describe("GcpKmsKeySpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept rotation_period together with explicit ENCRYPT_DECRYPT purpose", func() {
+		msg := minimal()
+		msg.Spec.Purpose = "ENCRYPT_DECRYPT"
+		msg.Spec.RotationPeriod = "2592000s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should accept valid destroy_scheduled_duration", func() {
 		msg := minimal()
 		msg.Spec.DestroyScheduledDuration = "2592000s"
@@ -108,7 +130,7 @@ var _ = ginkgo.Describe("GcpKmsKeySpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept version_template with algorithm and protection_level", func() {
+	ginkgo.It("should accept version_template with algorithm and HSM protection", func() {
 		msg := minimal()
 		msg.Spec.VersionTemplate = &GcpKmsKeyVersionTemplate{
 			Algorithm:       "GOOGLE_SYMMETRIC_ENCRYPTION",
@@ -123,6 +145,46 @@ var _ = ginkgo.Describe("GcpKmsKeySpec", func() {
 		msg.Spec.VersionTemplate = &GcpKmsKeyVersionTemplate{
 			Algorithm: "EC_SIGN_P256_SHA256",
 		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept EXTERNAL protection level", func() {
+		msg := minimal()
+		msg.Spec.VersionTemplate = &GcpKmsKeyVersionTemplate{
+			Algorithm:       "EXTERNAL_SYMMETRIC_ENCRYPTION",
+			ProtectionLevel: "EXTERNAL",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept EXTERNAL_VPC protection with a crypto_key_backend", func() {
+		msg := minimal()
+		msg.Spec.VersionTemplate = &GcpKmsKeyVersionTemplate{
+			Algorithm:       "EXTERNAL_SYMMETRIC_ENCRYPTION",
+			ProtectionLevel: "EXTERNAL_VPC",
+		}
+		msg.Spec.CryptoKeyBackend = &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+				Value: "projects/my-project/locations/us-central1/ekmConnections/my-ekm",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept import_only when skip_initial_version_creation is also set", func() {
+		msg := minimal()
+		msg.Spec.ImportOnly = true
+		msg.Spec.SkipInitialVersionCreation = true
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"team": "payments", "cost-center": "cc-1234"}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -199,9 +261,23 @@ var _ = ginkgo.Describe("GcpKmsKeySpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject invalid purpose value", func() {
+	ginkgo.It("should reject rotation_period below the 24h minimum", func() {
 		msg := minimal()
-		msg.Spec.Purpose = "INVALID_PURPOSE"
+		msg.Spec.RotationPeriod = "86399s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a one-hour rotation_period", func() {
+		msg := minimal()
+		msg.Spec.RotationPeriod = "3600s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject rotation_period with more than 9 fractional digits", func() {
+		msg := minimal()
+		msg.Spec.RotationPeriod = "86400.1234567891s"
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
@@ -220,6 +296,14 @@ var _ = ginkgo.Describe("GcpKmsKeySpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should reject rotation_period on a non-ENCRYPT_DECRYPT key", func() {
+		msg := minimal()
+		msg.Spec.Purpose = "ASYMMETRIC_SIGN"
+		msg.Spec.RotationPeriod = "7776000s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should reject invalid destroy_scheduled_duration format", func() {
 		msg := minimal()
 		msg.Spec.DestroyScheduledDuration = "30d"
@@ -227,11 +311,11 @@ var _ = ginkgo.Describe("GcpKmsKeySpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject invalid protection_level", func() {
+	ginkgo.It("should reject an invalid protection_level", func() {
 		msg := minimal()
 		msg.Spec.VersionTemplate = &GcpKmsKeyVersionTemplate{
 			Algorithm:       "GOOGLE_SYMMETRIC_ENCRYPTION",
-			ProtectionLevel: "EXTERNAL",
+			ProtectionLevel: "FIPS_HSM",
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
@@ -241,6 +325,39 @@ var _ = ginkgo.Describe("GcpKmsKeySpec", func() {
 		msg := minimal()
 		msg.Spec.VersionTemplate = &GcpKmsKeyVersionTemplate{
 			ProtectionLevel: "SOFTWARE",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject import_only without skip_initial_version_creation", func() {
+		msg := minimal()
+		msg.Spec.ImportOnly = true
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject crypto_key_backend without EXTERNAL_VPC protection", func() {
+		msg := minimal()
+		msg.Spec.CryptoKeyBackend = &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+				Value: "projects/my-project/locations/us-central1/ekmConnections/my-ekm",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject crypto_key_backend when version_template protection is HSM", func() {
+		msg := minimal()
+		msg.Spec.VersionTemplate = &GcpKmsKeyVersionTemplate{
+			Algorithm:       "GOOGLE_SYMMETRIC_ENCRYPTION",
+			ProtectionLevel: "HSM",
+		}
+		msg.Spec.CryptoKeyBackend = &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+				Value: "projects/my-project/locations/us-central1/ekmConnections/my-ekm",
+			},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())

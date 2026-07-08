@@ -13,6 +13,7 @@ go_library(
         "@org_golang_google_api//bigquery/v2:bigquery",
         "@org_golang_google_api//bigtableadmin/v2:bigtableadmin",
         "@org_golang_google_api//cloudfunctions/v2:cloudfunctions",
+        "@org_golang_google_api//cloudkms/v1:cloudkms",
         "@org_golang_google_api//cloudresourcemanager/v1:cloudresourcemanager",
         "@org_golang_google_api//composer/v1:composer",
         "@org_golang_google_api//compute/v1:compute",
