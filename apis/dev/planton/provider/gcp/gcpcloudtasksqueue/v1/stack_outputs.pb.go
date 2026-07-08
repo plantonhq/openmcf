@@ -30,9 +30,11 @@ type GcpCloudTasksQueueStackOutputs struct {
 	QueueId string `protobuf:"bytes,1,opt,name=queue_id,json=queueId,proto3" json:"queue_id,omitempty"`
 	// The short queue name (same as the spec's queue_name input).
 	QueueName string `protobuf:"bytes,2,opt,name=queue_name,json=queueName,proto3" json:"queue_name,omitempty"`
-	// The current state of the queue.
-	// Possible values: RUNNING, PAUSED, DISABLED.
-	State         string `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
+	// The effective max burst size of the queue's rate limits.
+	// Computed by GCP from max_dispatches_per_second — it is not configurable.
+	// Max burst size caps how fast queued tasks are processed when many tasks
+	// are enqueued in a short period at a high dispatch rate.
+	MaxBurstSize  int32 `protobuf:"varint,3,opt,name=max_burst_size,json=maxBurstSize,proto3" json:"max_burst_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,23 +83,23 @@ func (x *GcpCloudTasksQueueStackOutputs) GetQueueName() string {
 	return ""
 }
 
-func (x *GcpCloudTasksQueueStackOutputs) GetState() string {
+func (x *GcpCloudTasksQueueStackOutputs) GetMaxBurstSize() int32 {
 	if x != nil {
-		return x.State
+		return x.MaxBurstSize
 	}
-	return ""
+	return 0
 }
 
 var File_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/gcp/gcpcloudtasksqueue/v1/stack_outputs.proto\x12.dev.planton.provider.gcp.gcpcloudtasksqueue.v1\"p\n" +
+	"Bdev/planton/provider/gcp/gcpcloudtasksqueue/v1/stack_outputs.proto\x12.dev.planton.provider.gcp.gcpcloudtasksqueue.v1\"\x80\x01\n" +
 	"\x1eGcpCloudTasksQueueStackOutputs\x12\x19\n" +
 	"\bqueue_id\x18\x01 \x01(\tR\aqueueId\x12\x1d\n" +
 	"\n" +
-	"queue_name\x18\x02 \x01(\tR\tqueueName\x12\x14\n" +
-	"\x05state\x18\x03 \x01(\tR\x05stateB\x8d\x03\n" +
+	"queue_name\x18\x02 \x01(\tR\tqueueName\x12$\n" +
+	"\x0emax_burst_size\x18\x03 \x01(\x05R\fmaxBurstSizeB\x8d\x03\n" +
 	"2com.dev.planton.provider.gcp.gcpcloudtasksqueue.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudtasksqueue/v1;gcpcloudtasksqueuev1\xa2\x02\x05DPPGG\xaa\x02.Dev.Planton.Provider.Gcp.Gcpcloudtasksqueue.V1\xca\x02.Dev\\Planton\\Provider\\Gcp\\Gcpcloudtasksqueue\\V1\xe2\x02:Dev\\Planton\\Provider\\Gcp\\Gcpcloudtasksqueue\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Gcp::Gcpcloudtasksqueue::V1b\x06proto3"
 
 var (

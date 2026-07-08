@@ -1028,11 +1028,20 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcptq"
+    // Queue-level HTTP task authentication (OIDC/OAuth tokens) dispatches as
+    // a service account — the designed composition for secure targets.
+    prerequisites: [GcpServiceAccount]
   }];
   GcpCloudSchedulerJob = 663 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpcsj"
+    // The pubsub target publishes to a topic, and HTTP targets authenticate
+    // as a service account (OIDC/OAuth) — the designed compositions.
+    prerequisites: [
+      GcpPubSubTopic,
+      GcpServiceAccount
+    ]
   }];
   GcpPubSubSchema = 664 [(kind_meta) = {
     provider: gcp

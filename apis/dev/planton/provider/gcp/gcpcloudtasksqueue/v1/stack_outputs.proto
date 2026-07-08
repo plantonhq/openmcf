@@ -12,7 +12,9 @@ message GcpCloudTasksQueueStackOutputs {
   // The short queue name (same as the spec's queue_name input).
   string queue_name = 2;
 
-  // The current state of the queue.
-  // Possible values: RUNNING, PAUSED, DISABLED.
-  string state = 3;
+  // The effective max burst size of the queue's rate limits.
+  // Computed by GCP from max_dispatches_per_second — it is not configurable.
+  // Max burst size caps how fast queued tasks are processed when many tasks
+  // are enqueued in a short period at a high dispatch rate.
+  int32 max_burst_size = 3;
 }

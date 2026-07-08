@@ -410,6 +410,83 @@ func (x *GcpCloudTasksQueueHttpTarget) GetUriOverride() *GcpCloudTasksQueueUriOv
 	return nil
 }
 
+// GcpCloudTasksQueueAppEngineRoutingOverride overrides task-level App Engine
+// routing for every App Engine task in this queue. Use it to pin an entire
+// queue's tasks to a specific App Engine service, version, or instance
+// instead of relying on each task's own routing.
+//
+// These settings apply ONLY to App Engine tasks; HTTP tasks are routed by
+// http_target instead. The resolved hostname that tasks are actually sent to
+// is computed by GCP from these values.
+type GcpCloudTasksQueueAppEngineRoutingOverride struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The App Engine service to route queue tasks to.
+	// If not specified, the task is sent to the service that is the default
+	// service when the task is attempted.
+	Service string `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
+	// The App Engine version to route queue tasks to.
+	// If not specified, the task is sent to the version that is the default
+	// version when the task is attempted.
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// The App Engine instance to route queue tasks to.
+	// If not specified, the task is sent to an instance which is available
+	// when the task is attempted (subject to the service/version's scaling).
+	Instance      string `protobuf:"bytes,3,opt,name=instance,proto3" json:"instance,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudTasksQueueAppEngineRoutingOverride) Reset() {
+	*x = GcpCloudTasksQueueAppEngineRoutingOverride{}
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudTasksQueueAppEngineRoutingOverride) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudTasksQueueAppEngineRoutingOverride) ProtoMessage() {}
+
+func (x *GcpCloudTasksQueueAppEngineRoutingOverride) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudTasksQueueAppEngineRoutingOverride.ProtoReflect.Descriptor instead.
+func (*GcpCloudTasksQueueAppEngineRoutingOverride) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GcpCloudTasksQueueAppEngineRoutingOverride) GetService() string {
+	if x != nil {
+		return x.Service
+	}
+	return ""
+}
+
+func (x *GcpCloudTasksQueueAppEngineRoutingOverride) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *GcpCloudTasksQueueAppEngineRoutingOverride) GetInstance() string {
+	if x != nil {
+		return x.Instance
+	}
+	return ""
+}
+
 // GcpCloudTasksQueueRateLimits controls the rate at which tasks are dispatched
 // from the queue. The actual dispatch rate is determined by the combination of
 // these settings, the number of tasks in the queue, and system throttling
@@ -433,7 +510,7 @@ type GcpCloudTasksQueueRateLimits struct {
 
 func (x *GcpCloudTasksQueueRateLimits) Reset() {
 	*x = GcpCloudTasksQueueRateLimits{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -445,7 +522,7 @@ func (x *GcpCloudTasksQueueRateLimits) String() string {
 func (*GcpCloudTasksQueueRateLimits) ProtoMessage() {}
 
 func (x *GcpCloudTasksQueueRateLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -458,7 +535,7 @@ func (x *GcpCloudTasksQueueRateLimits) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudTasksQueueRateLimits.ProtoReflect.Descriptor instead.
 func (*GcpCloudTasksQueueRateLimits) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GcpCloudTasksQueueRateLimits) GetMaxDispatchesPerSecond() float64 {
@@ -505,7 +582,7 @@ type GcpCloudTasksQueueRetryConfig struct {
 
 func (x *GcpCloudTasksQueueRetryConfig) Reset() {
 	*x = GcpCloudTasksQueueRetryConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -517,7 +594,7 @@ func (x *GcpCloudTasksQueueRetryConfig) String() string {
 func (*GcpCloudTasksQueueRetryConfig) ProtoMessage() {}
 
 func (x *GcpCloudTasksQueueRetryConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -530,7 +607,7 @@ func (x *GcpCloudTasksQueueRetryConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudTasksQueueRetryConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudTasksQueueRetryConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GcpCloudTasksQueueRetryConfig) GetMaxAttempts() int32 {
@@ -581,7 +658,7 @@ type GcpCloudTasksQueueLoggingConfig struct {
 
 func (x *GcpCloudTasksQueueLoggingConfig) Reset() {
 	*x = GcpCloudTasksQueueLoggingConfig{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -593,7 +670,7 @@ func (x *GcpCloudTasksQueueLoggingConfig) String() string {
 func (*GcpCloudTasksQueueLoggingConfig) ProtoMessage() {}
 
 func (x *GcpCloudTasksQueueLoggingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -606,7 +683,7 @@ func (x *GcpCloudTasksQueueLoggingConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudTasksQueueLoggingConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudTasksQueueLoggingConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GcpCloudTasksQueueLoggingConfig) GetSamplingRatio() float64 {
@@ -631,41 +708,48 @@ func (x *GcpCloudTasksQueueLoggingConfig) GetSamplingRatio() float64 {
 // Important behavioral notes:
 //
 //   - The queue_name and location fields are immutable after creation.
-//     Changing them requires destroying and recreating the queue.
+//     Changing them requires destroying and recreating the queue. Queue names
+//     are deliberately explicit (never derived from metadata) because the
+//     Cloud Tasks API reserves a deleted queue's ID for up to 7 days after
+//     deletion — an accidental name change burns the old identifier for that
+//     window.
 //
 //   - Cloud Tasks queues do NOT support GCP labels.
 //
-//   - The desired_state field controls whether the queue actively dispatches
-//     tasks (RUNNING) or holds them without dispatching (PAUSED). Tasks can
-//     still be added to a paused queue.
+//   - Pause/resume (the API's queue state) is a runtime operation, not part
+//     of this declarative surface. Use the gcloud CLI or the Cloud Tasks API
+//     to pause or resume dispatch on a provisioned queue.
 //
 //   - Rate limits and retry config have GCP-computed defaults when not specified.
 //     For most workloads, the defaults are reasonable starting points.
 type GcpCloudTasksQueueSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the queue will be created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the Cloud Tasks queue.
 	// Must start with a letter, contain only letters, numbers, and hyphens,
 	// and be between 1 and 63 characters.
-	// Immutable after creation.
+	// Immutable after creation, and deliberately required: a deleted queue's
+	// ID is reserved by the API for up to 7 days, so the name deserves an
+	// explicit, stable choice rather than a derived default.
 	QueueName string `protobuf:"bytes,2,opt,name=queue_name,json=queueName,proto3" json:"queue_name,omitempty"`
 	// GCP region where the queue will be created (e.g., "us-central1").
 	// Immutable after creation.
 	Location string `protobuf:"bytes,3,opt,name=location,proto3" json:"location,omitempty"`
-	// Desired state of the queue. Controls whether tasks are actively dispatched.
-	// RUNNING: Tasks are dispatched normally (default).
-	// PAUSED: Tasks are held in the queue without being dispatched. New tasks
-	//
-	//	can still be added. Resume by setting back to RUNNING.
-	DesiredState string `protobuf:"bytes,4,opt,name=desired_state,json=desiredState,proto3" json:"desired_state,omitempty"`
 	// Queue-level HTTP target configuration. When set, these settings apply
 	// to all HTTP tasks dispatched from this queue, overriding task-level
 	// HTTP configuration.
 	//
 	// This is the recommended pattern for microservices: configure auth and
 	// routing at the queue level, then enqueue tasks with just a request body.
-	HttpTarget *GcpCloudTasksQueueHttpTarget `protobuf:"bytes,5,opt,name=http_target,json=httpTarget,proto3" json:"http_target,omitempty"`
+	HttpTarget *GcpCloudTasksQueueHttpTarget `protobuf:"bytes,4,opt,name=http_target,json=httpTarget,proto3" json:"http_target,omitempty"`
+	// App Engine routing override for App Engine tasks in this queue.
+	// When set, overrides each task's own App Engine routing so the whole
+	// queue targets one service/version/instance. Only relevant for queues
+	// dispatching App Engine tasks; ignored for HTTP tasks.
+	AppEngineRoutingOverride *GcpCloudTasksQueueAppEngineRoutingOverride `protobuf:"bytes,5,opt,name=app_engine_routing_override,json=appEngineRoutingOverride,proto3" json:"app_engine_routing_override,omitempty"`
 	// Rate limits for task dispatches. Controls how fast and how many tasks
 	// are dispatched concurrently.
 	RateLimits *GcpCloudTasksQueueRateLimits `protobuf:"bytes,6,opt,name=rate_limits,json=rateLimits,proto3" json:"rate_limits,omitempty"`
@@ -680,7 +764,7 @@ type GcpCloudTasksQueueSpec struct {
 
 func (x *GcpCloudTasksQueueSpec) Reset() {
 	*x = GcpCloudTasksQueueSpec{}
-	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -692,7 +776,7 @@ func (x *GcpCloudTasksQueueSpec) String() string {
 func (*GcpCloudTasksQueueSpec) ProtoMessage() {}
 
 func (x *GcpCloudTasksQueueSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -705,7 +789,7 @@ func (x *GcpCloudTasksQueueSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudTasksQueueSpec.ProtoReflect.Descriptor instead.
 func (*GcpCloudTasksQueueSpec) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GcpCloudTasksQueueSpec) GetProjectId() *v1.StringValueOrRef {
@@ -729,16 +813,16 @@ func (x *GcpCloudTasksQueueSpec) GetLocation() string {
 	return ""
 }
 
-func (x *GcpCloudTasksQueueSpec) GetDesiredState() string {
-	if x != nil {
-		return x.DesiredState
-	}
-	return ""
-}
-
 func (x *GcpCloudTasksQueueSpec) GetHttpTarget() *GcpCloudTasksQueueHttpTarget {
 	if x != nil {
 		return x.HttpTarget
+	}
+	return nil
+}
+
+func (x *GcpCloudTasksQueueSpec) GetAppEngineRoutingOverride() *GcpCloudTasksQueueAppEngineRoutingOverride {
+	if x != nil {
+		return x.AppEngineRoutingOverride
 	}
 	return nil
 }
@@ -797,7 +881,11 @@ const file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDesc = "
 	"\n" +
 	"oidc_token\x18\x04 \x01(\v2K.dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOidcTokenR\toidcToken\x12p\n" +
 	"\furi_override\x18\x05 \x01(\v2M.dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueUriOverrideR\vuriOverride:\x91\x01\xbaH\x8d\x01\x1a\x8a\x01\n" +
-	"\x1boauth_oidc_mutual_exclusion\x12:only one of oauth_token or oidc_token can be set, not both\x1a/!has(this.oauth_token) || !has(this.oidc_token)\"\x95\x01\n" +
+	"\x1boauth_oidc_mutual_exclusion\x12:only one of oauth_token or oidc_token can be set, not both\x1a/!has(this.oauth_token) || !has(this.oidc_token)\"|\n" +
+	"*GcpCloudTasksQueueAppEngineRoutingOverride\x12\x18\n" +
+	"\aservice\x18\x01 \x01(\tR\aservice\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12\x1a\n" +
+	"\binstance\x18\x03 \x01(\tR\binstance\"\x95\x01\n" +
 	"\x1cGcpCloudTasksQueueRateLimits\x129\n" +
 	"\x19max_dispatches_per_second\x18\x01 \x01(\x01R\x16maxDispatchesPerSecond\x12:\n" +
 	"\x19max_concurrent_dispatches\x18\x02 \x01(\x05R\x17maxConcurrentDispatches\"\xd7\x01\n" +
@@ -811,17 +899,16 @@ const file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDesc = "
 	"\rmax_doublings\x18\x05 \x01(\x05R\fmaxDoublings\"\xb9\x01\n" +
 	"\x1fGcpCloudTasksQueueLoggingConfig\x12\x95\x01\n" +
 	"\x0esampling_ratio\x18\x01 \x01(\x01Bn\xbaHk\xba\x01h\n" +
-	"\x14valid_sampling_ratio\x124sampling_ratio must be between 0.0 and 1.0 inclusive\x1a\x1athis >= 0.0 && this <= 1.0R\rsamplingRatio\"\xf8\x06\n" +
-	"\x16GcpCloudTasksQueueSpec\x12{\n" +
+	"\x14valid_sampling_ratio\x124sampling_ratio must be between 0.0 and 1.0 inclusive\x1a\x1athis >= 0.0 && this <= 1.0R\rsamplingRatio\"\xf5\x06\n" +
+	"\x16GcpCloudTasksQueueSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12D\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12D\n" +
 	"\n" +
 	"queue_name\x18\x02 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d\x10\x01\x18?2\x17^[a-zA-Z][a-zA-Z0-9-]*$R\tqueueName\x12\"\n" +
-	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12\x96\x01\n" +
-	"\rdesired_state\x18\x04 \x01(\tBq\xbaHn\xba\x01k\n" +
-	"\x13valid_desired_state\x12'desired_state must be RUNNING or PAUSED\x1a+this == '' || this in ['RUNNING', 'PAUSED']R\fdesiredState\x12m\n" +
-	"\vhttp_target\x18\x05 \x01(\v2L.dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTargetR\n" +
-	"httpTarget\x12m\n" +
+	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12m\n" +
+	"\vhttp_target\x18\x04 \x01(\v2L.dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTargetR\n" +
+	"httpTarget\x12\x99\x01\n" +
+	"\x1bapp_engine_routing_override\x18\x05 \x01(\v2Z.dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueAppEngineRoutingOverrideR\x18appEngineRoutingOverride\x12m\n" +
 	"\vrate_limits\x18\x06 \x01(\v2L.dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRateLimitsR\n" +
 	"rateLimits\x12p\n" +
 	"\fretry_config\x18\a \x01(\v2M.dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRetryConfigR\vretryConfig\x12\x8d\x01\n" +
@@ -840,36 +927,38 @@ func file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescGZIP(
 	return file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_goTypes = []any{
-	(*GcpCloudTasksQueueHttpHeaderOverride)(nil), // 0: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpHeaderOverride
-	(*GcpCloudTasksQueueOAuthToken)(nil),         // 1: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOAuthToken
-	(*GcpCloudTasksQueueOidcToken)(nil),          // 2: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOidcToken
-	(*GcpCloudTasksQueueUriOverride)(nil),        // 3: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueUriOverride
-	(*GcpCloudTasksQueueHttpTarget)(nil),         // 4: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTarget
-	(*GcpCloudTasksQueueRateLimits)(nil),         // 5: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRateLimits
-	(*GcpCloudTasksQueueRetryConfig)(nil),        // 6: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRetryConfig
-	(*GcpCloudTasksQueueLoggingConfig)(nil),      // 7: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueLoggingConfig
-	(*GcpCloudTasksQueueSpec)(nil),               // 8: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec
-	(*v1.StringValueOrRef)(nil),                  // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpCloudTasksQueueHttpHeaderOverride)(nil),       // 0: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpHeaderOverride
+	(*GcpCloudTasksQueueOAuthToken)(nil),               // 1: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOAuthToken
+	(*GcpCloudTasksQueueOidcToken)(nil),                // 2: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOidcToken
+	(*GcpCloudTasksQueueUriOverride)(nil),              // 3: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueUriOverride
+	(*GcpCloudTasksQueueHttpTarget)(nil),               // 4: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTarget
+	(*GcpCloudTasksQueueAppEngineRoutingOverride)(nil), // 5: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueAppEngineRoutingOverride
+	(*GcpCloudTasksQueueRateLimits)(nil),               // 6: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRateLimits
+	(*GcpCloudTasksQueueRetryConfig)(nil),              // 7: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRetryConfig
+	(*GcpCloudTasksQueueLoggingConfig)(nil),            // 8: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueLoggingConfig
+	(*GcpCloudTasksQueueSpec)(nil),                     // 9: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec
+	(*v1.StringValueOrRef)(nil),                        // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_depIdxs = []int32{
-	9,  // 0: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOAuthToken.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 1: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOidcToken.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 0: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOAuthToken.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 1: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOidcToken.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0,  // 2: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTarget.header_overrides:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpHeaderOverride
 	1,  // 3: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTarget.oauth_token:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOAuthToken
 	2,  // 4: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTarget.oidc_token:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueOidcToken
 	3,  // 5: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTarget.uri_override:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueUriOverride
-	9,  // 6: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 6: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	4,  // 7: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.http_target:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueHttpTarget
-	5,  // 8: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.rate_limits:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRateLimits
-	6,  // 9: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.retry_config:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRetryConfig
-	7,  // 10: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.stackdriver_logging_config:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueLoggingConfig
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	5,  // 8: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.app_engine_routing_override:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueAppEngineRoutingOverride
+	6,  // 9: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.rate_limits:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRateLimits
+	7,  // 10: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.retry_config:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueRetryConfig
+	8,  // 11: dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueSpec.stackdriver_logging_config:type_name -> dev.planton.provider.gcp.gcpcloudtasksqueue.v1.GcpCloudTasksQueueLoggingConfig
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_init() }
@@ -883,7 +972,7 @@ func file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

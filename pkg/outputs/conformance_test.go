@@ -767,6 +767,31 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"subscription_id", "subscription_name"},
 		},
 		{
+			// GcpCloudTasksQueue: the fully qualified queue path task
+			// producers enqueue against, the short name, and the
+			// GCP-computed effective burst size.
+			name: "GcpCloudTasksQueue",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudTasksQueue,
+			rawOutputs: map[string]interface{}{
+				"queue_id":       "projects/prod-project/locations/us-central1/queues/order-processing",
+				"queue_name":     "order-processing",
+				"max_burst_size": 100,
+			},
+			mustPopulate: []string{"queue_id", "queue_name", "max_burst_size"},
+		},
+		{
+			// GcpCloudSchedulerJob: the fully qualified job path, the short
+			// name, and the reconciled state (ENABLED unless created paused).
+			name: "GcpCloudSchedulerJob",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudSchedulerJob,
+			rawOutputs: map[string]interface{}{
+				"job_id":   "projects/prod-project/locations/us-central1/jobs/daily-report-trigger",
+				"job_name": "daily-report-trigger",
+				"state":    "ENABLED",
+			},
+			mustPopulate: []string{"job_id", "job_name", "state"},
+		},
+		{
 			// GcpKmsKeyRing: the fully qualified ring path a GcpKmsKey's
 			// key_ring_id reference consumes, the short name for bare-name
 			// consumers, and the location they pair it with.

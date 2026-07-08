@@ -91,23 +91,29 @@ var _ = ginkgo.Describe("GcpCloudTasksQueueSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept desired_state RUNNING", func() {
+	ginkgo.It("should accept omitted project_id (ambient provider project)", func() {
 		msg := minimal()
-		msg.Spec.DesiredState = "RUNNING"
+		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept desired_state PAUSED", func() {
+	ginkgo.It("should accept app_engine_routing_override with all fields", func() {
 		msg := minimal()
-		msg.Spec.DesiredState = "PAUSED"
+		msg.Spec.AppEngineRoutingOverride = &GcpCloudTasksQueueAppEngineRoutingOverride{
+			Service:  "worker",
+			Version:  "v2",
+			Instance: "0",
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept empty desired_state (defaults to RUNNING)", func() {
+	ginkgo.It("should accept app_engine_routing_override with service only", func() {
 		msg := minimal()
-		msg.Spec.DesiredState = ""
+		msg.Spec.AppEngineRoutingOverride = &GcpCloudTasksQueueAppEngineRoutingOverride{
+			Service: "background-jobs",
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -282,7 +288,6 @@ var _ = ginkgo.Describe("GcpCloudTasksQueueSpec", func() {
 
 	ginkgo.It("should accept a full-featured spec", func() {
 		msg := minimal()
-		msg.Spec.DesiredState = "RUNNING"
 		msg.Spec.HttpTarget = &GcpCloudTasksQueueHttpTarget{
 			HttpMethod: "POST",
 			HeaderOverrides: []*GcpCloudTasksQueueHttpHeaderOverride{
@@ -347,13 +352,6 @@ var _ = ginkgo.Describe("GcpCloudTasksQueueSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject missing project_id", func() {
-		msg := minimal()
-		msg.Spec.ProjectId = nil
-		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
-	})
-
 	ginkgo.It("should reject missing queue_name", func() {
 		msg := minimal()
 		msg.Spec.QueueName = ""
@@ -399,13 +397,6 @@ var _ = ginkgo.Describe("GcpCloudTasksQueueSpec", func() {
 	ginkgo.It("should reject queue_name exceeding 63 characters", func() {
 		msg := minimal()
 		msg.Spec.QueueName = "a" + strings.Repeat("b", 63)
-		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
-	})
-
-	ginkgo.It("should reject invalid desired_state", func() {
-		msg := minimal()
-		msg.Spec.DesiredState = "STOPPED"
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

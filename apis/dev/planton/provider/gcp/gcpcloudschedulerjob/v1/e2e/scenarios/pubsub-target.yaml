@@ -1,0 +1,41 @@
+# GcpCloudSchedulerJob scenario: a Pub/Sub target composed on the
+# GcpPubSubTopic prerequisite — the live proof that the topic FK resolves
+# to the fully qualified projects/{p}/topics/{name} path the Scheduler API
+# requires. jobName is deliberately omitted: the job takes its name from
+# metadata.name (the fallback contract proven live on BOTH engines — the
+# Terraform module resolves it in locals, Pulumi in code). metadata.name
+# itself carries ${E2E_RUN_ID}: the fallback makes it the cloud-side job
+# name, and Cloud Scheduler's delete finalizes asynchronously, so a fixed
+# name recreated minutes later by the other engine can 409.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSchedulerJob
+metadata:
+  name: e2e-csj-ps-${E2E_RUN_ID}
+  id: e2e-csj-ps-${E2E_RUN_ID}
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcloudschedulerjob
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  location: us-central1
+  schedule: "0 2 * * *"
+  timeZone: Etc/UTC
+  description: E2E pubsub-target scheduler job
+  pubsubTarget:
+    topicName:
+      valueFrom:
+        kind: GcpPubSubTopic
+        name: planton-oss-e2e-gcppst-prereq
+        fieldPath: status.outputs.topic_id
+    # Base64 of {"source":"e2e"}.
+    data: eyJzb3VyY2UiOiJlMmUifQ==
+    attributes:
+      source: planton-e2e
+  retryConfig:
+    retryCount: 3
+    maxDoublings: 3

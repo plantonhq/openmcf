@@ -581,6 +581,23 @@ func TestGcpKmsKey_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpkmskey", "terraform")
 }
 
+// GcpCloudTasksQueue scenarios: minimal + http-target-oidc (SA chain).
+func TestGcpCloudTasksQueue_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudtasksqueue", "pulumi")
+}
+func TestGcpCloudTasksQueue_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudtasksqueue", "terraform")
+}
+
+// GcpCloudSchedulerJob scenarios: pubsub-target (topic chain) +
+// http-target-oidc (SA chain).
+func TestGcpCloudSchedulerJob_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudschedulerjob", "pulumi")
+}
+func TestGcpCloudSchedulerJob_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudschedulerjob", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

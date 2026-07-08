@@ -406,11 +406,11 @@ var _ = ginkgo.Describe("GcpCloudSchedulerJobSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject missing project_id", func() {
+	ginkgo.It("should accept omitted project_id (ambient provider project)", func() {
 		msg := minimalHttp()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject missing location", func() {

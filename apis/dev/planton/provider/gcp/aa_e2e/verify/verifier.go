@@ -21,6 +21,8 @@ import (
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	cloudkms "google.golang.org/api/cloudkms/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	cloudscheduler "google.golang.org/api/cloudscheduler/v1"
+	cloudtasks "google.golang.org/api/cloudtasks/v2"
 	composer "google.golang.org/api/composer/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
@@ -65,6 +67,8 @@ type Services struct {
 	Composer            *composer.Service
 	PubSub              *pubsub.Service
 	CloudKms            *cloudkms.Service
+	CloudTasks          *cloudtasks.Service
+	CloudScheduler      *cloudscheduler.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -147,6 +151,8 @@ var verifiers = map[string]Verifier{
 	"gcppubsubsubscription":                  &pubSubSubscriptionVerifier{},
 	"gcpkmskeyring":                          &kmsKeyRingVerifier{},
 	"gcpkmskey":                              &kmsKeyVerifier{},
+	"gcpcloudtasksqueue":                     &cloudTasksQueueVerifier{},
+	"gcpcloudschedulerjob":                   &cloudSchedulerJobVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

@@ -148,6 +148,20 @@ a second scenario re-creates the just-"destroyed" (state-only) prerequisite
 and 409s on its own leftover. Fold the arms into one scenario and record
 the rest as offline-proven.
 
+**Deletes that finalize asynchronously make FIXED cloud-side names 409 across
+engines.** Some control planes acknowledge a delete before the name is
+actually reusable (first hit: Cloud Scheduler jobs — the destroy returns, the
+verifier's GET already 404s, yet a create of the same name minutes later can
+still 409 `already exists`; Cloud Tasks goes further and documents a queue-ID
+reservation of up to 7 days after deletion). The dual-engine runner recreates
+every scenario back-to-back under both engines, so any scenario whose
+cloud-side name is FIXED — including one that deliberately omits the explicit
+name to prove the metadata.name fallback — sits exactly in this window. The
+rule: the fallback-proof scenario carries `${E2E_RUN_ID}` in `metadata.name`
+itself (the fallback then makes it the cloud-side name, proving the contract
+without a fixed identifier); everything else carries the token in the spec's
+explicit name field.
+
 **Retries cannot cover releases the cloud documents in HOURS.** The retry
 budget is bounded (~6 minutes) on purpose: some cloud-side holds outlive any
 reasonable wait — a direct-VPC Cloud Run service leaves a serverless address

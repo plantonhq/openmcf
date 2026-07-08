@@ -33,6 +33,8 @@ import (
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	cloudkms "google.golang.org/api/cloudkms/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	cloudscheduler "google.golang.org/api/cloudscheduler/v1"
+	cloudtasks "google.golang.org/api/cloudtasks/v2"
 	composer "google.golang.org/api/composer/v1"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/container/v1"
@@ -173,6 +175,14 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create cloudkms client")
 	}
+	cloudTasksService, err := cloudtasks.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create cloudtasks client")
+	}
+	cloudSchedulerService, err := cloudscheduler.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create cloudscheduler client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -212,6 +222,8 @@ func (h *Harness) Setup(ctx context.Context) error {
 		Composer:            composerService,
 		PubSub:              pubsubService,
 		CloudKms:            cloudKmsService,
+		CloudTasks:          cloudTasksService,
+		CloudScheduler:      cloudSchedulerService,
 		RestClient:          restClient,
 	}
 	return nil

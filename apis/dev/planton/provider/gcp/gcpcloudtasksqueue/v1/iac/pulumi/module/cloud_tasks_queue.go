@@ -4,24 +4,60 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/cloudtasks"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpCloudTasksQueue.Spec
 
+	// Enable the Cloud Tasks API — the control plane that owns queues.
+	// DisableOnDestroy stays false: tearing down one queue must never
+	// disable the API for everything else in the project (other queues
+	// keep dispatching).
+	cloudtasksApiArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("cloudtasks.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		cloudtasksApiArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdCloudtasksApi, err := projects.NewService(ctx,
+		"gcptq-cloudtasks.googleapis.com", cloudtasksApiArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable cloudtasks.googleapis.com api")
+	}
+
+	// The Cloud Tasks queue — the dispatch-rate, retry, and routing contract
+	// for every task enqueued into it. Name and location are immutable, and
+	// a deleted queue's ID stays reserved by the API for up to 7 days, so
+	// renames both replace the queue and burn the old identifier for that
+	// window.
 	args := &cloudtasks.QueueArgs{
 		Name:     pulumi.String(spec.QueueName),
 		Location: pulumi.String(spec.Location),
-		Project:  pulumi.StringPtr(spec.ProjectId.GetValue()),
+
+		// PARITY: the bridged provider carries a client-side deletion_policy
+		// flag the released 6.x Terraform line does not have. Pinned to
+		// DELETE so destroy really deletes the queue on both engines.
+		DeletionPolicy: pulumi.StringPtr("DELETE"),
 	}
 
-	// Desired state (RUNNING / PAUSED).
-	if spec.DesiredState != "" {
-		args.DesiredState = pulumi.StringPtr(spec.DesiredState)
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project.
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 
-	// HTTP target (queue-level auth, headers, URI override).
+	// PARITY: the bridged provider also carries desired_state (pause/resume)
+	// from the 7.x line; it is deliberately NOT set — the released 6.x
+	// Terraform provider has no such surface, and pause/resume is a runtime
+	// operation, not part of this declarative contract.
+
+	// Queue-level HTTP task settings. These OVERRIDE task-level
+	// configuration at dispatch time — the pattern that lets producers
+	// enqueue bare payloads while the queue owns auth and routing.
 	if spec.HttpTarget != nil {
 		httpTargetArgs := &cloudtasks.QueueHttpTargetArgs{}
 
@@ -29,7 +65,6 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 			httpTargetArgs.HttpMethod = pulumi.StringPtr(spec.HttpTarget.HttpMethod)
 		}
 
-		// Header overrides.
 		if len(spec.HttpTarget.HeaderOverrides) > 0 {
 			overrides := cloudtasks.QueueHttpTargetHeaderOverrideArray{}
 			for _, ho := range spec.HttpTarget.HeaderOverrides {
@@ -43,7 +78,9 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 			httpTargetArgs.HeaderOverrides = overrides
 		}
 
-		// OAuth token (mutually exclusive with OIDC).
+		// OAuth (for *.googleapis.com targets) and OIDC (for Cloud Run /
+		// Cloud Functions / custom endpoints) are mutually exclusive —
+		// enforced pre-deploy by the spec's CEL rule.
 		if spec.HttpTarget.OauthToken != nil {
 			oauthArgs := &cloudtasks.QueueHttpTargetOauthTokenArgs{
 				ServiceAccountEmail: pulumi.String(spec.HttpTarget.OauthToken.ServiceAccountEmail.GetValue()),
@@ -54,7 +91,6 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 			httpTargetArgs.OauthToken = oauthArgs
 		}
 
-		// OIDC token (mutually exclusive with OAuth).
 		if spec.HttpTarget.OidcToken != nil {
 			oidcArgs := &cloudtasks.QueueHttpTargetOidcTokenArgs{
 				ServiceAccountEmail: pulumi.String(spec.HttpTarget.OidcToken.ServiceAccountEmail.GetValue()),
@@ -65,7 +101,11 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 			httpTargetArgs.OidcToken = oidcArgs
 		}
 
-		// URI override.
+		// The spec flattens the provider's nested path_override /
+		// query_override single-field blocks into plain path/query_params
+		// strings; the blocks are only sent when set, which also avoids the
+		// provider's query_override perpetual-diff on the 6.x line when the
+		// block would otherwise be sent empty.
 		if spec.HttpTarget.UriOverride != nil {
 			uriArgs := &cloudtasks.QueueHttpTargetUriOverrideArgs{}
 
@@ -82,14 +122,12 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 				uriArgs.UriOverrideEnforceMode = pulumi.StringPtr(spec.HttpTarget.UriOverride.EnforceMode)
 			}
 
-			// Path override (flattened from nested path_override.path).
 			if spec.HttpTarget.UriOverride.Path != "" {
 				uriArgs.PathOverride = &cloudtasks.QueueHttpTargetUriOverridePathOverrideArgs{
 					Path: pulumi.StringPtr(spec.HttpTarget.UriOverride.Path),
 				}
 			}
 
-			// Query override (flattened from nested query_override.query_params).
 			if spec.HttpTarget.UriOverride.QueryParams != "" {
 				uriArgs.QueryOverride = &cloudtasks.QueueHttpTargetUriOverrideQueryOverrideArgs{
 					QueryParams: pulumi.StringPtr(spec.HttpTarget.UriOverride.QueryParams),
@@ -102,7 +140,25 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		args.HttpTarget = httpTargetArgs
 	}
 
-	// Rate limits.
+	// Routing override for App Engine tasks: pins the whole queue's App
+	// Engine tasks to one service/version/instance instead of per-task
+	// routing. Ignored for HTTP tasks.
+	if spec.AppEngineRoutingOverride != nil {
+		routingArgs := &cloudtasks.QueueAppEngineRoutingOverrideArgs{}
+		if spec.AppEngineRoutingOverride.Service != "" {
+			routingArgs.Service = pulumi.StringPtr(spec.AppEngineRoutingOverride.Service)
+		}
+		if spec.AppEngineRoutingOverride.Version != "" {
+			routingArgs.Version = pulumi.StringPtr(spec.AppEngineRoutingOverride.Version)
+		}
+		if spec.AppEngineRoutingOverride.Instance != "" {
+			routingArgs.Instance = pulumi.StringPtr(spec.AppEngineRoutingOverride.Instance)
+		}
+		args.AppEngineRoutingOverride = routingArgs
+	}
+
+	// Zero means "not set" for these dials — Cloud Tasks then applies its
+	// own defaults (which it also does for a wholly omitted block).
 	if spec.RateLimits != nil {
 		rateLimitsArgs := &cloudtasks.QueueRateLimitsArgs{}
 		if spec.RateLimits.MaxDispatchesPerSecond > 0 {
@@ -114,7 +170,8 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		args.RateLimits = rateLimitsArgs
 	}
 
-	// Retry config.
+	// max_attempts genuinely distinguishes -1 (unlimited) from unset, so
+	// the not-set sentinel is 0, never -1.
 	if spec.RetryConfig != nil {
 		retryArgs := &cloudtasks.QueueRetryConfigArgs{}
 		if spec.RetryConfig.MaxAttempts != 0 {
@@ -135,21 +192,27 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		args.RetryConfig = retryArgs
 	}
 
-	// Stackdriver logging config.
+	// sampling_ratio 0.0 is a meaningful value (log nothing), so the block
+	// is driven purely by presence.
 	if spec.StackdriverLoggingConfig != nil {
 		args.StackdriverLoggingConfig = &cloudtasks.QueueStackdriverLoggingConfigArgs{
 			SamplingRatio: pulumi.Float64(spec.StackdriverLoggingConfig.SamplingRatio),
 		}
 	}
 
-	createdQueue, err := cloudtasks.NewQueue(ctx, "cloud-tasks-queue", args, pulumi.Provider(gcpProvider))
+	createdQueue, err := cloudtasks.NewQueue(ctx, "cloud-tasks-queue", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdCloudtasksApi}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cloud tasks queue")
 	}
 
 	ctx.Export(OpQueueId, createdQueue.ID())
 	ctx.Export(OpQueueName, createdQueue.Name)
-	ctx.Export(OpState, createdQueue.State)
+	// GCP computes max_burst_size from max_dispatches_per_second; the
+	// rate_limits block is populated by the API even when the manifest
+	// omits rate limits entirely, so the effective value is always present.
+	ctx.Export(OpMaxBurstSize, createdQueue.RateLimits.MaxBurstSize())
 
 	return nil
 }

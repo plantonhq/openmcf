@@ -4,13 +4,32 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/cloudscheduler"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func cloudSchedulerJob(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpCloudSchedulerJob.Spec
 
-	// Determine the job name: explicit job_name or fall back to metadata.name.
+	// Enable the Cloud Scheduler API — the control plane that owns jobs.
+	// DisableOnDestroy stays false: tearing down one job must never disable
+	// the API for everything else in the project (other jobs keep firing).
+	cloudschedulerApiArgs := &projects.ServiceArgs{
+		Service:                  pulumi.String("cloudscheduler.googleapis.com"),
+		DisableDependentServices: pulumi.BoolPtr(true),
+		DisableOnDestroy:         pulumi.BoolPtr(false),
+	}
+	if spec.ProjectId.GetValue() != "" {
+		cloudschedulerApiArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+	createdCloudschedulerApi, err := projects.NewService(ctx,
+		"gcpcsj-cloudscheduler.googleapis.com", cloudschedulerApiArgs, pulumi.Provider(gcpProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to enable cloudscheduler.googleapis.com api")
+	}
+
+	// Spec contract: an empty job_name falls back to metadata.name — the
+	// same resolution the Terraform module performs in its locals.
 	jobName := spec.JobName
 	if jobName == "" {
 		jobName = locals.GcpCloudSchedulerJob.Metadata.Name
@@ -19,31 +38,45 @@ func cloudSchedulerJob(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 	args := &cloudscheduler.JobArgs{
 		Name:     pulumi.StringPtr(jobName),
 		Region:   pulumi.StringPtr(spec.Location),
-		Project:  pulumi.StringPtr(spec.ProjectId.GetValue()),
 		Schedule: pulumi.StringPtr(spec.Schedule),
+
+		// PARITY: the bridged provider carries a client-side deletion_policy
+		// flag the released 6.x Terraform line does not have. Pinned to
+		// DELETE so destroy really deletes the job on both engines.
+		DeletionPolicy: pulumi.StringPtr("DELETE"),
 	}
 
-	// Time zone (defaults to Etc/UTC if not set by GCP).
+	// Honor the spec contract: an empty project_id falls back to the
+	// provider's default project.
+	if spec.ProjectId.GetValue() != "" {
+		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
+
+	// time_zone defaults to Etc/UTC and attempt_deadline to 180s on the
+	// provider — both are only sent when the manifest sets them, so the
+	// provider defaults apply identically on both engines.
 	if spec.TimeZone != "" {
 		args.TimeZone = pulumi.StringPtr(spec.TimeZone)
 	}
 
-	// Description.
 	if spec.Description != "" {
 		args.Description = pulumi.StringPtr(spec.Description)
 	}
 
-	// Attempt deadline.
 	if spec.AttemptDeadline != "" {
 		args.AttemptDeadline = pulumi.StringPtr(spec.AttemptDeadline)
 	}
 
-	// Paused state.
+	// paused=true creates the job without firing it; false is the provider
+	// default, so it is only sent when set — matching the Terraform module.
 	if spec.Paused {
 		args.Paused = pulumi.BoolPtr(true)
 	}
 
-	// HTTP target.
+	// HTTP target: the most common shape — trigger a Cloud Run service,
+	// Cloud Function, or any HTTP endpoint, with OAuth (for
+	// *.googleapis.com) XOR OIDC (for Cloud Run/Functions/custom) auth
+	// enforced pre-deploy by the spec's CEL rule.
 	if spec.HttpTarget != nil {
 		httpArgs := &cloudscheduler.JobHttpTargetArgs{
 			Uri: pulumi.String(spec.HttpTarget.Uri),
@@ -90,7 +123,9 @@ func cloudSchedulerJob(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		args.HttpTarget = httpArgs
 	}
 
-	// Pub/Sub target.
+	// Pub/Sub target: publishes a message on schedule. topic_name arrives
+	// resolved to the fully qualified projects/{project}/topics/{name} path
+	// (the GcpPubSubTopic reference's topic_id output).
 	if spec.PubsubTarget != nil {
 		pubsubArgs := &cloudscheduler.JobPubsubTargetArgs{
 			TopicName: pulumi.String(spec.PubsubTarget.TopicName.GetValue()),
@@ -171,7 +206,9 @@ func cloudSchedulerJob(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		args.RetryConfig = retryArgs
 	}
 
-	createdJob, err := cloudscheduler.NewJob(ctx, "cloud-scheduler-job", args, pulumi.Provider(gcpProvider))
+	createdJob, err := cloudscheduler.NewJob(ctx, "cloud-scheduler-job", args,
+		pulumi.Provider(gcpProvider),
+		pulumi.DependsOn([]pulumi.Resource{createdCloudschedulerApi}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cloud scheduler job")
 	}
