@@ -9,22 +9,19 @@ spec:
   # Door's service principal "Key Vault Secrets User" at the
   # subscription scope (one-time bootstrap).
   #
-  # DEFERRED on live evidence (both engines hit ARM's identical content
-  # validator): Azure REJECTS self-signed certificates for Front Door
-  # BYO TLS -- BadRequest "The certificate chain includes an invalid
-  # number of certificates. The number of certificates should be at
-  # least 2." A passing run therefore needs a CA-ISSUED certificate,
-  # which the test tenant cannot mint: the Key Vault certificate kind
-  # issues Self or commercial-CA enrollments only, and committing a
-  # pre-built chain's private key to the repo is not acceptable. What
-  # the live run DID prove before the content rejection: the full
-  # fixture chain deploys, the AFD service-principal grant authorizes
-  # the vault read (no access-denied), the module's create is
-  # well-formed (ARM evaluated the certificate content), and teardown
-  # incl. the vault purge runs clean. Unblocking: import a CA-issued
-  # certificate (full chain) into the fixture vault and re-run
-  # unchanged.
+  # Live-confirmed (2026-07-08, both engines): Azure rejects the fixture's
+  # self-signed certificate -- BadRequest "The certificate chain includes
+  # an invalid number of certificates. The number of certificates should
+  # be at least 2." What the run proved before content rejection: the full
+  # fixture chain deploys, the AFD service-principal grant authorizes the
+  # vault read (no access-denied), the module create is well-formed, and
+  # teardown incl. the vault purge runs clean. Unblocking: import a
+  # CA-issued certificate (full chain) into the fixture vault and re-run.
   tier: 1
   status: deferred
+  deferred_reason: "Front Door BYO TLS requires a CA-issued chain (>=2 certs); fixture self-signed cert rejected by ARM on both engines"
   validated_provisioners: []
+  limitations:
+    - "Self-signed Key Vault certificate (issuer Self) produces a single-cert chain; Front Door requires leaf + intermediate"
+    - "Fixture chain, AFD SP grant, module wiring, and teardown all live-proven; only certificate content rejected"
   timeout_minutes: 60

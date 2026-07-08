@@ -133,6 +133,13 @@ the attachment and no association construct exists anywhere.
   extra fixture.
 - 107 new spec tests (65/30/12) plus the route's extended cases;
   `pkg/outputs` conformance ×3 new kinds; site catalog regenerated.
+- The secret's live deferral exposed an enforcement gap: E2E profile
+  status was advisory inside a full-provider suite run (a documented
+  deferral still FAILED the suite). Every provider test runner
+  (azure/aws/auth0/kubernetes) now loads the component's E2E profile
+  and skips non-green components with the profile's `deferred_reason`
+  in the skip message -- the profile is now binding at both the CI
+  matrix layer and the test-runner layer.
 
 ## Validation
 

@@ -167,6 +167,12 @@ Status values:
 - **skip** -- intentionally excluded (needs cloud credentials, etc.)
 - **stub** -- module is a stub with no real deployment logic
 
+The status is enforced at two layers: CI matrices are built from `planton
+e2e discover` filters, and the provider test runners load the component's
+profile and `t.Skip` any non-green component (with the profile's
+`deferred_reason` in the skip message) -- so a full-provider suite run
+never fails on a documented deferral.
+
 ## Discovering Components
 
 The `planton e2e discover` CLI command scans profiles and displays component
