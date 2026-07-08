@@ -13,10 +13,16 @@ message GcpVertexAiEndpointStackOutputs {
   string display_name = 2;
 
   // DNS of the dedicated endpoint. Populated only when
-  // dedicated_endpoint_enabled is true. Format:
-  // https://{endpointId}.{region}-{projectNumber}.prediction.vertexai.goog
+  // dedicated_endpoint_enabled is true. A bare hostname (no scheme), as the
+  // API returns it. Format:
+  // {endpointId}.{region}-{projectNumber}.prediction.vertexai.goog
   string dedicated_endpoint_dns = 3;
 
   // RFC3339 timestamp of when the endpoint was created.
   string create_time = 4;
+
+  // The numeric endpoint ID (the last path segment of endpoint_id) --
+  // explicit in the spec or derived from the resource identity. This is
+  // the value model-deployment tooling passes as the endpoint reference.
+  string endpoint_name = 5;
 }

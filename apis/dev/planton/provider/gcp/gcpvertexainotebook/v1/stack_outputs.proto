@@ -27,4 +27,12 @@ message GcpVertexAiNotebookStackOutputs {
 
   // RFC3339 timestamp of when the instance was created.
   string create_time = 6;
+
+  // Instance health as reported by the Workbench health service.
+  // Possible values: HEALTHY, UNHEALTHY, AGENT_NOT_INSTALLED,
+  // AGENT_NOT_RUNNING, HEALTH_STATE_UNSPECIFIED.
+  string health_state = 7;
+
+  // RFC3339 timestamp of the most recent instance update.
+  string update_time = 8;
 }

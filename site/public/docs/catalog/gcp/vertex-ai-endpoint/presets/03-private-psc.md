@@ -1,6 +1,6 @@
 ---
-title: "Preset: Private Service Connect Endpoint"
-description: "**Rank**: 3"
+title: "Private PSC Endpoint"
+description: "Prediction serving exposed through Private Service Connect: per-project access control and IAM-authorized connections, without VPC peering."
 type: "preset"
 rank: "03"
 presetSlug: "03-private-psc"
@@ -11,35 +11,36 @@ icon: "package"
 order: 3
 ---
 
-# Preset: Private Service Connect Endpoint
+# Private PSC Endpoint
 
-**Rank**: 3
+Prediction serving exposed through Private Service Connect: per-project
+access control and IAM-authorized connections, without VPC peering.
 
-## Use Case
+## What this preset creates
 
-The strongest network isolation for Vertex AI endpoints. Uses Private Service Connect (PSC) instead of VPC peering, with an explicit project allowlist controlling which consumer projects can connect. Ideal for multi-tenant environments or cross-project model serving.
+An endpoint named `Partner Inference` in `us-central1`, reachable only
+through PSC forwarding rules created from the two allowlisted consumer
+projects. Secure PSC adds IAM authorization on top of network
+reachability, and the endpoint is CMEK-encrypted under the referenced
+`GcpKmsKey` (`inference-key`).
 
-## What This Creates
+## When to use
 
-- One Vertex AI Endpoint exposed via PSC service attachment
-- Explicit project allowlist for access control
-- Customer-managed encryption via Cloud KMS
-- No VPC peering required
+- Serving predictions to specific consumer projects (internal platform
+  teams or external partners) without sharing a network
+- The strongest isolation posture Vertex AI serving offers
+- Multi-tenant architectures where each consumer connects from its own
+  VPC
 
-## Prerequisites
+## Constraints
 
-- Cloud KMS key ring and key in the same region
-- Consumer projects that need access must be listed in `projectAllowlist`
-- Consumer projects must create PSC forwarding rules to connect
+- PSC is mutually exclusive with both VPC peering (`network`) and the
+  dedicated DNS (`dedicatedEndpointEnabled`) — the spec enforces both
+  pre-deploy.
 
-## Customize
+## Remix ideas
 
-| Field | Default | Why Change |
-|-------|---------|------------|
-| `location` | `us-central1` | Must match your KMS key region |
-| `projectAllowlist` | placeholder | List the consumer project IDs that need access |
-| `kmsKeyName` | placeholder | Your KMS key's fully qualified path |
-
-## Note on Dedicated Endpoint
-
-`dedicatedEndpointEnabled` is **not available** with Private Service Connect. PSC provides its own dedicated connectivity model.
+- Drop `enableSecurePrivateServiceConnect` when network-level allowlist
+  control is sufficient and minimum latency matters.
+- Leave `projectAllowlist` empty to allow any project in the same
+  organization to connect.

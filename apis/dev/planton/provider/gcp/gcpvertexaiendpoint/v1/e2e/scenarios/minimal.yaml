@@ -1,0 +1,29 @@
+# Minimal public Vertex AI endpoint: the smallest deployable shape with
+# deterministic endpoint_name derivation (empty spec.endpoint_name). Proves
+# ambient project, API enablement, and the identity-derived endpoint ID
+# (the verifier asserts the endpoint_name output matches the live resource).
+#
+# metadata.name carries ${E2E_RUN_ID} — an exception to the fixed-name rule,
+# required here because the endpoint's cloud-side numeric ID derives from the
+# resource identity and GCP RESERVES a deleted endpoint's ID (recreating the
+# same identity 409s). The endpoint is a leaf (nothing FK-references it), so
+# the run-scoped name breaks no prerequisite resolution.
+apiVersion: gcp.planton.dev/v1
+kind: GcpVertexAiEndpoint
+metadata:
+  name: planton-oss-e2e-gcpvep-min-${E2E_RUN_ID}
+  id: planton-oss-e2e-gcpvep-min-${E2E_RUN_ID}
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvertexaiendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: planton-oss-e2e-vep-minimal-${E2E_RUN_ID}
+  location: us-central1
+  labels:
+    e2e: minimal

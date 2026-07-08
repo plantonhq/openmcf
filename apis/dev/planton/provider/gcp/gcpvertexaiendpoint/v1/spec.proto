@@ -17,6 +17,45 @@ message GcpVertexAiEndpointPrivateServiceConnectConfig {
   // service attachment. Each entry is a GCP project ID or project number.
   // If empty, any project in the same organization can connect.
   repeated string project_allowlist = 1;
+
+  // If true, PSC connections require IAM authorization (secure PSC) --
+  // callers must hold permission on the endpoint in addition to reaching
+  // its service attachment. Adds slight latency; leave false for
+  // network-boundary-only isolation.
+  bool enable_secure_private_service_connect = 2;
+}
+
+// GcpVertexAiEndpointRequestResponseLoggingConfig samples online
+// prediction requests and responses into a BigQuery table -- the raw
+// material for drift monitoring, model debugging, and audit trails.
+// All fields are mutable in place.
+message GcpVertexAiEndpointRequestResponseLoggingConfig {
+  // Enable request/response logging.
+  bool enabled = 1;
+
+  // Fraction of requests to log, in the range (0, 1]. Sample down
+  // (e.g. 0.05) for high-QPS endpoints to bound BigQuery cost; use 1.0
+  // to capture everything on low-traffic endpoints.
+  double sampling_rate = 2 [(buf.validate.field).cel = {
+    id: "valid_sampling_rate"
+    expression: "this == 0.0 || (this > 0.0 && this <= 1.0)"
+    message: "sampling_rate must be in the range (0, 1]"
+  }];
+
+  // BigQuery destination for the logged requests/responses, up to 2000
+  // characters. Accepted forms:
+  //   - "bq://projectId" -- GCP creates a dataset named
+  //     logging_<endpoint-display-name>_<endpoint-id> and a
+  //     request_response_logging table inside it.
+  //   - "bq://projectId.bqDatasetId" -- GCP creates the table in the
+  //     given dataset (the dataset must exist).
+  //   - "bq://projectId.bqDatasetId.bqTableId" -- fully specified; the
+  //     dataset must exist and the table must not.
+  //
+  // A plain string (not a reference) because the bq:// URI scheme has no
+  // matching stack output on the BigQuery kinds; compose by writing the
+  // dataset's project and ID into the URI.
+  string bigquery_destination_uri = 3 [(buf.validate.field).string = {max_len: 2000}];
 }
 
 // GcpVertexAiEndpointSpec defines the configuration for a GCP Vertex AI
@@ -44,11 +83,12 @@ message GcpVertexAiEndpointPrivateServiceConnectConfig {
 // for better performance and traffic isolation, but is incompatible
 // with Private Service Connect.
 //
-// GCP labels are supported and applied automatically by the framework.
-//
 // Immutable fields (ForceNew): location, network, kms_key_name,
-// endpoint_name. Changing these requires destroying and recreating
-// the endpoint.
+// endpoint_name, and the PSC block's enablement itself. Changing these
+// requires destroying and recreating the endpoint. Mutable in place:
+// display_name, description, labels, the request/response logging config,
+// and the PSC block's project_allowlist (the provider PATCHes them via
+// updateMask).
 message GcpVertexAiEndpointSpec {
   option (buf.validate.message).cel = {
     id: "network_psc_mutual_exclusion"
@@ -63,8 +103,9 @@ message GcpVertexAiEndpointSpec {
   };
 
   // GCP project where the endpoint will be created.
+  // If omitted, the endpoint is created in the provider's default
+  // project (from the credential or ambient configuration).
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
@@ -125,13 +166,33 @@ message GcpVertexAiEndpointSpec {
   // this is the resource ID in the fully qualified path
   // projects/{project}/locations/{location}/endpoints/{name}.
   //
-  // If not specified, the IaC module auto-generates a numeric
-  // identifier. Most users should omit this field and use
-  // display_name for human identification.
+  // If not specified, the IaC module derives a stable numeric identifier
+  // from the resource's own identity (organization, environment, and
+  // resource name), so the same manifest always produces the same
+  // endpoint ID on either provisioning engine. Most users should omit
+  // this field and use display_name for human identification.
   // Immutable after creation.
+  //
+  // Reservation caveat: GCP reserves a deleted endpoint's numeric ID —
+  // destroying an endpoint and recreating the same resource identity
+  // (or reusing the same explicit ID) fails with 409 ALREADY_EXISTS
+  // until GCP releases the reservation. To recreate immediately, set a
+  // different explicit endpoint_name or change the resource name.
   string endpoint_name = 9 [(buf.validate.field).cel = {
     id: "valid_endpoint_name"
     expression: "this == '' || this.matches('^[1-9][0-9]{0,9}$')"
     message: "endpoint_name must be numeric (1-10 digits, no leading zeros)"
   }];
+
+  // User-defined labels to organize the endpoint (cost attribution,
+  // team ownership, environment tagging). Keys and values must follow
+  // GCP label rules: lowercase letters, digits, underscores, and dashes,
+  // at most 63 characters. Merged with the platform's attribution labels;
+  // on key conflicts the platform labels win. Mutable in place.
+  map<string, string> labels = 10;
+
+  // Request/response logging for online predictions: samples prediction
+  // traffic into a BigQuery table for drift monitoring, debugging, and
+  // audit. Mutable in place.
+  GcpVertexAiEndpointRequestResponseLoggingConfig request_response_logging_config = 11;
 }

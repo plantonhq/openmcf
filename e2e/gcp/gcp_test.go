@@ -598,6 +598,24 @@ func TestGcpCloudSchedulerJob_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpcloudschedulerjob", "terraform")
 }
 
+// --- GCP Vertex AI Endpoint (minimal + dedicated-endpoint; fast deploy) ---
+
+func TestGcpVertexAiEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexaiendpoint", "pulumi")
+}
+func TestGcpVertexAiEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexaiendpoint", "terraform")
+}
+
+// --- GCP Vertex AI Notebook (composed: VPC -> subnetwork chain; ~5-15m per create) ---
+
+func TestGcpVertexAiNotebook_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexainotebook", "pulumi")
+}
+func TestGcpVertexAiNotebook_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexainotebook", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

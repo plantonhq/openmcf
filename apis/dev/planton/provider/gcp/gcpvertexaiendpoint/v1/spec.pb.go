@@ -36,8 +36,13 @@ type GcpVertexAiEndpointPrivateServiceConnectConfig struct {
 	// service attachment. Each entry is a GCP project ID or project number.
 	// If empty, any project in the same organization can connect.
 	ProjectAllowlist []string `protobuf:"bytes,1,rep,name=project_allowlist,json=projectAllowlist,proto3" json:"project_allowlist,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// If true, PSC connections require IAM authorization (secure PSC) --
+	// callers must hold permission on the endpoint in addition to reaching
+	// its service attachment. Adds slight latency; leave false for
+	// network-boundary-only isolation.
+	EnableSecurePrivateServiceConnect bool `protobuf:"varint,2,opt,name=enable_secure_private_service_connect,json=enableSecurePrivateServiceConnect,proto3" json:"enable_secure_private_service_connect,omitempty"`
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) Reset() {
@@ -77,6 +82,94 @@ func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) GetProjectAllowlist() [
 	return nil
 }
 
+func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) GetEnableSecurePrivateServiceConnect() bool {
+	if x != nil {
+		return x.EnableSecurePrivateServiceConnect
+	}
+	return false
+}
+
+// GcpVertexAiEndpointRequestResponseLoggingConfig samples online
+// prediction requests and responses into a BigQuery table -- the raw
+// material for drift monitoring, model debugging, and audit trails.
+// All fields are mutable in place.
+type GcpVertexAiEndpointRequestResponseLoggingConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Enable request/response logging.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Fraction of requests to log, in the range (0, 1]. Sample down
+	// (e.g. 0.05) for high-QPS endpoints to bound BigQuery cost; use 1.0
+	// to capture everything on low-traffic endpoints.
+	SamplingRate float64 `protobuf:"fixed64,2,opt,name=sampling_rate,json=samplingRate,proto3" json:"sampling_rate,omitempty"`
+	// BigQuery destination for the logged requests/responses, up to 2000
+	// characters. Accepted forms:
+	//   - "bq://projectId" -- GCP creates a dataset named
+	//     logging_<endpoint-display-name>_<endpoint-id> and a
+	//     request_response_logging table inside it.
+	//   - "bq://projectId.bqDatasetId" -- GCP creates the table in the
+	//     given dataset (the dataset must exist).
+	//   - "bq://projectId.bqDatasetId.bqTableId" -- fully specified; the
+	//     dataset must exist and the table must not.
+	//
+	// A plain string (not a reference) because the bq:// URI scheme has no
+	// matching stack output on the BigQuery kinds; compose by writing the
+	// dataset's project and ID into the URI.
+	BigqueryDestinationUri string `protobuf:"bytes,3,opt,name=bigquery_destination_uri,json=bigqueryDestinationUri,proto3" json:"bigquery_destination_uri,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) Reset() {
+	*x = GcpVertexAiEndpointRequestResponseLoggingConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpVertexAiEndpointRequestResponseLoggingConfig) ProtoMessage() {}
+
+func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpVertexAiEndpointRequestResponseLoggingConfig.ProtoReflect.Descriptor instead.
+func (*GcpVertexAiEndpointRequestResponseLoggingConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) GetSamplingRate() float64 {
+	if x != nil {
+		return x.SamplingRate
+	}
+	return 0
+}
+
+func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) GetBigqueryDestinationUri() string {
+	if x != nil {
+		return x.BigqueryDestinationUri
+	}
+	return ""
+}
+
 // GcpVertexAiEndpointSpec defines the configuration for a GCP Vertex AI
 // Endpoint -- a stable serving surface for deploying machine learning models.
 //
@@ -102,14 +195,17 @@ func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) GetProjectAllowlist() [
 // for better performance and traffic isolation, but is incompatible
 // with Private Service Connect.
 //
-// GCP labels are supported and applied automatically by the framework.
-//
 // Immutable fields (ForceNew): location, network, kms_key_name,
-// endpoint_name. Changing these requires destroying and recreating
-// the endpoint.
+// endpoint_name, and the PSC block's enablement itself. Changing these
+// requires destroying and recreating the endpoint. Mutable in place:
+// display_name, description, labels, the request/response logging config,
+// and the PSC block's project_allowlist (the provider PATCHes them via
+// updateMask).
 type GcpVertexAiEndpointSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the endpoint will be created.
+	// If omitted, the endpoint is created in the provider's default
+	// project (from the credential or ambient configuration).
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Region where the endpoint will be created (e.g., "us-central1").
 	// Immutable after creation.
@@ -145,18 +241,36 @@ type GcpVertexAiEndpointSpec struct {
 	// this is the resource ID in the fully qualified path
 	// projects/{project}/locations/{location}/endpoints/{name}.
 	//
-	// If not specified, the IaC module auto-generates a numeric
-	// identifier. Most users should omit this field and use
-	// display_name for human identification.
+	// If not specified, the IaC module derives a stable numeric identifier
+	// from the resource's own identity (organization, environment, and
+	// resource name), so the same manifest always produces the same
+	// endpoint ID on either provisioning engine. Most users should omit
+	// this field and use display_name for human identification.
 	// Immutable after creation.
-	EndpointName  string `protobuf:"bytes,9,opt,name=endpoint_name,json=endpointName,proto3" json:"endpoint_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	//
+	// Reservation caveat: GCP reserves a deleted endpoint's numeric ID —
+	// destroying an endpoint and recreating the same resource identity
+	// (or reusing the same explicit ID) fails with 409 ALREADY_EXISTS
+	// until GCP releases the reservation. To recreate immediately, set a
+	// different explicit endpoint_name or change the resource name.
+	EndpointName string `protobuf:"bytes,9,opt,name=endpoint_name,json=endpointName,proto3" json:"endpoint_name,omitempty"`
+	// User-defined labels to organize the endpoint (cost attribution,
+	// team ownership, environment tagging). Keys and values must follow
+	// GCP label rules: lowercase letters, digits, underscores, and dashes,
+	// at most 63 characters. Merged with the platform's attribution labels;
+	// on key conflicts the platform labels win. Mutable in place.
+	Labels map[string]string `protobuf:"bytes,10,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Request/response logging for online predictions: samples prediction
+	// traffic into a BigQuery table for drift monitoring, debugging, and
+	// audit. Mutable in place.
+	RequestResponseLoggingConfig *GcpVertexAiEndpointRequestResponseLoggingConfig `protobuf:"bytes,11,opt,name=request_response_logging_config,json=requestResponseLoggingConfig,proto3" json:"request_response_logging_config,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiEndpointSpec) Reset() {
 	*x = GcpVertexAiEndpointSpec{}
-	mi := &file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -168,7 +282,7 @@ func (x *GcpVertexAiEndpointSpec) String() string {
 func (*GcpVertexAiEndpointSpec) ProtoMessage() {}
 
 func (x *GcpVertexAiEndpointSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -181,7 +295,7 @@ func (x *GcpVertexAiEndpointSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpVertexAiEndpointSpec.ProtoReflect.Descriptor instead.
 func (*GcpVertexAiEndpointSpec) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GcpVertexAiEndpointSpec) GetProjectId() *v1.StringValueOrRef {
@@ -247,17 +361,36 @@ func (x *GcpVertexAiEndpointSpec) GetEndpointName() string {
 	return ""
 }
 
+func (x *GcpVertexAiEndpointSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpVertexAiEndpointSpec) GetRequestResponseLoggingConfig() *GcpVertexAiEndpointRequestResponseLoggingConfig {
+	if x != nil {
+		return x.RequestResponseLoggingConfig
+	}
+	return nil
+}
+
 var File_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	":dev/planton/provider/gcp/gcpvertexaiendpoint/v1/spec.proto\x12/dev.planton.provider.gcp.gcpvertexaiendpoint.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"]\n" +
+	":dev/planton/provider/gcp/gcpvertexaiendpoint/v1/spec.proto\x12/dev.planton.provider.gcp.gcpvertexaiendpoint.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xaf\x01\n" +
 	".GcpVertexAiEndpointPrivateServiceConnectConfig\x12+\n" +
-	"\x11project_allowlist\x18\x01 \x03(\tR\x10projectAllowlist\"\xe3\n" +
+	"\x11project_allowlist\x18\x01 \x03(\tR\x10projectAllowlist\x12P\n" +
+	"%enable_secure_private_service_connect\x18\x02 \x01(\bR!enableSecurePrivateServiceConnect\"\xa9\x02\n" +
+	"/GcpVertexAiEndpointRequestResponseLoggingConfig\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x97\x01\n" +
+	"\rsampling_rate\x18\x02 \x01(\x01Br\xbaHo\xba\x01l\n" +
+	"\x13valid_sampling_rate\x12)sampling_rate must be in the range (0, 1]\x1a*this == 0.0 || (this > 0.0 && this <= 1.0)R\fsamplingRate\x12B\n" +
+	"\x18bigquery_destination_uri\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x16bigqueryDestinationUri\"\xb0\r\n" +
+	"\x17GcpVertexAiEndpointSpec\x12u\n" +
 	"\n" +
-	"\x17GcpVertexAiEndpointSpec\x12{\n" +
-	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
 	"\blocation\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\blocation\x120\n" +
 	"\fdisplay_name\x18\x03 \x01(\tB\r\xbaH\n" +
@@ -269,7 +402,13 @@ const file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDesc = 
 	"\x1adedicated_endpoint_enabled\x18\a \x01(\bR\x18dedicatedEndpointEnabled\x12\xa4\x01\n" +
 	"\x1eprivate_service_connect_config\x18\b \x01(\v2_.dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointPrivateServiceConnectConfigR\x1bprivateServiceConnectConfig\x12\xb3\x01\n" +
 	"\rendpoint_name\x18\t \x01(\tB\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
-	"\x13valid_endpoint_name\x12=endpoint_name must be numeric (1-10 digits, no leading zeros)\x1a/this == '' || this.matches('^[1-9][0-9]{0,9}$')R\fendpointName:\xc4\x03\xbaH\xc0\x03\x1a\xc4\x01\n" +
+	"\x13valid_endpoint_name\x12=endpoint_name must be numeric (1-10 digits, no leading zeros)\x1a/this == '' || this.matches('^[1-9][0-9]{0,9}$')R\fendpointName\x12l\n" +
+	"\x06labels\x18\n" +
+	" \x03(\v2T.dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.LabelsEntryR\x06labels\x12\xa7\x01\n" +
+	"\x1frequest_response_logging_config\x18\v \x01(\v2`.dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointRequestResponseLoggingConfigR\x1crequestResponseLoggingConfig\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc4\x03\xbaH\xc0\x03\x1a\xc4\x01\n" +
 	"\x1cnetwork_psc_mutual_exclusion\x12cnetwork and private_service_connect_config are mutually exclusive; use VPC peering or PSC, not both\x1a?!has(this.network) || !has(this.private_service_connect_config)\x1a\xf6\x01\n" +
 	"\x1ededicated_psc_mutual_exclusion\x12}dedicated_endpoint_enabled and private_service_connect_config are mutually exclusive; dedicated DNS is not available with PSC\x1aUthis.dedicated_endpoint_enabled == false || !has(this.private_service_connect_config)B\x8c\x03\n" +
 	"3com.dev.planton.provider.gcp.gcpvertexaiendpoint.v1B\tSpecProtoP\x01Zggithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiendpoint/v1;gcpvertexaiendpointv1\xa2\x02\x05DPPGG\xaa\x02/Dev.Planton.Provider.Gcp.Gcpvertexaiendpoint.V1\xca\x02/Dev\\Planton\\Provider\\Gcp\\Gcpvertexaiendpoint\\V1\xe2\x02;Dev\\Planton\\Provider\\Gcp\\Gcpvertexaiendpoint\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Gcp::Gcpvertexaiendpoint::V1b\x06proto3"
@@ -286,22 +425,26 @@ func file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDescGZIP
 	return file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_goTypes = []any{
-	(*GcpVertexAiEndpointPrivateServiceConnectConfig)(nil), // 0: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointPrivateServiceConnectConfig
-	(*GcpVertexAiEndpointSpec)(nil),                        // 1: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec
-	(*v1.StringValueOrRef)(nil),                            // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpVertexAiEndpointPrivateServiceConnectConfig)(nil),  // 0: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointPrivateServiceConnectConfig
+	(*GcpVertexAiEndpointRequestResponseLoggingConfig)(nil), // 1: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointRequestResponseLoggingConfig
+	(*GcpVertexAiEndpointSpec)(nil),                         // 2: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec
+	nil,                                                     // 3: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                             // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 2: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 0: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 3: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.private_service_connect_config:type_name -> dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointPrivateServiceConnectConfig
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 4: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.labels:type_name -> dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.LabelsEntry
+	1, // 5: dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.request_response_logging_config:type_name -> dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointRequestResponseLoggingConfig
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_init() }
@@ -315,7 +458,7 @@ func file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

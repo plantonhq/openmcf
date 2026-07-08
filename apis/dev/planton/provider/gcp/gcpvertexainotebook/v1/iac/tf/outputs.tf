@@ -27,3 +27,13 @@ output "create_time" {
   description = "RFC3339 timestamp of when the instance was created"
   value       = google_workbench_instance.this.create_time
 }
+
+output "health_state" {
+  description = "Instance health as reported by the Workbench health service (HEALTHY, UNHEALTHY, AGENT_NOT_INSTALLED, AGENT_NOT_RUNNING)"
+  value       = google_workbench_instance.this.health_state
+}
+
+output "update_time" {
+  description = "RFC3339 timestamp of the most recent instance update"
+  value       = google_workbench_instance.this.update_time
+}

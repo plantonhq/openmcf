@@ -1,16 +1,24 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiEndpoint
 metadata:
-  name: example
+  name: partner-inference
 spec:
-  projectId:
-    value: "${PROJECT_ID}"
   location: us-central1
-  displayName: PSC ML Endpoint
-  description: Private Service Connect endpoint with project allowlist
+  displayName: Partner Inference
+  description: PSC-exposed endpoint with IAM-authorized connections and a consumer allowlist
+  labels:
+    team: ml-platform
+  # Private Service Connect: consumers reach the endpoint through a PSC
+  # service attachment — no VPC peering, per-project access control.
   privateServiceConnectConfig:
     projectAllowlist:
-      - "${CONSUMER_PROJECT_A}"
-      - "${CONSUMER_PROJECT_B}"
+      - consumer-analytics-prod
+      - consumer-reporting-prod
+    # Secure PSC: connections additionally require IAM authorization on
+    # the endpoint (slightly higher latency; strongest access control).
+    enableSecurePrivateServiceConnect: true
   kmsKeyName:
-    value: "projects/${PROJECT_ID}/locations/us-central1/keyRings/${KEY_RING}/cryptoKeys/${KEY_NAME}"
+    valueFrom:
+      kind: GcpKmsKey
+      name: inference-key
+      fieldPath: status.outputs.key_id

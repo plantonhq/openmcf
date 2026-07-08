@@ -207,8 +207,8 @@ var _ = ginkgo.Describe("GcpVertexAiNotebookSpec", func() {
 	ginkgo.It("should accept spec with vm_image", func() {
 		msg := minimal()
 		msg.Spec.VmImage = &GcpVertexAiNotebookVmImage{
-			Project: "deeplearning-platform-release",
-			Family:  "common-cpu-notebooks",
+			Project: "cloud-notebooks-managed",
+			Family:  "workbench-instances",
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -289,8 +289,8 @@ var _ = ginkgo.Describe("GcpVertexAiNotebookSpec", func() {
 		msg.Spec.ServiceAccount = strRef("sa@p.iam.gserviceaccount.com")
 		msg.Spec.Tags = []string{"notebook", "ml"}
 		msg.Spec.VmImage = &GcpVertexAiNotebookVmImage{
-			Project: "deeplearning-platform-release",
-			Family:  "tf-latest-gpu",
+			Project: "cloud-notebooks-managed",
+			Family:  "workbench-instances",
 		}
 		msg.Spec.ShieldedInstanceConfig = &GcpVertexAiNotebookShieldedInstanceConfig{
 			EnableSecureBoot:          true,
@@ -301,11 +301,116 @@ var _ = ginkgo.Describe("GcpVertexAiNotebookSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Negative Cases ────────────────
+	ginkgo.It("should accept spec with user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"team": "ml-platform", "cost-center": "research"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
 
-	ginkgo.It("should reject spec without project_id", func() {
+	ginkgo.It("should accept spec with confidential instance config (SEV)", func() {
+		msg := minimal()
+		msg.Spec.MachineType = "n2d-standard-4"
+		msg.Spec.ConfidentialInstanceConfig = &GcpVertexAiNotebookConfidentialInstanceConfig{
+			ConfidentialInstanceType: "SEV",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept spec with empty confidential instance config (defaults to SEV)", func() {
+		msg := minimal()
+		msg.Spec.ConfidentialInstanceConfig = &GcpVertexAiNotebookConfidentialInstanceConfig{}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept all valid reservation consume types", func() {
+		types := []string{"RESERVATION_NONE", "RESERVATION_ANY", "RESERVATION_SPECIFIC"}
+		for _, rt := range types {
+			msg := minimal()
+			msg.Spec.ReservationAffinity = &GcpVertexAiNotebookReservationAffinity{
+				ConsumeReservationType: rt,
+			}
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "consume_reservation_type %s should be valid", rt)
+		}
+	})
+
+	ginkgo.It("should accept a specific reservation with key and values", func() {
+		msg := minimal()
+		msg.Spec.ReservationAffinity = &GcpVertexAiNotebookReservationAffinity{
+			ConsumeReservationType: "RESERVATION_SPECIFIC",
+			Key:                    "compute.googleapis.com/reservation-name",
+			Values:                 []string{"my-gpu-reservation"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept spec with a static external IP", func() {
+		msg := minimal()
+		msg.Spec.NetworkInterface = &GcpVertexAiNotebookNetworkInterface{
+			Network:    strRef("projects/p/global/networks/my-vpc"),
+			Subnet:     strRef("projects/p/regions/us-central1/subnetworks/my-subnet"),
+			ExternalIp: strRef("34.72.10.10"),
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept spec with managed EUC and third-party identity", func() {
+		msg := minimal()
+		msg.Spec.EnableManagedEuc = true
+		msg.Spec.EnableThirdPartyIdentity = true
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept spec without project_id (ambient project)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject an invalid confidential_instance_type", func() {
+		msg := minimal()
+		msg.Spec.ConfidentialInstanceConfig = &GcpVertexAiNotebookConfidentialInstanceConfig{
+			ConfidentialInstanceType: "TDX",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid consume_reservation_type", func() {
+		msg := minimal()
+		msg.Spec.ReservationAffinity = &GcpVertexAiNotebookReservationAffinity{
+			ConsumeReservationType: "RESERVATION_MAYBE",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject reservation key/values without RESERVATION_SPECIFIC", func() {
+		msg := minimal()
+		msg.Spec.ReservationAffinity = &GcpVertexAiNotebookReservationAffinity{
+			ConsumeReservationType: "RESERVATION_ANY",
+			Key:                    "compute.googleapis.com/reservation-name",
+			Values:                 []string{"my-gpu-reservation"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject external_ip combined with disable_public_ip", func() {
+		msg := minimal()
+		msg.Spec.DisablePublicIp = true
+		msg.Spec.NetworkInterface = &GcpVertexAiNotebookNetworkInterface{
+			ExternalIp: strRef("34.72.10.10"),
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
@@ -418,8 +523,8 @@ var _ = ginkgo.Describe("GcpVertexAiNotebookSpec", func() {
 	ginkgo.It("should reject spec with both vm_image and container_image set", func() {
 		msg := minimal()
 		msg.Spec.VmImage = &GcpVertexAiNotebookVmImage{
-			Project: "deeplearning-platform-release",
-			Family:  "common-cpu-notebooks",
+			Project: "cloud-notebooks-managed",
+			Family:  "workbench-instances",
 		}
 		msg.Spec.ContainerImage = &GcpVertexAiNotebookContainerImage{
 			Repository: "gcr.io/my-project/my-image",

@@ -393,6 +393,35 @@ a consumer-scoped override whose cloud-side name embeds the consumer
 (e.g. `e2e-fsidx-db-${E2E_RUN_ID}` vs `e2e-fsbs-db-${E2E_RUN_ID}`), not
 just the run.
 
+**Identity-derived cloud IDs need run-scoped metadata names:** when a module
+derives the cloud-side resource ID deterministically from the resource
+identity (org/env/metadata.name — Vertex AI endpoints were first) AND the
+service reserves deleted IDs (a destroyed endpoint's numeric ID 409s on
+recreate while its GET returns 404), a fixed `metadata.name` makes the
+scenario single-shot: the second engine — deriving the byte-identical ID —
+collides with the first engine's ghost. Put `${E2E_RUN_ID}` in
+`metadata.name` itself, an explicit exception to the fixed-name rule that is
+only legal for leaf kinds nothing FK-references (prerequisite resolution
+keys off metadata names). Record the exception in the scenario comment.
+Corollary: such a cross-engine collision is itself the strongest live proof
+that both engines derive the same ID.
+
+**Validate every scenario and prerequisite manifest offline before the first
+live run:** manifests load through `protojson.Unmarshal`, which hard-rejects
+unknown fields — a mistyped field name (`subnetwork` for `subnet`,
+`network` for `vpcSelfLink`) fails at manifest load after minutes of
+prerequisite deploys. `planton validate <manifest>` (with `${E2E_RUN_ID}`
+text-substituted) catches this in seconds; run it on every new scenario,
+prerequisite, and preset YAML as part of the offline gate.
+
+**Named image families are a staleness trap in scenarios:** GCP retires
+image families (the deep-learning-VM notebook families like
+`common-cpu-notebooks` no longer resolve), and a scenario pinned to one
+fails live years after it was written. Prefer the service's default image
+(omit the image block) in E2E scenarios and presets; pin a family only when
+the arm under test requires it, and prefer the service's maintained family
+(e.g. `cloud-notebooks-managed/workbench-instances`) over frozen ones.
+
 **First-ever API activation outruns in-module enablement:** every module
 enables its service APIs with a dependency edge before creating resources,
 and that is sufficient for a project where the API has been active before.

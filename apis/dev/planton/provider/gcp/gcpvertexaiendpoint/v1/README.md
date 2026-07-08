@@ -38,7 +38,15 @@ By default, Google-managed encryption is used. For customer-managed encryption (
 
 ### Endpoint Name
 
-Vertex AI endpoints use **numeric-only** identifiers (max 10 digits). Most users should omit `endpointName` and let the IaC module auto-generate it. The `displayName` field serves as the human-readable identifier.
+Vertex AI endpoints use **numeric-only** identifiers (max 10 digits). Most users should omit `endpointName`: the IaC module derives a stable numeric ID from the resource identity, so the same manifest always produces the same endpoint ID on either provisioning engine. The `displayName` field serves as the human-readable identifier.
+
+### Request/Response Logging
+
+Set `requestResponseLoggingConfig` to sample online predictions into a BigQuery table -- the raw material for drift monitoring, model debugging, and audit trails. The `bigqueryDestinationUri` accepts `bq://project`, `bq://project.dataset`, or `bq://project.dataset.table` forms.
+
+### Labels
+
+User-defined `labels` organize the endpoint for cost attribution and ownership; they merge beneath the platform's attribution labels identically on both engines.
 
 ## Outputs
 
@@ -48,6 +56,7 @@ Vertex AI endpoints use **numeric-only** identifiers (max 10 digits). Most users
 | `display_name` | Human-readable display name |
 | `dedicated_endpoint_dns` | Dedicated DNS (if enabled) |
 | `create_time` | Creation timestamp |
+| `endpoint_name` | The numeric endpoint ID (explicit or identity-derived) |
 
 ## Presets
 

@@ -1,6 +1,6 @@
 ---
-title: "Preset: Basic Public Endpoint"
-description: "**Rank**: 1 (most common)"
+title: "Basic Public Endpoint"
+description: "The minimal serving surface: a public Vertex AI endpoint in the ambient project with prediction logging sampled into BigQuery."
 type: "preset"
 rank: "01"
 presetSlug: "01-basic-public"
@@ -11,35 +11,31 @@ icon: "package"
 order: 1
 ---
 
-# Preset: Basic Public Endpoint
+# Basic Public Endpoint
 
-**Rank**: 1 (most common)
+The minimal serving surface: a public Vertex AI endpoint in the ambient
+project with prediction logging sampled into BigQuery.
 
-## Use Case
+## What this preset creates
 
-The simplest Vertex AI Endpoint -- a public prediction URL with Google-managed encryption. Suitable for development, testing, or workloads where network isolation is not required.
+An endpoint named `Recommendations Serving` in `us-central1`, reachable
+through the shared regional DNS (`us-central1-aiplatform.googleapis.com`)
+once a model is deployed to it. Ten percent of prediction requests and
+responses are logged to the `ml_logging` BigQuery dataset. The numeric
+endpoint ID is derived deterministically from the resource identity, so
+re-creating the same manifest always yields the same endpoint reference.
 
-## What This Creates
+## When to use
 
-- One Vertex AI Endpoint accessible via the shared regional DNS
-- Google-managed encryption (no CMEK)
-- No private networking
+- Standard online prediction serving without private-networking needs
+- Development and staging endpoints
+- Any endpoint where the shared regional DNS is acceptable
 
-## Customize
+## Remix ideas
 
-| Field | Default | Why Change |
-|-------|---------|------------|
-| `location` | `us-central1` | Deploy closer to your users or meet data residency requirements |
-| `displayName` | `My ML Endpoint` | Give your endpoint a meaningful name |
-| `description` | (empty) | Add context for your team |
-
-## Next Steps
-
-After creating the endpoint, deploy a model to it using the Vertex AI API:
-
-```bash
-gcloud ai endpoints deploy-model ENDPOINT_ID \
-  --region=us-central1 \
-  --model=MODEL_ID \
-  --display-name="v1"
-```
+- Set `dedicatedEndpointEnabled: true` for an isolated DNS name with
+  better performance and reliability (see the private-vpc-peered preset).
+- Raise `samplingRate` to `1.0` on low-traffic endpoints to capture every
+  prediction for debugging.
+- Point `bigqueryDestinationUri` at a fully qualified table
+  (`bq://project.dataset.table`) to control the table name.

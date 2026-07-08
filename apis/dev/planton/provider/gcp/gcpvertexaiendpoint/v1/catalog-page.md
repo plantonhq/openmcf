@@ -6,13 +6,13 @@ Deploys a GCP Vertex AI Endpoint — a stable serving surface for machine learni
 
 When you deploy a GcpVertexAiEndpoint resource, Planton provisions:
 
-- **Vertex AI Endpoint** — a `google_vertex_ai_endpoint` resource in the specified region with framework GCP labels applied automatically
-- **Random Endpoint Name** (Terraform only) — a `random_integer` resource to generate the required numeric endpoint identifier, created only when `endpointName` is not specified
+- **Vertex AI Endpoint** — a `google_vertex_ai_endpoint` resource in the specified region, labeled with your `labels` merged beneath the platform's attribution labels
+- **API Enablement** — the Vertex AI API (`aiplatform.googleapis.com`) is enabled in the target project (never disabled on destroy)
+- **Stable Numeric Identity** — when `endpointName` is omitted, both provisioning engines derive the same numeric endpoint ID from the resource identity, so the same manifest always produces the same endpoint reference
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** with the Vertex AI API enabled
 - **A VPC network with Private Services Access** if using VPC-peered networking (`network` field)
 - **A Cloud KMS key** in the same region as the endpoint if using CMEK encryption (`kmsKeyName` field)
 - **IAM permissions** — the Vertex AI service agent must have `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the KMS key if CMEK is enabled
@@ -32,8 +32,6 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: dev.GcpVertexAiEndpoint.my-endpoint
 spec:
-  projectId:
-    value: my-gcp-project
   location: us-central1
   displayName: My ML Endpoint
 ```
@@ -44,7 +42,7 @@ Deploy:
 planton apply -f endpoint.yaml
 ```
 
-This creates a public Vertex AI Endpoint accessible via the shared regional DNS with Google-managed encryption.
+This creates a public Vertex AI Endpoint in the provider's default project, accessible via the shared regional DNS with Google-managed encryption.
 
 ## Configuration Reference
 
@@ -52,7 +50,6 @@ This creates a public Vertex AI Endpoint accessible via the shared regional DNS 
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project where the endpoint is created. Can reference a GcpProject resource via `valueFrom`. | Required |
 | `location` | `string` | Region for the endpoint (e.g., `us-central1`). Immutable after creation. | Required, min length 1 |
 | `displayName` | `string` | Human-readable name for the endpoint. | Required, 1-128 characters |
 
@@ -60,13 +57,19 @@ This creates a public Vertex AI Endpoint accessible via the shared regional DNS 
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `projectId` | `StringValueOrRef` | provider default project | GCP project where the endpoint is created. Can reference a GcpProject resource via `valueFrom`. |
 | `description` | `string` | `""` | Description of the endpoint. |
+| `labels` | `map(string)` | `{}` | User labels for cost attribution and ownership; merged beneath platform labels. Mutable. |
 | `network` | `StringValueOrRef` | — | VPC network for private endpoints via VPC peering. Format: `projects/{project}/global/networks/{network}`. Mutually exclusive with `privateServiceConnectConfig`. Immutable. Can reference a GcpVpcNetwork resource via `valueFrom`. |
 | `kmsKeyName` | `StringValueOrRef` | — | Cloud KMS key for CMEK encryption. Format: `projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}`. Immutable. Can reference a GcpKmsKey resource via `valueFrom`. |
 | `dedicatedEndpointEnabled` | `bool` | `false` | Enables a dedicated DNS name for better performance and traffic isolation. Mutually exclusive with `privateServiceConnectConfig`. |
 | `privateServiceConnectConfig` | `object` | — | Private Service Connect configuration. Mutually exclusive with `network` and `dedicatedEndpointEnabled`. |
 | `privateServiceConnectConfig.projectAllowlist` | `string[]` | `[]` | Projects allowed to create forwarding rules targeting this endpoint. |
-| `endpointName` | `string` | auto-generated | Numeric-only GCP resource identifier (1-10 digits, no leading zeros). Most users should omit this and use `displayName` for identification. Immutable. |
+| `privateServiceConnectConfig.enableSecurePrivateServiceConnect` | `bool` | `false` | Require IAM authorization on PSC connections (secure PSC). |
+| `requestResponseLoggingConfig.enabled` | `bool` | `false` | Sample online predictions into BigQuery. |
+| `requestResponseLoggingConfig.samplingRate` | `double` | GCP default | Fraction of requests to log, in `(0, 1]`. |
+| `requestResponseLoggingConfig.bigqueryDestinationUri` | `string` | — | BigQuery destination: `bq://project`, `bq://project.dataset`, or `bq://project.dataset.table`. |
+| `endpointName` | `string` | identity-derived | Numeric-only GCP resource identifier (1-10 digits, no leading zeros). When omitted, a stable ID is derived from the resource identity — identical on both engines. Immutable. |
 
 ## Examples
 
@@ -164,19 +167,19 @@ spec:
     valueFrom:
       kind: GcpProject
       name: ml-project
-      field: status.outputs.project_id
+      fieldPath: status.outputs.project_id
   location: us-central1
   displayName: Composed ML Endpoint
   network:
     valueFrom:
       kind: GcpVpcNetwork
       name: ml-vpc
-      field: status.outputs.network_self_link
+      fieldPath: status.outputs.network_self_link
   kmsKeyName:
     valueFrom:
       kind: GcpKmsKey
       name: ml-encryption-key
-      field: status.outputs.key_id
+      fieldPath: status.outputs.key_id
 ```
 
 ## Stack Outputs
@@ -189,6 +192,7 @@ After deployment, the following outputs are available in `status.outputs`:
 | `display_name` | `string` | Display name of the endpoint |
 | `dedicated_endpoint_dns` | `string` | DNS of the dedicated endpoint. Populated only when `dedicatedEndpointEnabled` is `true`. Format: `https://{endpointId}.{region}-{projectNumber}.prediction.vertexai.goog` |
 | `create_time` | `string` | RFC3339 timestamp of when the endpoint was created |
+| `endpoint_name` | `string` | The numeric endpoint ID (explicit or identity-derived) — the value model-deployment tooling passes as the endpoint reference |
 
 ## Related Components
 

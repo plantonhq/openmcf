@@ -566,6 +566,46 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpVertexAiEndpoint: the fully qualified endpoint path, the
+			// display name, the dedicated-endpoint DNS (when enabled), the
+			// create timestamp, and the numeric endpoint_name both engines
+			// derive identically from the resource identity.
+			name: "GcpVertexAiEndpoint",
+			kind: cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint,
+			rawOutputs: map[string]interface{}{
+				"endpoint_id":            "projects/prod-project/locations/us-central1/endpoints/1853927074",
+				"display_name":           "inference-api",
+				"dedicated_endpoint_dns": "1853927074.us-central1-123456789012.prediction.vertexai.goog",
+				"create_time":            "2026-07-05T10:00:00Z",
+				"endpoint_name":          "1853927074",
+			},
+			mustPopulate: []string{
+				"endpoint_id", "display_name", "dedicated_endpoint_dns",
+				"create_time", "endpoint_name",
+			},
+		},
+		{
+			// GcpVertexAiNotebook: the fully qualified instance path, the short
+			// name, the JupyterLab proxy URI, lifecycle state, creator, and the
+			// health/update timestamps the deep rebuild added.
+			name: "GcpVertexAiNotebook",
+			kind: cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook,
+			rawOutputs: map[string]interface{}{
+				"instance_id":   "projects/prod-project/locations/us-central1-a/instances/data-exploration",
+				"instance_name": "data-exploration",
+				"proxy_uri":     "https://abc123-dot-us-central1-a.notebooks.googleusercontent.com",
+				"state":         "ACTIVE",
+				"creator":       "admin@prod-project.iam.gserviceaccount.com",
+				"create_time":   "2026-07-05T10:00:00Z",
+				"health_state":  "HEALTHY",
+				"update_time":   "2026-07-05T11:00:00Z",
+			},
+			mustPopulate: []string{
+				"instance_id", "instance_name", "proxy_uri", "state",
+				"creator", "create_time", "health_state", "update_time",
+			},
+		},
+		{
 			// GcpSubnetwork: scalar outputs plus the per-index secondary-range
 			// exports both engines emit must land on the StackOutputs proto,
 			// including the repeated secondary_ranges message.

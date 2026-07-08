@@ -153,6 +153,8 @@ var verifiers = map[string]Verifier{
 	"gcpkmskey":                              &kmsKeyVerifier{},
 	"gcpcloudtasksqueue":                     &cloudTasksQueueVerifier{},
 	"gcpcloudschedulerjob":                   &cloudSchedulerJobVerifier{},
+	"gcpvertexaiendpoint":                    &vertexAiEndpointVerifier{},
+	"gcpvertexainotebook":                    &vertexAiNotebookVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

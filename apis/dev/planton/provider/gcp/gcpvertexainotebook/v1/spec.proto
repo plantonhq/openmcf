@@ -119,23 +119,93 @@ message GcpVertexAiNotebookNetworkInterface {
     expression: "this == '' || this in ['VIRTIO_NET', 'GVNIC']"
     message: "nic_type must be one of: VIRTIO_NET, GVNIC"
   }];
+
+  // Static external IP address for the instance (ONE_TO_ONE_NAT access
+  // config). The address must be an unused static external IP in the
+  // same region as the instance's zone. Reference a GcpAddress resource
+  // to reserve and pin the IP as a first-class node, or pass a literal
+  // IP address.
+  //
+  // If omitted (and public IP is not disabled), GCP assigns an ephemeral
+  // external IP from a shared pool -- the IP changes across stop/start
+  // cycles. Pin a static address when firewall allowlists or DNS records
+  // depend on the instance's IP.
+  //
+  // Cannot be combined with disable_public_ip. Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef external_ip = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.address"
+  ];
+}
+
+// GcpVertexAiNotebookConfidentialInstanceConfig enables Confidential
+// Computing for the notebook VM: guest memory is encrypted in use with
+// AMD SEV (Secure Encrypted Virtualization), protecting data even from
+// the host hypervisor. Requires an AMD-based machine type that supports
+// SEV (e.g., the n2d family). Immutable after creation.
+message GcpVertexAiNotebookConfidentialInstanceConfig {
+  // Confidential computing technology for the instance.
+  // The only supported value is SEV (AMD Secure Encrypted Virtualization).
+  // If not specified, defaults to SEV.
+  string confidential_instance_type = 1 [(buf.validate.field).cel = {
+    id: "valid_confidential_instance_type"
+    expression: "this == '' || this == 'SEV'"
+    message: "confidential_instance_type must be SEV (the only supported confidential technology)"
+  }];
+}
+
+// GcpVertexAiNotebookReservationAffinity controls which Compute Engine
+// capacity reservations the notebook VM may consume. Organizations that
+// pre-purchase GPU or high-demand CPU capacity use reservations to
+// guarantee availability; this block points the notebook at that
+// capacity. Immutable after creation.
+message GcpVertexAiNotebookReservationAffinity {
+  option (buf.validate.message).cel = {
+    id: "specific_reservation_requires_key_values"
+    expression: "this.consume_reservation_type == 'RESERVATION_SPECIFIC' || (this.key == '' && this.values.size() == 0)"
+    message: "key and values may only be set when consume_reservation_type is RESERVATION_SPECIFIC"
+  };
+
+  // How the instance consumes reservations:
+  //   - RESERVATION_ANY (default): consume any matching open reservation.
+  //   - RESERVATION_SPECIFIC: consume only the reservation named in
+  //     key/values.
+  //   - RESERVATION_NONE: never consume reserved capacity (on-demand only).
+  string consume_reservation_type = 1 [(buf.validate.field).cel = {
+    id: "valid_consume_reservation_type"
+    expression: "this == '' || this in ['RESERVATION_NONE', 'RESERVATION_ANY', 'RESERVATION_SPECIFIC']"
+    message: "consume_reservation_type must be one of: RESERVATION_NONE, RESERVATION_ANY, RESERVATION_SPECIFIC"
+  }];
+
+  // Corresponds to the label key of a reservation resource. To target a
+  // SPECIFIC_RESERVATION by name, use "compute.googleapis.com/reservation-name"
+  // as the key. Only valid with RESERVATION_SPECIFIC.
+  string key = 2;
+
+  // Corresponds to the label values of a reservation resource -- for the
+  // reservation-name key, the reservation's name. Only valid with
+  // RESERVATION_SPECIFIC.
+  repeated string values = 3;
 }
 
 // GcpVertexAiNotebookVmImage defines a Compute Engine VM image to use
-// as the notebook environment. This is the most common configuration --
-// GCP provides pre-built deep learning VM images with popular ML frameworks
-// (TensorFlow, PyTorch, JAX) and JupyterLab pre-installed.
+// as the notebook environment. When this message is omitted entirely,
+// the Workbench service provisions its default (latest) Workbench image
+// with JupyterLab and the common ML stack pre-installed -- the
+// recommended shape for most notebooks.
 //
 // Mutually exclusive with GcpVertexAiNotebookContainerImage.
 message GcpVertexAiNotebookVmImage {
   // Google Cloud project that the VM image belongs to.
-  // Defaults to "deeplearning-platform-release" for GCP's pre-built
-  // deep learning images.
+  // GCP's own Workbench images live in "cloud-notebooks-managed".
+  // (The legacy deep-learning-VM notebook families under
+  // "deeplearning-platform-release" have been retired by GCP and no
+  // longer resolve.)
   string project = 1;
 
   // VM image family. The newest image in this family will be used.
-  // Example families: "common-cpu-notebooks", "tf-latest-gpu",
-  // "pytorch-latest-gpu", "r-latest-cpu-experimental".
+  // GCP's maintained family for Workbench instances is
+  // "workbench-instances" (in the "cloud-notebooks-managed" project).
   // Mutually exclusive with name (within this message).
   string family = 2;
 
@@ -199,13 +269,12 @@ message GcpVertexAiNotebookShieldedInstanceConfig {
 //   - Exactly one of vm_image or container_image may be specified. If
 //     neither is specified, GCP uses the default deep learning VM image.
 //
-//   - GCP labels are supported and applied automatically by the framework.
-//
 //   - GPU accelerators require compatible machine types (e.g., n1-standard-*
 //     for NVIDIA_TESLA_T4). See GCP documentation for compatibility matrix.
 //
-//   - Network configuration, service account, tags, and disk encryption
-//     settings are immutable after creation (ForceNew).
+//   - Network configuration, service account, tags, confidential computing,
+//     reservation affinity, and disk encryption settings are immutable
+//     after creation (ForceNew).
 message GcpVertexAiNotebookSpec {
   option (buf.validate.message).cel = {
     id: "vm_image_container_image_mutual_exclusion"
@@ -213,9 +282,16 @@ message GcpVertexAiNotebookSpec {
     message: "only one of vm_image or container_image can be set, not both"
   };
 
+  option (buf.validate.message).cel = {
+    id: "external_ip_conflicts_with_disable_public_ip"
+    expression: "!this.disable_public_ip || !has(this.network_interface) || !has(this.network_interface.external_ip)"
+    message: "network_interface.external_ip cannot be set when disable_public_ip is true"
+  };
+
   // GCP project where the notebook instance will be created.
+  // If omitted, the instance is created in the provider's default
+  // project (from the credential or ambient configuration).
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
   ];
@@ -270,67 +346,97 @@ message GcpVertexAiNotebookSpec {
   // Some keys trigger special behaviors (e.g., install-monitoring-agent).
   map<string, string> metadata = 8;
 
+  // User-defined labels to organize the instance (cost attribution,
+  // team ownership, environment tagging). Keys and values must follow
+  // GCP label rules: lowercase letters, digits, underscores, and dashes,
+  // at most 63 characters. Merged with the platform's attribution labels;
+  // on key conflicts the platform labels win. Mutable in place.
+  map<string, string> labels = 9;
+
   // Boot disk configuration for the notebook instance.
   // If not specified, GCP provisions a 150 GB PD_SSD boot disk with
   // Google-managed encryption.
-  GcpVertexAiNotebookBootDisk boot_disk = 9;
+  GcpVertexAiNotebookBootDisk boot_disk = 10;
 
   // Data disk configuration for the notebook instance.
   // GCP supports exactly one data disk per Workbench instance.
   // If not specified, GCP provisions a 100 GB data disk with
   // Google-managed encryption.
-  GcpVertexAiNotebookDataDisk data_disk = 10;
+  GcpVertexAiNotebookDataDisk data_disk = 11;
 
   // GPU accelerator configuration for the notebook instance.
   // GCP supports one accelerator configuration per instance.
   // Requires compatible machine types (e.g., n1-standard-* for Tesla GPUs).
-  GcpVertexAiNotebookAcceleratorConfig accelerator_config = 11;
+  GcpVertexAiNotebookAcceleratorConfig accelerator_config = 12;
 
   // Network interface configuration for the notebook instance.
   // GCP supports one network interface per instance.
   // If not specified, the instance uses the default VPC network.
   // Immutable after creation.
-  GcpVertexAiNotebookNetworkInterface network_interface = 12;
+  GcpVertexAiNotebookNetworkInterface network_interface = 13;
 
   // If true, no external IP is assigned to the instance.
   // Use this for instances that should only be accessible through
   // the Vertex AI proxy or a VPN/Cloud IAP tunnel.
   // Immutable after creation.
-  bool disable_public_ip = 13;
+  bool disable_public_ip = 14;
 
   // If true, enable IP forwarding on the instance. Useful for
   // instances acting as network gateways. Default false.
   // Immutable after creation.
-  bool enable_ip_forwarding = 14;
+  bool enable_ip_forwarding = 15;
 
   // Service account email for the notebook VM identity.
   // The VM uses this service account to access GCP resources
   // (BigQuery, GCS, Vertex AI, etc.). Scopes are fixed to
   // "https://www.googleapis.com/auth/cloud-platform".
   // Immutable after creation.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 15 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 16 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
   ];
 
   // Compute Engine network tags for firewall rules.
   // Immutable after creation.
-  repeated string tags = 16;
+  repeated string tags = 17;
 
   // VM image configuration for the notebook environment.
   // Uses pre-built deep learning VM images from GCP with popular
   // ML frameworks (TensorFlow, PyTorch, JAX) and JupyterLab.
   // Mutually exclusive with container_image.
   // Immutable after creation.
-  GcpVertexAiNotebookVmImage vm_image = 17;
+  GcpVertexAiNotebookVmImage vm_image = 18;
 
   // Container image configuration for a custom notebook environment.
   // Use this when pre-built VM images don't meet your needs.
   // Mutually exclusive with vm_image.
-  GcpVertexAiNotebookContainerImage container_image = 18;
+  GcpVertexAiNotebookContainerImage container_image = 19;
 
   // Shielded VM configuration for enhanced security.
   // Shielded VMs protect against rootkits and bootkits with
   // Secure Boot, vTPM, and integrity monitoring.
-  GcpVertexAiNotebookShieldedInstanceConfig shielded_instance_config = 19;
+  GcpVertexAiNotebookShieldedInstanceConfig shielded_instance_config = 20;
+
+  // Confidential Computing configuration. When set, guest memory is
+  // encrypted in use with AMD SEV -- data stays protected even from the
+  // host hypervisor. Requires an SEV-capable AMD machine type (e.g., the
+  // n2d family). Immutable after creation.
+  GcpVertexAiNotebookConfidentialInstanceConfig confidential_instance_config = 21;
+
+  // Compute Engine reservation affinity. Points the notebook VM at
+  // pre-purchased capacity reservations -- the way organizations
+  // guarantee GPU availability for ML workloads. Immutable after creation.
+  GcpVertexAiNotebookReservationAffinity reservation_affinity = 22;
+
+  // Enable managed end-user credentials (EUC) for the instance. With
+  // managed EUC, JupyterLab runs as the accessing user's own Google
+  // identity rather than the VM's service account, so notebook code sees
+  // the user's IAM permissions (single-user auditability). Mutable in place.
+  bool enable_managed_euc = 23;
+
+  // Allow access to the notebook through a third-party identity provider
+  // configured on the organization (workforce identity federation).
+  // Leave false when all users authenticate with Google identities.
+  // Mutable in place.
+  bool enable_third_party_identity = 24;
 }

@@ -1,0 +1,28 @@
+# Dedicated-endpoint arm: exercises dedicated_endpoint_enabled and proves
+# the dedicated_endpoint_dns output matches live state after deploy.
+#
+# metadata.name carries ${E2E_RUN_ID} — an exception to the fixed-name rule,
+# required here because the endpoint's cloud-side numeric ID derives from the
+# resource identity and GCP RESERVES a deleted endpoint's ID (recreating the
+# same identity 409s). The endpoint is a leaf (nothing FK-references it), so
+# the run-scoped name breaks no prerequisite resolution.
+apiVersion: gcp.planton.dev/v1
+kind: GcpVertexAiEndpoint
+metadata:
+  name: planton-oss-e2e-gcpvep-ded-${E2E_RUN_ID}
+  id: planton-oss-e2e-gcpvep-ded-${E2E_RUN_ID}
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvertexaiendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: planton-oss-e2e-vep-dedicated-${E2E_RUN_ID}
+  location: us-central1
+  dedicatedEndpointEnabled: true
+  labels:
+    e2e: dedicated

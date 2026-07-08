@@ -63,6 +63,8 @@ go_library(
         "target_https_proxy.go",
         "url_map.go",
         "verifier.go",
+        "vertex_ai_endpoint.go",
+        "vertex_ai_notebook.go",
         "vpc.go",
         "workload_identity_pool.go",
         "workload_identity_pool_provider.go",

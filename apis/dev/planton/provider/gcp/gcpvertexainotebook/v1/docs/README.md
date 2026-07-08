@@ -1,4 +1,4 @@
-# GCP Vertex AI Workbench Instance -- Research and Design
+# GCP Vertex AI Workbench Instance -- Design Notes
 
 ## Deployment Landscape
 
@@ -16,14 +16,6 @@ Google has iterated through three generations of managed notebooks:
 
 Planton targets the current v2 API via `google_workbench_instance` (Terraform) and `workbench.Instance` (Pulumi).
 
-### Key Terraform/Pulumi Resources
-
-| Method | Resource | API Version |
-|--------|----------|-------------|
-| Terraform | `google_workbench_instance` | v2 |
-| Pulumi | `workbench.Instance` | v2 |
-| Terraform (deprecated) | `google_notebooks_instance` | v1 |
-
 ## Methods of Deployment
 
 ### 1. Google Cloud Console
@@ -40,33 +32,22 @@ gcloud workbench instances create my-notebook \
 
 Good for ad-hoc creation but lacks state management.
 
-### 3. Terraform
+### 3. Terraform / Pulumi
 
 ```hcl
 resource "google_workbench_instance" "notebook" {
   name     = "my-notebook"
   location = "us-central1-a"
-  
+
   gce_setup {
     machine_type = "e2-standard-4"
   }
 }
 ```
 
-The standard IaC approach. Our Terraform module follows this pattern.
+The standard IaC approach. Both of this component's modules follow this pattern.
 
-### 4. Pulumi
-
-```go
-workbench.NewInstance(ctx, "notebook", &workbench.InstanceArgs{
-    Location: pulumi.String("us-central1-a"),
-    GceSetup: &workbench.InstanceGceSetupArgs{
-        MachineType: pulumi.StringPtr("e2-standard-4"),
-    },
-})
-```
-
-### 5. Planton (This Component)
+### 4. Planton (This Component)
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
@@ -74,60 +55,59 @@ kind: GcpVertexAiNotebook
 metadata:
   name: my-notebook
 spec:
-  projectId:
-    value: my-gcp-project
   location: us-central1-a
   machineType: e2-standard-4
 ```
 
-Planton provides a declarative YAML interface with cross-resource composition, framework labels, and dual IaC backend support.
+Planton provides a declarative YAML interface with cross-resource composition, merged user + platform labels, and dual IaC engine support. `project_id` is optional: when omitted, the instance lands in the provider's default project.
 
-## Feature Coverage: 80/20 Analysis
+## Feature Coverage
 
-### What We Cover (80% of Use Cases)
+The spec models the full released provider surface for Workbench instances:
 
-| Feature | Coverage | Rationale |
-|---------|----------|-----------|
-| Machine type selection | Full | Core configuration |
-| GPU accelerators | Full (10 types) | Essential for ML training |
-| Boot disk (type, size, CMEK) | Full | Storage foundation |
-| Data disk (type, size, CMEK) | Full | Notebook data storage |
-| VPC networking | Full | Enterprise security |
-| Disable public IP | Full | Private deployments |
-| Service account | Full | VM identity |
-| VM images | Full (project, family, name) | Pre-built ML environments |
-| Container images | Full (repo, tag) | Custom environments |
-| Shielded VM | Full (Secure Boot, vTPM, integrity) | Security hardening |
-| Desired state (ACTIVE/STOPPED) | Full | Cost management |
-| Instance owners | Full | Access control |
-| Metadata | Full | Custom configuration |
-| Network tags | Full | Firewall integration |
-| Labels | Framework-managed | Consistent labeling |
+| Feature | Coverage |
+|---------|----------|
+| Machine type selection | Full |
+| GPU accelerators | Full (10 types) |
+| Boot disk (type, size, CMEK) | Full |
+| Data disk (type, size, CMEK) | Full |
+| VPC networking (network, subnet, NIC type) | Full |
+| Static external IP (access config) | Full -- references GcpAddress |
+| Disable public IP | Full |
+| Service account | Full |
+| VM images (project, family, name) | Full |
+| Container images (repo, tag) | Full |
+| Shielded VM (Secure Boot, vTPM, integrity) | Full |
+| Confidential Computing (AMD SEV) | Full |
+| Reservation affinity (ANY / SPECIFIC / NONE) | Full |
+| Managed end-user credentials (EUC) | Full |
+| Third-party identity access | Full |
+| Desired state (ACTIVE/STOPPED) | Full |
+| Instance owners | Full |
+| Metadata | Full |
+| Network tags | Full |
+| User labels | Full -- merged beneath platform labels |
 
-### What We Exclude (Niche/v2 Candidates)
+### Deliberate Exclusions (with reasons)
 
-| Feature | Exclusion Rationale |
-|---------|-------------------|
-| Confidential VM (SEV) | Very niche -- requires specific machine types and workloads |
-| Reservation affinity | Reservation management is a separate concern |
-| Third-party identity | Niche IdP integration for notebooks |
-| Managed end-user credentials | Auto-enabled in newer versions |
-| Access configs (explicit external IP) | Ephemeral IP is sufficient; BYOIP for notebooks is extremely rare |
-| IP forwarding | Included but expected to be rarely used |
+| Provider surface | Reason |
+|------------------|--------|
+| `instance_id` | Vestigial in the provider: the create call derives the instance ID from `name`, so a second identity field would only invite drift. The spec's `instance_name` (falling back to `metadata.name`) is the single identity. |
 
 ### Immutable Fields (ForceNew)
 
 These fields cannot be changed after creation without destroying and recreating the instance:
 
 - `location`, `instance_name`, `disable_proxy_access`
-- `network_interface` (network, subnet, nic_type)
+- `network_interface` (network, subnet, nic_type, external_ip)
 - `disable_public_ip`, `enable_ip_forwarding`
 - `service_account`, `tags`
 - `vm_image`, `container_image`
+- `confidential_instance_config`, `reservation_affinity`
 - `boot_disk.disk_type`, `boot_disk.kms_key`
 - `data_disk.disk_type`, `data_disk.kms_key`
 
-Disk sizes (boot and data) CAN be resized without recreation.
+Disk sizes (boot and data), labels, desired_state, metadata, managed EUC, and third-party identity CAN change without recreation.
 
 ## Design Decisions
 
@@ -141,7 +121,7 @@ The Terraform/Pulumi providers nest all VM configuration under a `gce_setup` blo
 
 ### 2. Singular Sub-Messages
 
-The providers use repeated fields for accelerator_configs, data_disks, network_interfaces, and service_accounts -- all with MaxItems: 1. We use singular messages for clarity:
+The providers use repeated fields for accelerator_configs, data_disks, network_interfaces, and service_accounts -- all capped at one entry by the API ("currently supports only one..."). We use singular messages for honesty and clarity:
 
 - `accelerator_config` (not `accelerator_configs`)
 - `data_disk` (not `data_disks`)
@@ -173,6 +153,10 @@ Rather than a sub-message with `email` and `scopes` fields, we use a flat `Strin
 - The only user-facing field is the email address
 - Flat StringValueOrRef enables direct infra-chart composition with GcpServiceAccount
 
+### 6. External IP as a Reference
+
+The provider's `access_configs` block takes a literal static IP string. The spec models it as a `StringValueOrRef` defaulting to GcpAddress's `address` output, so reserving the IP and pinning the notebook to it compose as two first-class nodes.
+
 ## Best Practices
 
 ### Cost Management
@@ -180,6 +164,7 @@ Rather than a sub-message with `email` and `scopes` fields, we use a flat `Strin
 - Use `desired_state: STOPPED` to suspend notebooks when not in use
 - Compute charges stop; storage charges continue
 - GPU instances are expensive -- always stop when not training
+- Point `reservation_affinity` at pre-purchased capacity to guarantee GPU availability without over-provisioning on demand
 
 ### Security
 
@@ -187,9 +172,12 @@ Rather than a sub-message with `email` and `scopes` fields, we use a flat `Strin
 - Configure a dedicated service account (don't use the default compute SA)
 - Use CMEK encryption for regulated workloads
 - Enable Shielded VM for defense-in-depth
+- Use Confidential Computing (SEV) when notebook memory must stay encrypted in use -- pick an n2d machine type
+- Enable managed EUC when notebook code should act as the signed-in user rather than the VM's service account
 
 ### Networking
 
 - Deploy in the same VPC as your data sources (BigQuery, GCS, etc.)
 - Use Private Google Access for accessing GCP APIs without public IP
 - Apply network tags for firewall rule targeting
+- Pin a static external IP (via GcpAddress) only when firewall allowlists or DNS records depend on the instance address

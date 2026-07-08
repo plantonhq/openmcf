@@ -1,6 +1,4 @@
-name: gcp-vertex-ai-endpoint
+name: gcpvertexaiendpoint-pulumi-project
 runtime:
   name: go
-  options:
-    binary: ./pulumi
 description: Planton GcpVertexAiEndpoint Pulumi module

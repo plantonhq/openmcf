@@ -13,12 +13,14 @@ module "vertex_ai_endpoint" {
   }
 
   spec = {
-    project_id   = { value = "my-gcp-project" }
     location     = "us-central1"
     display_name = "My ML Endpoint"
   }
 }
 ```
+
+`spec.project_id` is optional: when empty, the endpoint lands in the provider's
+default project.
 
 ## Inputs
 
@@ -36,6 +38,7 @@ module "vertex_ai_endpoint" {
 | display_name | Display name of the endpoint |
 | dedicated_endpoint_dns | DNS of the dedicated endpoint (if enabled) |
 | create_time | RFC3339 creation timestamp |
+| endpoint_name | The numeric endpoint ID (explicit or identity-derived) |
 
 ## Networking
 
@@ -47,11 +50,13 @@ Three mutually exclusive modes:
 
 ## Endpoint Name
 
-Vertex AI endpoints require a **numeric-only** name (max 10 digits, no leading zeros).
-When `spec.endpoint_name` is not provided, the module auto-generates a stable 10-digit
-numeric identifier using `random_integer` with keepers tied to the display name and location.
+Vertex AI endpoints require a **numeric-only** name (max 10 digits, no leading
+zeros) and the API never generates one. When `spec.endpoint_name` is empty, the
+module derives a stable identifier from the resource identity (sha256 of
+`"org/env/name"`, first 48 bits, mapped into `[1000000000, 9999999999]`). The
+Pulumi module implements the identical derivation, so the same manifest yields
+the same endpoint ID on either engine.
 
 ## Provider Requirements
 
 - `hashicorp/google` ~> 6.0
-- `hashicorp/random` ~> 3.0 (for endpoint name auto-generation)

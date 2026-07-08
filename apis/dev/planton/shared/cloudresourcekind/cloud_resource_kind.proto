@@ -1052,6 +1052,13 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpvnb"
+    // The notebook VM composes into a network (VPC + subnetwork) and runs
+    // as a service account — the minimum production-shaped composition.
+    prerequisites: [
+      GcpVpcNetwork,
+      GcpSubnetwork,
+      GcpServiceAccount
+    ]
   }];
   GcpVertexAiEndpoint = 671 [(kind_meta) = {
     provider: gcp
