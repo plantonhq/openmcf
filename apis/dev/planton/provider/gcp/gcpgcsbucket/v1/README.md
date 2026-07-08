@@ -1,43 +1,84 @@
-# Overview
+# GCP Cloud Storage Bucket
 
-The GCP GCP GCS Bucket API resource provides a consistent and streamlined interface for creating and managing Google Cloud Storage (GCS) buckets within our cloud infrastructure. By abstracting the complexities of GCS bucket configurations, this resource allows you to define your storage requirements effortlessly while ensuring consistency and compliance across different environments.
+Deploys a Google Cloud Storage bucket (`google_storage_bucket`) — the durable object store behind static sites, data lakes, build artifacts, backups, and every GCP service that stages data — with additive per-bucket IAM grants.
 
-## Why We Created This API Resource
+## Overview
 
-Managing GCS buckets directly can be complex due to various configuration options, permission settings, and best practices that need to be considered. To simplify this process and promote a standardized approach, we developed this API resource. It enables you to:
+The spec covers the full bucket lifecycle surface:
 
-- **Simplify Bucket Management**: Easily create and configure GCS buckets without dealing with low-level GCP configurations.
-- **Ensure Consistency**: Maintain uniform GCS bucket configurations across different environments and projects.
-- **Enhance Security**: Control public access settings to ensure buckets are not unintentionally exposed.
-- **Improve Productivity**: Reduce the time and effort required to manage storage resources, allowing you to focus on application development.
+- **Access model** — uniform bucket-level access (IAM-only, the modern posture), public access prevention, and additive `iamMembers` grants (optionally condition-scoped to prefixes or expiry).
+- **Data lifecycle** — object versioning, lifecycle rules (delete, storage-class transitions, multipart-upload cleanup) with explicit-zero semantics, Autoclass (automatic per-object storage classes), soft delete (the 7-day recovery window GCP applies by default), and WORM retention with the irreversible lock.
+- **Placement and durability** — regions, multi-regions, predefined and custom dual-regions (pick your two regions), and turbo replication (`rpo: ASYNC_TURBO`).
+- **Safety** — `forceDestroy` defaults to false: destroying a non-empty bucket fails instead of silently erasing data.
 
-## Key Features
+`bucketName`, `location`, project, custom placement, hierarchical namespace, and `enableObjectRetention` are immutable — changing them replaces the bucket and everything in it.
 
-### Environment Integration
+## When to Use
 
-- **Environment Info**: Seamlessly integrates with our environment management system to deploy GCS buckets within specific environments.
-- **Stack Job Settings**: Supports custom stack-update settings for infrastructure-as-code deployments.
+- **Application object storage** — user uploads, reports, exports
+- **Static websites** — public buckets behind the L7 load-balancer family (`GcpBackendBucket`)
+- **Data lakes** — Dataproc staging, BigQuery external data, pipeline outputs
+- **Artifacts and backups** — build outputs, database exports, disaster-recovery copies
 
-### GCP Credential Management
+## Prerequisites
 
-- **GCP Credential ID**: Utilizes specified GCP credentials to ensure secure and authorized operations within Google Cloud Platform.
+- GCP credentials with `roles/storage.admin` on the target project (the Cloud Storage API is enabled automatically)
+- For CMEK: a `GcpKmsKey` whose key the GCS service agent can use (`roles/cloudkms.cryptoKeyEncrypterDecrypter`)
 
-### Customizable Bucket Specifications
+## Quick Start
 
-- **Project ID**: Define the GCP project (`gcp_project_id`) where the storage bucket will be created, ensuring resources are organized within the correct project.
-- **Region Specification**: Specify the GCP region (`gcp_region`) where the GCS bucket will be created. Choosing the appropriate region can optimize data access performance and comply with regional regulations.
-- **Public Access Control**: The `is_public` flag allows you to specify whether the GCS bucket should have external (public) access. By default, this is set to `false` to enhance security.
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpGcsBucket
+metadata:
+  name: app-data
+spec:
+  bucketName: acme-app-data-prod
+  location: us-central1
+  uniformBucketLevelAccessEnabled: true
+  publicAccessPrevention: enforced
+```
 
-## Security and Compliance
+This creates a private STANDARD bucket that no IAM grant can ever expose publicly.
 
-- **Access Control**: By managing the `is_public` setting, you can ensure that your buckets are only accessible as intended, preventing accidental exposure of sensitive data.
-- **Compliance with Policies**: Standardized creation of buckets helps maintain compliance with organizational and regulatory policies regarding data storage and access.
+## Configuration Reference
 
-## Benefits
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `projectId` | StringValueOrRef | No | Owning project; empty uses the provider default. Immutable |
+| `bucketName` | string | Yes | Globally unique bucket name (3-63 chars). Immutable |
+| `location` | string | Yes | Region, dual-region, or multi-region. Immutable |
+| `storageClass` | string | No | `STANDARD` (default), `NEARLINE`, `COLDLINE`, `ARCHIVE` |
+| `forceDestroy` | bool | No | Delete all objects on destroy (default false — safe posture) |
+| `uniformBucketLevelAccessEnabled` | bool | No | IAM-only access (recommended; GCP default false) |
+| `publicAccessPrevention` | string | No | `inherited` (default) or `enforced` |
+| `versioningEnabled` | bool | No | Keep noncurrent versions on overwrite/delete |
+| `autoclass` | object | No | `enabled` + `terminalStorageClass` (`NEARLINE`/`ARCHIVE`) |
+| `lifecycleRules[]` | list | No | Action (`Delete`/`SetStorageClass`/`AbortIncompleteMultipartUpload`) + condition (age, dates, prefixes, versions; explicit 0 expressible) |
+| `retentionPolicy` | object | No | WORM: `retentionPeriodSeconds` + `isLocked` (irreversible) |
+| `softDeletePolicy` | object | No | Recovery window: 0 (off) or 7–90 days; omitted follows GCP's 7-day default |
+| `kmsKeyName` | StringValueOrRef | No | Default CMEK key (reference a `GcpKmsKey`) |
+| `requesterPays` | bool | No | Callers pay for access/egress |
+| `defaultEventBasedHold` | bool | No | Auto-hold every new object |
+| `enableObjectRetention` | bool | No | Per-object retention. Create-time only |
+| `website` | object | No | `mainPageSuffix` + `notFoundPage` |
+| `corsRules[]` | list | No | Direct browser cross-origin access |
+| `logging` | object | No | Access-log delivery to another bucket (referenceable) |
+| `customPlacementConfig.dataLocations` | list | No | Exactly two regions (custom dual-region). Immutable |
+| `rpo` | string | No | `DEFAULT` or `ASYNC_TURBO` (dual-region turbo replication) |
+| `hierarchicalNamespaceEnabled` | bool | No | Real folder semantics. Create-time only |
+| `labels` | map | No | User labels, merged beneath platform labels |
+| `iamMembers[]` | list | No | Additive grants: `role` + `member` (+ optional IAM condition) |
 
-- **Simplified Deployment**: Abstracts the complexities of GCS bucket configurations into an easy-to-use API.
-- **Consistency**: Ensures all GCS buckets adhere to organizational standards for security and access control.
-- **Scalability**: Allows for efficient management of storage resources as your application and data storage needs grow.
-- **Security**: Provides control over public accessibility, reducing the risk of unauthorized data access.
-- **Flexibility**: Customize bucket settings to meet specific application requirements without compromising best practices.
-- **Cost Efficiency**: Optimize resource allocation by specifying the appropriate GCP region for your storage needs.
+## Stack Outputs
+
+| Output | Description |
+|--------|-------------|
+| `bucket_id` | Bucket ID (equals the bucket name) — what consumers reference |
+| `bucket_name` | Bucket name |
+| `url` | `gs://<name>` |
+| `self_link` | API self link |
+| `location` | Location as reported by GCS (upper-cased) |
+| `project_number` | Numeric owning project |
+
+See the [presets](presets/) for remixable starting points and [docs/README.md](docs/README.md) for the deep dive.

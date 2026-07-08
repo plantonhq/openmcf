@@ -616,6 +616,26 @@ func TestGcpVertexAiNotebook_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpvertexainotebook", "terraform")
 }
 
+// GcpArtifactRegistryRepo scenarios: docker-standard (immutable tags +
+// both cleanup-policy arms + additive IAM member on the SA prerequisite)
+// + remote-docker-hub (the pull-through REMOTE_REPOSITORY arm).
+func TestGcpArtifactRegistryRepo_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpartifactregistryrepo", "pulumi")
+}
+func TestGcpArtifactRegistryRepo_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpartifactregistryrepo", "terraform")
+}
+
+// GcpGcsBucket scenarios: minimal (private posture) + features
+// (versioning, explicit-zero lifecycle contract, autoclass, soft delete,
+// additive IAM member on the SA prerequisite).
+func TestGcpGcsBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpgcsbucket", "pulumi")
+}
+func TestGcpGcsBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpgcsbucket", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

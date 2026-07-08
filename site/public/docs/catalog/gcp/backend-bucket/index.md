@@ -73,6 +73,6 @@ planton apply -f backend-bucket.yaml
 
 ## Related Components
 
-- [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) — the origin bucket whose objects are served
+- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — the origin bucket whose objects are served
 - [GcpCloudArmorPolicy](/docs/catalog/gcp/cloud-armor-policy) — the edge security policy filtering requests
 - [GcpProject](/docs/catalog/gcp/project) — provides the project that owns the backend bucket

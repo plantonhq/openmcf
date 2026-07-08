@@ -129,9 +129,13 @@ message GcpCloudFunctionBuildConfig {
   // stored in, optionally CMEK-protected (required when kms_key_name is
   // set). FULLY-QUALIFIED path
   // (projects/{project}/locations/{location}/repositories/{name}).
-  // Accepts a literal path or a resource reference. If omitted, GCP
-  // manages a default repository.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef docker_repository = 7;
+  // Accepts a literal path or a reference to a GcpArtifactRegistryRepo
+  // resource (its repository_path output is exactly this value). If
+  // omitted, GCP manages a default repository.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef docker_repository = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpArtifactRegistryRepo,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.repository_path"
+  ];
 
   // How the runtime base image is patched. AUTOMATIC (the API default when
   // unset) applies security updates continuously; ON_DEPLOY pins the

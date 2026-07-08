@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpartifactregistryrepo
+spec:
+  # Fast control-plane object (repositories create in seconds). Repository
+  # IDs carry ${E2E_RUN_ID} out of caution for delete-finalization windows;
+  # AR does not reserve deleted repository names. The docker-standard
+  # scenario composes the GcpServiceAccount prerequisite live (additive
+  # IAM member FK resolution proof); the remote scenario proves the
+  # pull-through arm against Docker Hub (no credentials needed).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 20

@@ -1,176 +1,87 @@
-# GCP Artifact Registry Repo
+# GCP Artifact Registry Repository
 
-Deploys a Google Cloud Artifact Registry repository with configurable format, region, and access control. The component creates the repository along with dedicated reader and writer GCP service accounts with appropriate IAM bindings, and optionally enables unauthenticated public access for open-source artifact distribution.
+Creates a Google Cloud Artifact Registry repository — the package store for container images (Docker/OCI), language packages (Maven, npm, Python, Go), and OS packages (Apt, Yum) — in any of its three serving modes: standard (push target), remote (pull-through cache of an upstream registry), or virtual (priority-ordered aggregation of other repositories). Access is granted additively per repository.
 
 ## What Gets Created
 
-When you deploy a GcpArtifactRegistryRepo resource, Planton provisions:
-
-- **Artifact Registry Repository** — a repository in the specified GCP project and region, with the chosen format (Docker, Maven, NPM, Python, Go, etc.) and GCP labels applied
-- **Reader Service Account** — a GCP service account with `roles/artifactregistry.reader` on the repository (for private repos) and a JSON key exported as a base64-encoded secret
-- **Writer Service Account** — a GCP service account with both `roles/artifactregistry.writer` and `roles/artifactregistry.repoAdmin` on the repository, and a JSON key exported as a base64-encoded secret
-- **IAM Bindings** — repository-level IAM members granting the reader and writer service accounts their respective roles
-- **Public Access IAM Binding** (conditional) — when `enablePublicAccess` is `true`, an `allUsers` binding with `roles/artifactregistry.reader` replaces the reader service account binding, making the repository publicly readable
+- The Artifact Registry API is enabled on the project (never disabled on destroy)
+- A `google_artifact_registry_repository` carrying your labels merged beneath Planton's attribution labels (`planton-ai_resource`, `planton-ai_name`, `planton-ai_kind`, plus org/env/id when set)
+- One `google_artifact_registry_repository_iam_member` per `iamMembers` entry — additive grants that compose safely with grants made elsewhere
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **An existing GCP project** — referenced via `projectId`
-- **IAM permissions** to create Artifact Registry repositories and service accounts in the target project
-- **Artifact Registry API** enabled on the GCP project (`artifactregistry.googleapis.com`)
+- **IAM permissions** — `roles/artifactregistry.admin` on the target project
+- For CMEK: a `GcpKmsKey` the Artifact Registry service agent can use
 
 ## Quick Start
 
-Create a file `artifact-registry.yaml`:
+Create a file `artifact-repo.yaml`:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpArtifactRegistryRepo
 metadata:
-  name: my-docker-repo
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpArtifactRegistryRepo.my-docker-repo
+  name: app-images
 spec:
-  repoFormat: DOCKER
-  projectId:
-    value: my-gcp-project-123
-  region: us-central1
+  location: us-central1
+  format: DOCKER
+  dockerConfig:
+    immutableTags: true
+  cleanupPolicies:
+    - id: delete-old-untagged
+      action: DELETE
+      condition:
+        olderThan: "2592000s"
+        tagState: UNTAGGED
+    - id: keep-last-10
+      action: KEEP
+      mostRecentVersions:
+        keepCount: 10
 ```
 
 Deploy:
 
 ```shell
-planton apply -f artifact-registry.yaml
+planton apply -f artifact-repo.yaml
 ```
 
-This creates a private Docker repository in `us-central1` with dedicated reader and writer service accounts.
+This creates a private Docker repository with immutable tags whose storage stays bounded: superseded digests are deleted after 30 days while the 10 most recent versions of every image are always kept.
 
 ## Configuration Reference
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `repoFormat` | `GcpArtifactRegistryRepoFormat` | Format of the repository. One of: `DOCKER`, `GENERIC`, `GO`, `KUBEFLOW`, `MAVEN`, `NPM`, `PYTHON`, `YUM`. | Required |
-| `projectId` | `StringValueOrRef` | GCP project ID where the repository will be created. Can be a literal value or a reference to a GcpProject resource via `valueFrom`. | Required |
-| `region` | `string` | GCP region for the repository (e.g., `us-central1`, `us-west2`). Choosing a region close to your workloads reduces image pull latency. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enablePublicAccess` | `bool` | `false` | When `true`, grants `allUsers` the `roles/artifactregistry.reader` role on the repository, making artifacts publicly readable. Useful for open-source projects. |
-
-## Examples
-
-### Private Docker Repository
-
-A private Docker repository with dedicated service accounts for CI/CD integration:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpArtifactRegistryRepo
-metadata:
-  name: backend-images
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpArtifactRegistryRepo.backend-images
-spec:
-  repoFormat: DOCKER
-  projectId:
-    value: my-gcp-project-123
-  region: us-central1
-```
-
-### Public NPM Registry for Open-Source Packages
-
-A publicly readable NPM repository for distributing open-source packages:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpArtifactRegistryRepo
-metadata:
-  name: oss-npm-packages
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpArtifactRegistryRepo.oss-npm-packages
-spec:
-  repoFormat: NPM
-  projectId:
-    value: my-oss-project
-  region: us-east1
-  enablePublicAccess: true
-```
-
-### Maven Repository with Foreign Key Reference
-
-A private Maven repository that references an Planton-managed GcpProject instead of hardcoding the project ID:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpArtifactRegistryRepo
-metadata:
-  name: java-artifacts
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpArtifactRegistryRepo.java-artifacts
-spec:
-  repoFormat: MAVEN
-  projectId:
-    valueFrom:
-      kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
-  region: europe-west1
-```
-
-### Python Repository in a Shared Services Project
-
-A private Python repository for internal library distribution, deployed to a region close to your compute workloads:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpArtifactRegistryRepo
-metadata:
-  name: internal-pypi
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: shared-services
-    pulumi.planton.dev/stack.name: prod.GcpArtifactRegistryRepo.internal-pypi
-spec:
-  repoFormat: PYTHON
-  projectId:
-    value: shared-services-project
-  region: asia-southeast1
-```
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `projectId` | StringValueOrRef | No | Target project; empty uses the provider default. Immutable |
+| `repositoryId` | string | No | URL path segment; defaults to `metadata.name`. Immutable |
+| `location` | string | Yes | Region or multi-region (`us`, `europe`, `asia`). Immutable |
+| `format` | string | Yes | `DOCKER`, `MAVEN`, `NPM`, `PYTHON`, `GO`, `APT`, `YUM`, `GENERIC`, `KFP`, ... Immutable |
+| `mode` | string | No | `STANDARD_REPOSITORY` (default), `REMOTE_REPOSITORY`, `VIRTUAL_REPOSITORY`. Immutable |
+| `description` | string | No | Human-readable description |
+| `labels` | map | No | User labels (merged beneath platform labels) |
+| `kmsKeyName` | StringValueOrRef | No | CMEK key (reference a `GcpKmsKey`). Immutable |
+| `dockerConfig.immutableTags` | bool | No | Pushed tags permanently identify one digest |
+| `mavenConfig.versionPolicy` | string | No | `RELEASE` or `SNAPSHOT` |
+| `mavenConfig.allowSnapshotOverwrites` | bool | No | Allow re-publishing an existing version |
+| `cleanupPolicies[]` | list | No | `id` + `action` (`DELETE`/`KEEP`) + `condition`/`mostRecentVersions` |
+| `cleanupPolicyDryRun` | bool | No | Log cleanup matches without deleting |
+| `remoteRepositoryConfig` | object | No | Exactly one upstream arm (public registries, Apt/Yum mirrors, or `commonRepository.uri`); optional Secret-Manager-referenced credentials |
+| `virtualRepositoryConfig.upstreamPolicies[]` | list | No | `id` + `repository` (reference another repo's `repository_path`) + `priority` |
+| `vulnerabilityScanningEnablement` | string | No | `INHERITED` (default) or `DISABLED` |
+| `iamMembers[]` | list | No | Additive grants: `role` + `member` (+ optional IAM `condition`) |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+|--------|-------------|
+| `name` | Short repository name |
+| `repository_path` | `projects/{p}/locations/{l}/repositories/{r}` — what composing resources reference |
+| `registry_uri` | Push/pull endpoint (`us-central1-docker.pkg.dev/{project}/{repo}`) |
+| `location` | Repository location |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `readerServiceAccount.email` | `string` | Email address of the reader service account |
-| `readerServiceAccount.keyBase64` | `string` | Base64-encoded JSON key for the reader service account |
-| `writerServiceAccount.email` | `string` | Email address of the writer service account |
-| `writerServiceAccount.keyBase64` | `string` | Base64-encoded JSON key for the writer service account |
-| `repoName` | `string` | Name of the created Artifact Registry repository |
-| `hostname` | `string` | Regional hostname of the repository (e.g., `us-central1-docker.pkg.dev`) |
-| `repoUrl` | `string` | Full URL of the repository (e.g., `us-central1-docker.pkg.dev/my-project/my-repo`) |
+## Related Resources
 
-## Related Components
-
-- [GcpProject](/docs/catalog/gcp/gcpproject) — provides the GCP project where the repository is created
-- [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — Kubernetes clusters that pull container images from the repository
-- [GcpGkeNodePool](/docs/catalog/gcp/gcpgkenodepool) — node pools that can use the reader service account for image pulls
-- [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — additional service accounts that may need access to the repository
+- **GcpCloudFunction** — `dockerRepository` references this repository's `repository_path`
+- **GcpKmsKey** — CMEK protection via `kmsKeyName`
+- **GcpServiceAccount** — pull/push identities granted via `iamMembers`
+- **GcpGcsBucket** — the object-storage sibling for non-package artifacts

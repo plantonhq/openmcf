@@ -459,8 +459,9 @@ type GcpCloudFunctionBuildConfig struct {
 	// stored in, optionally CMEK-protected (required when kms_key_name is
 	// set). FULLY-QUALIFIED path
 	// (projects/{project}/locations/{location}/repositories/{name}).
-	// Accepts a literal path or a resource reference. If omitted, GCP
-	// manages a default repository.
+	// Accepts a literal path or a reference to a GcpArtifactRegistryRepo
+	// resource (its repository_path output is exactly this value). If
+	// omitted, GCP manages a default repository.
 	DockerRepository *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=docker_repository,json=dockerRepository,proto3" json:"docker_repository,omitempty"`
 	// How the runtime base image is patched. AUTOMATIC (the API default when
 	// unset) applies security updates continuously; ON_DEPLOY pins the
@@ -1512,7 +1513,7 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"\atrigger\x18\t \x01(\v2E.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionTriggerR\atrigger\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe7\x06\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x91\a\n" +
 	"\x1bGcpCloudFunctionBuildConfig\x126\n" +
 	"\aruntime\x18\x01 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14\x18 2\x10^[a-z][a-z0-9]*$R\aruntime\x12.\n" +
 	"\ventry_point\x18\x02 \x01(\tB\r\xbaH\n" +
@@ -1522,8 +1523,8 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"\x1bbuild_environment_variables\x18\x04 \x03(\v2h.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntryR\x19buildEnvironmentVariables\x12y\n" +
 	"\x0fservice_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xe6\x04\x92\xd4a\x13status.outputs.nameR\x0eserviceAccount\x12\x1f\n" +
 	"\vworker_pool\x18\x06 \x01(\tR\n" +
-	"workerPool\x12_\n" +
-	"\x11docker_repository\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x10dockerRepository\x12\x83\x01\n" +
+	"workerPool\x12\x88\x01\n" +
+	"\x11docker_repository\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xd8\x04\x92\xd4a\x1estatus.outputs.repository_pathR\x10dockerRepository\x12\x83\x01\n" +
 	"\rupdate_policy\x18\b \x01(\x0e2O.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildUpdatePolicyB\r\x92\xa6\x1d\tAUTOMATICR\fupdatePolicy\x1aL\n" +
 	"\x1eBuildEnvironmentVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

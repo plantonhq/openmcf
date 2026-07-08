@@ -16,6 +16,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/alloydb/v1"
+	artifactregistry "google.golang.org/api/artifactregistry/v1"
 	"google.golang.org/api/bigquery/v2"
 	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
@@ -69,6 +70,7 @@ type Services struct {
 	CloudKms            *cloudkms.Service
 	CloudTasks          *cloudtasks.Service
 	CloudScheduler      *cloudscheduler.Service
+	ArtifactRegistry    *artifactregistry.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -105,6 +107,7 @@ var verifiers = map[string]Verifier{
 	"gcpsubnetwork":                          &subnetworkVerifier{},
 	"gcpvpcnetwork":                          &vpcVerifier{},
 	"gcpgcsbucket":                           &gcsBucketVerifier{},
+	"gcpartifactregistryrepo":                &artifactRegistryRepoVerifier{},
 	"gcptargethttpproxy":                     &targetHttpProxyVerifier{},
 	"gcptargethttpsproxy":                    &targetHttpsProxyVerifier{},
 	"gcpglobalforwardingrule":                &globalForwardingRuleVerifier{},

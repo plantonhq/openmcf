@@ -1,141 +1,43 @@
-# GCP Artifact Registry Pulumi Module
+# GcpArtifactRegistryRepo - Pulumi Module
 
-This Pulumi module simplifies the provisioning of Google Cloud Artifact Registry repositories, including Docker, Maven,
-NPM, and Python repositories. It enables developers to define repositories and their access configurations through a
-standardized API resource, automating the setup process and ensuring consistency across environments.
+This Pulumi (Go) module provisions an Artifact Registry repository (`artifactregistry.Repository`) plus additive per-repository IAM grants. It is the Pulumi-side implementation of the Planton `GcpArtifactRegistryRepo` resource kind and has feature parity with the Terraform module.
 
-## Key Features
+## Overview
 
-- **Standardized API Resource**: Utilizes a consistent API structure with `apiVersion`, `kind`, `metadata`, `spec`, and
-  `status`, making resource definitions straightforward.
+The module enables the Artifact Registry API (`disable_on_destroy=false`) so a fresh project works first try and teardown never disables the API project-wide. User labels are merged beneath the platform attribution labels (`planton-ai_*`), identically to the Terraform module. The repository ID falls back to `metadata.name`; all three serving modes (standard, remote, virtual) are driven from the spec, with the mode↔config coherence enforced pre-deploy by the spec's CEL rules.
 
-- **Multiple Repository Formats**: Supports the creation of Docker, Maven, NPM, and Python repositories within Google
-  Cloud Artifact Registry.
+The bridged provider's client-side `deletion_policy` knob is pinned to `DELETE` so destroy behavior is byte-identical to the Terraform module (the released 6.x Terraform resource has no such flag). The `registry_uri` output is constructed from resolved attributes — the released provider exports no registry URI attribute — using the exact expression the Terraform module uses.
 
-- **Service Account Management**: Automatically creates reader and writer service accounts with appropriate permissions
-  for each repository.
+## Usage with Planton CLI
 
-- **Access Control**:
-    - **Internal Repositories**: Restrict access to authenticated users and service accounts.
-    - **External Repositories**: Optionally allow unauthenticated (public) access to repositories, suitable for
-      open-source projects.
-
-- **Pulumi Integration**: Written in Golang, leveraging Pulumi for infrastructure as code, enabling seamless integration
-  into CI/CD pipelines and existing workflows.
-
-## Table of Contents
-
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-    - [Sample YAML Configuration](#sample-yaml-configuration)
-    - [Deploying with CLI](#deploying-with-cli)
-- [Module Components](#module-components)
-    - [Service Accounts](#service-accounts)
-    - [Repository Creation](#repository-creation)
-        - [Docker Repository](#docker-repository)
-        - [Maven Repository](#maven-repository)
-        - [NPM Repository](#npm-repository)
-        - [Python Repository](#python-repository)
-- [Outputs](#outputs)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Prerequisites
-
-- Google Cloud account with necessary permissions.
-- Pulumi CLI installed.
-- Golang environment set up if modifying the module code.
-- Google Cloud SDK installed and configured.
-
-## Installation
-
-Clone the repository containing the Pulumi module:
-
-```bash
-git clone https://github.com/your-org/gcp-artifact-registry-pulumi-module.git
+```shell
+planton pulumi up --manifest ../hack/manifest.yaml --module-dir .
+planton pulumi destroy --manifest ../hack/manifest.yaml --module-dir .
 ```
 
-Install the required dependencies:
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
+
+## Direct Pulumi Usage
 
 ```bash
-cd gcp-artifact-registry-pulumi-module
-go mod download
+cd apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1/iac/pulumi
+make build
+pulumi up --stack dev
 ```
 
-## Usage
+## Module Layout
 
-Refer to [example](example.md) for usage instructions.
-
-## Module Components
-
-### Service Accounts
-
-The module creates two service accounts:
-
-- **Reader Service Account**: Has read-only access to the repositories.
-- **Writer Service Account**: Has read and write access, including administrative permissions.
-
-Each service account is provisioned with a key, and their credentials are exported as outputs for use in CI/CD pipelines
-or other services.
-
-### Repository Creation
-
-The module creates repositories for Docker, Maven, NPM, and Python artifacts. For each repository, it sets up the
-necessary permissions for the reader and writer service accounts.
-
-#### Docker Repository
-
-- **Name**: `<metadata.id>-docker`
-- **Format**: Docker
-- **Permissions**:
-    - **Reader Service Account**: `roles/artifactregistry.reader`
-    - **Writer Service Account**: `roles/artifactregistry.writer`, `roles/artifactregistry.repoAdmin`
-- **Public Access**: If `is_external` is `true`, grants `roles/artifactregistry.reader` to `allUsers`.
-
-#### Maven Repository
-
-- **Name**: `<metadata.id>-maven`
-- **Format**: Maven
-- **Permissions**: Same as Docker repository.
-
-#### NPM Repository
-
-- **Name**: `<metadata.id>-npm`
-- **Format**: NPM
-- **Permissions**: Same as Docker repository.
-
-#### Python Repository
-
-- **Name**: `<metadata.id>-python`
-- **Format**: Python
-- **Permissions**: Same as Docker repository.
-
-### Access Control
-
-- **Internal Repositories**: When `is_external` is `false`, only the reader and writer service accounts have access.
-- **External Repositories**: When `is_external` is `true`, `allUsers` have read access to the repositories.
+- `main.go` — Pulumi entrypoint (loads the stack input, calls the module)
+- `module/main.go` — provider setup + orchestration
+- `module/locals.go` — repository-ID fallback + label merge
+- `module/repository.go` — API enablement + the repository + additive IAM members + outputs
+- `module/outputs.go` — output key constants
 
 ## Outputs
 
-After deployment, the module provides several outputs:
-
-- **Reader Service Account Email**: `reader_service_account_email`
-- **Reader Service Account Key (Base64 Encoded)**: `reader_service_account_key_base64`
-- **Writer Service Account Email**: `writer_service_account_email`
-- **Writer Service Account Key (Base64 Encoded)**: `writer_service_account_key_base64`
-- **Docker Repository Name**: `docker_repo_name`
-- **Docker Repository Hostname**: `docker_repo_hostname`
-- **Docker Repository URL**: `docker_repo_url`
-- **Maven Repository Name**: `maven_repo_name`
-- **Maven Repository URL**: `maven_repo_url`
-- **NPM Repository Name**: `npm_repo_name`
-- **Python Repository Name**: `python_repo_name`
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+| Output | Description |
+|--------|-------------|
+| `name` | Short repository name |
+| `repository_path` | Fully qualified repository resource path |
+| `registry_uri` | Push/pull endpoint |
+| `location` | Repository location |

@@ -281,7 +281,7 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpDataprocAutoscalingPolicy](/docs/catalog/gcp/dataproc-autoscaling-policy) — the shared autoscaling policy referenced by `autoscalingPolicyUri`
-- [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) — staging and temp buckets for job artifacts
+- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — staging and temp buckets for job artifacts
 - [GcpVpcNetwork](/docs/catalog/gcp/vpc) — VPC network for cluster node placement
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — subnetwork for controlled IP range allocation
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — custom IAM identity for cluster VMs

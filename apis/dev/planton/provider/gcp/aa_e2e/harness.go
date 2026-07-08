@@ -28,6 +28,7 @@ import (
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/alloydb/v1"
+	artifactregistry "google.golang.org/api/artifactregistry/v1"
 	"google.golang.org/api/bigquery/v2"
 	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
@@ -183,6 +184,10 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create cloudscheduler client")
 	}
+	artifactRegistryService, err := artifactregistry.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create artifactregistry client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -224,6 +229,7 @@ func (h *Harness) Setup(ctx context.Context) error {
 		CloudKms:            cloudKmsService,
 		CloudTasks:          cloudTasksService,
 		CloudScheduler:      cloudSchedulerService,
+		ArtifactRegistry:    artifactRegistryService,
 		RestClient:          restClient,
 	}
 	return nil

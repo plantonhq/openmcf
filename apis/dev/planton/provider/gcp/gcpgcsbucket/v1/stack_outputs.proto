@@ -4,6 +4,26 @@ package dev.planton.provider.gcp.gcpgcsbucket.v1;
 
 //gcp-gcs-bucket stack outputs
 message GcpGcsBucketStackOutputs {
-  //id of the storage-bucket created on aws
+  // ID of the bucket. For GCS this equals the globally unique bucket name —
+  // the value every consumer (backend buckets, function sources, Dataproc
+  // staging, Pub/Sub sinks) references.
   string bucket_id = 1;
+
+  // Name of the bucket (identical to bucket_id; exported under both keys so
+  // consumers can use whichever reads naturally).
+  string bucket_name = 2;
+
+  // The base URI of the bucket, in the form gs://<bucket_name>.
+  string url = 3;
+
+  // The API self link of the bucket,
+  // e.g. https://www.googleapis.com/storage/v1/b/<bucket_name>.
+  string self_link = 4;
+
+  // Location of the bucket as reported by GCS (upper-cased region,
+  // dual-region, or multi-region, e.g. "US-EAST1", "US").
+  string location = 5;
+
+  // Numeric project number of the project that owns the bucket.
+  int64 project_number = 6;
 }

@@ -267,5 +267,5 @@ After deployment, the following outputs are available in `status.outputs`:
 ## Related Components
 
 - [GcpPubSubTopic](/docs/catalog/gcp/pubsub-topic) — provides the topic that the subscription receives messages from
-- [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) — provides the Cloud Storage bucket for Cloud Storage delivery
+- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — provides the Cloud Storage bucket for Cloud Storage delivery
 - [GcpProject](/docs/catalog/gcp/project) — provides the GCP project where the subscription is created

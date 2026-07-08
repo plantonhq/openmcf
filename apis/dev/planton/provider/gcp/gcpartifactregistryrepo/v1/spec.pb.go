@@ -23,98 +23,159 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// enumeration for supported formats - https://cloud.google.com/artifact-registry/docs/supported-formats
-// note: naming the values using uppercase letters to match the naming convention of the supported formats
-type GcpArtifactRegistryRepoFormat int32
-
-const (
-	GcpArtifactRegistryRepoFormat_gcp_artifact_registry_repo_format_unspecified GcpArtifactRegistryRepoFormat = 0
-	GcpArtifactRegistryRepoFormat_DOCKER                                        GcpArtifactRegistryRepoFormat = 1
-	GcpArtifactRegistryRepoFormat_GENERIC                                       GcpArtifactRegistryRepoFormat = 2
-	GcpArtifactRegistryRepoFormat_GO                                            GcpArtifactRegistryRepoFormat = 3
-	GcpArtifactRegistryRepoFormat_KUBEFLOW                                      GcpArtifactRegistryRepoFormat = 4
-	GcpArtifactRegistryRepoFormat_MAVEN                                         GcpArtifactRegistryRepoFormat = 5
-	GcpArtifactRegistryRepoFormat_NPM                                           GcpArtifactRegistryRepoFormat = 6
-	GcpArtifactRegistryRepoFormat_PYTHON                                        GcpArtifactRegistryRepoFormat = 7
-	GcpArtifactRegistryRepoFormat_YUM                                           GcpArtifactRegistryRepoFormat = 8
-)
-
-// Enum value maps for GcpArtifactRegistryRepoFormat.
-var (
-	GcpArtifactRegistryRepoFormat_name = map[int32]string{
-		0: "gcp_artifact_registry_repo_format_unspecified",
-		1: "DOCKER",
-		2: "GENERIC",
-		3: "GO",
-		4: "KUBEFLOW",
-		5: "MAVEN",
-		6: "NPM",
-		7: "PYTHON",
-		8: "YUM",
-	}
-	GcpArtifactRegistryRepoFormat_value = map[string]int32{
-		"gcp_artifact_registry_repo_format_unspecified": 0,
-		"DOCKER":   1,
-		"GENERIC":  2,
-		"GO":       3,
-		"KUBEFLOW": 4,
-		"MAVEN":    5,
-		"NPM":      6,
-		"PYTHON":   7,
-		"YUM":      8,
-	}
-)
-
-func (x GcpArtifactRegistryRepoFormat) Enum() *GcpArtifactRegistryRepoFormat {
-	p := new(GcpArtifactRegistryRepoFormat)
-	*p = x
-	return p
-}
-
-func (x GcpArtifactRegistryRepoFormat) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (GcpArtifactRegistryRepoFormat) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (GcpArtifactRegistryRepoFormat) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_enumTypes[0]
-}
-
-func (x GcpArtifactRegistryRepoFormat) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use GcpArtifactRegistryRepoFormat.Descriptor instead.
-func (GcpArtifactRegistryRepoFormat) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-// **GcpArtifactRegistrySpec** defines the configuration for deploying a Google Cloud Artifact Registry.
-// This message specifies the necessary parameters to create and manage an Artifact Registry within a
-// specified GCP project and region. It allows you to set the project ID and region, and configure
-// access settings such as enabling unauthenticated external access, which is particularly useful for
-// open-source projects that require public availability of their artifacts.
+// GcpArtifactRegistryRepoSpec defines the configuration for a Google Cloud
+// Artifact Registry repository — the universal package store for container
+// images (Docker/OCI), language packages (Maven, npm, Python, Go), and OS
+// packages (Apt, Yum).
+//
+// A repository has one of three serving modes:
+//
+//   - STANDARD_REPOSITORY (default): a regular repository you push artifacts
+//     to. The workhorse for CI/CD pipelines publishing images and packages.
+//   - REMOTE_REPOSITORY: a pull-through cache of an upstream registry
+//     (Docker Hub, Maven Central, npmjs, PyPI, OS mirrors, or a custom
+//     registry). Artifacts are fetched and cached on first pull — insulating
+//     builds from upstream outages and rate limits.
+//   - VIRTUAL_REPOSITORY: a single aggregated endpoint that serves from
+//     multiple upstream Artifact Registry repositories by priority. Lets
+//     consumers use one URL while artifacts live in per-team standard repos
+//     and shared remote caches.
+//
+// Important behavioral notes:
+//
+//   - format, mode, location, project, and kms_key_name are all immutable
+//     after creation — changing any of them destroys and recreates the
+//     repository (and everything stored in it). Choose deliberately.
+//   - The entire remote_repository_config block is immutable EXCEPT the
+//     upstream credentials and disable_upstream_validation, which rotate
+//     in place.
+//   - Access control is additive IAM: each iam_members entry grants one
+//     role to one member on this repository and composes safely with grants
+//     made elsewhere. Authoritative bindings/policies (which clobber grants
+//     they don't list) are deliberately not modeled.
 type GcpArtifactRegistryRepoSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The format of the repository in the Artifact Registry.
-	RepoFormat GcpArtifactRegistryRepoFormat `protobuf:"varint,1,opt,name=repo_format,json=repoFormat,proto3,enum=dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoFormat" json:"repo_format,omitempty"`
-	// The ID of the GCP project where the Artifact Registry resources will be created.
-	// Can be provided as a literal string value or as a reference to another resource's output.
-	// Example literal: {value: "my-gcp-project-123"}
-	// Example reference: {value_from: {kind: GcpProject, name: "main-project"}}
-	ProjectId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// The GCP region where the Artifact Registry will be created (e.g., "us-west2").
-	// Selecting a region close to your Kubernetes clusters can reduce service startup time
-	// by enabling faster downloads of container images.
-	Region string `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"`
-	// A flag indicating whether to allow unauthenticated access to artifacts published in the repositories.
-	// Enable this for publishing artifacts for open-source projects that require public access.
-	EnablePublicAccess bool `protobuf:"varint,4,opt,name=enable_public_access,json=enablePublicAccess,proto3" json:"enable_public_access,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The GCP project where the repository is created.
+	// Can be a literal project ID or a reference to a GcpProject resource.
+	// If omitted, the provider's default project is used.
+	// Immutable after creation.
+	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// The last segment of the repository's resource name — the ID that appears
+	// in registry URLs (e.g. "us-docker.pkg.dev/{project}/{repository_id}").
+	// Must start with a letter, contain only lowercase letters, numbers, and
+	// hyphens, and be at most 63 characters. If omitted, metadata.name is used.
+	// Immutable after creation.
+	RepositoryId string `protobuf:"bytes,2,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
+	// The location for the repository: a region (e.g. "us-central1",
+	// "asia-south1") or a multi-region ("us", "europe", "asia"). Regional
+	// repositories co-located with your build/runtime infrastructure minimize
+	// pull latency and egress cost; multi-region maximizes availability for
+	// globally consumed artifacts. Immutable after creation.
+	Location string `protobuf:"bytes,3,opt,name=location,proto3" json:"location,omitempty"`
+	// The package format stored in this repository. Common values:
+	//
+	//	"DOCKER"  -- container images (Docker/OCI); the format behind
+	//	             us-docker.pkg.dev URLs and GKE/Cloud Run image pulls
+	//	"MAVEN"   -- Java/JVM packages
+	//	"NPM"     -- Node.js packages
+	//	"PYTHON"  -- Python packages (pip/PyPI layout)
+	//	"GO"      -- Go module proxy (remote mode caches proxy.golang.org)
+	//	"APT"     -- Debian/Ubuntu OS packages
+	//	"YUM"     -- RHEL/CentOS/Rocky OS packages
+	//	"GENERIC" -- arbitrary versioned files
+	//	"KFP"     -- Kubeflow Pipelines templates
+	//
+	// Artifact Registry adds formats over time, so this field deliberately
+	// accepts any string (matched case-insensitively by GCP) and lets the API
+	// validate — see the repository format reference for the authoritative
+	// list: https://cloud.google.com/artifact-registry/docs/supported-formats
+	// Immutable after creation.
+	Format string `protobuf:"bytes,4,opt,name=format,proto3" json:"format,omitempty"`
+	// The serving mode of the repository. Defaults to STANDARD_REPOSITORY.
+	//
+	//	"STANDARD_REPOSITORY" -- artifacts are pushed directly to this repo
+	//	"REMOTE_REPOSITORY"   -- pull-through cache of one upstream source
+	//	                         (requires remote_repository_config)
+	//	"VIRTUAL_REPOSITORY"  -- priority-ordered aggregation of other
+	//	                         Artifact Registry repositories (requires
+	//	                         virtual_repository_config)
+	//
+	// Immutable after creation.
+	Mode string `protobuf:"bytes,5,opt,name=mode,proto3" json:"mode,omitempty"`
+	// Human-readable description of the repository's purpose, shown in the
+	// console and API listings. Mutable in place.
+	Description string `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	// User-defined labels attached to the repository, for cost attribution
+	// and fleet queries. Merged with Planton's platform labels (which win on
+	// key conflicts). Mutable in place.
+	Labels map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Customer-managed encryption key (CMEK) protecting artifacts in this
+	// repository. Accepts the fully qualified crypto key path
+	//
+	//	projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+	//
+	// or a reference to a GcpKmsKey resource. The Artifact Registry service
+	// agent needs roles/cloudkms.cryptoKeyEncrypterDecrypter on the key.
+	// If omitted, artifacts are encrypted with Google-managed keys.
+	// Immutable after creation.
+	KmsKeyName *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
+	// Docker-format-specific configuration. Only meaningful when format is
+	// DOCKER. Mutable in place.
+	DockerConfig *GcpArtifactRegistryRepoDockerConfig `protobuf:"bytes,9,opt,name=docker_config,json=dockerConfig,proto3" json:"docker_config,omitempty"`
+	// Maven-format-specific configuration. Only meaningful when format is
+	// MAVEN. Effectively immutable: GCP rejects changing the version policy
+	// or snapshot-overwrite behavior on an existing repository.
+	MavenConfig *GcpArtifactRegistryRepoMavenConfig `protobuf:"bytes,10,opt,name=maven_config,json=mavenConfig,proto3" json:"maven_config,omitempty"`
+	// Cleanup policies that automatically delete or protect artifact versions
+	// based on age, tag state, or name prefixes. Policies with action DELETE
+	// remove matching versions; policies with action KEEP protect matching
+	// versions from every DELETE policy (KEEP always wins on overlap). Without
+	// cleanup policies, CI-pushed repositories grow without bound — pair every
+	// busy standard repository with at least a delete-untagged policy.
+	// Mutable in place.
+	CleanupPolicies []*GcpArtifactRegistryRepoCleanupPolicy `protobuf:"bytes,11,rep,name=cleanup_policies,json=cleanupPolicies,proto3" json:"cleanup_policies,omitempty"`
+	// If true, cleanup policies run in dry-run mode: matches are logged
+	// (visible in Cloud Audit Logs) but nothing is deleted. Use this to
+	// validate new policies against real traffic before letting them delete.
+	// Mutable in place.
+	CleanupPolicyDryRun bool `protobuf:"varint,12,opt,name=cleanup_policy_dry_run,json=cleanupPolicyDryRun,proto3" json:"cleanup_policy_dry_run,omitempty"`
+	// Upstream source configuration for REMOTE_REPOSITORY mode — which
+	// registry this repository caches. Required when (and only valid when)
+	// mode is REMOTE_REPOSITORY. The block is immutable after creation EXCEPT
+	// upstream_credentials and disable_upstream_validation, which update in
+	// place (credential rotation never recreates the cache).
+	RemoteRepositoryConfig *GcpArtifactRegistryRepoRemoteConfig `protobuf:"bytes,13,opt,name=remote_repository_config,json=remoteRepositoryConfig,proto3" json:"remote_repository_config,omitempty"`
+	// Upstream aggregation configuration for VIRTUAL_REPOSITORY mode — which
+	// Artifact Registry repositories this endpoint serves from and in what
+	// priority order. Required when (and only valid when) mode is
+	// VIRTUAL_REPOSITORY. Mutable in place: upstreams can be added, removed,
+	// and re-prioritized without recreating the virtual endpoint.
+	VirtualRepositoryConfig *GcpArtifactRegistryRepoVirtualConfig `protobuf:"bytes,14,opt,name=virtual_repository_config,json=virtualRepositoryConfig,proto3" json:"virtual_repository_config,omitempty"`
+	// Whether Artifact Analysis automatically scans artifacts in this
+	// repository for vulnerabilities.
+	//
+	//	""          -- inherit the project-level setting (default)
+	//	"INHERITED" -- same as empty: follow the project-level setting
+	//	"DISABLED"  -- never scan this repository, regardless of project config
+	//
+	// Scanning requires the Container Scanning API to be enabled on the
+	// project and incurs per-artifact scan charges. Mutable in place.
+	VulnerabilityScanningEnablement string `protobuf:"bytes,15,opt,name=vulnerability_scanning_enablement,json=vulnerabilityScanningEnablement,proto3" json:"vulnerability_scanning_enablement,omitempty"`
+	// Additive IAM grants on this repository. Each entry grants one role to
+	// one member and composes safely with grants made by other tools or
+	// charts — removal subtracts only that exact (role, member) pair.
+	//
+	// Common roles:
+	//
+	//	roles/artifactregistry.reader -- pull artifacts (grant to runtime SAs)
+	//	roles/artifactregistry.writer -- push and pull (grant to CI SAs)
+	//	roles/artifactregistry.repoAdmin -- manage artifacts and settings
+	//
+	// Public access: grant roles/artifactregistry.reader to the special
+	// member "allUsers" (requires the project to allow public access).
+	IamMembers    []*GcpArtifactRegistryRepoIamMember `protobuf:"bytes,16,rep,name=iam_members,json=iamMembers,proto3" json:"iam_members,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpArtifactRegistryRepoSpec) Reset() {
@@ -147,13 +208,6 @@ func (*GcpArtifactRegistryRepoSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GcpArtifactRegistryRepoSpec) GetRepoFormat() GcpArtifactRegistryRepoFormat {
-	if x != nil {
-		return x.RepoFormat
-	}
-	return GcpArtifactRegistryRepoFormat_gcp_artifact_registry_repo_format_unspecified
-}
-
 func (x *GcpArtifactRegistryRepoSpec) GetProjectId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ProjectId
@@ -161,44 +215,1212 @@ func (x *GcpArtifactRegistryRepoSpec) GetProjectId() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *GcpArtifactRegistryRepoSpec) GetRegion() string {
+func (x *GcpArtifactRegistryRepoSpec) GetRepositoryId() string {
 	if x != nil {
-		return x.Region
+		return x.RepositoryId
 	}
 	return ""
 }
 
-func (x *GcpArtifactRegistryRepoSpec) GetEnablePublicAccess() bool {
+func (x *GcpArtifactRegistryRepoSpec) GetLocation() string {
 	if x != nil {
-		return x.EnablePublicAccess
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetKmsKeyName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKeyName
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetDockerConfig() *GcpArtifactRegistryRepoDockerConfig {
+	if x != nil {
+		return x.DockerConfig
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetMavenConfig() *GcpArtifactRegistryRepoMavenConfig {
+	if x != nil {
+		return x.MavenConfig
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetCleanupPolicies() []*GcpArtifactRegistryRepoCleanupPolicy {
+	if x != nil {
+		return x.CleanupPolicies
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetCleanupPolicyDryRun() bool {
+	if x != nil {
+		return x.CleanupPolicyDryRun
 	}
 	return false
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetRemoteRepositoryConfig() *GcpArtifactRegistryRepoRemoteConfig {
+	if x != nil {
+		return x.RemoteRepositoryConfig
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetVirtualRepositoryConfig() *GcpArtifactRegistryRepoVirtualConfig {
+	if x != nil {
+		return x.VirtualRepositoryConfig
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetVulnerabilityScanningEnablement() string {
+	if x != nil {
+		return x.VulnerabilityScanningEnablement
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoSpec) GetIamMembers() []*GcpArtifactRegistryRepoIamMember {
+	if x != nil {
+		return x.IamMembers
+	}
+	return nil
+}
+
+// Docker-format-specific repository configuration.
+type GcpArtifactRegistryRepoDockerConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// If true, image tags cannot be modified, moved, or deleted once created
+	// — a pushed tag permanently identifies one digest. New tags can still be
+	// created. Immutable tags make deployments reproducible ("v1.2.3 today is
+	// v1.2.3 forever") at the cost of losing mutable convenience tags like
+	// "latest". Mutable in place.
+	ImmutableTags bool `protobuf:"varint,1,opt,name=immutable_tags,json=immutableTags,proto3" json:"immutable_tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoDockerConfig) Reset() {
+	*x = GcpArtifactRegistryRepoDockerConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoDockerConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoDockerConfig) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoDockerConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoDockerConfig.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoDockerConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpArtifactRegistryRepoDockerConfig) GetImmutableTags() bool {
+	if x != nil {
+		return x.ImmutableTags
+	}
+	return false
+}
+
+// Maven-format-specific repository configuration.
+type GcpArtifactRegistryRepoMavenConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Maven version policy for this repository:
+	//
+	//	""         -- accept both release and snapshot versions (default)
+	//	"RELEASE"  -- accept only release versions
+	//	"SNAPSHOT" -- accept only snapshot versions
+	//
+	// The conventional Maven setup is a RELEASE repository and a SNAPSHOT
+	// repository, with builds publishing to each as appropriate.
+	VersionPolicy string `protobuf:"bytes,1,opt,name=version_policy,json=versionPolicy,proto3" json:"version_policy,omitempty"`
+	// If true, re-publishing a non-snapshot artifact at an existing version
+	// overwrites it. Defaults to false — GCP rejects duplicate uploads,
+	// preserving release immutability (the safer posture for RELEASE repos).
+	AllowSnapshotOverwrites bool `protobuf:"varint,2,opt,name=allow_snapshot_overwrites,json=allowSnapshotOverwrites,proto3" json:"allow_snapshot_overwrites,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoMavenConfig) Reset() {
+	*x = GcpArtifactRegistryRepoMavenConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoMavenConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoMavenConfig) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoMavenConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoMavenConfig.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoMavenConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpArtifactRegistryRepoMavenConfig) GetVersionPolicy() string {
+	if x != nil {
+		return x.VersionPolicy
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoMavenConfig) GetAllowSnapshotOverwrites() bool {
+	if x != nil {
+		return x.AllowSnapshotOverwrites
+	}
+	return false
+}
+
+// One cleanup policy: a condition selecting artifact versions and the
+// action to apply to them.
+type GcpArtifactRegistryRepoCleanupPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unique identifier for this policy within the repository.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// What to do with versions matching this policy:
+	//
+	//	"DELETE" -- delete matching versions
+	//	"KEEP"   -- protect matching versions from all DELETE policies
+	//
+	// When a version matches both a DELETE and a KEEP policy, KEEP wins.
+	Action string `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	// Selects versions by age, tag state, and name prefixes. All specified
+	// criteria must match (logical AND).
+	Condition *GcpArtifactRegistryRepoCleanupPolicyCondition `protobuf:"bytes,3,opt,name=condition,proto3" json:"condition,omitempty"`
+	// Selects the N most recent versions (per package) to protect. Only valid
+	// with action KEEP — the standard "always keep the last 10 builds" guard
+	// paired with an age-based DELETE policy.
+	MostRecentVersions *GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions `protobuf:"bytes,4,opt,name=most_recent_versions,json=mostRecentVersions,proto3" json:"most_recent_versions,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicy) Reset() {
+	*x = GcpArtifactRegistryRepoCleanupPolicy{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoCleanupPolicy) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoCleanupPolicy.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoCleanupPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicy) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicy) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicy) GetCondition() *GcpArtifactRegistryRepoCleanupPolicyCondition {
+	if x != nil {
+		return x.Condition
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicy) GetMostRecentVersions() *GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions {
+	if x != nil {
+		return x.MostRecentVersions
+	}
+	return nil
+}
+
+// Version-selection criteria for a cleanup policy. Unset criteria are
+// ignored; all set criteria must match.
+type GcpArtifactRegistryRepoCleanupPolicyCondition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Match versions newer than this duration since upload, in seconds with
+	// an "s" suffix (e.g. "2592000s" for 30 days). Typically used on KEEP
+	// policies ("protect everything pushed in the last 30 days").
+	NewerThan string `protobuf:"bytes,1,opt,name=newer_than,json=newerThan,proto3" json:"newer_than,omitempty"`
+	// Match versions older than this duration since upload, in seconds with
+	// an "s" suffix (e.g. "7776000s" for 90 days). The workhorse of DELETE
+	// policies ("delete anything older than 90 days").
+	OlderThan string `protobuf:"bytes,2,opt,name=older_than,json=olderThan,proto3" json:"older_than,omitempty"`
+	// Match versions whose package name starts with any of these prefixes.
+	PackageNamePrefixes []string `protobuf:"bytes,3,rep,name=package_name_prefixes,json=packageNamePrefixes,proto3" json:"package_name_prefixes,omitempty"`
+	// Match versions with a tag starting with any of these prefixes
+	// (e.g. "release-" to select release-tagged images).
+	TagPrefixes []string `protobuf:"bytes,4,rep,name=tag_prefixes,json=tagPrefixes,proto3" json:"tag_prefixes,omitempty"`
+	// Match versions by tag status:
+	//
+	//	"ANY"      -- tagged or untagged (default)
+	//	"TAGGED"   -- only versions with at least one tag
+	//	"UNTAGGED" -- only versions with no tags (superseded digests in
+	//	              Docker repos — the classic cleanup target)
+	TagState string `protobuf:"bytes,5,opt,name=tag_state,json=tagState,proto3" json:"tag_state,omitempty"`
+	// Match versions whose version name starts with any of these prefixes.
+	VersionNamePrefixes []string `protobuf:"bytes,6,rep,name=version_name_prefixes,json=versionNamePrefixes,proto3" json:"version_name_prefixes,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) Reset() {
+	*x = GcpArtifactRegistryRepoCleanupPolicyCondition{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoCleanupPolicyCondition) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoCleanupPolicyCondition.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoCleanupPolicyCondition) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) GetNewerThan() string {
+	if x != nil {
+		return x.NewerThan
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) GetOlderThan() string {
+	if x != nil {
+		return x.OlderThan
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) GetPackageNamePrefixes() []string {
+	if x != nil {
+		return x.PackageNamePrefixes
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) GetTagPrefixes() []string {
+	if x != nil {
+		return x.TagPrefixes
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) GetTagState() string {
+	if x != nil {
+		return x.TagState
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyCondition) GetVersionNamePrefixes() []string {
+	if x != nil {
+		return x.VersionNamePrefixes
+	}
+	return nil
+}
+
+// Keep-count criteria for a KEEP cleanup policy.
+type GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Minimum number of the most recent versions to keep per package.
+	KeepCount int32 `protobuf:"varint,1,opt,name=keep_count,json=keepCount,proto3" json:"keep_count,omitempty"`
+	// Restrict the keep-count protection to packages whose name starts with
+	// any of these prefixes. If empty, applies to all packages in the repo.
+	PackageNamePrefixes []string `protobuf:"bytes,2,rep,name=package_name_prefixes,json=packageNamePrefixes,proto3" json:"package_name_prefixes,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions) Reset() {
+	*x = GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions) GetKeepCount() int32 {
+	if x != nil {
+		return x.KeepCount
+	}
+	return 0
+}
+
+func (x *GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions) GetPackageNamePrefixes() []string {
+	if x != nil {
+		return x.PackageNamePrefixes
+	}
+	return nil
+}
+
+// Upstream source for a REMOTE_REPOSITORY — a pull-through cache of exactly
+// one upstream registry. Set exactly one of the per-format public upstream
+// arms, or common_repository for a custom/cross-registry upstream.
+type GcpArtifactRegistryRepoRemoteConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Human-readable description of the upstream source. Immutable.
+	Description string `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
+	// Well-known public Docker upstream. The only supported value is
+	// "DOCKER_HUB". For any other Docker registry (ghcr.io, quay.io, another
+	// AR repository), use common_repository instead. Immutable.
+	DockerPublicRepository string `protobuf:"bytes,2,opt,name=docker_public_repository,json=dockerPublicRepository,proto3" json:"docker_public_repository,omitempty"`
+	// Well-known public Maven upstream. The only supported value is
+	// "MAVEN_CENTRAL". For other Maven registries use common_repository.
+	// Immutable.
+	MavenPublicRepository string `protobuf:"bytes,3,opt,name=maven_public_repository,json=mavenPublicRepository,proto3" json:"maven_public_repository,omitempty"`
+	// Well-known public npm upstream. The only supported value is "NPMJS".
+	// For other npm registries use common_repository. Immutable.
+	NpmPublicRepository string `protobuf:"bytes,4,opt,name=npm_public_repository,json=npmPublicRepository,proto3" json:"npm_public_repository,omitempty"`
+	// Well-known public Python upstream. The only supported value is "PYPI".
+	// For other Python registries use common_repository. Immutable.
+	PythonPublicRepository string `protobuf:"bytes,5,opt,name=python_public_repository,json=pythonPublicRepository,proto3" json:"python_public_repository,omitempty"`
+	// Public Apt upstream (Debian/Ubuntu mirror trees). Immutable.
+	AptRepository *GcpArtifactRegistryRepoRemoteAptRepository `protobuf:"bytes,6,opt,name=apt_repository,json=aptRepository,proto3" json:"apt_repository,omitempty"`
+	// Public Yum upstream (RHEL-family mirror trees). Immutable.
+	YumRepository *GcpArtifactRegistryRepoRemoteYumRepository `protobuf:"bytes,7,opt,name=yum_repository,json=yumRepository,proto3" json:"yum_repository,omitempty"`
+	// Custom upstream: another Artifact Registry repository
+	// ("projects/{p}/locations/{l}/repositories/{r}") or a registry URI
+	// (e.g. "https://ghcr.io", "https://registry.company.com"). The upstream
+	// must serve the same format as this repository. Immutable.
+	CommonRepository *GcpArtifactRegistryRepoRemoteCommonRepository `protobuf:"bytes,8,opt,name=common_repository,json=commonRepository,proto3" json:"common_repository,omitempty"`
+	// Credentials for authenticating to the upstream (private registries, or
+	// Docker Hub authenticated pulls for higher rate limits). Mutable in
+	// place: rotating credentials never recreates the cache.
+	UpstreamCredentials *GcpArtifactRegistryRepoRemoteUpstreamCredentials `protobuf:"bytes,9,opt,name=upstream_credentials,json=upstreamCredentials,proto3" json:"upstream_credentials,omitempty"`
+	// If true, skip validating the upstream URL and credentials at
+	// create/update time. Useful when the upstream is temporarily unreachable
+	// from the control plane but will be reachable at pull time. Mutable in
+	// place.
+	DisableUpstreamValidation bool `protobuf:"varint,10,opt,name=disable_upstream_validation,json=disableUpstreamValidation,proto3" json:"disable_upstream_validation,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) Reset() {
+	*x = GcpArtifactRegistryRepoRemoteConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoRemoteConfig) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoRemoteConfig.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoRemoteConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetDockerPublicRepository() string {
+	if x != nil {
+		return x.DockerPublicRepository
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetMavenPublicRepository() string {
+	if x != nil {
+		return x.MavenPublicRepository
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetNpmPublicRepository() string {
+	if x != nil {
+		return x.NpmPublicRepository
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetPythonPublicRepository() string {
+	if x != nil {
+		return x.PythonPublicRepository
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetAptRepository() *GcpArtifactRegistryRepoRemoteAptRepository {
+	if x != nil {
+		return x.AptRepository
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetYumRepository() *GcpArtifactRegistryRepoRemoteYumRepository {
+	if x != nil {
+		return x.YumRepository
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetCommonRepository() *GcpArtifactRegistryRepoRemoteCommonRepository {
+	if x != nil {
+		return x.CommonRepository
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetUpstreamCredentials() *GcpArtifactRegistryRepoRemoteUpstreamCredentials {
+	if x != nil {
+		return x.UpstreamCredentials
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoRemoteConfig) GetDisableUpstreamValidation() bool {
+	if x != nil {
+		return x.DisableUpstreamValidation
+	}
+	return false
+}
+
+// A public Apt mirror upstream.
+type GcpArtifactRegistryRepoRemoteAptRepository struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The mirror tree to cache from:
+	//
+	//	"DEBIAN" -- deb.debian.org
+	//	"UBUNTU" -- archive.ubuntu.com
+	RepositoryBase string `protobuf:"bytes,1,opt,name=repository_base,json=repositoryBase,proto3" json:"repository_base,omitempty"`
+	// The specific repository path within the base, e.g. "debian/dists/bookworm".
+	RepositoryPath string `protobuf:"bytes,2,opt,name=repository_path,json=repositoryPath,proto3" json:"repository_path,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoRemoteAptRepository) Reset() {
+	*x = GcpArtifactRegistryRepoRemoteAptRepository{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoRemoteAptRepository) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoRemoteAptRepository) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoRemoteAptRepository) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoRemoteAptRepository.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoRemoteAptRepository) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GcpArtifactRegistryRepoRemoteAptRepository) GetRepositoryBase() string {
+	if x != nil {
+		return x.RepositoryBase
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoRemoteAptRepository) GetRepositoryPath() string {
+	if x != nil {
+		return x.RepositoryPath
+	}
+	return ""
+}
+
+// A public Yum mirror upstream.
+type GcpArtifactRegistryRepoRemoteYumRepository struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The mirror tree to cache from:
+	//
+	//	"CENTOS", "CENTOS_DEBUG", "CENTOS_VAULT", "CENTOS_STREAM",
+	//	"ROCKY", "EPEL"
+	RepositoryBase string `protobuf:"bytes,1,opt,name=repository_base,json=repositoryBase,proto3" json:"repository_base,omitempty"`
+	// The specific repository path within the base,
+	// e.g. "pub/rocky/9/BaseOS/x86_64/os".
+	RepositoryPath string `protobuf:"bytes,2,opt,name=repository_path,json=repositoryPath,proto3" json:"repository_path,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoRemoteYumRepository) Reset() {
+	*x = GcpArtifactRegistryRepoRemoteYumRepository{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoRemoteYumRepository) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoRemoteYumRepository) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoRemoteYumRepository) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoRemoteYumRepository.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoRemoteYumRepository) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GcpArtifactRegistryRepoRemoteYumRepository) GetRepositoryBase() string {
+	if x != nil {
+		return x.RepositoryBase
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoRemoteYumRepository) GetRepositoryPath() string {
+	if x != nil {
+		return x.RepositoryPath
+	}
+	return ""
+}
+
+// A custom upstream for a remote repository.
+type GcpArtifactRegistryRepoRemoteCommonRepository struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Another Artifact Registry repository
+	// ("projects/{p}/locations/{l}/repositories/{r}") or a registry URI
+	// ("https://registry.company.com"). Accepts a literal or a reference to
+	// a GcpArtifactRegistryRepo resource (its repository_path output is
+	// exactly the AR form of this value).
+	Uri           *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoRemoteCommonRepository) Reset() {
+	*x = GcpArtifactRegistryRepoRemoteCommonRepository{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoRemoteCommonRepository) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoRemoteCommonRepository) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoRemoteCommonRepository) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoRemoteCommonRepository.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoRemoteCommonRepository) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GcpArtifactRegistryRepoRemoteCommonRepository) GetUri() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Uri
+	}
+	return nil
+}
+
+// Username/password credentials for an authenticated upstream. The password
+// itself never appears here — it lives in Secret Manager and is referenced
+// by secret version, so no secret material enters specs or state.
+type GcpArtifactRegistryRepoRemoteUpstreamCredentials struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The username to authenticate with.
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	// Secret Manager secret version holding the password, in the form
+	//
+	//	projects/{project}/secrets/{secret}/versions/{version}
+	//
+	// (use ".../versions/latest" to track rotation automatically). The
+	// Artifact Registry service agent needs
+	// roles/secretmanager.secretAccessor on the secret.
+	PasswordSecretVersion string `protobuf:"bytes,2,opt,name=password_secret_version,json=passwordSecretVersion,proto3" json:"password_secret_version,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoRemoteUpstreamCredentials) Reset() {
+	*x = GcpArtifactRegistryRepoRemoteUpstreamCredentials{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoRemoteUpstreamCredentials) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoRemoteUpstreamCredentials) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoRemoteUpstreamCredentials) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoRemoteUpstreamCredentials.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoRemoteUpstreamCredentials) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GcpArtifactRegistryRepoRemoteUpstreamCredentials) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoRemoteUpstreamCredentials) GetPasswordSecretVersion() string {
+	if x != nil {
+		return x.PasswordSecretVersion
+	}
+	return ""
+}
+
+// Upstream aggregation for a VIRTUAL_REPOSITORY.
+type GcpArtifactRegistryRepoVirtualConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Artifact Registry repositories this virtual endpoint serves from.
+	// When the same package exists in multiple upstreams, the highest
+	// priority wins. All upstreams must serve this repository's format.
+	UpstreamPolicies []*GcpArtifactRegistryRepoVirtualUpstreamPolicy `protobuf:"bytes,1,rep,name=upstream_policies,json=upstreamPolicies,proto3" json:"upstream_policies,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoVirtualConfig) Reset() {
+	*x = GcpArtifactRegistryRepoVirtualConfig{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoVirtualConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoVirtualConfig) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoVirtualConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoVirtualConfig.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoVirtualConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GcpArtifactRegistryRepoVirtualConfig) GetUpstreamPolicies() []*GcpArtifactRegistryRepoVirtualUpstreamPolicy {
+	if x != nil {
+		return x.UpstreamPolicies
+	}
+	return nil
+}
+
+// One upstream entry in a virtual repository's serving order.
+type GcpArtifactRegistryRepoVirtualUpstreamPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// User-chosen identifier for this policy entry, unique within the
+	// virtual repository.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The upstream Artifact Registry repository, as the full resource path
+	//
+	//	projects/{project}/locations/{location}/repositories/{repository}
+	//
+	// Accepts a literal or a reference to a GcpArtifactRegistryRepo resource.
+	Repository *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=repository,proto3" json:"repository,omitempty"`
+	// Serving priority — entries with higher values are tried first.
+	Priority      int32 `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoVirtualUpstreamPolicy) Reset() {
+	*x = GcpArtifactRegistryRepoVirtualUpstreamPolicy{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoVirtualUpstreamPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoVirtualUpstreamPolicy) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoVirtualUpstreamPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoVirtualUpstreamPolicy.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoVirtualUpstreamPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GcpArtifactRegistryRepoVirtualUpstreamPolicy) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoVirtualUpstreamPolicy) GetRepository() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Repository
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoVirtualUpstreamPolicy) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+// One additive IAM grant on the repository: one role to one member.
+type GcpArtifactRegistryRepoIamMember struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The role to grant, e.g. "roles/artifactregistry.reader",
+	// "roles/artifactregistry.writer", "roles/artifactregistry.repoAdmin",
+	// or a custom role's fully-qualified name.
+	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	// The identity receiving the grant, in GCP IAM member format:
+	//
+	//	serviceAccount:<email>  -- a service account (the most common in IaC;
+	//	                           reference a GcpServiceAccount resource —
+	//	                           its `member` output is exactly this value)
+	//	user:<email> / group:<email> / domain:<domain>
+	//	allUsers / allAuthenticatedUsers -- public access (grant with care)
+	Member *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=member,proto3" json:"member,omitempty"`
+	// Optional IAM Condition restricting when this grant applies. The
+	// condition is part of the grant's identity: the same role with and
+	// without a condition are two independent grants.
+	Condition     *GcpArtifactRegistryRepoIamCondition `protobuf:"bytes,3,opt,name=condition,proto3" json:"condition,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoIamMember) Reset() {
+	*x = GcpArtifactRegistryRepoIamMember{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoIamMember) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoIamMember) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoIamMember) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoIamMember.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoIamMember) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GcpArtifactRegistryRepoIamMember) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoIamMember) GetMember() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Member
+	}
+	return nil
+}
+
+func (x *GcpArtifactRegistryRepoIamMember) GetCondition() *GcpArtifactRegistryRepoIamCondition {
+	if x != nil {
+		return x.Condition
+	}
+	return nil
+}
+
+// An IAM Condition — a CEL expression that must evaluate true for the grant
+// to apply. See https://cloud.google.com/iam/docs/conditions-overview.
+type GcpArtifactRegistryRepoIamCondition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Short human-readable title identifying the condition's intent,
+	// e.g. "expires-2026-12-31".
+	Title string `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	// The CEL condition expression, e.g.
+	// request.time < timestamp("2027-01-01T00:00:00Z").
+	Expression string `protobuf:"bytes,2,opt,name=expression,proto3" json:"expression,omitempty"`
+	// Optional longer explanation of what the condition does.
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpArtifactRegistryRepoIamCondition) Reset() {
+	*x = GcpArtifactRegistryRepoIamCondition{}
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpArtifactRegistryRepoIamCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpArtifactRegistryRepoIamCondition) ProtoMessage() {}
+
+func (x *GcpArtifactRegistryRepoIamCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpArtifactRegistryRepoIamCondition.ProtoReflect.Descriptor instead.
+func (*GcpArtifactRegistryRepoIamCondition) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GcpArtifactRegistryRepoIamCondition) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoIamCondition) GetExpression() string {
+	if x != nil {
+		return x.Expression
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoIamCondition) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
 }
 
 var File_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/gcp/gcpartifactregistryrepo/v1/spec.proto\x123dev.planton.provider.gcp.gcpartifactregistryrepo.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe9\x02\n" +
-	"\x1bGcpArtifactRegistryRepoSpec\x12{\n" +
-	"\vrepo_format\x18\x01 \x01(\x0e2R.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoFormatB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"repoFormat\x12{\n" +
+	">dev/planton/provider/gcp/gcpartifactregistryrepo/v1/spec.proto\x123dev.planton.provider.gcp.gcpartifactregistryrepo.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdd\x16\n" +
+	"\x1bGcpArtifactRegistryRepoSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x1e\n" +
-	"\x06region\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x120\n" +
-	"\x14enable_public_access\x18\x04 \x01(\bR\x12enablePublicAccess*\xaa\x01\n" +
-	"\x1dGcpArtifactRegistryRepoFormat\x121\n" +
-	"-gcp_artifact_registry_repo_format_unspecified\x10\x00\x12\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xf8\x01\n" +
+	"\rrepository_id\x18\x02 \x01(\tB\xd2\x01\xbaH\xce\x01\xba\x01\xca\x01\n" +
+	"\x13valid_repository_id\x12}repository_id must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens (max 63 characters)\x1a4this == '' || this.matches('^[a-z][a-z0-9-]{0,62}$')R\frepositoryId\x12\"\n" +
+	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12\x1e\n" +
+	"\x06format\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06format\x12\xd4\x01\n" +
+	"\x04mode\x18\x05 \x01(\tB\xbf\x01\xbaH\xbb\x01\xba\x01\xb7\x01\n" +
 	"\n" +
-	"\x06DOCKER\x10\x01\x12\v\n" +
-	"\aGENERIC\x10\x02\x12\x06\n" +
-	"\x02GO\x10\x03\x12\f\n" +
-	"\bKUBEFLOW\x10\x04\x12\t\n" +
-	"\x05MAVEN\x10\x05\x12\a\n" +
-	"\x03NPM\x10\x06\x12\n" +
+	"valid_mode\x12Omode must be one of: STANDARD_REPOSITORY, REMOTE_REPOSITORY, VIRTUAL_REPOSITORY\x1aXthis == '' || this in ['STANDARD_REPOSITORY', 'REMOTE_REPOSITORY', 'VIRTUAL_REPOSITORY']R\x04mode\x12 \n" +
+	"\vdescription\x18\x06 \x01(\tR\vdescription\x12t\n" +
+	"\x06labels\x18\a \x03(\v2\\.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.LabelsEntryR\x06labels\x12t\n" +
+	"\fkms_key_name\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"kmsKeyName\x12}\n" +
+	"\rdocker_config\x18\t \x01(\v2X.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoDockerConfigR\fdockerConfig\x12z\n" +
+	"\fmaven_config\x18\n" +
+	" \x01(\v2W.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoMavenConfigR\vmavenConfig\x12\x84\x01\n" +
+	"\x10cleanup_policies\x18\v \x03(\v2Y.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicyR\x0fcleanupPolicies\x123\n" +
+	"\x16cleanup_policy_dry_run\x18\f \x01(\bR\x13cleanupPolicyDryRun\x12\x92\x01\n" +
+	"\x18remote_repository_config\x18\r \x01(\v2X.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteConfigR\x16remoteRepositoryConfig\x12\x95\x01\n" +
+	"\x19virtual_repository_config\x18\x0e \x01(\v2Y.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoVirtualConfigR\x17virtualRepositoryConfig\x12\xf6\x01\n" +
+	"!vulnerability_scanning_enablement\x18\x0f \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\xa1\x01\n" +
+	"'valid_vulnerability_scanning_enablement\x12Evulnerability_scanning_enablement must be one of: INHERITED, DISABLED\x1a/this == '' || this in ['INHERITED', 'DISABLED']R\x1fvulnerabilityScanningEnablement\x12v\n" +
+	"\viam_members\x18\x10 \x03(\v2U.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamMemberR\n" +
+	"iamMembers\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x92\x06\xbaH\x8e\x06\x1a\xb6\x01\n" +
+	"\"remote_config_requires_remote_mode\x12Gremote_repository_config can only be set when mode is REMOTE_REPOSITORY\x1aG!has(this.remote_repository_config) || this.mode == 'REMOTE_REPOSITORY'\x1a\xc4\x01\n" +
+	"\"remote_mode_requires_remote_config\x12Vmode REMOTE_REPOSITORY requires remote_repository_config to define the upstream source\x1aFthis.mode != 'REMOTE_REPOSITORY' || has(this.remote_repository_config)\x1a\xbc\x01\n" +
+	"$virtual_config_requires_virtual_mode\x12Ivirtual_repository_config can only be set when mode is VIRTUAL_REPOSITORY\x1aI!has(this.virtual_repository_config) || this.mode == 'VIRTUAL_REPOSITORY'\x1a\xcc\x01\n" +
+	"$virtual_mode_requires_virtual_config\x12Zmode VIRTUAL_REPOSITORY requires virtual_repository_config to define the upstream policies\x1aHthis.mode != 'VIRTUAL_REPOSITORY' || has(this.virtual_repository_config)\"L\n" +
+	"#GcpArtifactRegistryRepoDockerConfig\x12%\n" +
+	"\x0eimmutable_tags\x18\x01 \x01(\bR\rimmutableTags\"\x87\x02\n" +
+	"\"GcpArtifactRegistryRepoMavenConfig\x12\xa4\x01\n" +
+	"\x0eversion_policy\x18\x01 \x01(\tB}\xbaHz\xba\x01w\n" +
+	"\x14valid_version_policy\x120version_policy must be one of: RELEASE, SNAPSHOT\x1a-this == '' || this in ['RELEASE', 'SNAPSHOT']R\rversionPolicy\x12:\n" +
+	"\x19allow_snapshot_overwrites\x18\x02 \x01(\bR\x17allowSnapshotOverwrites\"\xe1\x06\n" +
+	"$GcpArtifactRegistryRepoCleanupPolicy\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\x01R\x02id\x12p\n" +
+	"\x06action\x18\x02 \x01(\tBX\xbaHU\xba\x01O\n" +
+	"\fvalid_action\x12#action must be one of: DELETE, KEEP\x1a\x1athis in ['DELETE', 'KEEP']\xc8\x01\x01R\x06action\x12\x80\x01\n" +
+	"\tcondition\x18\x03 \x01(\v2b.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicyConditionR\tcondition\x12\x9d\x01\n" +
+	"\x14most_recent_versions\x18\x04 \x01(\v2k.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicyMostRecentVersionsR\x12mostRecentVersions:\x86\x03\xbaH\x82\x03\x1a\xbc\x01\n" +
+	"\x16keep_requires_criteria\x12Ra KEEP policy needs a condition or most_recent_versions to define what it protects\x1aNthis.action != 'KEEP' || has(this.condition) || has(this.most_recent_versions)\x1a\xc0\x01\n" +
+	"\"most_recent_versions_only_for_keep\x12`most_recent_versions is only valid on a KEEP policy (it defines versions to protect, not delete)\x1a8!has(this.most_recent_versions) || this.action == 'KEEP'\"\xd5\x05\n" +
+	"-GcpArtifactRegistryRepoCleanupPolicyCondition\x12\xbc\x01\n" +
 	"\n" +
-	"\x06PYTHON\x10\a\x12\a\n" +
-	"\x03YUM\x10\bB\xa8\x03\n" +
+	"newer_than\x18\x01 \x01(\tB\x9c\x01\xbaH\x98\x01\xba\x01\x94\x01\n" +
+	"\x10valid_newer_than\x12Gnewer_than must be a duration in seconds (e.g., '2592000s' for 30 days)\x1a7this == '' || this.matches('^[0-9]+(\\\\.[0-9]{1,9})?s$')R\tnewerThan\x12\xbc\x01\n" +
+	"\n" +
+	"older_than\x18\x02 \x01(\tB\x9c\x01\xbaH\x98\x01\xba\x01\x94\x01\n" +
+	"\x10valid_older_than\x12Golder_than must be a duration in seconds (e.g., '7776000s' for 90 days)\x1a7this == '' || this.matches('^[0-9]+(\\\\.[0-9]{1,9})?s$')R\tolderThan\x122\n" +
+	"\x15package_name_prefixes\x18\x03 \x03(\tR\x13packageNamePrefixes\x12!\n" +
+	"\ftag_prefixes\x18\x04 \x03(\tR\vtagPrefixes\x12\x9a\x01\n" +
+	"\ttag_state\x18\x05 \x01(\tB}\xbaHz\xba\x01w\n" +
+	"\x0fvalid_tag_state\x12/tag_state must be one of: ANY, TAGGED, UNTAGGED\x1a3this == '' || this in ['ANY', 'TAGGED', 'UNTAGGED']R\btagState\x122\n" +
+	"\x15version_name_prefixes\x18\x06 \x03(\tR\x13versionNamePrefixes\"\x94\x01\n" +
+	"6GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions\x12&\n" +
+	"\n" +
+	"keep_count\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\tkeepCount\x122\n" +
+	"\x15package_name_prefixes\x18\x02 \x03(\tR\x13packageNamePrefixes\"\xaa\x10\n" +
+	"#GcpArtifactRegistryRepoRemoteConfig\x12 \n" +
+	"\vdescription\x18\x01 \x01(\tR\vdescription\x12\xf1\x01\n" +
+	"\x18docker_public_repository\x18\x02 \x01(\tB\xb6\x01\xbaH\xb2\x01\xba\x01\xae\x01\n" +
+	"\x1evalid_docker_public_repository\x12hdocker_public_repository only supports DOCKER_HUB — use common_repository for custom Docker registries\x1a\"this == '' || this == 'DOCKER_HUB'R\x16dockerPublicRepository\x12\xf2\x01\n" +
+	"\x17maven_public_repository\x18\x03 \x01(\tB\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
+	"\x1dvalid_maven_public_repository\x12imaven_public_repository only supports MAVEN_CENTRAL — use common_repository for custom Maven registries\x1a%this == '' || this == 'MAVEN_CENTRAL'R\x15mavenPublicRepository\x12\xd8\x01\n" +
+	"\x15npm_public_repository\x18\x04 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x9b\x01\n" +
+	"\x1bvalid_npm_public_repository\x12]npm_public_repository only supports NPMJS — use common_repository for custom npm registries\x1a\x1dthis == '' || this == 'NPMJS'R\x13npmPublicRepository\x12\xe5\x01\n" +
+	"\x18python_public_repository\x18\x05 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\xa2\x01\n" +
+	"\x1evalid_python_public_repository\x12bpython_public_repository only supports PYPI — use common_repository for custom Python registries\x1a\x1cthis == '' || this == 'PYPI'R\x16pythonPublicRepository\x12\x86\x01\n" +
+	"\x0eapt_repository\x18\x06 \x01(\v2_.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteAptRepositoryR\raptRepository\x12\x86\x01\n" +
+	"\x0eyum_repository\x18\a \x01(\v2_.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteYumRepositoryR\ryumRepository\x12\x8f\x01\n" +
+	"\x11common_repository\x18\b \x01(\v2b.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteCommonRepositoryR\x10commonRepository\x12\x98\x01\n" +
+	"\x14upstream_credentials\x18\t \x01(\v2e.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteUpstreamCredentialsR\x13upstreamCredentials\x12>\n" +
+	"\x1bdisable_upstream_validation\x18\n" +
+	" \x01(\bR\x19disableUpstreamValidation:\xb5\x03\xbaH\xb1\x03\x1a\xae\x03\n" +
+	"\x14exactly_one_upstream\x12\x98\x01exactly one upstream source must be set: apt_repository, yum_repository, common_repository, or one of the docker/maven/npm/python public repository arms\x1a\xfa\x01[has(this.apt_repository), has(this.common_repository), this.docker_public_repository != '', this.maven_public_repository != '', this.npm_public_repository != '', this.python_public_repository != '', has(this.yum_repository)].filter(x, x).size() == 1\"\xfb\x01\n" +
+	"*GcpArtifactRegistryRepoRemoteAptRepository\x12\x9b\x01\n" +
+	"\x0frepository_base\x18\x01 \x01(\tBr\xbaHo\xba\x01i\n" +
+	"\x19valid_apt_repository_base\x12.repository_base must be one of: DEBIAN, UBUNTU\x1a\x1cthis in ['DEBIAN', 'UBUNTU']\xc8\x01\x01R\x0erepositoryBase\x12/\n" +
+	"\x0frepository_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0erepositoryPath\"\xe6\x02\n" +
+	"*GcpArtifactRegistryRepoRemoteYumRepository\x12\x86\x02\n" +
+	"\x0frepository_base\x18\x01 \x01(\tB\xdc\x01\xbaH\xd8\x01\xba\x01\xd1\x01\n" +
+	"\x19valid_yum_repository_base\x12^repository_base must be one of: CENTOS, CENTOS_DEBUG, CENTOS_VAULT, CENTOS_STREAM, ROCKY, EPEL\x1aTthis in ['CENTOS', 'CENTOS_DEBUG', 'CENTOS_VAULT', 'CENTOS_STREAM', 'ROCKY', 'EPEL']\xc8\x01\x01R\x0erepositoryBase\x12/\n" +
+	"\x0frepository_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0erepositoryPath\"\xa4\x01\n" +
+	"-GcpArtifactRegistryRepoRemoteCommonRepository\x12s\n" +
+	"\x03uri\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x04\x92\xd4a\x1estatus.outputs.repository_pathR\x03uri\"\xc7\x01\n" +
+	"0GcpArtifactRegistryRepoRemoteUpstreamCredentials\x12\"\n" +
+	"\busername\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12o\n" +
+	"\x17password_secret_version\x18\x02 \x01(\tB7\xbaH4\xc8\x01\x01r/2-^projects/[^/]+/secrets/[^/]+/versions/[^/]+$R\x15passwordSecretVersion\"\xc1\x01\n" +
+	"$GcpArtifactRegistryRepoVirtualConfig\x12\x98\x01\n" +
+	"\x11upstream_policies\x18\x01 \x03(\v2a.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoVirtualUpstreamPolicyB\b\xbaH\x05\x92\x01\x02\b\x01R\x10upstreamPolicies\"\xe6\x01\n" +
+	",GcpArtifactRegistryRepoVirtualUpstreamPolicy\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12\x81\x01\n" +
+	"\n" +
+	"repository\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x04\x92\xd4a\x1estatus.outputs.repository_pathR\n" +
+	"repository\x12\x1a\n" +
+	"\bpriority\x18\x03 \x01(\x05R\bpriority\"\xa8\x02\n" +
+	" GcpArtifactRegistryRepoIamMember\x12\x1a\n" +
+	"\x04role\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04role\x12p\n" +
+	"\x06member\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x15status.outputs.memberR\x06member\x12v\n" +
+	"\tcondition\x18\x03 \x01(\v2X.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamConditionR\tcondition\"\x9b\x01\n" +
+	"#GcpArtifactRegistryRepoIamCondition\x12 \n" +
+	"\x05title\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x18dR\x05title\x12&\n" +
+	"\n" +
+	"expression\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"expression\x12*\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescriptionB\xa8\x03\n" +
 	"7com.dev.planton.provider.gcp.gcpartifactregistryrepo.v1B\tSpecProtoP\x01Zogithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1;gcpartifactregistryrepov1\xa2\x02\x05DPPGG\xaa\x023Dev.Planton.Provider.Gcp.Gcpartifactregistryrepo.V1\xca\x023Dev\\Planton\\Provider\\Gcp\\Gcpartifactregistryrepo\\V1\xe2\x02?Dev\\Planton\\Provider\\Gcp\\Gcpartifactregistryrepo\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Gcp::Gcpartifactregistryrepo::V1b\x06proto3"
 
 var (
@@ -213,21 +1435,52 @@ func file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_goTypes = []any{
-	(GcpArtifactRegistryRepoFormat)(0),  // 0: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoFormat
-	(*GcpArtifactRegistryRepoSpec)(nil), // 1: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec
-	(*v1.StringValueOrRef)(nil),         // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpArtifactRegistryRepoSpec)(nil),                            // 0: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec
+	(*GcpArtifactRegistryRepoDockerConfig)(nil),                    // 1: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoDockerConfig
+	(*GcpArtifactRegistryRepoMavenConfig)(nil),                     // 2: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoMavenConfig
+	(*GcpArtifactRegistryRepoCleanupPolicy)(nil),                   // 3: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicy
+	(*GcpArtifactRegistryRepoCleanupPolicyCondition)(nil),          // 4: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicyCondition
+	(*GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions)(nil), // 5: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions
+	(*GcpArtifactRegistryRepoRemoteConfig)(nil),                    // 6: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteConfig
+	(*GcpArtifactRegistryRepoRemoteAptRepository)(nil),             // 7: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteAptRepository
+	(*GcpArtifactRegistryRepoRemoteYumRepository)(nil),             // 8: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteYumRepository
+	(*GcpArtifactRegistryRepoRemoteCommonRepository)(nil),          // 9: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteCommonRepository
+	(*GcpArtifactRegistryRepoRemoteUpstreamCredentials)(nil),       // 10: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteUpstreamCredentials
+	(*GcpArtifactRegistryRepoVirtualConfig)(nil),                   // 11: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoVirtualConfig
+	(*GcpArtifactRegistryRepoVirtualUpstreamPolicy)(nil),           // 12: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoVirtualUpstreamPolicy
+	(*GcpArtifactRegistryRepoIamMember)(nil),                       // 13: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamMember
+	(*GcpArtifactRegistryRepoIamCondition)(nil),                    // 14: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamCondition
+	nil,                         // 15: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil), // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_depIdxs = []int32{
-	0, // 0: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.repo_format:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoFormat
-	2, // 1: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	16, // 0: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 1: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.labels:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.LabelsEntry
+	16, // 2: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 3: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.docker_config:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoDockerConfig
+	2,  // 4: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.maven_config:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoMavenConfig
+	3,  // 5: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.cleanup_policies:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicy
+	6,  // 6: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.remote_repository_config:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteConfig
+	11, // 7: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.virtual_repository_config:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoVirtualConfig
+	13, // 8: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.iam_members:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamMember
+	4,  // 9: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicy.condition:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicyCondition
+	5,  // 10: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicy.most_recent_versions:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions
+	7,  // 11: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteConfig.apt_repository:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteAptRepository
+	8,  // 12: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteConfig.yum_repository:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteYumRepository
+	9,  // 13: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteConfig.common_repository:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteCommonRepository
+	10, // 14: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteConfig.upstream_credentials:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteUpstreamCredentials
+	16, // 15: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoRemoteCommonRepository.uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 16: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoVirtualConfig.upstream_policies:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoVirtualUpstreamPolicy
+	16, // 17: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoVirtualUpstreamPolicy.repository:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 18: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamMember.member:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 19: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamMember.condition:type_name -> dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamCondition
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_init() }
@@ -240,14 +1493,13 @@ func file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_init() 
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDesc), len(file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   1,
+			NumEnums:      0,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto = out.File

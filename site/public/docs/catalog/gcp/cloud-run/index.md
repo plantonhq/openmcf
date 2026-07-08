@@ -23,7 +23,7 @@ When you deploy a GcpCloudRun resource, Planton provisions:
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A container image** in a registry the runtime identity can read ([GcpArtifactRegistryRepo](/docs/catalog/gcp/artifact-registry-repo))
+- **A container image** in a registry the runtime identity can read ([GcpArtifactRegistryRepo](/docs/catalog/gcp/artifact-registry-repository))
 - **A service account** ([GcpServiceAccount](/docs/catalog/gcp/service-account)) for production services — the Compute Engine default SA is used otherwise
 - **A VPC and subnetwork** ([GcpVpcNetwork](/docs/catalog/gcp/vpc), [GcpSubnetwork](/docs/catalog/gcp/subnetwork)) if using direct VPC egress
 - **Secret Manager secrets** already created if referencing them in env vars or volumes (the runtime identity needs `roles/secretmanager.secretAccessor`)
@@ -180,6 +180,6 @@ Empty `traffic` routes 100% to the latest ready revision.
 - [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — databases mounted via Cloud SQL volumes
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — the runtime identity
 - [GcpVpcNetwork](/docs/catalog/gcp/vpc) / [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — direct VPC egress targets
-- [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) — GCS FUSE volume origins
+- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — GCS FUSE volume origins
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — CMEK image encryption
-- [GcpArtifactRegistryRepo](/docs/catalog/gcp/artifact-registry-repo) — image storage
+- [GcpArtifactRegistryRepo](/docs/catalog/gcp/artifact-registry-repository) — image storage

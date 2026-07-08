@@ -1,32 +1,54 @@
-# locals.tf
-
 locals {
-  # Derive a stable resource ID
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.spec.bucket_name
-  )
+  # Honor the spec contract: an empty project_id falls back to the provider's
+  # default project. Passing null (instead of "") lets the google provider
+  # resolve its own project from configuration or the GOOGLE_PROJECT /
+  # GOOGLE_CLOUD_PROJECT environment chain.
+  project_id = var.spec.project_id != "" ? var.spec.project_id : null
 
-  # Base labels
+  bucket_name = var.spec.bucket_name
+  location    = var.spec.location
+
+  # Empty optional strings become null so the provider applies its own
+  # defaults (STANDARD class, inherited public-access prevention, DEFAULT
+  # rpo) instead of receiving an empty string it would reject.
+  storage_class            = var.spec.storage_class != "" ? var.spec.storage_class : null
+  public_access_prevention = var.spec.public_access_prevention != "" ? var.spec.public_access_prevention : null
+  rpo                      = var.spec.rpo != "" ? var.spec.rpo : null
+  kms_key_name             = var.spec.kms_key_name != "" ? var.spec.kms_key_name : null
+
   base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_name" = var.spec.bucket_name
-    "resource_kind" = "gcp_gcs_bucket"
+    "planton-ai_resource" = "true"
+    "planton-ai_name"     = var.spec.bucket_name
+    "planton-ai_kind"     = "gcpgcsbucket"
   }
 
-  # Organization label only if var.metadata.org is non-empty
   org_label = (
     var.metadata.org != null && var.metadata.org != ""
-  ) ? { "organization" = var.metadata.org } : {}
+  ) ? { "planton-ai_organization" = var.metadata.org } : {}
 
-  # Environment label only if var.metadata.env is non-empty
   env_label = (
-    var.metadata.env != null &&
-    try(var.metadata.env, "") != ""
-  ) ? { "environment" = var.metadata.env } : {}
+    var.metadata.env != null && var.metadata.env != ""
+  ) ? { "planton-ai_environment" = var.metadata.env } : {}
 
-  # Merge base, org, env, and user-provided labels (user labels take precedence)
-  final_labels = merge(local.base_labels, local.org_label, local.env_label, var.spec.gcp_labels)
+  id_label = (
+    var.metadata.id != null && var.metadata.id != ""
+  ) ? { "planton-ai_id" = var.metadata.id } : {}
+
+  # User labels first so platform attribution labels win on key conflicts —
+  # identical merge order to the Pulumi module.
+  final_labels = merge(
+    var.spec.labels,
+    local.base_labels,
+    local.org_label,
+    local.env_label,
+    local.id_label,
+  )
+
+  # Additive IAM grants keyed by (role, member) — the grant's identity.
+  # A condition never changes the key: the same (role, member) pair with a
+  # different condition is a replacement of that one grant.
+  iam_members = {
+    for m in var.spec.iam_members :
+    "${m.role}/${m.member}" => m
+  }
 }

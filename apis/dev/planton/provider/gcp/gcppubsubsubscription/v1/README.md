@@ -110,6 +110,6 @@ Use GcpPubSubSubscription when you need to:
 - [GcpPubSubTopic](/docs/catalog/gcp/pubsub-topic) -- Source topic for this subscription
 - [GcpPubSubSchema](/docs/catalog/gcp/pubsub-schema) -- Drives BigQuery/Avro layout via the topic's schema
 - [GcpBigQueryTable](/docs/catalog/gcp/bigquery-table) -- Target table for BigQuery delivery
-- [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) -- Target bucket for Cloud Storage delivery
+- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) -- Target bucket for Cloud Storage delivery
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) -- Writer/invoker identities for push, BigQuery, and Cloud Storage delivery
 - [GcpProject](/docs/catalog/gcp/project) -- Parent GCP project

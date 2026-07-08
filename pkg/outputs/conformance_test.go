@@ -210,6 +210,39 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpArtifactRegistryRepo: the short name, the fully qualified
+			// repository path composing resources consume (function
+			// docker_repository, virtual/remote upstreams), the registry
+			// endpoint clients push to, and the location.
+			name: "GcpArtifactRegistryRepo",
+			kind: cloudresourcekind.CloudResourceKind_GcpArtifactRegistryRepo,
+			rawOutputs: map[string]interface{}{
+				"name":            "app-images",
+				"repository_path": "projects/prod-project/locations/us-central1/repositories/app-images",
+				"registry_uri":    "us-central1-docker.pkg.dev/prod-project/app-images",
+				"location":        "us-central1",
+			},
+			mustPopulate: []string{"name", "repository_path", "registry_uri", "location"},
+		},
+		{
+			// GcpGcsBucket: bucket_id (the name every consumer references),
+			// the name alias, the gs:// URL, the API self link, the
+			// upper-cased location, and the numeric owning project.
+			name: "GcpGcsBucket",
+			kind: cloudresourcekind.CloudResourceKind_GcpGcsBucket,
+			rawOutputs: map[string]interface{}{
+				"bucket_id":      "prod-data-lake",
+				"bucket_name":    "prod-data-lake",
+				"url":            "gs://prod-data-lake",
+				"self_link":      "https://www.googleapis.com/storage/v1/b/prod-data-lake",
+				"location":       "US-EAST1",
+				"project_number": 123456789012,
+			},
+			mustPopulate: []string{
+				"bucket_id", "bucket_name", "url", "self_link", "location", "project_number",
+			},
+		},
+		{
 			// GcpBackendBucket: flat scalar outputs from both engines (the
 			// self-link URL maps reference, the cloud-side name, and the origin
 			// bucket) must each land on the StackOutputs proto.

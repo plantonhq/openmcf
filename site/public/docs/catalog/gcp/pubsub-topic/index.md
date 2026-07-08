@@ -214,6 +214,6 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [GcpPubSubSchema](/docs/catalog/gcp/pubsub-schema) — the message contract referenced by `schemaSettings.schema`
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — provides a customer-managed encryption key for CMEK
-- [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) — source bucket for Cloud Storage ingestion
+- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — source bucket for Cloud Storage ingestion
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — federated identity for cross-cloud ingestion
 - [GcpPubSubSubscription](/docs/catalog/gcp/pubsub-subscription) — creates a subscription attached to this topic

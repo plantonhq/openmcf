@@ -7,7 +7,6 @@
 package gcpartifactregistryrepov1
 
 import (
-	gcp "github.com/plantonhq/planton/apis/dev/planton/shared/gcp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -25,16 +24,25 @@ const (
 // gcp-artifact-registry-repo stack outputs
 type GcpArtifactRegistryRepoStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// reader service account
-	ReaderServiceAccount *gcp.GoogleServiceAccount `protobuf:"bytes,1,opt,name=reader_service_account,json=readerServiceAccount,proto3" json:"reader_service_account,omitempty"`
-	// writer service account
-	WriterServiceAccount *gcp.GoogleServiceAccount `protobuf:"bytes,2,opt,name=writer_service_account,json=writerServiceAccount,proto3" json:"writer_service_account,omitempty"`
-	// name of the repository.
-	RepoName string `protobuf:"bytes,3,opt,name=repo_name,json=repoName,proto3" json:"repo_name,omitempty"`
-	// hostname of the repository.
-	Hostname string `protobuf:"bytes,4,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	// url for the repository.
-	RepoUrl       string `protobuf:"bytes,5,opt,name=repo_url,json=repoUrl,proto3" json:"repo_url,omitempty"`
+	// Short name of the repository (the repository ID), e.g. "app-images".
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Fully qualified resource path of the repository:
+	//
+	//	projects/{project}/locations/{location}/repositories/{repository_id}
+	//
+	// This is the composition key other resources consume: a Cloud Function's
+	// docker_repository, a virtual repository's upstream policy, and a remote
+	// repository's common upstream all take exactly this value.
+	RepositoryPath string `protobuf:"bytes,2,opt,name=repository_path,json=repositoryPath,proto3" json:"repository_path,omitempty"`
+	// The registry endpoint clients push to and pull from, e.g.
+	//
+	//	us-central1-docker.pkg.dev/my-project/app-images
+	//
+	// For Docker repositories, prefix an image name to get the full image
+	// reference ("{registry_uri}/api-server:v1.2.3").
+	RegistryUri string `protobuf:"bytes,3,opt,name=registry_uri,json=registryUri,proto3" json:"registry_uri,omitempty"`
+	// Location of the repository (region or multi-region), echoed from spec.
+	Location      string `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -69,37 +77,30 @@ func (*GcpArtifactRegistryRepoStackOutputs) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_stack_outputs_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GcpArtifactRegistryRepoStackOutputs) GetReaderServiceAccount() *gcp.GoogleServiceAccount {
+func (x *GcpArtifactRegistryRepoStackOutputs) GetName() string {
 	if x != nil {
-		return x.ReaderServiceAccount
-	}
-	return nil
-}
-
-func (x *GcpArtifactRegistryRepoStackOutputs) GetWriterServiceAccount() *gcp.GoogleServiceAccount {
-	if x != nil {
-		return x.WriterServiceAccount
-	}
-	return nil
-}
-
-func (x *GcpArtifactRegistryRepoStackOutputs) GetRepoName() string {
-	if x != nil {
-		return x.RepoName
+		return x.Name
 	}
 	return ""
 }
 
-func (x *GcpArtifactRegistryRepoStackOutputs) GetHostname() string {
+func (x *GcpArtifactRegistryRepoStackOutputs) GetRepositoryPath() string {
 	if x != nil {
-		return x.Hostname
+		return x.RepositoryPath
 	}
 	return ""
 }
 
-func (x *GcpArtifactRegistryRepoStackOutputs) GetRepoUrl() string {
+func (x *GcpArtifactRegistryRepoStackOutputs) GetRegistryUri() string {
 	if x != nil {
-		return x.RepoUrl
+		return x.RegistryUri
+	}
+	return ""
+}
+
+func (x *GcpArtifactRegistryRepoStackOutputs) GetLocation() string {
+	if x != nil {
+		return x.Location
 	}
 	return ""
 }
@@ -108,13 +109,12 @@ var File_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_stack_outputs_proto
 
 const file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/gcp/gcpartifactregistryrepo/v1/stack_outputs.proto\x123dev.planton.provider.gcp.gcpartifactregistryrepo.v1\x1a dev/planton/shared/gcp/gcp.proto\"\xc1\x02\n" +
-	"#GcpArtifactRegistryRepoStackOutputs\x12b\n" +
-	"\x16reader_service_account\x18\x01 \x01(\v2,.dev.planton.shared.gcp.GoogleServiceAccountR\x14readerServiceAccount\x12b\n" +
-	"\x16writer_service_account\x18\x02 \x01(\v2,.dev.planton.shared.gcp.GoogleServiceAccountR\x14writerServiceAccount\x12\x1b\n" +
-	"\trepo_name\x18\x03 \x01(\tR\brepoName\x12\x1a\n" +
-	"\bhostname\x18\x04 \x01(\tR\bhostname\x12\x19\n" +
-	"\brepo_url\x18\x05 \x01(\tR\arepoUrlB\xb0\x03\n" +
+	"Gdev/planton/provider/gcp/gcpartifactregistryrepo/v1/stack_outputs.proto\x123dev.planton.provider.gcp.gcpartifactregistryrepo.v1\"\xa1\x01\n" +
+	"#GcpArtifactRegistryRepoStackOutputs\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12'\n" +
+	"\x0frepository_path\x18\x02 \x01(\tR\x0erepositoryPath\x12!\n" +
+	"\fregistry_uri\x18\x03 \x01(\tR\vregistryUri\x12\x1a\n" +
+	"\blocation\x18\x04 \x01(\tR\blocationB\xb0\x03\n" +
 	"7com.dev.planton.provider.gcp.gcpartifactregistryrepo.v1B\x11StackOutputsProtoP\x01Zogithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1;gcpartifactregistryrepov1\xa2\x02\x05DPPGG\xaa\x023Dev.Planton.Provider.Gcp.Gcpartifactregistryrepo.V1\xca\x023Dev\\Planton\\Provider\\Gcp\\Gcpartifactregistryrepo\\V1\xe2\x02?Dev\\Planton\\Provider\\Gcp\\Gcpartifactregistryrepo\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Gcp::Gcpartifactregistryrepo::V1b\x06proto3"
 
 var (
@@ -132,16 +132,13 @@ func file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_stack_outputs_prot
 var file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_stack_outputs_proto_goTypes = []any{
 	(*GcpArtifactRegistryRepoStackOutputs)(nil), // 0: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoStackOutputs
-	(*gcp.GoogleServiceAccount)(nil),            // 1: dev.planton.shared.gcp.GoogleServiceAccount
 }
 var file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoStackOutputs.reader_service_account:type_name -> dev.planton.shared.gcp.GoogleServiceAccount
-	1, // 1: dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoStackOutputs.writer_service_account:type_name -> dev.planton.shared.gcp.GoogleServiceAccount
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_stack_outputs_proto_init() }

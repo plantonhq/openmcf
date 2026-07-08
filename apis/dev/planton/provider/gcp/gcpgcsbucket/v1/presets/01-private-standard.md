@@ -1,29 +1,33 @@
 # Private Standard Bucket
 
-This preset creates a private GCS bucket with uniform bucket-level access, versioning, public access prevention, and lifecycle rules to control version sprawl. It represents the standard configuration for application data, backups, and internal file storage.
+The default posture for application data: IAM-only access control, public
+access impossible, versioned objects with bounded history, and an additive
+grant for the workload's service account.
 
-## When to Use
+## What this preset creates
 
-- Application data storage (uploads, generated files, backups)
-- Internal file storage that should never be publicly accessible
-- Any bucket where accidental deletion protection via versioning is valuable
+A STANDARD-class bucket with uniform bucket-level access (no legacy
+object ACLs), `publicAccessPrevention: enforced` (no IAM grant can ever
+expose it), and object versioning whose growth is capped by a lifecycle
+rule keeping the 3 newest noncurrent versions.
 
-## Key Configuration Choices
+## Prerequisites
 
-- **Uniform bucket-level access** (`uniformBucketLevelAccessEnabled: true`) -- IAM-only access control, no legacy ACLs
-- **Public access prevention enforced** -- blocks any public access regardless of IAM changes
-- **Versioning enabled** -- protects against accidental deletion and overwrite
-- **Lifecycle rules** -- automatically deletes non-current versions (max 3 kept, or 1 year old)
-- **STANDARD storage class** -- lowest latency and highest availability; change to NEARLINE for infrequently accessed data
+- A `GcpServiceAccount` named `app-runtime` (the workload identity that
+  reads/writes objects). Replace the reference with your own service
+  account, or drop the grant and manage access elsewhere.
 
-## Placeholders to Replace
+## Composing storage
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
-| `<your-bucket-name>` | Globally unique bucket name (3-63 chars, lowercase) | Choose a unique name |
-| `<gcp-region>` | Bucket location (e.g., `us-central1`, `US` for multi-region) | Your deployment region |
+Every consumer references the bucket's `bucket_id` output: a
+`GcpBackendBucket` origin, a Cloud Function's source bucket, Dataproc
+staging, or a Pub/Sub Cloud Storage sink.
 
-## Related Presets
+## Remix ideas
 
-- **02-static-website** -- Use for publicly accessible static website hosting
+- Add `kmsKeyName` (a `GcpKmsKey` reference) for CMEK-at-rest.
+- Add a `softDeletePolicy` with `retentionDurationSeconds: 0` for
+  high-churn scratch data where the default 7-day recovery tail is pure
+  cost — or lengthen it for precious data.
+- Keep `forceDestroy` unset (false) so a teardown can never erase data
+  silently; set it true only for ephemeral environments.

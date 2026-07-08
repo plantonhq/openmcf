@@ -706,6 +706,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpart"
+    prerequisites: [GcpServiceAccount]
   }];
   GcpTargetHttpsProxy = 601 [(kind_meta) = {
     provider: gcp
@@ -745,6 +746,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcsbkt"
+    prerequisites: [GcpServiceAccount]
   }];
   GcpGkeCluster = 607 [(kind_meta) = {
     provider: gcp

@@ -85,6 +85,6 @@ planton apply -f composer.yaml
 - [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — subnetwork for node placement
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) — node identity
 - [GcpKmsKey](/docs/catalog/gcp/kms-key) — CMEK encryption key
-- [GcpGcsBucket](/docs/catalog/gcp/gcs-bucket) — governed DAG or snapshot bucket
+- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — governed DAG or snapshot bucket
 - [GcpCloudComposerUserWorkloadsSecret](/docs/catalog/gcp/cloud-composer-user-workloads-secret) — credentials for DAGs
 - [GcpCloudComposerUserWorkloadsConfigMap](/docs/catalog/gcp/cloud-composer-user-workloads-configmap) — non-secret configuration for DAGs

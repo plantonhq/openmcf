@@ -9,7 +9,6 @@ go_library(
         "//apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1:gcpartifactregistryrepo",
         "//apis/dev/planton/provider/gcp/gcpartifactregistryrepo/v1/iac/pulumi/module",
         "//pkg/iac/pulumi/pulumimodule/stackinput",
-        "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],
 )
