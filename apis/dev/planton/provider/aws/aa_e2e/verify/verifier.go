@@ -73,6 +73,8 @@ var verifiers = map[string]Verifier{
 	"awsredshiftcluster":             &redshiftClusterVerifier{},
 	"awsredshiftserverlessnamespace": &redshiftServerlessNamespaceVerifier{},
 	"awsredshiftserverlessworkgroup": &redshiftServerlessWorkgroupVerifier{},
+	"awssesconfigurationset":         &sesConfigurationSetVerifier{},
+	"awssesemailidentity":            &sesEmailIdentityVerifier{},
 	"awsekscluster":                  &eksClusterVerifier{},
 	"awseksnodegroup":                &eksNodeGroupVerifier{},
 	"awseksaddon":                    &eksAddonVerifier{},

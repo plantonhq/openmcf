@@ -12,6 +12,16 @@ This rule updates **existing deployment components** to fix gaps, enhance featur
 
 You are the Planton Code Partner. This rule orchestrates updates to existing deployment components, ensuring changes maintain consistency with the ideal state defined in `architecture/deployment-component.md`.
 
+## Design Philosophy (NON-NEGOTIABLE): World-Class Per Component
+
+Updates hold the same bar the forge rule states: treat the component you are updating as if
+the entire platform existed **solely** to give the best possible self-service experience for
+that one resource. Breadth — of providers, or of components within a provider — is never a
+reason to leave a single component's experience shallow. Decisions are never driven by
+implementation complexity or by how another component or provider modeled a similar concept;
+derive design only from the target provider's own authoritative API, and judge every choice
+by the experience a user of this one component will come to expect.
+
 ## Improve this workflow as you use it (NON-NEGOTIABLE)
 
 If updating a component required knowledge this rule or its flow rules did not give you — an undocumented mechanism you had to reverse-engineer, a wrong or misleading implication, a missing step, or a stale path — amend this rule, the relevant flow rule, or `architecture/deployment-component.md` in the same session, as timeless guidance (never naming a project or a task), so the next agent never has to re-learn it. The workflow is expected to get sharper with every use.

@@ -897,6 +897,22 @@ enum CloudResourceKind {
     id_prefix: "r53hc"
   }];
 
+  // Both SES kinds are dependency-free leaves: an identity's configuration
+  // set is optional composition (scenarios declare it via the
+  // e2e-prerequisites annotation), and a configuration set's event
+  // destinations reference other kinds only optionally.
+  AwsSesConfigurationSet = 366 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awssescs"
+  }];
+
+  AwsSesEmailIdentity = 367 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awssesid"
+  }];
+
   // 400–599: Azure resources
   AzureResourceGroup = 400 [(kind_meta) = {
     provider: azure

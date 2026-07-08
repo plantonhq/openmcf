@@ -154,6 +154,8 @@ go_library(
         "//apis/dev/planton/provider/aws/awssagemakerdomain/v1:awssagemakerdomain",
         "//apis/dev/planton/provider/aws/awssecuritygroup/v1:awssecuritygroup",
         "//apis/dev/planton/provider/aws/awsserverlesselasticache/v1:awsserverlesselasticache",
+        "//apis/dev/planton/provider/aws/awssesconfigurationset/v1:awssesconfigurationset",
+        "//apis/dev/planton/provider/aws/awssesemailidentity/v1:awssesemailidentity",
         "//apis/dev/planton/provider/aws/awssnssubscription/v1:awssnssubscription",
         "//apis/dev/planton/provider/aws/awssnstopic/v1:awssnstopic",
         "//apis/dev/planton/provider/aws/awssqsqueue/v1:awssqsqueue",

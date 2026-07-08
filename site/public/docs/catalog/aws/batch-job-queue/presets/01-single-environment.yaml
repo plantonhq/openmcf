@@ -18,5 +18,5 @@ spec:
   jobStateTimeLimitActions:
     - action: CANCEL
       maxTimeSeconds: 3600
-      reason: Job stuck in RUNNABLE for over 1 hour
+      reason: MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT
       state: RUNNABLE

@@ -138,6 +138,8 @@ import (
 	awssagemakerdomainv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssagemakerdomain/v1"
 	awssecuritygroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssecuritygroup/v1"
 	awsserverlesselasticachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsserverlesselasticache/v1"
+	awssesconfigurationsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssesconfigurationset/v1"
+	awssesemailidentityv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssesemailidentity/v1"
 	awssnssubscriptionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssnssubscription/v1"
 	awssnstopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssnstopic/v1"
 	awssqsqueuev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssqsqueue/v1"
@@ -604,6 +606,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsSagemakerDomain:               &awssagemakerdomainv1.AwsSagemakerDomain{},
 	cloudresourcekind.CloudResourceKind_AwsSecurityGroup:                 &awssecuritygroupv1.AwsSecurityGroup{},
 	cloudresourcekind.CloudResourceKind_AwsServerlessElasticache:         &awsserverlesselasticachev1.AwsServerlessElasticache{},
+	cloudresourcekind.CloudResourceKind_AwsSesConfigurationSet:           &awssesconfigurationsetv1.AwsSesConfigurationSet{},
+	cloudresourcekind.CloudResourceKind_AwsSesEmailIdentity:              &awssesemailidentityv1.AwsSesEmailIdentity{},
 	cloudresourcekind.CloudResourceKind_AwsSnsSubscription:               &awssnssubscriptionv1.AwsSnsSubscription{},
 	cloudresourcekind.CloudResourceKind_AwsSnsTopic:                      &awssnstopicv1.AwsSnsTopic{},
 	cloudresourcekind.CloudResourceKind_AwsSqsQueue:                      &awssqsqueuev1.AwsSqsQueue{},

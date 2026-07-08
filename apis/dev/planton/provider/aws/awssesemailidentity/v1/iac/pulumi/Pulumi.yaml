@@ -1,0 +1,3 @@
+name: aws-ses-email-identity
+runtime: go
+description: Deploy an Amazon SES (SESv2) email identity using Planton

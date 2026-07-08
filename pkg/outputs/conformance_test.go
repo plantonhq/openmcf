@@ -1446,6 +1446,39 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"access_point_id", "access_point_arn", "file_system_id", "file_system_arn"},
 		},
 		{
+			// AwsSesConfigurationSet: configuration_set_name is the join key
+			// email identities reference through their configuration_set field
+			// (and what SendEmail calls name); the ARN scopes IAM sending
+			// policies. The name also keys the E2E verifier.
+			name: "AwsSesConfigurationSet",
+			kind: cloudresourcekind.CloudResourceKind_AwsSesConfigurationSet,
+			rawOutputs: map[string]interface{}{
+				"configuration_set_arn":  "arn:aws:ses:us-west-2:123456789012:configuration-set/transactional-set",
+				"configuration_set_name": "transactional-set",
+			},
+			mustPopulate: []string{"configuration_set_arn", "configuration_set_name"},
+		},
+		{
+			// AwsSesEmailIdentity: the identity string keys the E2E verifier
+			// and composes DNS record names; dkim_tokens is the repeated
+			// output downstream Route53 CNAME records are built from -- it
+			// must land on the proto's repeated field, not silently drop.
+			name: "AwsSesEmailIdentity",
+			kind: cloudresourcekind.CloudResourceKind_AwsSesEmailIdentity,
+			rawOutputs: map[string]interface{}{
+				"identity_arn":        "arn:aws:ses:us-west-2:123456789012:identity/example.com",
+				"email_identity":      "example.com",
+				"identity_type":       "DOMAIN",
+				"verification_status": "PENDING",
+				"dkim_tokens": []interface{}{
+					"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+					"cccccccccccccccccccccccccccccccc",
+				},
+			},
+			mustPopulate: []string{"identity_arn", "email_identity", "identity_type", "verification_status", "dkim_tokens"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

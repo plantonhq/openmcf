@@ -23,7 +23,7 @@ The standard starting point: one queue mapped onto one compute environment, with
 ## What It Configures
 
 - **One environment at order 1** — referenced by ARN through the compute environment's output
-- **Stuck-job fuse** — jobs sitting in RUNNABLE for over an hour are cancelled with an operator-readable reason
+- **Stuck-job fuse** — jobs whose resource requirements the environment can never satisfy are cancelled after an hour (the `reason` selects that specific stuck-job cause; add entries for the capacity causes too if desired)
 - **Priority 10** — leaves headroom to add lower-priority backfill queues on the same environment later
 
 ## What to Customize

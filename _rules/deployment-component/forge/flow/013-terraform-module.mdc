@@ -209,6 +209,16 @@ HANDLING PROTO-OPTIONAL TRI-STATES (presence WITHOUT a platform default)
   `try(obj.attr, default)` -- `try(o.s3_origin.create_oac, false)` is both the
   null guard and the default in one expression, and works in `for` filters,
   `for_each`, and resource arguments alike.
+- **`coalesce(x, "")` ERRORS when every argument is empty.** HCL's `coalesce`
+  requires at least one non-null, NON-EMPTY-STRING argument, so
+  `coalesce(field, "") != ""` fails at plan time exactly when the field is
+  absent -- the case it was meant to guard. Generator-flattened
+  `StringValueOrRef` fields (and every `optional(string, "")` contract
+  attribute) are never null -- they carry the contract default `""` -- so
+  test them with a plain `field != ""`. Reserve `coalesce` for genuinely
+  nullable attributes with a non-empty fallback (e.g.
+  `coalesce(nullable_enum, "OPTIONAL")`), and only `tofu plan` with real
+  tfvars proves the difference (`tofu validate` cannot).
 - Example:
   ```hcl
   # CORRECT: Planton guarantees content_type is populated (default: application/octet-stream)

@@ -751,6 +751,20 @@ func TestAwsBatchJobDefinition_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsbatchjobdefinition", "terraform")
 }
 
+func TestAwsSesConfigurationSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesconfigurationset", "pulumi")
+}
+func TestAwsSesConfigurationSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesconfigurationset", "terraform")
+}
+
+func TestAwsSesEmailIdentity_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesemailidentity", "pulumi")
+}
+func TestAwsSesEmailIdentity_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesemailidentity", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -74,7 +74,7 @@ Jobs submitted to `etl-queue` (SubmitJob or an EventBridge Batch target) now run
 | `priority` | int32 | 0 | Scheduling preference vs other queues sharing an environment; higher wins. |
 | `state` | string | `ENABLED` | `DISABLED` rejects new submissions while running jobs finish (the drain switch). |
 | `schedulingPolicy` | StringValueOrRef → AwsBatchSchedulingPolicy | — | Fair-share ordering within the queue. Once set it can be replaced but never removed. |
-| `jobStateTimeLimitActions` | list(object) | — | Auto-`CANCEL`/`TERMINATE` jobs stuck in `RUNNABLE` past a threshold (600-86400s). |
+| `jobStateTimeLimitActions` | list(object) | — | Auto-`CANCEL` jobs stuck in `RUNNABLE` past a threshold (600-86400s). `reason` selects WHICH stuck-job cause the action covers: `CAPACITY:INSUFFICIENT_INSTANCE_CAPACITY`, `MISCONFIGURATION:COMPUTE_ENVIRONMENT_MAX_RESOURCE`, or `MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT`. |
 
 All associated environments must be one family: EC2-based (`EC2`/`SPOT`) or Fargate-based (`FARGATE`/`FARGATE_SPOT`), never mixed.
 
