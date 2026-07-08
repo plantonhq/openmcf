@@ -40,6 +40,9 @@ spec:
         - matchVariable: REQUEST_URI
           operator: BEGINS_WITH
           matchValues: ["/api/"]
+    # URL_DECODE is deliberately in the transform list: its ARM wire
+    # value ("UrlDecode") has casing the SDK's Go identifier does not,
+    # so this scenario keeps the mapping row live-verified.
     - name: agentblock
       priority: 20
       ruleType: MATCH_RULE
@@ -50,4 +53,4 @@ spec:
           operator: CONTAINS
           matchValues: [badbot]
           negateCondition: false
-          transforms: [LOWERCASE, TRIM]
+          transforms: [LOWERCASE, TRIM, URL_DECODE]

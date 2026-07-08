@@ -1,6 +1,8 @@
 package azurefrontdoorfirewallpolicyv1
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"buf.build/go/protovalidate"
@@ -134,6 +136,27 @@ var _ = ginkgo.Describe("AzureFrontDoorFirewallPolicySpec Validation Tests", fun
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
+		ginkgo.It("should accept a CAPTCHA custom-rule action on PREMIUM", func() {
+			rule := blockRule("humangate")
+			rule.Action = AzureFrontDoorFirewallPolicyCustomRuleAction_CAPTCHA
+			input := premiumSpec()
+			input.Spec.CustomRules = []*AzureFrontDoorFirewallPolicyCustomRule{rule}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept the legacy DefaultRuleSet at version preview-0.1", func() {
+			set := &AzureFrontDoorFirewallPolicyManagedRuleSet{
+				Type:    "DefaultRuleSet",
+				Version: "preview-0.1",
+				Action:  AzureFrontDoorFirewallPolicyManagedRuleSetAction_RULE_SET_LOG,
+			}
+			input := premiumSpec()
+			input.Spec.ManagedRules = []*AzureFrontDoorFirewallPolicyManagedRuleSet{set}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
 		ginkgo.It("should accept managed-rule exclusions and anomaly-scoring overrides on a 2.x set", func() {
 			set := managedRuleSet()
 			set.Exclusions = []*AzureFrontDoorFirewallPolicyManagedRuleExclusion{{
@@ -141,13 +164,21 @@ var _ = ginkgo.Describe("AzureFrontDoorFirewallPolicySpec Validation Tests", fun
 				Operator:      AzureFrontDoorFirewallPolicySelectorOperator_SELECTOR_EQUALS,
 				Selector:      "session-token",
 			}}
+			// Both actions the 2.x gate allows: ANOMALY_SCORING and LOG.
 			set.Overrides = []*AzureFrontDoorFirewallPolicyManagedRuleGroupOverride{{
 				RuleGroupName: "SQLI",
-				Rules: []*AzureFrontDoorFirewallPolicyManagedRuleOverride{{
-					RuleId:  "942100",
-					Enabled: proto.Bool(true),
-					Action:  AzureFrontDoorFirewallPolicyManagedRuleOverrideAction_OVERRIDE_LOG,
-				}},
+				Rules: []*AzureFrontDoorFirewallPolicyManagedRuleOverride{
+					{
+						RuleId:  "942100",
+						Enabled: proto.Bool(true),
+						Action:  AzureFrontDoorFirewallPolicyManagedRuleOverrideAction_OVERRIDE_ANOMALY_SCORING,
+					},
+					{
+						RuleId:  "942200",
+						Enabled: proto.Bool(true),
+						Action:  AzureFrontDoorFirewallPolicyManagedRuleOverrideAction_OVERRIDE_LOG,
+					},
+				},
 			}}
 			input := premiumSpec()
 			input.Spec.ManagedRules = []*AzureFrontDoorFirewallPolicyManagedRuleSet{set}
@@ -215,6 +246,13 @@ var _ = ginkgo.Describe("AzureFrontDoorFirewallPolicySpec Validation Tests", fun
 
 	ginkgo.Describe("policy_name format", func() {
 
+		ginkgo.It("should accept a name at the 128-character maximum", func() {
+			input := minimalSpec()
+			input.Spec.PolicyName = "a" + strings.Repeat("b", 127)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
 		ginkgo.It("should reject a name with hyphens", func() {
 			input := minimalSpec()
 			input.Spec.PolicyName = "edge-waf"
@@ -270,6 +308,22 @@ var _ = ginkgo.Describe("AzureFrontDoorFirewallPolicySpec Validation Tests", fun
 		ginkgo.It("should reject a block status code outside the allowed set", func() {
 			input := minimalSpec()
 			input.Spec.CustomBlockResponseStatusCode = proto.Int32(404)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept the WAF-specific 99x block status codes at both edges", func() {
+			for _, code := range []int32{990, 999} {
+				input := minimalSpec()
+				input.Spec.CustomBlockResponseStatusCode = proto.Int32(code)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			}
+		})
+
+		ginkgo.It("should reject 989, one below the 99x block-status range", func() {
+			input := minimalSpec()
+			input.Spec.CustomBlockResponseStatusCode = proto.Int32(989)
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -334,9 +388,33 @@ var _ = ginkgo.Describe("AzureFrontDoorFirewallPolicySpec Validation Tests", fun
 
 	ginkgo.Describe("challenge expiration bounds", func() {
 
+		ginkgo.It("should accept both lifetimes at the 5 and 1440 edges", func() {
+			for _, minutes := range []int32{5, 1440} {
+				input := premiumSpec()
+				input.Spec.JsChallengeCookieExpirationInMinutes = proto.Int32(minutes)
+				input.Spec.CaptchaCookieExpirationInMinutes = proto.Int32(minutes)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			}
+		})
+
 		ginkgo.It("should reject a JS-challenge lifetime below 5 minutes", func() {
 			input := premiumSpec()
 			input.Spec.JsChallengeCookieExpirationInMinutes = proto.Int32(4)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a JS-challenge lifetime above 1440 minutes", func() {
+			input := premiumSpec()
+			input.Spec.JsChallengeCookieExpirationInMinutes = proto.Int32(1441)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a CAPTCHA lifetime below 5 minutes", func() {
+			input := premiumSpec()
+			input.Spec.CaptchaCookieExpirationInMinutes = proto.Int32(4)
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -420,6 +498,36 @@ var _ = ginkgo.Describe("AzureFrontDoorFirewallPolicySpec Validation Tests", fun
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
+		ginkgo.It("should reject more than 10 conditions on one rule", func() {
+			rule := blockRule("toomanyconditions")
+			conditions := make([]*AzureFrontDoorFirewallPolicyMatchCondition, 0, 11)
+			for i := 0; i < 11; i++ {
+				conditions = append(conditions, &AzureFrontDoorFirewallPolicyMatchCondition{
+					MatchVariable: AzureFrontDoorFirewallPolicyMatchVariable_REMOTE_ADDR,
+					Operator:      AzureFrontDoorFirewallPolicyOperator_IP_MATCH,
+					MatchValues:   []string{fmt.Sprintf("203.0.113.%d/32", i)},
+				})
+			}
+			rule.MatchConditions = conditions
+			input := minimalSpec()
+			input.Spec.CustomRules = []*AzureFrontDoorFirewallPolicyCustomRule{rule}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject more than 600 match values on one condition", func() {
+			values := make([]string, 601)
+			for i := range values {
+				values[i] = fmt.Sprintf("v%d", i)
+			}
+			rule := blockRule("toomanyvalues")
+			rule.MatchConditions[0].MatchValues = values
+			input := minimalSpec()
+			input.Spec.CustomRules = []*AzureFrontDoorFirewallPolicyCustomRule{rule}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
 		ginkgo.It("should reject more than 5 transforms", func() {
 			rule := blockRule("toomanytransforms")
 			rule.MatchConditions[0].Transforms = []AzureFrontDoorFirewallPolicyTransform{
@@ -452,6 +560,15 @@ var _ = ginkgo.Describe("AzureFrontDoorFirewallPolicySpec Validation Tests", fun
 		ginkgo.It("should reject Microsoft_DefaultRuleSet at version 1.0", func() {
 			set := managedRuleSet()
 			set.Version = "1.0"
+			input := premiumSpec()
+			input.Spec.ManagedRules = []*AzureFrontDoorFirewallPolicyManagedRuleSet{set}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject Microsoft_DefaultRuleSet on a 0.x version", func() {
+			set := managedRuleSet()
+			set.Version = "0.9"
 			input := premiumSpec()
 			input.Spec.ManagedRules = []*AzureFrontDoorFirewallPolicyManagedRuleSet{set}
 			err := protovalidate.Validate(input)
@@ -538,6 +655,21 @@ var _ = ginkgo.Describe("AzureFrontDoorFirewallPolicySpec Validation Tests", fun
 		ginkgo.It("should reject an empty scrubbing-rule list", func() {
 			input := minimalSpec()
 			input.Spec.LogScrubbing = &AzureFrontDoorFirewallPolicyLogScrubbing{}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject more than 100 scrubbing rules", func() {
+			rules := make([]*AzureFrontDoorFirewallPolicyScrubbingRule, 101)
+			for i := range rules {
+				rules[i] = &AzureFrontDoorFirewallPolicyScrubbingRule{
+					MatchVariable: AzureFrontDoorFirewallPolicyScrubbingMatchVariable_SCRUB_REQUEST_HEADER_NAMES,
+					Operator:      AzureFrontDoorFirewallPolicySelectorOperator_SELECTOR_EQUALS,
+					Selector:      fmt.Sprintf("header-%d", i),
+				}
+			}
+			input := minimalSpec()
+			input.Spec.LogScrubbing = &AzureFrontDoorFirewallPolicyLogScrubbing{ScrubbingRules: rules}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})

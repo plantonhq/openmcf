@@ -91,6 +91,13 @@ var _ = ginkgo.Describe("AzureFrontDoorSecurityPolicySpec Validation Tests", fun
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
+		ginkgo.It("should reject a present-but-empty reference (the StringValueOrRef non-empty rule)", func() {
+			input := minimalSpec()
+			input.Spec.FirewallPolicyId = literal("")
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
 		ginkgo.It("should reject an empty domain list", func() {
 			input := minimalSpec()
 			input.Spec.DomainIds = nil
@@ -131,6 +138,17 @@ var _ = ginkgo.Describe("AzureFrontDoorSecurityPolicySpec Validation Tests", fun
 	})
 
 	ginkgo.Describe("domain list bounds", func() {
+
+		ginkgo.It("should accept exactly 500 domains (the Premium cap)", func() {
+			domains := make([]*foreignkeyv1.StringValueOrRef, 0, 500)
+			for i := 0; i < 500; i++ {
+				domains = append(domains, literal(fmt.Sprintf("%s%d", endpointId, i)))
+			}
+			input := minimalSpec()
+			input.Spec.DomainIds = domains
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
 		ginkgo.It("should reject more than 500 domains", func() {
 			domains := make([]*foreignkeyv1.StringValueOrRef, 0, 501)

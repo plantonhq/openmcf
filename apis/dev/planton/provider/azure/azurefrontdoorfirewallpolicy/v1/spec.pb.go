@@ -207,9 +207,11 @@ const (
 	// Send the client to the policy's redirect_url.
 	AzureFrontDoorFirewallPolicyCustomRuleAction_REDIRECT AzureFrontDoorFirewallPolicyCustomRuleAction = 4
 	// Serve a JavaScript challenge; only real browsers that solve it
-	// proceed (bot mitigation without user friction). PREMIUM only.
+	// proceed (bot mitigation without user friction). PREMIUM only; an
+	// Azure PREVIEW feature.
 	AzureFrontDoorFirewallPolicyCustomRuleAction_JS_CHALLENGE AzureFrontDoorFirewallPolicyCustomRuleAction = 5
-	// Serve a CAPTCHA; only humans that solve it proceed. PREMIUM only.
+	// Serve a CAPTCHA; only humans that solve it proceed. PREMIUM only;
+	// an Azure PREVIEW feature.
 	AzureFrontDoorFirewallPolicyCustomRuleAction_CAPTCHA AzureFrontDoorFirewallPolicyCustomRuleAction = 6
 )
 
@@ -944,13 +946,15 @@ type AzureFrontDoorFirewallPolicySpec struct {
 	// engines send 30 (Azure's default) when this is unset; this field
 	// tunes that lifetime. Leave unset on STANDARD (Azure rejects it, so
 	// the modules never send it there and no platform default applies).
+	// The JavaScript challenge is an Azure PREVIEW feature.
 	JsChallengeCookieExpirationInMinutes *int32 `protobuf:"varint,10,opt,name=js_challenge_cookie_expiration_in_minutes,json=jsChallengeCookieExpirationInMinutes,proto3,oneof" json:"js_challenge_cookie_expiration_in_minutes,omitempty"`
 	// How long a solved CAPTCHA stays valid before the client is
 	// re-challenged, in minutes (5-1440). **PREMIUM only** -- on PREMIUM,
 	// Azure always enables the CAPTCHA policy and both engines send 30
 	// (Azure's default) when this is unset; this field tunes that
 	// lifetime. Leave unset on STANDARD (Azure rejects it, so the modules
-	// never send it there and no platform default applies).
+	// never send it there and no platform default applies). CAPTCHA is an
+	// Azure PREVIEW feature.
 	CaptchaCookieExpirationInMinutes *int32 `protobuf:"varint,11,opt,name=captcha_cookie_expiration_in_minutes,json=captchaCookieExpirationInMinutes,proto3,oneof" json:"captcha_cookie_expiration_in_minutes,omitempty"`
 	// Your own match and rate-limit rules, evaluated before the managed
 	// rule sets in ascending priority order. Up to 100 rules.
@@ -966,7 +970,8 @@ type AzureFrontDoorFirewallPolicySpec struct {
 	ManagedRules []*AzureFrontDoorFirewallPolicyManagedRuleSet `protobuf:"bytes,13,rep,name=managed_rules,json=managedRules,proto3" json:"managed_rules,omitempty"`
 	// Scrub (mask) sensitive request data out of the WAF's logs before
 	// they are written -- auth headers, PII query arguments, client IPs.
-	// Omit to leave scrubbing off.
+	// Omit to leave scrubbing off. WAF log scrubbing is an Azure PREVIEW
+	// feature.
 	LogScrubbing *AzureFrontDoorFirewallPolicyLogScrubbing `protobuf:"bytes,14,opt,name=log_scrubbing,json=logScrubbing,proto3" json:"log_scrubbing,omitempty"`
 	// Free-form tags applied to the policy, merged over the
 	// Planton-derived resource tags (organization, environment, resource

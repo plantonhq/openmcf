@@ -88,13 +88,17 @@ locals {
     "REG_EX"                = "RegEx"
   }
 
+  # Note the canonical casing is "UrlDecode"/"UrlEncode" (the SDK
+  # constants' STRING VALUES) -- the provider validates case-sensitively,
+  # so the SDK's URLDecode/URLEncode Go identifiers are NOT the wire
+  # values.
   transform_map = {
     "LOWERCASE"    = "Lowercase"
     "REMOVE_NULLS" = "RemoveNulls"
     "TRIM"         = "Trim"
     "UPPERCASE"    = "Uppercase"
-    "URL_DECODE"   = "URLDecode"
-    "URL_ENCODE"   = "URLEncode"
+    "URL_DECODE"   = "UrlDecode"
+    "URL_ENCODE"   = "UrlEncode"
   }
 
   # The RULE_SET_ / OVERRIDE_ / SELECTOR_ / EXCLUDE_ / SCRUB_ prefixes

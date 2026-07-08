@@ -10,9 +10,7 @@ spec:
   # The policy is resource-group-scoped (no Front Door profile fixture),
   # so runs avoid the family's ~18-minute profile-delete tax: observed
   # 2-3 min per scenario per engine (minimal 168s/161s, premium
-  # 124s/149s). Live lesson baked into the premium scenario: bot-manager
-  # rule IDs carry a "Bot" prefix (Bot300700) -- ARM rejects the bare
-  # number.
+  # 124s/149s).
   tier: 1
   status: green
   validated_provisioners:

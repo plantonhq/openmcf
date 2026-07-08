@@ -31,8 +31,10 @@ spec:
         - matchVariable: REQUEST_URI
           operator: BEGINS_WITH
           matchValues: ["/api/"]
-    # Exercises: the keyed-variable selector, negation, transforms, and
-    # the Premium-only JS_CHALLENGE action.
+    # Exercises: the keyed-variable selector, negation, transforms
+    # (URL_DECODE included -- its "UrlDecode" wire casing differs from
+    # the SDK's Go identifier, so the plan keeps that row exercised),
+    # and the Premium-only JS_CHALLENGE action.
     - name: botgate
       priority: 20
       ruleType: MATCH_RULE
@@ -43,7 +45,7 @@ spec:
           operator: CONTAINS
           matchValues: [curl, python-requests]
           negateCondition: false
-          transforms: [LOWERCASE, TRIM]
+          transforms: [LOWERCASE, TRIM, URL_DECODE]
     # Exercises: geo allowlisting through negation and a disabled rule.
     - name: geoblock
       enabled: false

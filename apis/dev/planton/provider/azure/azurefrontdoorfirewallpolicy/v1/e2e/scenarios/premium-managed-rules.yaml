@@ -58,6 +58,8 @@ spec:
       overrides:
         - ruleGroupName: UnknownBots
           rules:
+            # Bot-manager rule IDs carry a "Bot" prefix -- ARM rejects
+            # the bare number (see e2e/README on vendor-catalog IDs).
             - ruleId: Bot300700
               enabled: true
               action: OVERRIDE_JS_CHALLENGE

@@ -81,14 +81,17 @@ var operatorStrings = map[azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallP
 	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyOperator_REG_EX:                "RegEx",
 }
 
-// transformStrings maps the transform enum to ARM's values.
+// transformStrings maps the transform enum to ARM's values. Note the
+// canonical casing is "UrlDecode"/"UrlEncode" (the SDK constants'
+// STRING VALUES) -- the provider validates case-sensitively, so the
+// SDK's URLDecode/URLEncode Go identifiers are NOT the wire values.
 var transformStrings = map[azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform]string{
 	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform_LOWERCASE:    "Lowercase",
 	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform_REMOVE_NULLS: "RemoveNulls",
 	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform_TRIM:         "Trim",
 	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform_UPPERCASE:    "Uppercase",
-	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform_URL_DECODE:   "URLDecode",
-	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform_URL_ENCODE:   "URLEncode",
+	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform_URL_DECODE:   "UrlDecode",
+	azurefrontdoorfirewallpolicyv1.AzureFrontDoorFirewallPolicyTransform_URL_ENCODE:   "UrlEncode",
 }
 
 // managedRuleSetActionStrings maps the rule-set action enum to ARM's
