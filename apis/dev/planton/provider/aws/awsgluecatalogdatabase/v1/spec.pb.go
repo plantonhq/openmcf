@@ -35,28 +35,21 @@ const (
 // lake: the database itself holds no data, only metadata about where data lives
 // and how it is structured.
 //
-// For the common use case — organizing tables for Athena queries or Glue ETL —
-// only a description is needed. The optional location_uri field sets a default
-// S3 path for tables created in this database.
+// Three creation shapes:
+//   - A regular database (the common case): optionally set description,
+//     location_uri, parameters, and Lake Formation create-table permissions.
+//   - A resource link (target_database): a pointer to a database shared from
+//     another account or region via AWS RAM / Lake Formation -- the linked
+//     database's tables become queryable locally.
+//   - A federated database (federated_database): projects an external source
+//     (e.g. a Redshift datashare) into the catalog through a Glue connection.
 //
 // Notes:
 //   - The database name (from metadata.name) cannot be changed after creation
-//     (ForceNew). Naming constraints: 1-255 characters, lowercase letters,
-//     numbers, and underscores only. No uppercase characters.
-//   - The catalog_id defaults to the AWS Account ID and is not exposed in the
-//     spec. Cross-account and cross-region catalog references are deferred to v2.
-//   - Credentials, region, and deployment workflow live outside this spec in stack
-//     inputs.
-//
-// Deliberately omitted from v1 (add in v2 based on demand):
-//   - create_table_default_permission: Lake Formation governance permissions for
-//     new tables. Default behavior (IAM_ALLOWED_PRINCIPALS with all permissions)
-//     covers the majority of use cases.
-//   - federated_database: Cross-service federation for Redshift Data Shares.
-//     Requires Lake Formation setup, ~5% adoption.
-//   - target_database: Cross-region/cross-account database references via AWS
-//     Resource Access Manager. ~5% adoption.
-//   - parameters: Generic key-value metadata map. Rarely set by users directly.
+//     (ForceNew). Naming constraints: 1-255 characters, and AWS rejects
+//     uppercase letters; use lowercase letters, numbers, and underscores.
+//   - Credentials, region, and deployment workflow live outside this spec in
+//     stack inputs.
 type AwsGlueCatalogDatabaseSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
@@ -71,6 +64,12 @@ type AwsGlueCatalogDatabaseSpec struct {
 	// - "Sales analytics data lake — raw and curated tables from the sales pipeline"
 	// - "Clickstream events from web and mobile applications"
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// ID of the Data Catalog in which to create the database. Defaults to the
+	// AWS account ID of the deploying account; set it only to create the
+	// database inside ANOTHER account's catalog (a cross-account governance
+	// pattern that requires a matching catalog resource policy on that
+	// account). Fixed at creation time (changing it replaces the database).
+	CatalogId string `protobuf:"bytes,3,opt,name=catalog_id,json=catalogId,proto3" json:"catalog_id,omitempty"`
 	// Default S3 URI for tables created in this database. When a Glue Crawler or
 	// CREATE TABLE statement does not specify a location, this path is used as the
 	// base directory.
@@ -83,9 +82,40 @@ type AwsGlueCatalogDatabaseSpec struct {
 	//
 	// This is a plain string (not StringValueOrRef) because it is an S3 URI with
 	// a user-defined path prefix, not a direct resource identifier.
-	LocationUri   string `protobuf:"bytes,3,opt,name=location_uri,json=locationUri,proto3" json:"location_uri,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LocationUri string `protobuf:"bytes,4,opt,name=location_uri,json=locationUri,proto3" json:"location_uri,omitempty"`
+	// Free-form key-value properties attached to the database. Consumed by
+	// engines and governance tooling that read catalog metadata -- for example
+	// classification hints, team ownership labels, or engine-specific switches.
+	// These are catalog metadata, NOT AWS resource tags (identity tags derive
+	// from metadata.name/org/env automatically).
+	Parameters map[string]string `protobuf:"bytes,5,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Default Lake Formation permissions granted on tables CREATED in this
+	// database. When omitted, AWS applies its default grant -- ALL permissions
+	// to the virtual group IAM_ALLOWED_PRINCIPALS -- which keeps plain
+	// IAM-policy access working (the compatibility mode most accounts run in).
+	//
+	// Lake Formation-governed data lakes typically override this: grant to
+	// specific principals, or supply an entry with an empty permission list to
+	// stop granting IAM_ALLOWED_PRINCIPALS on new tables entirely (the
+	// recommended hardening step when migrating to Lake Formation permissions).
+	CreateTableDefaultPermissions []*AwsGlueCatalogDatabasePrincipalPermissions `protobuf:"bytes,6,rep,name=create_table_default_permissions,json=createTableDefaultPermissions,proto3" json:"create_table_default_permissions,omitempty"`
+	// Creates this database as a RESOURCE LINK: a local pointer to a database
+	// that lives in another account or region and was shared via AWS RAM /
+	// Lake Formation. Queries against the link (from Athena, Redshift Spectrum,
+	// EMR) resolve to the target database's tables, subject to the permissions
+	// granted on the share.
+	//
+	// A resource link carries no storage or schema of its own, so combining it
+	// with location_uri or create-table permissions has no effect; leave those
+	// unset. Fixed at creation time (changing it replaces the database).
+	TargetDatabase *AwsGlueCatalogDatabaseTarget `protobuf:"bytes,7,opt,name=target_database,json=targetDatabase,proto3" json:"target_database,omitempty"`
+	// Creates this database as a FEDERATED database: a projection of an
+	// external data source into the catalog through a Glue connection. The
+	// primary use today is querying Amazon Redshift datashares from Athena and
+	// other catalog consumers without copying data.
+	FederatedDatabase *AwsGlueCatalogDatabaseFederation `protobuf:"bytes,8,opt,name=federated_database,json=federatedDatabase,proto3" json:"federated_database,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AwsGlueCatalogDatabaseSpec) Reset() {
@@ -132,9 +162,233 @@ func (x *AwsGlueCatalogDatabaseSpec) GetDescription() string {
 	return ""
 }
 
+func (x *AwsGlueCatalogDatabaseSpec) GetCatalogId() string {
+	if x != nil {
+		return x.CatalogId
+	}
+	return ""
+}
+
 func (x *AwsGlueCatalogDatabaseSpec) GetLocationUri() string {
 	if x != nil {
 		return x.LocationUri
+	}
+	return ""
+}
+
+func (x *AwsGlueCatalogDatabaseSpec) GetParameters() map[string]string {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+func (x *AwsGlueCatalogDatabaseSpec) GetCreateTableDefaultPermissions() []*AwsGlueCatalogDatabasePrincipalPermissions {
+	if x != nil {
+		return x.CreateTableDefaultPermissions
+	}
+	return nil
+}
+
+func (x *AwsGlueCatalogDatabaseSpec) GetTargetDatabase() *AwsGlueCatalogDatabaseTarget {
+	if x != nil {
+		return x.TargetDatabase
+	}
+	return nil
+}
+
+func (x *AwsGlueCatalogDatabaseSpec) GetFederatedDatabase() *AwsGlueCatalogDatabaseFederation {
+	if x != nil {
+		return x.FederatedDatabase
+	}
+	return nil
+}
+
+// AwsGlueCatalogDatabasePrincipalPermissions is one default grant applied to
+// tables created in the database: a set of Lake Formation permissions for one
+// principal.
+type AwsGlueCatalogDatabasePrincipalPermissions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Lake Formation permissions to grant. Valid values: "ALL", "SELECT",
+	// "ALTER", "DROP", "DELETE", "INSERT", "CREATE_DATABASE", "CREATE_TABLE",
+	// "DATA_LOCATION_ACCESS". An entry with an EMPTY list (and no principal)
+	// is meaningful: it disables the default IAM_ALLOWED_PRINCIPALS grant on
+	// newly created tables.
+	Permissions []string `protobuf:"bytes,1,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	// The principal receiving the grant: an IAM user/role ARN, an AWS account
+	// ID, or the virtual group "IAM_ALLOWED_PRINCIPALS" (grants to any
+	// principal whose IAM policy allows the action -- Lake Formation's
+	// IAM-compatibility mode). 1-255 characters when set.
+	Principal     string `protobuf:"bytes,2,opt,name=principal,proto3" json:"principal,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsGlueCatalogDatabasePrincipalPermissions) Reset() {
+	*x = AwsGlueCatalogDatabasePrincipalPermissions{}
+	mi := &file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsGlueCatalogDatabasePrincipalPermissions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsGlueCatalogDatabasePrincipalPermissions) ProtoMessage() {}
+
+func (x *AwsGlueCatalogDatabasePrincipalPermissions) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsGlueCatalogDatabasePrincipalPermissions.ProtoReflect.Descriptor instead.
+func (*AwsGlueCatalogDatabasePrincipalPermissions) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsGlueCatalogDatabasePrincipalPermissions) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
+func (x *AwsGlueCatalogDatabasePrincipalPermissions) GetPrincipal() string {
+	if x != nil {
+		return x.Principal
+	}
+	return ""
+}
+
+// AwsGlueCatalogDatabaseTarget identifies the shared database a resource link
+// points to. All three coordinates are fixed at creation time.
+type AwsGlueCatalogDatabaseTarget struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ID of the Data Catalog that owns the target database -- the sharing
+	// account's AWS account ID.
+	CatalogId string `protobuf:"bytes,1,opt,name=catalog_id,json=catalogId,proto3" json:"catalog_id,omitempty"`
+	// Name of the target database inside the owning catalog.
+	DatabaseName string `protobuf:"bytes,2,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
+	// Region of the target database, e.g. "us-east-1". Set for cross-REGION
+	// links; omit when the target lives in the same region as this database.
+	Region        string `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsGlueCatalogDatabaseTarget) Reset() {
+	*x = AwsGlueCatalogDatabaseTarget{}
+	mi := &file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsGlueCatalogDatabaseTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsGlueCatalogDatabaseTarget) ProtoMessage() {}
+
+func (x *AwsGlueCatalogDatabaseTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsGlueCatalogDatabaseTarget.ProtoReflect.Descriptor instead.
+func (*AwsGlueCatalogDatabaseTarget) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsGlueCatalogDatabaseTarget) GetCatalogId() string {
+	if x != nil {
+		return x.CatalogId
+	}
+	return ""
+}
+
+func (x *AwsGlueCatalogDatabaseTarget) GetDatabaseName() string {
+	if x != nil {
+		return x.DatabaseName
+	}
+	return ""
+}
+
+func (x *AwsGlueCatalogDatabaseTarget) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+// AwsGlueCatalogDatabaseFederation connects the database to an external data
+// source through a Glue connection.
+type AwsGlueCatalogDatabaseFederation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unique identifier of the federated source, e.g. the Redshift datashare
+	// ARN being projected into the catalog.
+	Identifier string `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	// Name of the Glue connection that carries the federation, e.g.
+	// "aws:redshift" for the AWS-managed Redshift federation connection.
+	ConnectionName string `protobuf:"bytes,2,opt,name=connection_name,json=connectionName,proto3" json:"connection_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsGlueCatalogDatabaseFederation) Reset() {
+	*x = AwsGlueCatalogDatabaseFederation{}
+	mi := &file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsGlueCatalogDatabaseFederation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsGlueCatalogDatabaseFederation) ProtoMessage() {}
+
+func (x *AwsGlueCatalogDatabaseFederation) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsGlueCatalogDatabaseFederation.ProtoReflect.Descriptor instead.
+func (*AwsGlueCatalogDatabaseFederation) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsGlueCatalogDatabaseFederation) GetIdentifier() string {
+	if x != nil {
+		return x.Identifier
+	}
+	return ""
+}
+
+func (x *AwsGlueCatalogDatabaseFederation) GetConnectionName() string {
+	if x != nil {
+		return x.ConnectionName
 	}
 	return ""
 }
@@ -143,11 +397,36 @@ var File_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto protorefl
 
 const file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awsgluecatalogdatabase/v1/spec.proto\x122dev.planton.provider.aws.awsgluecatalogdatabase.v1\x1a\x1bbuf/validate/validate.proto\"\x82\x01\n" +
+	"=dev/planton/provider/aws/awsgluecatalogdatabase/v1/spec.proto\x122dev.planton.provider.aws.awsgluecatalogdatabase.v1\x1a\x1bbuf/validate/validate.proto\"\xdf\a\n" +
 	"\x1aAwsGlueCatalogDatabaseSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\x12!\n" +
-	"\flocation_uri\x18\x03 \x01(\tR\vlocationUriB\xa1\x03\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
+	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\x1d\n" +
+	"\n" +
+	"catalog_id\x18\x03 \x01(\tR\tcatalogId\x12!\n" +
+	"\flocation_uri\x18\x04 \x01(\tR\vlocationUri\x12~\n" +
+	"\n" +
+	"parameters\x18\x05 \x03(\v2^.dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec.ParametersEntryR\n" +
+	"parameters\x12\xa7\x01\n" +
+	" create_table_default_permissions\x18\x06 \x03(\v2^.dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabasePrincipalPermissionsR\x1dcreateTableDefaultPermissions\x12y\n" +
+	"\x0ftarget_database\x18\a \x01(\v2P.dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseTargetR\x0etargetDatabase\x12\x83\x01\n" +
+	"\x12federated_database\x18\b \x01(\v2T.dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseFederationR\x11federatedDatabase\x1a=\n" +
+	"\x0fParametersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
+	"\x14target_xor_federated\x12jtarget_database (resource link) and federated_database cannot be combined; a database is exactly one shape\x1a<!(has(this.target_database) && has(this.federated_database))\"\xe2\x01\n" +
+	"*AwsGlueCatalogDatabasePrincipalPermissions\x12\x8b\x01\n" +
+	"\vpermissions\x18\x01 \x03(\tBi\xbaHf\x92\x01c\"ar_R\x03ALLR\x06SELECTR\x05ALTERR\x04DROPR\x06DELETER\x06INSERTR\x0fCREATE_DATABASER\fCREATE_TABLER\x14DATA_LOCATION_ACCESSR\vpermissions\x12&\n" +
+	"\tprincipal\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\tprincipal\"\x8c\x01\n" +
+	"\x1cAwsGlueCatalogDatabaseTarget\x12&\n" +
+	"\n" +
+	"catalog_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tcatalogId\x12,\n" +
+	"\rdatabase_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\fdatabaseName\x12\x16\n" +
+	"\x06region\x18\x03 \x01(\tR\x06region\"k\n" +
+	" AwsGlueCatalogDatabaseFederation\x12\x1e\n" +
+	"\n" +
+	"identifier\x18\x01 \x01(\tR\n" +
+	"identifier\x12'\n" +
+	"\x0fconnection_name\x18\x02 \x01(\tR\x0econnectionNameB\xa1\x03\n" +
 	"6com.dev.planton.provider.aws.awsgluecatalogdatabase.v1B\tSpecProtoP\x01Zmgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsgluecatalogdatabase/v1;awsgluecatalogdatabasev1\xa2\x02\x05DPPAA\xaa\x022Dev.Planton.Provider.Aws.Awsgluecatalogdatabase.V1\xca\x022Dev\\Planton\\Provider\\Aws\\Awsgluecatalogdatabase\\V1\xe2\x02>Dev\\Planton\\Provider\\Aws\\Awsgluecatalogdatabase\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Aws::Awsgluecatalogdatabase::V1b\x06proto3"
 
 var (
@@ -162,16 +441,24 @@ func file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_rawDescG
 	return file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_goTypes = []any{
-	(*AwsGlueCatalogDatabaseSpec)(nil), // 0: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec
+	(*AwsGlueCatalogDatabaseSpec)(nil),                 // 0: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec
+	(*AwsGlueCatalogDatabasePrincipalPermissions)(nil), // 1: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabasePrincipalPermissions
+	(*AwsGlueCatalogDatabaseTarget)(nil),               // 2: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseTarget
+	(*AwsGlueCatalogDatabaseFederation)(nil),           // 3: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseFederation
+	nil,                                                // 4: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec.ParametersEntry
 }
 var file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec.parameters:type_name -> dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec.ParametersEntry
+	1, // 1: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec.create_table_default_permissions:type_name -> dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabasePrincipalPermissions
+	2, // 2: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec.target_database:type_name -> dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseTarget
+	3, // 3: dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseSpec.federated_database:type_name -> dev.planton.provider.aws.awsgluecatalogdatabase.v1.AwsGlueCatalogDatabaseFederation
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_init() }
@@ -185,7 +472,7 @@ func file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsgluecatalogdatabase_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

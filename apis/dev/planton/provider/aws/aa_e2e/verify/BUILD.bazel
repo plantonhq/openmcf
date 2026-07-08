@@ -70,6 +70,7 @@ go_library(
         "sqs_queue.go",
         "step_function.go",
         "subnet.go",
+        "transit_gateway.go",
         "verifier.go",
         "vpc.go",
         "vpc_endpoint.go",

@@ -61,6 +61,8 @@ github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.36.0 h1:P6m/F7TZBIVJNQt+fI1
 github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.36.0/go.mod h1:3GU3RMoNjUKXg6GDelv+7bIiJGqk6JXUTmMlvc6+SrU=
 github.com/aws/aws-sdk-go-v2/service/apprunner v1.41.0 h1:L+4nSQD67FAI/P3tGGINHeUhuu+S1OxChtN5OvGQYg8=
 github.com/aws/aws-sdk-go-v2/service/apprunner v1.41.0/go.mod h1:UehvT8KFucM18V9+wDq5AeZDj9qlxn8IFjZtz1aphiE=
+github.com/aws/aws-sdk-go-v2/service/athena v1.59.0 h1:s2CbOBPESon78rnO7OUoY8sVKYHr/B5yVk5JPbLUITU=
+github.com/aws/aws-sdk-go-v2/service/athena v1.59.0/go.mod h1:T0Gh/6hdclavTDygr544bGGSbmYYnN7sVcfy8PWDqSo=
 github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1 h1:qcR6IvAMNpnM9ghsWos203zZ7YnmRsNeAS0sHs85c8I=
 github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1/go.mod h1:sN7IK8djnxCOQDGVhOvUlIA83i1wIA5jYnzr2TlY9a8=
 github.com/aws/aws-sdk-go-v2/service/batch v1.67.0 h1:amCRVhE7xgdElZrfKzQ8PvWMzRsXT8j+0ereSPQB2jI=
@@ -95,6 +97,8 @@ github.com/aws/aws-sdk-go-v2/service/eventbridge v1.46.8 h1:NBWE7K3lk+VBFycPeW1r
 github.com/aws/aws-sdk-go-v2/service/eventbridge v1.46.8/go.mod h1:3g/foYPw/4CT8yV7/A1QsbvnhDZW/2x2uzl4vkqX49o=
 github.com/aws/aws-sdk-go-v2/service/firehose v1.44.2 h1:lSvgDwvTTS4TTAUL+zCTrT9aOYcX8M7+MxM1+pZm1j4=
 github.com/aws/aws-sdk-go-v2/service/firehose v1.44.2/go.mod h1:wbrcmlTkgaD9bkM2qcJ4KQTcfk7b++3hJLAXp/nvQ0I=
+github.com/aws/aws-sdk-go-v2/service/glue v1.148.0 h1:Hvbn809LAadDCCp2GF43nxdnFyDLpkCnkwrObglLMl4=
+github.com/aws/aws-sdk-go-v2/service/glue v1.148.0/go.mod h1:WN3fnq0YuV4TEG5y30MN5ejq3PQILOo+9MM3G504jH8=
 github.com/aws/aws-sdk-go-v2/service/iam v1.54.7 h1:undHpuVUg25wS2CpeXNqVjIcJComV2RE5AZ7mJGth2U=
 github.com/aws/aws-sdk-go-v2/service/iam v1.54.7/go.mod h1:5H/UUroHvcKm6l2qaqh3CMM6R9K91ls8Y8rVX6cG3ts=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 h1:mbRIur/BiHK6SKPjoBIXSE/hJ6g6JGRLuxQy1jGjlN4=

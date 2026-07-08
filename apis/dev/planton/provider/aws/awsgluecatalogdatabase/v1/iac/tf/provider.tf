@@ -3,8 +3,11 @@ terraform {
 
   required_providers {
     aws = {
+      # The database surface (resource links, federation, Lake Formation
+      # create-table grants) is stable across the v6 line; the floor keeps the
+      # kind on the provider family the rest of the AWS catalog targets.
       source  = "hashicorp/aws"
-      version = ">= 5.0"
+      version = ">= 6.0.0"
     }
   }
 }

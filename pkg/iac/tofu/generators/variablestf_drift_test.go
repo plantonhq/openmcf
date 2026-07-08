@@ -167,6 +167,9 @@ var migratedKinds = []string{
 	"AwsTransitGateway",
 	"AwsTransitGatewayVpcAttachment",
 	"AwsTransitGatewayRouteTable",
+	// Analytics pair, migrated off their hand-written contracts together.
+	"AwsAthenaWorkgroup",
+	"AwsGlueCatalogDatabase",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed
