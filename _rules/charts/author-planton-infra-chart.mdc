@@ -112,6 +112,12 @@ spec:
 - The directory name is the chart's slug and its platform identity (platform
   charts upsert by a slug-derived deterministic id) — choose it as carefully
   as a kind name, and expect it to be permanent.
+- Verify the `iconUrl` actually resolves (`curl -s -o /dev/null -w '%{http_code}'`)
+  before committing. Kind logos live at
+  `https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/<provider>/<kind-slug>/v1/logo.svg`,
+  but recently added or renamed kinds may not have an uploaded asset yet —
+  pick a resolving logo from a closely related kind rather than shipping a
+  404.
 
 ### values.yaml
 
@@ -207,7 +213,7 @@ gates equivalent:
 - **Allowed tags:** `{% if %}` / `{% elif %}` / `{% else %}` / `{% endif %}`,
   `{% for %}` / `{% endfor %}`, and `{# comments #}`.
 - **Banned tags (disabled by the platform sandbox):** `set`, `include`,
-  `import`, `macro`, `call`, `do`.
+  `import`, `from`, `macro`, `call`, `do`.
 - **Filters:** keep to `bool`, `default`, `upper`, `lower`, `trim`, `replace`,
   `join`, `b64decode`. The sandbox disables `attr`, `map`, `sort`, `shuffle`.
 - **The `| bool` convention:** every boolean test reads

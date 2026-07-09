@@ -1,0 +1,99 @@
+params:
+  # ─── GCP placement ──────────────────────────────────────────────────────
+  - name: gcp_project_id
+    description: >
+      GCP project the deployer targets — where the federation pool, the
+      grants, and the registry live, and where your workflows will deploy.
+      Pairing one deployer per project keeps the blast radius honest: the
+      grants below are project-scoped, so what a workflow can touch ends at
+      this project's boundary.
+    value: my-gcp-project
+
+  - name: gcp_project_number
+    description: >
+      The NUMERIC project number of gcp_project_id (find it with
+      `gcloud projects describe <project-id> --format='value(projectNumber)'`).
+      IAM principal identifiers for federated identities are built from the
+      project NUMBER, not the ID — it appears inside every principalSet
+      this chart grants roles to.
+    value: "123456789012"
+
+  # ─── GitHub trust scope ─────────────────────────────────────────────────
+  - name: github_org
+    description: >
+      Your GitHub organization (or username). GitHub's token issuer signs
+      workflow tokens for EVERY repository on github.com — this value is
+      what scopes the trust boundary to yours, both in the provider's
+      attribute condition and in the grant principals. Case-sensitive:
+      use the exact name as it appears in your repository URLs.
+    value: my-github-org
+
+  - name: github_repo
+    description: >
+      Repository whose workflows receive the deploy grants (without the org
+      prefix — e.g. "my-app" for github.com/my-org/my-app). The default
+      posture: one repository, exactly the roles below. Set to an empty
+      string to widen the grants to EVERY repository in github_org — the
+      shape for a platform team running one shared deployer, at the cost of
+      every repo in the org holding the same deploy power.
+    value: my-app
+
+  # ─── Federation identifiers ─────────────────────────────────────────────
+  - name: pool_id
+    description: >
+      ID of the Workload Identity Pool (4-32 lowercase letters, digits, and
+      hyphens; "gcp-" prefix reserved by Google). Immutable, and reserved
+      for ~30 days after deletion — a pool per issuer ("github-actions"),
+      not per repo, is the shape that scales: one pool holds many providers
+      and its ID appears in every principal your IAM bindings reference.
+    value: github-actions
+
+  - name: provider_id
+    description: >
+      ID of the OIDC provider inside the pool (same character rules as
+      pool_id). Immutable — recreating it invalidates the audience value
+      already configured in your workflows.
+    value: github-oidc
+
+  # ─── Deploy permissions ─────────────────────────────────────────────────
+  - name: deployer_roles
+    description: >
+      Project-level IAM roles granted to the GitHub principal — one additive
+      GcpProjectIamMember per role, so adding or removing a role never
+      disturbs the others. The default pair deploys Cloud Run:
+      roles/run.admin manages services and roles/iam.serviceAccountUser
+      permits acting as the runtime service account (project-scoped actAs —
+      acceptable inside a single-purpose project, which is why this chart
+      pairs with one project per app). Swap for your target: GKE deploys
+      want roles/container.developer; infrastructure pipelines want the
+      specific service admin roles they manage.
+    type: list
+    value:
+      - roles/run.admin
+      - roles/iam.serviceAccountUser
+
+  # ─── Container registry ─────────────────────────────────────────────────
+  - name: registryEnabled
+    description: >
+      Also create the Artifact Registry Docker repository the workflows push
+      images to, with push access granted to the same GitHub principal.
+      Turn off when images live in another project or registry — the
+      federation and deploy grants work identically without it.
+    type: bool
+    value: true
+
+  - name: registry_location
+    description: >
+      Artifact Registry location — a region ("us-central1") or multi-region
+      ("us"). Put it where the workloads that pull the images run: pulls
+      within the same location are fastest and avoid cross-region egress.
+      Immutable.
+    value: us-central1
+
+  - name: registry_repository_id
+    description: >
+      Repository ID within Artifact Registry (lowercase letters, digits,
+      hyphens). Becomes part of every image path:
+      <location>-docker.pkg.dev/<project>/<repository-id>/<image>.
+      Immutable.
+    value: app-images

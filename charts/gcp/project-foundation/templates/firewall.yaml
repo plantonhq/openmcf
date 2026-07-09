@@ -1,0 +1,75 @@
+# Baseline firewall posture. A custom-mode VPC starts with two implied
+# rules: allow all egress, deny all ingress. That deny-by-default ingress is
+# the foundation's strongest property — these rules open exactly two
+# deliberate paths through it and nothing else.
+---
+# Instances in the workload subnet may talk to each other on any protocol.
+# Scoped to the subnet's CIDR — NOT 10.0.0.0/8 — so a future peered network
+# or VPN range gets no implicit access; widen sourceRanges deliberately as
+# you add subnets, or better, add a rule per subnet so intent stays legible.
+apiVersion: gcp.planton.dev/v1
+kind: GcpFirewallRule
+metadata:
+  name: "{{ values.network_name }}-allow-internal"
+spec:
+{% if values.createProject | bool %}
+  projectId:
+    valueFrom:
+      name: "{{ values.gcp_project_id }}"
+{% else %}
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+{% endif %}
+  network:
+    valueFrom:
+      name: "{{ values.network_name }}"
+  ruleName: "{{ values.network_name }}-allow-internal"
+  direction: INGRESS
+  action: ALLOW
+  # tcp + udp with no ports = all ports; icmp for ping and path-MTU
+  # discovery. East-west policy inside a trusted subnet belongs in
+  # service-level auth, not port lists that drift out of date.
+  rules:
+    - protocol: tcp
+    - protocol: udp
+    - protocol: icmp
+  sourceRanges:
+    - "{{ values.subnet_ip_cidr_range }}"
+  description: Allow all traffic between instances in the {{ values.network_name }}-{{ values.region }} subnet
+
+{% if values.iapSshEnabled | bool %}
+---
+# SSH through Identity-Aware Proxy only. 35.235.240.0/20 is the fixed,
+# Google-published range IAP tunnels originate from — allowing it (and ONLY
+# it) means `gcloud compute ssh --tunnel-through-iap` works against
+# instances with no public IP, every session is tied to a Google identity
+# with the IAP IAM role, and port 22 is simply not reachable from the
+# internet. There is deliberately no "allow SSH from 0.0.0.0/0" anywhere in
+# this foundation.
+apiVersion: gcp.planton.dev/v1
+kind: GcpFirewallRule
+metadata:
+  name: "{{ values.network_name }}-allow-iap-ssh"
+spec:
+{% if values.createProject | bool %}
+  projectId:
+    valueFrom:
+      name: "{{ values.gcp_project_id }}"
+{% else %}
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+{% endif %}
+  network:
+    valueFrom:
+      name: "{{ values.network_name }}"
+  ruleName: "{{ values.network_name }}-allow-iap-ssh"
+  direction: INGRESS
+  action: ALLOW
+  rules:
+    - protocol: tcp
+      ports:
+        - "22"
+  sourceRanges:
+    - 35.235.240.0/20
+  description: Allow SSH from Google's Identity-Aware Proxy range only
+{% endif %}

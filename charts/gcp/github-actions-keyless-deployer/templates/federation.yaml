@@ -1,0 +1,66 @@
+# The trust boundary: a Workload Identity Pool and the GitHub OIDC provider
+# inside it.
+#
+# This pair is the entire keyless mechanism. A workflow asks GitHub for an
+# OIDC token, presents it to Google's Security Token Service, and — if the
+# provider's condition accepts it — receives a short-lived Google credential
+# for whatever IAM has granted to that workflow's principal. Nothing
+# long-lived exists at any point: nothing to store in repo secrets, nothing
+# to leak, nothing to rotate.
+---
+# The pool: the container IAM principals are built from. Its ID appears in
+# every principalSet this chart grants roles to, and it is reserved for ~30
+# days after deletion — treat it as permanent infrastructure.
+apiVersion: gcp.planton.dev/v1
+kind: GcpWorkloadIdentityPool
+metadata:
+  name: "{{ values.pool_id }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  workloadIdentityPoolId: "{{ values.pool_id }}"
+  displayName: GitHub Actions
+  description: >-
+    Federation pool for GitHub Actions workflows in the
+    {{ values.github_org }} organization. Grants are bound to principals
+    under this pool — disable the provider to cut off new token exchanges
+    without touching the grants.
+
+---
+# The GitHub issuer. GitHub signs tokens for EVERY repository on
+# github.com, so the attribute condition below — not the issuer URI — is
+# the actual security boundary. Never remove it.
+apiVersion: gcp.planton.dev/v1
+kind: GcpWorkloadIdentityPoolProvider
+metadata:
+  name: "{{ values.provider_id }}"
+spec:
+  workloadIdentityPoolId:
+    valueFrom:
+      name: "{{ values.pool_id }}"
+  workloadIdentityPoolProviderId: "{{ values.provider_id }}"
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  displayName: GitHub Actions OIDC
+  description: >-
+    Trusts GitHub-minted workflow tokens for the {{ values.github_org }}
+    organization only, via the attribute condition.
+  # The mapped attributes are what IAM bindings can target. google.subject
+  # (required) identifies the workflow run; attribute.repository and
+  # attribute.repository_owner are what let grants say "this repo" or
+  # "this org" — the two principal shapes this chart's grants use.
+  attributeMapping:
+    google.subject: assertion.sub
+    attribute.repository: assertion.repository
+    attribute.repository_owner: assertion.repository_owner
+  # The trust boundary. Without it, any repository on github.com could
+  # federate into this pool; with it, only workflows in your organization
+  # can. Tighten further per provider when needed — e.g. a single branch:
+  # assertion.repository == "org/repo" && assertion.ref == "refs/heads/main".
+  attributeCondition: assertion.repository_owner == "{{ values.github_org }}"
+  # allowed_audiences stays empty on purpose: the audience must then equal
+  # the provider's canonical resource name, which is exactly what
+  # google-github-actions/auth sends. Tokens minted for anything else are
+  # rejected.
+  oidc:
+    issuerUri: https://token.actions.githubusercontent.com

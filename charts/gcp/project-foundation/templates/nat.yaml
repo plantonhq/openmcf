@@ -1,0 +1,44 @@
+# Cloud NAT egress — how instances with no public IPs reach the internet.
+#
+# The foundation's security model is "no external IPs on workloads": nothing
+# is reachable from the internet, and outbound traffic (package mirrors,
+# container registries, third-party APIs) leaves through this NAT gateway
+# instead. The kind provisions the Cloud Router and the NAT gateway together
+# as one node — the router exists solely to host the NAT here, and neither
+# is useful alone in a foundation without VPN or Interconnect.
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpRouterNat
+metadata:
+  name: "{{ values.network_name }}-nat"
+spec:
+{% if values.createProject | bool %}
+  projectId:
+    valueFrom:
+      name: "{{ values.gcp_project_id }}"
+{% else %}
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+{% endif %}
+  routerName: "{{ values.network_name }}-router"
+  natName: "{{ values.network_name }}-nat"
+  # NAT is regional — it serves subnets in its own region only. A second
+  # region needs its own GcpRouterNat next to its own subnet.
+  region: "{{ values.region }}"
+  vpcSelfLink:
+    valueFrom:
+      name: "{{ values.network_name }}"
+  # Cover every subnet in the region automatically, including ones added
+  # after this deploy — new subnets get egress without touching the NAT.
+  # Made explicit (it is the API default) because auto-coverage is a
+  # deliberate foundation posture: nobody should debug "no internet" on a
+  # subnet that was created last week.
+  sourceSubnetworkIpRangesToNat: ALL_SUBNETWORKS_ALL_IP_RANGES
+  # NAT IPs stay auto-allocated: GCP grows and shrinks the IP pool with
+  # demand. If a partner ever needs a stable egress IP to allowlist, reserve
+  # GcpAddress resources and list them under natIps — that switch is the
+  # one NAT change that alters your public identity, so it is not defaulted.
+  # Log NAT errors only: port exhaustion and dropped connections are the
+  # signals worth paying for; logging every successful translation is noise
+  # at Cloud Logging prices.
+  logFilter: ERRORS_ONLY

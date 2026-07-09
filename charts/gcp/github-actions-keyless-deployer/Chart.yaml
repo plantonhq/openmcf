@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: GCP GitHub Actions Keyless Deployer
+spec:
+  selector:
+    kind: platform
+  description: Keyless CI/CD from GitHub Actions to GCP — no service-account keys, ever. Deploys a Workload Identity Federation pool with a GitHub OIDC provider locked to your organization, grants your repository's workflows exactly the deploy roles you choose, and stands up an Artifact Registry repository they can push images to. Your workflows authenticate with google-github-actions/auth and a short-lived token; there is no credential to store, leak, or rotate.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/gcp/gcpserviceaccount/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/gcp/github-actions-keyless-deployer
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/gcp/github-actions-keyless-deployer/README.md
