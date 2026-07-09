@@ -3,22 +3,40 @@ output "container_app_id" {
   value       = azurerm_container_app.main.id
 }
 
+output "container_app_name" {
+  description = "The name of the Container App"
+  value       = azurerm_container_app.main.name
+}
+
 output "latest_revision_name" {
-  description = "The name of the latest Container Revision"
+  description = "The name of the latest revision"
   value       = azurerm_container_app.main.latest_revision_name
 }
 
 output "latest_revision_fqdn" {
-  description = "The FQDN of the latest Container Revision"
+  description = "The FQDN of the latest revision (bypasses traffic splitting)"
   value       = azurerm_container_app.main.latest_revision_fqdn
 }
 
 output "outbound_ip_addresses" {
-  description = "Outbound IP addresses of the Container App"
+  description = "Outbound IP addresses used by the app for egress traffic"
   value       = azurerm_container_app.main.outbound_ip_addresses
 }
 
 output "ingress_fqdn" {
-  description = "The ingress FQDN of the Container App"
+  description = "The app's main FQDN (empty when ingress is not configured)"
   value       = try(azurerm_container_app.main.ingress[0].fqdn, "")
+}
+
+# The provider marks this attribute Sensitive; without the flag OpenTofu
+# rejects the configuration at plan time.
+output "custom_domain_verification_id" {
+  description = "The TXT-record value proving domain ownership when binding a custom domain"
+  value       = azurerm_container_app.main.custom_domain_verification_id
+  sensitive   = true
+}
+
+output "identity_principal_id" {
+  description = "The principal ID of the app's system-assigned managed identity (empty unless SYSTEM_ASSIGNED is enabled)"
+  value       = try(azurerm_container_app.main.identity[0].principal_id, "")
 }

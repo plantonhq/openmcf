@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppEnvironmentDaprComponent
+metadata:
+  name: my-pubsub
+spec:
+  containerAppEnvironmentId:
+    value: "<container-app-environment-id>"
+  componentName: pubsub
+  componentType: pubsub.azure.servicebus.topics
+  version: v1
+  secrets:
+    - name: sb-connection
+      value: "<service-bus-connection-string>"
+  metadata:
+    - name: connectionString
+      secretName: sb-connection
+  scopes:
+    - "<publisher-app-id>"
+    - "<subscriber-app-id>"

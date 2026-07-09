@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppEnvironmentDaprComponent
+metadata:
+  name: test-dapr-component
+spec:
+  container_app_environment_id:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.App/managedEnvironments/test-env
+  component_name: statestore
+  component_type: state.azure.blobstorage
+  version: v1
+  init_timeout: 10s
+  ignore_errors: false
+  secrets:
+    - name: account-key
+      value: dGVzdC1hY2NvdW50LWtleQ==
+  metadata:
+    - name: accountName
+      value: teststorageaccount
+    - name: containerName
+      value: dapr-state
+    - name: accountKey
+      secret_name: account-key
+  scopes:
+    - orders
+    - billing

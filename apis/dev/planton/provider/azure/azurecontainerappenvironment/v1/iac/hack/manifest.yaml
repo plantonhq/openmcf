@@ -4,5 +4,30 @@ metadata:
   name: test-env
 spec:
   region: eastus
-  resource_group: test-rg
-  name: test-container-env
+  resource_group:
+    value: test-rg
+  environment_name: test-container-env
+  logs_destination: LOG_ANALYTICS
+  log_analytics_workspace_id:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.OperationalInsights/workspaces/test-law
+  infrastructure_subnet_id:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/apps
+  internal_load_balancer_enabled: false
+  zone_redundancy_enabled: true
+  public_network_access: DISABLED
+  mutual_tls_enabled: true
+  infrastructure_resource_group_name: me-test-container-env
+  workload_profiles:
+    - name: dedicated-d4
+      workload_profile_type: D4
+      minimum_count: 0
+      maximum_count: 3
+    - name: gpu-serverless
+      workload_profile_type: CONSUMPTION_GPU_NC8AS_T4
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    user_assigned_identity_ids:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-uai
+  tags:
+    team: platform
+    costcenter: eng-1234

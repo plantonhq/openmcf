@@ -1,0 +1,22 @@
+apiVersion: azure.planton.dev/v1
+kind: AzureContainerAppEnvironmentDaprComponent
+metadata:
+  name: my-state-store
+spec:
+  containerAppEnvironmentId:
+    value: "<container-app-environment-id>"
+  componentName: statestore
+  componentType: state.azure.blobstorage
+  version: v1
+  secrets:
+    - name: account-key
+      value: "<storage-account-access-key>"
+  metadata:
+    - name: accountName
+      value: "<storage-account-name>"
+    - name: containerName
+      value: dapr-state
+    - name: accountKey
+      secretName: account-key
+  scopes:
+    - "<dapr-app-id>"

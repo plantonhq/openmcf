@@ -1997,6 +1997,99 @@ func TestStackOutputsConformance(t *testing.T) {
 				"security_policy_id", "security_policy_name",
 			},
 		},
+		{
+			// AzureContainerAppEnvironment: environment_id is what every
+			// kind living inside the environment references; the
+			// platform-reserved values only populate for VNet-injected
+			// environments but the output shape stays constant.
+			name: "AzureContainerAppEnvironment",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironment,
+			rawOutputs: map[string]interface{}{
+				"environment_id":                   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/managedEnvironments/app-env",
+				"environment_name":                 "app-env",
+				"default_domain":                   "app-env.eastus.azurecontainerapps.io",
+				"static_ip_address":                "20.1.2.3",
+				"platform_reserved_cidr":           "10.0.0.0/24",
+				"platform_reserved_dns_ip_address": "10.0.0.2",
+				"docker_bridge_cidr":               "172.17.0.1/16",
+				"custom_domain_verification_id":    "ABCD1234",
+				"identity_principal_id":            "11111111-2222-3333-4444-555555555555",
+			},
+			mustPopulate: []string{
+				"environment_id", "environment_name", "default_domain",
+				"static_ip_address", "platform_reserved_cidr",
+				"platform_reserved_dns_ip_address", "docker_bridge_cidr",
+				"custom_domain_verification_id", "identity_principal_id",
+			},
+		},
+		{
+			// AzureContainerApp: ingress_fqdn is the user-facing endpoint;
+			// the outbound IPs arrive as a real list from both engines;
+			// custom_domain_verification_id is provider-Sensitive (the TF
+			// output carries sensitive = true).
+			name: "AzureContainerApp",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerApp,
+			rawOutputs: map[string]interface{}{
+				"container_app_id":              "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/containerApps/app-web",
+				"container_app_name":            "app-web",
+				"latest_revision_name":          "app-web--abc123",
+				"latest_revision_fqdn":          "app-web--abc123.app-env.eastus.azurecontainerapps.io",
+				"outbound_ip_addresses":         []interface{}{"20.1.2.3", "20.1.2.4"},
+				"ingress_fqdn":                  "app-web.app-env.eastus.azurecontainerapps.io",
+				"custom_domain_verification_id": "ABCD1234",
+				"identity_principal_id":         "11111111-2222-3333-4444-555555555555",
+			},
+			mustPopulate: []string{
+				"container_app_id", "container_app_name",
+				"latest_revision_name", "latest_revision_fqdn",
+				"outbound_ip_addresses", "ingress_fqdn",
+				"custom_domain_verification_id", "identity_principal_id",
+			},
+		},
+		{
+			// AzureContainerAppJob: job_id is the handle for starting
+			// manual executions; event_stream_endpoint feeds execution
+			// monitoring.
+			name: "AzureContainerAppJob",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerAppJob,
+			rawOutputs: map[string]interface{}{
+				"job_id":                "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/jobs/nightly-report",
+				"job_name":              "nightly-report",
+				"event_stream_endpoint": "https://eastus.azurecontainerapps.dev/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/containerAppJobs/nightly-report/eventstream",
+				"outbound_ip_addresses": []interface{}{"20.1.2.3", "20.1.2.4"},
+				"identity_principal_id": "11111111-2222-3333-4444-555555555555",
+			},
+			mustPopulate: []string{
+				"job_id", "job_name", "event_stream_endpoint",
+				"outbound_ip_addresses", "identity_principal_id",
+			},
+		},
+		{
+			// AzureContainerAppEnvironmentStorage: storage_name is the
+			// seam app and job volumes reference in storage_name.
+			name: "AzureContainerAppEnvironmentStorage",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentStorage,
+			rawOutputs: map[string]interface{}{
+				"storage_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/managedEnvironments/app-env/storages/app-data",
+				"storage_name": "app-data",
+			},
+			mustPopulate: []string{
+				"storage_id", "storage_name",
+			},
+		},
+		{
+			// AzureContainerAppEnvironmentDaprComponent: component_name is
+			// what application code passes to the Dapr API.
+			name: "AzureContainerAppEnvironmentDaprComponent",
+			kind: cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentDaprComponent,
+			rawOutputs: map[string]interface{}{
+				"dapr_component_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.App/managedEnvironments/app-env/daprComponents/statestore",
+				"component_name":    "statestore",
+			},
+			mustPopulate: []string{
+				"dapr_component_id", "component_name",
+			},
+		},
 	}
 
 	for _, tc := range cases {

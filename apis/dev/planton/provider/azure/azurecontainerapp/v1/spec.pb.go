@@ -24,13 +24,470 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The revision operating mode for the app.
+type AzureContainerAppRevisionMode int32
+
+const (
+	// Not specified -- deploys SINGLE, the right choice for most workloads.
+	AzureContainerAppRevisionMode_azure_container_app_revision_mode_unspecified AzureContainerAppRevisionMode = 0
+	// Only one revision active at a time; new revisions replace the old.
+	AzureContainerAppRevisionMode_SINGLE AzureContainerAppRevisionMode = 1
+	// Multiple revisions active simultaneously with traffic splitting --
+	// enables blue-green and canary patterns.
+	AzureContainerAppRevisionMode_MULTIPLE AzureContainerAppRevisionMode = 2
+)
+
+// Enum value maps for AzureContainerAppRevisionMode.
+var (
+	AzureContainerAppRevisionMode_name = map[int32]string{
+		0: "azure_container_app_revision_mode_unspecified",
+		1: "SINGLE",
+		2: "MULTIPLE",
+	}
+	AzureContainerAppRevisionMode_value = map[string]int32{
+		"azure_container_app_revision_mode_unspecified": 0,
+		"SINGLE":   1,
+		"MULTIPLE": 2,
+	}
+)
+
+func (x AzureContainerAppRevisionMode) Enum() *AzureContainerAppRevisionMode {
+	p := new(AzureContainerAppRevisionMode)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppRevisionMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppRevisionMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureContainerAppRevisionMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureContainerAppRevisionMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppRevisionMode.Descriptor instead.
+func (AzureContainerAppRevisionMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// The transport a health probe uses.
+type AzureContainerAppProbeTransport int32
+
+const (
+	// Not specified -- invalid; pick TCP_SOCKET, HTTP_GET, or HTTPS_GET.
+	AzureContainerAppProbeTransport_azure_container_app_probe_transport_unspecified AzureContainerAppProbeTransport = 0
+	// Port connectivity check (Azure transport "TCP").
+	AzureContainerAppProbeTransport_TCP_SOCKET AzureContainerAppProbeTransport = 1
+	// HTTP GET request, healthy on 200-399 (Azure transport "HTTP").
+	AzureContainerAppProbeTransport_HTTP_GET AzureContainerAppProbeTransport = 2
+	// HTTPS GET request (Azure transport "HTTPS").
+	AzureContainerAppProbeTransport_HTTPS_GET AzureContainerAppProbeTransport = 3
+)
+
+// Enum value maps for AzureContainerAppProbeTransport.
+var (
+	AzureContainerAppProbeTransport_name = map[int32]string{
+		0: "azure_container_app_probe_transport_unspecified",
+		1: "TCP_SOCKET",
+		2: "HTTP_GET",
+		3: "HTTPS_GET",
+	}
+	AzureContainerAppProbeTransport_value = map[string]int32{
+		"azure_container_app_probe_transport_unspecified": 0,
+		"TCP_SOCKET": 1,
+		"HTTP_GET":   2,
+		"HTTPS_GET":  3,
+	}
+)
+
+func (x AzureContainerAppProbeTransport) Enum() *AzureContainerAppProbeTransport {
+	p := new(AzureContainerAppProbeTransport)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppProbeTransport) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppProbeTransport) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureContainerAppProbeTransport) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureContainerAppProbeTransport) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppProbeTransport.Descriptor instead.
+func (AzureContainerAppProbeTransport) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// The storage backing a container app volume.
+type AzureContainerAppVolumeStorageType int32
+
+const (
+	// Not specified -- deploys EMPTY_DIR (ephemeral scratch space).
+	AzureContainerAppVolumeStorageType_azure_container_app_volume_storage_type_unspecified AzureContainerAppVolumeStorageType = 0
+	// Ephemeral storage local to the replica; lost on termination.
+	AzureContainerAppVolumeStorageType_EMPTY_DIR AzureContainerAppVolumeStorageType = 1
+	// Persistent SMB Azure Files share via an environment storage resource.
+	AzureContainerAppVolumeStorageType_AZURE_FILE AzureContainerAppVolumeStorageType = 2
+	// Persistent NFS Azure Files share via an environment storage resource;
+	// requires a VNet-injected environment.
+	AzureContainerAppVolumeStorageType_NFS_AZURE_FILE AzureContainerAppVolumeStorageType = 3
+	// Mounts the app's secrets as files inside the container.
+	AzureContainerAppVolumeStorageType_SECRET AzureContainerAppVolumeStorageType = 4
+)
+
+// Enum value maps for AzureContainerAppVolumeStorageType.
+var (
+	AzureContainerAppVolumeStorageType_name = map[int32]string{
+		0: "azure_container_app_volume_storage_type_unspecified",
+		1: "EMPTY_DIR",
+		2: "AZURE_FILE",
+		3: "NFS_AZURE_FILE",
+		4: "SECRET",
+	}
+	AzureContainerAppVolumeStorageType_value = map[string]int32{
+		"azure_container_app_volume_storage_type_unspecified": 0,
+		"EMPTY_DIR":      1,
+		"AZURE_FILE":     2,
+		"NFS_AZURE_FILE": 3,
+		"SECRET":         4,
+	}
+)
+
+func (x AzureContainerAppVolumeStorageType) Enum() *AzureContainerAppVolumeStorageType {
+	p := new(AzureContainerAppVolumeStorageType)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppVolumeStorageType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppVolumeStorageType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureContainerAppVolumeStorageType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureContainerAppVolumeStorageType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppVolumeStorageType.Descriptor instead.
+func (AzureContainerAppVolumeStorageType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+// The ingress transport protocol.
+type AzureContainerAppIngressTransport int32
+
+const (
+	// Not specified -- deploys AUTO.
+	AzureContainerAppIngressTransport_azure_container_app_ingress_transport_unspecified AzureContainerAppIngressTransport = 0
+	// Auto-detect HTTP/1.1 vs HTTP/2.
+	AzureContainerAppIngressTransport_AUTO AzureContainerAppIngressTransport = 1
+	// HTTP/1.1 only.
+	AzureContainerAppIngressTransport_HTTP AzureContainerAppIngressTransport = 2
+	// HTTP/2 (gRPC and long-lived streaming connections).
+	AzureContainerAppIngressTransport_HTTP2 AzureContainerAppIngressTransport = 3
+	// Raw TCP -- pair with exposed_port for the externally visible port.
+	AzureContainerAppIngressTransport_TCP AzureContainerAppIngressTransport = 4
+)
+
+// Enum value maps for AzureContainerAppIngressTransport.
+var (
+	AzureContainerAppIngressTransport_name = map[int32]string{
+		0: "azure_container_app_ingress_transport_unspecified",
+		1: "AUTO",
+		2: "HTTP",
+		3: "HTTP2",
+		4: "TCP",
+	}
+	AzureContainerAppIngressTransport_value = map[string]int32{
+		"azure_container_app_ingress_transport_unspecified": 0,
+		"AUTO":  1,
+		"HTTP":  2,
+		"HTTP2": 3,
+		"TCP":   4,
+	}
+)
+
+func (x AzureContainerAppIngressTransport) Enum() *AzureContainerAppIngressTransport {
+	p := new(AzureContainerAppIngressTransport)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppIngressTransport) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppIngressTransport) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[3].Descriptor()
+}
+
+func (AzureContainerAppIngressTransport) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[3]
+}
+
+func (x AzureContainerAppIngressTransport) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppIngressTransport.Descriptor instead.
+func (AzureContainerAppIngressTransport) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+// How ingress treats client certificates (mTLS).
+type AzureContainerAppIngressClientCertificateMode int32
+
+const (
+	// Not specified -- Azure's default behavior (no client certificate
+	// requirement).
+	AzureContainerAppIngressClientCertificateMode_azure_container_app_ingress_client_certificate_mode_unspecified AzureContainerAppIngressClientCertificateMode = 0
+	// Accept client certificates when presented, but do not require them.
+	AzureContainerAppIngressClientCertificateMode_ACCEPT AzureContainerAppIngressClientCertificateMode = 1
+	// Require a client certificate on every request.
+	AzureContainerAppIngressClientCertificateMode_REQUIRE AzureContainerAppIngressClientCertificateMode = 2
+	// Ignore client certificates entirely.
+	AzureContainerAppIngressClientCertificateMode_IGNORE AzureContainerAppIngressClientCertificateMode = 3
+)
+
+// Enum value maps for AzureContainerAppIngressClientCertificateMode.
+var (
+	AzureContainerAppIngressClientCertificateMode_name = map[int32]string{
+		0: "azure_container_app_ingress_client_certificate_mode_unspecified",
+		1: "ACCEPT",
+		2: "REQUIRE",
+		3: "IGNORE",
+	}
+	AzureContainerAppIngressClientCertificateMode_value = map[string]int32{
+		"azure_container_app_ingress_client_certificate_mode_unspecified": 0,
+		"ACCEPT":  1,
+		"REQUIRE": 2,
+		"IGNORE":  3,
+	}
+)
+
+func (x AzureContainerAppIngressClientCertificateMode) Enum() *AzureContainerAppIngressClientCertificateMode {
+	p := new(AzureContainerAppIngressClientCertificateMode)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppIngressClientCertificateMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppIngressClientCertificateMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[4].Descriptor()
+}
+
+func (AzureContainerAppIngressClientCertificateMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[4]
+}
+
+func (x AzureContainerAppIngressClientCertificateMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppIngressClientCertificateMode.Descriptor instead.
+func (AzureContainerAppIngressClientCertificateMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+// The action an IP security restriction applies.
+type AzureContainerAppIpRestrictionAction int32
+
+const (
+	// Not specified -- invalid; pick ALLOW or DENY.
+	AzureContainerAppIpRestrictionAction_azure_container_app_ip_restriction_action_unspecified AzureContainerAppIpRestrictionAction = 0
+	// Permit traffic from the IP range.
+	AzureContainerAppIpRestrictionAction_ALLOW AzureContainerAppIpRestrictionAction = 1
+	// Block traffic from the IP range.
+	AzureContainerAppIpRestrictionAction_DENY AzureContainerAppIpRestrictionAction = 2
+)
+
+// Enum value maps for AzureContainerAppIpRestrictionAction.
+var (
+	AzureContainerAppIpRestrictionAction_name = map[int32]string{
+		0: "azure_container_app_ip_restriction_action_unspecified",
+		1: "ALLOW",
+		2: "DENY",
+	}
+	AzureContainerAppIpRestrictionAction_value = map[string]int32{
+		"azure_container_app_ip_restriction_action_unspecified": 0,
+		"ALLOW": 1,
+		"DENY":  2,
+	}
+)
+
+func (x AzureContainerAppIpRestrictionAction) Enum() *AzureContainerAppIpRestrictionAction {
+	p := new(AzureContainerAppIpRestrictionAction)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppIpRestrictionAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppIpRestrictionAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[5].Descriptor()
+}
+
+func (AzureContainerAppIpRestrictionAction) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[5]
+}
+
+func (x AzureContainerAppIpRestrictionAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppIpRestrictionAction.Descriptor instead.
+func (AzureContainerAppIpRestrictionAction) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+// The protocol Dapr uses to talk to the app.
+type AzureContainerAppDaprProtocol int32
+
+const (
+	// Not specified -- deploys DAPR_HTTP.
+	AzureContainerAppDaprProtocol_azure_container_app_dapr_protocol_unspecified AzureContainerAppDaprProtocol = 0
+	// HTTP/1.1 (the default; Azure protocol "http").
+	AzureContainerAppDaprProtocol_DAPR_HTTP AzureContainerAppDaprProtocol = 1
+	// gRPC, for gRPC-based applications (Azure protocol "grpc").
+	AzureContainerAppDaprProtocol_DAPR_GRPC AzureContainerAppDaprProtocol = 2
+)
+
+// Enum value maps for AzureContainerAppDaprProtocol.
+var (
+	AzureContainerAppDaprProtocol_name = map[int32]string{
+		0: "azure_container_app_dapr_protocol_unspecified",
+		1: "DAPR_HTTP",
+		2: "DAPR_GRPC",
+	}
+	AzureContainerAppDaprProtocol_value = map[string]int32{
+		"azure_container_app_dapr_protocol_unspecified": 0,
+		"DAPR_HTTP": 1,
+		"DAPR_GRPC": 2,
+	}
+)
+
+func (x AzureContainerAppDaprProtocol) Enum() *AzureContainerAppDaprProtocol {
+	p := new(AzureContainerAppDaprProtocol)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppDaprProtocol) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppDaprProtocol) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[6].Descriptor()
+}
+
+func (AzureContainerAppDaprProtocol) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[6]
+}
+
+func (x AzureContainerAppDaprProtocol) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppDaprProtocol.Descriptor instead.
+func (AzureContainerAppDaprProtocol) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+// The managed-identity model for the app.
+type AzureContainerAppIdentityType int32
+
+const (
+	// Not specified -- invalid; choose an explicit identity model.
+	AzureContainerAppIdentityType_azure_container_app_identity_type_unspecified AzureContainerAppIdentityType = 0
+	// Azure creates a service principal bound to the app's lifecycle.
+	AzureContainerAppIdentityType_SYSTEM_ASSIGNED AzureContainerAppIdentityType = 1
+	// Bring your own AzureUserAssignedIdentity entries -- shareable across
+	// resources and grantable before the app exists.
+	AzureContainerAppIdentityType_USER_ASSIGNED AzureContainerAppIdentityType = 2
+	// Both a system-assigned principal and user-assigned identities.
+	AzureContainerAppIdentityType_SYSTEM_AND_USER_ASSIGNED AzureContainerAppIdentityType = 3
+)
+
+// Enum value maps for AzureContainerAppIdentityType.
+var (
+	AzureContainerAppIdentityType_name = map[int32]string{
+		0: "azure_container_app_identity_type_unspecified",
+		1: "SYSTEM_ASSIGNED",
+		2: "USER_ASSIGNED",
+		3: "SYSTEM_AND_USER_ASSIGNED",
+	}
+	AzureContainerAppIdentityType_value = map[string]int32{
+		"azure_container_app_identity_type_unspecified": 0,
+		"SYSTEM_ASSIGNED":          1,
+		"USER_ASSIGNED":            2,
+		"SYSTEM_AND_USER_ASSIGNED": 3,
+	}
+)
+
+func (x AzureContainerAppIdentityType) Enum() *AzureContainerAppIdentityType {
+	p := new(AzureContainerAppIdentityType)
+	*p = x
+	return p
+}
+
+func (x AzureContainerAppIdentityType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureContainerAppIdentityType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[7].Descriptor()
+}
+
+func (AzureContainerAppIdentityType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes[7]
+}
+
+func (x AzureContainerAppIdentityType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureContainerAppIdentityType.Descriptor instead.
+func (AzureContainerAppIdentityType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
 // **AzureContainerAppSpec** defines the configuration for creating an Azure
 // Container App (Microsoft.App/containerApps), a serverless container workload
 // running inside an Azure Container Apps Managed Environment.
 //
-// A Container App is the Azure equivalent of a Kubernetes Deployment or an ECS
-// Service -- it defines one or more containers, their resource allocations,
-// scaling rules, ingress configuration, and runtime secrets.
+// A Container App is a continuously running containerized service -- it
+// defines one or more containers, their resource allocations, scaling rules,
+// ingress configuration, and runtime secrets. For run-to-completion
+// workloads, use AzureContainerAppJob instead.
 //
 // **Relationship to AzureContainerAppEnvironment**:
 //
@@ -42,14 +499,14 @@ const (
 // **Revision model**:
 //
 // Container Apps uses a revision-based deployment model. Each change to the
-// `template` section (containers, scale, volumes) creates a new revision.
+// template section (containers, scale, volumes) creates a new revision.
 //
-// Single mode (default):
+// SINGLE mode (default):
 //   - Only one revision is active at a time
 //   - New revisions automatically replace the old one
 //   - Simplest model for most workloads
 //
-// Multiple mode:
+// MULTIPLE mode:
 //   - Multiple revisions can be active simultaneously
 //   - Traffic can be split across revisions via traffic_weight
 //   - Enables blue-green and canary deployment patterns
@@ -77,8 +534,8 @@ const (
 // **Secrets and registries**:
 //
 // Secrets can be plain-text values or Key Vault references (requiring managed
-// identity). They are referenced by name in container environment variables and
-// registry passwords.
+// identity). They are referenced by name in container environment variables,
+// registry passwords, scale-rule authentication, and SECRET-type volumes.
 //
 // Private container registries authenticate via username/password (referencing
 // a secret) or managed identity.
@@ -86,14 +543,13 @@ const (
 // **Ingress**:
 //
 // Optional HTTP/TCP ingress with traffic splitting, IP security restrictions,
-// CORS policy, and client certificate mode. When ingress is not configured,
+// CORS, and client certificate mode (mTLS). When ingress is not configured,
 // the app is only accessible from within the environment via the app name.
 //
 // **No region field**: Container App location is computed from its environment.
-// This is like AzureSubnet inheriting region from its VNet.
 //
 // **ForceNew fields** (changing these destroys and recreates):
-// `name`, `container_app_environment_id`.
+// `container_app_name`, `resource_group`, `container_app_environment_id`.
 //
 // **Referenced by**: None (leaf workload resource)
 type AzureContainerAppSpec struct {
@@ -104,13 +560,14 @@ type AzureContainerAppSpec struct {
 	// **ForceNew**: Changing this destroys and recreates the app.
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
 	// The name of the Container App.
-	// Must be lowercase alphanumeric or hyphens, start with a letter, end with
-	// an alphanumeric character, no consecutive hyphens, max 32 characters.
+	// Lowercase alphanumeric characters, hyphens, and dots; must start and
+	// end with an alphanumeric character; no consecutive hyphens; at most
+	// 32 characters.
 	//
 	// This name is used in the app's FQDN: {name}.{environment-default-domain}
 	//
 	// **ForceNew**: Changing this destroys and recreates the app.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ContainerAppName string `protobuf:"bytes,2,opt,name=container_app_name,json=containerAppName,proto3" json:"container_app_name,omitempty"`
 	// The Container App Environment where this app will run.
 	// The environment provides networking, logging, and compute capacity.
 	//
@@ -118,11 +575,11 @@ type AzureContainerAppSpec struct {
 	ContainerAppEnvironmentId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=container_app_environment_id,json=containerAppEnvironmentId,proto3" json:"container_app_environment_id,omitempty"`
 	// The revision operating mode. Controls how many revisions can be active.
 	//
-	// "Single": Only one revision active at a time (default, simplest).
-	// "Multiple": Multiple revisions active simultaneously with traffic splitting.
-	//
-	// Default: "Single"
-	RevisionMode *string `protobuf:"bytes,4,opt,name=revision_mode,json=revisionMode,proto3,oneof" json:"revision_mode,omitempty"`
+	// SINGLE: only one revision active at a time (simplest; new revisions
+	// replace the old automatically). Unspecified deploys SINGLE.
+	// MULTIPLE: multiple revisions active simultaneously with traffic
+	// splitting -- the blue-green / canary model.
+	RevisionMode AzureContainerAppRevisionMode `protobuf:"varint,4,opt,name=revision_mode,json=revisionMode,proto3,enum=dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRevisionMode" json:"revision_mode,omitempty"`
 	// The workload profile name to run this app on.
 	// References a profile defined in the Container App Environment.
 	//
@@ -184,11 +641,12 @@ type AzureContainerAppSpec struct {
 	// Custom KEDA scale rules. Scale based on any KEDA-supported scaler
 	// (Kafka, Prometheus, Redis, cron, cpu, memory, etc.).
 	CustomScaleRules []*AzureContainerAppCustomScaleRule `protobuf:"bytes,19,rep,name=custom_scale_rules,json=customScaleRules,proto3" json:"custom_scale_rules,omitempty"`
-	// Secrets available to the app. Referenced by name in container env vars
-	// and registry password_secret_name.
+	// Secrets available to the app. Referenced by name in container env vars,
+	// registry password_secret_name, scale-rule authentication, and
+	// SECRET-type volumes.
 	//
 	// Secrets can be plain-text values or Key Vault references. Key Vault
-	// references require a managed identity (set identity on secret or app level).
+	// references require a managed identity.
 	Secrets []*AzureContainerAppSecret `protobuf:"bytes,20,rep,name=secrets,proto3" json:"secrets,omitempty"`
 	// Private container registry credentials. Required to pull images from
 	// private registries (ACR, Docker Hub, GitHub Container Registry, etc.).
@@ -207,7 +665,12 @@ type AzureContainerAppSpec struct {
 	// Managed identity configuration for the app. Enables the app to
 	// authenticate with Azure services (Key Vault, ACR, Storage, etc.)
 	// without managing credentials.
-	Identity      *AzureContainerAppIdentity `protobuf:"bytes,24,opt,name=identity,proto3" json:"identity,omitempty"`
+	Identity *AzureContainerAppIdentity `protobuf:"bytes,24,opt,name=identity,proto3" json:"identity,omitempty"`
+	// Free-form Azure resource tags applied to the app, merged over the
+	// platform's metadata-derived tags (user tags win on key collision) --
+	// the hooks for cost allocation, chargeback reports, and Azure Policy
+	// governance rules that filter or group by them. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,25,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -249,9 +712,9 @@ func (x *AzureContainerAppSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureContainerAppSpec) GetName() string {
+func (x *AzureContainerAppSpec) GetContainerAppName() string {
 	if x != nil {
-		return x.Name
+		return x.ContainerAppName
 	}
 	return ""
 }
@@ -263,11 +726,11 @@ func (x *AzureContainerAppSpec) GetContainerAppEnvironmentId() *v1.StringValueOr
 	return nil
 }
 
-func (x *AzureContainerAppSpec) GetRevisionMode() string {
-	if x != nil && x.RevisionMode != nil {
-		return *x.RevisionMode
+func (x *AzureContainerAppSpec) GetRevisionMode() AzureContainerAppRevisionMode {
+	if x != nil {
+		return x.RevisionMode
 	}
-	return ""
+	return AzureContainerAppRevisionMode_azure_container_app_revision_mode_unspecified
 }
 
 func (x *AzureContainerAppSpec) GetWorkloadProfileName() string {
@@ -410,6 +873,13 @@ func (x *AzureContainerAppSpec) GetIdentity() *AzureContainerAppIdentity {
 	return nil
 }
 
+func (x *AzureContainerAppSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 // AzureContainerAppContainer defines a main container within the app.
 //
 // Each container specifies an image, CPU/memory allocation, environment variables,
@@ -424,7 +894,8 @@ func (x *AzureContainerAppSpec) GetIdentity() *AzureContainerAppIdentity {
 type AzureContainerAppContainer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Container name. Must be unique within the app.
-	// Lowercase alphanumeric, hyphens, or dots, max 46 characters.
+	// Lowercase alphanumeric, hyphens, or dots; starts and ends with an
+	// alphanumeric character; max 46 characters.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Container image in repository:tag format.
 	// Examples: "mcr.microsoft.com/k8se/quickstart:latest", "myregistry.azurecr.io/myapp:v1.2.3"
@@ -433,7 +904,8 @@ type AzureContainerAppContainer struct {
 	// Examples: 0.25, 0.5, 1.0, 2.0
 	//
 	// Valid values depend on the workload profile. For Consumption plan:
-	// 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0
+	// 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0. CPU and memory scale
+	// together (0.25 vCPU pairs with 0.5Gi, and so on).
 	Cpu float64 `protobuf:"fixed64,3,opt,name=cpu,proto3" json:"cpu,omitempty"`
 	// Memory allocation in Gi format.
 	// Examples: "0.5Gi", "1Gi", "2Gi", "4Gi"
@@ -452,13 +924,22 @@ type AzureContainerAppContainer struct {
 	Args []string `protobuf:"bytes,7,rep,name=args,proto3" json:"args,omitempty"`
 	// Liveness probe. Determines if the container is alive.
 	// If the probe fails, the container is restarted.
+	//
+	// Liveness probes never carry success_count_threshold, and their
+	// failure_count_threshold tops out at 30.
 	LivenessProbe *AzureContainerAppProbe `protobuf:"bytes,8,opt,name=liveness_probe,json=livenessProbe,proto3" json:"liveness_probe,omitempty"`
 	// Readiness probe. Determines if the container is ready to serve traffic.
 	// If the probe fails, the container is removed from load balancing.
+	//
+	// The only probe type that supports success_count_threshold; its
+	// failure_count_threshold tops out at 48.
 	ReadinessProbe *AzureContainerAppProbe `protobuf:"bytes,9,opt,name=readiness_probe,json=readinessProbe,proto3" json:"readiness_probe,omitempty"`
 	// Startup probe. Determines when the container has finished starting.
 	// During startup, liveness and readiness probes are disabled.
 	// Useful for slow-starting applications.
+	//
+	// Startup probes never carry success_count_threshold; their
+	// failure_count_threshold tops out at 240 (slow starters get headroom).
 	StartupProbe *AzureContainerAppProbe `protobuf:"bytes,10,opt,name=startup_probe,json=startupProbe,proto3" json:"startup_probe,omitempty"`
 	// Volume mounts for the container. References volumes defined in the
 	// spec's `volumes` field by name.
@@ -696,14 +1177,13 @@ func (x *AzureContainerAppInitContainer) GetVolumeMounts() []*AzureContainerAppV
 
 // AzureContainerAppEnvVar defines an environment variable for a container.
 //
-// An env var is either a literal value or a reference to a secret by name.
-// When `secret_name` is set, `value` is ignored and the env var's value
-// comes from the named secret in the app's `secrets` list.
+// An env var is either a literal value or a reference to a secret by name --
+// never both.
 type AzureContainerAppEnvVar struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Environment variable name.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Literal value. Ignored when secret_name is set.
+	// Literal value. Mutually exclusive with secret_name.
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// Reference to a secret name defined in the app's `secrets` list.
 	// When set, the env var's value comes from the secret.
@@ -770,15 +1250,15 @@ func (x *AzureContainerAppEnvVar) GetSecretName() string {
 // - HTTP: GET request to a path (healthy if response is 200-399)
 // - HTTPS: Same as HTTP but over TLS
 //
-// This message is shared by liveness, readiness, and startup probes.
-// The `success_count_threshold` field is only applicable to readiness probes.
+// This message is shared by liveness, readiness, and startup probes; the
+// container-level rules narrow it per probe type (success_count_threshold
+// is readiness-only, and the failure_count_threshold ceiling is 30 for
+// liveness, 48 for readiness, 240 for startup).
 type AzureContainerAppProbe struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Probe transport type.
-	// "TCP": Port connectivity check.
-	// "HTTP": HTTP GET request.
-	// "HTTPS": HTTPS GET request.
-	Transport string `protobuf:"bytes,1,opt,name=transport,proto3" json:"transport,omitempty"`
+	// Probe transport type: TCP_SOCKET (port connectivity check), HTTP_GET
+	// (GET request), or HTTPS_GET (GET over TLS).
+	Transport AzureContainerAppProbeTransport `protobuf:"varint,1,opt,name=transport,proto3,enum=dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeTransport" json:"transport,omitempty"`
 	// Port to probe. Range: 1-65535.
 	Port int32 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
 	// URI path for HTTP/HTTPS probes. Ignored for TCP probes.
@@ -790,7 +1270,8 @@ type AzureContainerAppProbe struct {
 	Headers []*AzureContainerAppProbeHeader `protobuf:"bytes,5,rep,name=headers,proto3" json:"headers,omitempty"`
 	// Seconds to wait before starting probes after container start.
 	//
-	// Default: 0 (readiness/startup), 1 (liveness)
+	// Unset deploys the probe type's own default: 1 for liveness, 0 for
+	// readiness and startup.
 	// Range: 0-60
 	InitialDelayInSeconds *int32 `protobuf:"varint,6,opt,name=initial_delay_in_seconds,json=initialDelayInSeconds,proto3,oneof" json:"initial_delay_in_seconds,omitempty"`
 	// Seconds between probe executions.
@@ -806,10 +1287,11 @@ type AzureContainerAppProbe struct {
 	// Number of consecutive failures before the probe is considered failed.
 	//
 	// Default: 3
-	// Range: 1-30
+	// Ceiling by probe type: 30 (liveness), 48 (readiness), 240 (startup) --
+	// enforced on the container.
 	FailureCountThreshold *int32 `protobuf:"varint,9,opt,name=failure_count_threshold,json=failureCountThreshold,proto3,oneof" json:"failure_count_threshold,omitempty"`
 	// Number of consecutive successes before the probe is considered successful.
-	// Only applicable to readiness probes; ignored for liveness and startup.
+	// Only readiness probes support this (enforced on the container).
 	//
 	// Default: 3
 	// Range: 1-10
@@ -848,11 +1330,11 @@ func (*AzureContainerAppProbe) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *AzureContainerAppProbe) GetTransport() string {
+func (x *AzureContainerAppProbe) GetTransport() AzureContainerAppProbeTransport {
 	if x != nil {
 		return x.Transport
 	}
-	return ""
+	return AzureContainerAppProbeTransport_azure_container_app_probe_transport_unspecified
 }
 
 func (x *AzureContainerAppProbe) GetPort() int32 {
@@ -1040,24 +1522,29 @@ func (x *AzureContainerAppVolumeMount) GetSubPath() string {
 
 // AzureContainerAppVolume defines a volume available to containers.
 //
-// Supported storage types:
-//   - EmptyDir (default): Ephemeral storage, fast, lost when the replica terminates.
-//     Good for scratch space, caching, temporary files.
-//   - AzureFile: Persistent Azure Files share. Survives replica restarts.
-//     Requires a storage resource configured in the Container App Environment.
+// Storage types:
+//   - EMPTY_DIR (default): ephemeral scratch space, fast, lost when the
+//     replica terminates.
+//   - AZURE_FILE: persistent SMB Azure Files share, mounted through a
+//     storage resource registered on the environment
+//     (AzureContainerAppEnvironmentStorage). Survives replica restarts.
+//   - NFS_AZURE_FILE: persistent NFS Azure Files share, likewise mounted
+//     through an environment storage resource (its NFS form); requires a
+//     VNet-injected environment.
+//   - SECRET: mounts the app's secrets as files inside the container --
+//     certificate and config delivery without environment variables.
 type AzureContainerAppVolume struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Volume name. Referenced by containers in their volume_mounts field.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Storage type. "EmptyDir" for ephemeral storage, "AzureFile" for persistent.
-	//
-	// Default: "EmptyDir"
-	StorageType *string `protobuf:"bytes,2,opt,name=storage_type,json=storageType,proto3,oneof" json:"storage_type,omitempty"`
-	// Name of the Container App Environment storage resource.
-	// Required when storage_type is "AzureFile".
-	// References a storage resource created via azurerm_container_app_environment_storage.
-	StorageName string `protobuf:"bytes,3,opt,name=storage_name,json=storageName,proto3" json:"storage_name,omitempty"`
-	// Comma-separated mount options for the volume.
+	// Storage type backing the volume. Unspecified deploys EMPTY_DIR.
+	StorageType AzureContainerAppVolumeStorageType `protobuf:"varint,2,opt,name=storage_type,json=storageType,proto3,enum=dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeStorageType" json:"storage_type,omitempty"`
+	// Name of the Container App Environment storage resource backing the
+	// volume. Required for AZURE_FILE and NFS_AZURE_FILE volumes; must be
+	// omitted otherwise. Can be a literal name or a reference to an
+	// AzureContainerAppEnvironmentStorage output.
+	StorageName *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=storage_name,json=storageName,proto3" json:"storage_name,omitempty"`
+	// Comma-separated mount options for the volume (SMB/NFS mounts).
 	// Example: "uid=1000,gid=1000"
 	MountOptions  string `protobuf:"bytes,4,opt,name=mount_options,json=mountOptions,proto3" json:"mount_options,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1101,18 +1588,18 @@ func (x *AzureContainerAppVolume) GetName() string {
 	return ""
 }
 
-func (x *AzureContainerAppVolume) GetStorageType() string {
-	if x != nil && x.StorageType != nil {
-		return *x.StorageType
+func (x *AzureContainerAppVolume) GetStorageType() AzureContainerAppVolumeStorageType {
+	if x != nil {
+		return x.StorageType
 	}
-	return ""
+	return AzureContainerAppVolumeStorageType_azure_container_app_volume_storage_type_unspecified
 }
 
-func (x *AzureContainerAppVolume) GetStorageName() string {
+func (x *AzureContainerAppVolume) GetStorageName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.StorageName
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureContainerAppVolume) GetMountOptions() string {
@@ -1125,7 +1612,7 @@ func (x *AzureContainerAppVolume) GetMountOptions() string {
 // AzureContainerAppSecret defines a secret available to the app.
 //
 // Secrets can be:
-//  1. Plain-text value: Set `value` directly. Simple but less secure.
+//  1. Plain-text value: Set `value` directly.
 //  2. Key Vault reference: Set `key_vault_secret_id` + `identity`.
 //     The identity must have read access to the Key Vault secret.
 //
@@ -1133,6 +1620,7 @@ func (x *AzureContainerAppVolume) GetMountOptions() string {
 // - Container env vars (via secret_name)
 // - Registry credentials (via password_secret_name)
 // - Scale rule authentication (via secret_name)
+// - SECRET-type volumes (all secrets are mounted)
 type AzureContainerAppSecret struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Secret name. Lowercase alphanumeric or hyphens, max 253 characters.
@@ -1142,16 +1630,18 @@ type AzureContainerAppSecret struct {
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// Key Vault secret URI. Format:
 	// https://{vault-name}.vault.azure.net/secrets/{secret-name}
-	// or with version: https://{vault-name}.vault.azure.net/secrets/{secret-name}/{version}
+	// (versionless -- tracks the latest version) or with an explicit version:
+	// https://{vault-name}.vault.azure.net/secrets/{secret-name}/{version}
 	//
-	// Requires `identity` to be set for Key Vault access.
+	// Requires `identity` for Key Vault access.
 	// Mutually exclusive with `value`.
 	KeyVaultSecretId string `protobuf:"bytes,3,opt,name=key_vault_secret_id,json=keyVaultSecretId,proto3" json:"key_vault_secret_id,omitempty"`
-	// Identity for Key Vault access. Required when key_vault_secret_id is set.
+	// Identity for Key Vault access. Required when key_vault_secret_id is
+	// set (and only meaningful then).
 	//
 	// Value is either:
-	// - "System": Use the app's system-assigned managed identity
-	// - A User Assigned Identity Azure resource ID
+	// - "System": use the app's system-assigned managed identity
+	// - A User Assigned Identity ARM resource ID
 	Identity      string `protobuf:"bytes,4,opt,name=identity,proto3" json:"identity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1233,7 +1723,7 @@ type AzureContainerAppRegistry struct {
 	PasswordSecretName string `protobuf:"bytes,3,opt,name=password_secret_name,json=passwordSecretName,proto3" json:"password_secret_name,omitempty"`
 	// Managed identity for registry authentication.
 	// Value is either "System" (system-assigned) or a User Assigned Identity
-	// Azure resource ID. Alternative to username/password.
+	// ARM resource ID. Alternative to username/password.
 	Identity      string `protobuf:"bytes,4,opt,name=identity,proto3" json:"identity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1308,7 +1798,7 @@ func (x *AzureContainerAppRegistry) GetIdentity() string {
 // - HTTP/HTTP2/TCP transport
 // - Traffic splitting across revisions
 // - IP security restrictions (allow/deny)
-// - CORS policy for browser-based clients
+// - CORS for browser-based clients
 // - Client certificate mode (mTLS)
 type AzureContainerAppIngress struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1322,42 +1812,35 @@ type AzureContainerAppIngress struct {
 	// Target port on the container to route traffic to. Range: 1-65535.
 	TargetPort int32 `protobuf:"varint,2,opt,name=target_port,json=targetPort,proto3" json:"target_port,omitempty"`
 	// Exposed port for TCP transport. Range: 1-65535.
-	// Only applicable when transport is "tcp".
+	// Only applicable when transport is TCP.
 	ExposedPort *int32 `protobuf:"varint,3,opt,name=exposed_port,json=exposedPort,proto3,oneof" json:"exposed_port,omitempty"`
-	// Transport protocol.
-	// "auto": Auto-detect (default, tries HTTP then TCP).
-	// "http": HTTP/1.1.
-	// "http2": HTTP/2 (for gRPC and long-running connections).
-	// "tcp": Raw TCP (requires exposed_port).
-	//
-	// Default: "auto"
-	Transport *string `protobuf:"bytes,4,opt,name=transport,proto3,oneof" json:"transport,omitempty"`
+	// Transport protocol. Unspecified deploys AUTO (detects HTTP/1.1 vs
+	// HTTP/2). Use HTTP2 for gRPC services and TCP (with exposed_port) for
+	// raw TCP protocols.
+	Transport AzureContainerAppIngressTransport `protobuf:"varint,4,opt,name=transport,proto3,enum=dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressTransport" json:"transport,omitempty"`
 	// Allow insecure (HTTP) connections. When false, only HTTPS is accepted
 	// and HTTP requests are redirected to HTTPS.
 	//
 	// Default: false (HTTPS only)
 	AllowInsecureConnections *bool `protobuf:"varint,5,opt,name=allow_insecure_connections,json=allowInsecureConnections,proto3,oneof" json:"allow_insecure_connections,omitempty"`
-	// Client certificate mode for mTLS.
-	// "Accept": Accept client certificates but don't require them.
-	// "Require": Require client certificates for all requests.
-	// "Ignore": Ignore client certificates entirely.
-	//
-	// Omit to use Azure's default behavior (no client certificate requirement).
-	ClientCertificateMode string `protobuf:"bytes,6,opt,name=client_certificate_mode,json=clientCertificateMode,proto3" json:"client_certificate_mode,omitempty"`
+	// Client certificate mode for mTLS. Unspecified leaves Azure's default
+	// behavior (no client certificate requirement).
+	ClientCertificateMode AzureContainerAppIngressClientCertificateMode `protobuf:"varint,6,opt,name=client_certificate_mode,json=clientCertificateMode,proto3,enum=dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressClientCertificateMode" json:"client_certificate_mode,omitempty"`
 	// Traffic weight distribution across revisions.
 	// At least one traffic weight is required when ingress is configured.
 	//
-	// For Single revision mode, typically one weight with latest_revision=true
-	// and percentage=100. For Multiple revision mode, weights split traffic
+	// For SINGLE revision mode, one weight with latest_revision=true and
+	// percentage=100. For MULTIPLE revision mode, weights split traffic
 	// across named revisions.
 	//
 	// Total percentage across all weights must equal 100.
 	TrafficWeight []*AzureContainerAppTrafficWeight `protobuf:"bytes,7,rep,name=traffic_weight,json=trafficWeight,proto3" json:"traffic_weight,omitempty"`
 	// IP security restrictions. Allow or deny traffic from specific IP ranges.
-	// Rules are evaluated in order.
+	// All rules must share the same action (Azure evaluates them as one
+	// allowlist or one denylist).
 	IpSecurityRestrictions []*AzureContainerAppIpSecurityRestriction `protobuf:"bytes,8,rep,name=ip_security_restrictions,json=ipSecurityRestrictions,proto3" json:"ip_security_restrictions,omitempty"`
-	// CORS policy for browser-based clients.
-	CorsPolicy    *AzureContainerAppCorsPolicy `protobuf:"bytes,9,opt,name=cors_policy,json=corsPolicy,proto3" json:"cors_policy,omitempty"`
+	// CORS (Cross-Origin Resource Sharing) rules for browser-based clients.
+	Cors          *AzureContainerAppCors `protobuf:"bytes,9,opt,name=cors,proto3" json:"cors,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1413,11 +1896,11 @@ func (x *AzureContainerAppIngress) GetExposedPort() int32 {
 	return 0
 }
 
-func (x *AzureContainerAppIngress) GetTransport() string {
-	if x != nil && x.Transport != nil {
-		return *x.Transport
+func (x *AzureContainerAppIngress) GetTransport() AzureContainerAppIngressTransport {
+	if x != nil {
+		return x.Transport
 	}
-	return ""
+	return AzureContainerAppIngressTransport_azure_container_app_ingress_transport_unspecified
 }
 
 func (x *AzureContainerAppIngress) GetAllowInsecureConnections() bool {
@@ -1427,11 +1910,11 @@ func (x *AzureContainerAppIngress) GetAllowInsecureConnections() bool {
 	return false
 }
 
-func (x *AzureContainerAppIngress) GetClientCertificateMode() string {
+func (x *AzureContainerAppIngress) GetClientCertificateMode() AzureContainerAppIngressClientCertificateMode {
 	if x != nil {
 		return x.ClientCertificateMode
 	}
-	return ""
+	return AzureContainerAppIngressClientCertificateMode_azure_container_app_ingress_client_certificate_mode_unspecified
 }
 
 func (x *AzureContainerAppIngress) GetTrafficWeight() []*AzureContainerAppTrafficWeight {
@@ -1448,25 +1931,25 @@ func (x *AzureContainerAppIngress) GetIpSecurityRestrictions() []*AzureContainer
 	return nil
 }
 
-func (x *AzureContainerAppIngress) GetCorsPolicy() *AzureContainerAppCorsPolicy {
+func (x *AzureContainerAppIngress) GetCors() *AzureContainerAppCors {
 	if x != nil {
-		return x.CorsPolicy
+		return x.Cors
 	}
 	return nil
 }
 
 // AzureContainerAppTrafficWeight defines how traffic is distributed across revisions.
 //
-// Either `latest_revision` must be true OR `revision_suffix` must be set.
-// For Single revision mode, use latest_revision=true with percentage=100.
+// Exactly one of `latest_revision` or `revision_suffix` must be set per weight.
+// For SINGLE revision mode, use latest_revision=true with percentage=100.
 type AzureContainerAppTrafficWeight struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Route traffic to the latest revision.
-	// When true, revision_suffix is ignored and traffic goes to the latest active revision.
+	// Mutually exclusive with revision_suffix.
 	LatestRevision *bool `protobuf:"varint,1,opt,name=latest_revision,json=latestRevision,proto3,oneof" json:"latest_revision,omitempty"`
 	// Target a specific revision by suffix.
 	// The full revision name is "{app-name}--{revision_suffix}".
-	// Required when latest_revision is false.
+	// Mutually exclusive with latest_revision.
 	RevisionSuffix string `protobuf:"bytes,2,opt,name=revision_suffix,json=revisionSuffix,proto3" json:"revision_suffix,omitempty"`
 	// Percentage of traffic to route to this revision.
 	// All weights must sum to 100. Range: 0-100.
@@ -1541,10 +2024,9 @@ type AzureContainerAppIpSecurityRestriction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Rule name.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Action to take for matching traffic.
-	// "Allow": Permit traffic from the IP range.
-	// "Deny": Block traffic from the IP range.
-	Action string `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	// Action to take for matching traffic. All rules on an ingress must
+	// share the same action.
+	Action AzureContainerAppIpRestrictionAction `protobuf:"varint,2,opt,name=action,proto3,enum=dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpRestrictionAction" json:"action,omitempty"`
 	// IP address or CIDR range.
 	// Examples: "203.0.113.0/24", "10.0.0.1"
 	IpAddressRange string `protobuf:"bytes,3,opt,name=ip_address_range,json=ipAddressRange,proto3" json:"ip_address_range,omitempty"`
@@ -1591,11 +2073,11 @@ func (x *AzureContainerAppIpSecurityRestriction) GetName() string {
 	return ""
 }
 
-func (x *AzureContainerAppIpSecurityRestriction) GetAction() string {
+func (x *AzureContainerAppIpSecurityRestriction) GetAction() AzureContainerAppIpRestrictionAction {
 	if x != nil {
 		return x.Action
 	}
-	return ""
+	return AzureContainerAppIpRestrictionAction_azure_container_app_ip_restriction_action_unspecified
 }
 
 func (x *AzureContainerAppIpSecurityRestriction) GetIpAddressRange() string {
@@ -1612,8 +2094,8 @@ func (x *AzureContainerAppIpSecurityRestriction) GetDescription() string {
 	return ""
 }
 
-// AzureContainerAppCorsPolicy defines Cross-Origin Resource Sharing rules for ingress.
-type AzureContainerAppCorsPolicy struct {
+// AzureContainerAppCors defines Cross-Origin Resource Sharing rules for ingress.
+type AzureContainerAppCors struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Allowed origins. At least one origin is required.
 	// Use "*" to allow all origins (not recommended for production).
@@ -1638,20 +2120,20 @@ type AzureContainerAppCorsPolicy struct {
 	sizeCache               protoimpl.SizeCache
 }
 
-func (x *AzureContainerAppCorsPolicy) Reset() {
-	*x = AzureContainerAppCorsPolicy{}
+func (x *AzureContainerAppCors) Reset() {
+	*x = AzureContainerAppCors{}
 	mi := &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AzureContainerAppCorsPolicy) String() string {
+func (x *AzureContainerAppCors) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AzureContainerAppCorsPolicy) ProtoMessage() {}
+func (*AzureContainerAppCors) ProtoMessage() {}
 
-func (x *AzureContainerAppCorsPolicy) ProtoReflect() protoreflect.Message {
+func (x *AzureContainerAppCors) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1663,47 +2145,47 @@ func (x *AzureContainerAppCorsPolicy) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AzureContainerAppCorsPolicy.ProtoReflect.Descriptor instead.
-func (*AzureContainerAppCorsPolicy) Descriptor() ([]byte, []int) {
+// Deprecated: Use AzureContainerAppCors.ProtoReflect.Descriptor instead.
+func (*AzureContainerAppCors) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *AzureContainerAppCorsPolicy) GetAllowedOrigins() []string {
+func (x *AzureContainerAppCors) GetAllowedOrigins() []string {
 	if x != nil {
 		return x.AllowedOrigins
 	}
 	return nil
 }
 
-func (x *AzureContainerAppCorsPolicy) GetAllowedHeaders() []string {
+func (x *AzureContainerAppCors) GetAllowedHeaders() []string {
 	if x != nil {
 		return x.AllowedHeaders
 	}
 	return nil
 }
 
-func (x *AzureContainerAppCorsPolicy) GetAllowedMethods() []string {
+func (x *AzureContainerAppCors) GetAllowedMethods() []string {
 	if x != nil {
 		return x.AllowedMethods
 	}
 	return nil
 }
 
-func (x *AzureContainerAppCorsPolicy) GetExposedHeaders() []string {
+func (x *AzureContainerAppCors) GetExposedHeaders() []string {
 	if x != nil {
 		return x.ExposedHeaders
 	}
 	return nil
 }
 
-func (x *AzureContainerAppCorsPolicy) GetMaxAgeInSeconds() int32 {
+func (x *AzureContainerAppCors) GetMaxAgeInSeconds() int32 {
 	if x != nil && x.MaxAgeInSeconds != nil {
 		return *x.MaxAgeInSeconds
 	}
 	return 0
 }
 
-func (x *AzureContainerAppCorsPolicy) GetAllowCredentialsEnabled() bool {
+func (x *AzureContainerAppCors) GetAllowCredentialsEnabled() bool {
 	if x != nil && x.AllowCredentialsEnabled != nil {
 		return *x.AllowCredentialsEnabled
 	}
@@ -1856,8 +2338,9 @@ type AzureContainerAppAzureQueueScaleRule struct {
 	// Queue length threshold. When the queue has more messages than this value,
 	// the app scales up.
 	QueueLength int32 `protobuf:"varint,3,opt,name=queue_length,json=queueLength,proto3" json:"queue_length,omitempty"`
-	// Authentication configuration. Required for Azure Queue scale rules.
-	// Must include credentials to access the Azure Storage Queue.
+	// Authentication configuration. Required for Azure Queue scale rules --
+	// KEDA needs credentials to read the queue depth. Each entry must name
+	// the trigger_parameter the secret maps to (typically "connection").
 	Authentication []*AzureContainerAppScaleRuleAuth `protobuf:"bytes,4,rep,name=authentication,proto3" json:"authentication,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -1930,7 +2413,7 @@ func (x *AzureContainerAppAzureQueueScaleRule) GetAuthentication() []*AzureConta
 // See https://keda.sh/docs/scalers/ for the full list of supported scalers.
 type AzureContainerAppCustomScaleRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Rule name.
+	// Rule name. Lowercase alphanumeric characters, hyphens, and periods.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// KEDA scaler type identifier.
 	// Examples: "kafka", "prometheus", "redis", "cron", "cpu", "memory",
@@ -1942,10 +2425,16 @@ type AzureContainerAppCustomScaleRule struct {
 	// Example for cpu: {"type": "Utilization", "value": "70"}
 	// Example for kafka: {"bootstrapServers": "kafka:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "100"}
 	Metadata map[string]string `protobuf:"bytes,3,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Authentication configuration for the scale rule.
+	// Authentication configuration for the scale rule. Each entry must name
+	// the trigger_parameter the secret maps to.
 	Authentication []*AzureContainerAppScaleRuleAuth `protobuf:"bytes,4,rep,name=authentication,proto3" json:"authentication,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Managed identity KEDA uses to execute the scale rule (workload
+	// identity for the scaler instead of connection-string secrets).
+	// Value is either "System" (the app's system-assigned identity) or a
+	// User Assigned Identity ARM resource ID.
+	IdentityId    string `protobuf:"bytes,5,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AzureContainerAppCustomScaleRule) Reset() {
@@ -2006,6 +2495,13 @@ func (x *AzureContainerAppCustomScaleRule) GetAuthentication() []*AzureContainer
 	return nil
 }
 
+func (x *AzureContainerAppCustomScaleRule) GetIdentityId() string {
+	if x != nil {
+		return x.IdentityId
+	}
+	return ""
+}
+
 // AzureContainerAppScaleRuleAuth provides authentication for a scale rule.
 // References a secret by name and maps it to a scaler-specific trigger parameter.
 type AzureContainerAppScaleRuleAuth struct {
@@ -2013,7 +2509,8 @@ type AzureContainerAppScaleRuleAuth struct {
 	// Name of the secret in the app's `secrets` list.
 	SecretName string `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
 	// Scaler-specific trigger parameter name that this secret maps to.
-	// The parameter name depends on the scale rule type.
+	// Required for Azure Queue and custom scale rules; optional for HTTP/TCP
+	// rules (their scaler has a single implicit parameter).
 	//
 	// Examples:
 	// - Azure Queue: "connection"
@@ -2077,20 +2574,22 @@ func (x *AzureContainerAppScaleRuleAuth) GetTriggerParameter() string {
 // - State management
 // - Secrets management
 // - Bindings and triggers
+//
+// Dapr components (state stores, pub/sub brokers) are registered on the
+// environment via AzureContainerAppEnvironmentDaprComponent and scoped to
+// apps by this app_id.
 type AzureContainerAppDapr struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Dapr application identifier. Used for service discovery and invocation.
-	// Other Dapr-enabled apps invoke this app using this ID.
+	// Other Dapr-enabled apps invoke this app using this ID, and environment
+	// Dapr components scope themselves to it.
 	AppId string `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
 	// Application port that the Dapr sidecar communicates with.
 	// This is the port your application listens on.
 	AppPort *int32 `protobuf:"varint,2,opt,name=app_port,json=appPort,proto3,oneof" json:"app_port,omitempty"`
-	// Protocol used for Dapr-to-app communication.
-	// "http": HTTP/1.1 (default).
-	// "grpc": gRPC (for gRPC-based applications).
-	//
-	// Default: "http"
-	AppProtocol   *string `protobuf:"bytes,3,opt,name=app_protocol,json=appProtocol,proto3,oneof" json:"app_protocol,omitempty"`
+	// Protocol used for Dapr-to-app communication. Unspecified deploys
+	// DAPR_HTTP.
+	AppProtocol   AzureContainerAppDaprProtocol `protobuf:"varint,3,opt,name=app_protocol,json=appProtocol,proto3,enum=dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDaprProtocol" json:"app_protocol,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2139,38 +2638,30 @@ func (x *AzureContainerAppDapr) GetAppPort() int32 {
 	return 0
 }
 
-func (x *AzureContainerAppDapr) GetAppProtocol() string {
-	if x != nil && x.AppProtocol != nil {
-		return *x.AppProtocol
+func (x *AzureContainerAppDapr) GetAppProtocol() AzureContainerAppDaprProtocol {
+	if x != nil {
+		return x.AppProtocol
 	}
-	return ""
+	return AzureContainerAppDaprProtocol_azure_container_app_dapr_protocol_unspecified
 }
 
 // AzureContainerAppIdentity configures managed identity for the app.
 //
 // Managed identities allow the app to authenticate with Azure services
 // (Key Vault, ACR, Storage, etc.) without managing credentials.
-//
-// Types:
-//   - SystemAssigned: Azure creates and manages an identity tied to this app.
-//     Simplest option. The identity is deleted when the app is deleted.
-//   - UserAssigned: References pre-created identities. Can be shared across
-//     multiple apps and has an independent lifecycle.
-//   - SystemAssigned,UserAssigned: Both types simultaneously.
 type AzureContainerAppIdentity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Identity type.
-	// "SystemAssigned": Azure-managed identity.
-	// "UserAssigned": Pre-created identity.
-	// "SystemAssigned,UserAssigned": Both.
-	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	// User Assigned Identity Azure resource IDs.
-	// Required when type includes "UserAssigned".
-	//
-	// Can be literal ARM resource IDs or references to AzureUserAssignedIdentity outputs.
-	IdentityIds   []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=identity_ids,json=identityIds,proto3" json:"identity_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+	// service principal bound to the app's lifecycle), USER_ASSIGNED (bring
+	// identities from user_assigned_identity_ids, shareable across
+	// resources), or SYSTEM_AND_USER_ASSIGNED (both).
+	Type AzureContainerAppIdentityType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityType" json:"type,omitempty"`
+	// The user-assigned identities to attach -- required when (and only
+	// meaningful when) type includes USER_ASSIGNED. Each entry references
+	// an AzureUserAssignedIdentity's ARM id.
+	UserAssignedIdentityIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=user_assigned_identity_ids,json=userAssignedIdentityIds,proto3" json:"user_assigned_identity_ids,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *AzureContainerAppIdentity) Reset() {
@@ -2203,16 +2694,16 @@ func (*AzureContainerAppIdentity) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP(), []int{20}
 }
 
-func (x *AzureContainerAppIdentity) GetType() string {
+func (x *AzureContainerAppIdentity) GetType() AzureContainerAppIdentityType {
 	if x != nil {
 		return x.Type
 	}
-	return ""
+	return AzureContainerAppIdentityType_azure_container_app_identity_type_unspecified
 }
 
-func (x *AzureContainerAppIdentity) GetIdentityIds() []*v1.StringValueOrRef {
+func (x *AzureContainerAppIdentity) GetUserAssignedIdentityIds() []*v1.StringValueOrRef {
 	if x != nil {
-		return x.IdentityIds
+		return x.UserAssignedIdentityIds
 	}
 	return nil
 }
@@ -2221,28 +2712,27 @@ var File_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto protoreflect
 
 const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	":dev/planton/provider/azure/azurecontainerapp/v1/spec.proto\x12/dev.planton.provider.azure.azurecontainerapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe6\x15\n" +
+	":dev/planton/provider/azure/azurecontainerapp/v1/spec.proto\x12/dev.planton.provider.azure.azurecontainerapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xde\x17\n" +
 	"\x15AzureContainerAppSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xdb\x01\n" +
-	"\x04name\x18\x02 \x01(\tB\xc6\x01\xbaH\xc2\x01\xba\x01\xb5\x01\n" +
-	"\x0fapp_name_format\x12rname must be lowercase alphanumeric or hyphens, start with a letter, end with alphanumeric, no consecutive hyphens\x1a.this.matches('^[a-z]([a-z0-9](-[a-z0-9])*)*$')\xc8\x01\x01r\x04\x10\x02\x18 R\x04name\x12\xa1\x01\n" +
-	"\x1ccontainer_app_environment_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x03\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12\x9d\x01\n" +
-	"\rrevision_mode\x18\x04 \x01(\tBs\xbaHf\xba\x01c\n" +
-	"\x13revision_mode_valid\x12,revision_mode must be 'Single' or 'Multiple'\x1a\x1ethis in ['Single', 'Multiple']\x8a\xa6\x1d\x06SingleH\x00R\frevisionMode\x88\x01\x01\x122\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xe7\x02\n" +
+	"\x12container_app_name\x18\x02 \x01(\tB\xb8\x02\xbaH\xb4\x02\xba\x01\xa7\x02\n" +
+	"\x19container_app_name_format\x12\xa0\x01Container App name must be lowercase alphanumeric characters, hyphens, or dots, start and end with an alphanumeric character, and contain no consecutive hyphens\x1ag(this.matches('^[a-z]$') || this.matches('^[a-z0-9][a-z0-9.-]{0,30}[a-z0-9]$')) && !this.contains('--')\xc8\x01\x01r\x04\x10\x01\x18 R\x10containerAppName\x12\xa1\x01\n" +
+	"\x1ccontainer_app_environment_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x03\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12}\n" +
+	"\rrevision_mode\x18\x04 \x01(\x0e2N.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRevisionModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\frevisionMode\x122\n" +
 	"\x15workload_profile_name\x18\x05 \x01(\tR\x13workloadProfileName\x12D\n" +
-	"\x16max_inactive_revisions\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00H\x01R\x14maxInactiveRevisions\x88\x01\x01\x12u\n" +
+	"\x16max_inactive_revisions\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00H\x00R\x14maxInactiveRevisions\x88\x01\x01\x12u\n" +
 	"\n" +
 	"containers\x18\a \x03(\v2K.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainerB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
 	"containers\x12x\n" +
 	"\x0finit_containers\x18\b \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainerR\x0einitContainers\x12b\n" +
 	"\avolumes\x18\t \x03(\v2H.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeR\avolumes\x127\n" +
 	"\fmin_replicas\x18\n" +
-	" \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xac\x02(\x00\x8a\xa6\x1d\x010H\x02R\vminReplicas\x88\x01\x01\x128\n" +
-	"\fmax_replicas\x18\v \x01(\x05B\x10\xbaH\a\x1a\x05\x18\xac\x02(\x01\x8a\xa6\x1d\x0210H\x03R\vmaxReplicas\x88\x01\x01\x12P\n" +
-	"\x1acooldown_period_in_seconds\x18\f \x01(\x05B\x0e\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x03300H\x04R\x17cooldownPeriodInSeconds\x88\x01\x01\x12Q\n" +
-	"\x1bpolling_interval_in_seconds\x18\r \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0230H\x05R\x18pollingIntervalInSeconds\x88\x01\x01\x12'\n" +
+	" \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xac\x02(\x00\x8a\xa6\x1d\x010H\x01R\vminReplicas\x88\x01\x01\x128\n" +
+	"\fmax_replicas\x18\v \x01(\x05B\x10\xbaH\a\x1a\x05\x18\xac\x02(\x01\x8a\xa6\x1d\x0210H\x02R\vmaxReplicas\x88\x01\x01\x12P\n" +
+	"\x1acooldown_period_in_seconds\x18\f \x01(\x05B\x0e\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x03300H\x03R\x17cooldownPeriodInSeconds\x88\x01\x01\x12Q\n" +
+	"\x1bpolling_interval_in_seconds\x18\r \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0230H\x04R\x18pollingIntervalInSeconds\x88\x01\x01\x12'\n" +
 	"\x0frevision_suffix\x18\x0e \x01(\tR\x0erevisionSuffix\x12]\n" +
-	" termination_grace_period_seconds\x18\x0f \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xd8\x04(\x00\x8a\xa6\x1d\x010H\x06R\x1dterminationGracePeriodSeconds\x88\x01\x01\x12y\n" +
+	" termination_grace_period_seconds\x18\x0f \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xd8\x04(\x00\x8a\xa6\x1d\x010H\x05R\x1dterminationGracePeriodSeconds\x88\x01\x01\x12y\n" +
 	"\x10http_scale_rules\x18\x10 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppHttpScaleRuleR\x0ehttpScaleRules\x12v\n" +
 	"\x0ftcp_scale_rules\x18\x11 \x03(\v2N.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTcpScaleRuleR\rtcpScaleRules\x12\x8c\x01\n" +
 	"\x17azure_queue_scale_rules\x18\x12 \x03(\v2U.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppAzureQueueScaleRuleR\x14azureQueueScaleRules\x12\x7f\n" +
@@ -2253,17 +2743,20 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"registries\x12c\n" +
 	"\aingress\x18\x16 \x01(\v2I.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressR\aingress\x12Z\n" +
 	"\x04dapr\x18\x17 \x01(\v2F.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDaprR\x04dapr\x12f\n" +
-	"\bidentity\x18\x18 \x01(\v2J.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityR\bidentityB\x10\n" +
-	"\x0e_revision_modeB\x19\n" +
+	"\bidentity\x18\x18 \x01(\v2J.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityR\bidentity\x12d\n" +
+	"\x04tags\x18\x19 \x03(\v2P.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x19\n" +
 	"\x17_max_inactive_revisionsB\x0f\n" +
 	"\r_min_replicasB\x0f\n" +
 	"\r_max_replicasB\x1d\n" +
 	"\x1b_cooldown_period_in_secondsB\x1e\n" +
 	"\x1c_polling_interval_in_secondsB#\n" +
-	"!_termination_grace_period_seconds\"\xa0\a\n" +
-	"\x1aAzureContainerAppContainer\x12\xcb\x01\n" +
-	"\x04name\x18\x01 \x01(\tB\xb6\x01\xbaH\xb2\x01\xba\x01\xa5\x01\n" +
-	"\x15container_name_format\x12?container name must be lowercase alphanumeric, hyphens, or dots\x1aKthis.matches('^[a-z0-9][a-z0-9.-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')\xc8\x01\x01r\x04\x10\x01\x18.R\x04name\x12 \n" +
+	"!_termination_grace_period_seconds\"\xc1\r\n" +
+	"\x1aAzureContainerAppContainer\x12\xff\x01\n" +
+	"\x04name\x18\x01 \x01(\tB\xea\x01\xbaH\xe6\x01\xba\x01\xd9\x01\n" +
+	"\x15container_name_format\x12scontainer name must be lowercase alphanumeric, hyphens, or dots, starting and ending with an alphanumeric character\x1aKthis.matches('^[a-z0-9][a-z0-9.-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')\xc8\x01\x01r\x04\x10\x01\x18.R\x04name\x12 \n" +
 	"\x05image\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05image\x12 \n" +
 	"\x03cpu\x18\x03 \x01(\x01B\x0e\xbaH\v\x12\t)\x9a\x99\x99\x99\x99\x99\xb9?R\x03cpu\x12\"\n" +
@@ -2276,10 +2769,13 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\x0freadiness_probe\x18\t \x01(\v2G.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeR\x0ereadinessProbe\x12l\n" +
 	"\rstartup_probe\x18\n" +
 	" \x01(\v2G.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeR\fstartupProbe\x12r\n" +
-	"\rvolume_mounts\x18\v \x03(\v2M.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMountR\fvolumeMounts\"\xdf\x04\n" +
-	"\x1eAzureContainerAppInitContainer\x12\xd5\x01\n" +
-	"\x04name\x18\x01 \x01(\tB\xc0\x01\xbaH\xbc\x01\xba\x01\xaf\x01\n" +
-	"\x1ainit_container_name_format\x12Dinit container name must be lowercase alphanumeric, hyphens, or dots\x1aKthis.matches('^[a-z0-9][a-z0-9.-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')\xc8\x01\x01r\x04\x10\x01\x18.R\x04name\x12 \n" +
+	"\rvolume_mounts\x18\v \x03(\v2M.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMountR\fvolumeMounts:\xea\x05\xbaH\xe6\x05\x1a\xcd\x02\n" +
+	"\x1econtainer_liveness_probe_shape\x12lliveness probes do not support success_count_threshold, and failure_count_threshold must be between 1 and 30\x1a\xbc\x01!has(this.liveness_probe) || (!has(this.liveness_probe.success_count_threshold) && (!has(this.liveness_probe.failure_count_threshold) || this.liveness_probe.failure_count_threshold <= 30))\x1a\xec\x01\n" +
+	"\x1fcontainer_readiness_probe_shape\x12@readiness probe failure_count_threshold must be between 1 and 48\x1a\x86\x01!has(this.readiness_probe) || !has(this.readiness_probe.failure_count_threshold) || this.readiness_probe.failure_count_threshold <= 48\x1a\xa4\x01\n" +
+	"\x1dcontainer_startup_probe_shape\x125startup probes do not support success_count_threshold\x1aL!has(this.startup_probe) || !has(this.startup_probe.success_count_threshold)\"\x93\x05\n" +
+	"\x1eAzureContainerAppInitContainer\x12\x89\x02\n" +
+	"\x04name\x18\x01 \x01(\tB\xf4\x01\xbaH\xf0\x01\xba\x01\xe3\x01\n" +
+	"\x1ainit_container_name_format\x12xinit container name must be lowercase alphanumeric, hyphens, or dots, starting and ending with an alphanumeric character\x1aKthis.matches('^[a-z0-9][a-z0-9.-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')\xc8\x01\x01r\x04\x10\x01\x18.R\x04name\x12 \n" +
 	"\x05image\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05image\x12\x15\n" +
 	"\x03cpu\x18\x03 \x01(\x01H\x00R\x03cpu\x88\x01\x01\x12\x1b\n" +
@@ -2289,24 +2785,25 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\x04args\x18\a \x03(\tR\x04args\x12r\n" +
 	"\rvolume_mounts\x18\b \x03(\v2M.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMountR\fvolumeMountsB\x06\n" +
 	"\x04_cpuB\t\n" +
-	"\a_memory\"p\n" +
+	"\a_memory\"\xd5\x02\n" +
 	"\x17AzureContainerAppEnvVar\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x12\x1f\n" +
 	"\vsecret_name\x18\x03 \x01(\tR\n" +
-	"secretName\"\xc1\x06\n" +
-	"\x16AzureContainerAppProbe\x12\x8d\x01\n" +
-	"\ttransport\x18\x01 \x01(\tBo\xbaHl\xba\x01f\n" +
-	"\x15probe_transport_valid\x12+transport must be 'TCP', 'HTTP', or 'HTTPS'\x1a this in ['TCP', 'HTTP', 'HTTPS']\xc8\x01\x01R\ttransport\x12\x1f\n" +
+	"secretName:\xe2\x01\xbaH\xde\x01\x1a\xdb\x01\n" +
+	"\x18env_var_value_xor_secret\x12\x8f\x01an environment variable takes either a literal value or a secret_name, not both -- move the literal into the app's secrets list to reference it\x1a-!(this.value != '' && this.secret_name != '')\"\xa9\x06\n" +
+	"\x16AzureContainerAppProbe\x12z\n" +
+	"\ttransport\x18\x01 \x01(\x0e2P.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeTransportB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\ttransport\x12\x1f\n" +
 	"\x04port\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01R\x04port\x12\x12\n" +
 	"\x04path\x18\x03 \x01(\tR\x04path\x12\x12\n" +
 	"\x04host\x18\x04 \x01(\tR\x04host\x12g\n" +
-	"\aheaders\x18\x05 \x03(\v2M.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeHeaderR\aheaders\x12L\n" +
-	"\x18initial_delay_in_seconds\x18\x06 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18<(\x00\x8a\xa6\x1d\x010H\x00R\x15initialDelayInSeconds\x88\x01\x01\x12@\n" +
+	"\aheaders\x18\x05 \x03(\v2M.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeHeaderR\aheaders\x12G\n" +
+	"\x18initial_delay_in_seconds\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18<(\x00H\x00R\x15initialDelayInSeconds\x88\x01\x01\x12@\n" +
 	"\x10interval_seconds\x18\a \x01(\x05B\x10\xbaH\a\x1a\x05\x18\xf0\x01(\x01\x8a\xa6\x1d\x0210H\x01R\x0fintervalSeconds\x88\x01\x01\x12=\n" +
-	"\x0ftimeout_seconds\x18\b \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xf0\x01(\x01\x8a\xa6\x1d\x011H\x02R\x0etimeoutSeconds\x88\x01\x01\x12K\n" +
-	"\x17failure_count_threshold\x18\t \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x1e(\x01\x8a\xa6\x1d\x013H\x03R\x15failureCountThreshold\x88\x01\x01\x12K\n" +
+	"\x0ftimeout_seconds\x18\b \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xf0\x01(\x01\x8a\xa6\x1d\x011H\x02R\x0etimeoutSeconds\x88\x01\x01\x12L\n" +
+	"\x17failure_count_threshold\x18\t \x01(\x05B\x0f\xbaH\a\x1a\x05\x18\xf0\x01(\x01\x8a\xa6\x1d\x013H\x03R\x15failureCountThreshold\x88\x01\x01\x12K\n" +
 	"\x17success_count_threshold\x18\n" +
 	" \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\n" +
 	"(\x01\x8a\xa6\x1d\x013H\x04R\x15successCountThreshold\x88\x01\x01B\x1b\n" +
@@ -2324,63 +2821,62 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x1e\n" +
 	"\x04path\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04path\x12\x19\n" +
-	"\bsub_path\x18\x03 \x01(\tR\asubPath\"\xbe\x02\n" +
+	"\bsub_path\x18\x03 \x01(\tR\asubPath\"\xe7\x04\n" +
 	"\x17AzureContainerAppVolume\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\xa9\x01\n" +
-	"\fstorage_type\x18\x02 \x01(\tB\x80\x01\xbaHq\xba\x01n\n" +
-	"\x19volume_storage_type_valid\x12.storage_type must be 'EmptyDir' or 'AzureFile'\x1a!this in ['EmptyDir', 'AzureFile']\x8a\xa6\x1d\bEmptyDirH\x00R\vstorageType\x88\x01\x01\x12!\n" +
-	"\fstorage_name\x18\x03 \x01(\tR\vstorageName\x12#\n" +
-	"\rmount_options\x18\x04 \x01(\tR\fmountOptionsB\x0f\n" +
-	"\r_storage_type\"\xc1\x02\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x80\x01\n" +
+	"\fstorage_type\x18\x02 \x01(\x0e2S.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeStorageTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\vstorageType\x12{\n" +
+	"\fstorage_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xbe\x03\x92\xd4a\x1bstatus.outputs.storage_nameR\vstorageName\x12#\n" +
+	"\rmount_options\x18\x04 \x01(\tR\fmountOptions:\x86\x02\xbaH\x82\x02\x1a\xff\x01\n" +
+	"'volume_file_share_requires_storage_name\x12\x9a\x01AZURE_FILE and NFS_AZURE_FILE volumes require storage_name (the environment storage resource backing the share); EMPTY_DIR and SECRET volumes must omit it\x1a7(this.storage_type in [2, 3]) == has(this.storage_name)\"\x81\x06\n" +
 	"\x17AzureContainerAppSecret\x12\xc4\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xaf\x01\xbaH\xab\x01\xba\x01\x9d\x01\n" +
-	"\x12secret_name_format\x12Vsecret name must be lowercase alphanumeric or hyphens, start and end with alphanumeric\x1a/this.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\x12-\n" +
+	"\x12secret_name_format\x12Vsecret name must be lowercase alphanumeric or hyphens, start and end with alphanumeric\x1a/this.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12\x1a\n" +
+	"\x05value\x18\x02 \x01(\tB\x04\xa0\xa6\x1d\x01R\x05value\x12-\n" +
 	"\x13key_vault_secret_id\x18\x03 \x01(\tR\x10keyVaultSecretId\x12\x1a\n" +
-	"\bidentity\x18\x04 \x01(\tR\bidentity\"\xa9\x01\n" +
+	"\bidentity\x18\x04 \x01(\tR\bidentity:\xb7\x03\xbaH\xb3\x03\x1a\xa0\x01\n" +
+	"\x1asecret_value_xor_key_vault\x12Ka secret takes either a plain-text value or a key_vault_secret_id, not both\x1a5!(this.value != '' && this.key_vault_secret_id != '')\x1a\x8d\x02\n" +
+	"\"secret_key_vault_requires_identity\x12\xab\x01key_vault_secret_id requires identity (\"System\" or a user-assigned identity ARM ID) so the app can read the vault, and identity is only meaningful with key_vault_secret_id\x1a9(this.key_vault_secret_id != '') == (this.identity != '')\"\xa2\x04\n" +
 	"\x19AzureContainerAppRegistry\x12\"\n" +
 	"\x06server\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06server\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x120\n" +
 	"\x14password_secret_name\x18\x03 \x01(\tR\x12passwordSecretName\x12\x1a\n" +
-	"\bidentity\x18\x04 \x01(\tR\bidentity\"\xea\b\n" +
+	"\bidentity\x18\x04 \x01(\tR\bidentity:\xf6\x02\xbaH\xf2\x02\x1a\xef\x02\n" +
+	"\x12registry_auth_mode\x12\xb3\x01a registry authenticates with either a managed identity or a username + password_secret_name pair -- exactly one mode, and username and password_secret_name always travel together\x1a\xa2\x01(this.identity != '' && this.username == '' && this.password_secret_name == '') || (this.identity == '' && this.username != '' && this.password_secret_name != '')\"\x94\t\n" +
 	"\x18AzureContainerAppIngress\x129\n" +
 	"\x10external_enabled\x18\x01 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x0fexternalEnabled\x88\x01\x01\x12,\n" +
 	"\vtarget_port\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01R\n" +
 	"targetPort\x123\n" +
-	"\fexposed_port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x01R\vexposedPort\x88\x01\x01\x12\xaa\x01\n" +
-	"\ttransport\x18\x04 \x01(\tB\x86\x01\xbaH{\xba\x01x\n" +
-	"\x17ingress_transport_valid\x123transport must be 'auto', 'http', 'http2', or 'tcp'\x1a(this in ['auto', 'http', 'http2', 'tcp']\x8a\xa6\x1d\x04autoH\x02R\ttransport\x88\x01\x01\x12L\n" +
-	"\x1aallow_insecure_connections\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x03R\x18allowInsecureConnections\x88\x01\x01\x12\xdb\x01\n" +
-	"\x17client_certificate_mode\x18\x06 \x01(\tB\xa2\x01\xbaH\x9e\x01\xba\x01\x9a\x01\n" +
-	"\x16client_cert_mode_valid\x12Iclient_certificate_mode must be 'Accept', 'Require', or 'Ignore' when set\x1a5this == '' || this in ['Accept', 'Require', 'Ignore']R\x15clientCertificateMode\x12\x80\x01\n" +
+	"\fexposed_port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x01R\vexposedPort\x88\x01\x01\x12z\n" +
+	"\ttransport\x18\x04 \x01(\x0e2R.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressTransportB\b\xbaH\x05\x82\x01\x02\x10\x01R\ttransport\x12L\n" +
+	"\x1aallow_insecure_connections\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x18allowInsecureConnections\x88\x01\x01\x12\xa0\x01\n" +
+	"\x17client_certificate_mode\x18\x06 \x01(\x0e2^.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressClientCertificateModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x15clientCertificateMode\x12\x80\x01\n" +
 	"\x0etraffic_weight\x18\a \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTrafficWeightB\b\xbaH\x05\x92\x01\x02\b\x01R\rtrafficWeight\x12\x91\x01\n" +
-	"\x18ip_security_restrictions\x18\b \x03(\v2W.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpSecurityRestrictionR\x16ipSecurityRestrictions\x12m\n" +
-	"\vcors_policy\x18\t \x01(\v2L.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCorsPolicyR\n" +
-	"corsPolicyB\x13\n" +
+	"\x18ip_security_restrictions\x18\b \x03(\v2W.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpSecurityRestrictionR\x16ipSecurityRestrictions\x12Z\n" +
+	"\x04cors\x18\t \x01(\v2F.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCorsR\x04cors:\xb4\x01\xbaH\xb0\x01\x1a\xad\x01\n" +
+	"!ingress_exposed_port_requires_tcp\x12Xexposed_port is only valid with transport TCP -- HTTP transports always listen on 443/80\x1a.!has(this.exposed_port) || this.transport == 4B\x13\n" +
 	"\x11_external_enabledB\x0f\n" +
-	"\r_exposed_portB\f\n" +
-	"\n" +
-	"_transportB\x1d\n" +
-	"\x1b_allow_insecure_connections\"\xd7\x01\n" +
+	"\r_exposed_portB\x1d\n" +
+	"\x1b_allow_insecure_connections\"\xa9\x04\n" +
 	"\x1eAzureContainerAppTrafficWeight\x127\n" +
 	"\x0flatest_revision\x18\x01 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x0elatestRevision\x88\x01\x01\x12'\n" +
 	"\x0frevision_suffix\x18\x02 \x01(\tR\x0erevisionSuffix\x12)\n" +
 	"\n" +
 	"percentage\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\n" +
 	"percentage\x12\x14\n" +
-	"\x05label\x18\x04 \x01(\tR\x05labelB\x12\n" +
-	"\x10_latest_revision\"\x9d\x02\n" +
+	"\x05label\x18\x04 \x01(\tR\x05label:\xcf\x02\xbaH\xcb\x02\x1a\xc8\x02\n" +
+	"\x15traffic_weight_target\x12\x80\x01each traffic weight targets exactly one thing: set latest_revision: true OR name a revision_suffix, never both and never neither\x1a\xab\x01((has(this.latest_revision) && this.latest_revision) && this.revision_suffix == '') || (!(has(this.latest_revision) && this.latest_revision) && this.revision_suffix != '')B\x12\n" +
+	"\x10_latest_revision\"\x9b\x02\n" +
 	"&AzureContainerAppIpSecurityRestriction\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12{\n" +
-	"\x06action\x18\x02 \x01(\tBc\xbaH`\xba\x01Z\n" +
-	"\x1bip_restriction_action_valid\x12 action must be 'Allow' or 'Deny'\x1a\x19this in ['Allow', 'Deny']\xc8\x01\x01R\x06action\x124\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12y\n" +
+	"\x06action\x18\x02 \x01(\x0e2U.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpRestrictionActionB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x06action\x124\n" +
 	"\x10ip_address_range\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x0eipAddressRange\x12 \n" +
-	"\vdescription\x18\x04 \x01(\tR\vdescription\"\x87\x03\n" +
-	"\x1bAzureContainerAppCorsPolicy\x121\n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\"\x81\x03\n" +
+	"\x15AzureContainerAppCors\x121\n" +
 	"\x0fallowed_origins\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eallowedOrigins\x12'\n" +
 	"\x0fallowed_headers\x18\x02 \x03(\tR\x0eallowedHeaders\x12'\n" +
 	"\x0fallowed_methods\x18\x03 \x03(\tR\x0eallowedMethods\x12'\n" +
@@ -2388,19 +2884,19 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\x12max_age_in_seconds\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x0fmaxAgeInSeconds\x88\x01\x01\x12J\n" +
 	"\x19allow_credentials_enabled\x18\x06 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\x17allowCredentialsEnabled\x88\x01\x01B\x15\n" +
 	"\x13_max_age_in_secondsB\x1c\n" +
-	"\x1a_allow_credentials_enabled\"\xf6\x01\n" +
+	"\x1a_allow_credentials_enabled\"\x90\x03\n" +
 	"\x1eAzureContainerAppHttpScaleRule\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12;\n" +
-	"\x13concurrent_requests\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x12concurrentRequests\x12w\n" +
-	"\x0eauthentication\x18\x03 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\"\xf5\x01\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\xd4\x01\n" +
+	"\x13concurrent_requests\x18\x02 \x01(\tB\xa2\x01\xbaH\x9e\x01\xba\x01\x97\x01\n" +
+	"&http_rule_concurrent_requests_positive\x12Nconcurrent_requests must be a positive integer written as a string, e.g. \"100\"\x1a\x1dthis.matches('^[1-9][0-9]*$')\xc8\x01\x01R\x12concurrentRequests\x12w\n" +
+	"\x0eauthentication\x18\x03 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\"\x8e\x03\n" +
 	"\x1dAzureContainerAppTcpScaleRule\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12;\n" +
-	"\x13concurrent_requests\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x12concurrentRequests\x12w\n" +
-	"\x0eauthentication\x18\x03 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\"\xa1\x02\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\xd3\x01\n" +
+	"\x13concurrent_requests\x18\x02 \x01(\tB\xa1\x01\xbaH\x9d\x01\xba\x01\x96\x01\n" +
+	"%tcp_rule_concurrent_requests_positive\x12Nconcurrent_requests must be a positive integer written as a string, e.g. \"100\"\x1a\x1dthis.matches('^[1-9][0-9]*$')\xc8\x01\x01R\x12concurrentRequests\x12w\n" +
+	"\x0eauthentication\x18\x03 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\"\x9f\x04\n" +
 	"$AzureContainerAppAzureQueueScaleRule\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12)\n" +
@@ -2408,35 +2904,82 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"queue_name\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tqueueName\x12*\n" +
 	"\fqueue_length\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\vqueueLength\x12\x81\x01\n" +
-	"\x0eauthentication\x18\x04 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eauthentication\"\xab\x03\n" +
-	" AzureContainerAppCustomScaleRule\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x124\n" +
-	"\x10custom_rule_type\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x0ecustomRuleType\x12{\n" +
-	"\bmetadata\x18\x03 \x03(\v2_.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntryR\bmetadata\x12w\n" +
-	"\x0eauthentication\x18\x04 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\x1a;\n" +
+	"\x0eauthentication\x18\x04 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eauthentication:\xfb\x01\xbaH\xf7\x01\x1a\xf4\x01\n" +
+	"!queue_rule_auth_trigger_parameter\x12\x97\x01Azure Queue scale rule authentication entries must set trigger_parameter (typically \"connection\") so KEDA knows which scaler parameter the secret feeds\x1a5this.authentication.all(a, a.trigger_parameter != '')\"\xaa\x0f\n" +
+	" AzureContainerAppCustomScaleRule\x12\xac\x01\n" +
+	"\x04name\x18\x01 \x01(\tB\x97\x01\xbaH\x93\x01\xba\x01\x88\x01\n" +
+	"\x17custom_rule_name_format\x12Nscale rule name must be lowercase alphanumeric characters, hyphens, or periods\x1a\x1dthis.matches('^[a-z0-9.-]+$')\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x97\t\n" +
+	"\x10custom_rule_type\x18\x02 \x01(\tB\xec\b\xbaH\xe8\b\xba\x01\xe1\b\n" +
+	"\x1bcustom_rule_type_vocabulary\x12\xad\x01custom_rule_type must be a KEDA scaler Azure Container Apps supports, e.g. kafka, prometheus, redis, cron, cpu, memory, azure-servicebus, rabbitmq (see keda.sh/docs/scalers)\x1a\x91\athis in ['activemq', 'artemis-queue', 'kafka', 'pulsar', 'aws-cloudwatch', 'aws-dynamodb', 'aws-dynamodb-streams', 'aws-kinesis-stream', 'aws-sqs-queue', 'azure-app-insights', 'azure-blob', 'azure-data-explorer', 'azure-eventhub', 'azure-log-analytics', 'azure-monitor', 'azure-pipelines', 'azure-servicebus', 'azure-queue', 'cassandra', 'cpu', 'cron', 'datadog', 'elasticsearch', 'external', 'external-push', 'gcp-stackdriver', 'gcp-storage', 'gcp-pubsub', 'graphite', 'http', 'huawei-cloudeye', 'ibmmq', 'influxdb', 'kubernetes-workload', 'liiklus', 'memory', 'metrics-api', 'mongodb', 'mssql', 'mysql', 'nats-jetstream', 'stan', 'tcp', 'new-relic', 'openstack-metric', 'openstack-swift', 'postgresql', 'predictkube', 'prometheus', 'rabbitmq', 'redis', 'redis-cluster', 'redis-sentinel', 'redis-streams', 'redis-cluster-streams', 'redis-sentinel-streams', 'selenium-grid', 'solace-event-queue', 'github-runner']\xc8\x01\x01R\x0ecustomRuleType\x12\x85\x01\n" +
+	"\bmetadata\x18\x03 \x03(\v2_.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\bmetadata\x12w\n" +
+	"\x0eauthentication\x18\x04 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\x12\x1f\n" +
+	"\videntity_id\x18\x05 \x01(\tR\n" +
+	"identityId\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x86\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdd\x01\xbaH\xd9\x01\x1a\xd6\x01\n" +
+	"\"custom_rule_auth_trigger_parameter\x12ycustom scale rule authentication entries must set trigger_parameter so KEDA knows which scaler parameter the secret feeds\x1a5this.authentication.all(a, a.trigger_parameter != '')\"z\n" +
 	"\x1eAzureContainerAppScaleRuleAuth\x12+\n" +
 	"\vsecret_name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\n" +
-	"secretName\x127\n" +
-	"\x11trigger_parameter\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x10triggerParameter\"\x87\x02\n" +
+	"secretName\x12+\n" +
+	"\x11trigger_parameter\x18\x02 \x01(\tR\x10triggerParameter\"\xe4\x01\n" +
 	"\x15AzureContainerAppDapr\x12!\n" +
 	"\x06app_id\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05appId\x12\x1e\n" +
-	"\bapp_port\x18\x02 \x01(\x05H\x00R\aappPort\x88\x01\x01\x12\x8c\x01\n" +
-	"\fapp_protocol\x18\x03 \x01(\tBd\xbaHY\xba\x01V\n" +
-	"\x13dapr_protocol_valid\x12%app_protocol must be 'http' or 'grpc'\x1a\x18this in ['http', 'grpc']\x8a\xa6\x1d\x04httpH\x01R\vappProtocol\x88\x01\x01B\v\n" +
-	"\t_app_portB\x0f\n" +
-	"\r_app_protocol\"\xeb\x02\n" +
-	"\x19AzureContainerAppIdentity\x12\xd1\x01\n" +
-	"\x04type\x18\x01 \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\xb1\x01\n" +
-	"\x13identity_type_valid\x12Otype must be 'SystemAssigned', 'UserAssigned', or 'SystemAssigned,UserAssigned'\x1aIthis in ['SystemAssigned', 'UserAssigned', 'SystemAssigned,UserAssigned']\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIdsB\x8a\x03\n" +
+	"\bapp_port\x18\x02 \x01(\x05H\x00R\aappPort\x88\x01\x01\x12{\n" +
+	"\fapp_protocol\x18\x03 \x01(\x0e2N.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDaprProtocolB\b\xbaH\x05\x82\x01\x02\x10\x01R\vappProtocolB\v\n" +
+	"\t_app_port\"\xdb\x04\n" +
+	"\x19AzureContainerAppIdentity\x12n\n" +
+	"\x04type\x18\x01 \x01(\x0e2N.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityTypeB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb6\x02\xbaH\xb2\x02\x1a\xaf\x02\n" +
+	"%container_app_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*l\n" +
+	"\x1dAzureContainerAppRevisionMode\x121\n" +
+	"-azure_container_app_revision_mode_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06SINGLE\x10\x01\x12\f\n" +
+	"\bMULTIPLE\x10\x02*\x83\x01\n" +
+	"\x1fAzureContainerAppProbeTransport\x123\n" +
+	"/azure_container_app_probe_transport_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"TCP_SOCKET\x10\x01\x12\f\n" +
+	"\bHTTP_GET\x10\x02\x12\r\n" +
+	"\tHTTPS_GET\x10\x03*\x9c\x01\n" +
+	"\"AzureContainerAppVolumeStorageType\x127\n" +
+	"3azure_container_app_volume_storage_type_unspecified\x10\x00\x12\r\n" +
+	"\tEMPTY_DIR\x10\x01\x12\x0e\n" +
+	"\n" +
+	"AZURE_FILE\x10\x02\x12\x12\n" +
+	"\x0eNFS_AZURE_FILE\x10\x03\x12\n" +
+	"\n" +
+	"\x06SECRET\x10\x04*\x82\x01\n" +
+	"!AzureContainerAppIngressTransport\x125\n" +
+	"1azure_container_app_ingress_transport_unspecified\x10\x00\x12\b\n" +
+	"\x04AUTO\x10\x01\x12\b\n" +
+	"\x04HTTP\x10\x02\x12\t\n" +
+	"\x05HTTP2\x10\x03\x12\a\n" +
+	"\x03TCP\x10\x04*\x99\x01\n" +
+	"-AzureContainerAppIngressClientCertificateMode\x12C\n" +
+	"?azure_container_app_ingress_client_certificate_mode_unspecified\x10\x00\x12\n" +
+	"\n" +
+	"\x06ACCEPT\x10\x01\x12\v\n" +
+	"\aREQUIRE\x10\x02\x12\n" +
+	"\n" +
+	"\x06IGNORE\x10\x03*v\n" +
+	"$AzureContainerAppIpRestrictionAction\x129\n" +
+	"5azure_container_app_ip_restriction_action_unspecified\x10\x00\x12\t\n" +
+	"\x05ALLOW\x10\x01\x12\b\n" +
+	"\x04DENY\x10\x02*p\n" +
+	"\x1dAzureContainerAppDaprProtocol\x121\n" +
+	"-azure_container_app_dapr_protocol_unspecified\x10\x00\x12\r\n" +
+	"\tDAPR_HTTP\x10\x01\x12\r\n" +
+	"\tDAPR_GRPC\x10\x02*\x98\x01\n" +
+	"\x1dAzureContainerAppIdentityType\x121\n" +
+	"-azure_container_app_identity_type_unspecified\x10\x00\x12\x13\n" +
+	"\x0fSYSTEM_ASSIGNED\x10\x01\x12\x11\n" +
+	"\rUSER_ASSIGNED\x10\x02\x12\x1c\n" +
+	"\x18SYSTEM_AND_USER_ASSIGNED\x10\x03B\x8a\x03\n" +
 	"3com.dev.planton.provider.azure.azurecontainerapp.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerapp/v1;azurecontainerappv1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Azure.Azurecontainerapp.V1\xca\x02/Dev\\Planton\\Provider\\Azure\\Azurecontainerapp\\V1\xe2\x02;Dev\\Planton\\Provider\\Azure\\Azurecontainerapp\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Azure::Azurecontainerapp::V1b\x06proto3"
 
 var (
@@ -2451,69 +2994,89 @@ func file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescGZIP
 	return file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_goTypes = []any{
-	(*AzureContainerAppSpec)(nil),                  // 0: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec
-	(*AzureContainerAppContainer)(nil),             // 1: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer
-	(*AzureContainerAppInitContainer)(nil),         // 2: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainer
-	(*AzureContainerAppEnvVar)(nil),                // 3: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppEnvVar
-	(*AzureContainerAppProbe)(nil),                 // 4: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe
-	(*AzureContainerAppProbeHeader)(nil),           // 5: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeHeader
-	(*AzureContainerAppVolumeMount)(nil),           // 6: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMount
-	(*AzureContainerAppVolume)(nil),                // 7: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolume
-	(*AzureContainerAppSecret)(nil),                // 8: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSecret
-	(*AzureContainerAppRegistry)(nil),              // 9: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRegistry
-	(*AzureContainerAppIngress)(nil),               // 10: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress
-	(*AzureContainerAppTrafficWeight)(nil),         // 11: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTrafficWeight
-	(*AzureContainerAppIpSecurityRestriction)(nil), // 12: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpSecurityRestriction
-	(*AzureContainerAppCorsPolicy)(nil),            // 13: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCorsPolicy
-	(*AzureContainerAppHttpScaleRule)(nil),         // 14: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppHttpScaleRule
-	(*AzureContainerAppTcpScaleRule)(nil),          // 15: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTcpScaleRule
-	(*AzureContainerAppAzureQueueScaleRule)(nil),   // 16: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppAzureQueueScaleRule
-	(*AzureContainerAppCustomScaleRule)(nil),       // 17: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule
-	(*AzureContainerAppScaleRuleAuth)(nil),         // 18: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
-	(*AzureContainerAppDapr)(nil),                  // 19: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDapr
-	(*AzureContainerAppIdentity)(nil),              // 20: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity
-	nil,                                            // 21: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntry
-	(*v1.StringValueOrRef)(nil),                    // 22: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureContainerAppRevisionMode)(0),                 // 0: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRevisionMode
+	(AzureContainerAppProbeTransport)(0),               // 1: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeTransport
+	(AzureContainerAppVolumeStorageType)(0),            // 2: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeStorageType
+	(AzureContainerAppIngressTransport)(0),             // 3: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressTransport
+	(AzureContainerAppIngressClientCertificateMode)(0), // 4: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressClientCertificateMode
+	(AzureContainerAppIpRestrictionAction)(0),          // 5: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpRestrictionAction
+	(AzureContainerAppDaprProtocol)(0),                 // 6: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDaprProtocol
+	(AzureContainerAppIdentityType)(0),                 // 7: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityType
+	(*AzureContainerAppSpec)(nil),                      // 8: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec
+	(*AzureContainerAppContainer)(nil),                 // 9: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer
+	(*AzureContainerAppInitContainer)(nil),             // 10: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainer
+	(*AzureContainerAppEnvVar)(nil),                    // 11: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppEnvVar
+	(*AzureContainerAppProbe)(nil),                     // 12: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe
+	(*AzureContainerAppProbeHeader)(nil),               // 13: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeHeader
+	(*AzureContainerAppVolumeMount)(nil),               // 14: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMount
+	(*AzureContainerAppVolume)(nil),                    // 15: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolume
+	(*AzureContainerAppSecret)(nil),                    // 16: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSecret
+	(*AzureContainerAppRegistry)(nil),                  // 17: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRegistry
+	(*AzureContainerAppIngress)(nil),                   // 18: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress
+	(*AzureContainerAppTrafficWeight)(nil),             // 19: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTrafficWeight
+	(*AzureContainerAppIpSecurityRestriction)(nil),     // 20: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpSecurityRestriction
+	(*AzureContainerAppCors)(nil),                      // 21: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCors
+	(*AzureContainerAppHttpScaleRule)(nil),             // 22: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppHttpScaleRule
+	(*AzureContainerAppTcpScaleRule)(nil),              // 23: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTcpScaleRule
+	(*AzureContainerAppAzureQueueScaleRule)(nil),       // 24: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppAzureQueueScaleRule
+	(*AzureContainerAppCustomScaleRule)(nil),           // 25: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule
+	(*AzureContainerAppScaleRuleAuth)(nil),             // 26: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
+	(*AzureContainerAppDapr)(nil),                      // 27: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDapr
+	(*AzureContainerAppIdentity)(nil),                  // 28: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity
+	nil,                                                // 29: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.TagsEntry
+	nil,                                                // 30: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntry
+	(*v1.StringValueOrRef)(nil),                        // 31: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_depIdxs = []int32{
-	22, // 0: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	22, // 1: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.container_app_environment_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 2: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.containers:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer
-	2,  // 3: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.init_containers:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainer
-	7,  // 4: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.volumes:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolume
-	14, // 5: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.http_scale_rules:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppHttpScaleRule
-	15, // 6: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.tcp_scale_rules:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTcpScaleRule
-	16, // 7: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.azure_queue_scale_rules:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppAzureQueueScaleRule
-	17, // 8: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.custom_scale_rules:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule
-	8,  // 9: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.secrets:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSecret
-	9,  // 10: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.registries:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRegistry
-	10, // 11: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.ingress:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress
-	19, // 12: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.dapr:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDapr
-	20, // 13: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.identity:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity
-	3,  // 14: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.env:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppEnvVar
-	4,  // 15: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.liveness_probe:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe
-	4,  // 16: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.readiness_probe:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe
-	4,  // 17: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.startup_probe:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe
-	6,  // 18: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.volume_mounts:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMount
-	3,  // 19: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainer.env:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppEnvVar
-	6,  // 20: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainer.volume_mounts:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMount
-	5,  // 21: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe.headers:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeHeader
-	11, // 22: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress.traffic_weight:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTrafficWeight
-	12, // 23: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress.ip_security_restrictions:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpSecurityRestriction
-	13, // 24: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress.cors_policy:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCorsPolicy
-	18, // 25: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppHttpScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
-	18, // 26: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTcpScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
-	18, // 27: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppAzureQueueScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
-	21, // 28: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.metadata:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntry
-	18, // 29: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
-	22, // 30: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	31, // [31:31] is the sub-list for method output_type
-	31, // [31:31] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	31, // 0: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31, // 1: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.container_app_environment_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 2: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.revision_mode:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRevisionMode
+	9,  // 3: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.containers:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer
+	10, // 4: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.init_containers:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainer
+	15, // 5: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.volumes:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolume
+	22, // 6: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.http_scale_rules:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppHttpScaleRule
+	23, // 7: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.tcp_scale_rules:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTcpScaleRule
+	24, // 8: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.azure_queue_scale_rules:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppAzureQueueScaleRule
+	25, // 9: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.custom_scale_rules:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule
+	16, // 10: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.secrets:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSecret
+	17, // 11: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.registries:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRegistry
+	18, // 12: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.ingress:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress
+	27, // 13: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.dapr:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDapr
+	28, // 14: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.identity:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity
+	29, // 15: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.tags:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppSpec.TagsEntry
+	11, // 16: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.env:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppEnvVar
+	12, // 17: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.liveness_probe:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe
+	12, // 18: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.readiness_probe:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe
+	12, // 19: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.startup_probe:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe
+	14, // 20: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppContainer.volume_mounts:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMount
+	11, // 21: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainer.env:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppEnvVar
+	14, // 22: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppInitContainer.volume_mounts:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeMount
+	1,  // 23: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe.transport:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeTransport
+	13, // 24: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbe.headers:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppProbeHeader
+	2,  // 25: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolume.storage_type:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeStorageType
+	31, // 26: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolume.storage_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 27: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress.transport:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressTransport
+	4,  // 28: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress.client_certificate_mode:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngressClientCertificateMode
+	19, // 29: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress.traffic_weight:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTrafficWeight
+	20, // 30: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress.ip_security_restrictions:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpSecurityRestriction
+	21, // 31: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIngress.cors:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCors
+	5,  // 32: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpSecurityRestriction.action:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIpRestrictionAction
+	26, // 33: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppHttpScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
+	26, // 34: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppTcpScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
+	26, // 35: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppAzureQueueScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
+	30, // 36: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.metadata:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntry
+	26, // 37: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.authentication:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuth
+	6,  // 38: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDapr.app_protocol:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppDaprProtocol
+	7,  // 39: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity.type:type_name -> dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityType
+	31, // 40: dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // [41:41] is the sub-list for method output_type
+	41, // [41:41] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_init() }
@@ -2524,7 +3087,6 @@ func file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_init() {
 	file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
@@ -2534,13 +3096,14 @@ func file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   22,
+			NumEnums:      8,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto = out.File

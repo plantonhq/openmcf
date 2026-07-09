@@ -15,7 +15,9 @@ This preset creates a production-grade Azure Container App Environment with VNet
 - **Internal load balancer** (`internalLoadBalancerEnabled: true`) -- Apps are accessible only from within the VNet; no public internet access
 - **Zone redundancy** (`zoneRedundancyEnabled: true`) -- Infrastructure is distributed across availability zones for higher resilience
 - **D4 workload profile** (`workloadProfileType: D4`) -- 4 vCPUs, 16 GiB RAM dedicated VMs; pre-warmed with 1 instance, scales to 5
-- **Log Analytics linked** (`logAnalyticsWorkspaceId`) -- Centralized logging for monitoring and alerting
+- **Mutual TLS** (`mutualTlsEnabled: true`) -- All app-to-app traffic inside the environment is encrypted and authenticated
+- **Log Analytics destination** (`logsDestination: LOG_ANALYTICS` + `logAnalyticsWorkspaceId`) -- Centralized logging for monitoring and alerting
+- **System-assigned identity** (`identity.type: SYSTEM_ASSIGNED`) -- Grants the environment's platform operations a keyless RBAC principal
 - **Consumption still available** -- The Consumption profile is always present alongside dedicated profiles for lightweight workloads
 
 ## Placeholders to Replace

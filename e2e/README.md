@@ -503,6 +503,13 @@ owns two responsibilities beyond wiring verifiers:
     the ephemeral run via `ARM_SKIP_PROVIDER_REGISTRATION=true`. Keep such opt-outs
     scoped to the harness and documented, so the test stays honest about what it
     proves.
+  - *Because of that opt-out, a kind whose ARM namespace has never been used on
+    the subscription fails its FIRST live run with a 409
+    `MissingSubscriptionRegistration`* (e.g. `Microsoft.App` before the first
+    Container Apps run). The fix is the same one-time subscription bootstrap the
+    opt-out defers: `az provider register --namespace <ns>` (registration takes
+    a minute or two; poll `az provider show -n <ns>` until `Registered`), then
+    re-run. Expect this once per new resource-provider family, never per kind.
 
 ### Authoring verifiers and prerequisite fixtures
 

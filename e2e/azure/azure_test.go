@@ -732,6 +732,51 @@ func TestAzureFunctionApp_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurefunctionapp", "terraform")
 }
 
+// --- Azure Container App Environment (fixture RG -> consumption-only environment; the boundary the family lives in) ---
+
+func TestAzureContainerAppEnvironment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironment", "pulumi")
+}
+func TestAzureContainerAppEnvironment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironment", "terraform")
+}
+
+// --- Azure Container App (composed: fixture RG -> fixture environment -> quickstart app with external ingress + HTTP scaling) ---
+
+func TestAzureContainerApp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerapp", "pulumi")
+}
+func TestAzureContainerApp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerapp", "terraform")
+}
+
+// --- Azure Container App Job (composed: fixture RG -> fixture environment -> schedule-triggered job) ---
+
+func TestAzureContainerAppJob_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappjob", "pulumi")
+}
+func TestAzureContainerAppJob_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappjob", "terraform")
+}
+
+// --- Azure Container App Environment Storage (composed: fixture RG -> fixture environment + scenario-local account -> share -> SMB registration) ---
+
+func TestAzureContainerAppEnvironmentStorage_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironmentstorage", "pulumi")
+}
+func TestAzureContainerAppEnvironmentStorage_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironmentstorage", "terraform")
+}
+
+// --- Azure Container App Environment Dapr Component (composed: fixture RG -> fixture environment -> backendless cron-binding component) ---
+
+func TestAzureContainerAppEnvironmentDaprComponent_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironmentdaprcomponent", "pulumi")
+}
+func TestAzureContainerAppEnvironmentDaprComponent_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerappenvironmentdaprcomponent", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

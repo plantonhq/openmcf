@@ -71,6 +71,17 @@ HANDLING OPTIONAL FIELDS WITH DEFAULTS
   // WRONG: a fallback that differs from the proto default (engine divergence)
   // if l.RunnerGroup == "" { l.RunnerGroup = "some-other-value" }
   ```
+- **RequiredWith-paired optionals: gate on the PAIRING field, not just presence.** Some
+  provider schemas declare `RequiredWith` between an optional flag and another argument
+  (e.g. a boolean that only exists for a VNet-injected shape, paired with the subnet
+  argument). For these, presence-guarding is NOT enough: manifest-driven stack-input
+  paths materialize proto `(default)` options into concrete values, so an optional bool
+  arrives non-nil as `false` and gets SENT — and the provider rejects a SPECIFIED value
+  (even `false`) without its pairing argument. Send such fields only when the pairing
+  field is also set, and mirror the same conditional in the Terraform module
+  (`var.pairing != null ? var.flag : null`). The offline plan does not catch this class
+  when the hack manifest exercises the paired shape — keep the minimal/unpaired shape
+  live-proven or plan-proven too.
 - **ONE-WAY / Computed provider flags: send only when true, on BOTH engines.** Some
   provider bools are one-way enables (the service cannot disable them once on) or
   Computed (the service turns them on inherently for certain shapes). For these, a plain

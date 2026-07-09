@@ -3,78 +3,75 @@ package module
 import (
 	"github.com/pkg/errors"
 	azurecontainerappv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerapp/v1"
-	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/containerapp"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func Resources(ctx *pulumi.Context, stackInput *azurecontainerappv1.AzureContainerAppStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
-	azureProviderConfig := stackInput.ProviderConfig
 
-	// Create azure provider using the credentials from the input
-	azureProvider, err := azure.NewProvider(ctx, "azure", &azure.ProviderArgs{
-		ClientId:       pulumi.String(azureProviderConfig.ClientId),
-		ClientSecret:   pulumi.String(azureProviderConfig.ClientSecret),
-		SubscriptionId: pulumi.String(azureProviderConfig.SubscriptionId),
-		TenantId:       pulumi.String(azureProviderConfig.TenantId),
-	})
+	// Build the Azure provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
+	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}
 
 	spec := locals.AzureContainerApp.Spec
 
-	// Build template
+	// The template is the revision unit: every change to it creates a new
+	// revision. Replica bounds and the scaler dials carry documented
+	// defaults the platform does not materialize into the stack input, so
+	// each is sent value-or-default (presence-guarded).
 	templateArgs := &containerapp.AppTemplateArgs{
 		Containers:  buildContainers(spec.Containers),
-		MinReplicas: pulumi.IntPtr(int(spec.GetMinReplicas())),
-		MaxReplicas: pulumi.IntPtr(int(spec.GetMaxReplicas())),
+		MinReplicas: pulumi.IntPtr(intOrDefault(spec.MinReplicas, 0)),
+		MaxReplicas: pulumi.IntPtr(intOrDefault(spec.MaxReplicas, 10)),
 	}
 
-	// Set init containers if provided
+	// The scaler dials: how long to wait after a scale event and how
+	// often KEDA evaluates the rules.
+	templateArgs.CooldownPeriodInSeconds = pulumi.IntPtr(intOrDefault(spec.CooldownPeriodInSeconds, 300))
+	templateArgs.PollingIntervalInSeconds = pulumi.IntPtr(intOrDefault(spec.PollingIntervalInSeconds, 30))
+	templateArgs.TerminationGracePeriodSeconds = pulumi.IntPtr(intOrDefault(spec.TerminationGracePeriodSeconds, 0))
+
 	if len(spec.InitContainers) > 0 {
 		templateArgs.InitContainers = buildInitContainers(spec.InitContainers)
 	}
 
-	// Set volumes if provided
 	if len(spec.Volumes) > 0 {
 		templateArgs.Volumes = buildVolumes(spec.Volumes)
 	}
 
-	// Set revision suffix if provided
+	// Sent only when pinned: Azure generates a revision suffix itself
+	// when the property is omitted.
 	if spec.RevisionSuffix != "" {
 		templateArgs.RevisionSuffix = pulumi.StringPtr(spec.RevisionSuffix)
 	}
 
-	// Set HTTP scale rules
 	if len(spec.HttpScaleRules) > 0 {
 		templateArgs.HttpScaleRules = buildHttpScaleRules(spec.HttpScaleRules)
 	}
-
-	// Set TCP scale rules
 	if len(spec.TcpScaleRules) > 0 {
 		templateArgs.TcpScaleRules = buildTcpScaleRules(spec.TcpScaleRules)
 	}
-
-	// Set Azure Queue scale rules
 	if len(spec.AzureQueueScaleRules) > 0 {
 		templateArgs.AzureQueueScaleRules = buildAzureQueueScaleRules(spec.AzureQueueScaleRules)
 	}
-
-	// Set Custom scale rules
 	if len(spec.CustomScaleRules) > 0 {
 		templateArgs.CustomScaleRules = buildCustomScaleRules(spec.CustomScaleRules)
 	}
 
-	// Build Container App arguments
-	revisionMode := spec.GetRevisionMode()
-	if revisionMode == "" {
-		revisionMode = "Single"
+	// Unspecified revision mode deploys Single -- the right choice for
+	// most workloads; Multiple exists for blue-green/canary splitting.
+	revisionMode := "Single"
+	if spec.RevisionMode != azurecontainerappv1.AzureContainerAppRevisionMode_azure_container_app_revision_mode_unspecified {
+		revisionMode = revisionModeStrings[spec.RevisionMode]
 	}
 
 	appArgs := &containerapp.AppArgs{
-		Name:                      pulumi.String(spec.Name),
+		Name:                      pulumi.String(spec.ContainerAppName),
 		ResourceGroupName:         pulumi.String(locals.ResourceGroupName),
 		ContainerAppEnvironmentId: pulumi.String(spec.ContainerAppEnvironmentId.GetValue()),
 		RevisionMode:              pulumi.String(revisionMode),
@@ -82,62 +79,80 @@ func Resources(ctx *pulumi.Context, stackInput *azurecontainerappv1.AzureContain
 		Tags:                      pulumi.ToStringMap(locals.AzureTags),
 	}
 
-	// Set workload profile name if provided
+	// Omitted runs on the environment's serverless Consumption profile.
 	if spec.WorkloadProfileName != "" {
 		appArgs.WorkloadProfileName = pulumi.StringPtr(spec.WorkloadProfileName)
 	}
 
-	// Set max inactive revisions if provided
 	if spec.MaxInactiveRevisions != nil {
 		appArgs.MaxInactiveRevisions = pulumi.IntPtr(int(spec.GetMaxInactiveRevisions()))
 	}
 
-	// Set secrets if provided
 	if len(spec.Secrets) > 0 {
 		appArgs.Secrets = buildSecrets(spec.Secrets)
 	}
 
-	// Set registries if provided
 	if len(spec.Registries) > 0 {
 		appArgs.Registries = buildRegistries(spec.Registries)
 	}
 
-	// Set ingress if provided
 	if spec.Ingress != nil {
 		appArgs.Ingress = buildIngress(spec.Ingress)
 	}
 
-	// Set Dapr if provided
 	if spec.Dapr != nil {
 		appArgs.Dapr = buildDapr(spec.Dapr)
 	}
 
-	// Set identity if provided
 	if spec.Identity != nil {
 		appArgs.Identity = buildIdentity(spec.Identity)
 	}
 
-	// Create the Container App
-	app, err := containerapp.NewApp(ctx, spec.Name, appArgs, pulumi.Provider(azureProvider))
+	createdApp, err := containerapp.NewApp(ctx,
+		spec.ContainerAppName,
+		appArgs,
+		pulumi.Provider(azureProvider))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create Container App %s", spec.Name)
+		return errors.Wrapf(err, "failed to create Container App %s", spec.ContainerAppName)
 	}
 
-	// Export stack outputs
-	ctx.Export(OpContainerAppId, app.ID())
-	ctx.Export(OpLatestRevisionName, app.LatestRevisionName)
-	ctx.Export(OpLatestRevisionFqdn, app.LatestRevisionFqdn)
-	ctx.Export(OpOutboundIpAddresses, app.OutboundIpAddresses)
+	// Export stack outputs.
+	ctx.Export(OpContainerAppId, createdApp.ID())
+	ctx.Export(OpContainerAppName, createdApp.Name)
+	ctx.Export(OpLatestRevisionName, createdApp.LatestRevisionName)
+	ctx.Export(OpLatestRevisionFqdn, createdApp.LatestRevisionFqdn)
+	ctx.Export(OpOutboundIpAddresses, createdApp.OutboundIpAddresses)
+	ctx.Export(OpCustomDomainVerificationId, createdApp.CustomDomainVerificationId)
 
-	// Export ingress FQDN conditionally -- only present when ingress is configured
-	ctx.Export(OpIngressFqdn, app.Ingress.ApplyT(func(ingress *containerapp.AppIngress) string {
-		if ingress != nil && ingress.Fqdn != nil {
-			return *ingress.Fqdn
+	// The app FQDN only exists when ingress is configured; exported empty
+	// otherwise so the output shape stays constant across configurations.
+	ctx.Export(OpIngressFqdn, createdApp.Ingress.ApplyT(func(ingress *containerapp.AppIngress) string {
+		if ingress == nil || ingress.Fqdn == nil {
+			return ""
 		}
-		return ""
+		return *ingress.Fqdn
+	}).(pulumi.StringOutput))
+
+	// The principal id exists only when the identity block carries a
+	// system-assigned identity; exported empty otherwise.
+	ctx.Export(OpIdentityPrincipalId, createdApp.Identity.ApplyT(func(identity *containerapp.AppIdentity) string {
+		if identity == nil || identity.PrincipalId == nil {
+			return ""
+		}
+		return *identity.PrincipalId
 	}).(pulumi.StringOutput))
 
 	return nil
+}
+
+// intOrDefault presence-guards an optional int32 field: stack inputs never
+// materialize proto defaults, so an unset field must deploy the spec's
+// documented default, not the Go zero value.
+func intOrDefault(value *int32, defaultValue int) int {
+	if value != nil {
+		return int(*value)
+	}
+	return defaultValue
 }
 
 // ---------------------------------------------------------------------------
@@ -154,22 +169,22 @@ func buildContainers(specs []*azurecontainerappv1.AzureContainerAppContainer) co
 			Memory: pulumi.String(c.Memory),
 		}
 
-		// Environment variables
 		if len(c.Env) > 0 {
 			container.Envs = buildEnvVars(c.Env)
 		}
 
-		// Command (entrypoint override)
 		if len(c.Command) > 0 {
 			container.Commands = pulumi.ToStringArray(c.Command)
 		}
 
-		// Args (CMD override)
 		if len(c.Args) > 0 {
 			container.Args = pulumi.ToStringArray(c.Args)
 		}
 
-		// Health probes
+		// Health probes. The per-type contracts (success threshold is
+		// readiness-only, per-type failure ceilings, per-type initial
+		// delay defaults) are front-loaded by the spec's CELs and the
+		// per-type builders below.
 		if c.LivenessProbe != nil {
 			container.LivenessProbes = containerapp.AppTemplateContainerLivenessProbeArray{
 				buildLivenessProbe(c.LivenessProbe),
@@ -186,7 +201,6 @@ func buildContainers(specs []*azurecontainerappv1.AzureContainerAppContainer) co
 			}
 		}
 
-		// Volume mounts
 		if len(c.VolumeMounts) > 0 {
 			container.VolumeMounts = buildVolumeMounts(c.VolumeMounts)
 		}
@@ -208,32 +222,27 @@ func buildInitContainers(specs []*azurecontainerappv1.AzureContainerAppInitConta
 			Image: pulumi.String(ic.Image),
 		}
 
-		// CPU is optional for init containers
+		// CPU/memory are optional on init containers: omitted, they
+		// inherit the app's overall allocation.
 		if ic.Cpu != nil {
 			initContainer.Cpu = pulumi.Float64(ic.GetCpu())
 		}
-
-		// Memory is optional for init containers
 		if ic.Memory != nil {
 			initContainer.Memory = pulumi.StringPtr(ic.GetMemory())
 		}
 
-		// Environment variables
 		if len(ic.Env) > 0 {
 			initContainer.Envs = buildInitContainerEnvVars(ic.Env)
 		}
 
-		// Command
 		if len(ic.Command) > 0 {
 			initContainer.Commands = pulumi.ToStringArray(ic.Command)
 		}
 
-		// Args
 		if len(ic.Args) > 0 {
 			initContainer.Args = pulumi.ToStringArray(ic.Args)
 		}
 
-		// Volume mounts
 		if len(ic.VolumeMounts) > 0 {
 			initContainer.VolumeMounts = buildInitContainerVolumeMounts(ic.VolumeMounts)
 		}
@@ -254,7 +263,25 @@ func buildEnvVars(specs []*azurecontainerappv1.AzureContainerAppEnvVar) containe
 			Name: pulumi.String(e.Name),
 		}
 
-		// Secret-backed env var takes precedence over literal value
+		// The spec's CEL guarantees value and secret_name never coexist.
+		if e.SecretName != "" {
+			envVar.SecretName = pulumi.StringPtr(e.SecretName)
+		} else if e.Value != "" {
+			envVar.Value = pulumi.StringPtr(e.Value)
+		}
+
+		envVars = append(envVars, envVar)
+	}
+	return envVars
+}
+
+func buildInitContainerEnvVars(specs []*azurecontainerappv1.AzureContainerAppEnvVar) containerapp.AppTemplateInitContainerEnvArray {
+	envVars := make(containerapp.AppTemplateInitContainerEnvArray, 0, len(specs))
+	for _, e := range specs {
+		envVar := containerapp.AppTemplateInitContainerEnvArgs{
+			Name: pulumi.String(e.Name),
+		}
+
 		if e.SecretName != "" {
 			envVar.SecretName = pulumi.StringPtr(e.SecretName)
 		} else if e.Value != "" {
@@ -269,11 +296,18 @@ func buildEnvVars(specs []*azurecontainerappv1.AzureContainerAppEnvVar) containe
 // ---------------------------------------------------------------------------
 // Probes
 // ---------------------------------------------------------------------------
+// Each probe type gets Azure's own per-type default for initial_delay when
+// the field is unset (1 for liveness, 0 for readiness/startup) -- matching
+// what azurerm's schema defaults would send.
 
 func buildLivenessProbe(spec *azurecontainerappv1.AzureContainerAppProbe) containerapp.AppTemplateContainerLivenessProbeArgs {
 	probe := containerapp.AppTemplateContainerLivenessProbeArgs{
-		Transport: pulumi.String(spec.Transport),
-		Port:      pulumi.Int(int(spec.Port)),
+		Transport:             pulumi.String(probeTransportStrings[spec.Transport]),
+		Port:                  pulumi.Int(int(spec.Port)),
+		InitialDelay:          pulumi.IntPtr(intOrDefault(spec.InitialDelayInSeconds, 1)),
+		IntervalSeconds:       pulumi.IntPtr(intOrDefault(spec.IntervalSeconds, 10)),
+		Timeout:               pulumi.IntPtr(intOrDefault(spec.TimeoutSeconds, 1)),
+		FailureCountThreshold: pulumi.IntPtr(intOrDefault(spec.FailureCountThreshold, 3)),
 	}
 
 	if spec.Path != "" {
@@ -285,26 +319,21 @@ func buildLivenessProbe(spec *azurecontainerappv1.AzureContainerAppProbe) contai
 	if len(spec.Headers) > 0 {
 		probe.Headers = buildLivenessProbeHeaders(spec.Headers)
 	}
-	if spec.InitialDelayInSeconds != nil {
-		probe.InitialDelay = pulumi.IntPtr(int(spec.GetInitialDelayInSeconds()))
-	}
-	if spec.IntervalSeconds != nil {
-		probe.IntervalSeconds = pulumi.IntPtr(int(spec.GetIntervalSeconds()))
-	}
-	if spec.TimeoutSeconds != nil {
-		probe.Timeout = pulumi.IntPtr(int(spec.GetTimeoutSeconds()))
-	}
-	if spec.FailureCountThreshold != nil {
-		probe.FailureCountThreshold = pulumi.IntPtr(int(spec.GetFailureCountThreshold()))
-	}
 
 	return probe
 }
 
 func buildReadinessProbe(spec *azurecontainerappv1.AzureContainerAppProbe) containerapp.AppTemplateContainerReadinessProbeArgs {
 	probe := containerapp.AppTemplateContainerReadinessProbeArgs{
-		Transport: pulumi.String(spec.Transport),
-		Port:      pulumi.Int(int(spec.Port)),
+		Transport:             pulumi.String(probeTransportStrings[spec.Transport]),
+		Port:                  pulumi.Int(int(spec.Port)),
+		InitialDelay:          pulumi.IntPtr(intOrDefault(spec.InitialDelayInSeconds, 0)),
+		IntervalSeconds:       pulumi.IntPtr(intOrDefault(spec.IntervalSeconds, 10)),
+		Timeout:               pulumi.IntPtr(intOrDefault(spec.TimeoutSeconds, 1)),
+		FailureCountThreshold: pulumi.IntPtr(intOrDefault(spec.FailureCountThreshold, 3)),
+		// Readiness is the only probe type Azure gives a success
+		// threshold (the spec's CEL rejects it elsewhere).
+		SuccessCountThreshold: pulumi.IntPtr(intOrDefault(spec.SuccessCountThreshold, 3)),
 	}
 
 	if spec.Path != "" {
@@ -316,29 +345,18 @@ func buildReadinessProbe(spec *azurecontainerappv1.AzureContainerAppProbe) conta
 	if len(spec.Headers) > 0 {
 		probe.Headers = buildReadinessProbeHeaders(spec.Headers)
 	}
-	if spec.InitialDelayInSeconds != nil {
-		probe.InitialDelay = pulumi.IntPtr(int(spec.GetInitialDelayInSeconds()))
-	}
-	if spec.IntervalSeconds != nil {
-		probe.IntervalSeconds = pulumi.IntPtr(int(spec.GetIntervalSeconds()))
-	}
-	if spec.TimeoutSeconds != nil {
-		probe.Timeout = pulumi.IntPtr(int(spec.GetTimeoutSeconds()))
-	}
-	if spec.FailureCountThreshold != nil {
-		probe.FailureCountThreshold = pulumi.IntPtr(int(spec.GetFailureCountThreshold()))
-	}
-	if spec.SuccessCountThreshold != nil {
-		probe.SuccessCountThreshold = pulumi.IntPtr(int(spec.GetSuccessCountThreshold()))
-	}
 
 	return probe
 }
 
 func buildStartupProbe(spec *azurecontainerappv1.AzureContainerAppProbe) containerapp.AppTemplateContainerStartupProbeArgs {
 	probe := containerapp.AppTemplateContainerStartupProbeArgs{
-		Transport: pulumi.String(spec.Transport),
-		Port:      pulumi.Int(int(spec.Port)),
+		Transport:             pulumi.String(probeTransportStrings[spec.Transport]),
+		Port:                  pulumi.Int(int(spec.Port)),
+		InitialDelay:          pulumi.IntPtr(intOrDefault(spec.InitialDelayInSeconds, 0)),
+		IntervalSeconds:       pulumi.IntPtr(intOrDefault(spec.IntervalSeconds, 10)),
+		Timeout:               pulumi.IntPtr(intOrDefault(spec.TimeoutSeconds, 1)),
+		FailureCountThreshold: pulumi.IntPtr(intOrDefault(spec.FailureCountThreshold, 3)),
 	}
 
 	if spec.Path != "" {
@@ -350,23 +368,11 @@ func buildStartupProbe(spec *azurecontainerappv1.AzureContainerAppProbe) contain
 	if len(spec.Headers) > 0 {
 		probe.Headers = buildStartupProbeHeaders(spec.Headers)
 	}
-	if spec.InitialDelayInSeconds != nil {
-		probe.InitialDelay = pulumi.IntPtr(int(spec.GetInitialDelayInSeconds()))
-	}
-	if spec.IntervalSeconds != nil {
-		probe.IntervalSeconds = pulumi.IntPtr(int(spec.GetIntervalSeconds()))
-	}
-	if spec.TimeoutSeconds != nil {
-		probe.Timeout = pulumi.IntPtr(int(spec.GetTimeoutSeconds()))
-	}
-	if spec.FailureCountThreshold != nil {
-		probe.FailureCountThreshold = pulumi.IntPtr(int(spec.GetFailureCountThreshold()))
-	}
 
 	return probe
 }
 
-// Probe header builders for each probe type (each has its own Pulumi type)
+// Probe header builders for each probe type (each has its own Pulumi type).
 
 func buildLivenessProbeHeaders(specs []*azurecontainerappv1.AzureContainerAppProbeHeader) containerapp.AppTemplateContainerLivenessProbeHeaderArray {
 	headers := make(containerapp.AppTemplateContainerLivenessProbeHeaderArray, 0, len(specs))
@@ -402,48 +408,7 @@ func buildStartupProbeHeaders(specs []*azurecontainerappv1.AzureContainerAppProb
 }
 
 // ---------------------------------------------------------------------------
-// Init Container Environment Variables
-// ---------------------------------------------------------------------------
-
-func buildInitContainerEnvVars(specs []*azurecontainerappv1.AzureContainerAppEnvVar) containerapp.AppTemplateInitContainerEnvArray {
-	envVars := make(containerapp.AppTemplateInitContainerEnvArray, 0, len(specs))
-	for _, e := range specs {
-		envVar := containerapp.AppTemplateInitContainerEnvArgs{
-			Name: pulumi.String(e.Name),
-		}
-
-		if e.SecretName != "" {
-			envVar.SecretName = pulumi.StringPtr(e.SecretName)
-		} else if e.Value != "" {
-			envVar.Value = pulumi.StringPtr(e.Value)
-		}
-
-		envVars = append(envVars, envVar)
-	}
-	return envVars
-}
-
-// ---------------------------------------------------------------------------
-// Init Container Volume Mounts
-// ---------------------------------------------------------------------------
-
-func buildInitContainerVolumeMounts(specs []*azurecontainerappv1.AzureContainerAppVolumeMount) containerapp.AppTemplateInitContainerVolumeMountArray {
-	mounts := make(containerapp.AppTemplateInitContainerVolumeMountArray, 0, len(specs))
-	for _, vm := range specs {
-		mount := containerapp.AppTemplateInitContainerVolumeMountArgs{
-			Name: pulumi.String(vm.Name),
-			Path: pulumi.String(vm.Path),
-		}
-		if vm.SubPath != "" {
-			mount.SubPath = pulumi.StringPtr(vm.SubPath)
-		}
-		mounts = append(mounts, mount)
-	}
-	return mounts
-}
-
-// ---------------------------------------------------------------------------
-// Volume Mounts
+// Volumes and Volume Mounts
 // ---------------------------------------------------------------------------
 
 func buildVolumeMounts(specs []*azurecontainerappv1.AzureContainerAppVolumeMount) containerapp.AppTemplateContainerVolumeMountArray {
@@ -461,9 +426,20 @@ func buildVolumeMounts(specs []*azurecontainerappv1.AzureContainerAppVolumeMount
 	return mounts
 }
 
-// ---------------------------------------------------------------------------
-// Volumes
-// ---------------------------------------------------------------------------
+func buildInitContainerVolumeMounts(specs []*azurecontainerappv1.AzureContainerAppVolumeMount) containerapp.AppTemplateInitContainerVolumeMountArray {
+	mounts := make(containerapp.AppTemplateInitContainerVolumeMountArray, 0, len(specs))
+	for _, vm := range specs {
+		mount := containerapp.AppTemplateInitContainerVolumeMountArgs{
+			Name: pulumi.String(vm.Name),
+			Path: pulumi.String(vm.Path),
+		}
+		if vm.SubPath != "" {
+			mount.SubPath = pulumi.StringPtr(vm.SubPath)
+		}
+		mounts = append(mounts, mount)
+	}
+	return mounts
+}
 
 func buildVolumes(specs []*azurecontainerappv1.AzureContainerAppVolume) containerapp.AppTemplateVolumeArray {
 	volumes := make(containerapp.AppTemplateVolumeArray, 0, len(specs))
@@ -472,14 +448,21 @@ func buildVolumes(specs []*azurecontainerappv1.AzureContainerAppVolume) containe
 			Name: pulumi.String(v.Name),
 		}
 
-		storageType := v.GetStorageType()
-		if storageType == "" {
-			storageType = "EmptyDir"
+		// Unspecified deploys EmptyDir -- ephemeral scratch space.
+		storageType := "EmptyDir"
+		if v.StorageType != azurecontainerappv1.AzureContainerAppVolumeStorageType_azure_container_app_volume_storage_type_unspecified {
+			storageType = volumeStorageTypeStrings[v.StorageType]
 		}
 		volume.StorageType = pulumi.StringPtr(storageType)
 
-		if v.StorageName != "" {
-			volume.StorageName = pulumi.StringPtr(v.StorageName)
+		// The environment storage registration backing file-share
+		// volumes; the spec's CEL pairs it with the share-backed types.
+		if v.StorageName != nil {
+			volume.StorageName = pulumi.StringPtr(v.StorageName.GetValue())
+		}
+
+		if v.MountOptions != "" {
+			volume.MountOptions = pulumi.StringPtr(v.MountOptions)
 		}
 
 		volumes = append(volumes, volume)
@@ -543,27 +526,35 @@ func buildCustomScaleRules(specs []*azurecontainerappv1.AzureContainerAppCustomS
 		rule := containerapp.AppTemplateCustomScaleRuleArgs{
 			Name:           pulumi.String(r.Name),
 			CustomRuleType: pulumi.String(r.CustomRuleType),
-		}
-		if len(r.Metadata) > 0 {
-			rule.Metadata = pulumi.ToStringMap(r.Metadata)
+			Metadata:       pulumi.ToStringMap(r.Metadata),
 		}
 		if len(r.Authentication) > 0 {
 			rule.Authentications = buildCustomScaleRuleAuth(r.Authentication)
+		}
+		// Workload identity for the scaler instead of connection-string
+		// secrets ("System" or a user-assigned identity ARM id).
+		if r.IdentityId != "" {
+			rule.IdentityId = pulumi.StringPtr(r.IdentityId)
 		}
 		rules = append(rules, rule)
 	}
 	return rules
 }
 
-// Scale rule authentication builders (each scale rule type has its own auth type)
+// Scale rule authentication builders (each scale rule type has its own
+// Pulumi type). trigger_parameter is optional on HTTP/TCP rules (their
+// scaler has a single implicit parameter) and spec-required elsewhere.
 
 func buildHttpScaleRuleAuth(specs []*azurecontainerappv1.AzureContainerAppScaleRuleAuth) containerapp.AppTemplateHttpScaleRuleAuthenticationArray {
 	auths := make(containerapp.AppTemplateHttpScaleRuleAuthenticationArray, 0, len(specs))
 	for _, a := range specs {
-		auths = append(auths, containerapp.AppTemplateHttpScaleRuleAuthenticationArgs{
-			SecretName:       pulumi.String(a.SecretName),
-			TriggerParameter: pulumi.String(a.TriggerParameter),
-		})
+		auth := containerapp.AppTemplateHttpScaleRuleAuthenticationArgs{
+			SecretName: pulumi.String(a.SecretName),
+		}
+		if a.TriggerParameter != "" {
+			auth.TriggerParameter = pulumi.StringPtr(a.TriggerParameter)
+		}
+		auths = append(auths, auth)
 	}
 	return auths
 }
@@ -571,10 +562,13 @@ func buildHttpScaleRuleAuth(specs []*azurecontainerappv1.AzureContainerAppScaleR
 func buildTcpScaleRuleAuth(specs []*azurecontainerappv1.AzureContainerAppScaleRuleAuth) containerapp.AppTemplateTcpScaleRuleAuthenticationArray {
 	auths := make(containerapp.AppTemplateTcpScaleRuleAuthenticationArray, 0, len(specs))
 	for _, a := range specs {
-		auths = append(auths, containerapp.AppTemplateTcpScaleRuleAuthenticationArgs{
-			SecretName:       pulumi.String(a.SecretName),
-			TriggerParameter: pulumi.String(a.TriggerParameter),
-		})
+		auth := containerapp.AppTemplateTcpScaleRuleAuthenticationArgs{
+			SecretName: pulumi.String(a.SecretName),
+		}
+		if a.TriggerParameter != "" {
+			auth.TriggerParameter = pulumi.StringPtr(a.TriggerParameter)
+		}
+		auths = append(auths, auth)
 	}
 	return auths
 }
@@ -612,12 +606,11 @@ func buildSecrets(specs []*azurecontainerappv1.AzureContainerAppSecret) containe
 			Name: pulumi.String(s.Name),
 		}
 
-		// Plain-text value takes precedence when key_vault_secret_id is not set
+		// The spec's CELs guarantee value XOR key_vault_secret_id and
+		// that identity travels with the Key Vault reference.
 		if s.KeyVaultSecretId != "" {
 			secret.KeyVaultSecretId = pulumi.StringPtr(s.KeyVaultSecretId)
-			if s.Identity != "" {
-				secret.Identity = pulumi.StringPtr(s.Identity)
-			}
+			secret.Identity = pulumi.StringPtr(s.Identity)
 		} else if s.Value != "" {
 			secret.Value = pulumi.StringPtr(s.Value)
 		}
@@ -638,17 +631,13 @@ func buildRegistries(specs []*azurecontainerappv1.AzureContainerAppRegistry) con
 			Server: pulumi.String(r.Server),
 		}
 
-		// Username/password authentication
-		if r.Username != "" {
-			registry.Username = pulumi.StringPtr(r.Username)
-		}
-		if r.PasswordSecretName != "" {
-			registry.PasswordSecretName = pulumi.StringPtr(r.PasswordSecretName)
-		}
-
-		// Managed identity authentication
+		// Exactly one auth mode (spec-enforced): managed identity, or
+		// username + password-secret together.
 		if r.Identity != "" {
 			registry.Identity = pulumi.StringPtr(r.Identity)
+		} else {
+			registry.Username = pulumi.StringPtr(r.Username)
+			registry.PasswordSecretName = pulumi.StringPtr(r.PasswordSecretName)
 		}
 
 		registries = append(registries, registry)
@@ -665,47 +654,59 @@ func buildIngress(spec *azurecontainerappv1.AzureContainerAppIngress) *container
 		TargetPort: pulumi.Int(int(spec.TargetPort)),
 	}
 
-	// External access (default: false)
 	if spec.ExternalEnabled != nil {
 		ingress.ExternalEnabled = pulumi.BoolPtr(spec.GetExternalEnabled())
 	}
 
-	// Exposed port (TCP transport only)
+	// Only meaningful for TCP transport (spec-enforced).
 	if spec.ExposedPort != nil {
 		ingress.ExposedPort = pulumi.IntPtr(int(spec.GetExposedPort()))
 	}
 
-	// Transport protocol
-	if spec.Transport != nil {
-		ingress.Transport = pulumi.StringPtr(spec.GetTransport())
+	// Unspecified deploys auto (Azure detects HTTP/1.1 vs HTTP/2).
+	transport := "auto"
+	if spec.Transport != azurecontainerappv1.AzureContainerAppIngressTransport_azure_container_app_ingress_transport_unspecified {
+		transport = ingressTransportStrings[spec.Transport]
 	}
+	ingress.Transport = pulumi.StringPtr(transport)
 
-	// Allow insecure (HTTP) connections
 	if spec.AllowInsecureConnections != nil {
 		ingress.AllowInsecureConnections = pulumi.BoolPtr(spec.GetAllowInsecureConnections())
 	}
 
-	// Client certificate mode
-	if spec.ClientCertificateMode != "" {
-		ingress.ClientCertificateMode = pulumi.StringPtr(spec.ClientCertificateMode)
+	// Sent only when chosen: unset leaves Azure's default behavior (no
+	// client certificate requirement).
+	if spec.ClientCertificateMode != azurecontainerappv1.AzureContainerAppIngressClientCertificateMode_azure_container_app_ingress_client_certificate_mode_unspecified {
+		ingress.ClientCertificateMode = pulumi.StringPtr(clientCertificateModeStrings[spec.ClientCertificateMode])
 	}
 
-	// Traffic weight distribution
-	if len(spec.TrafficWeight) > 0 {
-		ingress.TrafficWeights = buildTrafficWeights(spec.TrafficWeight)
-	}
+	ingress.TrafficWeights = buildTrafficWeights(spec.TrafficWeight)
 
-	// IP security restrictions
 	if len(spec.IpSecurityRestrictions) > 0 {
 		ingress.IpSecurityRestrictions = buildIpSecurityRestrictions(spec.IpSecurityRestrictions)
 	}
 
-	// CORS policy
-	if spec.CorsPolicy != nil {
-		ingress.CustomDomains = nil // placeholder -- custom_domains is separate
-		// Build the CORS policy block if the provider supports it
-		// The azurerm provider does not expose cors_policy on the ingress block as of v4.x
-		// CORS configuration may need to be handled at a different layer
+	// CORS for browser-based clients.
+	if spec.Cors != nil {
+		corsArgs := &containerapp.AppIngressCorsArgs{
+			AllowedOrigins: pulumi.ToStringArray(spec.Cors.AllowedOrigins),
+		}
+		if len(spec.Cors.AllowedHeaders) > 0 {
+			corsArgs.AllowedHeaders = pulumi.ToStringArray(spec.Cors.AllowedHeaders)
+		}
+		if len(spec.Cors.AllowedMethods) > 0 {
+			corsArgs.AllowedMethods = pulumi.ToStringArray(spec.Cors.AllowedMethods)
+		}
+		if len(spec.Cors.ExposedHeaders) > 0 {
+			corsArgs.ExposedHeaders = pulumi.ToStringArray(spec.Cors.ExposedHeaders)
+		}
+		if spec.Cors.MaxAgeInSeconds != nil {
+			corsArgs.MaxAgeInSeconds = pulumi.IntPtr(int(spec.Cors.GetMaxAgeInSeconds()))
+		}
+		if spec.Cors.AllowCredentialsEnabled != nil {
+			corsArgs.AllowCredentialsEnabled = pulumi.BoolPtr(spec.Cors.GetAllowCredentialsEnabled())
+		}
+		ingress.Cors = corsArgs
 	}
 
 	return ingress
@@ -718,6 +719,7 @@ func buildTrafficWeights(specs []*azurecontainerappv1.AzureContainerAppTrafficWe
 			Percentage: pulumi.Int(int(tw.Percentage)),
 		}
 
+		// The spec's CEL guarantees exactly one target per weight.
 		if tw.LatestRevision != nil {
 			weight.LatestRevision = pulumi.BoolPtr(tw.GetLatestRevision())
 		}
@@ -738,7 +740,7 @@ func buildIpSecurityRestrictions(specs []*azurecontainerappv1.AzureContainerAppI
 	for _, r := range specs {
 		restriction := containerapp.AppIngressIpSecurityRestrictionArgs{
 			Name:           pulumi.String(r.Name),
-			Action:         pulumi.String(r.Action),
+			Action:         pulumi.String(ipRestrictionActionStrings[r.Action]),
 			IpAddressRange: pulumi.String(r.IpAddressRange),
 		}
 		if r.Description != "" {
@@ -762,9 +764,10 @@ func buildDapr(spec *azurecontainerappv1.AzureContainerAppDapr) *containerapp.Ap
 		dapr.AppPort = pulumi.IntPtr(int(spec.GetAppPort()))
 	}
 
-	appProtocol := spec.GetAppProtocol()
-	if appProtocol == "" {
-		appProtocol = "http"
+	// Unspecified deploys http.
+	appProtocol := "http"
+	if spec.AppProtocol != azurecontainerappv1.AzureContainerAppDaprProtocol_azure_container_app_dapr_protocol_unspecified {
+		appProtocol = daprProtocolStrings[spec.AppProtocol]
 	}
 	dapr.AppProtocol = pulumi.StringPtr(appProtocol)
 
@@ -777,16 +780,17 @@ func buildDapr(spec *azurecontainerappv1.AzureContainerAppDapr) *containerapp.Ap
 
 func buildIdentity(spec *azurecontainerappv1.AzureContainerAppIdentity) *containerapp.AppIdentityArgs {
 	identity := &containerapp.AppIdentityArgs{
-		Type: pulumi.String(spec.Type),
+		Type: pulumi.String(identityTypeStrings[spec.Type]),
 	}
 
-	// Resolve identity IDs from StringValueOrRef
-	if len(spec.IdentityIds) > 0 {
-		ids := make(pulumi.StringArray, 0, len(spec.IdentityIds))
-		for _, ref := range spec.IdentityIds {
-			ids = append(ids, pulumi.String(ref.GetValue()))
+	// The spec's CEL guarantees identity ids are present exactly when the
+	// type includes UserAssigned.
+	if len(spec.UserAssignedIdentityIds) > 0 {
+		identityIds := make(pulumi.StringArray, 0, len(spec.UserAssignedIdentityIds))
+		for _, identityId := range spec.UserAssignedIdentityIds {
+			identityIds = append(identityIds, pulumi.String(identityId.GetValue()))
 		}
-		identity.IdentityIds = ids
+		identity.IdentityIds = identityIds
 	}
 
 	return identity

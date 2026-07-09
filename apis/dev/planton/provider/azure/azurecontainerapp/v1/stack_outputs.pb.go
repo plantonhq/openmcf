@@ -33,35 +33,47 @@ const (
 // `outbound_ip_addresses` is useful for firewall allowlists when the
 // Container App connects to external services that require IP whitelisting.
 //
-// This is a leaf resource -- no downstream Planton resources reference
-// these outputs. They are consumed directly by users and external systems.
+// `identity_principal_id` is the RBAC grant target for the app's
+// system-assigned identity; `custom_domain_verification_id` is the TXT
+// record value that proves domain ownership when binding a custom domain
+// to the app.
 type AzureContainerAppStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure Resource Manager ID of the Container App.
 	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.App/containerApps/{name}
 	ContainerAppId string `protobuf:"bytes,1,opt,name=container_app_id,json=containerAppId,proto3" json:"container_app_id,omitempty"`
+	// The name of the Container App.
+	ContainerAppName string `protobuf:"bytes,2,opt,name=container_app_name,json=containerAppName,proto3" json:"container_app_name,omitempty"`
 	// The name of the latest revision.
 	// Format: {app-name}--{suffix}
 	//
 	// Useful for CD pipelines to verify which revision is active after deployment.
-	LatestRevisionName string `protobuf:"bytes,2,opt,name=latest_revision_name,json=latestRevisionName,proto3" json:"latest_revision_name,omitempty"`
+	LatestRevisionName string `protobuf:"bytes,3,opt,name=latest_revision_name,json=latestRevisionName,proto3" json:"latest_revision_name,omitempty"`
 	// The FQDN of the latest revision.
 	// This FQDN points directly to the latest revision, bypassing traffic splitting.
-	LatestRevisionFqdn string `protobuf:"bytes,3,opt,name=latest_revision_fqdn,json=latestRevisionFqdn,proto3" json:"latest_revision_fqdn,omitempty"`
+	LatestRevisionFqdn string `protobuf:"bytes,4,opt,name=latest_revision_fqdn,json=latestRevisionFqdn,proto3" json:"latest_revision_fqdn,omitempty"`
 	// Outbound IP addresses used by the Container App for egress traffic.
 	// Use these to configure firewall allowlists on external services
 	// (databases, APIs, etc.) that the app connects to.
-	OutboundIpAddresses []string `protobuf:"bytes,4,rep,name=outbound_ip_addresses,json=outboundIpAddresses,proto3" json:"outbound_ip_addresses,omitempty"`
+	OutboundIpAddresses []string `protobuf:"bytes,5,rep,name=outbound_ip_addresses,json=outboundIpAddresses,proto3" json:"outbound_ip_addresses,omitempty"`
 	// The ingress FQDN of the Container App.
 	// This is the primary user-facing endpoint. Only populated when ingress
 	// is configured.
 	//
-	// In Single revision mode, this is the same as latest_revision_fqdn.
-	// In Multiple revision mode, this is the app's main FQDN that distributes
+	// In SINGLE revision mode, this is the same as latest_revision_fqdn.
+	// In MULTIPLE revision mode, this is the app's main FQDN that distributes
 	// traffic according to the configured traffic weights.
-	IngressFqdn   string `protobuf:"bytes,5,opt,name=ingress_fqdn,json=ingressFqdn,proto3" json:"ingress_fqdn,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	IngressFqdn string `protobuf:"bytes,6,opt,name=ingress_fqdn,json=ingressFqdn,proto3" json:"ingress_fqdn,omitempty"`
+	// The value Azure expects in the asuid.{domain} TXT record when binding
+	// a custom domain to this app -- publish it before creating the binding.
+	CustomDomainVerificationId string `protobuf:"bytes,7,opt,name=custom_domain_verification_id,json=customDomainVerificationId,proto3" json:"custom_domain_verification_id,omitempty"`
+	// The principal (object) ID of the app's system-assigned managed
+	// identity. Empty unless the identity block enables SYSTEM_ASSIGNED.
+	// Grant this principal roles (AcrPull, Key Vault Secrets User, etc.) to
+	// let the app authenticate keylessly.
+	IdentityPrincipalId string `protobuf:"bytes,8,opt,name=identity_principal_id,json=identityPrincipalId,proto3" json:"identity_principal_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AzureContainerAppStackOutputs) Reset() {
@@ -101,6 +113,13 @@ func (x *AzureContainerAppStackOutputs) GetContainerAppId() string {
 	return ""
 }
 
+func (x *AzureContainerAppStackOutputs) GetContainerAppName() string {
+	if x != nil {
+		return x.ContainerAppName
+	}
+	return ""
+}
+
 func (x *AzureContainerAppStackOutputs) GetLatestRevisionName() string {
 	if x != nil {
 		return x.LatestRevisionName
@@ -129,17 +148,34 @@ func (x *AzureContainerAppStackOutputs) GetIngressFqdn() string {
 	return ""
 }
 
+func (x *AzureContainerAppStackOutputs) GetCustomDomainVerificationId() string {
+	if x != nil {
+		return x.CustomDomainVerificationId
+	}
+	return ""
+}
+
+func (x *AzureContainerAppStackOutputs) GetIdentityPrincipalId() string {
+	if x != nil {
+		return x.IdentityPrincipalId
+	}
+	return ""
+}
+
 var File_dev_planton_provider_azure_azurecontainerapp_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurecontainerapp_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/azure/azurecontainerapp/v1/stack_outputs.proto\x12/dev.planton.provider.azure.azurecontainerapp.v1\"\x84\x02\n" +
+	"Cdev/planton/provider/azure/azurecontainerapp/v1/stack_outputs.proto\x12/dev.planton.provider.azure.azurecontainerapp.v1\"\xa9\x03\n" +
 	"\x1dAzureContainerAppStackOutputs\x12(\n" +
-	"\x10container_app_id\x18\x01 \x01(\tR\x0econtainerAppId\x120\n" +
-	"\x14latest_revision_name\x18\x02 \x01(\tR\x12latestRevisionName\x120\n" +
-	"\x14latest_revision_fqdn\x18\x03 \x01(\tR\x12latestRevisionFqdn\x122\n" +
-	"\x15outbound_ip_addresses\x18\x04 \x03(\tR\x13outboundIpAddresses\x12!\n" +
-	"\fingress_fqdn\x18\x05 \x01(\tR\vingressFqdnB\x92\x03\n" +
+	"\x10container_app_id\x18\x01 \x01(\tR\x0econtainerAppId\x12,\n" +
+	"\x12container_app_name\x18\x02 \x01(\tR\x10containerAppName\x120\n" +
+	"\x14latest_revision_name\x18\x03 \x01(\tR\x12latestRevisionName\x120\n" +
+	"\x14latest_revision_fqdn\x18\x04 \x01(\tR\x12latestRevisionFqdn\x122\n" +
+	"\x15outbound_ip_addresses\x18\x05 \x03(\tR\x13outboundIpAddresses\x12!\n" +
+	"\fingress_fqdn\x18\x06 \x01(\tR\vingressFqdn\x12A\n" +
+	"\x1dcustom_domain_verification_id\x18\a \x01(\tR\x1acustomDomainVerificationId\x122\n" +
+	"\x15identity_principal_id\x18\b \x01(\tR\x13identityPrincipalIdB\x92\x03\n" +
 	"3com.dev.planton.provider.azure.azurecontainerapp.v1B\x11StackOutputsProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerapp/v1;azurecontainerappv1\xa2\x02\x05DPPAA\xaa\x02/Dev.Planton.Provider.Azure.Azurecontainerapp.V1\xca\x02/Dev\\Planton\\Provider\\Azure\\Azurecontainerapp\\V1\xe2\x02;Dev\\Planton\\Provider\\Azure\\Azurecontainerapp\\V1\\GPBMetadata\xea\x024Dev::Planton::Provider::Azure::Azurecontainerapp::V1b\x06proto3"
 
 var (

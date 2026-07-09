@@ -5,7 +5,7 @@ metadata:
 spec:
   resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-worker
+  containerAppName: my-worker
   containerAppEnvironmentId:
     value: "<container-app-environment-id>"
   containers:
