@@ -72,7 +72,7 @@ Post-run sweep: subscription fully clean (no resource groups, plans, sites, or s
 
 ## Related Hygiene
 
-Removed two stale entries from `pkg/secretcoverage/baseline.yaml` (`GcpCloudFunction`/`GcpCloudRun` env-secret maps no longer flagged as gaps after their kinds' restructure) — the gate was failing repo-wide on staleness.
+A stale `planton` CLI binary falsely reported two `pkg/secretcoverage/baseline.yaml` entries (`GcpCloudFunction`/`GcpCloudRun` env-secret maps) as stale, and they were briefly removed. The fields are genuine unannotated gaps — the repo's authoritative gate (`go test ./pkg/secretcoverage/...`) failed on the removal — so the entries were restored in a follow-up commit. The lesson is the same stale-CLI class recorded in the forge rules: rebuild the CLI before trusting its analyzers, and treat the in-repo test as the source of truth for the secret-coverage gate.
 
 ## Impact
 
