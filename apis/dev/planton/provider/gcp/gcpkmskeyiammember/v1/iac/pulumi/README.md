@@ -1,0 +1,92 @@
+# GCP KMS Key IAM Member - Pulumi Module
+
+## Overview
+
+This directory contains the Pulumi implementation for deploying additive key-scoped IAM grants using Planton's `GcpKmsKeyIamMember` API. The module is written in Go and uses the Pulumi GCP provider to create `kms.CryptoKeyIAMMember` resources (backed by `google_kms_crypto_key_iam_member`).
+
+The grant is ADDITIVE: it merges one (role, member[, condition]) pair into the crypto key's IAM policy without touching any other member's bindings, and destroy subtracts only this exact pair.
+
+## Prerequisites
+
+1. **Pulumi CLI** installed (version 3.x or later)
+2. **Go** installed (version 1.21 or later)
+3. **An existing crypto key** — the grant is policy metadata; no billed infrastructure is created
+4. **GCP Credentials** configured:
+   ```bash
+   gcloud auth application-default login
+   ```
+5. **IAM permissions**: `roles/cloudkms.admin` on the target key (or its ring/project)
+
+## Directory Structure
+
+```
+iac/pulumi/
+├── main.go           # Pulumi program entry point
+├── Pulumi.yaml       # Pulumi project configuration
+├── Makefile          # Build and deployment targets
+├── README.md         # This file
+└── module/
+    ├── main.go        # Module coordinator
+    ├── iam_member.go  # IAM member grant creation
+    ├── locals.go      # Resolved resource holder
+    └── outputs.go     # Stack output constants
+```
+
+## Quick Start
+
+### 1. Initialize Pulumi Stack
+
+```bash
+cd iac/pulumi
+pulumi stack init dev
+```
+
+### 2. Create Input File
+
+Provide a `stack-input.yaml` with the grant specification:
+
+```yaml
+target:
+  apiVersion: gcp.planton.dev/v1
+  kind: GcpKmsKeyIamMember
+  metadata:
+    name: gcs-state-key-grant
+  spec:
+    crypto_key_id:
+      value: projects/my-gcp-project-123/locations/us-central1/keyRings/app-ring/cryptoKeys/state-key
+    role:
+      value: roles/cloudkms.cryptoKeyEncrypterDecrypter
+    member:
+      value: serviceAccount:service-123456789@gs-project-accounts.iam.gserviceaccount.com
+```
+
+### 3. Deploy
+
+```bash
+export STACK_INPUT_FILE_PATH=stack-input.yaml
+make up
+```
+
+### 4. Destroy
+
+```bash
+make destroy
+```
+
+Destroy removes exactly this (role, member) pair from the key's policy — no other grant is touched. The key and its material are never affected.
+
+## Stack Outputs
+
+| Output | Description |
+|--------|-------------|
+| `crypto_key_id` | The key whose policy received the grant |
+| `role` | The granted role |
+| `member` | The granted member |
+| `etag` | The key IAM policy etag after the grant |
+
+## Behavior Notes
+
+- Every argument is immutable: any spec change replaces the grant atomically (the IAM API has no grant update).
+- The member format is validated at deploy time (deleted principals rejected) because the value usually arrives through a reference resolved only at deploy time.
+- There is no project or location argument — both are embedded in the key's resource path.
+- `crypto_key_id` echoes the configured identifier on both engines (the provider normalizes only on import), keeping the output byte-identical to the Terraform module's.

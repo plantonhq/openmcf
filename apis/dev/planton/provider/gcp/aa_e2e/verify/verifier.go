@@ -156,6 +156,8 @@ var verifiers = map[string]Verifier{
 	"gcppubsubsubscription":                  &pubSubSubscriptionVerifier{},
 	"gcpkmskeyring":                          &kmsKeyRingVerifier{},
 	"gcpkmskey":                              &kmsKeyVerifier{},
+	"gcpkmskeyiammember":                     &kmsKeyIamMemberVerifier{},
+	"gcpserviceaccountiammember":             &serviceAccountIamMemberVerifier{},
 	"gcpcloudtasksqueue":                     &cloudTasksQueueVerifier{},
 	"gcpcloudschedulerjob":                   &cloudSchedulerJobVerifier{},
 	"gcpvertexaiendpoint":                    &vertexAiEndpointVerifier{},

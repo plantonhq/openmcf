@@ -161,6 +161,38 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpServiceAccountIamMember: the grant tuple echoed by both engines
+			// (the account's fully-qualified name, role, member, policy etag)
+			// must each land on the StackOutputs proto.
+			name: "GcpServiceAccountIamMember",
+			kind: cloudresourcekind.CloudResourceKind_GcpServiceAccountIamMember,
+			rawOutputs: map[string]interface{}{
+				"service_account_id": "projects/my-project/serviceAccounts/deployer@my-project.iam.gserviceaccount.com",
+				"role":               "roles/iam.workloadIdentityUser",
+				"member":             "principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/github/attribute.repository/my-org/my-repo",
+				"etag":               "BwYn2FQlJeM=",
+			},
+			mustPopulate: []string{
+				"service_account_id", "role", "member", "etag",
+			},
+		},
+		{
+			// GcpKmsKeyIamMember: the grant tuple echoed by both engines (the
+			// key's fully-qualified path, role, member, policy etag) must each
+			// land on the StackOutputs proto.
+			name: "GcpKmsKeyIamMember",
+			kind: cloudresourcekind.CloudResourceKind_GcpKmsKeyIamMember,
+			rawOutputs: map[string]interface{}{
+				"crypto_key_id": "projects/my-project/locations/us-central1/keyRings/app-ring/cryptoKeys/state-key",
+				"role":          "roles/cloudkms.cryptoKeyEncrypterDecrypter",
+				"member":        "serviceAccount:service-123456789@gs-project-accounts.iam.gserviceaccount.com",
+				"etag":          "BwYn2FQlJeM=",
+			},
+			mustPopulate: []string{
+				"crypto_key_id", "role", "member", "etag",
+			},
+		},
+		{
 			// GcpWorkloadIdentityPool: flat scalar outputs from both engines (the
 			// full pool resource name principals embed, the bare pool id providers
 			// reference, and the lifecycle state) must each land on the
@@ -862,7 +894,7 @@ func TestStackOutputsConformance(t *testing.T) {
 			name: "GcpGkeWorkloadIdentityBinding",
 			kind: cloudresourcekind.CloudResourceKind_GcpGkeWorkloadIdentityBinding,
 			rawOutputs: map[string]interface{}{
-				"member":                 "serviceAccount:my-project.svc.id.goog[cert-manager/cert-manager]",
+				"member":                "serviceAccount:my-project.svc.id.goog[cert-manager/cert-manager]",
 				"service_account_email": "my-sa@my-project.iam.gserviceaccount.com",
 			},
 			mustPopulate: []string{"member", "service_account_email"},

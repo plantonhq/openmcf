@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpkmskeyiammember.v1;
+
+// Outputs produced after applying a key-scoped IAM member grant.
+// The grant itself has no server-generated identity beyond its inputs; the
+// outputs echo the fully-resolved grant tuple so downstream tooling and audits
+// can see exactly what was applied without re-resolving references.
+message GcpKmsKeyIamMemberStackOutputs {
+  // The fully-qualified resource path of the crypto key whose IAM policy
+  // received the grant
+  // (projects/<project>/locations/<location>/keyRings/<ring>/cryptoKeys/<key>),
+  // after reference resolution.
+  string crypto_key_id = 1;
+
+  // The role that was granted (predefined name or fully-qualified custom
+  // role name), after reference resolution.
+  string role = 2;
+
+  // The member the role was granted to, in IAM member format, after
+  // reference resolution.
+  string member = 3;
+
+  // The etag of the key IAM policy after this grant was applied — a
+  // fingerprint of the policy version, useful for audit correlation.
+  string etag = 4;
+}

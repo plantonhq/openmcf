@@ -100,6 +100,15 @@ func TestGcpProjectIamMember_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpprojectiammember", "terraform")
 }
 
+// --- GCP Service Account IAM Member (composed grant ON the account: deploys the GcpServiceAccount prerequisite) ---
+
+func TestGcpServiceAccountIamMember_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpserviceaccountiammember", "pulumi")
+}
+func TestGcpServiceAccountIamMember_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpserviceaccountiammember", "terraform")
+}
+
 // --- GCP Workload Identity Pool (the keyless-auth trust boundary) ---
 
 func TestGcpWorkloadIdentityPool_Pulumi(t *testing.T) {
@@ -579,6 +588,15 @@ func TestGcpKmsKey_Pulumi(t *testing.T) {
 }
 func TestGcpKmsKey_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpkmskey", "terraform")
+}
+
+// --- GCP KMS Key IAM Member (composed key-scoped grant: deploys the ring → key → service account prerequisite chain) ---
+
+func TestGcpKmsKeyIamMember_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpkmskeyiammember", "pulumi")
+}
+func TestGcpKmsKeyIamMember_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpkmskeyiammember", "terraform")
 }
 
 // GcpCloudTasksQueue scenarios: minimal + http-target-oidc (SA chain).

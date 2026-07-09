@@ -1,0 +1,4 @@
+name: gcpkmskeyiammember-pulumi-project
+runtime:
+  name: go
+description: Planton GcpKmsKeyIamMember Pulumi module

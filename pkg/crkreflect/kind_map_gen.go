@@ -256,6 +256,7 @@ import (
 	gcphealthcheckv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcphealthcheck/v1"
 	gcpiamcustomrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpiamcustomrole/v1"
 	gcpkmskeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskey/v1"
+	gcpkmskeyiammemberv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyiammember/v1"
 	gcpkmskeyringv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyring/v1"
 	gcpmanagedsslcertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmanagedsslcertificate/v1"
 	gcpmemorystoreinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpmemorystoreinstance/v1"
@@ -269,6 +270,7 @@ import (
 	gcprouternatv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcprouternat/v1"
 	gcpserverlessvpcconnectorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserverlessvpcconnector/v1"
 	gcpserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccount/v1"
+	gcpserviceaccountiammemberv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceaccountiammember/v1"
 	gcpserviceconnectionpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserviceconnectionpolicy/v1"
 	gcpservicenetworkingconnectionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1"
 	gcpspannerbackupschedulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpspannerbackupschedule/v1"
@@ -745,6 +747,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpHealthCheck:                         &gcphealthcheckv1.GcpHealthCheck{},
 	cloudresourcekind.CloudResourceKind_GcpIamCustomRole:                       &gcpiamcustomrolev1.GcpIamCustomRole{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKey:                              &gcpkmskeyv1.GcpKmsKey{},
+	cloudresourcekind.CloudResourceKind_GcpKmsKeyIamMember:                     &gcpkmskeyiammemberv1.GcpKmsKeyIamMember{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKeyRing:                          &gcpkmskeyringv1.GcpKmsKeyRing{},
 	cloudresourcekind.CloudResourceKind_GcpManagedSslCertificate:               &gcpmanagedsslcertificatev1.GcpManagedSslCertificate{},
 	cloudresourcekind.CloudResourceKind_GcpMemorystoreInstance:                 &gcpmemorystoreinstancev1.GcpMemorystoreInstance{},
@@ -758,6 +761,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpRouterNat:                           &gcprouternatv1.GcpRouterNat{},
 	cloudresourcekind.CloudResourceKind_GcpServerlessVpcConnector:              &gcpserverlessvpcconnectorv1.GcpServerlessVpcConnector{},
 	cloudresourcekind.CloudResourceKind_GcpServiceAccount:                      &gcpserviceaccountv1.GcpServiceAccount{},
+	cloudresourcekind.CloudResourceKind_GcpServiceAccountIamMember:             &gcpserviceaccountiammemberv1.GcpServiceAccountIamMember{},
 	cloudresourcekind.CloudResourceKind_GcpServiceConnectionPolicy:             &gcpserviceconnectionpolicyv1.GcpServiceConnectionPolicy{},
 	cloudresourcekind.CloudResourceKind_GcpServiceNetworkingConnection:         &gcpservicenetworkingconnectionv1.GcpServiceNetworkingConnection{},
 	cloudresourcekind.CloudResourceKind_GcpSpannerBackupSchedule:               &gcpspannerbackupschedulev1.GcpSpannerBackupSchedule{},

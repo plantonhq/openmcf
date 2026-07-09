@@ -1136,6 +1136,16 @@ enum CloudResourceKind {
     id_prefix: "gcpkms"
     prerequisites: [GcpKmsKeyRing]
   }];
+  GcpKmsKeyIamMember = 692 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpkim"
+    prerequisites: [
+      GcpKmsKeyRing,
+      GcpKmsKey,
+      GcpServiceAccount
+    ]
+  }];
   GcpFilestoreInstance = 700 [(kind_meta) = {
     provider: gcp
     version: v1
@@ -1154,6 +1164,12 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpwipp"
     prerequisites: [GcpWorkloadIdentityPool]
+  }];
+  GcpServiceAccountIamMember = 703 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpsaim"
+    prerequisites: [GcpServiceAccount]
   }];
   // 710–719: networking/load-balancer family (overflow block; the 623–629
   // LB sub-band is fully allocated)

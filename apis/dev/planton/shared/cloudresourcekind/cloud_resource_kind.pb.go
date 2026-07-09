@@ -266,11 +266,13 @@ const (
 	CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap CloudResourceKind = 682
 	CloudResourceKind_GcpKmsKeyRing                          CloudResourceKind = 690
 	CloudResourceKind_GcpKmsKey                              CloudResourceKind = 691
+	CloudResourceKind_GcpKmsKeyIamMember                     CloudResourceKind = 692
 	CloudResourceKind_GcpFilestoreInstance                   CloudResourceKind = 700
 	// 701–709: IAM/identity family (overflow block; the 600–622
 	// foundation/security sub-band is fully allocated)
 	CloudResourceKind_GcpWorkloadIdentityPool         CloudResourceKind = 701
 	CloudResourceKind_GcpWorkloadIdentityPoolProvider CloudResourceKind = 702
+	CloudResourceKind_GcpServiceAccountIamMember      CloudResourceKind = 703
 	// 710–719: networking/load-balancer family (overflow block; the 623–629
 	// LB sub-band is fully allocated)
 	CloudResourceKind_GcpGlobalForwardingRule        CloudResourceKind = 710
@@ -735,9 +737,11 @@ var (
 		682:  "GcpCloudComposerUserWorkloadsConfigMap",
 		690:  "GcpKmsKeyRing",
 		691:  "GcpKmsKey",
+		692:  "GcpKmsKeyIamMember",
 		700:  "GcpFilestoreInstance",
 		701:  "GcpWorkloadIdentityPool",
 		702:  "GcpWorkloadIdentityPoolProvider",
+		703:  "GcpServiceAccountIamMember",
 		710:  "GcpGlobalForwardingRule",
 		711:  "GcpSslPolicy",
 		712:  "GcpSslCertificate",
@@ -1182,9 +1186,11 @@ var (
 		"GcpCloudComposerUserWorkloadsConfigMap":  682,
 		"GcpKmsKeyRing":                           690,
 		"GcpKmsKey":                               691,
+		"GcpKmsKeyIamMember":                      692,
 		"GcpFilestoreInstance":                    700,
 		"GcpWorkloadIdentityPool":                 701,
 		"GcpWorkloadIdentityPoolProvider":         702,
+		"GcpServiceAccountIamMember":              703,
 		"GcpGlobalForwardingRule":                 710,
 		"GcpSslPolicy":                            711,
 		"GcpSslCertificate":                       712,
@@ -1705,7 +1711,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\u00a0\x01\n" +
+	"\x02v1\x10\x01*\xad\xa1\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1906,10 +1912,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"#GcpCloudComposerUserWorkloadsSecret\x10\xa9\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpcuws:\x02\xa8\x05\x12C\n" +
 	"&GcpCloudComposerUserWorkloadsConfigMap\x10\xaa\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpcuwcm:\x02\xa8\x05\x12#\n" +
 	"\rGcpKmsKeyRing\x10\xb2\x05\x1a\x0f\xa2\xf7\x04\v\b\x12\x10\x01\"\x05gcpkr\x12$\n" +
-	"\tGcpKmsKey\x10\xb3\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpkms:\x02\xb2\x05\x12/\n" +
+	"\tGcpKmsKey\x10\xb3\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpkms:\x02\xb2\x05\x121\n" +
+	"\x12GcpKmsKeyIamMember\x10\xb4\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\x06gcpkim:\x06\xb2\x05\xb3\x05\xe6\x04\x12/\n" +
 	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\x06gcpnfs:\x02\xe2\x04\x12.\n" +
 	"\x17GcpWorkloadIdentityPool\x10\xbd\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpwip\x12;\n" +
-	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpwipp:\x02\xbd\x05\x124\n" +
+	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpwipp:\x02\xbd\x05\x126\n" +
+	"\x1aGcpServiceAccountIamMember\x10\xbf\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpsaim:\x02\xe6\x04\x124\n" +
 	"\x17GcpGlobalForwardingRule\x10\xc6\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpgfr:\x04\xd9\x04\xed\x04\x12&\n" +
 	"\fGcpSslPolicy\x10\xc7\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\tgcpsslpol\x12,\n" +
 	"\x11GcpSslCertificate\x10\xc8\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x10\x01\"\n" +

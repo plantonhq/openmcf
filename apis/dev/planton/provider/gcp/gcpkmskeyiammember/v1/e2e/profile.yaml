@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpkmskeyiammember
+spec:
+  # Composed grant on a crypto key's IAM policy: the harness installs the
+  # ring → key → service account prerequisite chain (kind registry order),
+  # resolves crypto_key_id from the key's `key_id` output and member from
+  # the account's `member` output, then runs deploy → getIamPolicy verify →
+  # destroy → verify the (role, member) pair is gone. The scenario carries
+  # an IAM condition, so conditioned bindings are live-proven end to end
+  # (policy read at version 3). Control-plane only; seconds per phase.
+  #
+  # The ring and key prerequisites are the undeletable resource class: both
+  # carry ${E2E_RUN_ID} cloud-side names, and the run leaves only inert,
+  # free objects (the key prerequisite's versions are destroy-scheduled at
+  # teardown). ONE scenario by design — a second would re-create the
+  # just-"destroyed" (state-only) ring and 409.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15
