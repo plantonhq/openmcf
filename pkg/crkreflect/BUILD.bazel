@@ -153,6 +153,8 @@ go_library(
         "//apis/dev/planton/provider/azure/azurecosmosdbmongodatabase/v1:azurecosmosdbmongodatabase",
         "//apis/dev/planton/provider/azure/azurecosmosdbsqlcontainer/v1:azurecosmosdbsqlcontainer",
         "//apis/dev/planton/provider/azure/azurecosmosdbsqldatabase/v1:azurecosmosdbsqldatabase",
+        "//apis/dev/planton/provider/azure/azurecosmosdbsqlroleassignment/v1:azurecosmosdbsqlroleassignment",
+        "//apis/dev/planton/provider/azure/azurecosmosdbsqlroledefinition/v1:azurecosmosdbsqlroledefinition",
         "//apis/dev/planton/provider/azure/azurednsrecord/v1:azurednsrecord",
         "//apis/dev/planton/provider/azure/azurednszone/v1:azurednszone",
         "//apis/dev/planton/provider/azure/azureeventhubnamespace/v1:azureeventhubnamespace",

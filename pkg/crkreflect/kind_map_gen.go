@@ -137,6 +137,8 @@ import (
 	azurecosmosdbmongodatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbmongodatabase/v1"
 	azurecosmosdbsqlcontainerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqlcontainer/v1"
 	azurecosmosdbsqldatabasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqldatabase/v1"
+	azurecosmosdbsqlroleassignmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqlroleassignment/v1"
+	azurecosmosdbsqlroledefinitionv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqlroledefinition/v1"
 	azurednsrecordv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednsrecord/v1"
 	azurednszonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurednszone/v1"
 	azureeventhubnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubnamespace/v1"
@@ -624,6 +626,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbMongoDatabase:              &azurecosmosdbmongodatabasev1.AzureCosmosdbMongoDatabase{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlContainer:               &azurecosmosdbsqlcontainerv1.AzureCosmosdbSqlContainer{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlDatabase:                &azurecosmosdbsqldatabasev1.AzureCosmosdbSqlDatabase{},
+	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleAssignment:          &azurecosmosdbsqlroleassignmentv1.AzureCosmosdbSqlRoleAssignment{},
+	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleDefinition:          &azurecosmosdbsqlroledefinitionv1.AzureCosmosdbSqlRoleDefinition{},
 	cloudresourcekind.CloudResourceKind_AzureDnsRecord:                          &azurednsrecordv1.AzureDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:                            &azurednszonev1.AzureDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzureEventHubNamespace:                  &azureeventhubnamespacev1.AzureEventHubNamespace{},

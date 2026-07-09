@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecosmosdbsqlroleassignment.v1;
+
+// **AzureCosmosdbSqlRoleAssignmentStackOutputs** captures the outputs of
+// provisioning a Cosmos DB SQL role assignment -- the grant record's ARM
+// identity, exported so downstream automation can audit or reference the
+// grant without re-reading the spec.
+message AzureCosmosdbSqlRoleAssignmentStackOutputs {
+  // The fully-scoped Azure Resource Manager ID of the role assignment.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DocumentDB/databaseAccounts/{account}/sqlRoleAssignments/{guid}
+  string role_assignment_id = 1;
+
+  // The assignment's GUID resource name -- either the pinned spec.name or
+  // the GUID generated at deploy time.
+  string role_assignment_guid = 2;
+
+  // The name of the Cosmos DB account the assignment lives in, parsed
+  // from the resolved account ID -- saves consumers a second reference
+  // when they need the account/grant pair.
+  string cosmosdb_account_name = 3;
+}

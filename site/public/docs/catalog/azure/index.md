@@ -22,6 +22,8 @@ The following AZURE resources can be deployed using Planton:
 - [Cosmos DB MongoDB Database](/docs/catalog/azure/cosmos-db-mongodb-database)
 - [Cosmos DB SQL Container](/docs/catalog/azure/cosmos-db-sql-container)
 - [Cosmos DB SQL Database](/docs/catalog/azure/cosmos-db-sql-database)
+- [Cosmos DB SQL Role Assignment](/docs/catalog/azure/cosmos-db-sql-role-assignment)
+- [Cosmos DB SQL Role Definition](/docs/catalog/azure/cosmos-db-sql-role-definition)
 - [DNS Record](/docs/catalog/azure/dns-record)
 - [DNS Zone](/docs/catalog/azure/dns-zone)
 - [Event Hub Namespace](/docs/catalog/azure/event-hub-namespace)

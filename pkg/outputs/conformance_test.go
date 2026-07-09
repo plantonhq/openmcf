@@ -1747,6 +1747,38 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureCosmosdbSqlRoleDefinition: role_definition_id is the
+			// fully-scoped ARM id an AzureCosmosdbSqlRoleAssignment's
+			// role_definition_id field consumes with zero translation.
+			name: "AzureCosmosdbSqlRoleDefinition",
+			kind: cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleDefinition,
+			rawOutputs: map[string]interface{}{
+				"role_definition_id":    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.DocumentDB/databaseAccounts/app-cosmos/sqlRoleDefinitions/9b7f3f6a-2f0e-4b9a-8f0d-2f6a8f0d2f6a",
+				"role_definition_guid":  "9b7f3f6a-2f0e-4b9a-8f0d-2f6a8f0d2f6a",
+				"role_name":             "app-reader",
+				"cosmosdb_account_name": "app-cosmos",
+			},
+			mustPopulate: []string{
+				"role_definition_id", "role_definition_guid",
+				"role_name", "cosmosdb_account_name",
+			},
+		},
+		{
+			// AzureCosmosdbSqlRoleAssignment: the grant record's ARM
+			// identity, exported for audit trails and cross-references.
+			name: "AzureCosmosdbSqlRoleAssignment",
+			kind: cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleAssignment,
+			rawOutputs: map[string]interface{}{
+				"role_assignment_id":    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.DocumentDB/databaseAccounts/app-cosmos/sqlRoleAssignments/7c1de3f8-5a4b-4c2d-9e8f-1a2b3c4d5e6f",
+				"role_assignment_guid":  "7c1de3f8-5a4b-4c2d-9e8f-1a2b3c4d5e6f",
+				"cosmosdb_account_name": "app-cosmos",
+			},
+			mustPopulate: []string{
+				"role_assignment_id", "role_assignment_guid",
+				"cosmosdb_account_name",
+			},
+		},
+		{
 			// AzureFrontDoorProfile: profile_id is the parent seam every
 			// Front Door delivery kind (endpoint, origin group) references;
 			// identity_principal_id is the Key Vault grant target for

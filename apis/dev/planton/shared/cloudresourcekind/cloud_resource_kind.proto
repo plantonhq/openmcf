@@ -1213,6 +1213,16 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azcmgocl"
   }];
+  AzureCosmosdbSqlRoleDefinition = 504 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcsqlrdef"
+  }];
+  AzureCosmosdbSqlRoleAssignment = 505 [(kind_meta) = {
+    provider: azure
+    version: v1
+    id_prefix: "azcsqlrasgn"
+  }];
 
   // --- Azure Managed Redis (the Microsoft.Cache/redisEnterprise family) ---
 

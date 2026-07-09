@@ -579,6 +579,26 @@ func TestAzureCosmosdbMongoCollection_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecosmosdbmongocollection", "terraform")
 }
 
+// --- Azure Cosmos DB SQL role definition (fixture RG -> scenario-local
+// SQL account -> custom data-plane role) ---
+
+func TestAzureCosmosdbSqlRoleDefinition_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbsqlroledefinition", "pulumi")
+}
+func TestAzureCosmosdbSqlRoleDefinition_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbsqlroledefinition", "terraform")
+}
+
+// --- Azure Cosmos DB SQL role assignment (composed chain: scenario-local
+// SQL account -> custom role definition -> grant to the fixture identity) ---
+
+func TestAzureCosmosdbSqlRoleAssignment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbsqlroleassignment", "pulumi")
+}
+func TestAzureCosmosdbSqlRoleAssignment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecosmosdbsqlroleassignment", "terraform")
+}
+
 // --- Azure Front Door profile (fixture RG -> Standard profile with log
 // scrubbing and tags; Front Door is global -- no region on the resource) ---
 

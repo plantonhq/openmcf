@@ -38,6 +38,8 @@ var verifiers = map[string]Verifier{
 	"azurecosmosdbmongodatabase":              &cosmosdbMongoDatabaseVerifier{},
 	"azurecosmosdbsqlcontainer":               &cosmosdbSqlContainerVerifier{},
 	"azurecosmosdbsqldatabase":                &cosmosdbSqlDatabaseVerifier{},
+	"azurecosmosdbsqlroleassignment":          &cosmosdbSqlRoleAssignmentVerifier{},
+	"azurecosmosdbsqlroledefinition":          &cosmosdbSqlRoleDefinitionVerifier{},
 	"azurefederatedidentitycredential":        &federatedIdentityCredentialVerifier{},
 	"azurefrontdoorcustomdomain":              &frontDoorCustomDomainVerifier{},
 	"azurefrontdoorendpoint":                  &frontDoorEndpointVerifier{},

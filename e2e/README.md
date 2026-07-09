@@ -291,6 +291,18 @@ creation as a region-capacity signal and move the scenario-local
 accounts to a quieter region (`westus3` verified clean) instead of
 recording a deferral or filing quota requests.
 
+Cosmos DB SQL data-plane RBAC (`cosmosdb_sql_role_assignment`) adds a
+Pulumi-module constraint azurerm does not surface: pulumi-azure enforces
+a 24-character logical resource name on `SqlRoleAssignment`, and when
+the Azure `name` (a GUID) is unset it autogenerates from that logical
+name — producing invalid non-UUID values like `mainaa5aa87`. Forge the
+Pulumi module to (1) use a short logical name (`"main"`, mirroring the
+Terraform module's single resource) and (2) generate an explicit UUID
+for the Azure `name` when the spec does not pin one, matching azurerm's
+create-time UUID generation. The sibling `SqlRoleDefinition` needs the
+same explicit-GUID treatment for `role_definition_id` when unset; its
+logical name can stay on `metadata.name`.
+
 ### Front Door: fast creates, ~18-minute profile deletes
 
 Azure Front Door (Standard/Premium) inverts the usual timing profile:

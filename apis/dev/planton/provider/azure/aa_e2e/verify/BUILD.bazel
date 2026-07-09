@@ -12,6 +12,8 @@ go_library(
         "cosmosdb_mongo_database.go",
         "cosmosdb_sql_container.go",
         "cosmosdb_sql_database.go",
+        "cosmosdb_sql_role_assignment.go",
+        "cosmosdb_sql_role_definition.go",
         "federated_identity_credential.go",
         "front_door_custom_domain.go",
         "front_door_endpoint.go",
