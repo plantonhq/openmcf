@@ -14,9 +14,6 @@ import "dev/planton/shared/options/options.proto";
 // (e.g., "example.com"), matching the convention used by all Planton ingress
 // components to derive issuer names from hostnames.
 message KubernetesClusterIssuerSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Namespace where cert-manager is installed.
   // Required for creating credential Secrets (Cloudflare API tokens) and
   // where cert-manager places ACME account key Secrets.

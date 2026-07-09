@@ -16,9 +16,6 @@ import "dev/planton/shared/options/options.proto";
 // This component deploys the controller only. Runner scale sets (the actual runner pods) are
 // deployed separately using the gha-runner-scale-set Helm chart.
 message KubernetesGhaRunnerScaleSetControllerSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace where the controller will be installed.
   // The controller watches for AutoScalingRunnerSet resources across all namespaces by default,
   // or can be restricted to a single namespace via flags.watch_single_namespace.

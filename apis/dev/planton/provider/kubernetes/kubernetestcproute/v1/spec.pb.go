@@ -239,7 +239,7 @@ var File_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetestcproute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestcproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd9\x04\n" +
+	"@dev/planton/provider/kubernetes/kubernetestcproute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestcproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc3\x04\n" +
 	"\x16KubernetesTcpRouteSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
@@ -248,7 +248,7 @@ const file_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto_rawD
 	"#tcp_route.use_default_gateways_enum\x123use_default_gateways must be either 'All' or 'None'\x1a%this == '' || this in ['All', 'None']H\x00R\x12useDefaultGateways\x88\x01\x01\x12o\n" +
 	"\x05rules\x18\x05 \x03(\v2M.dev.planton.provider.kubernetes.kubernetestcproute.v1.KubernetesTcpRouteRuleB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x05rulesB\x17\n" +
-	"\x15_use_default_gatewaysJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xf9\x01\n" +
+	"\x15_use_default_gateways\"\xf9\x01\n" +
 	"\x16KubernetesTcpRouteRule\x12f\n" +
 	"\x04name\x18\x01 \x01(\tBM\xbaHJrH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x04name\x88\x01\x01\x12n\n" +
 	"\fbackend_refs\x18\x02 \x03(\v2?.dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRefB\n" +

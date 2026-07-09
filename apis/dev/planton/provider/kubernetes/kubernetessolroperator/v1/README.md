@@ -52,8 +52,6 @@ kind: KubernetesSolrOperator
 metadata:
   name: <operator-name>
 spec:
-  targetCluster: # Optional - where to deploy
-    clusterName: "<cluster-name>"
   namespace: # Required
     value: "solr-operator-system"
   create_namespace: false # Optional - whether to create the namespace
@@ -68,15 +66,6 @@ spec:
 ```
 
 ### Spec Fields
-
-#### `targetCluster` (optional)
-
-Specifies the target Kubernetes cluster for operator deployment.
-
-- **`clusterName`** (string): Name of the Kubernetes cluster
-- **`clusterKind`** (enum): Type of cluster (GKE, EKS, AKS, etc.)
-
-If not provided, the operator deploys to the default cluster.
 
 #### `namespace` (required)
 

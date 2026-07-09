@@ -20,7 +20,4 @@ package dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1;
 // custom resources are frozen to the SDK version, so a mismatched CRD set would silently
 // prune or reject fields. (This intentionally avoids the gateway family's footgun, where
 // KubernetesGatewayApiCrds.version defaults below its typed SDK version.)
-message KubernetesIstioBaseCrdsSpec {
-  reserved 1;
-  reserved "target_cluster";
-}
+message KubernetesIstioBaseCrdsSpec {}

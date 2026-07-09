@@ -56,8 +56,6 @@ This creates an ingress-nginx controller in the `ingress-nginx` namespace with t
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying the Helm release. |
 | `chartVersion` | `string` | `4.11.1` | Upstream ingress-nginx Helm chart version tag. |
 | `internal` | `bool` | `false` | When `true`, configures the controller service with an internal load balancer. The default (`false`) produces an external load balancer. |

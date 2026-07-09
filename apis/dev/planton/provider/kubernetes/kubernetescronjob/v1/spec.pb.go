@@ -278,7 +278,7 @@ var File_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetescronjob/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb6\v\n" +
+	"?dev/planton/provider/kubernetes/kubernetescronjob/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\v\n" +
 	"\x15KubernetesCronJobSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12E\n" +
@@ -312,7 +312,7 @@ const file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDe
 	"\x1e_successful_jobs_history_limitB\x1c\n" +
 	"\x1a_failed_jobs_history_limitB\x10\n" +
 	"\x0e_backoff_limitB\x11\n" +
-	"\x0f_restart_policyJ\x04\b\x01\x10\x02R\x0etarget_clusterB\xa8\x03\n" +
+	"\x0f_restart_policyB\xa8\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetescronjob.v1B\tSpecProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1;kubernetescronjobv1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetescronjob.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetescronjob\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetescronjob\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetescronjob::V1b\x06proto3"
 
 var (

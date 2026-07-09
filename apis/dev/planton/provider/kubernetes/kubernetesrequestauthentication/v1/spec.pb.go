@@ -34,7 +34,7 @@ const (
 // 100% fidelity with the upstream istio.io/api RequestAuthentication
 // (security/v1beta1/request_authentication.proto, served as security.istio.io/v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly
-// after the Planton namespaced envelope (target_cluster, namespace); there is no
+// after the Planton namespaced envelope (namespace); there is no
 // nested `request_authentication` sub-message.
 //
 // Scope semantics (upstream): if neither `selector` nor `target_refs` is set the
@@ -417,14 +417,14 @@ var File_dev_planton_provider_kubernetes_kubernetesrequestauthentication_v1_spec
 
 const file_dev_planton_provider_kubernetes_kubernetesrequestauthentication_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Mdev/planton/provider/kubernetes/kubernetesrequestauthentication/v1/spec.proto\x12Bdev.planton.provider.kubernetes.kubernetesrequestauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb5\x05\n" +
+	"Mdev/planton/provider/kubernetes/kubernetesrequestauthentication/v1/spec.proto\x12Bdev.planton.provider.kubernetes.kubernetesrequestauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9f\x05\n" +
 	"#KubernetesRequestAuthenticationSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12s\n" +
 	"\vtarget_refs\x18\x04 \x03(\v2H.dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReferenceB\b\xbaH\x05\x92\x01\x02\x10\x10R\n" +
 	"targetRefs\x12\x92\x01\n" +
 	"\tjwt_rules\x18\x05 \x03(\v2j.dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRuleB\t\xbaH\x06\x92\x01\x03\x10\x80 R\bjwtRules:\xa0\x01\xbaH\x9c\x01\x1a\x99\x01\n" +
-	"/request_authentication.selector_xor_target_refs\x121at most one of selector or target_refs may be set\x1a3!(has(this.selector) && size(this.target_refs) > 0)J\x04\b\x01\x10\x02R\x0etarget_cluster\"\xb6\n" +
+	"/request_authentication.selector_xor_target_refs\x121at most one of selector or target_refs may be set\x1a3!(has(this.selector) && size(this.target_refs) > 0)\"\xb6\n" +
 	"\n" +
 	"&KubernetesRequestAuthenticationJwtRule\x12\"\n" +
 	"\x06issuer\x18\x01 \x01(\tB\n" +

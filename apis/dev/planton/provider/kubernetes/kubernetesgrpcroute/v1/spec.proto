@@ -14,15 +14,12 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // 100% fidelity with the upstream Gateway API v1.5.1 GRPCRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/grpcroute_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
-// (target_cluster, namespace). Experimental fields are intentionally excluded
+// (namespace). Experimental fields are intentionally excluded
 // because they are absent from the standard-channel CRD and the typed Pulumi
 // resource Planton provisions with, so they would have no deployable target:
 //   - CommonRouteSpec.useDefaultGateways
 //   - GRPCRouteRule.sessionPersistence
 message KubernetesGrpcRouteSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Namespace in which the GRPCRoute is created. Backends in other namespaces,
   // and Gateways in other namespaces, are subject to the usual same-namespace /
   // ReferenceGrant rules.

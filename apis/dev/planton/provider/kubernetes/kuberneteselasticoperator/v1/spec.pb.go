@@ -141,11 +141,11 @@ var File_dev_planton_provider_kubernetes_kuberneteselasticoperator_v1_spec_proto
 
 const file_dev_planton_provider_kubernetes_kuberneteselasticoperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kuberneteselasticoperator/v1/spec.proto\x12<dev.planton.provider.kubernetes.kuberneteselasticoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd9\x02\n" +
+	"Gdev/planton/provider/kubernetes/kuberneteselasticoperator/v1/spec.proto\x12<dev.planton.provider.kubernetes.kuberneteselasticoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc3\x02\n" +
 	"\x1dKubernetesElasticOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x8a\x01\n" +
-	"\tcontainer\x18\x04 \x01(\v2d.dev.planton.provider.kubernetes.kuberneteselasticoperator.v1.KubernetesElasticOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainerJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x9e\x01\n" +
+	"\tcontainer\x18\x04 \x01(\v2d.dev.planton.provider.kubernetes.kuberneteselasticoperator.v1.KubernetesElasticOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\"\x9e\x01\n" +
 	"&KubernetesElasticOperatorSpecContainer\x12t\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
 	"\f\n" +

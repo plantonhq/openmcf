@@ -368,7 +368,7 @@ var File_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetescertmanager/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertmanager.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe1\x04\n" +
+	"Cdev/planton/provider/kubernetes/kubernetescertmanager/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertmanager.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcb\x04\n" +
 	"\x19KubernetesCertManagerSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12W\n" +
@@ -377,7 +377,7 @@ const file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_r
 	"\x1fskip_install_self_signed_issuer\x18\x06 \x01(\bR\x1bskipInstallSelfSignedIssuer\x12}\n" +
 	"\x11workload_identity\x18\a \x01(\v2P.dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfigR\x10workloadIdentityB\"\n" +
 	" _kubernetes_cert_manager_versionB\x15\n" +
-	"\x13_helm_chart_versionJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xc1\x02\n" +
+	"\x13_helm_chart_version\"\xc1\x02\n" +
 	"\x16WorkloadIdentityConfig\x12a\n" +
 	"\x03gke\x18\x01 \x01(\v2M.dev.planton.provider.kubernetes.kubernetescertmanager.v1.GkeWorkloadIdentityH\x00R\x03gke\x12U\n" +
 	"\x03eks\x18\x02 \x01(\v2A.dev.planton.provider.kubernetes.kubernetescertmanager.v1.EksIrsaH\x00R\x03eks\x12a\n" +

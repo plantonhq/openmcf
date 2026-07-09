@@ -51,10 +51,6 @@ var _ = ginkgo.Describe("KubernetesPeerAuthentication Validation Tests", func() 
 				Name: "test-peer-authentication",
 			},
 			Spec: &KubernetesPeerAuthenticationSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: literal("default"),
 				Mtls:      mtls("STRICT"),
 			},

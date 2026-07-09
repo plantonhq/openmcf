@@ -384,7 +384,7 @@ var File_dev_planton_provider_kubernetes_kubernetesopenfga_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesopenfga_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesopenfga/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenfga.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\xbe\x04\n" +
+	"?dev/planton/provider/kubernetes/kubernetesopenfga/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenfga.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\xa8\x04\n" +
 	"\x15KubernetesOpenFgaSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x95\x01\n" +
@@ -393,7 +393,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenfga_v1_spec_proto_rawDe
 	"\x051000m\x12\x031Gi\x12\f\n" +
 	"\x0350m\x12\x05100MiR\tcontainer\x12h\n" +
 	"\aingress\x18\x05 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesopenfga.v1.KubernetesOpenFgaIngressR\aingress\x12v\n" +
-	"\tdatastore\x18\x06 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesopenfga.v1.KubernetesOpenFgaDataStoreB\x06\xbaH\x03\xc8\x01\x01R\tdatastoreJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x8b\x01\n" +
+	"\tdatastore\x18\x06 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesopenfga.v1.KubernetesOpenFgaDataStoreB\x06\xbaH\x03\xc8\x01\x01R\tdatastore\"\x8b\x01\n" +
 	"\x1aKubernetesOpenFgaContainer\x12\x1a\n" +
 	"\breplicas\x18\x01 \x01(\x05R\breplicas\x12Q\n" +
 	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\"\xc2\x03\n" +

@@ -33,7 +33,7 @@ const (
 // 100% fidelity with the upstream Gateway API v1.5.1 ReferenceGrantSpec
 // (kubernetes-sigs/gateway-api apis/v1/referencegrant_types.go), standard channel,
 // served as gateway.networking.k8s.io/v1. Upstream spec fields are flattened after
-// the Planton namespaced envelope (target_cluster, namespace).
+// the Planton namespaced envelope (namespace).
 //
 // Unlike the route kinds, ReferenceGrant has NO parent_refs/backend_refs and does
 // not reuse the shared gateway_api.proto reference types: its from/to entries are
@@ -302,13 +302,13 @@ var File_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetesreferencegrant/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesreferencegrant.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x90\x03\n" +
+	"Fdev/planton/provider/kubernetes/kubernetesreferencegrant/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesreferencegrant.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xfa\x02\n" +
 	"\x1cKubernetesReferenceGrantSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12y\n" +
 	"\x04from\x18\x03 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantFromB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x04from\x12s\n" +
 	"\x02to\x18\x04 \x03(\v2W.dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantToB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x02toJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xac\x02\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x02to\"\xac\x02\n" +
 	"\x1cKubernetesReferenceGrantFrom\x12l\n" +
 	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
 	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12K\n" +

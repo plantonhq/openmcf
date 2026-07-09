@@ -15,9 +15,6 @@ extend google.protobuf.FieldOptions {
 
 // NatsKubernetes spec holds the 80-20 configuration for a nats cluster on kubernetes.
 message KubernetesNatsSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

@@ -15,12 +15,8 @@ import "dev/planton/provider/kubernetes/gateway_api.proto";
 // after the Planton cluster-scoped envelope.
 //
 // GatewayClass is a cluster-scoped resource (+kubebuilder:resource:scope=Cluster
-// upstream), so this spec carries target_cluster but intentionally has NO
-// namespace field.
+// upstream), so this spec intentionally has NO namespace field.
 message KubernetesGatewayClassSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Name of the controller that manages Gateways of this class, expressed as a
   // domain-prefixed path (for example, "istio.io/gateway-controller" or
   // "gateway.envoyproxy.io/gatewayclass-controller").

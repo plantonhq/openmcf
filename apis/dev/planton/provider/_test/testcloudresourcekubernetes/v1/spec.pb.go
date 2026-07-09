@@ -134,7 +134,7 @@ var File_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto pr
 
 const file_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/_test/testcloudresourcekubernetes/v1/spec.proto\x129dev.planton.provider._test.testcloudresourcekubernetes.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcc\x05\n" +
+	"Ddev/planton/provider/_test/testcloudresourcekubernetes/v1/spec.proto\x129dev.planton.provider._test.testcloudresourcekubernetes.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb6\x05\n" +
 	"\x1fTestCloudResourceKubernetesSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12t\n" +
@@ -149,7 +149,7 @@ const file_dev_planton_provider__test_testcloudresourcekubernetes_v1_spec_proto_
 	"\vRefMapEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12H\n" +
 	"\x05value\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x05value:\x028\x01B\v\n" +
-	"\t_scheduleJ\x04\b\x01\x10\x02R\x0etarget_clusterB\xcc\x03\n" +
+	"\t_scheduleB\xcc\x03\n" +
 	"=com.dev.planton.provider._test.testcloudresourcekubernetes.v1B\tSpecProtoP\x01Zygithub.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcekubernetes/v1;testcloudresourcekubernetesv1\xa2\x02\x05DPP_T\xaa\x028Dev.Planton.Provider.Test.Testcloudresourcekubernetes.V1\xca\x028Dev\\Planton\\Provider\\Test\\Testcloudresourcekubernetes\\V1\xe2\x02DDev\\Planton\\Provider\\Test\\Testcloudresourcekubernetes\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Test::Testcloudresourcekubernetes::V1b\x06proto3"
 
 var (

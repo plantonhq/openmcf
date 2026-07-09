@@ -31,7 +31,7 @@ const (
 // 100% fidelity with the upstream istio.io/api Telemetry
 // (telemetry/v1alpha1/telemetry.proto, served as telemetry.istio.io/v1), pinned to
 // the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
-// Planton namespaced envelope (target_cluster, namespace); there is no nested
+// Planton namespaced envelope (namespace); there is no nested
 // `telemetry` sub-message.
 //
 // Scope semantics (upstream): a Telemetry resource with no selector and no
@@ -1075,7 +1075,7 @@ var File_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto proto
 
 const file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/kubernetes/kubernetestelemetry/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetestelemetry.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\x06\n" +
+	"Adev/planton/provider/kubernetes/kubernetestelemetry/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetestelemetry.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xce\x06\n" +
 	"\x17KubernetesTelemetrySpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12s\n" +
@@ -1084,7 +1084,7 @@ const file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_raw
 	"\atracing\x18\x05 \x03(\v2R.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracingR\atracing\x12l\n" +
 	"\ametrics\x18\x06 \x03(\v2R.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsR\ametrics\x12\x7f\n" +
 	"\x0eaccess_logging\x18\a \x03(\v2X.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingR\raccessLogging:\x93\x01\xbaH\x8f\x01\x1a\x8c\x01\n" +
-	"\"telemetry.selector_xor_target_refs\x121at most one of selector or target_refs may be set\x1a3!(has(this.selector) && size(this.target_refs) > 0)J\x04\b\x01\x10\x02R\x0etarget_cluster\"\xac\a\n" +
+	"\"telemetry.selector_xor_target_refs\x121at most one of selector or target_refs may be set\x1a3!(has(this.selector) && size(this.target_refs) > 0)\"\xac\a\n" +
 	"\x1aKubernetesTelemetryTracing\x12p\n" +
 	"\x05match\x18\x01 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracingSelectorR\x05match\x12t\n" +
 	"\tproviders\x18\x02 \x03(\v2V.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRefR\tproviders\x12Z\n" +

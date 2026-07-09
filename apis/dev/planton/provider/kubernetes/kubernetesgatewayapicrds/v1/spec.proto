@@ -12,9 +12,6 @@ import "dev/planton/shared/options/options.proto";
 // and service mesh traffic. Installing these CRDs enables Gateway, HTTPRoute,
 // GRPCRoute, and other Gateway API resources to be used in the cluster.
 message KubernetesGatewayApiCrdsSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Gateway API version to install (e.g., "v1.2.1", "v1.3.0").
   // Defaults to v1.2.1 if not specified.
   // Must start with 'v' followed by a valid semver version.

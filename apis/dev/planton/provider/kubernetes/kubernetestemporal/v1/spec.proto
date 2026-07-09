@@ -25,9 +25,6 @@ enum KubernetesTemporalDatabaseBackend {
 
 // temporal kubernetes spec defines minimal fields for deploying temporal on kubernetes.
 message KubernetesTemporalSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

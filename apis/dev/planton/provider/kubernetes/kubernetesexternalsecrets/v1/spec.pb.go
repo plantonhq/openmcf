@@ -381,7 +381,7 @@ var File_dev_planton_provider_kubernetes_kubernetesexternalsecrets_v1_spec_proto
 
 const file_dev_planton_provider_kubernetes_kubernetesexternalsecrets_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetesexternalsecrets/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesexternalsecrets.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb0\x06\n" +
+	"Gdev/planton/provider/kubernetes/kubernetesexternalsecrets/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesexternalsecrets.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9a\x06\n" +
 	"\x1dKubernetesExternalSecretsSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12F\n" +
@@ -391,7 +391,7 @@ const file_dev_planton_provider_kubernetes_kubernetesexternalsecrets_v1_spec_pro
 	"\x03eks\x18e \x01(\v2`.dev.planton.provider.kubernetes.kubernetesexternalsecrets.v1.KubernetesExternalSecretsEksConfigH\x00R\x03eks\x12t\n" +
 	"\x03aks\x18f \x01(\v2`.dev.planton.provider.kubernetes.kubernetesexternalsecrets.v1.KubernetesExternalSecretsAksConfigH\x00R\x03aksB\x11\n" +
 	"\x0fprovider_configB\x18\n" +
-	"\x16_poll_interval_secondsJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x9e\x01\n" +
+	"\x16_poll_interval_seconds\"\x9e\x01\n" +
 	"&KubernetesExternalSecretsSpecContainer\x12t\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
 	"\f\n" +

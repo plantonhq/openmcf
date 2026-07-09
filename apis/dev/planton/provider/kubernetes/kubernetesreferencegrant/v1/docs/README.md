@@ -63,7 +63,7 @@ cross-namespace reference, and the grant *authorizes* it from the other side.
 ## Anatomy of ReferenceGrantSpec
 
 The Planton spec flattens the upstream `ReferenceGrantSpec` after the standard
-namespaced envelope (`target_cluster`, `namespace`):
+namespaced envelope (`namespace`):
 
 - `from` -- the trusted sources, each a `(group, kind, namespace)` tuple
   (**required**, 1 to 16).

@@ -35,7 +35,7 @@ const (
 // (networking/v1alpha3/envoy_filter.proto, served as networking.istio.io/v1alpha3 — this
 // is the only typed Istio API component still on v1alpha3; it has NOT graduated to v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after
-// the Planton namespaced envelope (target_cluster, namespace); there is no nested
+// the Planton namespaced envelope (namespace); there is no nested
 // `envoy_filter` sub-message.
 //
 // EXPERT-ONLY ESCAPE HATCH: EnvoyFilter patches Envoy's internal xDS API directly. The
@@ -1058,7 +1058,7 @@ var File_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetesenvoyfilter/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xf4\x05\n" +
+	"Cdev/planton/provider/kubernetes/kubernetesenvoyfilter/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xde\x05\n" +
 	"\x19KubernetesEnvoyFilterSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12z\n" +
 	"\x11workload_selector\x18\x03 \x01(\v2M.dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelectorR\x10workloadSelector\x12\x81\x01\n" +
@@ -1067,7 +1067,7 @@ const file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_r
 	"\vtarget_refs\x18\x06 \x03(\v2H.dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReferenceB\b\xbaH\x05\x92\x01\x02\x10\x10R\n" +
 	"targetRefs:\xb1\x01\xbaH\xad\x01\x1a\xaa\x01\n" +
 	".envoy_filter.workload_selector_xor_target_refs\x12:at most one of workload_selector or target_refs may be set\x1a<!(has(this.workload_selector) && size(this.target_refs) > 0)B\v\n" +
-	"\t_priorityJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xde\x03\n" +
+	"\t_priority\"\xde\x03\n" +
 	" KubernetesEnvoyFilterConfigPatch\x12\xc3\x01\n" +
 	"\bapply_to\x18\x01 \x01(\tB\xa2\x01\xbaH\x9e\x01r\x9b\x01R\bLISTENERR\fFILTER_CHAINR\x0eNETWORK_FILTERR\vHTTP_FILTERR\x13ROUTE_CONFIGURATIONR\fVIRTUAL_HOSTR\n" +
 	"HTTP_ROUTER\aCLUSTERR\x10EXTENSION_CONFIGR\tBOOTSTRAPR\x0fLISTENER_FILTERH\x00R\aapplyTo\x88\x01\x01\x12{\n" +

@@ -63,7 +63,6 @@ Refer to the examples section for detailed usage instructions.
 ### KubernetesPerconaPostgresOperatorSpec
 Defines the desired state of the operator deployment.
 
-- **target_cluster**: Target Kubernetes cluster configuration with credential reference
 - **namespace**: Namespace where the operator will be deployed
 - **create_namespace**: Boolean flag to control namespace creation
   - `true`: Module creates and manages the namespace

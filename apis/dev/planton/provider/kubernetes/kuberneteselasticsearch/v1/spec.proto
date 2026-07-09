@@ -17,9 +17,6 @@ extend google.protobuf.FieldOptions {
 // By configuring these parameters, you can set up an Elasticsearch deployment tailored to your application's needs,
 // including resource allocation, persistence settings, and external access through ingress.
 message KubernetesElasticsearchSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

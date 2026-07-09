@@ -1013,7 +1013,7 @@ var File_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetestemporal/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestemporal.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x99\t\n" +
+	"@dev/planton/provider/kubernetes/kubernetestemporal/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestemporal.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x83\t\n" +
 	"\x16KubernetesTemporalSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12{\n" +
@@ -1030,7 +1030,7 @@ const file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawD
 	"\x12num_history_shards\x18\r \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\x80\x01(\x01H\x01R\x10numHistoryShards\x88\x01\x01\x12m\n" +
 	"\bservices\x18\x0e \x01(\v2Q.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServicesR\bservicesB\x15\n" +
 	"\x13_cassandra_replicasB\x15\n" +
-	"\x13_num_history_shardsJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x87\x04\n" +
+	"\x13_num_history_shards\"\x87\x04\n" +
 	" KubernetesTemporalDatabaseConfig\x12z\n" +
 	"\abackend\x18\x01 \x01(\x0e2X.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseBackendB\x06\xbaH\x03\xc8\x01\x01R\abackend\x12\x86\x01\n" +
 	"\x11external_database\x18\x02 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabaseR\x10externalDatabase\x126\n" +

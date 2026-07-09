@@ -11,9 +11,6 @@ import "dev/planton/shared/options/options.proto";
 // The Rook Ceph Operator must be installed before deploying this resource.
 // This component creates a CephCluster along with optional block pools, filesystems, and object stores.
 message KubernetesRookCephClusterSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace where the Ceph cluster will be installed.
   // This namespace should match or be different from the operator namespace depending on your multi-tenancy requirements.
   // Default: rook-ceph

@@ -32,9 +32,6 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // KubernetesGatewayApiBackendRef directly rather than defining its own per-route
 // backend ref.
 message KubernetesTcpRouteSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Namespace in which the TCPRoute is created. Backends in other namespaces,
   // and Gateways in other namespaces, are subject to the usual same-namespace /
   // ReferenceGrant rules.

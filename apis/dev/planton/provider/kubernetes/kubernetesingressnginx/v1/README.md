@@ -128,8 +128,6 @@ kind: KubernetesIngressNginx
 metadata:
   name: my-ingress
 spec:
-  target_cluster:
-    cluster_name: my-cluster
   namespace:
     value: ingress-nginx
   create_namespace: true
@@ -145,8 +143,6 @@ kind: KubernetesIngressNginx
 metadata:
   name: internal-ingress
 spec:
-  target_cluster:
-    cluster_name: gke-prod-cluster
   namespace:
     value: ingress-nginx
   create_namespace: true
@@ -164,8 +160,6 @@ kind: KubernetesIngressNginx
 metadata:
   name: eks-ingress
 spec:
-  target_cluster:
-    cluster_name: eks-prod-cluster
   namespace:
     value: ingress-nginx
   create_namespace: true

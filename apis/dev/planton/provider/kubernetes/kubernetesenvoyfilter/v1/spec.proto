@@ -17,7 +17,7 @@ import "google/protobuf/struct.proto";
 // (networking/v1alpha3/envoy_filter.proto, served as networking.istio.io/v1alpha3 — this
 // is the only typed Istio API component still on v1alpha3; it has NOT graduated to v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after
-// the Planton namespaced envelope (target_cluster, namespace); there is no nested
+// the Planton namespaced envelope (namespace); there is no nested
 // `envoy_filter` sub-message.
 //
 // EXPERT-ONLY ESCAPE HATCH: EnvoyFilter patches Envoy's internal xDS API directly. The
@@ -41,9 +41,6 @@ message KubernetesEnvoyFilterSpec {
     message: "at most one of workload_selector or target_refs may be set"
     expression: "!(has(this.workload_selector) && size(this.target_refs) > 0)"
   };
-
-  reserved 1;
-  reserved "target_cluster";
 
   // Namespace in which the EnvoyFilter is created. An EnvoyFilter in a workload namespace
   // affects only workloads in that namespace; one in the Istio mesh root namespace (e.g.

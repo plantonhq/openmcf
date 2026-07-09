@@ -442,7 +442,7 @@ var File_dev_planton_provider_kubernetes_kuberneteselasticsearch_v1_spec_proto p
 
 const file_dev_planton_provider_kubernetes_kuberneteselasticsearch_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kuberneteselasticsearch/v1/spec.proto\x12:dev.planton.provider.kubernetes.kuberneteselasticsearch.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\xaa\x04\n" +
+	"Edev/planton/provider/kubernetes/kuberneteselasticsearch/v1/spec.proto\x12:dev.planton.provider.kubernetes.kuberneteselasticsearch.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\x94\x04\n" +
 	"\x1bKubernetesElasticsearchSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\xba\x01\n" +
@@ -454,7 +454,7 @@ const file_dev_planton_provider_kubernetes_kuberneteselasticsearch_v1_spec_proto
 	"\x06kibana\x18\x05 \x01(\v2].dev.planton.provider.kubernetes.kuberneteselasticsearch.v1.KubernetesElasticsearchKibanaSpecB)\xd2\xc4\xf8\x01$\b\x01\x12 \b\x01\x12\x1c\n" +
 	"\f\n" +
 	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\x06kibanaJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xaa\x02\n" +
+	"\x0350m\x12\x05100MiR\x06kibana\"\xaa\x02\n" +
 	"(KubernetesElasticsearchElasticsearchSpec\x12\x87\x01\n" +
 	"\tcontainer\x18\x01 \x01(\v2i.dev.planton.provider.kubernetes.kuberneteselasticsearch.v1.KubernetesElasticsearchElasticsearchContainerR\tcontainer\x12t\n" +
 	"\aingress\x18\x02 \x01(\v2Z.dev.planton.provider.kubernetes.kuberneteselasticsearch.v1.KubernetesElasticsearchIngressR\aingress\"\xb6\x02\n" +

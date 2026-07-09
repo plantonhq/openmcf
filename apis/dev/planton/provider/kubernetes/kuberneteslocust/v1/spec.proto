@@ -17,9 +17,6 @@ extend google.protobuf.FieldOptions {
 // and Helm chart values for customizing the deployment. By configuring these parameters, you can set up a scalable
 // and customizable load testing environment to simulate user traffic and measure application performance.
 message KubernetesLocustSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

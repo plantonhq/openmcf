@@ -23,9 +23,6 @@ message KubernetesIssuerSpec {
     expression: "has(this.ca) || has(this.self_signed)"
   };
 
-  reserved 1;
-  reserved "target_cluster";
-
   // Namespace where the Issuer will be created.
   // The Issuer is namespace-scoped, so all Certificate resources that reference
   // it must reside in this same namespace.

@@ -287,12 +287,12 @@ var File_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetestekton/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetestekton.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xc6\x02\n" +
+	">dev/planton/provider/kubernetes/kubernetestekton/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetestekton.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xb0\x02\n" +
 	"\x14KubernetesTektonSpec\x125\n" +
 	"\x10pipeline_version\x18\x02 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06latestR\x0fpipelineVersion\x12l\n" +
 	"\tdashboard\x18\x03 \x01(\v2N.dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboardR\tdashboard\x12s\n" +
-	"\fcloud_events\x18\x04 \x01(\v2P.dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonCloudEventsR\vcloudEventsJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xcc\x01\n" +
+	"\fcloud_events\x18\x04 \x01(\v2P.dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonCloudEventsR\vcloudEvents\"\xcc\x01\n" +
 	"\x19KubernetesTektonDashboard\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12$\n" +
 	"\aversion\x18\x02 \x01(\tB\n" +

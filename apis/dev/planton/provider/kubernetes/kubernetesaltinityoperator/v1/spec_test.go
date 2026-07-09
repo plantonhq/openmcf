@@ -7,7 +7,6 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -21,10 +20,6 @@ var _ = ginkgo.Describe("KubernetesAltinityOperatorSpec validations", func() {
 
 	ginkgo.BeforeEach(func() {
 		spec = &KubernetesAltinityOperatorSpec{
-			TargetCluster: &kubernetes.KubernetesClusterSelector{
-				ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-				ClusterName: "my-k8s-cluster",
-			},
 			Namespace: &foreignkeyv1.StringValueOrRef{
 				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 					Value: "kubernetes-altinity-operator",

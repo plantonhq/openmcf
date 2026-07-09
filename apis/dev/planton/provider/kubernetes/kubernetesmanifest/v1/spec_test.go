@@ -6,9 +6,7 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -28,10 +26,6 @@ var _ = ginkgo.Describe("KubernetesManifest Validation Tests", func() {
 				Name: "test-manifest",
 			},
 			Spec: &KubernetesManifestSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 						Value: "test-namespace",
@@ -76,13 +70,6 @@ data:
 			})
 		})
 
-		ginkgo.Context("without target_cluster (optional field)", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.TargetCluster = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
 	})
 
 	ginkgo.Describe("Namespace validation", func() {

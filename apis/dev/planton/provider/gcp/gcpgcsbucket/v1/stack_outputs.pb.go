@@ -24,7 +24,8 @@ const (
 // gcp-gcs-bucket stack outputs
 type GcpGcsBucketStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// id of the storage-bucket created on aws
+	// id of the GCS bucket created on Google Cloud.
+	// reference via status.outputs.bucket_id.
 	BucketId      string `protobuf:"bytes,1,opt,name=bucket_id,json=bucketId,proto3" json:"bucket_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

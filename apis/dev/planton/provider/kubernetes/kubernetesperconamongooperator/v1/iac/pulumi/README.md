@@ -63,7 +63,6 @@ Refer to the examples section for detailed usage instructions.
 ### KubernetesPerconaMongoOperatorSpec
 Defines the desired state of the operator deployment.
 
-- **target_cluster**: Target Kubernetes cluster configuration with credential reference
 - **namespace**: Kubernetes namespace for the operator (required)
 - **create_namespace**: Whether to create the namespace (default: true). Set to false to use an existing namespace.
 - **container**: Container resource specifications for the operator pod

@@ -1409,7 +1409,7 @@ var File_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto protorefle
 
 const file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/kubernetes/kubernetesnats/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xe6\a\n" +
+	"<dev/planton/provider/kubernetes/kubernetesnats/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xd0\a\n" +
 	"\x12KubernetesNatsSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\xa9\x01\n" +
@@ -1428,7 +1428,7 @@ const file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc 
 	"\astreams\x18\v \x03(\v2G.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStreamR\astreams\x12F\n" +
 	"\x17nats_helm_chart_version\x18\f \x01(\tB\n" +
 	"\x8a\xa6\x1d\x062.12.3H\x00R\x14natsHelmChartVersion\x88\x01\x01B\x1a\n" +
-	"\x18_nats_helm_chart_versionJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xc3\x01\n" +
+	"\x18_nats_helm_chart_version\"\xc3\x01\n" +
 	"\x1dKubernetesNatsServerContainer\x12#\n" +
 	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\breplicas\x12Q\n" +
 	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12*\n" +

@@ -65,8 +65,6 @@ This creates a bare namespace named `my-namespace` with standard Planton managem
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `spec.targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `spec.targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `spec.labels` | `map<string, string>` | `{}` | Additional labels merged onto the Namespace. Standard management labels (`managed-by`, `resource`, `resource-kind`) are always added. |
 | `spec.annotations` | `map<string, string>` | `{}` | Additional annotations merged onto the Namespace. Service-mesh injection annotations are added automatically when `serviceMeshConfig` is enabled. |
 | `spec.resourceProfile.preset` | `enum` | — | T-shirt-sized resource profile. One of `small`, `medium`, `large`, `xlarge`. Mutually exclusive with `resourceProfile.custom`. See table below. |
@@ -181,9 +179,6 @@ spec:
     compliance: pci-dss
   annotations:
     janitor/ttl: "never"
-  targetCluster:
-    clusterKind: GcpGkeCluster
-    clusterName: prod-us-central1
   resourceProfile:
     custom:
       cpu:

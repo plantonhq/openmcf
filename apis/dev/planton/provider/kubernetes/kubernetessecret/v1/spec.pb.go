@@ -537,7 +537,7 @@ var File_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetessecret/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessecret.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xed\r\n" +
+	">dev/planton/provider/kubernetes/kubernetessecret/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessecret.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xd7\r\n" +
 	"\x14KubernetesSecretSpec\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12\xfb\x01\n" +
@@ -562,7 +562,7 @@ const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDes
 	"\x14secret_data_required\x12hExactly one secret data type must be provided (opaque, tls, docker_config_json, basic_auth, or ssh_auth)\x1aohas(this.opaque) || has(this.tls) || has(this.docker_config_json) || has(this.basic_auth) || has(this.ssh_auth)B\r\n" +
 	"\vsecret_dataB\f\n" +
 	"\n" +
-	"_namespaceJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xce\x01\n" +
+	"_namespace\"\xce\x01\n" +
 	"\x1aKubernetesSecretOpaqueData\x12w\n" +
 	"\x04data\x18\x01 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +

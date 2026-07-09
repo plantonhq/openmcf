@@ -411,7 +411,7 @@ var File_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetesexternaldns/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe0\x06\n" +
+	"Cdev/planton/provider/kubernetes/kubernetesexternaldns/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xca\x06\n" +
 	"\x19KubernetesExternalDnsSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12B\n" +
@@ -426,7 +426,7 @@ const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_r
 	"cloudflareB\x11\n" +
 	"\x0fprovider_configB\x17\n" +
 	"\x15_external_dns_versionB\x15\n" +
-	"\x13_helm_chart_versionJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x98\x02\n" +
+	"\x13_helm_chart_version\"\x98\x02\n" +
 	"\x1eKubernetesExternalDnsGkeConfig\x12{\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12y\n" +

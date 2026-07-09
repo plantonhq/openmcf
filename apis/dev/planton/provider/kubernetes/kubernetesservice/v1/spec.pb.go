@@ -565,7 +565,7 @@ var File_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesservice/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xb1\x14\n" +
+	"?dev/planton/provider/kubernetes/kubernetesservice/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\x9b\x14\n" +
 	"\x15KubernetesServiceSpec\x12\xdf\x01\n" +
 	"\tnamespace\x18\x02 \x01(\tB\xc0\x01\xbaH\xbc\x01\xba\x01\xb2\x01\n" +
 	"\x13namespace.dns_label\x12enamespace must be a valid DNS label (lowercase alphanumeric and hyphens, no leading/trailing hyphens)\x1a4this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')r\x04\x10\x01\x18?R\tnamespace\x12\xcb\x01\n" +
@@ -611,7 +611,7 @@ const file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDe
 	" non_external_name_requires_ports\x12Aat least one port must be specified for non-ExternalName services\x1a'this.type == 4 || this.ports.size() > 0B\a\n" +
 	"\x05_typeB\x1a\n" +
 	"\x18_external_traffic_policyB\x13\n" +
-	"\x11_session_affinityJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xb3\x04\n" +
+	"\x11_session_affinity\"\xb3\x04\n" +
 	"\x15KubernetesServicePort\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18?R\x04name\x12\x97\x01\n" +
 	"\bprotocol\x18\x02 \x01(\x0e2e.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.KubernetesServiceProtocolB\x0f\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x03TCPH\x00R\bprotocol\x88\x01\x01\x12\x1f\n" +

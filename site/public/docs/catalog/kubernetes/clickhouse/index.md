@@ -71,8 +71,6 @@ This creates a single-replica ClickHouse instance with version 24.8, persistence
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `clusterName` | `string` | `metadata.name` | Identifier for the ClickHouseInstallation custom resource. Must be a valid DNS subdomain name (lowercase alphanumeric with hyphens). |
 | `container.replicas` | `int32` | `1` | Number of ClickHouse replica pods. Ignored when clustering is enabled (use `cluster.shardCount` and `cluster.replicaCount` instead). Must be at least 1. |

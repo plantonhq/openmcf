@@ -141,11 +141,11 @@ var File_dev_planton_provider_kubernetes_kubernetesstrimzikafkaoperator_v1_spec_
 
 const file_dev_planton_provider_kubernetes_kubernetesstrimzikafkaoperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1/spec.proto\x12Adev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe8\x02\n" +
+	"Ldev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1/spec.proto\x12Adev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd2\x02\n" +
 	"\"KubernetesStrimziKafkaOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x94\x01\n" +
-	"\tcontainer\x18\x04 \x01(\v2n.dev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1.KubernetesStrimziKafkaOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainerJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xa3\x01\n" +
+	"\tcontainer\x18\x04 \x01(\v2n.dev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1.KubernetesStrimziKafkaOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\"\xa3\x01\n" +
 	"+KubernetesStrimziKafkaOperatorSpecContainer\x12t\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
 	"\f\n" +

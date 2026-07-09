@@ -66,8 +66,6 @@ This creates a single-replica Redis instance with persistence enabled, a 1Gi Per
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `container.replicas` | `int32` | `1` | Number of Redis replica pods. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each Redis pod. |

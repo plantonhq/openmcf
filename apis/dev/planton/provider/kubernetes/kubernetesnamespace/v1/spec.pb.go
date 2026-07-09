@@ -966,7 +966,7 @@ var File_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto proto
 
 const file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/kubernetes/kubernetesnamespace/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesnamespace.v1\x1a\x1bbuf/validate/validate.proto\"\xed\v\n" +
+	"Adev/planton/provider/kubernetes/kubernetesnamespace/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesnamespace.v1\x1a\x1bbuf/validate/validate.proto\"\xd7\v\n" +
 	"\x17KubernetesNamespaceSpec\x12\xcb\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xb6\x01\xbaH\xb2\x01\xba\x01\xa8\x01\n" +
 	"\x0ename.dns_label\x12`Name must be a valid DNS label (lowercase alphanumeric and hyphens, no leading/trailing hyphens)\x1a4this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')r\x04\x10\x01\x18?R\x04name\x12s\n" +
@@ -989,7 +989,7 @@ const file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_raw
 	"\bbaseline\x10\x02\x12\x0e\n" +
 	"\n" +
 	"restricted\x10\x03:\xaa\x01\xbaH\xa6\x01\x1a\xa3\x01\n" +
-	"\x1fservice_mesh_requires_mesh_type\x122mesh_type must be set when service mesh is enabled\x1aL!this.service_mesh_config.enabled || this.service_mesh_config.mesh_type != 0J\x04\b\x01\x10\x02R\x0etarget_cluster\"\xc1\x03\n" +
+	"\x1fservice_mesh_requires_mesh_type\x122mesh_type must be set when service mesh is enabled\x1aL!this.service_mesh_config.enabled || this.service_mesh_config.mesh_type != 0\"\xc1\x03\n" +
 	"\"KubernetesNamespaceResourceProfile\x12\xa0\x01\n" +
 	"\x06preset\x18\x01 \x01(\x0e2|.dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceResourceProfile.KubernetesNamespaceBuiltInProfileB\b\xbaH\x05\x82\x01\x02\x10\x01H\x00R\x06preset\x12q\n" +
 	"\x06custom\x18\x02 \x01(\v2W.dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCustomQuotasH\x00R\x06custom\"s\n" +

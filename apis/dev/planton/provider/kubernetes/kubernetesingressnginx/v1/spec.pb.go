@@ -350,7 +350,7 @@ var File_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto pr
 
 const file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kubernetesingressnginx/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesingressnginx.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xed\x04\n" +
+	"Ddev/planton/provider/kubernetes/kubernetesingressnginx/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesingressnginx.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd7\x04\n" +
 	"\x1aKubernetesIngressNginxSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12#\n" +
@@ -359,7 +359,7 @@ const file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_
 	"\x03gke\x18d \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxGkeConfigH\x00R\x03gke\x12n\n" +
 	"\x03eks\x18e \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfigH\x00R\x03eks\x12n\n" +
 	"\x03aks\x18f \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxAksConfigH\x00R\x03aksB\x11\n" +
-	"\x0fprovider_configJ\x04\b\x01\x10\x02R\x0etarget_cluster\"y\n" +
+	"\x0fprovider_config\"y\n" +
 	"\x1fKubernetesIngressNginxGkeConfig\x12$\n" +
 	"\x0estatic_ip_name\x18\x01 \x01(\tR\fstaticIpName\x120\n" +
 	"\x14subnetwork_self_link\x18\x02 \x01(\tR\x12subnetworkSelfLink\"\xef\x02\n" +

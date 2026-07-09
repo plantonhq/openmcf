@@ -25,9 +25,6 @@ extend google.protobuf.FieldOptions {
  * deployment patterns from simple single-node installations to production-grade high-availability clusters.
  */
 message KubernetesHarborSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

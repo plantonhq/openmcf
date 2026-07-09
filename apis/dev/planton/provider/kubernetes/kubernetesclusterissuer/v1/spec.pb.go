@@ -446,7 +446,7 @@ var File_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto p
 
 const file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kubernetesclusterissuer/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesclusterissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xaf\x06\n" +
+	"Edev/planton/provider/kubernetes/kubernetesclusterissuer/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesclusterissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x99\x06\n" +
 	"\x1bKubernetesClusterIssuerSpec\x12\x91\x01\n" +
 	"\x16cert_manager_namespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb5\x06\x92\xd4a\x18status.outputs.namespaceR\x14certManagerNamespace\x12%\n" +
 	"\n" +
@@ -460,7 +460,7 @@ const file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto
 	"awsRoute53\x12i\n" +
 	"\tazure_dns\x18g \x01(\v2J.dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AzureDnsSolverH\x00R\bazureDnsB\n" +
 	"\n" +
-	"\bproviderJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x93\x01\n" +
+	"\bprovider\"\x93\x01\n" +
 	"\x17ClusterIssuerAcmeConfig\x12\x1c\n" +
 	"\x05email\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05email\x12O\n" +
 	"\x06server\x18\x02 \x01(\tB2\x8a\xa6\x1d.https://acme-v02.api.letsencrypt.org/directoryH\x00R\x06server\x88\x01\x01B\t\n" +

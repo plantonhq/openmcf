@@ -32,7 +32,7 @@ const (
 // 100% fidelity with the upstream Gateway API v1.5.1 GatewaySpec
 // (kubernetes-sigs/gateway-api apis/v1/gateway_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
-// (target_cluster, namespace). The experimental `defaultScope` field is
+// (namespace). The experimental `defaultScope` field is
 // intentionally excluded: it is absent from the standard-channel CRD and from
 // the typed Pulumi resource Planton provisions with.
 type KubernetesGatewaySpec struct {
@@ -1323,7 +1323,7 @@ var File_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesgateway/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb9\x0f\n" +
+	"?dev/planton/provider/kubernetes/kubernetesgateway/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa3\x0f\n" +
 	"\x15KubernetesGatewaySpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x92\x01\n" +
 	"\x12gateway_class_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x06\x92\xd4a!status.outputs.gateway_class_nameR\x10gatewayClassName\x12y\n" +
@@ -1336,7 +1336,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDe
 	"\x1dgateway.listener_names_unique\x124each listener name must be unique within the Gateway\x1aIthis.listeners.all(l1, this.listeners.exists_one(l2, l1.name == l2.name))\x1a\xd8\x02\n" +
 	".gateway.listener_port_protocol_hostname_unique\x12Leach listener must have a unique combination of port, protocol, and hostname\x1a\xd7\x01this.listeners.all(l1, this.listeners.exists_one(l2, l1.port == l2.port && l1.protocol == l2.protocol && (has(l1.hostname) && has(l2.hostname) ? l1.hostname == l2.hostname : !has(l1.hostname) && !has(l2.hostname))))\x1a\xb0\x02\n" +
 	"\x1bgateway.ip_addresses_unique\x12-each requested IPAddress value must be unique\x1a\xe1\x01this.addresses.all(a1, ((!has(a1.type) || a1.type == '' || a1.type == 'IPAddress') && a1.value != '') ? this.addresses.exists_one(a2, (!has(a2.type) || a2.type == '' || a2.type == 'IPAddress') && a2.value == a1.value) : true)\x1a\xf3\x01\n" +
-	"!gateway.hostname_addresses_unique\x124each requested Hostname address value must be unique\x1a\x97\x01this.addresses.all(a1, (a1.type == 'Hostname' && a1.value != '') ? this.addresses.exists_one(a2, a2.type == 'Hostname' && a2.value == a1.value) : true)J\x04\b\x01\x10\x02R\x0etarget_cluster\"\xca\v\n" +
+	"!gateway.hostname_addresses_unique\x124each requested Hostname address value must be unique\x1a\x97\x01this.addresses.all(a1, (a1.type == 'Hostname' && a1.value != '') ? this.addresses.exists_one(a2, a2.type == 'Hostname' && a2.value == a1.value) : true)\"\xca\v\n" +
 	"\x19KubernetesGatewayListener\x12d\n" +
 	"\x04name\x18\x01 \x01(\tBP\xbaHM\xc8\x01\x01rH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\x04name\x12u\n" +
 	"\bhostname\x18\x02 \x01(\tBT\xbaHQrO\x10\x01\x18\xfd\x012H^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\bhostname\x88\x01\x01\x12\"\n" +

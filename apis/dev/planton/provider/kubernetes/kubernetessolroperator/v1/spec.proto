@@ -12,9 +12,6 @@ import "dev/planton/shared/options/options.proto";
 // This message specifies the parameters needed to create and manage an Apache Solr Operator deployment within a Kubernetes environment.
 // It includes container specifications to control resource allocation.
 message KubernetesSolrOperatorSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

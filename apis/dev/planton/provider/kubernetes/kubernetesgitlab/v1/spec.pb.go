@@ -207,12 +207,12 @@ var File_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetesgitlab/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesgitlab.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa5\x03\n" +
+	">dev/planton/provider/kubernetes/kubernetesgitlab/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesgitlab.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8f\x03\n" +
 	"\x14KubernetesGitlabSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12x\n" +
 	"\tcontainer\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12f\n" +
-	"\aingress\x18\x05 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabIngressR\aingressJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xce\x01\n" +
+	"\aingress\x18\x05 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabIngressR\aingress\"\xce\x01\n" +
 	"\x17KubernetesGitlabIngress\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
 	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +

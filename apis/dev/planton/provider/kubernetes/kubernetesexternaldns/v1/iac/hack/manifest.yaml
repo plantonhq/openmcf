@@ -3,9 +3,6 @@ kind: KubernetesExternalDns
 metadata:
   name: test-external-dns
 spec:
-  target_cluster:
-    kubernetes_cluster_id:
-      value: test-cluster
   gke:
     project_id:
       value: test-gcp-project

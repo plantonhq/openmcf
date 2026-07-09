@@ -162,14 +162,14 @@ var File_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto protorefl
 
 const file_dev_planton_provider_kubernetes_kubernetesistio_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/kubernetes/kubernetesistio/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetesistio.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x90\x03\n" +
+	"=dev/planton/provider/kubernetes/kubernetesistio/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetesistio.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfa\x02\n" +
 	"\x13KubernetesIstioSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12v\n" +
 	"\tcontainer\x18\x04 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12H\n" +
 	"\aversion\x18\x05 \x01(\tB)\xbaH\x1cr\x1a2\x18^[0-9]+\\.[0-9]+\\.[0-9]+$\x8a\xa6\x1d\x061.26.8H\x00R\aversion\x88\x01\x01B\n" +
 	"\n" +
-	"\b_versionJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x94\x01\n" +
+	"\b_version\"\x94\x01\n" +
 	"\x1cKubernetesIstioSpecContainer\x12t\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
 	"\f\n" +

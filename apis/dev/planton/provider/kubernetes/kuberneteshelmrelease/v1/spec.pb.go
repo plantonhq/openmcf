@@ -125,7 +125,7 @@ var File_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kuberneteshelmrelease/v1/spec.proto\x128dev.planton.provider.kubernetes.kuberneteshelmrelease.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd6\x03\n" +
+	"Cdev/planton/provider/kubernetes/kuberneteshelmrelease/v1/spec.proto\x128dev.planton.provider.kubernetes.kuberneteshelmrelease.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc0\x03\n" +
 	"\x19KubernetesHelmReleaseSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x1a\n" +
@@ -135,7 +135,7 @@ const file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_r
 	"\x06values\x18\a \x03(\v2_.dev.planton.provider.kubernetes.kuberneteshelmrelease.v1.KubernetesHelmReleaseSpec.ValuesEntryR\x06values\x1a9\n" +
 	"\vValuesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\x01\x10\x02R\x0etarget_clusterB\xc4\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc4\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kuberneteshelmrelease.v1B\tSpecProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteshelmrelease/v1;kuberneteshelmreleasev1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kuberneteshelmrelease.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kuberneteshelmrelease\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kuberneteshelmrelease\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kuberneteshelmrelease::V1b\x06proto3"
 
 var (

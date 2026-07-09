@@ -288,7 +288,7 @@ var File_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto protoreflec
 
 const file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/kubernetes/kubernetesjob/v1/spec.proto\x120dev.planton.provider.kubernetes.kubernetesjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfe\n" +
+	";dev/planton/provider/kubernetes/kubernetesjob/v1/spec.proto\x120dev.planton.provider.kubernetes.kubernetesjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe8\n" +
 	"\n" +
 	"\x11KubernetesJobSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
@@ -326,7 +326,7 @@ const file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDesc =
 	"\x10_completion_modeB\x11\n" +
 	"\x0f_restart_policyB\n" +
 	"\n" +
-	"\b_suspendJ\x04\b\x01\x10\x02R\x0etarget_clusterB\x8c\x03\n" +
+	"\b_suspendB\x8c\x03\n" +
 	"4com.dev.planton.provider.kubernetes.kubernetesjob.v1B\tSpecProtoP\x01Zbgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjob/v1;kubernetesjobv1\xa2\x02\x05DPPKK\xaa\x020Dev.Planton.Provider.Kubernetes.Kubernetesjob.V1\xca\x020Dev\\Planton\\Provider\\Kubernetes\\Kubernetesjob\\V1\xe2\x02<Dev\\Planton\\Provider\\Kubernetes\\Kubernetesjob\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Kubernetes::Kubernetesjob::V1b\x06proto3"
 
 var (

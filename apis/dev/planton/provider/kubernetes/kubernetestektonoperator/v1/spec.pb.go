@@ -298,7 +298,7 @@ var File_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a(dev/planton/shared/options/options.proto\"\xc9\x04\n" +
+	"Fdev/planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a(dev/planton/shared/options/options.proto\"\xb3\x04\n" +
 	"\x1cKubernetesTektonOperatorSpec\x12\x88\x01\n" +
 	"\tcontainer\x18\x02 \x01(\v2b.dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12\x87\x01\n" +
 	"\n" +
@@ -306,7 +306,7 @@ const file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_prot
 	"components\x126\n" +
 	"\x10operator_version\x18\x04 \x01(\tB\v\x8a\xa6\x1d\av0.78.0R\x0foperatorVersion\x12\x92\x01\n" +
 	"\x11dashboard_ingress\x18\x05 \x01(\v2e.dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorDashboardIngressR\x10dashboardIngress\x121\n" +
-	"\x15cloud_events_sink_url\x18\x06 \x01(\tR\x12cloudEventsSinkUrlJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x9f\x01\n" +
+	"\x15cloud_events_sink_url\x18\x06 \x01(\tR\x12cloudEventsSinkUrl\"\x9f\x01\n" +
 	"%KubernetesTektonOperatorSpecContainer\x12v\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB#\xba\xfb\xa4\x02\x1e\n" +
 	"\r\n" +

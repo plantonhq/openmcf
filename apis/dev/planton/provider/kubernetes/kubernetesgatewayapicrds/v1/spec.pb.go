@@ -190,7 +190,7 @@ var File_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xd6\x04\n" +
+	"Fdev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xc0\x04\n" +
 	"\x1cKubernetesGatewayApiCrdsSpec\x12[\n" +
 	"\aversion\x18\x02 \x01(\tB<\xbaH/r-\x10\x012)^v[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9]+)?$\x8a\xa6\x1d\x06v1.2.1H\x00R\aversion\x88\x01\x01\x12\x91\x01\n" +
 	"\x0finstall_channel\x18\x03 \x01(\v2h.dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannelR\x0einstallChannel\x1a\xa2\x02\n" +
@@ -201,7 +201,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_prot
 	"\bstandard\x10\x01\x12\x10\n" +
 	"\fexperimental\x10\x02B\n" +
 	"\n" +
-	"\b_versionJ\x04\b\x01\x10\x02R\x0etarget_clusterB\xd9\x03\n" +
+	"\b_versionB\xd9\x03\n" +
 	"?com.dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1B\tSpecProtoP\x01Zxgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1;kubernetesgatewayapicrdsv1\xa2\x02\x05DPPKK\xaa\x02;Dev.Planton.Provider.Kubernetes.Kubernetesgatewayapicrds.V1\xca\x02;Dev\\Planton\\Provider\\Kubernetes\\Kubernetesgatewayapicrds\\V1\xe2\x02GDev\\Planton\\Provider\\Kubernetes\\Kubernetesgatewayapicrds\\V1\\GPBMetadata\xea\x02@Dev::Planton::Provider::Kubernetes::Kubernetesgatewayapicrds::V1b\x06proto3"
 
 var (

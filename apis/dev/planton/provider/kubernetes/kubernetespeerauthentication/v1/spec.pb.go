@@ -31,7 +31,7 @@ const (
 // 100% fidelity with the upstream istio.io/api PeerAuthentication
 // (security/v1beta1/peer_authentication.proto, served as security.istio.io/v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened
-// directly after the Planton namespaced envelope (target_cluster, namespace);
+// directly after the Planton namespaced envelope (namespace);
 // there is no nested `peer_authentication` sub-message.
 //
 // Scope semantics (upstream): if `selector` is omitted the policy applies to all
@@ -197,7 +197,7 @@ var File_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_pr
 
 const file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Jdev/planton/provider/kubernetes/kubernetespeerauthentication/v1/spec.proto\x12?dev.planton.provider.kubernetes.kubernetespeerauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc7\a\n" +
+	"Jdev/planton/provider/kubernetes/kubernetespeerauthentication/v1/spec.proto\x12?dev.planton.provider.kubernetes.kubernetespeerauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb1\a\n" +
 	" KubernetesPeerAuthenticationSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12z\n" +
@@ -207,7 +207,7 @@ const file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_
 	"\x12PortLevelMtlsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\rR\x03key\x12|\n" +
 	"\x05value\x18\x02 \x01(\v2f.dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTlsR\x05value:\x028\x01:\xe7\x01\xbaH\xe3\x01\x1a\xe0\x01\n" +
-	"5peer_authentication.port_level_mtls_requires_selector\x12Aport_level_mtls requires a selector with at least one match label\x1adsize(this.port_level_mtls) > 0 ? (has(this.selector) && size(this.selector.match_labels) > 0) : trueJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xe4\x01\n" +
+	"5peer_authentication.port_level_mtls_requires_selector\x12Aport_level_mtls requires a selector with at least one match label\x1adsize(this.port_level_mtls) > 0 ? (has(this.selector) && size(this.selector.match_labels) > 0) : true\"\xe4\x01\n" +
 	"%KubernetesPeerAuthenticationMutualTls\x12\xba\x01\n" +
 	"\x04mode\x18\x01 \x01(\tB\xa5\x01\xbaH\xa1\x01\xba\x01\x9a\x01\n" +
 	"\"peer_authentication_mtls.mode_enum\x12>mtls mode must be one of UNSET, DISABLE, PERMISSIVE, or STRICT\x1a4this in ['UNSET', 'DISABLE', 'PERMISSIVE', 'STRICT']\xc8\x01\x01R\x04modeB\xf6\x03\n" +

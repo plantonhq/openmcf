@@ -84,7 +84,7 @@ backend Services
 ## Anatomy of TCPRouteSpec
 
 The Planton spec flattens the upstream `TCPRouteSpec` after the standard
-namespaced envelope (`target_cluster`, `namespace`):
+namespaced envelope (`namespace`):
 
 - `parent_refs` -- the Gateways this route attaches to (max 32).
 - `use_default_gateways` -- experimental default-Gateway attachment (`All` /

@@ -3,8 +3,6 @@ kind: KubernetesStrimziKafkaOperator
 metadata:
   name: kafka-operator-example
 spec:
-  targetCluster:
-    clusterName: "test-cluster"
   namespace:
     value: "strimzi-kafka-operator"
   createNamespace: true

@@ -33,8 +33,7 @@ const (
 // after the Planton cluster-scoped envelope.
 //
 // GatewayClass is a cluster-scoped resource (+kubebuilder:resource:scope=Cluster
-// upstream), so this spec carries target_cluster but intentionally has NO
-// namespace field.
+// upstream), so this spec intentionally has NO namespace field.
 type KubernetesGatewayClassSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the controller that manages Gateways of this class, expressed as a
@@ -118,12 +117,12 @@ var File_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto pr
 
 const file_dev_planton_provider_kubernetes_kubernetesgatewayclass_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kubernetesgatewayclass/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesgatewayclass.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\"\x81\x03\n" +
+	"Ddev/planton/provider/kubernetes/kubernetesgatewayclass/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesgatewayclass.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\"\xeb\x02\n" +
 	"\x1aKubernetesGatewayClassSpec\x12\x9b\x01\n" +
 	"\x0fcontroller_name\x18\x02 \x01(\tBr\xbaHo\xc8\x01\x01rj\x10\x01\x18\xfd\x012c^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\/[A-Za-z0-9\\/\\-._~%!$&'()*+,;=:]+$R\x0econtrollerName\x12o\n" +
 	"\x0eparameters_ref\x18\x03 \x01(\v2H.dev.planton.provider.kubernetes.KubernetesGatewayApiParametersReferenceR\rparametersRef\x12.\n" +
 	"\vdescription\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18@H\x00R\vdescription\x88\x01\x01B\x0e\n" +
-	"\f_descriptionJ\x04\b\x01\x10\x02R\x0etarget_clusterB\xcb\x03\n" +
+	"\f_descriptionB\xcb\x03\n" +
 	"=com.dev.planton.provider.kubernetes.kubernetesgatewayclass.v1B\tSpecProtoP\x01Ztgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayclass/v1;kubernetesgatewayclassv1\xa2\x02\x05DPPKK\xaa\x029Dev.Planton.Provider.Kubernetes.Kubernetesgatewayclass.V1\xca\x029Dev\\Planton\\Provider\\Kubernetes\\Kubernetesgatewayclass\\V1\xe2\x02EDev\\Planton\\Provider\\Kubernetes\\Kubernetesgatewayclass\\V1\\GPBMetadata\xea\x02>Dev::Planton::Provider::Kubernetes::Kubernetesgatewayclass::V1b\x06proto3"
 
 var (

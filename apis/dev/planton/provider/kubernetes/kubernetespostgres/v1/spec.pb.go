@@ -710,7 +710,7 @@ const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawD
 	"\x1aKubernetesPostgresDatabase\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1d\n" +
 	"\n" +
-	"owner_role\x18\x02 \x01(\tR\townerRole\"\xa2\x06\n" +
+	"owner_role\x18\x02 \x01(\tR\townerRole\"\x8c\x06\n" +
 	"\x16KubernetesPostgresSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x9c\x01\n" +
@@ -721,7 +721,7 @@ const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawD
 	"\aingress\x18\x05 \x01(\v2P.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngressR\aingress\x12z\n" +
 	"\rbackup_config\x18\x06 \x01(\v2U.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfigR\fbackupConfig\x12o\n" +
 	"\tdatabases\x18\a \x03(\v2Q.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabaseR\tdatabases\x12c\n" +
-	"\x05users\x18\b \x03(\v2M.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUserR\x05usersJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xcb\x02\n" +
+	"\x05users\x18\b \x03(\v2M.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUserR\x05users\"\xcb\x02\n" +
 	"\x1bKubernetesPostgresContainer\x12\x1a\n" +
 	"\breplicas\x18\x01 \x01(\x05R\breplicas\x12Q\n" +
 	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\xbc\x01\n" +

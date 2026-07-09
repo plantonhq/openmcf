@@ -17,9 +17,6 @@ import "dev/planton/shared/options/options.proto";
  * cron-job is deployed, executed, and how concurrency and retries are handled.
  */
 message KubernetesCronJobSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

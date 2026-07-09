@@ -79,8 +79,8 @@ var File_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto p
 
 const file_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kubernetesistiobasecrds/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1\"3\n" +
-	"\x1bKubernetesIstioBaseCrdsSpecJ\x04\b\x01\x10\x02R\x0etarget_clusterB\xd2\x03\n" +
+	"Edev/planton/provider/kubernetes/kubernetesistiobasecrds/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1\"\x1d\n" +
+	"\x1bKubernetesIstioBaseCrdsSpecB\xd2\x03\n" +
 	">com.dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1B\tSpecProtoP\x01Zvgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesistiobasecrds/v1;kubernetesistiobasecrdsv1\xa2\x02\x05DPPKK\xaa\x02:Dev.Planton.Provider.Kubernetes.Kubernetesistiobasecrds.V1\xca\x02:Dev\\Planton\\Provider\\Kubernetes\\Kubernetesistiobasecrds\\V1\xe2\x02FDev\\Planton\\Provider\\Kubernetes\\Kubernetesistiobasecrds\\V1\\GPBMetadata\xea\x02?Dev::Planton::Provider::Kubernetes::Kubernetesistiobasecrds::V1b\x06proto3"
 
 var (

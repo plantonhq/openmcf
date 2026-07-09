@@ -20,9 +20,6 @@ extend google.protobuf.FieldOptions {
 // By configuring these parameters, you can set up a Kafka cluster tailored to your application's needs, including
 // resource allocation, data persistence, and external access.
 message KubernetesKafkaSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

@@ -32,7 +32,7 @@ const (
 // 100% fidelity with the upstream Gateway API v1.5.1 GRPCRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/grpcroute_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
-// (target_cluster, namespace). Experimental fields are intentionally excluded
+// (namespace). Experimental fields are intentionally excluded
 // because they are absent from the standard-channel CRD and the typed Pulumi
 // resource Planton provisions with, so they would have no deployable target:
 //   - CommonRouteSpec.useDefaultGateways
@@ -870,14 +870,14 @@ var File_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto proto
 
 const file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/kubernetes/kubernetesgrpcroute/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesgrpcroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xfa\x03\n" +
+	"Adev/planton/provider/kubernetes/kubernetesgrpcroute/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesgrpcroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\x03\n" +
 	"\x17KubernetesGrpcRouteSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
 	"parentRefs\x12y\n" +
 	"\thostnames\x18\x04 \x03(\tB[\xbaHX\x92\x01U\x10\x10\"QrO\x10\x01\x18\xfd\x012H^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\thostnames\x12q\n" +
 	"\x05rules\x18\x05 \x03(\v2O.dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRuleB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x05rulesJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x98\a\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x05rules\"\x98\a\n" +
 	"\x17KubernetesGrpcRouteRule\x12f\n" +
 	"\x04name\x18\x01 \x01(\tBM\xbaHJrH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x04name\x88\x01\x01\x12t\n" +
 	"\amatches\x18\x02 \x03(\v2P.dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteMatchB\b\xbaH\x05\x92\x01\x02\x10@R\amatches\x12u\n" +

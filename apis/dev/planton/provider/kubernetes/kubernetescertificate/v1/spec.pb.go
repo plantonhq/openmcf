@@ -592,7 +592,7 @@ var File_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetescertificate/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x91\x05\n" +
+	"Cdev/planton/provider/kubernetes/kubernetescertificate/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfb\x04\n" +
 	"\x19KubernetesCertificateSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12%\n" +
 	"\tdns_names\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\bdnsNames\x12'\n" +
@@ -605,7 +605,7 @@ const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_r
 	"privateKey\x88\x01\x01\x12\x13\n" +
 	"\x05is_ca\x18\b \x01(\bR\x04isCaB\x12\n" +
 	"\x10_duration_configB\x0e\n" +
-	"\f_private_keyJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xa5\x04\n" +
+	"\f_private_key\"\xa5\x04\n" +
 	"\x14CertificateIssuerRef\x12s\n" +
 	"\x0ecluster_issuer\x18\x01 \x01(\v2J.dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRefH\x00R\rclusterIssuer\x12g\n" +
 	"\x06issuer\x18\x02 \x01(\v2M.dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRefH\x00R\x06issuer:\x9f\x02\xbaH\x9b\x02\x1a\x98\x02\n" +

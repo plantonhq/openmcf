@@ -13,9 +13,6 @@ import "dev/planton/shared/options/options.proto";
 // ClusterIssuer management is handled separately by the KubernetesClusterIssuer
 // component, which creates individual ClusterIssuers per DNS domain.
 message KubernetesCertManagerSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

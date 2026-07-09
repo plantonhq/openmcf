@@ -926,7 +926,7 @@ var File_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto prot
 
 const file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/kubernetes/kubernetesclickhouse/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesclickhouse.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\xbb\b\n" +
+	"Bdev/planton/provider/kubernetes/kubernetesclickhouse/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesclickhouse.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\xa5\b\n" +
 	"\x18KubernetesClickHouseSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12I\n" +
@@ -941,7 +941,7 @@ const file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_ra
 	"\fcoordination\x18\t \x01(\v2_.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfigR\fcoordination\x12~\n" +
 	"\tzookeeper\x18\n" +
 	" \x01(\v2\\.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseZookeeperConfigB\x02\x18\x01R\tzookeeper\x12|\n" +
-	"\alogging\x18\v \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfigB\x06\xbaH\x03\xc8\x01\x01R\aloggingJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xbf\x04\n" +
+	"\alogging\x18\v \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfigB\x06\xbaH\x03\xc8\x01\x01R\alogging\"\xbf\x04\n" +
 	"\x1dKubernetesClickHouseContainer\x12#\n" +
 	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\breplicas\x12Q\n" +
 	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12/\n" +

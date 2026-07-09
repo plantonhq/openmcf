@@ -868,7 +868,7 @@ var File_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesopenbao/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xfd\a\n" +
+	"?dev/planton/provider/kubernetes/kubernetesopenbao/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xe7\a\n" +
 	"\x15KubernetesOpenBaoSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12=\n" +
@@ -889,7 +889,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\vauto_unseal\x18\v \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnsealR\n" +
 	"autoUnsealB\x15\n" +
 	"\x13_helm_chart_versionB\r\n" +
-	"\v_ui_enabledJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x82\x02\n" +
+	"\v_ui_enabled\"\x82\x02\n" +
 	" KubernetesOpenBaoServerContainer\x12%\n" +
 	"\breplicas\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\n" +
 	"(\x01R\breplicas\x12Q\n" +

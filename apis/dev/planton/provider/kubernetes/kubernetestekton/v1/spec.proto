@@ -19,9 +19,6 @@ import "dev/planton/shared/options/options.proto";
 //   kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 //   kubectl apply --filename https://infra.tekton.dev/tekton-releases/dashboard/latest/release.yaml
 message KubernetesTektonSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // The version of Tekton Pipelines to deploy.
   // This maps to release versions from https://github.com/tektoncd/pipeline/releases
   // Examples: "latest", "v0.65.2", "v0.64.0"

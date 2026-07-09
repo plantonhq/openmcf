@@ -19,9 +19,6 @@ import "dev/planton/shared/options/options.proto";
 // These namespaces are automatically created and managed by the Tekton Operator and cannot be customized.
 // See: https://tekton.dev/docs/operator/tektonconfig/
 message KubernetesTektonOperatorSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // The container specifications for the Tekton Operator deployment.
   KubernetesTektonOperatorSpecContainer container = 2 [(buf.validate.field).required = true];
 

@@ -1132,7 +1132,7 @@ var File_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_pro
 
 const file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Idev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x96\x0e\n" +
+	"Idev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x80\x0e\n" +
 	"\x1fKubernetesGhaRunnerScaleSetSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12=\n" +
@@ -1157,7 +1157,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_p
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x15\n" +
 	"\x13_helm_chart_versionB\x0f\n" +
-	"\r_runner_groupJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xad\x04\n" +
+	"\r_runner_group\"\xad\x04\n" +
 	"'KubernetesGhaRunnerScaleSetGitHubConfig\x12\xb8\x01\n" +
 	"\n" +
 	"config_url\x18\x01 \x01(\tB\x98\x01\xbaH\x94\x01\xba\x01\x8d\x01\n" +

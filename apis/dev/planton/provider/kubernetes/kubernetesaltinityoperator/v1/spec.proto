@@ -11,9 +11,6 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // on a Kubernetes cluster. This message specifies the parameters needed to create and manage the operator
 // deployment within a Kubernetes environment. It includes container specifications to control resource allocation.
 message KubernetesAltinityOperatorSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

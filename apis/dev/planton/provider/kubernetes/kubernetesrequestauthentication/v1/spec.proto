@@ -16,7 +16,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // 100% fidelity with the upstream istio.io/api RequestAuthentication
 // (security/v1beta1/request_authentication.proto, served as security.istio.io/v1),
 // pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly
-// after the Planton namespaced envelope (target_cluster, namespace); there is no
+// after the Planton namespaced envelope (namespace); there is no
 // nested `request_authentication` sub-message.
 //
 // Scope semantics (upstream): if neither `selector` nor `target_refs` is set the
@@ -24,9 +24,6 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // the whole mesh). At most one of `selector` and `target_refs` may be set
 // (enforced below).
 message KubernetesRequestAuthenticationSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Namespace in which the RequestAuthentication is created. The policy's scope is
   // this namespace (or mesh-wide if this is the Istio root namespace and no selector
   // or target_refs is set).

@@ -208,12 +208,12 @@ var File_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kuberneteskeycloak/v1/spec.proto\x125dev.planton.provider.kubernetes.kuberneteskeycloak.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa3\x03\n" +
+	"@dev/planton/provider/kubernetes/kuberneteskeycloak/v1/spec.proto\x125dev.planton.provider.kubernetes.kuberneteskeycloak.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8d\x03\n" +
 	"\x16KubernetesKeycloakSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12p\n" +
 	"\tcontainer\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakContainerR\tcontainer\x12j\n" +
-	"\aingress\x18\x05 \x01(\v2P.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakIngressR\aingressJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xd0\x01\n" +
+	"\aingress\x18\x05 \x01(\v2P.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakIngressR\aingress\"\xd0\x01\n" +
 	"\x19KubernetesKeycloakIngress\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
 	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +

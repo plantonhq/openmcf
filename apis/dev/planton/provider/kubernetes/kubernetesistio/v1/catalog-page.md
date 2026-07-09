@@ -60,8 +60,6 @@ This creates an Istio service mesh with three Helm releases (base, istiod, ingre
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates both the `istio-system` and `istio-ingress` namespaces before deploying Helm releases. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the Istiod control plane pod. |
 | `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the Istiod control plane pod. |

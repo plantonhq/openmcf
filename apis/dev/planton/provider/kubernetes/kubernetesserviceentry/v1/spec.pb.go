@@ -33,7 +33,7 @@ const (
 // 100% fidelity with the upstream istio.io/api ServiceEntry
 // (networking/v1alpha3/service_entry.proto, served as networking.istio.io/v1), pinned to
 // the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
-// Planton namespaced envelope (target_cluster, namespace); there is no nested
+// Planton namespaced envelope (namespace); there is no nested
 // `service_entry` sub-message.
 //
 // Attachment model (upstream): `endpoints` (static addresses) and `workload_selector`
@@ -392,7 +392,7 @@ var File_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto pr
 
 const file_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kubernetesserviceentry/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesserviceentry.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa0\x10\n" +
+	"Ddev/planton/provider/kubernetes/kubernetesserviceentry/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesserviceentry.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8a\x10\n" +
 	"\x1aKubernetesServiceEntrySpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x81\x01\n" +
 	"\x05hosts\x18\x03 \x03(\tBk\xbaHh\x92\x01e\b\x01\x10\x80\x02\"^\xba\x01W\n" +
@@ -415,7 +415,7 @@ const file_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto_
 	"!service_entry.port_numbers_unique\x12-port number cannot be duplicated across ports\x1aEthis.ports.all(p1, this.ports.exists_one(p2, p1.number == p2.number))\x1a\x91\x01\n" +
 	"\x1fservice_entry.port_names_unique\x12+port name cannot be duplicated across ports\x1aAthis.ports.all(p1, this.ports.exists_one(p2, p1.name == p2.name))B\v\n" +
 	"\t_locationB\r\n" +
-	"\v_resolutionJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x8a\x02\n" +
+	"\v_resolution\"\x8a\x02\n" +
 	"\x1aKubernetesServiceEntryPort\x12&\n" +
 	"\x06number\x18\x01 \x01(\rB\x0e\xbaH\v\xc8\x01\x01*\x06\x18\xff\xff\x03(\x01R\x06number\x12Q\n" +
 	"\bprotocol\x18\x02 \x01(\tB0\xbaH-r+R\x04HTTPR\x05HTTPSR\x04GRPCR\x05HTTP2R\x05MONGOR\x03TCPR\x03TLSH\x00R\bprotocol\x88\x01\x01\x12!\n" +

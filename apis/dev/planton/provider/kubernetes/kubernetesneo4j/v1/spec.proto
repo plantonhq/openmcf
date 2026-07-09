@@ -13,9 +13,6 @@ extend google.protobuf.FieldOptions {
 
 // KubernetesNeo4jSpec holds the minimal required fields to deploy a single-node Neo4j Community instance on Kubernetes.
 message KubernetesNeo4jSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

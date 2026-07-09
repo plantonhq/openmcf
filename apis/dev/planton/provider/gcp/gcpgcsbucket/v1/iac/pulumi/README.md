@@ -308,6 +308,3 @@ After successful deployment, the following outputs are available:
 For issues or questions:
 1. Check the [examples.md](../../examples.md) for common patterns
 2. Review the [research document](../../docs/README.md) for design rationale
-3. Consult the [audit report](../../docs/audit/) for component completeness
-
-

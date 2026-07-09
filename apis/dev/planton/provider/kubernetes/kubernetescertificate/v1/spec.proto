@@ -14,9 +14,6 @@ import "dev/planton/shared/options/options.proto";
 // named by secret_name. Consumers (Ingress, Gateway, CA Issuer) reference that
 // Secret directly.
 message KubernetesCertificateSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Namespace where the Certificate resource will be created.
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

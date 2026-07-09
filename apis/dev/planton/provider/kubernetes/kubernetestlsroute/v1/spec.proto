@@ -16,16 +16,13 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // TLSRoute graduated to the standard channel and is served as
 // gateway.networking.k8s.io/v1 (it was experimental v1alpha2/v1alpha3 in earlier
 // releases). Upstream spec fields are flattened after the Planton namespaced
-// envelope (target_cluster, namespace).
+// envelope (namespace).
 //
 // TLSRoute is a layer-4 (connection) route: it has no path/header/method matches
 // and no filters. Each rule simply forwards to one or more backends, so it reuses
 // the shared KubernetesGatewayApiBackendRef directly rather than defining its own
 // per-route backend ref.
 message KubernetesTlsRouteSpec {
-  reserved 1;
-  reserved "target_cluster";
-
   // Namespace in which the TLSRoute is created. Backends in other namespaces,
   // and Gateways in other namespaces, are subject to the usual same-namespace /
   // ReferenceGrant rules.

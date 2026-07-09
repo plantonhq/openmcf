@@ -59,9 +59,6 @@ import (
 func main() {
     pulumi.Run(func(ctx *pulumi.Context) error {
         ingressSpec := &kubernetesingressnginxv1.KubernetesIngressNginxSpec{
-            TargetCluster: &kubernetes.KubernetesClusterSelector{
-                ClusterName: "my-cluster",
-            },
             Namespace: &foreignkeyv1.StringValueOrRef{
                 LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
                     Value: "ingress-nginx",
@@ -98,11 +95,6 @@ func main() {
 
 ```go
 ingressSpec := &kubernetesingressnginxv1.KubernetesIngressNginxSpec{
-    TargetCluster: &kubernetes.KubernetesAddonTargetCluster{
-        CredentialSource: &kubernetes.KubernetesAddonTargetCluster_KubernetesCredentialId{
-            KubernetesCredentialId: "gke-cluster-credential",
-        },
-    },
     ChartVersion: "4.11.1",
     Internal:     false,
     ProviderConfig: &kubernetesingressnginxv1.KubernetesIngressNginxSpec_Gke{
@@ -117,11 +109,6 @@ ingressSpec := &kubernetesingressnginxv1.KubernetesIngressNginxSpec{
 
 ```go
 ingressSpec := &kubernetesingressnginxv1.KubernetesIngressNginxSpec{
-    TargetCluster: &kubernetes.KubernetesAddonTargetCluster{
-        CredentialSource: &kubernetes.KubernetesAddonTargetCluster_KubernetesCredentialId{
-            KubernetesCredentialId: "eks-cluster-credential",
-        },
-    },
     ChartVersion: "4.11.1",
     Internal:     true,
     ProviderConfig: &kubernetesingressnginxv1.KubernetesIngressNginxSpec_Eks{

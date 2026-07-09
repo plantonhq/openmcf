@@ -1155,7 +1155,7 @@ var File_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto
 
 const file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetesrookcephcluster/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xac\t\n" +
+	"Gdev/planton/provider/kubernetes/kubernetesrookcephcluster/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x96\t\n" +
 	"\x1dKubernetesRookCephClusterSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12H\n" +
@@ -1176,7 +1176,7 @@ const file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_pro
 	"\x13_helm_chart_versionB\x11\n" +
 	"\x0f_enable_toolboxB\x14\n" +
 	"\x12_enable_monitoringB\x13\n" +
-	"\x11_enable_dashboardJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xe7\x01\n" +
+	"\x11_enable_dashboard\"\xe7\x01\n" +
 	"\rCephImageSpec\x12A\n" +
 	"\n" +
 	"repository\x18\x01 \x01(\tB\x1c\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\x11quay.io/ceph/cephH\x00R\n" +

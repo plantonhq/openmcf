@@ -620,7 +620,7 @@ var File_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v
 
 const file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Sdev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1/spec.proto\x12Hdev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd7\a\n" +
+	"Sdev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1/spec.proto\x12Hdev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc1\a\n" +
 	")KubernetesGhaRunnerScaleSetControllerSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12=\n" +
@@ -634,7 +634,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller
 	"\x13priority_class_name\x18\n" +
 	" \x01(\tR\x11priorityClassNameB\x15\n" +
 	"\x13_helm_chart_versionB\x10\n" +
-	"\x0e_replica_countJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xb5\x02\n" +
+	"\x0e_replica_count\"\xb5\x02\n" +
 	".KubernetesGhaRunnerScaleSetControllerContainer\x12v\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB#\xba\xfb\xa4\x02\x1e\n" +
 	"\r\n" +

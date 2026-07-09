@@ -228,14 +228,14 @@ var File_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetesissuer/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x85\x05\n" +
+	">dev/planton/provider/kubernetes/kubernetesissuer/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xef\x04\n" +
 	"\x14KubernetesIssuerSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12U\n" +
 	"\x02ca\x18d \x01(\v2C.dev.planton.provider.kubernetes.kubernetesissuer.v1.CaIssuerConfigH\x00R\x02ca\x12n\n" +
 	"\vself_signed\x18e \x01(\v2K.dev.planton.provider.kubernetes.kubernetesissuer.v1.SelfSignedIssuerConfigH\x00R\n" +
 	"selfSigned:\x94\x02\xbaH\x90\x02\x1a\x8d\x02\n" +
 	"\x14issuer_type.required\x12\xcd\x01An issuer type must be selected -- choose 'ca' to sign certificates using a CA keypair from a Kubernetes Secret, or 'self_signed' for self-signed certificates used to bootstrap CA chains or for development\x1a%has(this.ca) || has(this.self_signed)B\r\n" +
-	"\vissuer_typeJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x96\x01\n" +
+	"\vissuer_type\"\x96\x01\n" +
 	"\x0eCaIssuerConfig\x12\x83\x01\n" +
 	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x06\x92\xd4a\x1astatus.outputs.secret_nameR\fcaSecretName\"\x18\n" +
 	"\x16SelfSignedIssuerConfigB\xa1\x03\n" +

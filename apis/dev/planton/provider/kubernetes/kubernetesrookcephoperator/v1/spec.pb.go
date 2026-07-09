@@ -285,7 +285,7 @@ var File_dev_planton_provider_kubernetes_kubernetesrookcephoperator_v1_spec_prot
 
 const file_dev_planton_provider_kubernetes_kubernetesrookcephoperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/kubernetes/kubernetesrookcephoperator/v1/spec.proto\x12=dev.planton.provider.kubernetes.kubernetesrookcephoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe5\x04\n" +
+	"Hdev/planton/provider/kubernetes/kubernetesrookcephoperator/v1/spec.proto\x12=dev.planton.provider.kubernetes.kubernetesrookcephoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcf\x04\n" +
 	"\x1eKubernetesRookCephOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12;\n" +
@@ -294,7 +294,7 @@ const file_dev_planton_provider_kubernetes_kubernetesrookcephoperator_v1_spec_pr
 	"\tcontainer\x18\x06 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesrookcephoperator.v1.KubernetesRookCephOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12r\n" +
 	"\x03csi\x18\a \x01(\v2`.dev.planton.provider.kubernetes.kubernetesrookcephoperator.v1.KubernetesRookCephOperatorCsiSpecR\x03csiB\x13\n" +
 	"\x11_operator_versionB\x0f\n" +
-	"\r_crds_enabledJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xa1\x01\n" +
+	"\r_crds_enabled\"\xa1\x01\n" +
 	"'KubernetesRookCephOperatorSpecContainer\x12v\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB#\xba\xfb\xa4\x02\x1e\n" +
 	"\r\n" +

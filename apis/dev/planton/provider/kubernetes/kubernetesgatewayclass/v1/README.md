@@ -41,7 +41,6 @@ planton pulumi up --manifest gateway-class.yaml --stack org/project/env
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `targetCluster` | KubernetesClusterSelector | No | Target cluster (resolved from provider config when omitted) |
 | `controllerName` | string | Yes | Domain-prefixed path identifying the controller (e.g. `istio.io/gateway-controller`). Immutable once created. |
 | `parametersRef` | ParametersReference | No | Reference to a controller-specific parameters resource (ConfigMap or implementation CRD) |
 | `parametersRef.group` | string | No | API group of the referent (empty for the core group) |
