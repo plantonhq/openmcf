@@ -1,0 +1,99 @@
+# Streaming ingestion (streamingIngestionEnabled=true): publish an event
+# to the topic and it lands as a BigQuery row within seconds — no
+# pipeline code, no Dataflow job to babysit. The table's shape is the
+# standard Pub/Sub sink contract: the message payload in `data`, plus
+# the metadata columns write_metadata populates. Deliberately
+# schema-agnostic: producers evolve their payloads freely and the
+# history table keeps working; JSON payloads stay queryable with
+# BigQuery's JSON functions.
+{% if values.streamingIngestionEnabled | bool %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpPubSubTopic
+metadata:
+  name: "{{ values.lakehouse_name }}-ingest"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  topicName: "{{ values.lakehouse_name }}-ingest"
+
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpBigQueryTable
+metadata:
+  name: "{{ values.lakehouse_name }}-events-raw"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  # The dataset reference — resolves to its dataset_id output and orders
+  # the table after the dataset exists.
+  datasetId:
+    valueFrom:
+      name: "{{ values.lakehouse_name }}-warehouse"
+  tableId: events_raw
+  description: >-
+    Raw {{ values.lakehouse_name }} event stream — one row per message,
+    payload in `data`. The lakehouse's source of truth for events.
+  # The Pub/Sub sink contract: `data` carries the payload; the rest are
+  # the metadata columns write_metadata fills. Day partitions on publish
+  # time keep full-history queries billable by the day they touch.
+  schema: '[{"name":"subscription_name","type":"STRING"},{"name":"message_id","type":"STRING"},{"name":"publish_time","type":"TIMESTAMP","mode":"REQUIRED"},{"name":"data","type":"STRING"},{"name":"attributes","type":"STRING"},{"name":"ordering_key","type":"STRING"}]'
+  timePartitioning:
+    type: DAY
+    field: publish_time
+  # Unlike a derived analytics sink, THIS table is the event history —
+  # the lakehouse's durable copy (messages themselves expire from
+  # Pub/Sub). The default deletion guard stays on, made explicit
+  # because it is a deliberate decision here.
+  deletionProtection: true
+
+---
+# BigQuery writes are performed by Pub/Sub's project-scoped service
+# agent; dataEditor is the write permission. Project-scoped — inside a
+# single-purpose analytics project this bounds cleanly; per-dataset
+# scoping would require resource-scoped BigQuery IAM, which the catalog
+# deliberately does not model today.
+apiVersion: gcp.planton.dev/v1
+kind: GcpProjectIamMember
+metadata:
+  name: "{{ values.lakehouse_name }}-sink-agent-dataeditor"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  role:
+    value: roles/bigquery.dataEditor
+  member:
+    value: "serviceAccount:service-{{ values.gcp_project_number }}@gcp-sa-pubsub.iam.gserviceaccount.com"
+
+---
+# The sink subscription. The table reference (the table's qualified_name
+# output) orders the sink after the table exists; the grant above has no
+# output the subscription consumes, so the explicit edge orders it after
+# the permission — Pub/Sub validates it at create time.
+apiVersion: gcp.planton.dev/v1
+kind: GcpPubSubSubscription
+metadata:
+  name: "{{ values.lakehouse_name }}-bigquery-sink"
+  relationships:
+    - kind: GcpProjectIamMember
+      name: "{{ values.lakehouse_name }}-sink-agent-dataeditor"
+      type: depends_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  subscriptionName: "{{ values.lakehouse_name }}-bigquery-sink"
+  topic:
+    valueFrom:
+      name: "{{ values.lakehouse_name }}-ingest"
+  bigqueryConfig:
+    table:
+      valueFrom:
+        name: "{{ values.lakehouse_name }}-events-raw"
+    # Payload to `data`, metadata to the standard columns —
+    # schema-agnostic by design (see the table comment).
+    writeMetadata: true
+  # Ingestion going quiet must never silently delete the pipeline (the
+  # default is 31 days of inactivity).
+  expirationPolicy:
+    ttl: ""
+{% endif %}

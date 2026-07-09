@@ -1,0 +1,106 @@
+params:
+  # ─── GCP placement ──────────────────────────────────────────────────────
+  - name: gcp_project_id
+    description: >
+      GCP project that owns the instance, the database, the application
+      identity, and its grants.
+    value: my-gcp-project
+
+  - name: region
+    description: >
+      Region the primary instance runs in. With REGIONAL availability the
+      standby lives in a second zone of this same region — cross-region
+      protection is what the read-replica arm is for.
+    value: us-central1
+
+  # ─── The primary instance ───────────────────────────────────────────────
+  - name: instance_name
+    description: >
+      Name of the primary Cloud SQL instance, and the prefix every other
+      resource name builds on. Lowercase letters, digits, and hyphens.
+      Immutable — and GCP reserves a deleted instance's name for about a
+      week, so renames are not quick to undo.
+    value: app-postgres
+
+  - name: network_resource_name
+    description: >
+      Planton resource name of the EXISTING GcpVpcNetwork the instance
+      takes its private IP inside — typically the network a landing-zone
+      chart such as project-foundation deployed. That network must
+      already carry private services access (the reserved range +
+      service-networking peering); this chart deliberately does not
+      create it, because GCP allows exactly one peering per network and
+      an application chart owning it would collide with every other
+      deployment on the network.
+    value: app-network
+
+  - name: db_version
+    description: >
+      Postgres major version (e.g. POSTGRES_16, POSTGRES_17). Upgrading
+      in place is a GCP-managed operation; downgrading is not a thing —
+      start on the newest version your extensions support.
+    value: POSTGRES_16
+
+  - name: db_tier
+    description: >
+      Machine tier, as db-custom-<vCPUs>-<memory-MB> (e.g.
+      db-custom-2-7680 is 2 vCPU / 7.5 GB). Resizing applies in place
+      with a short restart — start close to your working set and scale
+      on evidence from Query Insights.
+    value: db-custom-2-7680
+
+  - name: disk_size_gb
+    description: >
+      Initial data disk size in GB (SSD). The disk auto-resizes as data
+      grows, so this is a starting point, not a ceiling — but disks only
+      ever grow, so do not start dramatically larger than you need.
+    value: "100"
+
+  - name: availability_type
+    description: >
+      REGIONAL runs a synchronous standby in a second zone with automatic
+      failover — the production default, at roughly twice the instance
+      cost. ZONAL is for the staging copy of this chart, where the
+      downtime a zone incident causes is acceptable.
+    type: string_enum
+    enumValues:
+      - REGIONAL
+      - ZONAL
+    value: REGIONAL
+
+  # ─── The application database ─────────────────────────────────────────────
+  - name: database_name
+    description: >
+      Name of the application database created on the instance.
+    value: app
+
+  # ─── Passwordless application identity ────────────────────────────────────
+  - name: appIdentityEnabled
+    description: >
+      Create the application's database identity: a service account that
+      IS the database user, authenticated through IAM — no password
+      exists anywhere in manifests or state. Adds the account, the
+      IAM-type database user, and the two roles IAM database
+      authentication requires (cloudsql.client + cloudsql.instanceUser).
+      Turn off only when the application identity is managed outside
+      this chart.
+    type: bool
+    value: true
+
+  # ─── Read replica ─────────────────────────────────────────────────────────
+  - name: readReplicaEnabled
+    description: >
+      Add a read replica of the primary — asynchronous, read-only, and
+      addressed separately by the application. Use it to move read-heavy
+      traffic (reports, dashboards) off the primary, or place it in
+      another region as a DR seed that can be promoted.
+    type: bool
+    value: false
+
+  - name: replica_region
+    description: >
+      Region the read replica runs in. Same-region replicas offload read
+      traffic with the lowest replication lag; a different region turns
+      the replica into cross-region DR (promote it if the primary's
+      region is lost).
+    value: us-central1

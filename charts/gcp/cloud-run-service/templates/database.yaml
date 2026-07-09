@@ -84,6 +84,14 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSqlUser
 metadata:
   name: "{{ values.service_name }}-db-iam-user"
+  # Cloud SQL validates that the IAM principal exists when the user is
+  # created, but nothing flows from the account into this manifest (the
+  # email is assembled, not referenced) — the explicit edge supplies the
+  # ordering a valueFrom would otherwise carry.
+  relationships:
+    - kind: GcpServiceAccount
+      name: "{{ values.service_name }}-runtime"
+      type: depends_on
 spec:
   projectId:
     value: "{{ values.gcp_project_id }}"

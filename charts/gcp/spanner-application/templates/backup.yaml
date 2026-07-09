@@ -1,0 +1,30 @@
+# The backup schedule — explicit, versioned, and visible in the graph,
+# instead of the invisible instance-level AUTOMATIC default (which this
+# chart turns off; see instance.yaml). FULL backups restore standalone
+# with no chain to replay; if you are on ENTERPRISE or ENTERPRISE_PLUS
+# and backup windows matter, INCREMENTAL is the day-2 upgrade.
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpSpannerBackupSchedule
+metadata:
+  name: "{{ values.instance_name }}-{{ values.database_name }}-backups"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  # Both references resolve to name outputs and order the schedule after
+  # the database it protects.
+  instance:
+    valueFrom:
+      name: "{{ values.instance_name }}"
+  database:
+    valueFrom:
+      name: "{{ values.instance_name }}-{{ values.database_name }}"
+  scheduleName: "{{ values.instance_name }}-{{ values.database_name }}-backups"
+  # UTC crontab; Spanner accepts every-12-hours, daily, weekly, or
+  # monthly cadences.
+  cron: "{{ values.backup_cron }}"
+  # Retention is the real recovery contract: PITR (the database's
+  # version_retention_period) covers the last few days at second
+  # granularity; these backups cover everything older, up to 366 days.
+  retentionDuration: "{{ values.backup_retention }}"
+  backupType: FULL

@@ -138,7 +138,8 @@ params:
 - **Every param is documented** with real-world guidance — what it controls,
   what to consider when changing it. Never restate the name.
 - **Declare types**: `string` (default), `bool`, `number`, `list` (of
-  strings), `string_enum` (+ `enum_values`). Untyped params are strings.
+  strings), `string_enum` (+ `enumValues` — camelCase; the validator
+  rejects `enum_values`). Untyped params are strings.
 - **Numeric values that land in manifests should be string params** (e.g.
   `"8080"`). The platform renders `number` params through Java double
   semantics, which can emit `8080.0` — reserve `number` for genuinely
@@ -194,7 +195,9 @@ params:
     When a resource must deploy after another but no spec field consumes
     the other's output (a managed service that requires its connection
     policy to exist, a subscription whose service-agent permission is
-    validated at create time), declare the edge explicitly:
+    validated at create time, a resource naming an IAM principal by an
+    ASSEMBLED email rather than a reference — the principal must exist
+    when the API validates it), declare the edge explicitly:
 
     ```yaml
     metadata:
