@@ -34,7 +34,7 @@ DestinationRule).
 ## 3. Planton spec shape (fidelity decisions)
 
 The Planton spec flattens the upstream `ServiceEntry` fields directly after the
-namespaced envelope (`target_cluster`, `namespace`). There is no nested
+namespaced envelope (`namespace`). There is no nested
 `service_entry` sub-message. Fields are numbered sequentially from 1 -- the Planton
 proto is its own wire contract and does not preserve upstream field-number gaps.
 

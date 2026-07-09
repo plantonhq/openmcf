@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetesmongodb.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "google/protobuf/descriptor.proto";
 
@@ -18,9 +17,6 @@ extend google.protobuf.FieldOptions {
  * It includes container specifications, ingress settings, and Helm chart customization options.
  */
 message KubernetesMongodbSpec {
-  // Target Kubernetes Cluster
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

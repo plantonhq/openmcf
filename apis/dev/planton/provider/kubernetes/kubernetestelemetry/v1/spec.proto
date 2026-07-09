@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetestelemetry.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/istio_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesTelemetrySpec defines an Istio Telemetry resource: a namespaced
@@ -14,7 +13,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // 100% fidelity with the upstream istio.io/api Telemetry
 // (telemetry/v1alpha1/telemetry.proto, served as telemetry.istio.io/v1), pinned to
 // the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
-// Planton namespaced envelope (target_cluster, namespace); there is no nested
+// Planton namespaced envelope (namespace); there is no nested
 // `telemetry` sub-message.
 //
 // Scope semantics (upstream): a Telemetry resource with no selector and no
@@ -34,11 +33,6 @@ message KubernetesTelemetrySpec {
     message: "at most one of selector or target_refs may be set"
     expression: "!(has(this.selector) && size(this.target_refs) > 0)"
   };
-
-  // Target Kubernetes cluster where this Telemetry resource is created. The Istio
-  // CRDs (KubernetesIstioBaseCrds) must already be present on the cluster; telemetry
-  // is only generated where istiod (the Istio control plane) is running.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
 
   // Namespace in which the Telemetry resource is created. The configuration's scope
   // is this namespace (or mesh-wide if this is the Istio root namespace and no

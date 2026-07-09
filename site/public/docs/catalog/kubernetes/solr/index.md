@@ -71,8 +71,6 @@ This creates a single-replica Solr 9.10.0 instance backed by a single-replica Zo
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `solrContainer.replicas` | `int32` | `1` | Number of Solr pods in the SolrCloud cluster. |
 | `solrContainer.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each Solr pod. |

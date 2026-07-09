@@ -34,7 +34,7 @@ const (
 // TLSRoute graduated to the standard channel and is served as
 // gateway.networking.k8s.io/v1 (it was experimental v1alpha2/v1alpha3 in earlier
 // releases). Upstream spec fields are flattened after the Planton namespaced
-// envelope (target_cluster, namespace).
+// envelope (namespace).
 //
 // TLSRoute is a layer-4 (connection) route: it has no path/header/method matches
 // and no filters. Each rule simply forwards to one or more backends, so it reuses
@@ -42,10 +42,6 @@ const (
 // per-route backend ref.
 type KubernetesTlsRouteSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this TLSRoute is created. The Gateway API
-	// CRDs (KubernetesGatewayApiCrds) and a Gateway the route attaches to must
-	// already be present on the cluster.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the TLSRoute is created. Backends in other namespaces,
 	// and Gateways in other namespaces, are subject to the usual same-namespace /
 	// ReferenceGrant rules.
@@ -128,13 +124,6 @@ func (x *KubernetesTlsRouteSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesTlsRouteSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesTlsRouteSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesTlsRouteSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesTlsRouteSpec) GetNamespace() *v1.StringValueOrRef {
@@ -249,9 +238,8 @@ var File_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetestlsroute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestlsroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd4\x05\n" +
-	"\x16KubernetesTlsRouteSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"@dev/planton/provider/kubernetes/kubernetestlsroute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestlsroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf1\x04\n" +
+	"\x16KubernetesTlsRouteSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
 	"parentRefs\x12\x88\x02\n" +
@@ -282,22 +270,20 @@ var file_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto_msgTyp
 var file_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto_goTypes = []any{
 	(*KubernetesTlsRouteSpec)(nil),                         // 0: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec
 	(*KubernetesTlsRouteRule)(nil),                         // 1: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteRule
-	(*kubernetes.KubernetesClusterSelector)(nil),           // 2: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                            // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesGatewayApiParentReference)(nil), // 4: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
-	(*kubernetes.KubernetesGatewayApiBackendRef)(nil),      // 5: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef
+	(*v1.StringValueOrRef)(nil),                            // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesGatewayApiParentReference)(nil), // 3: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
+	(*kubernetes.KubernetesGatewayApiBackendRef)(nil),      // 4: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef
 }
 var file_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	3, // 1: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 2: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.parent_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
-	1, // 3: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.rules:type_name -> dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteRule
-	5, // 4: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteRule.backend_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 1: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.parent_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
+	1, // 2: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.rules:type_name -> dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteRule
+	4, // 3: dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteRule.backend_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto_init() }

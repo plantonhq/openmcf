@@ -48,13 +48,6 @@ func DefaultRules() map[string]TypeRule {
 			Skip: true,
 		},
 
-		// KubernetesClusterSelector: tells the Planton orchestrator which cluster
-		// to target. The TF module gets the cluster via KUBE_CONFIG_PATH / provider
-		// config, not this field.
-		"dev.planton.provider.kubernetes.KubernetesClusterSelector": {
-			Skip: true,
-		},
-
 		// google.protobuf well-known JSON types represent free-form JSON. They
 		// flatten to Terraform `any` and pass through verbatim as the nested
 		// JSON value (object/array/scalar) that protojson produced -- NOT

@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetesdestinationrule.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/istio_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
@@ -17,7 +16,7 @@ import "dev/planton/shared/options/options.proto";
 // 100% fidelity with the upstream istio.io/api DestinationRule
 // (networking/v1alpha3/destination_rule.proto, served as networking.istio.io/v1), pinned
 // to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
-// Planton namespaced envelope (target_cluster, namespace); there is no nested
+// Planton namespaced envelope (namespace); there is no nested
 // `destination_rule` sub-message.
 //
 // Istio `oneof` modeling: DestinationRule's unions
@@ -30,11 +29,6 @@ import "dev/planton/shared/options/options.proto";
 // (workload_selector vs endpoints) and EnvoyFilter (workload_selector vs target_refs), and
 // it matches DestinationRule's own upstream XValidation `oneof(warmupDurationSecs, warmup)`.
 message KubernetesDestinationRuleSpec {
-  // Target Kubernetes cluster where this DestinationRule is created. The Istio CRDs
-  // (KubernetesIstioBaseCrds) must already be present on the cluster; the policy is only
-  // honored where istiod (the Istio control plane) is running.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Namespace in which the DestinationRule is created. For short host names, istiod
   // interprets the host relative to THIS namespace, not the target service's namespace —
   // prefer fully-qualified hosts to avoid ambiguity. `export_to` controls cross-namespace

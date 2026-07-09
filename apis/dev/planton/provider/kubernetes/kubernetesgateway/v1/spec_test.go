@@ -57,10 +57,6 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 				Name: "test-gateway",
 			},
 			Spec: &KubernetesGatewaySpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace:        literal("istio-ingress"),
 				GatewayClassName: literal("istio"),
 				Listeners: []*KubernetesGatewayListener{

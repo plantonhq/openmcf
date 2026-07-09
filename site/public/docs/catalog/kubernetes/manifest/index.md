@@ -71,8 +71,6 @@ This applies the ConfigMap to the `my-namespace` namespace. Resources in the man
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before applying the manifest. When `false`, the namespace must already exist. |
 
 ## Examples
@@ -169,9 +167,6 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.KubernetesManifest.batch-stack
 spec:
-  targetCluster:
-    clusterKind: GcpGkeCluster
-    clusterName: prod-cluster
   namespace:
     valueFrom:
       kind: KubernetesNamespace

@@ -8,7 +8,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -28,10 +27,6 @@ var _ = ginkgo.Describe("KubernetesSolrOperator Validation Tests", func() {
 				Name: "test-solr-operator",
 			},
 			Spec: &KubernetesSolrOperatorSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 						Value: "solr-operator-system",
@@ -116,31 +111,6 @@ var _ = ginkgo.Describe("KubernetesSolrOperator Validation Tests", func() {
 			})
 		})
 
-		ginkgo.Context("with kubernetes cluster selector", func() {
-			ginkgo.It("should not return a validation error", func() {
-				selectorInput := &KubernetesSolrOperator{
-					ApiVersion: "kubernetes.planton.dev/v1",
-					Kind:       "KubernetesSolrOperator",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "selector-operator",
-					},
-					Spec: &KubernetesSolrOperatorSpec{
-						TargetCluster: &kubernetes.KubernetesClusterSelector{
-							ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-							ClusterName: "selector-cluster",
-						},
-						Namespace: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "solr-operator-system",
-							},
-						},
-						Container: &KubernetesSolrOperatorSpecContainer{},
-					},
-				}
-				err := protovalidate.Validate(selectorInput)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {

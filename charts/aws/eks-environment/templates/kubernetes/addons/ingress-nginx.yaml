@@ -9,9 +9,6 @@ metadata:
       name: "{{ values.node_group_name }}"
       type: runs_on
 spec:
-  targetCluster:
-    clusterKind: AwsEksCluster
-    clusterName: "{{ values.env }}-{{ values.cluster_name }}"
   namespace:
     value: ingress-nginx
   createNamespace: true

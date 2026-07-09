@@ -1,0 +1,106 @@
+apiVersion: iac.planton.dev/v1
+kind: ProviderImportCatalog
+metadata:
+  name: aws
+spec:
+  # Import-ID formats per AWS resource type, as documented by the upstream
+  # terraform-provider-aws / pulumi-aws providers. The FORMAT lives here
+  # (provider knowledge, shared by every component); which concrete value
+  # fills each {placeholder} lives in the owning component's import-map.yaml.
+  # Correctness is machine-proven by the E2E import round-trip (deploy a
+  # fixture, set state aside, re-import blind, plan must show zero diff) --
+  # never by review alone.
+  resource_types:
+    # --- S3 ------------------------------------------------------------------
+    # Every S3 satellite imports by the bucket name; several accept optional
+    # suffixes (",{expected_bucket_owner}") that the platform never needs for
+    # same-account imports.
+    - terraform_type: aws_s3_bucket
+      pulumi_type: aws:s3/bucketV2:BucketV2
+      id_format: "{bucket}"
+      # force_destroy is engine behavior (empty-before-delete), not a bucket
+      # property -- import can never carry it, so post-import plans showing
+      # only this attribute are clean.
+      config_only_attributes: [force_destroy]
+    - terraform_type: aws_s3_bucket_versioning
+      pulumi_type: aws:s3/bucketVersioningV2:BucketVersioningV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_server_side_encryption_configuration
+      pulumi_type: aws:s3/bucketServerSideEncryptionConfigurationV2:BucketServerSideEncryptionConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_public_access_block
+      pulumi_type: aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_ownership_controls
+      pulumi_type: aws:s3/bucketOwnershipControls:BucketOwnershipControls
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_acl
+      pulumi_type: aws:s3/bucketAclV2:BucketAclV2
+      id_format: "{bucket}"
+      notes: >-
+        When the bucket ACL was set with a canned ACL, the provider also
+        accepts "{bucket},{acl}"; the plain bucket form round-trips for
+        module-managed buckets.
+    - terraform_type: aws_s3_bucket_policy
+      pulumi_type: aws:s3/bucketPolicy:BucketPolicy
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_lifecycle_configuration
+      pulumi_type: aws:s3/bucketLifecycleConfigurationV2:BucketLifecycleConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_replication_configuration
+      pulumi_type: aws:s3/bucketReplicationConfig:BucketReplicationConfig
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_website_configuration
+      pulumi_type: aws:s3/bucketWebsiteConfigurationV2:BucketWebsiteConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_logging
+      pulumi_type: aws:s3/bucketLoggingV2:BucketLoggingV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_cors_configuration
+      pulumi_type: aws:s3/bucketCorsConfigurationV2:BucketCorsConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_notification
+      pulumi_type: aws:s3/bucketNotification:BucketNotification
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_object_lock_configuration
+      pulumi_type: aws:s3/bucketObjectLockConfigurationV2:BucketObjectLockConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_accelerate_configuration
+      pulumi_type: aws:s3/bucketAccelerateConfigurationV2:BucketAccelerateConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_request_payment_configuration
+      pulumi_type: aws:s3/bucketRequestPaymentConfigurationV2:BucketRequestPaymentConfigurationV2
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_intelligent_tiering_configuration
+      pulumi_type: aws:s3/bucketIntelligentTieringConfiguration:BucketIntelligentTieringConfiguration
+      id_format: "{bucket}:{intelligent_tiering_name}"
+      notes: >-
+        The colon-joined second segment is the per-configuration name (the
+        module keys these off spec.intelligent_tiering_configurations[].name;
+        it also appears in the enumerated address's for_each key).
+
+    # --- VPC -----------------------------------------------------------------
+    - terraform_type: aws_vpc
+      pulumi_type: aws:ec2/vpc:Vpc
+      id_format: "{vpc_id}"
+    - terraform_type: aws_vpc_ipv4_cidr_block_association
+      pulumi_type: aws:ec2/vpcIpv4CidrBlockAssociation:VpcIpv4CidrBlockAssociation
+      id_format: "{cidr_association_id}"
+      notes: >-
+        The "vpc-cidr-assoc-..." association id (aws ec2 describe-vpcs shows
+        each association under CidrBlockAssociationSet).
+
+    # --- Security group ------------------------------------------------------
+    - terraform_type: aws_security_group
+      pulumi_type: aws:ec2/securityGroup:SecurityGroup
+      id_format: "{security_group_id}"
+
+    # --- ECR -----------------------------------------------------------------
+    - terraform_type: aws_ecr_repository
+      pulumi_type: aws:ecr/repository:Repository
+      id_format: "{repository_name}"
+      # force_delete mirrors S3's force_destroy: engine-only delete behavior.
+      config_only_attributes: [force_delete]
+    - terraform_type: aws_ecr_lifecycle_policy
+      pulumi_type: aws:ecr/lifecyclePolicy:LifecyclePolicy
+      id_format: "{repository_name}"

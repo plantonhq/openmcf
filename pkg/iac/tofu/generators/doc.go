@@ -4,7 +4,7 @@
 // It replaces the earlier pkg/iac/tofu/tfvars and pkg/iac/tofu/variablestf
 // packages with a unified implementation that shares a single TypeRule registry
 // across both generators. This ensures that Planton's domain types (such as
-// StringValueOrRef and KubernetesClusterSelector) are handled consistently
+// StringValueOrRef and ValueFromRef) are handled consistently
 // whether generating terraform.tfvars or variables.tf.
 //
 // # Architecture

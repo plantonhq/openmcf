@@ -8,7 +8,6 @@ package kubernetescertmanagerv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -33,8 +32,6 @@ const (
 // component, which creates individual ClusterIssuers per DNS domain.
 type KubernetesCertManagerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -81,13 +78,6 @@ func (x *KubernetesCertManagerSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesCertManagerSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesCertManagerSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesCertManagerSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesCertManagerSpec) GetNamespace() *v1.StringValueOrRef {
@@ -378,9 +368,8 @@ var File_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetescertmanager/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertmanager.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xae\x05\n" +
-	"\x19KubernetesCertManagerSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Cdev/planton/provider/kubernetes/kubernetescertmanager/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertmanager.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcb\x04\n" +
+	"\x19KubernetesCertManagerSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12W\n" +
 	"\x1fkubernetes_cert_manager_version\x18\x04 \x01(\tB\v\x8a\xa6\x1d\av1.19.1H\x00R\x1ckubernetesCertManagerVersion\x88\x01\x01\x12>\n" +
@@ -417,26 +406,24 @@ func file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_ra
 
 var file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_goTypes = []any{
-	(*KubernetesCertManagerSpec)(nil),            // 0: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec
-	(*WorkloadIdentityConfig)(nil),               // 1: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig
-	(*GkeWorkloadIdentity)(nil),                  // 2: dev.planton.provider.kubernetes.kubernetescertmanager.v1.GkeWorkloadIdentity
-	(*EksIrsa)(nil),                              // 3: dev.planton.provider.kubernetes.kubernetescertmanager.v1.EksIrsa
-	(*AksWorkloadIdentity)(nil),                  // 4: dev.planton.provider.kubernetes.kubernetescertmanager.v1.AksWorkloadIdentity
-	(*kubernetes.KubernetesClusterSelector)(nil), // 5: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesCertManagerSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec
+	(*WorkloadIdentityConfig)(nil),    // 1: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig
+	(*GkeWorkloadIdentity)(nil),       // 2: dev.planton.provider.kubernetes.kubernetescertmanager.v1.GkeWorkloadIdentity
+	(*EksIrsa)(nil),                   // 3: dev.planton.provider.kubernetes.kubernetescertmanager.v1.EksIrsa
+	(*AksWorkloadIdentity)(nil),       // 4: dev.planton.provider.kubernetes.kubernetescertmanager.v1.AksWorkloadIdentity
+	(*v1.StringValueOrRef)(nil),       // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	6, // 1: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.workload_identity:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig
-	2, // 3: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.gke:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.GkeWorkloadIdentity
-	3, // 4: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.eks:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.EksIrsa
-	4, // 5: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.aks:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.AksWorkloadIdentity
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 0: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.workload_identity:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig
+	2, // 2: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.gke:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.GkeWorkloadIdentity
+	3, // 3: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.eks:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.EksIrsa
+	4, // 4: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.aks:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.AksWorkloadIdentity
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_init() }

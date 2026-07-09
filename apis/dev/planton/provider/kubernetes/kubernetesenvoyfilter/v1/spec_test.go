@@ -113,10 +113,6 @@ var _ = ginkgo.Describe("KubernetesEnvoyFilter Validation Tests", func() {
 				Name: "test-envoy-filter",
 			},
 			Spec: &KubernetesEnvoyFilterSpec{
-				TargetCluster: &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "test-cluster",
-				},
 				Namespace:     literal("default"),
 				ConfigPatches: []*KubernetesEnvoyFilterConfigPatch{clusterMergePatch()},
 			},

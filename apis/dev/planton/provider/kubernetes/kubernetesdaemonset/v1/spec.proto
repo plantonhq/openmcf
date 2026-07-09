@@ -7,7 +7,6 @@ import "dev/planton/provider/kubernetes/container_env.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
 import "dev/planton/provider/kubernetes/options.proto";
 import "dev/planton/provider/kubernetes/probe.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/provider/kubernetes/volume_mount.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
@@ -18,9 +17,6 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
  * Common use cases include: cluster storage daemons, log collection daemons, and node monitoring daemons.
  */
 message KubernetesDaemonSetSpec {
-  // Target Kubernetes Cluster
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

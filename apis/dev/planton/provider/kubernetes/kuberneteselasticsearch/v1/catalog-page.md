@@ -64,8 +64,6 @@ This creates a single-node Elasticsearch 8.15.0 cluster with persistence enabled
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `elasticsearch.container.replicas` | `int32` | `1` | Number of Elasticsearch pods to deploy. Each pod runs master, data, and ingest roles. |
 | `elasticsearch.container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each Elasticsearch pod. |

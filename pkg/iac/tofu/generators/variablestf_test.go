@@ -53,21 +53,6 @@ func TestTFFreeFormMap_RendersAnyWithEmptyMapDefault(t *testing.T) {
 	}
 }
 
-func TestProtoToVariablesTF_CronJob_TargetClusterSkipped(t *testing.T) {
-	msg := &kubernetescronjobv1.KubernetesCronJob{}
-
-	got, err := ProtoToVariablesTF(msg)
-	if err != nil {
-		t.Fatalf("ProtoToVariablesTF: %v", err)
-	}
-
-	// target_cluster is inside the spec object. It should NOT appear as a
-	// field in the spec's object type.
-	if strings.Contains(got, "target_cluster") {
-		t.Errorf("target_cluster should be skipped by KubernetesClusterSelector rule, got:\n%s", got)
-	}
-}
-
 func TestProtoToVariablesTF_CronJob_NamespaceIsString(t *testing.T) {
 	msg := &kubernetescronjobv1.KubernetesCronJob{}
 

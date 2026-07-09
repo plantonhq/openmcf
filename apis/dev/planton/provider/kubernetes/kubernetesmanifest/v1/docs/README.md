@@ -357,13 +357,6 @@ The namespace field is required even though manifests can specify their own name
 - Enables namespace creation when needed
 - Follows the pattern of other Kubernetes components
 
-**3. Optional target_cluster**
-
-For consistency with other components, target_cluster is optional:
-- Defaults to the current cluster context
-- Enables multi-cluster deployments when specified
-- Supports all Kubernetes cluster types (GKE, EKS, AKS, etc.)
-
 ### Implementation Details
 
 **CRD Ordering with yaml/v2**

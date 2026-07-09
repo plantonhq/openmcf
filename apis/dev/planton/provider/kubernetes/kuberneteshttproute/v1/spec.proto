@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kuberneteshttproute.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/gateway_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesHttpRouteSpec defines a Kubernetes Gateway API HTTPRoute: a
@@ -15,18 +14,13 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // 100% fidelity with the upstream Gateway API v1.5.1 HTTPRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/httproute_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
-// (target_cluster, namespace). Experimental fields are intentionally excluded
+// (namespace). Experimental fields are intentionally excluded
 // because they are absent from the standard-channel CRD and the typed Pulumi
 // resource Planton provisions with, so they would have no deployable target:
 //   - CommonRouteSpec.useDefaultGateways
 //   - HTTPRouteRule.retry and HTTPRouteRule.sessionPersistence
 //   - the ExternalAuth filter variant (and its sub-config)
 message KubernetesHttpRouteSpec {
-  // Target Kubernetes cluster where this HTTPRoute is created. The Gateway API
-  // CRDs (KubernetesGatewayApiCrds) and a Gateway the route attaches to must
-  // already be present on the cluster.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Namespace in which the HTTPRoute is created. Backends in other namespaces,
   // and Gateways in other namespaces, are subject to the usual same-namespace /
   // ReferenceGrant rules.

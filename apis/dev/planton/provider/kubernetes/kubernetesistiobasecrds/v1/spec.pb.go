@@ -7,7 +7,6 @@
 package kubernetesistiobasecrdsv1
 
 import (
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -41,9 +40,7 @@ const (
 // prune or reject fields. (This intentionally avoids the gateway family's footgun, where
 // KubernetesGatewayApiCrds.version defaults below its typed SDK version.)
 type KubernetesIstioBaseCrdsSpec struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster where the Istio CRDs will be installed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -78,20 +75,12 @@ func (*KubernetesIstioBaseCrdsSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *KubernetesIstioBaseCrdsSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
-}
-
 var File_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kubernetesistiobasecrds/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1\x1a4dev/planton/provider/kubernetes/target_cluster.proto\"\x80\x01\n" +
-	"\x1bKubernetesIstioBaseCrdsSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetClusterB\xd2\x03\n" +
+	"Edev/planton/provider/kubernetes/kubernetesistiobasecrds/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1\"\x1d\n" +
+	"\x1bKubernetesIstioBaseCrdsSpecB\xd2\x03\n" +
 	">com.dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1B\tSpecProtoP\x01Zvgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesistiobasecrds/v1;kubernetesistiobasecrdsv1\xa2\x02\x05DPPKK\xaa\x02:Dev.Planton.Provider.Kubernetes.Kubernetesistiobasecrds.V1\xca\x02:Dev\\Planton\\Provider\\Kubernetes\\Kubernetesistiobasecrds\\V1\xe2\x02FDev\\Planton\\Provider\\Kubernetes\\Kubernetesistiobasecrds\\V1\\GPBMetadata\xea\x02?Dev::Planton::Provider::Kubernetes::Kubernetesistiobasecrds::V1b\x06proto3"
 
 var (
@@ -108,16 +97,14 @@ func file_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto_
 
 var file_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto_goTypes = []any{
-	(*KubernetesIstioBaseCrdsSpec)(nil),          // 0: dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1.KubernetesIstioBaseCrdsSpec
-	(*kubernetes.KubernetesClusterSelector)(nil), // 1: dev.planton.provider.kubernetes.KubernetesClusterSelector
+	(*KubernetesIstioBaseCrdsSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1.KubernetesIstioBaseCrdsSpec
 }
 var file_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kubernetesistiobasecrds.v1.KubernetesIstioBaseCrdsSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesistiobasecrds_v1_spec_proto_init() }

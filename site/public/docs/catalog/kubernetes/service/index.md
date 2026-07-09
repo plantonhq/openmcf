@@ -73,8 +73,6 @@ This creates a ClusterIP Service named `my-service` in the `my-namespace` namesp
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `spec.targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `spec.targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `spec.labels` | `map<string, string>` | `{}` | Additional labels merged with standard Planton labels for governance and discoverability. |
 | `spec.annotations` | `map<string, string>` | `{}` | Annotations applied to the Service resource. Used for cloud-provider-specific load balancer configuration. |
 | `spec.type` | `enum` | `cluster_ip` | Service type. Valid values: `cluster_ip`, `node_port`, `load_balancer`, `external_name`. |
@@ -172,9 +170,6 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.KubernetesService.media-server
 spec:
-  targetCluster:
-    clusterKind: AwsEksCluster
-    clusterName: prod-cluster
   namespace: media
   name: media-server
   type: node_port

@@ -13,9 +13,8 @@ Deploying GitLab on Kubernetes can be complex due to the intricacies involved in
 
 ## Key Features
 
-### Cluster Targeting and Namespace Management
+### Namespace Management
 
-- **Target Cluster Selection**: Specify the Kubernetes cluster where GitLab should be deployed using the `target_cluster` field
 - **Namespace Configuration**: Define the namespace for GitLab resources using the `namespace` field
 - **Flexible Namespace Creation**: Control namespace creation with the `create_namespace` flag:
   - `true`: The module automatically creates the namespace with appropriate labels
@@ -54,8 +53,6 @@ When `create_namespace` is set to `true`, the module:
 **Example:**
 ```yaml
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: gitlab-prod
   create_namespace: true
@@ -71,8 +68,6 @@ When `create_namespace` is set to `false`:
 **Example:**
 ```yaml
 spec:
-  target_cluster:
-    cluster_name: my-gke-cluster
   namespace:
     value: shared-services
   create_namespace: false

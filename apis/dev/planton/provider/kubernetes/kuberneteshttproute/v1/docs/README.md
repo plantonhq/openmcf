@@ -80,7 +80,6 @@ Kubernetes envelope:
 
 | Planton field | Upstream | Notes |
 |---------------|----------|-------|
-| `target_cluster` | (n/a) | Planton cluster selector. |
 | `namespace` | (metadata) | FK to `KubernetesNamespace.spec.name`. |
 | `parent_refs` | `CommonRouteSpec.parentRefs` | Gateways the route attaches to. |
 | `hostnames` | `HTTPRouteSpec.hostnames` | Host header values (wildcard prefix allowed). |

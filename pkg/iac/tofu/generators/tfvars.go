@@ -53,7 +53,7 @@ func isManifestProjectionMessage(msg proto.Message) bool {
 // ProtoToTFVars converts a protobuf message into a Terraform tfvars-compatible
 // string. The conversion applies Planton type rules to flatten wrapper types
 // (like StringValueOrRef) to primitives and omit orchestrator-only fields
-// (like KubernetesClusterSelector), and renames keys to snake_case to match the
+// (like ValueFromRef), and renames keys to snake_case to match the
 // generated snake_case variables.tf.
 //
 // Pipeline: protojson.Marshal -> JSON map -> Flatten (type rules) -> HCL string.

@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesservice.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/options/options.proto";
 
 /**
@@ -22,9 +21,6 @@ import "dev/planton/shared/options/options.proto";
  * vast majority of users need while remaining deployment-agnostic.
  */
 message KubernetesServiceSpec {
-  // The Kubernetes cluster in which the service should be created.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   /**
    * The namespace in which the service will be created.
    * Must be a valid DNS label (lowercase alphanumeric and hyphens, max 63 characters).

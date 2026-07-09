@@ -13,27 +13,27 @@ func TestLabelConversionPrometheusFormat(t *testing.T) {
 		{
 			testName:                "planton org label should be converted to prometheus label",
 			inputLabel:              "planton.dev/org",
-			expectedPrometheusLabel: "planton_org_org",
+			expectedPrometheusLabel: "planton_dev_org",
 		},
 		{
 			testName:                "planton service label should be converted to prometheus label",
 			inputLabel:              "planton.dev/service",
-			expectedPrometheusLabel: "planton_org_service",
+			expectedPrometheusLabel: "planton_dev_service",
 		},
 		{
 			testName:                "planton service-env label should be converted to prometheus label",
 			inputLabel:              "planton.dev/env",
-			expectedPrometheusLabel: "planton_org_env",
+			expectedPrometheusLabel: "planton_dev_env",
 		},
 		{
 			testName:                "planton kind label should be converted to prometheus label",
 			inputLabel:              "planton.dev/kind",
-			expectedPrometheusLabel: "planton_org_kind",
+			expectedPrometheusLabel: "planton_dev_kind",
 		},
 		{
 			testName:                "planton id label should be converted to prometheus label",
 			inputLabel:              "planton.dev/id",
-			expectedPrometheusLabel: "planton_org_id",
+			expectedPrometheusLabel: "planton_dev_id",
 		},
 	}
 	t.Run("test planton label conversion to prometheus format labels", func(t *testing.T) {

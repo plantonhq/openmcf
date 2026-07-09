@@ -61,8 +61,6 @@ This installs the Zalando Postgres Operator into the `postgres-operator` namespa
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying the operator. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the operator pod. |
 | `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the operator pod. |

@@ -7,7 +7,6 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -21,10 +20,6 @@ var _ = ginkgo.Describe("KubernetesIstioSpec validations", func() {
 
 	ginkgo.BeforeEach(func() {
 		spec = &KubernetesIstioSpec{
-			TargetCluster: &kubernetes.KubernetesClusterSelector{
-				ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-				ClusterName: "my-k8s-cluster",
-			},
 			Namespace: &foreignkeyv1.StringValueOrRef{
 				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
 					Value: "istio-system",
@@ -150,15 +145,6 @@ var _ = ginkgo.Describe("KubernetesIstioSpec validations", func() {
 				spec.Container = nil
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("spec with invalid target cluster configuration", func() {
-			ginkgo.It("should accept spec without target_cluster (optional field)", func() {
-				spec.TargetCluster = nil
-				err := protovalidate.Validate(spec)
-				// target_cluster is optional, so this should still pass
-				gomega.Expect(err).To(gomega.BeNil())
 			})
 		})
 

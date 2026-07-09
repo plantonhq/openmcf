@@ -109,8 +109,6 @@ func (KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType) EnumDescriptor
 // - Scale down to minRunners when idle
 type KubernetesGhaRunnerScaleSetSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster where the runner scale set will be deployed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace where the runner scale set will be installed.
 	// Multiple scale sets can be installed in different namespaces.
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
@@ -181,13 +179,6 @@ func (x *KubernetesGhaRunnerScaleSetSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesGhaRunnerScaleSetSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesGhaRunnerScaleSetSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesGhaRunnerScaleSetSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesGhaRunnerScaleSetSpec) GetNamespace() *v1.StringValueOrRef {
@@ -1141,9 +1132,8 @@ var File_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_pro
 
 const file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Idev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe3\x0e\n" +
-	"\x1fKubernetesGhaRunnerScaleSetSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Idev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x80\x0e\n" +
+	"\x1fKubernetesGhaRunnerScaleSetSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12=\n" +
 	"\x12helm_chart_version\x18\x04 \x01(\tB\n" +
@@ -1279,36 +1269,34 @@ var file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_pro
 	(*KubernetesGhaRunnerScaleSetVolumeMount)(nil),                  // 11: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetVolumeMount
 	(*KubernetesGhaRunnerScaleSetPersistentVolume)(nil),             // 12: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPersistentVolume
 	(*KubernetesGhaRunnerScaleSetControllerServiceAccount)(nil),     // 13: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerServiceAccount
-	nil, // 14: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.LabelsEntry
-	nil, // 15: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.AnnotationsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil), // 16: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 18: dev.planton.provider.kubernetes.ContainerResources
+	nil,                                   // 14: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.LabelsEntry
+	nil,                                   // 15: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil),           // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 17: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_depIdxs = []int32{
-	16, // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	17, // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.github:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig
-	5,  // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.scaling:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetScaling
-	6,  // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.container_mode:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode
-	8,  // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.runner:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner
-	12, // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.persistent_volumes:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPersistentVolume
-	13, // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.controller_service_account:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerServiceAccount
-	14, // 8: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.LabelsEntry
-	15, // 9: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.AnnotationsEntry
-	3,  // 10: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig.pat_token:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPatToken
-	4,  // 11: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig.github_app:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubApp
-	0,  // 12: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.type:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.ContainerModeType
-	7,  // 13: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.work_volume_claim:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolumeClaim
-	9,  // 14: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.image:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunnerImage
-	18, // 15: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	10, // 16: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.env:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetEnvVar
-	11, // 17: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.volume_mounts:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetVolumeMount
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	16, // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.github:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig
+	5,  // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.scaling:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetScaling
+	6,  // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.container_mode:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode
+	8,  // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.runner:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner
+	12, // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.persistent_volumes:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPersistentVolume
+	13, // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.controller_service_account:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerServiceAccount
+	14, // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.LabelsEntry
+	15, // 8: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.AnnotationsEntry
+	3,  // 9: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig.pat_token:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPatToken
+	4,  // 10: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig.github_app:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubApp
+	0,  // 11: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.type:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.ContainerModeType
+	7,  // 12: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.work_volume_claim:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolumeClaim
+	9,  // 13: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.image:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunnerImage
+	17, // 14: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	10, // 15: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.env:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetEnvVar
+	11, // 16: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.volume_mounts:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetVolumeMount
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_init() }

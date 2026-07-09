@@ -33,8 +33,6 @@ const (
 // deployment patterns from simple single-node installations to production-grade distributed clusters.
 type KubernetesSignozSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -86,13 +84,6 @@ func (x *KubernetesSignozSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesSignozSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesSignozSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesSignozSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesSignozSpec) GetNamespace() *v1.StringValueOrRef {
@@ -944,9 +935,8 @@ var File_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessignoz.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\x81\b\n" +
-	"\x14KubernetesSignozSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	">dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessignoz.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\x9e\a\n" +
+	"\x14KubernetesSignozSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\xa1\x01\n" +
 	"\x10signoz_container\x18\x04 \x01(\v2N.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainerB&\x8a\xb8\x91\x02!\b\x01\x12\x1d\n" +
@@ -1047,61 +1037,59 @@ func file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDesc
 
 var file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_goTypes = []any{
-	(*KubernetesSignozSpec)(nil),                 // 0: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec
-	(*KubernetesSignozContainer)(nil),            // 1: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	(*KubernetesSignozDatabaseConfig)(nil),       // 2: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig
-	(*KubernetesSignozExternalClickhouse)(nil),   // 3: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse
-	(*KubernetesSignozManagedClickhouse)(nil),    // 4: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse
-	(*KubernetesSignozClickhouseContainer)(nil),  // 5: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
-	(*KubernetesSignozClickhouseCluster)(nil),    // 6: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseCluster
-	(*KubernetesSignozZookeeperConfig)(nil),      // 7: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig
-	(*KubernetesSignozZookeeperContainer)(nil),   // 8: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
-	(*KubernetesSignozIngress)(nil),              // 9: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress
-	(*KubernetesSignozIngressEndpoint)(nil),      // 10: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
-	nil,                                          // 11: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.HelmValuesEntry
-	(*kubernetes.KubernetesClusterSelector)(nil), // 12: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 13: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 14: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerImage)(nil),            // 15: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.KubernetesSensitiveValue)(nil),  // 16: dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	(*descriptorpb.FieldOptions)(nil),            // 17: google.protobuf.FieldOptions
+	(*KubernetesSignozSpec)(nil),                // 0: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec
+	(*KubernetesSignozContainer)(nil),           // 1: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
+	(*KubernetesSignozDatabaseConfig)(nil),      // 2: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig
+	(*KubernetesSignozExternalClickhouse)(nil),  // 3: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse
+	(*KubernetesSignozManagedClickhouse)(nil),   // 4: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse
+	(*KubernetesSignozClickhouseContainer)(nil), // 5: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
+	(*KubernetesSignozClickhouseCluster)(nil),   // 6: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseCluster
+	(*KubernetesSignozZookeeperConfig)(nil),     // 7: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig
+	(*KubernetesSignozZookeeperContainer)(nil),  // 8: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
+	(*KubernetesSignozIngress)(nil),             // 9: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress
+	(*KubernetesSignozIngressEndpoint)(nil),     // 10: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
+	nil,                                         // 11: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.HelmValuesEntry
+	(*v1.StringValueOrRef)(nil),                 // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),       // 13: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.ContainerImage)(nil),           // 14: dev.planton.provider.kubernetes.ContainerImage
+	(*kubernetes.KubernetesSensitiveValue)(nil), // 15: dev.planton.provider.kubernetes.KubernetesSensitiveValue
+	(*descriptorpb.FieldOptions)(nil),           // 16: google.protobuf.FieldOptions
 }
 var file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_depIdxs = []int32{
-	12, // 0: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	13, // 1: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 2: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.signoz_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	1,  // 3: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.otel_collector_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	2,  // 4: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig
-	9,  // 5: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress
-	11, // 6: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.helm_values:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.HelmValuesEntry
-	14, // 7: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	15, // 8: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	3,  // 9: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig.external_database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse
-	4,  // 10: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig.managed_database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse
-	16, // 11: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	5,  // 12: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
-	6,  // 13: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.cluster:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseCluster
-	7,  // 14: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.zookeeper:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig
-	14, // 15: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	15, // 16: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	8,  // 17: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig.container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
-	14, // 18: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	15, // 19: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	10, // 20: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress.ui:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
-	10, // 21: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress.otel_collector:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
-	17, // 22: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_signoz_container:extendee -> google.protobuf.FieldOptions
-	17, // 23: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_otel_collector_container:extendee -> google.protobuf.FieldOptions
-	17, // 24: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_clickhouse_container:extendee -> google.protobuf.FieldOptions
-	17, // 25: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_zookeeper_container:extendee -> google.protobuf.FieldOptions
-	1,  // 26: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_signoz_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	1,  // 27: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_otel_collector_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	5,  // 28: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_clickhouse_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
-	8,  // 29: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_zookeeper_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	26, // [26:30] is the sub-list for extension type_name
-	22, // [22:26] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	12, // 0: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.signoz_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
+	1,  // 2: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.otel_collector_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
+	2,  // 3: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig
+	9,  // 4: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress
+	11, // 5: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.helm_values:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.HelmValuesEntry
+	13, // 6: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	14, // 7: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	3,  // 8: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig.external_database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse
+	4,  // 9: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig.managed_database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse
+	15, // 10: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
+	5,  // 11: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
+	6,  // 12: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.cluster:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseCluster
+	7,  // 13: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.zookeeper:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig
+	13, // 14: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	14, // 15: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	8,  // 16: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig.container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
+	13, // 17: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	14, // 18: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	10, // 19: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress.ui:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
+	10, // 20: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress.otel_collector:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
+	16, // 21: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_signoz_container:extendee -> google.protobuf.FieldOptions
+	16, // 22: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_otel_collector_container:extendee -> google.protobuf.FieldOptions
+	16, // 23: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_clickhouse_container:extendee -> google.protobuf.FieldOptions
+	16, // 24: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_zookeeper_container:extendee -> google.protobuf.FieldOptions
+	1,  // 25: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_signoz_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
+	1,  // 26: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_otel_collector_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
+	5,  // 27: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_clickhouse_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
+	8,  // 28: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_zookeeper_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	25, // [25:29] is the sub-list for extension type_name
+	21, // [21:25] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_init() }

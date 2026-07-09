@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.iac.providerimportcatalog.v1;
+
+import "dev/planton/iac/providerimportcatalog/v1/spec.proto";
+import "dev/planton/shared/metadata.proto";
+
+// ProviderImportCatalog declares, per provider, the import-ID format of every
+// IaC resource type the provider's components import by. Follows the KRM
+// pattern (apiVersion + kind + metadata + spec).
+// Lives at apis/dev/planton/provider/{provider}/aa_import/catalog.yaml.
+//
+// Example:
+//   apiVersion: iac.planton.dev/v1
+//   kind: ProviderImportCatalog
+//   metadata:
+//     name: aws
+//   spec:
+//     resource_types:
+//       - terraform_type: aws_s3_bucket
+//         pulumi_type: aws:s3/bucketV2:BucketV2
+//         id_format: "{bucket}"
+message ProviderImportCatalog {
+  string api_version = 1;
+  string kind = 2;
+  dev.planton.shared.CloudResourceMetadata metadata = 3;
+  ProviderImportCatalogSpec spec = 4;
+}

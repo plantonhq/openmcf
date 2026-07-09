@@ -51,9 +51,6 @@ Create a `stack-input.json` file:
     "id": "tekton-op-dev"
   },
   "spec": {
-    "target_cluster": {
-      "kubernetes_credential_id": "my-cluster-cred"
-    },
     "container": {
       "resources": {
         "requests": {

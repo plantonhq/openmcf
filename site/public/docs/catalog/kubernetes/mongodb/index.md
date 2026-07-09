@@ -67,8 +67,6 @@ This creates a single-replica MongoDB instance with persistence enabled, a 1Gi P
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `container.replicas` | `int32` | `1` | Number of MongoDB replica set members. |
 | `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each MongoDB pod. |

@@ -16,8 +16,6 @@ spec:
   namespace: external-dns      # Must specify
   externalDnsVersion: v0.19.0  # Must specify
   helmChartVersion: 1.19.0     # Must specify
-  targetCluster:
-    kubernetesProviderConfigId: k8s-cluster-01
 ```
 
 **With defaults** (concise):
@@ -28,8 +26,6 @@ metadata:
   name: external-dns
 spec:
   # namespace, versions omitted - automatically get defaults
-  targetCluster:
-    kubernetesProviderConfigId: k8s-cluster-01
 ```
 
 The defaults are defined once in the proto file and honored everywhere manifests are loaded.
@@ -185,8 +181,6 @@ kind: CertManager
 metadata:
   name: cert-manager
 spec:
-  targetCluster:
-    kubernetesProviderConfigId: k8s-cluster-01
   # namespace, version automatically defaulted
 ```
 
@@ -203,8 +197,6 @@ Output shows defaults:
 spec:
   namespace: cert-manager        # ← Default applied
   certManagerVersion: v1.13.0    # ← Default applied
-  targetCluster:
-    kubernetesProviderConfigId: k8s-cluster-01
 ```
 
 ### Overriding Defaults

@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetescertificate.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
@@ -15,9 +14,6 @@ import "dev/planton/shared/options/options.proto";
 // named by secret_name. Consumers (Ingress, Gateway, CA Issuer) reference that
 // Secret directly.
 message KubernetesCertificateSpec {
-  // Target Kubernetes Cluster where cert-manager is installed.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // Namespace where the Certificate resource will be created.
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (buf.validate.field).required = true,

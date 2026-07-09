@@ -137,7 +137,6 @@ The `KubernetesExternalSecrets` API focuses on the essential 20%:
 ```protobuf
 message KubernetesExternalSecretsSpec {
   // Target cluster (any K8s cluster—EKS, GKE, AKS, or on-prem)
-  KubernetesAddonTargetCluster target_cluster = 1;
   
   // Poll interval (balance freshness vs. cloud API costs)
   uint32 poll_interval_seconds = 2;  // default: 10 seconds

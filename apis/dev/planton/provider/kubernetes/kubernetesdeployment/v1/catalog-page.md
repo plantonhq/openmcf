@@ -79,8 +79,6 @@ This creates a single-replica nginx Deployment with a ClusterIP Service on port 
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
 | `version` | `string` | — | Deployment version identifier (e.g., `main`, `review-42`). 1–30 characters, lowercase alphanumeric and hyphens only, must not end with a hyphen. |
 | `container.app.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation. |

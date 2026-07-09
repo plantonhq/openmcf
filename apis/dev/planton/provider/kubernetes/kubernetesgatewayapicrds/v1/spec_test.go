@@ -6,8 +6,6 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 )
 
 func TestKubernetesGatewayApiCrdsSpec(t *testing.T) {
@@ -19,12 +17,7 @@ var _ = ginkgo.Describe("KubernetesGatewayApiCrdsSpec Validation Tests", func() 
 	var spec *KubernetesGatewayApiCrdsSpec
 
 	ginkgo.BeforeEach(func() {
-		spec = &KubernetesGatewayApiCrdsSpec{
-			TargetCluster: &kubernetes.KubernetesClusterSelector{
-				ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-				ClusterName: "test-cluster",
-			},
-		}
+		spec = &KubernetesGatewayApiCrdsSpec{}
 	})
 
 	ginkgo.Describe("Basic Validation", func() {
@@ -132,41 +125,6 @@ var _ = ginkgo.Describe("KubernetesGatewayApiCrdsSpec Validation Tests", func() 
 		})
 	})
 
-	ginkgo.Describe("Target Cluster Validation", func() {
-		ginkgo.Context("with GKE cluster", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec.TargetCluster = &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "my-gke-cluster",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with EKS cluster", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec.TargetCluster = &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_AwsEksCluster,
-					ClusterName: "my-eks-cluster",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with AKS cluster", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec.TargetCluster = &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_AzureAksCluster,
-					ClusterName: "my-aks-cluster",
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-	})
-
 	ginkgo.Describe("Complete Configuration", func() {
 		ginkgo.Context("with all fields specified", func() {
 			ginkgo.It("should not return a validation error", func() {
@@ -174,10 +132,6 @@ var _ = ginkgo.Describe("KubernetesGatewayApiCrdsSpec Validation Tests", func() 
 				spec.Version = &version
 				spec.InstallChannel = &KubernetesGatewayApiCrdsSpec_InstallChannel{
 					Channel: KubernetesGatewayApiCrdsSpec_InstallChannel_experimental,
-				}
-				spec.TargetCluster = &kubernetes.KubernetesClusterSelector{
-					ClusterKind: cloudresourcekind.CloudResourceKind_GcpGkeCluster,
-					ClusterName: "production-cluster",
 				}
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).To(gomega.BeNil())

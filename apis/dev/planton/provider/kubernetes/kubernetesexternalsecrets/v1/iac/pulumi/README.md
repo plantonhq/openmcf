@@ -105,9 +105,6 @@ kind: KubernetesExternalSecrets
 metadata:
   name: external-secrets-gke-prod
 spec:
-  target_cluster:
-    kubernetes_cluster_id:
-      value: prod-gke-cluster
   
   poll_interval_seconds: 30
   
@@ -134,9 +131,6 @@ kind: KubernetesExternalSecrets
 metadata:
   name: external-secrets-eks-prod
 spec:
-  target_cluster:
-    kubernetes_cluster_id:
-      value: prod-eks-cluster
   
   poll_interval_seconds: 30
   
@@ -161,9 +155,6 @@ kind: KubernetesExternalSecrets
 metadata:
   name: external-secrets-aks-prod
 spec:
-  target_cluster:
-    kubernetes_cluster_id:
-      value: prod-aks-cluster
   
   poll_interval_seconds: 30
   

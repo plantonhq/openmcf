@@ -4,6 +4,7 @@ package dev.planton.provider.gcp.gcpgcsbucket.v1;
 
 //gcp-gcs-bucket stack outputs
 message GcpGcsBucketStackOutputs {
-  //id of the storage-bucket created on aws
+  //id of the GCS bucket created on Google Cloud.
+  //reference via status.outputs.bucket_id.
   string bucket_id = 1;
 }

@@ -44,7 +44,6 @@ Refer to the example section for usage instructions.
 ### KubernetesOpenBaoSpec
 Defines the desired state of the OpenBao deployment, including server, HA, injector, and ingress configurations.
 
-- **target_cluster**: Selector for the target Kubernetes cluster.
 - **namespace**: Kubernetes namespace for the deployment (supports value or reference).
 - **create_namespace**: Flag to control namespace creation.
 - **helm_chart_version**: Optional override for the Helm chart version (default: 0.23.3).

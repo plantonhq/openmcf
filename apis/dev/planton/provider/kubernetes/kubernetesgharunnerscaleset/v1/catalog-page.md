@@ -75,8 +75,6 @@ This registers a runner scale set named `my-runners` against the `my-org` GitHub
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `targetCluster.clusterKind` | `enum` | — | Kubernetes cluster kind. Valid values: `AwsEksCluster`, `GcpGkeCluster`, `AzureAksCluster`, `DigitalOceanKubernetesCluster`, `CivoKubernetesCluster`. |
-| `targetCluster.clusterName` | `string` | — | Name of the target Kubernetes cluster in the same environment. |
 | `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying the scale set. |
 | `helmChartVersion` | `string` | `"0.13.1"` | Version of the `gha-runner-scale-set` Helm chart. Chart versions align with the runner image versions. |
 | `scaling.minRunners` | `int32` | `0` | Minimum number of idle runners. Set to `0` for scale-to-zero. Must be >= 0. |
@@ -201,9 +199,6 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.KubernetesGhaRunnerScaleSet.build-runners
 spec:
-  targetCluster:
-    clusterKind: GcpGkeCluster
-    clusterName: prod-cluster
   namespace:
     valueFrom:
       kind: KubernetesNamespace

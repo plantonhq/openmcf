@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awss3bucket
+spec:
+  # The module names the bucket after the Planton resource (locals.tf:
+  # bucket_name = var.metadata.name), so every S3 import ID derives with
+  # zero user input.
+  values:
+    - name: bucket
+      derivations:
+        - from_metadata_name: true
+        - from_arn_part: resource_id
+      where_to_find: >-
+        S3 console -> Buckets (the bucket name), or `aws s3 ls`.
+    - name: intelligent_tiering_name
+      derivations:
+        # The module keys each configuration's for_each instance by its name,
+        # so the enumerated address carries the exact value the ID needs.
+        - from_address_key: true
+      where_to_find: >-
+        S3 console -> bucket -> Management -> Intelligent-Tiering
+        configurations (each configuration's name), or
+        `aws s3api list-bucket-intelligent-tiering-configurations
+        --bucket <bucket>`.

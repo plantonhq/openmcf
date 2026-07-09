@@ -66,13 +66,13 @@ func validateS3Backend(config *TofuBackendConfig) *ValidationResult {
 	if config.BackendBucket == "" {
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
-			Name:        "bucket",
-			FlagName:    "--backend-bucket",
-			EnvVarName:  EnvBackendBucket,
-			AnnotationName:   "terraform.planton.dev/backend.bucket",
-			Description: "S3 bucket name for state storage",
-			Example:     "my-terraform-state-bucket",
-			Required:    true,
+			Name:           "bucket",
+			FlagName:       "--backend-bucket",
+			EnvVarName:     EnvBackendBucket,
+			AnnotationName: "terraform.planton.dev/backend.bucket",
+			Description:    "S3 bucket name for state storage",
+			Example:        "my-terraform-state-bucket",
+			Required:       true,
 		})
 	}
 
@@ -80,13 +80,13 @@ func validateS3Backend(config *TofuBackendConfig) *ValidationResult {
 	if config.BackendKey == "" {
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
-			Name:        "key",
-			FlagName:    "--backend-key",
-			EnvVarName:  "", // Key is intentionally not read from env vars
-			AnnotationName:   "terraform.planton.dev/backend.key",
-			Description: "Path to state file within bucket",
-			Example:     "env/prod/terraform.tfstate",
-			Required:    true,
+			Name:           "key",
+			FlagName:       "--backend-key",
+			EnvVarName:     "", // Key is intentionally not read from env vars
+			AnnotationName: "terraform.planton.dev/backend.key",
+			Description:    "Path to state file within bucket",
+			Example:        "env/prod/terraform.tfstate",
+			Required:       true,
 		})
 	}
 
@@ -94,13 +94,13 @@ func validateS3Backend(config *TofuBackendConfig) *ValidationResult {
 	if config.BackendRegion == "" {
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
-			Name:        "region",
-			FlagName:    "--backend-region",
-			EnvVarName:  EnvBackendRegion,
-			AnnotationName:   "terraform.planton.dev/backend.region",
-			Description: "AWS region (use 'auto' for S3-compatible backends like R2)",
-			Example:     "us-west-2 (or 'auto' for R2/MinIO)",
-			Required:    true,
+			Name:           "region",
+			FlagName:       "--backend-region",
+			EnvVarName:     EnvBackendRegion,
+			AnnotationName: "terraform.planton.dev/backend.region",
+			Description:    "AWS region (use 'auto' for S3-compatible backends like R2)",
+			Example:        "us-west-2 (or 'auto' for R2/MinIO)",
+			Required:       true,
 		})
 	}
 
@@ -108,13 +108,13 @@ func validateS3Backend(config *TofuBackendConfig) *ValidationResult {
 	if config.BackendRegion == "auto" && config.BackendEndpoint == "" {
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
-			Name:        "endpoint",
-			FlagName:    "--backend-endpoint",
-			EnvVarName:  EnvBackendEndpoint,
-			AnnotationName:   "terraform.planton.dev/backend.endpoint",
-			Description: "Custom S3-compatible endpoint (required when region is 'auto')",
-			Example:     "https://<account-id>.r2.cloudflarestorage.com",
-			Required:    true,
+			Name:           "endpoint",
+			FlagName:       "--backend-endpoint",
+			EnvVarName:     EnvBackendEndpoint,
+			AnnotationName: "terraform.planton.dev/backend.endpoint",
+			Description:    "Custom S3-compatible endpoint (required when region is 'auto')",
+			Example:        "https://<account-id>.r2.cloudflarestorage.com",
+			Required:       true,
 		})
 		result.Warnings = append(result.Warnings,
 			"Detected S3-compatible backend (region=auto). Endpoint is required for R2, MinIO, etc.")
@@ -131,13 +131,13 @@ func validateGCSBackend(config *TofuBackendConfig) *ValidationResult {
 	if config.BackendBucket == "" {
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
-			Name:        "bucket",
-			FlagName:    "--backend-bucket",
-			EnvVarName:  EnvBackendBucket,
-			AnnotationName:   "terraform.planton.dev/backend.bucket",
-			Description: "GCS bucket name for state storage",
-			Example:     "my-terraform-state",
-			Required:    true,
+			Name:           "bucket",
+			FlagName:       "--backend-bucket",
+			EnvVarName:     EnvBackendBucket,
+			AnnotationName: "terraform.planton.dev/backend.bucket",
+			Description:    "GCS bucket name for state storage",
+			Example:        "my-terraform-state",
+			Required:       true,
 		})
 	}
 
@@ -145,13 +145,13 @@ func validateGCSBackend(config *TofuBackendConfig) *ValidationResult {
 	if config.BackendKey == "" {
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
-			Name:        "key",
-			FlagName:    "--backend-key",
-			EnvVarName:  "", // Key is intentionally not read from env vars
-			AnnotationName:   "terraform.planton.dev/backend.key",
-			Description: "Prefix path for state file within bucket",
-			Example:     "terraform/state",
-			Required:    true,
+			Name:           "key",
+			FlagName:       "--backend-key",
+			EnvVarName:     "", // Key is intentionally not read from env vars
+			AnnotationName: "terraform.planton.dev/backend.key",
+			Description:    "Prefix path for state file within bucket",
+			Example:        "terraform/state",
+			Required:       true,
 		})
 	}
 
@@ -166,13 +166,13 @@ func validateAzureBackend(config *TofuBackendConfig) *ValidationResult {
 	if config.BackendBucket == "" {
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
-			Name:        "bucket",
-			FlagName:    "--backend-bucket",
-			EnvVarName:  EnvBackendBucket,
-			AnnotationName:   "terraform.planton.dev/backend.bucket",
-			Description: "Azure Storage container name for state storage",
-			Example:     "tfstate",
-			Required:    true,
+			Name:           "bucket",
+			FlagName:       "--backend-bucket",
+			EnvVarName:     EnvBackendBucket,
+			AnnotationName: "terraform.planton.dev/backend.bucket",
+			Description:    "Azure Storage container name for state storage",
+			Example:        "tfstate",
+			Required:       true,
 		})
 	}
 
@@ -180,13 +180,13 @@ func validateAzureBackend(config *TofuBackendConfig) *ValidationResult {
 	if config.BackendKey == "" {
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
-			Name:        "key",
-			FlagName:    "--backend-key",
-			EnvVarName:  "", // Key is intentionally not read from env vars
-			AnnotationName:   "terraform.planton.dev/backend.key",
-			Description: "State file blob name",
-			Example:     "prod.terraform.tfstate",
-			Required:    true,
+			Name:           "key",
+			FlagName:       "--backend-key",
+			EnvVarName:     "", // Key is intentionally not read from env vars
+			AnnotationName: "terraform.planton.dev/backend.key",
+			Description:    "State file blob name",
+			Example:        "prod.terraform.tfstate",
+			Required:       true,
 		})
 	}
 

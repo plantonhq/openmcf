@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetestekton.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/options/options.proto";
 
 // KubernetesTektonSpec defines the configuration for deploying Tekton on Kubernetes using direct manifests.
@@ -20,9 +19,6 @@ import "dev/planton/shared/options/options.proto";
 //   kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 //   kubectl apply --filename https://infra.tekton.dev/tekton-releases/dashboard/latest/release.yaml
 message KubernetesTektonSpec {
-  // Target Kubernetes Cluster where Tekton will be deployed.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
-
   // The version of Tekton Pipelines to deploy.
   // This maps to release versions from https://github.com/tektoncd/pipeline/releases
   // Examples: "latest", "v0.65.2", "v0.64.0"

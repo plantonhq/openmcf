@@ -22,12 +22,6 @@ variable "spec" {
   EOT
   type = object({
 
-    # The Kubernetes cluster to install Tekton on.
-    target_cluster = optional(object({
-      cluster_name = string
-      cluster_kind = optional(number)
-    }))
-
     # The version of Tekton Pipelines to deploy.
     # Maps to release versions from https://github.com/tektoncd/pipeline/releases
     # Examples: "latest", "v0.65.2", "v0.64.0"
