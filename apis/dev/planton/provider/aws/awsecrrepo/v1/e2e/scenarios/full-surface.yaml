@@ -1,0 +1,33 @@
+# Full-surface AwsEcrRepo scenario: one repository exercising both module
+# resources in a single fast lane -- the repository itself (immutable tags,
+# scan-on-push, AES256 encryption, force_delete so destroy never wedges on
+# leftover images) and the lifecycle policy with BOTH rule shapes (the
+# single allowed untagged-by-age rule plus the any-keep-last-N rule).
+# force_delete is also the catalog-declared config-only attribute, so the
+# import round-trip lane exercises its tolerance path exactly like
+# aws_s3_bucket.force_destroy. Full metadata is supplied for tagging/orphan
+# cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsEcrRepo
+metadata:
+  name: planton-oss-e2e-ecr-full
+  id: planton-oss-e2e-ecr-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsecrrepo
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  repositoryName: planton-oss-e2e-ecr-full
+  imageImmutable: true
+  encryptionType: AES256
+  forceDelete: true
+  scanOnPush: true
+  lifecyclePolicy:
+    expireUntaggedAfterDays: 7
+    maxImageCount: 50

@@ -25,8 +25,12 @@ type ResolveContext struct {
 	// (from_address_key). Empty for non-repeated resources.
 	AddressKey string
 	// Parsed parts of a user-pasted ARN, keyed "resource_id" |
-	// "resource_name" | "account_id" | "region" (from_arn_part). May be nil --
-	// deterministic contexts (the E2E round-trip) never have one.
+	// "resource_name" | "account_id" | "region" | "arn" (the full ARN as
+	// pasted) for from_arn_part. May be nil or partial: deterministic
+	// contexts without a pasted ARN (the E2E round-trip) still populate the
+	// ACCOUNT-LEVEL parts ("account_id", "region") from facts they hold,
+	// because those are properties of the connected account, not of any one
+	// resource -- but never the per-resource parts.
 	ArnParts map[string]string
 }
 
@@ -124,11 +128,19 @@ func specFieldValue(spec proto.Message, dotPath string) string {
 //	                                       -> (..., this, archive)
 //	aws_vpc_ipv4_cidr_block_association.secondary["10.1.0.0/16"]
 //	                                       -> (..., secondary, 10.1.0.0/16)
-//	module-less count instances use [0]    -> key "0"
-var tofuAddressPattern = regexp.MustCompile(`^([a-z0-9_]+)\.([A-Za-z0-9_-]+)(?:\[\"?([^\]\"]*)\"?\])?$`)
+//	count instances use [0]                -> key "" (see below)
+var tofuAddressPattern = regexp.MustCompile(`^([a-z0-9_]+)\.([A-Za-z0-9_-]+)(?:\[(?:"([^\]"]*)"|\d+)\])?$`)
 
 // ParseTofuAddress decomposes an enumerated OpenTofu address. Returns ok=false
 // for shapes this package does not map (module-nested addresses, data sources).
+//
+// Only quoted for_each keys surface as the instance key: modules key
+// for_each instances by exactly the discriminator an import ID needs (an
+// alias name, a policy ARN), which is what from_address_key exists for. A
+// numeric count index is positional, never identity -- letting it leak into
+// an import ID would import a resource literally named "0" -- so count
+// instances parse with an empty key (their conditional resources derive
+// their ID from elsewhere, or the segment is optional).
 func ParseTofuAddress(address string) (resourceType, logicalName, instanceKey string, ok bool) {
 	if strings.HasPrefix(address, "module.") || strings.HasPrefix(address, "data.") {
 		return "", "", "", false

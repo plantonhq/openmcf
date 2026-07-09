@@ -19,6 +19,10 @@ func TestPlaceholders(t *testing.T) {
 		{"{bucket}", []string{"bucket"}},
 		{"{bucket}:{intelligent_tiering_name}", []string{"bucket", "intelligent_tiering_name"}},
 		{"{vpc_id}_{association_id}", []string{"vpc_id", "association_id"}},
+		// Optional placeholders are still placeholders -- they need a
+		// declaration and a resolution attempt.
+		{"name:{table_name}/index:{index_name?}/{account_id}",
+			[]string{"table_name", "index_name", "account_id"}},
 		{"literal-id", nil},
 	}
 	for _, tc := range cases {
@@ -29,6 +33,14 @@ func TestPlaceholders(t *testing.T) {
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("Placeholders(%q) = %v, want %v", tc.idFormat, got, tc.want)
 		}
+	}
+}
+
+func TestRequiredPlaceholders(t *testing.T) {
+	got := RequiredPlaceholders("name:{table_name}/index:{index_name?}/{account_id}")
+	want := []string{"table_name", "account_id"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("RequiredPlaceholders = %v, want %v", got, want)
 	}
 }
 
@@ -46,6 +58,18 @@ func TestRenderID(t *testing.T) {
 	if _, err := RenderID("{bucket}:{name}", map[string]string{"bucket": "my-bucket"}); err == nil {
 		t.Fatal("RenderID with a missing value did not error")
 	}
+
+	// An OPTIONAL placeholder renders as the empty string when unresolved --
+	// the provider-documented shape for variants like table-level DynamoDB
+	// contributor insights ("name:tbl/index:/123456789012").
+	id, err = RenderID("name:{table_name}/index:{index_name?}/{account_id}",
+		map[string]string{"table_name": "tbl", "account_id": "123456789012"})
+	if err != nil {
+		t.Fatalf("RenderID with optional placeholder: %v", err)
+	}
+	if id != "name:tbl/index:/123456789012" {
+		t.Fatalf("RenderID = %q, want name:tbl/index:/123456789012", id)
+	}
 }
 
 func TestParseTofuAddress(t *testing.T) {
@@ -61,7 +85,9 @@ func TestParseTofuAddress(t *testing.T) {
 			"aws_s3_bucket_intelligent_tiering_configuration", "this", "archive", true},
 		{"aws_vpc_ipv4_cidr_block_association.secondary[\"10.1.0.0/16\"]",
 			"aws_vpc_ipv4_cidr_block_association", "secondary", "10.1.0.0/16", true},
-		{"aws_instance.web[0]", "aws_instance", "web", "0", true},
+		// A count index is positional, never identity -- it must not leak
+		// into an import ID as if it were a for_each discriminator.
+		{"aws_instance.web[0]", "aws_instance", "web", "", true},
 		{"module.nested.aws_s3_bucket.this", "", "", "", false},
 		{"data.aws_ami.ubuntu", "", "", "", false},
 	}

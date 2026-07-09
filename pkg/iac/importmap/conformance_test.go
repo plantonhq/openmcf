@@ -20,21 +20,6 @@ import (
 	"github.com/plantonhq/planton/pkg/crkreflect"
 )
 
-// mappedKinds is the allowlist of components whose import recipes exist and
-// are guarded, keyed by provider directory. A kind is added here only after
-// its recipes have passed the live E2E import round-trip (deploy -> state
-// aside -> blind re-import -> zero-diff plan), so the guard can never be red
-// for an unmapped module -- mirroring the variables.tf drift guard's
-// enrollment discipline.
-var mappedKinds = map[string][]string{
-	"aws": {
-		"awss3bucket",
-		"awsvpc",
-		"awssecuritygroup",
-		"awsecrrepo",
-	},
-}
-
 var tfResourcePattern = regexp.MustCompile(`(?m)^resource\s+"([a-z0-9_]+)"\s+"`)
 
 // TestImportMapConformance validates every authored import recipe against the
@@ -52,8 +37,24 @@ var tfResourcePattern = regexp.MustCompile(`(?m)^resource\s+"([a-z0-9_]+)"\s+"`)
 //     proto; from_stack_output keys are real fields on the kind's
 //     StackOutputs proto. A typo'd path would silently downgrade a zero-input
 //     import to a manual one.
+//
+// Enrollment is the import-map file itself: every discovered
+// `v1/iac/import-map.yaml` is checked, with no allowlist to keep in sync.
+// The platform's catalog bundler and the E2E round-trip gate key off the
+// same file presence, so an authored map can never ship to the import
+// wizard while dodging this guard. (Whether a map is LIVE-proven is a
+// separate, human-readable ledger in this package's README; the round-trip
+// lane is its only honest enforcement.)
 func TestImportMapConformance(t *testing.T) {
 	root := repoRoot(t)
+
+	mappedKinds, err := DiscoverComponentImportMaps(root)
+	if err != nil {
+		t.Fatalf("discovering component import maps: %v", err)
+	}
+	if len(mappedKinds) == 0 {
+		t.Fatal("no component import maps discovered -- wrong repo root?")
+	}
 
 	for provider, components := range mappedKinds {
 		catalog, err := LoadProviderCatalog(root, provider)
@@ -77,12 +78,17 @@ func TestImportMapConformance(t *testing.T) {
 			if rt.GetIdFormat() == "" {
 				t.Errorf("%s catalog: %s has an empty id_format", provider, rt.GetTerraformType())
 			}
-			// Config-only attributes are the round-trip proof's tolerance list;
-			// an empty entry would tolerate nothing meaningful and signals a
+			// The tolerance lists feed the round-trip proof's plan oracle; an
+			// empty entry would tolerate nothing meaningful and signals a
 			// YAML authoring slip.
 			for _, attr := range rt.GetConfigOnlyAttributes() {
 				if strings.TrimSpace(attr) == "" {
 					t.Errorf("%s catalog: %s declares an empty config_only_attributes entry", provider, rt.GetTerraformType())
+				}
+			}
+			for _, attr := range rt.GetWriteNormalizedAttributes() {
+				if strings.TrimSpace(attr) == "" {
+					t.Errorf("%s catalog: %s declares an empty write_normalized_attributes entry", provider, rt.GetTerraformType())
 				}
 			}
 		}
@@ -120,12 +126,19 @@ func TestImportMapConformance(t *testing.T) {
 				for _, resourceType := range moduleTypes {
 					idFormat, mapped := formatsByTerraformType[resourceType]
 					if !mapped {
-						t.Errorf("module resource %s has no id_format in the %s catalog", resourceType, provider)
+						t.Errorf("module resource %s has no id_format in the %s catalog -- "+
+							"the module gained a resource type its import recipes don't cover; add a %s entry "+
+							"(with its provider import-ID format) to %s, then re-run the live round-trip lane for %s",
+							resourceType, provider, resourceType,
+							ProviderCatalogPath("", provider), component)
 						continue
 					}
 					for _, placeholder := range Placeholders(idFormat) {
 						if _, declared := declaredValues[placeholder]; !declared {
-							t.Errorf("placeholder {%s} (id_format of %s) not declared in the component map", placeholder, resourceType)
+							t.Errorf("placeholder {%s} (id_format of %s) not declared in the component map -- "+
+								"add a value entry for it to %s (prefer a derivable source; where_to_find is mandatory when nothing derives)",
+								placeholder, resourceType,
+								ComponentImportMapPath("", provider, component))
 						}
 					}
 				}
@@ -152,7 +165,7 @@ func TestImportMapConformance(t *testing.T) {
 							}
 						case *componentv1.ImportValueDerivation_FromArnPart:
 							switch source.FromArnPart {
-							case "resource_id", "resource_name", "account_id", "region":
+							case "resource_id", "resource_name", "account_id", "region", "arn":
 							default:
 								t.Errorf("value %q from_arn_part %q: not a recognized ARN part", v.GetName(), source.FromArnPart)
 							}

@@ -45,7 +45,9 @@ message ImportValueDerivation {
     // was previously deployed or refreshed by this platform.
     string from_stack_output = 3;
     // A part of a pasted AWS ARN: "resource_id" | "resource_name" |
-    // "account_id" | "region". One pasted ARN can feed several values.
+    // "account_id" | "region" | "arn" (the full ARN as pasted, for
+    // resource types whose import ID IS the ARN). One pasted ARN can feed
+    // several values.
     string from_arn_part = 4;
     // The enumerated address's own instance key (the ["..."] suffix on a
     // for_each resource). For repeated resources the module keys instances

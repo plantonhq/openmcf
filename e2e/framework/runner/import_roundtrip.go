@@ -25,7 +25,10 @@ const ImportRoundTripEnvVar = "PLANTON_E2E_IMPORT_ROUNDTRIP"
 
 // importRoundTripEnabled gates the phase: opted in, terraform engine (the
 // pulumi arm rides the same recipes once its lane lands), and the component
-// actually ships an import map.
+// actually ships an import map. File presence is the recipes' single
+// enrollment signal everywhere -- this gate, the offline conformance guard,
+// and the platform's catalog bundler all key off the same import-map.yaml,
+// so a map cannot ship while dodging its checks.
 func importRoundTripEnabled(tc *provider.ComponentTestContext) bool {
 	return os.Getenv(ImportRoundTripEnvVar) == "1" &&
 		tc.Engine == "terraform" &&
@@ -83,16 +86,22 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	if err != nil {
 		return err
 	}
+	// Both declared tolerance classes merge into one allowlist for the plan
+	// oracle: config-only attributes never exist cloud-side, write-normalized
+	// attributes read back in a provider-normalized form -- either way an
+	// in-place update touching only them is the documented post-import shape,
+	// not a wrong import.
 	formats := map[string]string{}
-	configOnlyAttributes := map[string]map[string]bool{}
+	toleratedAttributes := map[string]map[string]bool{}
 	for _, rt := range catalog.GetSpec().GetResourceTypes() {
 		formats[rt.GetTerraformType()] = rt.GetIdFormat()
-		if len(rt.GetConfigOnlyAttributes()) > 0 {
-			allowed := make(map[string]bool, len(rt.GetConfigOnlyAttributes()))
-			for _, attr := range rt.GetConfigOnlyAttributes() {
+		declared := append(append([]string{}, rt.GetConfigOnlyAttributes()...), rt.GetWriteNormalizedAttributes()...)
+		if len(declared) > 0 {
+			allowed := make(map[string]bool, len(declared))
+			for _, attr := range declared {
 				allowed[attr] = true
 			}
-			configOnlyAttributes[rt.GetTerraformType()] = allowed
+			toleratedAttributes[rt.GetTerraformType()] = allowed
 		}
 	}
 
@@ -100,6 +109,17 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	if err != nil {
 		return err
 	}
+
+	// The round-trip has no user-pasted ARN, but the ACCOUNT-LEVEL ARN parts
+	// (account_id, region) are properties of the deployed account itself, not
+	// of any one resource -- the platform always knows them from the
+	// connection, and here every ARN-shaped stack output carries the same
+	// pair. Recipes for IDs that embed the account id (e.g. DynamoDB
+	// contributor insights) stay blind-derivable. Per-resource parts
+	// (resource_id/resource_name/arn) are deliberately NOT filled: those
+	// genuinely require the user's ARN, and faking them from an unrelated
+	// output would let a wrong recipe pass.
+	accountArnParts := accountLevelArnParts(tc.FlatOutputs)
 
 	for _, address := range addresses {
 		resourceType, _, instanceKey, parsed := importmap.ParseTofuAddress(address)
@@ -115,9 +135,13 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 			Spec:         spec,
 			StackOutputs: tc.FlatOutputs,
 			AddressKey:   instanceKey,
+			ArnParts:     accountArnParts,
 		})
-		if len(unresolved) > 0 {
-			return errors.Errorf("address %s: values %v not derivable from spec/metadata/outputs -- blind import impossible", address, unresolved)
+		// Only required placeholders abort the blind import -- optional
+		// ("{name?}") segments are provider-documented as legitimately empty
+		// for some variants and render as "".
+		if missing := requiredUnresolved(idFormat, unresolved); len(missing) > 0 {
+			return errors.Errorf("address %s: values %v not derivable from spec/metadata/outputs -- blind import impossible", address, missing)
 		}
 		importID, err := importmap.RenderID(idFormat, resolved)
 		if err != nil {
@@ -140,10 +164,11 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	// -detailed-exitcode would fail every kind whose config sets a
 	// CONFIG-ONLY attribute (aws_s3_bucket.force_destroy is engine delete
 	// behavior with no cloud-side existence -- no import can ever carry it,
-	// and it legitimately plans as an in-place update after any import). So
-	// the plan JSON is inspected structurally: creates, destroys, and
+	// and it legitimately plans as an in-place update after any import) or a
+	// WRITE-NORMALIZED one (policy documents read back provider-normalized).
+	// So the plan JSON is inspected structurally: creates, destroys, and
 	// replaces always fail; in-place updates pass only when every changed
-	// attribute is declared config-only in the provider catalog.
+	// attribute is declared in the provider catalog's tolerance lists.
 	// Shallow-copy the options: the show-with-struct helper requires a plan
 	// file path, and the shared opts must stay pristine for the DESTROY phase.
 	planOpts := *opts
@@ -164,13 +189,13 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		}
 		changed := changedTopLevelAttributes(rc.Change.Before, rc.Change.After)
 		for _, attribute := range changed {
-			if !configOnlyAttributes[rc.Type][attribute] {
+			if !toleratedAttributes[rc.Type][attribute] {
 				return errors.Errorf(
-					"plan after blind re-import updates %s.%s (changed: %v) -- not a declared config-only attribute of %s; deployed state kept at %s",
+					"plan after blind re-import updates %s.%s (changed: %v) -- not a declared config-only/write-normalized attribute of %s; deployed state kept at %s",
 					address, attribute, changed, rc.Type, asidePath)
 			}
 		}
-		fmt.Printf("  [import-rt] tolerating config-only update on %s: %v (declared in the %s catalog)\n",
+		fmt.Printf("  [import-rt] tolerating declared update on %s: %v (config-only/write-normalized in the %s catalog)\n",
 			address, changed, tc.Provider)
 		tolerated++
 	}
@@ -178,6 +203,58 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	fmt.Printf("  [import-rt] %d resources re-imported blind; plan proposes no real change (%d config-only updates tolerated)\n",
 		len(addresses), tolerated)
 	return nil
+}
+
+// accountLevelArnParts extracts the account_id and region from the first
+// ARN-shaped stack output. Within one deployment every ARN carries the same
+// account (and, for regional services, the same region), so these two parts
+// are deployment-level facts -- the same facts the platform derives from the
+// provider connection in the real import flow.
+func accountLevelArnParts(flatOutputs map[string]string) map[string]string {
+	parts := map[string]string{}
+	for _, value := range flatOutputs {
+		if !strings.HasPrefix(value, "arn:") {
+			continue
+		}
+		// arn:partition:service:region:account-id:resource
+		segments := strings.SplitN(value, ":", 6)
+		if len(segments) < 6 {
+			continue
+		}
+		// Global-service ARNs (S3, IAM) leave region -- and S3 even the
+		// account -- empty, so each part fills from the first ARN that
+		// carries it.
+		if parts["account_id"] == "" && segments[4] != "" {
+			parts["account_id"] = segments[4]
+		}
+		if parts["region"] == "" && segments[3] != "" {
+			parts["region"] = segments[3]
+		}
+		if parts["account_id"] != "" && parts["region"] != "" {
+			break
+		}
+	}
+	if len(parts) == 0 {
+		return nil
+	}
+	return parts
+}
+
+// requiredUnresolved filters the unresolved placeholder names down to the
+// ones the id_format marks required -- the only ones that block a blind
+// import.
+func requiredUnresolved(idFormat string, unresolved []string) []string {
+	required := map[string]bool{}
+	for _, name := range importmap.RequiredPlaceholders(idFormat) {
+		required[name] = true
+	}
+	var missing []string
+	for _, name := range unresolved {
+		if required[name] {
+			missing = append(missing, name)
+		}
+	}
+	return missing
 }
 
 // changedTopLevelAttributes diffs a plan change's before/after objects and

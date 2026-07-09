@@ -83,8 +83,12 @@ type ResourceTypeImportId struct {
 	PulumiType string `protobuf:"bytes,2,opt,name=pulumi_type,json=pulumiType,proto3" json:"pulumi_type,omitempty"`
 	// Import-ID template. Placeholders in {braces} name the values a
 	// component's import map supplies (e.g. "{bucket}",
-	// "{vpc_id}_{association_id}"). A template with no placeholders is a
-	// literal ID.
+	// "{vpc_id}_{association_id}"). A trailing "?" inside the braces marks a
+	// segment the provider documents as legitimately empty in some variants
+	// (e.g. DynamoDB contributor insights on the table itself:
+	// "name:{table_name}/index:{index_name?}/{account_id}"); required
+	// placeholders that fail to resolve abort the import instead of
+	// rendering empty. A template with no placeholders is a literal ID.
 	IdFormat string `protobuf:"bytes,3,opt,name=id_format,json=idFormat,proto3" json:"id_format,omitempty"`
 	// Provider-documentation notes about the format -- optional variants
 	// (e.g. a trailing ",{expected_bucket_owner}"), gotchas, or where the
@@ -97,8 +101,21 @@ type ResourceTypeImportId struct {
 	// round-trip conformance proof tolerates in-place updates touching only
 	// these attributes; everything else fails it.
 	ConfigOnlyAttributes []string `protobuf:"bytes,5,rep,name=config_only_attributes,json=configOnlyAttributes,proto3" json:"config_only_attributes,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Attributes the cloud provider NORMALIZES on write, so the stored form
+	// read back by an import differs textually from the configured form while
+	// being semantically identical -- policy documents are the canonical case
+	// (the provider's own acceptance tests ignore them on import verification,
+	// e.g. aws_dynamodb_resource_policy's importIgnore="policy"). A plan after
+	// a faithful import shows them as in-place updates that would rewrite the
+	// same semantic content (often bumping a computed revision attribute,
+	// which belongs in this list too). The round-trip proof tolerates in-place
+	// updates on these exactly like config_only_attributes; they are declared
+	// separately because the classes genuinely differ -- config-only values
+	// never exist cloud-side at all, normalized values do -- and future drift
+	// surfaces will want to explain them differently.
+	WriteNormalizedAttributes []string `protobuf:"bytes,6,rep,name=write_normalized_attributes,json=writeNormalizedAttributes,proto3" json:"write_normalized_attributes,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *ResourceTypeImportId) Reset() {
@@ -166,20 +183,28 @@ func (x *ResourceTypeImportId) GetConfigOnlyAttributes() []string {
 	return nil
 }
 
+func (x *ResourceTypeImportId) GetWriteNormalizedAttributes() []string {
+	if x != nil {
+		return x.WriteNormalizedAttributes
+	}
+	return nil
+}
+
 var File_dev_planton_iac_providerimportcatalog_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_iac_providerimportcatalog_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"3dev/planton/iac/providerimportcatalog/v1/spec.proto\x12(dev.planton.iac.providerimportcatalog.v1\"\x82\x01\n" +
 	"\x19ProviderImportCatalogSpec\x12e\n" +
-	"\x0eresource_types\x18\x01 \x03(\v2>.dev.planton.iac.providerimportcatalog.v1.ResourceTypeImportIdR\rresourceTypes\"\xc7\x01\n" +
+	"\x0eresource_types\x18\x01 \x03(\v2>.dev.planton.iac.providerimportcatalog.v1.ResourceTypeImportIdR\rresourceTypes\"\x87\x02\n" +
 	"\x14ResourceTypeImportId\x12%\n" +
 	"\x0eterraform_type\x18\x01 \x01(\tR\rterraformType\x12\x1f\n" +
 	"\vpulumi_type\x18\x02 \x01(\tR\n" +
 	"pulumiType\x12\x1b\n" +
 	"\tid_format\x18\x03 \x01(\tR\bidFormat\x12\x14\n" +
 	"\x05notes\x18\x04 \x01(\tR\x05notes\x124\n" +
-	"\x16config_only_attributes\x18\x05 \x03(\tR\x14configOnlyAttributesB\xe2\x02\n" +
+	"\x16config_only_attributes\x18\x05 \x03(\tR\x14configOnlyAttributes\x12>\n" +
+	"\x1bwrite_normalized_attributes\x18\x06 \x03(\tR\x19writeNormalizedAttributesB\xe2\x02\n" +
 	",com.dev.planton.iac.providerimportcatalog.v1B\tSpecProtoP\x01Zbgithub.com/plantonhq/planton/apis/dev/planton/iac/providerimportcatalog/v1;providerimportcatalogv1\xa2\x02\x04DPIP\xaa\x02(Dev.Planton.Iac.Providerimportcatalog.V1\xca\x02(Dev\\Planton\\Iac\\Providerimportcatalog\\V1\xe2\x024Dev\\Planton\\Iac\\Providerimportcatalog\\V1\\GPBMetadata\xea\x02,Dev::Planton::Iac::Providerimportcatalog::V1b\x06proto3"
 
 var (

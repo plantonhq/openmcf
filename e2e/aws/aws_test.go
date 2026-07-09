@@ -75,6 +75,13 @@ func TestAwsS3Bucket_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awss3bucket", "terraform")
 }
 
+// --- AWS ECR Repository (true leaf; repository + lifecycle policy in one fast lane) ---
+
+func TestAwsEcrRepo_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "awsecrrepo", "pulumi") }
+func TestAwsEcrRepo_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrrepo", "terraform")
+}
+
 // --- AWS VPC (thin root of the networking graph) ---
 
 func TestAwsVpc_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awsvpc", "pulumi") }

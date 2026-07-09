@@ -56,3 +56,62 @@ func TestChangedTopLevelAttributes(t *testing.T) {
 		})
 	}
 }
+
+// The blind round-trip holds no user-pasted ARN, but account_id/region are
+// deployment-level facts every ARN-shaped output carries; per-resource parts
+// must NEVER be synthesized (a wrong recipe could then pass on a fake id).
+func TestAccountLevelArnParts(t *testing.T) {
+	cases := []struct {
+		name    string
+		outputs map[string]string
+		want    map[string]string
+	}{
+		{
+			name: "regional ARN carries both parts",
+			outputs: map[string]string{
+				"table_arn": "arn:aws:dynamodb:us-west-2:123456789012:table/tbl",
+			},
+			want: map[string]string{"account_id": "123456789012", "region": "us-west-2"},
+		},
+		{
+			name: "global-service ARNs fill what they carry (IAM: account only)",
+			outputs: map[string]string{
+				"role_arn": "arn:aws:iam::123456789012:role/my-role",
+			},
+			want: map[string]string{"account_id": "123456789012"},
+		},
+		{
+			name: "parts merge across outputs (S3 carries neither, IAM the account, regional the region)",
+			outputs: map[string]string{
+				"bucket_arn": "arn:aws:s3:::my-bucket",
+				"role_arn":   "arn:aws:iam::123456789012:role/my-role",
+			},
+			want: map[string]string{"account_id": "123456789012"},
+		},
+		{
+			name:    "no ARN-shaped outputs yield nil, never fabricated parts",
+			outputs: map[string]string{"bucket_id": "my-bucket"},
+			want:    nil,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := accountLevelArnParts(tc.outputs)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("accountLevelArnParts = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// Optional ("{name?}") placeholders never block a blind import; required ones
+// always do.
+func TestRequiredUnresolved(t *testing.T) {
+	missing := requiredUnresolved(
+		"name:{table_name}/index:{index_name?}/{account_id}",
+		[]string{"index_name", "account_id"},
+	)
+	if !reflect.DeepEqual(missing, []string{"account_id"}) {
+		t.Fatalf("requiredUnresolved = %v, want [account_id]", missing)
+	}
+}

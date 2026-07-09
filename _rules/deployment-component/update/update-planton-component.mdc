@@ -279,11 +279,20 @@ After all updates, **execute validation commands in sequence**:
 3. **If Pulumi/Go code changed**: Run `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` to validate build (rule 018)
 4. **Always run component tests**: Run `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` to validate tests (rule 019)
 5. **If proto files changed and presets exist**: Verify all preset YAML field names exist in current spec.proto, all StringValueOrRef fields use `value:` wrapper, and apiVersion/kind still match api.proto
-6. **If any docs/catalog-page.md changed**: Run `yarn copy-docs && yarn generate-structure`
+6. **If the Terraform module's resource set changed and the component ships import
+   recipes** (`v1/iac/import-map.yaml`): update the provider catalog
+   (`aa_import/catalog.yaml`) and the component map for the added/removed resource
+   types, then re-prove with the live import round-trip
+   (`PLANTON_E2E_IMPORT_ROUNDTRIP=1` on the component's terraform E2E lane) and
+   refresh the ledger in `pkg/iac/importmap/README.md`. The offline conformance
+   guard (`TestImportMapConformance`, rides `make test`) fails on any module
+   resource type the catalog does not cover -- treat that failure as this step's
+   tripwire, not a nuisance. Full discipline: `pkg/iac/importmap/README.md`.
+7. **If any docs/catalog-page.md changed**: Run `yarn copy-docs && yarn generate-structure`
    in `site/` so the built catalog reflects the update (the copy script self-cleans
    provider directories; the site build does NOT pick up doc changes on its own)
-7. Generate update report
-8. Recommend running audit to verify improvements
+8. Generate update report
+9. Recommend running audit to verify improvements
 
 ### Step 5: Report Results
 

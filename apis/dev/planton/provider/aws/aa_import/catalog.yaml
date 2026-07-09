@@ -94,6 +94,10 @@ spec:
     - terraform_type: aws_security_group
       pulumi_type: aws:ec2/securityGroup:SecurityGroup
       id_format: "{security_group_id}"
+      # revoke_rules_on_delete is engine delete behavior (revoke every rule
+      # before deleting, for groups other groups reference) -- EC2 never
+      # reports it, so it can never round-trip through import.
+      config_only_attributes: [revoke_rules_on_delete]
 
     # --- ECR -----------------------------------------------------------------
     - terraform_type: aws_ecr_repository
@@ -104,3 +108,98 @@ spec:
     - terraform_type: aws_ecr_lifecycle_policy
       pulumi_type: aws:ecr/lifecyclePolicy:LifecyclePolicy
       id_format: "{repository_name}"
+
+    # --- Subnet (subnet + its owned route table + the association) -----------
+    - terraform_type: aws_subnet
+      pulumi_type: aws:ec2/subnet:Subnet
+      id_format: "{subnet_id}"
+    - terraform_type: aws_route_table
+      pulumi_type: aws:ec2/routeTable:RouteTable
+      id_format: "{route_table_id}"
+    - terraform_type: aws_route_table_association
+      pulumi_type: aws:ec2/routeTableAssociation:RouteTableAssociation
+      id_format: "{subnet_id}/{route_table_id}"
+      notes: >-
+        Subnet associations import by "subnet-id/rtb-id" (gateway
+        associations use "igw-id/rtb-id" -- not a shape Planton modules
+        create today).
+
+    # --- Internet gateway -----------------------------------------------------
+    - terraform_type: aws_internet_gateway
+      pulumi_type: aws:ec2/internetGateway:InternetGateway
+      id_format: "{internet_gateway_id}"
+
+    # --- NAT gateway -----------------------------------------------------------
+    - terraform_type: aws_nat_gateway
+      pulumi_type: aws:ec2/natGateway:NatGateway
+      id_format: "{nat_gateway_id}"
+
+    # --- IAM role (role + inline policies + managed-policy attachments) -------
+    - terraform_type: aws_iam_role
+      pulumi_type: aws:iam/role:Role
+      id_format: "{role_name}"
+      # force_detach_policies is engine delete behavior (detach before
+      # delete), never readable from IAM -- same class as S3's force_destroy.
+      config_only_attributes: [force_detach_policies]
+    - terraform_type: aws_iam_role_policy
+      pulumi_type: aws:iam/rolePolicy:RolePolicy
+      id_format: "{role_name}:{inline_policy_name}"
+    - terraform_type: aws_iam_role_policy_attachment
+      pulumi_type: aws:iam/rolePolicyAttachment:RolePolicyAttachment
+      id_format: "{role_name}/{managed_policy_arn}"
+
+    # --- DynamoDB (table + folded satellites) ----------------------------------
+    - terraform_type: aws_dynamodb_table
+      pulumi_type: aws:dynamodb/table:Table
+      id_format: "{table_name}"
+    - terraform_type: aws_dynamodb_resource_policy
+      pulumi_type: aws:dynamodb/resourcePolicy:ResourcePolicy
+      id_format: "{table_arn}"
+      # DynamoDB normalizes the stored policy document (whitespace, key
+      # order, principal shapes), so a faithful import plans a semantically
+      # identical policy rewrite plus the computed revision bump. The
+      # provider's own import test ignores "policy" for the same reason.
+      write_normalized_attributes: [policy, revision_id]
+    - terraform_type: aws_dynamodb_kinesis_streaming_destination
+      pulumi_type: aws:dynamodb/kinesisStreamingDestination:KinesisStreamingDestination
+      id_format: "{table_name},{kinesis_stream_arn}"
+    - terraform_type: aws_dynamodb_contributor_insights
+      pulumi_type: aws:dynamodb/contributorInsights:ContributorInsights
+      id_format: "name:{table_name}/index:{index_name?}/{account_id}"
+      notes: >-
+        Table-level insights leave the index segment empty
+        ("name:tbl/index:/123456789012") -- the optional marker renders it
+        as such.
+
+    # --- SQS -------------------------------------------------------------------
+    - terraform_type: aws_sqs_queue
+      pulumi_type: aws:sqs/queue:Queue
+      id_format: "{queue_url}"
+      notes: >-
+        The full queue URL ("https://sqs.<region>.amazonaws.com/<account>/
+        <name>"), not the queue name or ARN.
+
+    # --- SNS -------------------------------------------------------------------
+    - terraform_type: aws_sns_topic
+      pulumi_type: aws:sns/topic:Topic
+      id_format: "{topic_arn}"
+    - terraform_type: aws_sns_topic_data_protection_policy
+      pulumi_type: aws:sns/dataProtectionPolicy:DataProtectionPolicy
+      id_format: "{topic_arn}"
+
+    # --- KMS -------------------------------------------------------------------
+    - terraform_type: aws_kms_key
+      pulumi_type: aws:kms/key:Key
+      id_format: "{kms_key_id}"
+      notes: >-
+        The key id (UUID), not the alias or ARN. Imported keys also need
+        their policy/rotation read back, which the import's refresh does.
+      # deletion_window_in_days only exists as scheduling input to
+      # ScheduleKeyDeletion; KMS never reports it back.
+      config_only_attributes: [deletion_window_in_days]
+    - terraform_type: aws_kms_alias
+      pulumi_type: aws:kms/alias:Alias
+      id_format: "{kms_alias_name}"
+      notes: >-
+        The full alias name including the "alias/" prefix
+        (e.g. "alias/my-key-alias").

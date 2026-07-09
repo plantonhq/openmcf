@@ -80,6 +80,7 @@ var verifiers = map[string]Verifier{
 	"awseksfargateprofile":           &eksFargateProfileVerifier{},
 	"awseksaccessentry":              &eksAccessEntryVerifier{},
 	"awsdynamodb":                    &dynamodbTableVerifier{},
+	"awsecrrepo":                     &ecrRepositoryVerifier{},
 	"awskinesisstream":               &kinesisStreamVerifier{},
 	"awskinesisstreamconsumer":       &kinesisStreamConsumerVerifier{},
 	"awskinesisfirehose":             &kinesisFirehoseVerifier{},

@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsecrrepo
+spec:
+  # An ECR repository under live E2E: deploy -> DescribeRepositories verify
+  # -> destroy -> verify-destroyed on both provisioners. The single scenario
+  # deliberately provisions BOTH module resources -- the repository and the
+  # lifecycle policy (untagged-expiry + keep-last-N rules) -- so one fast,
+  # zero-cost lane (a repository provisions in seconds and stores nothing)
+  # proves the whole module surface live, including the import-recipe
+  # coverage for both resource types. Deliberately not in the live scenario:
+  # KMS encryption (needs an AwsKmsKey prerequisite for a setting that is
+  # pure pass-through to the API; AES256 is the recommended default) --
+  # proven by CEL spec tests.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 15

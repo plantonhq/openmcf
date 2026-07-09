@@ -266,7 +266,9 @@ type ImportValueDerivation_FromStackOutput struct {
 
 type ImportValueDerivation_FromArnPart struct {
 	// A part of a pasted AWS ARN: "resource_id" | "resource_name" |
-	// "account_id" | "region". One pasted ARN can feed several values.
+	// "account_id" | "region" | "arn" (the full ARN as pasted, for
+	// resource types whose import ID IS the ARN). One pasted ARN can feed
+	// several values.
 	FromArnPart string `protobuf:"bytes,4,opt,name=from_arn_part,json=fromArnPart,proto3,oneof"`
 }
 

@@ -70,6 +70,7 @@ A complete deployment component includes:
 ✅ **Documentation** - User-facing, research, and technical docs
 ✅ **Supporting Files** - Test manifests, debug scripts, build configs
 ✅ **Registry Entry** - Registered in cloud_resource_kind.proto
+✅ **Import Recipes** - Provider-catalog entries + component import map, round-trip proven (Phase 6c)
 ✅ **Presets** - Ready-to-deploy configuration templates (2-3 common patterns)
 ✅ **Validation** - Build and test validation passed
 
@@ -230,6 +231,37 @@ For any dimension that genuinely cannot match, apply the Parity Mandate's
 `PARITY-EXCEPTION:` protocol (documented in BOTH modules) -- otherwise fix the lagging
 engine in this session. Report the gate result (parity achieved, or the explicit list of
 documented exceptions) in the progress output.
+
+### Phase 6c: Import recipes (orchestrator step -- no flow-rule file)
+
+Every component with a Terraform module ships its import-ID recipes, so the
+platform's guided import can derive identifiers instead of asking the user
+(`pkg/iac/importmap/README.md` is the authoritative reference):
+
+1. **Provider catalog** (`apis/dev/planton/provider/<provider>/aa_import/catalog.yaml`):
+   an entry per resource type the module declares -- the import-ID format from
+   the PROVIDER's import documentation (read the provider docs/source, never
+   guess), the Pulumi type token, and any `config_only_attributes` (attributes
+   that exist only in IaC configuration, e.g. `force_destroy`-class delete
+   behavior -- import can never carry them).
+2. **Component map** (`v1/iac/import-map.yaml`): the value source per
+   `{placeholder}` -- prefer derivable sources (metadata.name, spec field,
+   stack output, ARN part, address key); `where_to_find` is mandatory when
+   nothing derives. The file's presence IS enrollment: the offline conformance
+   guard (`TestImportMapConformance`, rides `make test`) auto-discovers it, and
+   the platform bundles it into the import wizard's catalog data.
+3. **Live round-trip proof** (merge gate, non-negotiable): run the component's
+   E2E lane with `PLANTON_E2E_IMPORT_ROUNDTRIP=1` (terraform engine). The
+   phase deploys the fixture, sets its state aside, re-imports every resource
+   blind through the recipes, and requires the follow-up plan to propose no
+   real change. A new or changed import map does not merge without this lane
+   green; record the result in the README ledger
+   (`pkg/iac/importmap/README.md`).
+
+Design the e2e scenario so every module resource actually deploys (a
+conditional satellite that no scenario exercises is a recipe that has never
+been proven). When a resource cannot be composed live, say so in the profile
+header and treat its recipe as offline-validated only.
 
 ### Phase 7: Presets (Rule 022)
 
@@ -520,6 +552,7 @@ After forge completes, the component should have:
 ✅ Terraform module that validates and works
 ✅ **Both IaC modules richly commented to the module-comment bar** (explain why/trade-offs/provider quirks/ordering, not narration -- see `architecture/deployment-component.md` §4.1)
 ✅ **Cross-engine parity gate passed** (Phase 6b) -- Pulumi and Terraform agree on namespace, naming basis, labels, selectors, feature coverage, dependency ordering, and stack outputs; any divergence carries a `PARITY-EXCEPTION:` comment in both modules
+✅ **Import recipes shipped and proven** (Phase 6c) -- catalog entries for every module resource type, component import map with derivable-first value sources, offline conformance green, live import round-trip green
 ✅ Supporting files (manifests, debug scripts, module overviews)
 ✅ Initial presets generated (2-3 common configuration templates)
 ✅ Build validation passed -- BOTH `go build ./apis/.../v1/...` AND the release-equivalent `go build -o /dev/null ./apis/.../v1/iac/pulumi`

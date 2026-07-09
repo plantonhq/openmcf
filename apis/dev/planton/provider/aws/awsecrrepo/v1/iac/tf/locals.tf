@@ -19,36 +19,43 @@ locals {
   # "any" keep-last-N rule. The "any" rule must carry the highest rulePriority, which it does.
   # Each rule is included only when its knob is a positive value, so a partially-specified block
   # (or a pruned zero) never produces an invalid rule.
+  #
+  # The rules are composed as a TUPLE filtered for nulls, never via concat() of
+  # conditionally-empty lists: the two selection objects have different attribute
+  # sets (countUnit is required for sinceImagePushed and forbidden for
+  # imageCountMoreThan), and concat() unifies mismatched object types to
+  # map(string) -- which silently stringifies countNumber and makes the ECR API
+  # reject the policy ("instance type (string) does not match ... integer").
+  # A tuple preserves each rule's own type, so jsonencode keeps the numbers.
   lifecycle_policy     = try(var.spec.lifecycle_policy, null)
   expire_untagged_days = try(local.lifecycle_policy.expire_untagged_after_days, 0)
   max_image_count      = try(local.lifecycle_policy.max_image_count, 0)
-  lifecycle_rules = concat(
-    local.expire_untagged_days > 0 ? [{
-      rulePriority = 1
-      description  = "Expire untagged images older than ${local.expire_untagged_days} day(s)"
-      selection = {
-        tagStatus   = "untagged"
-        countType   = "sinceImagePushed"
-        countUnit   = "days"
-        countNumber = local.expire_untagged_days
-      }
-      action = {
-        type = "expire"
-      }
-    }] : [],
-    local.max_image_count > 0 ? [{
-      rulePriority = 2
-      description  = "Keep only the most recent ${local.max_image_count} images"
-      selection = {
-        tagStatus   = "any"
-        countType   = "imageCountMoreThan"
-        countNumber = local.max_image_count
-      }
-      action = {
-        type = "expire"
-      }
-    }] : [],
-  )
+  untagged_expiry_rule = local.expire_untagged_days > 0 ? {
+    rulePriority = 1
+    description  = "Expire untagged images older than ${local.expire_untagged_days} day(s)"
+    selection = {
+      tagStatus   = "untagged"
+      countType   = "sinceImagePushed"
+      countUnit   = "days"
+      countNumber = local.expire_untagged_days
+    }
+    action = {
+      type = "expire"
+    }
+  } : null
+  keep_last_n_rule = local.max_image_count > 0 ? {
+    rulePriority = 2
+    description  = "Keep only the most recent ${local.max_image_count} images"
+    selection = {
+      tagStatus   = "any"
+      countType   = "imageCountMoreThan"
+      countNumber = local.max_image_count
+    }
+    action = {
+      type = "expire"
+    }
+  } : null
+  lifecycle_rules = [for rule in [local.untagged_expiry_rule, local.keep_last_n_rule] : rule if rule != null]
 }
 
 

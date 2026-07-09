@@ -23,8 +23,12 @@ message ResourceTypeImportId {
   string pulumi_type = 2;
   // Import-ID template. Placeholders in {braces} name the values a
   // component's import map supplies (e.g. "{bucket}",
-  // "{vpc_id}_{association_id}"). A template with no placeholders is a
-  // literal ID.
+  // "{vpc_id}_{association_id}"). A trailing "?" inside the braces marks a
+  // segment the provider documents as legitimately empty in some variants
+  // (e.g. DynamoDB contributor insights on the table itself:
+  // "name:{table_name}/index:{index_name?}/{account_id}"); required
+  // placeholders that fail to resolve abort the import instead of
+  // rendering empty. A template with no placeholders is a literal ID.
   string id_format = 3;
   // Provider-documentation notes about the format -- optional variants
   // (e.g. a trailing ",{expected_bucket_owner}"), gotchas, or where the
@@ -37,4 +41,17 @@ message ResourceTypeImportId {
   // round-trip conformance proof tolerates in-place updates touching only
   // these attributes; everything else fails it.
   repeated string config_only_attributes = 5;
+  // Attributes the cloud provider NORMALIZES on write, so the stored form
+  // read back by an import differs textually from the configured form while
+  // being semantically identical -- policy documents are the canonical case
+  // (the provider's own acceptance tests ignore them on import verification,
+  // e.g. aws_dynamodb_resource_policy's importIgnore="policy"). A plan after
+  // a faithful import shows them as in-place updates that would rewrite the
+  // same semantic content (often bumping a computed revision attribute,
+  // which belongs in this list too). The round-trip proof tolerates in-place
+  // updates on these exactly like config_only_attributes; they are declared
+  // separately because the classes genuinely differ -- config-only values
+  // never exist cloud-side at all, normalized values do -- and future drift
+  // surfaces will want to explain them differently.
+  repeated string write_normalized_attributes = 6;
 }
