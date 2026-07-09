@@ -1,87 +1,40 @@
 package providerenvvars
 
 import (
-	"encoding/base64"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	"github.com/plantonhq/planton/pkg/kubernetes/kubeconfig"
 )
 
-const (
-	gcpExecPluginPath = "/usr/local/bin/kube-client-go-gcp-exec-plugin"
-)
-
-// gcpExecPluginKubeConfigTemplate requires the following inputs for rendering a kubeconfig:
-// 1. cluster endpoint ip
-// 2. cluster cert-authority data
-// 3. path to the exec plugin
-// 4. base64 encoded google service account key
-const gcpExecPluginKubeConfigTemplate = `apiVersion: v1
-kind: Config
-current-context: kube-context
-contexts:
-- name: kube-context
-  context: {cluster: gke-cluster, user: kube-user}
-clusters:
-- name: gke-cluster
-  cluster:
-    server: https://%s
-    certificate-authority-data: %s
-users:
-- name: kube-user
-  user:
-    exec:
-      apiVersion: client.authentication.k8s.io/v1
-      interactiveMode: Never
-      command: %s
-      args:
-        - %s
-`
-
-// loadKubernetesEnvVars loads Kubernetes provider config and returns environment variables.
-// It writes a kubeconfig file to the specified cache location.
+// loadKubernetesEnvVars renders the connection's kubeconfig and exports its path to
+// the engines. All provider-specific shaping lives in the shared builder
+// (pkg/kubernetes/kubeconfig) so this path and the pulumi provider getter cannot
+// drift; the exec credential command in the rendered kubeconfig is this very binary
+// (the engine re-invokes it whenever a short-lived EKS/GKE token expires).
 func loadKubernetesEnvVars(providerConfigYaml []byte, fileCacheLoc string) (map[string]string, error) {
 	config := new(kubernetesprovider.KubernetesProviderConfig)
 	if err := loadProviderConfigProto(providerConfigYaml, config); err != nil {
 		return nil, errors.Wrap(err, "failed to load Kubernetes provider config")
 	}
 
-	var kubeConfig string
-	var err error
-
-	switch config.Provider {
-	case kubernetesprovider.KubernetesProvider_gcp_gke:
-		kubeConfig, err = buildGcpGkeKubeConfig(config.GcpGke)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to build kube-config for GCP GKE")
-		}
-	case kubernetesprovider.KubernetesProvider_aws_eks:
-		kubeConfig, err = buildAwsEksKubeConfig(config.AwsEks)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to build kube-config for AWS EKS")
-		}
-	case kubernetesprovider.KubernetesProvider_azure_aks:
-		kubeConfig, err = buildAzureAksKubeConfig(config.AzureAks)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to build kube-config for Azure AKS")
-		}
-	default:
-		// FOLLOW-UP: digital_ocean_doks is mapped by the runner's providerconfig
-		// (mapKubernetesDoks resolves the kube_config secret) but has no arm here, so a DOKS
-		// connection currently fails at env-var loading. Wiring it means writing the resolved
-		// kube_config to a file and returning it under KUBECONFIG / KUBE_CONFIG_PATH like the
-		// other providers. AWS EKS / Azure AKS builders above are likewise stubs (see their
-		// TODOs). These need their own change + a real connection to validate; out of scope here.
-		return nil, errors.Errorf("unsupported kubernetes provider: %v", config.Provider)
+	executable, err := os.Executable()
+	if err != nil {
+		return nil, errors.Wrap(err, "resolving this binary's path for the kubeconfig exec credential")
 	}
 
-	// Write kubeconfig to a file
+	kubeConfig, err := kubeconfig.Build(config, executable)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to build kubeconfig for provider %v", config.Provider)
+	}
+
+	// 0600: the kubeconfig can carry credential material in its exec env entries
+	// (same discipline as the stack-input file).
 	kubeConfigPath := filepath.Join(fileCacheLoc, uuid.New().String())
-	if err := os.WriteFile(kubeConfigPath, []byte(kubeConfig), 0644); err != nil {
+	if err := os.WriteFile(kubeConfigPath, []byte(kubeConfig), 0600); err != nil {
 		return nil, errors.Wrap(err, "failed to write kube-config to file")
 	}
 
@@ -98,25 +51,4 @@ func loadKubernetesEnvVars(providerConfigYaml []byte, fileCacheLoc string) (map[
 	}
 
 	return envVars, nil
-}
-
-func buildGcpGkeKubeConfig(c *kubernetesprovider.KubernetesProviderConfigGcpGke) (string, error) {
-	if c == nil {
-		return "", errors.New("GCP GKE config is nil")
-	}
-	return fmt.Sprintf(gcpExecPluginKubeConfigTemplate,
-		c.ClusterEndpoint,
-		c.ClusterCaData,
-		gcpExecPluginPath,
-		base64.StdEncoding.EncodeToString([]byte(c.ServiceAccountKey))), nil
-}
-
-func buildAwsEksKubeConfig(c *kubernetesprovider.KubernetesProviderConfigAwsEks) (string, error) {
-	// TODO: Implement AWS EKS kubeconfig generation
-	return "", nil
-}
-
-func buildAzureAksKubeConfig(c *kubernetesprovider.KubernetesProviderConfigAzureAks) (string, error) {
-	// TODO: Implement Azure AKS kubeconfig generation
-	return "", nil
 }

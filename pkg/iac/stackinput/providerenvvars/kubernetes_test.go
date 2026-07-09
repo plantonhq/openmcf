@@ -41,3 +41,56 @@ gcp_gke:
 	_, statErr := os.Stat(kubeConfigPath)
 	assert.NoError(t, statErr, "the kubeconfig file referenced by the env vars should exist")
 }
+
+// TestLoadKubernetesEnvVars_AwsEks proves the EKS arm end to end on this path: the
+// rendered kubeconfig lands on disk (0600 -- it can carry credentials in exec env
+// entries) with an exec entry pointing back at this very binary.
+func TestLoadKubernetesEnvVars_AwsEks(t *testing.T) {
+	providerConfigYaml := []byte(`
+provider: aws_eks
+aws_eks:
+  cluster_name: demo-cluster
+  cluster_endpoint: "https://ABC123.gr7.us-east-1.eks.amazonaws.com"
+  cluster_ca_data: "dGVzdC1jYS1kYXRh"
+  region: us-east-1
+`)
+
+	envVars, err := loadKubernetesEnvVars(providerConfigYaml, t.TempDir())
+	require.NoError(t, err)
+
+	kubeConfigPath := envVars["KUBECONFIG"]
+	require.NotEmpty(t, kubeConfigPath)
+	assert.Equal(t, kubeConfigPath, envVars["KUBE_CONFIG_PATH"])
+
+	info, err := os.Stat(kubeConfigPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+
+	content, err := os.ReadFile(kubeConfigPath)
+	require.NoError(t, err)
+
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	assert.Contains(t, string(content), executable,
+		"the exec credential command must be the engine-spawning binary itself")
+	assert.Contains(t, string(content), "client.authentication.k8s.io/v1")
+}
+
+// TestLoadKubernetesEnvVars_DigitalOceanDoks: the DOKS kubeconfig passes through to
+// disk unchanged and is advertised under both engine env vars.
+func TestLoadKubernetesEnvVars_DigitalOceanDoks(t *testing.T) {
+	providerConfigYaml := []byte(`
+provider: digital_ocean_doks
+digital_ocean_doks:
+  kube_config: |
+    apiVersion: v1
+    kind: Config
+`)
+
+	envVars, err := loadKubernetesEnvVars(providerConfigYaml, t.TempDir())
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(envVars["KUBE_CONFIG_PATH"])
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "kind: Config")
+}

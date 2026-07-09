@@ -61,6 +61,7 @@ go_library(
         "//pkg/iac/tofu/tfbackend",
         "//pkg/iac/tofu/tofumodule",
         "//pkg/infrachart",
+        "//pkg/kubernetes/execcredential",
         "//pkg/kubernetes/kubecontext",
         "//pkg/outputs",
         "//pkg/refcheck",
