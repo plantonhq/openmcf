@@ -55,10 +55,17 @@ type TestCloudResourceGenericSpec struct {
 	Nested          *TestGenericNestedMessage `protobuf:"bytes,10,opt,name=nested,proto3" json:"nested,omitempty"`
 	RequiredRef     *v1.StringValueOrRef      `protobuf:"bytes,11,opt,name=required_ref,json=requiredRef,proto3" json:"required_ref,omitempty"`
 	OptionalRef     *v1.StringValueOrRef      `protobuf:"bytes,12,opt,name=optional_ref,json=optionalRef,proto3" json:"optional_ref,omitempty"`
-	Labels          map[string]string         `protobuf:"bytes,13,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Commands        []string                  `protobuf:"bytes,14,rep,name=commands,proto3" json:"commands,omitempty"`
-	SensitiveString string                    `protobuf:"bytes,15,opt,name=sensitive_string,json=sensitiveString,proto3" json:"sensitive_string,omitempty"`
-	SensitiveRef    *v1.StringValueOrRef      `protobuf:"bytes,16,opt,name=sensitive_ref,json=sensitiveRef,proto3" json:"sensitive_ref,omitempty"`
+	// Carries the full foreign-key annotation pair (default_kind +
+	// default_kind_field_path) so machinery that reads FK annotations —
+	// reference-integrity analysis, chart valueFrom validation — has a
+	// permanent, hermetic fixture. Self-referential on purpose: the target
+	// kind must be another permanent test kind, and "status.outputs.id"
+	// resolves against this kind's own stack outputs.
+	AnnotatedRef    *v1.StringValueOrRef `protobuf:"bytes,17,opt,name=annotated_ref,json=annotatedRef,proto3" json:"annotated_ref,omitempty"`
+	Labels          map[string]string    `protobuf:"bytes,13,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Commands        []string             `protobuf:"bytes,14,rep,name=commands,proto3" json:"commands,omitempty"`
+	SensitiveString string               `protobuf:"bytes,15,opt,name=sensitive_string,json=sensitiveString,proto3" json:"sensitive_string,omitempty"`
+	SensitiveRef    *v1.StringValueOrRef `protobuf:"bytes,16,opt,name=sensitive_ref,json=sensitiveRef,proto3" json:"sensitive_ref,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -177,6 +184,13 @@ func (x *TestCloudResourceGenericSpec) GetOptionalRef() *v1.StringValueOrRef {
 	return nil
 }
 
+func (x *TestCloudResourceGenericSpec) GetAnnotatedRef() *v1.StringValueOrRef {
+	if x != nil {
+		return x.AnnotatedRef
+	}
+	return nil
+}
+
 func (x *TestCloudResourceGenericSpec) GetLabels() map[string]string {
 	if x != nil {
 		return x.Labels
@@ -262,7 +276,8 @@ var File_dev_planton_provider__test_testcloudresourcegeneric_v1_spec_proto proto
 
 const file_dev_planton_provider__test_testcloudresourcegeneric_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/_test/testcloudresourcegeneric/v1/spec.proto\x126dev.planton.provider._test.testcloudresourcegeneric.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xdd\t\n" +
+	"Adev/planton/provider/_test/testcloudresourcegeneric/v1/spec.proto\x126dev.planton.provider._test.testcloudresourcegeneric.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd1\n" +
+	"\n" +
 	"\x1cTestCloudResourceGenericSpec\x12:\n" +
 	"\fstring_field\x18\x01 \x01(\tB\x12\x8a\xa6\x1d\x0edefault-stringH\x00R\vstringField\x88\x01\x01\x12*\n" +
 	"\x11string_no_default\x18\x02 \x01(\tR\x0fstringNoDefault\x12,\n" +
@@ -280,7 +295,8 @@ const file_dev_planton_provider__test_testcloudresourcegeneric_v1_spec_proto_raw
 	"\x06nested\x18\n" +
 	" \x01(\v2P.dev.planton.provider._test.testcloudresourcegeneric.v1.TestGenericNestedMessageR\x06nested\x12]\n" +
 	"\frequired_ref\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\vrequiredRef\x12U\n" +
-	"\foptional_ref\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\voptionalRef\x12x\n" +
+	"\foptional_ref\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\voptionalRef\x12r\n" +
+	"\rannotated_ref\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x19\x88\xd4a\x01\x92\xd4a\x11status.outputs.idR\fannotatedRef\x12x\n" +
 	"\x06labels\x18\r \x03(\v2`.dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.LabelsEntryR\x06labels\x12\x1a\n" +
 	"\bcommands\x18\x0e \x03(\tR\bcommands\x12/\n" +
 	"\x10sensitive_string\x18\x0f \x01(\tB\x04\xa0\xa6\x1d\x01R\x0fsensitiveString\x12]\n" +
@@ -327,13 +343,14 @@ var file_dev_planton_provider__test_testcloudresourcegeneric_v1_spec_proto_depId
 	1, // 0: dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.nested:type_name -> dev.planton.provider._test.testcloudresourcegeneric.v1.TestGenericNestedMessage
 	3, // 1: dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.required_ref:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3, // 2: dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.optional_ref:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 3: dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.labels:type_name -> dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.LabelsEntry
-	3, // 4: dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.sensitive_ref:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3, // 3: dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.annotated_ref:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 4: dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.labels:type_name -> dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.LabelsEntry
+	3, // 5: dev.planton.provider._test.testcloudresourcegeneric.v1.TestCloudResourceGenericSpec.sensitive_ref:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider__test_testcloudresourcegeneric_v1_spec_proto_init() }

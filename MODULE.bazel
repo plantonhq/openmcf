@@ -44,6 +44,7 @@ use_repo(
     "com_github_hashicorp_hcl_v2",
     "com_github_iancoleman_strcase",
     "com_github_masterminds_sprig",
+    "com_github_nikolalohinski_gonja_v2",
     "com_github_oklog_ulid_v2",
     "com_github_onsi_ginkgo_v2",
     "com_github_onsi_gomega",

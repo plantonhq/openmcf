@@ -2,7 +2,7 @@
 
 The simplest container-to-URL deployment on AWS. Provisions an App Runner service with ECR for container images and optional DynamoDB for data persistence. Zero infrastructure management -- push a container image and get a public HTTPS URL.
 
-This chart is the AWS equivalent of deploying to [GCP Cloud Run](../../gcp/cloud-run-environment/). No VPC, no load balancer, no cluster management -- just containers.
+No VPC, no load balancer, no cluster management -- just containers.
 
 ## Architecture
 

@@ -2,7 +2,7 @@
 
 Provisions a production-ready serverless API backend on Lambda with HTTP API Gateway, optional DynamoDB database, SQS async processing, SNS notifications, and Cognito authentication. This is a composable serverless microservices pattern -- enable only the components your API needs.
 
-This chart is the AWS equivalent of the [GCP Serverless API Backend](../../gcp/serverless-api-backend/). Instead of Cloud Run + Cloud SQL + Pub/Sub, it uses Lambda + DynamoDB + SQS -- the canonical AWS serverless stack.
+Lambda + DynamoDB + SQS is the canonical AWS serverless stack: no servers to patch, no idle capacity to pay for, and every component scales independently.
 
 ## Architecture
 

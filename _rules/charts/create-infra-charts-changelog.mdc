@@ -309,10 +309,10 @@ Before finalizing a changelog:
 When referencing templates, use actual chart paths under `charts/`:
 
 ```markdown
-**Chart**: `charts/gcp/cloud-run-environment/`
-**Template**: `charts/gcp/cloud-run-environment/templates/backend-service.yaml`
-**Values**: `charts/gcp/cloud-run-environment/values.yaml`
-**README**: `charts/gcp/cloud-run-environment/README.md`
+**Chart**: `charts/gcp/cloud-run-service/`
+**Template**: `charts/gcp/cloud-run-service/templates/service.yaml`
+**Values**: `charts/gcp/cloud-run-service/values.yaml`
+**README**: `charts/gcp/cloud-run-service/README.md`
 **Template**: `charts/aws/ecs-environment/templates/network.yaml`
 ```
 
@@ -321,14 +321,17 @@ When referencing templates, use actual chart paths under `charts/`:
 Always show actual commands users can run:
 
 ```bash
-# Build and preview chart
-planton chart build gcp/cloud-run-environment
+# Validate the chart offline (open-source CLI)
+planton chart validate charts/gcp/cloud-run-service
+
+# Build and preview chart (platform CLI)
+planton chart build gcp/cloud-run-service
 
 # Publish chart to platform
-planton chart publish gcp/cloud-run-environment
+planton chart publish gcp/cloud-run-service
 
 # Create project from chart
-planton project create --from-chart gcp/cloud-run-environment \
+planton project create --from-chart gcp/cloud-run-service \
   --name my-project \
   --values ./my-values.yaml
 ```

@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: GCP Pulumi State Backend
+spec:
+  selector:
+    kind: platform
+  description: A hardened GCS state backend for Pulumi — versioned, never public, with bounded checkpoint history, an optional customer-managed encryption key, and an optional dedicated state-access service account. Deploy it once, `pulumi login gs://<bucket>` (or register it as a Planton StateBackend), and your stacks' state is solved.
+  iconUrl: https://assets.planton.ai/apis/connect/pulumibackendproviderconnection/v1/assets/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/gcp/pulumi-state-backend
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/gcp/pulumi-state-backend/README.md

@@ -56,6 +56,17 @@ message TestCloudResourceGenericSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef required_ref = 11 [(buf.validate.field).required = true];
   dev.planton.shared.foreignkey.v1.StringValueOrRef optional_ref = 12;
 
+  // Carries the full foreign-key annotation pair (default_kind +
+  // default_kind_field_path) so machinery that reads FK annotations —
+  // reference-integrity analysis, chart valueFrom validation — has a
+  // permanent, hermetic fixture. Self-referential on purpose: the target
+  // kind must be another permanent test kind, and "status.outputs.id"
+  // resolves against this kind's own stack outputs.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef annotated_ref = 17 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = TestCloudResourceGeneric,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.id"
+  ];
+
   // ─── Map field (defaults applier must skip) ───────────────────────────────────
 
   map<string, string> labels = 13;

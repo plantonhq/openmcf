@@ -1,0 +1,262 @@
+---
+description: Authoring standard for Planton InfraCharts — the catalog design method (which charts deserve to exist), the per-file quality bar (Chart.yaml, values.yaml, templates, README), the template-language contract charts must stay within, and the offline validation gate. Use when designing a provider's chart catalog or authoring/reworking any chart under charts/.
+globs: []
+alwaysApply: false
+---
+
+# Rule: Author a Planton InfraChart
+
+Purpose: InfraCharts are the most visible composition surface Planton has — a
+team's first impression of what the platform can do. Every chart is a public
+artifact: its templates, values, and README render on the catalog and get
+copied into real organizations' infrastructure. This rule defines what earns a
+chart its place in the catalog, the quality bar for every file inside it, the
+template-language contract that keeps charts renderable by the platform, and
+the validation gate that proves a chart before it ships.
+
+Usage: invoke as `@author-planton-infra-chart` when designing a provider's
+chart catalog or when authoring or reworking any chart under `charts/`.
+
+## Platform context
+
+An InfraChart bundles multiple Cloud Resources into a parameterized,
+dependency-aware blueprint ("Helm chart for infrastructure"). The platform
+renders `templates/*.yaml` with Jinjava, validates each rendered document
+against the protobuf schema of its kind, parses every `valueFrom` reference
+into a DAG, and deploys the resources in topological order. Charts are
+configuration artifacts — deployment happens when a user creates an
+InfraProject from the chart.
+
+Two validation surfaces exist:
+
+- **`planton chart validate <chart-dir>`** (this repo's CLI) — the offline
+  gate. Renders with the chart's default values, validates every rendered
+  manifest against the protos compiled into the binary, and verifies reference
+  integrity. No control plane needed. Run it after every chart edit.
+- **`planton chart build <chart>`** (the Planton Platform CLI) — the
+  authoritative server-side gate. Renders and validates through the live
+  control plane exactly as the console does. Run it before publishing.
+
+## The catalog design method
+
+### Design substance is provider-specific; anatomy is shared
+
+Chart *anatomy* (Chart.yaml + values.yaml + templates/ + README.md) is shared
+structure across every provider. A provider's chart *catalog* — which charts
+exist, what each one composes, how deep it goes — is derived only from that
+provider's own architecture space and the deployment components in this repo.
+Never derive a chart list or a chart's design from another provider's chart
+tree: every provider's catalog is designed to stand entirely on its own merit,
+and another provider's chart is a different cloud's answer to a different
+question.
+
+### The desirability test (what earns a chart its slot)
+
+A chart exists only if all four hold:
+
+1. **It is a real-world architecture** a team recognizes as something they run
+   or want to run — not a demo, not a grab bag of loosely related resources.
+   The name alone should make an engineer want to click it.
+2. **It removes genuinely hard wiring** — dependency ordering, reference
+   plumbing, posture decisions. The value is the composition; a
+   single-resource chart is not a chart (that is what presets are for).
+3. **Its defaults deploy** — rendering with the `values.yaml` defaults
+   produces valid, deployable manifests. A chart that needs edits before it
+   validates is a broken promise.
+4. **It teaches** — a reader leaves the README understanding the architecture
+   and its trade-offs, not just the parameter list.
+
+### Composition principles
+
+- **Every cross-resource edge is a `valueFrom` reference** — never a
+  hand-assembled string that duplicates what another resource outputs.
+- **Feature toggles are typed bool params** wrapping conditional resources
+  (DNS on/off, CMEK on/off, cache on/off). Each toggle must render valid in
+  both positions.
+- **Prefer composing first-class nodes over inflating one resource** — the
+  chart layer is where honest decomposition pays off.
+- **State-backend charts are strategic**: they are how adopters bootstrap the
+  bucket their IaC state lives in (registered afterward as a `StateBackend`),
+  so their READMEs must close that loop explicitly.
+
+## Anatomy and the per-file quality bar
+
+```
+<provider>/<chart>/
+├── Chart.yaml      # identity + catalog metadata
+├── values.yaml     # parameters and defaults (the knobs)
+├── templates/      # manifests with Jinjava placeholders
+└── README.md       # the architecture, taught
+```
+
+### Chart.yaml
+
+```yaml
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: <Human-Readable Chart Name>
+spec:
+  selector:
+    kind: platform            # platform catalog charts only
+  description: <one or two sentences that make the reader want it>
+  iconUrl: <https URL that resolves>
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/<provider>/<chart>
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/<provider>/<chart>/README.md
+```
+
+- The description is catalog copy: concrete, outcome-first, no filler. Say
+  what the deployed result IS, not what the chart "provides".
+- The directory name is the chart's slug and its platform identity (platform
+  charts upsert by a slug-derived deterministic id) — choose it as carefully
+  as a kind name, and expect it to be permanent.
+
+### values.yaml
+
+```yaml
+params:
+  - name: gcp_project_id
+    description: GCP project that owns every resource in this chart
+    value: my-gcp-project
+
+  - name: dnsEnabled
+    description: >
+      Create the DNS zone and point records at the load balancer. Disable when
+      DNS for this domain is managed outside this chart.
+    type: bool
+    value: true
+```
+
+- **Every param is documented** with real-world guidance — what it controls,
+  what to consider when changing it. Never restate the name.
+- **Declare types**: `string` (default), `bool`, `number`, `list` (of
+  strings), `string_enum` (+ `enum_values`). Untyped params are strings.
+- **Numeric values that land in manifests should be string params** (e.g.
+  `"8080"`). The platform renders `number` params through Java double
+  semantics, which can emit `8080.0` — reserve `number` for genuinely
+  fractional values.
+- **Defaults must render a valid, deployable chart as-is** (desirability test
+  #3). A param that cannot have a sensible default is a design smell; if one
+  is truly unavoidable, the README must call it out.
+- **`org` and `env` are reserved.** The platform injects and overwrites them
+  at render time — never declare them as params. Templates may freely use
+  `{{ org }}` and `{{ env }}` (e.g. in resource names).
+
+### templates/
+
+- **One logical resource group per file**, named for what it holds
+  (`network.yaml`, `database.yaml`, `frontend.yaml`). Multiple documents per
+  file are separated by `---`.
+- **Inline comments to the spec-proto bar.** Chart templates render on the
+  public catalog and are read by people deciding whether to trust them. Every
+  non-obvious posture choice carries a YAML comment: why this default, what
+  the trade-off is, what to change for the common variations. Comments explain
+  intent and consequences — never narrate the YAML.
+- **Never set `metadata.org` or `metadata.env`** — the platform injects them
+  into every rendered document.
+- **Never set the `planton.dev/provisioner` label.** The IaC engine (OpenTofu
+  vs Pulumi) is a property of the deploying organization, not the chart.
+- **`valueFrom` discipline:**
+  - Reference the target kind's annotated composition key. Every FK-annotated
+    spec field declares `default_kind_field_path` — the exact output the
+    modules are proven to accept (id vs name vs self-link formats differ per
+    consumer, and mismatches only surface at deploy time). When referencing
+    the default kind you may omit `fieldPath` entirely; the platform resolves
+    the annotated path.
+  - Set `kind:` explicitly when referencing anything other than the field's
+    default kind, and then always set `fieldPath` explicitly too.
+  - Reference chart-internal resources by their rendered `metadata.name`
+    (including any `{{ values.* }}` prefix used when defining them).
+
+### README.md
+
+Structure, in order:
+
+1. **What it deploys** — one paragraph selling the architecture, then a
+   resource table (resource, kind, purpose, conditional-on-which-toggle).
+2. **Architecture** — a diagram (Mermaid or ASCII) showing the composition and
+   the deployment layers (what deploys in parallel, what waits for what).
+3. **Parameters** — a table with every param, its meaning, default, and when
+   to change it.
+4. **After deployment** — the loop-closing section: what to do with the
+   deployed result (register the state backend, point DNS, push the first
+   image, run the first query). A chart that provisions something and then
+   leaves the reader stranded is half a chart.
+5. **Day-2 notes** — what is safe to change in place, what recreates
+   resources, cost/scaling levers, and any irreversible decisions.
+
+The README must read as if the current design always existed — no history, no
+migration notes, no references to how anything "used to be".
+
+## The template-language contract
+
+The platform renders templates with a **sandboxed** Jinjava engine. Charts
+must stay within this documented subset — it is also exactly what
+`planton chart validate` renders offline, so staying inside it keeps the two
+gates equivalent:
+
+- **Context bindings:** every param is available both as a top-level variable
+  (`{{ gcp_project_id }}`) and under `values.` (`{{ values.gcp_project_id }}`).
+  Prefer the `values.` form — it reads unambiguously in YAML. `org` and `env`
+  are always bound.
+- **Value types at render time:** `bool` params are real booleans, `number`
+  params are floating-point numbers, `list` params are lists of strings,
+  everything else is a string.
+- **Allowed tags:** `{% if %}` / `{% elif %}` / `{% else %}` / `{% endif %}`,
+  `{% for %}` / `{% endfor %}`, and `{# comments #}`.
+- **Banned tags (disabled by the platform sandbox):** `set`, `include`,
+  `import`, `macro`, `call`, `do`.
+- **Filters:** keep to `bool`, `default`, `upper`, `lower`, `trim`, `replace`,
+  `join`, `b64decode`. The sandbox disables `attr`, `map`, `sort`, `shuffle`.
+- **The `| bool` convention:** every boolean test reads
+  `{% if values.flag | bool %}`. It is a no-op for typed bool params and a
+  correct coercion for string values, so templates never depend on how a
+  value arrived.
+- **Limits:** rendered output is capped at 1 MiB per template; render depth 20.
+
+## The offline gate
+
+Run after every edit, from the repo root or `charts/`:
+
+```bash
+planton chart validate charts/<provider>/<chart>
+cd charts && make validate          # every chart, defaults
+```
+
+What it proves:
+
+1. Templates render with the chart's default values (and any `--set`
+   overrides) inside the documented language subset.
+2. Every rendered document parses as YAML, names a registered kind, carries a
+   `metadata.name`, unmarshals strictly (unknown fields rejected), and passes
+   its spec's full protovalidate/CEL rule set.
+3. Every `valueFrom` reference resolves: the effective field path exists on
+   the target kind, and references to a field's default kind do not override
+   the annotated composition key with a different path (the id/name/self-link
+   mismatch class that otherwise only surfaces at deploy time).
+4. Chart-internal references form a DAG — no dependency cycles.
+
+Exercise every feature toggle in both positions:
+
+```bash
+planton chart validate charts/<provider>/<chart> --set dnsEnabled=false
+```
+
+The offline gate validates against the protos compiled into the CLI binary —
+build the CLI from the working tree when the chart targets unreleased schema
+changes. `planton chart build` through the platform remains the authoritative
+pre-publish gate.
+
+## Quality standards
+
+- **Traceable to proto**: every field a template sets must exist in the kind's
+  `spec.proto`, with values that satisfy its validation rules. Read the proto;
+  never guess.
+- **No silent data loss**: a toggle that skips a resource must skip every
+  reference to it as well.
+- **Timeless public artifacts**: templates, values, and READMEs never narrate
+  history or internal process.
+- **Verify immediately**: re-run the offline gate after every fix — errors
+  layer.
