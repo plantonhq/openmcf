@@ -30,7 +30,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: my-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: dev-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: prod-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -173,7 +173,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: shared-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -207,7 +207,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: analytics-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -249,7 +249,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
   name: events-clickhouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

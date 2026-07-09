@@ -28,7 +28,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateEndpoint
 metadata:
   name: my-pe
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateEndpoint
 metadata:
   name: postgres-pe
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateEndpoint
 metadata:
   name: vault-pe
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateEndpoint
 metadata:
   name: blob-pe
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -155,7 +155,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateEndpoint
 metadata:
   name: ref-pe
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -196,7 +196,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzurePrivateEndpoint
 metadata:
   name: cosmos-pe
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

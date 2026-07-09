@@ -46,7 +46,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: my-memorydb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

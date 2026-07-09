@@ -29,7 +29,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDbSystem
 metadata:
   name: my-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDbSystem
 metadata:
   name: dev-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDbSystem
 metadata:
   name: staging-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -216,7 +216,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDbSystem
 metadata:
   name: prod-rac
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -288,7 +288,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDbSystem
 metadata:
   name: ref-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

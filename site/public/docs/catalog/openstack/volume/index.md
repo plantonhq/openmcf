@@ -33,10 +33,18 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolume
 metadata:
   name: my-volume
-  labels:
-    planton.dev/provisioner: pulumi
+  annotations:
+    planton.dev/stack.jobId: prod.OpenstackVolume.managed-boot
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/stack.jobId: staging.OpenstackVolume.db-restore
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/stack.jobId: prod.OpenstackVolume.boot-disk
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/stack.jobId: dev.OpenstackVolume.app-data
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolume.my-volume
     planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/provisioner: pulumi
 spec:
   size: 20
 ```
@@ -81,10 +89,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolume
 metadata:
   name: app-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: dev.OpenstackVolume.app-data
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
 spec:
   size: 50
   volumeType: SSD
@@ -101,10 +107,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolume
 metadata:
   name: boot-disk
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackVolume.boot-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
 spec:
   size: 40
   volumeType: SSD
@@ -125,10 +129,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolume
 metadata:
   name: db-restore
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: staging.OpenstackVolume.db-restore
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
 spec:
   size: 100
   volumeType: SSD
@@ -148,10 +150,8 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolume
 metadata:
   name: managed-boot
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
-    planton.dev/stack.jobId: prod.OpenstackVolume.managed-boot
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
 spec:
   size: 50
   volumeType: SSD

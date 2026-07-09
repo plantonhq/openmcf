@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -68,7 +68,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +85,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api-experimental
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api-prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

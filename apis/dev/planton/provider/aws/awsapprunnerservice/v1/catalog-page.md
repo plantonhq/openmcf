@@ -28,7 +28,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAppRunnerService
 metadata:
   name: my-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAppRunnerService
 metadata:
   name: lightweight-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAppRunnerService
 metadata:
   name: backend-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAppRunnerService
 metadata:
   name: web-frontend
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -207,7 +207,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAppRunnerService
 metadata:
   name: prod-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -262,7 +262,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAppRunnerService
 metadata:
   name: ref-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

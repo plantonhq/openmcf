@@ -32,7 +32,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: my-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: dev-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +181,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: prod-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -254,7 +254,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: shared-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -307,7 +307,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: team-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -335,7 +335,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: custom-signoz
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

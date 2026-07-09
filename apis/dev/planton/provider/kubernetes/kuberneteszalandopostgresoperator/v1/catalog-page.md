@@ -30,7 +30,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: my-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -119,7 +119,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: prod-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -157,7 +157,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: shared-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -187,7 +187,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesZalandoPostgresOperator
 metadata:
   name: team-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

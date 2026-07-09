@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: my-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,7 +91,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: dev-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -122,7 +122,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: prod-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: private-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -196,7 +196,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: ref-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -237,7 +237,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: analytics-mysql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

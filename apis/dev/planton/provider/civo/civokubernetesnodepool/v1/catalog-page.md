@@ -23,7 +23,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesNodePool
 metadata:
   name: my-node-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -75,7 +75,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesNodePool
 metadata:
   name: workers
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -97,7 +97,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesNodePool
 metadata:
   name: autoscale-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -125,7 +125,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesNodePool
 metadata:
   name: ref-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

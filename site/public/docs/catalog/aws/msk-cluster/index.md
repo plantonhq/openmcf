@@ -39,7 +39,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMskCluster
 metadata:
   name: my-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +129,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMskCluster
 metadata:
   name: prod-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -170,7 +170,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMskCluster
 metadata:
   name: multi-auth-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -201,7 +201,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMskCluster
 metadata:
   name: logged-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -239,7 +239,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsMskCluster
 metadata:
   name: ref-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

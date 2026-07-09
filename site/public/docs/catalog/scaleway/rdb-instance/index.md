@@ -36,7 +36,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayRdbInstance
 metadata:
   name: my-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayRdbInstance
 metadata:
   name: dev-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayRdbInstance
 metadata:
   name: prod-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -191,7 +191,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayRdbInstance
 metadata:
   name: mysql-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -84,7 +84,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRdsInstance
 metadata:
   name: my-database
-  labels:
+  annotations:
     planton.dev/provisioner: terraform
     terraform.planton.dev/backend.type: s3
     terraform.planton.dev/backend.bucket: my-terraform-state
@@ -161,7 +161,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/stack.name: prod.KubernetesPostgres.app-database
 spec:

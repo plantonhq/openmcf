@@ -29,7 +29,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: my-graph-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: dev-graph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: prod-graph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: shared-graph
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -177,7 +177,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
   name: graph-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

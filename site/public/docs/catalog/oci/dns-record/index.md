@@ -31,7 +31,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsRecord
 metadata:
   name: app-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsRecord
 metadata:
   name: app-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsRecord
 metadata:
   name: web-a-records
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +144,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsRecord
 metadata:
   name: mail-mx-records
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -170,7 +170,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsRecord
 metadata:
   name: api-cname
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -194,7 +194,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDnsRecord
 metadata:
   name: spf-txt
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

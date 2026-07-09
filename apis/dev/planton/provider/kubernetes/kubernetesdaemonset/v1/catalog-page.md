@@ -30,7 +30,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDaemonSet
 metadata:
   name: my-agent
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -115,7 +115,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDaemonSet
 metadata:
   name: log-collector
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -167,7 +167,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDaemonSet
 metadata:
   name: node-exporter
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -253,7 +253,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDaemonSet
 metadata:
   name: vector-agent
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

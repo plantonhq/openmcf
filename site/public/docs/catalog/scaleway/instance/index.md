@@ -36,7 +36,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstance
 metadata:
   name: web-01
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstance
 metadata:
   name: dev-box
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstance
 metadata:
   name: app-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -163,7 +163,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstance
 metadata:
   name: data-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

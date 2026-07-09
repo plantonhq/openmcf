@@ -24,7 +24,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3ObjectSet
 metadata:
   name: my-objects
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -80,7 +80,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3ObjectSet
 metadata:
   name: app-config
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3ObjectSet
 metadata:
   name: website-assets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -147,7 +147,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3ObjectSet
 metadata:
   name: binary-assets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -177,7 +177,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3ObjectSet
 metadata:
   name: ref-objects
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -204,7 +204,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3ObjectSet
 metadata:
   name: mixed-access
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

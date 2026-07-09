@@ -5,7 +5,7 @@ metadata:
   id: test-batch
   org: test-org
   env: dev
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: test
     pulumi.planton.dev/project: test

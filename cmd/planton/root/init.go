@@ -30,9 +30,9 @@ var Init = &cobra.Command{
 	Use:   "init",
 	Short: "initialize backend/stack using the provisioner specified in manifest",
 	Long: `Initialize infrastructure backend or stack by automatically routing to the appropriate provisioner
-(Pulumi, Tofu, or Terraform) based on the manifest label 'planton.dev/provisioner'.
+(Pulumi, Tofu, or Terraform) based on the manifest annotation 'planton.dev/provisioner'.
 
-If the provisioner label is not present, you will be prompted to select one interactively.`,
+If the provisioner annotation is not present, you will be prompted to select one interactively.`,
 	Example: `
 	# Initialize from clipboard (manifest content already copied)
 	planton init --clipboard
@@ -142,7 +142,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	cliprint.PrintSuccess(fmt.Sprintf("Using provisioner: %s", provType.String()))
 
-	// Resolve kube context: flag takes priority over manifest label
+	// Resolve kube context: flag takes priority over manifest annotation
 	kubeCtx, _ := cmd.Flags().GetString(string(flag.KubeContext))
 	if kubeCtx == "" {
 		kubeCtx = kubecontext.ExtractFromManifest(manifestObject)

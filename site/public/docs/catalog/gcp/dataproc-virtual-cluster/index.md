@@ -36,7 +36,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocVirtualCluster
 metadata:
   name: my-spark-on-gke
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocVirtualCluster
 metadata:
   name: multi-pool-spark
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocVirtualCluster
 metadata:
   name: metastore-spark
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -184,7 +184,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocVirtualCluster
 metadata:
   name: composed-spark
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

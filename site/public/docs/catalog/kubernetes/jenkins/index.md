@@ -42,7 +42,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJenkins
 metadata:
   name: my-jenkins
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -93,7 +93,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJenkins
 metadata:
   name: ci-jenkins
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJenkins
 metadata:
   name: custom-jenkins
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -151,7 +151,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJenkins
 metadata:
   name: prod-jenkins
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

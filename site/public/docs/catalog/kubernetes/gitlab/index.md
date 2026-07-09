@@ -34,7 +34,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGitlab
 metadata:
   name: my-gitlab
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGitlab
 metadata:
   name: dev-gitlab
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGitlab
 metadata:
   name: prod-gitlab
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGitlab
 metadata:
   name: team-gitlab
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

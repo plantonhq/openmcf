@@ -33,7 +33,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsZone
 metadata:
   name: my-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsZone
 metadata:
   name: bare-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsZone
 metadata:
   name: web-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -136,7 +136,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsZone
 metadata:
   name: prod-zone
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

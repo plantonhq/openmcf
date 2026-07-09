@@ -38,7 +38,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: my-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: gke-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +144,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: eks-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -170,7 +170,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: cf-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -195,7 +195,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
   name: platform-external-dns
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

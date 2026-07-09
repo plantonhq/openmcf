@@ -31,7 +31,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDevopsProject
 metadata:
   name: my-project
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -77,7 +77,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDevopsProject
 metadata:
   name: my-project
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDevopsProject
 metadata:
   name: platform-cicd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDevopsProject
 metadata:
   name: backend-services
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: backend

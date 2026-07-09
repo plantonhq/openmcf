@@ -35,7 +35,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesLocust
 metadata:
   name: my-locust
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesLocust
 metadata:
   name: load-test
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -162,7 +162,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesLocust
 metadata:
   name: advanced-test
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -218,7 +218,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesLocust
 metadata:
   name: prod-loadtest
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

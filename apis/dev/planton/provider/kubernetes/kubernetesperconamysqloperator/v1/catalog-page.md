@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: my-pxc-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: pxc-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -105,7 +105,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: prod-pxc-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: shared-pxc-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

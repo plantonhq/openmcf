@@ -34,7 +34,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMongoOperator
 metadata:
   name: my-percona-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMongoOperator
 metadata:
   name: percona-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMongoOperator
 metadata:
   name: prod-percona-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMongoOperator
 metadata:
   name: shared-percona-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

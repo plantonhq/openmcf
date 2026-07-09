@@ -33,7 +33,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsIamUser
 metadata:
   name: my-ci-user
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -82,7 +82,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsIamUser
 metadata:
   name: ci-deploy-user
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsIamUser
 metadata:
   name: analytics-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -132,7 +132,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsIamUser
 metadata:
   name: audit-viewer
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -154,7 +154,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsIamUser
 metadata:
   name: worker-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

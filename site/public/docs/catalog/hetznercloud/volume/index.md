@@ -29,7 +29,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudVolume
 metadata:
   name: my-volume
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ metadata:
   name: app-data
   org: acme-corp
   env: staging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: storage
@@ -100,7 +100,7 @@ metadata:
   name: db-data
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: databases
@@ -129,11 +129,12 @@ metadata:
   org: acme-corp
   env: production
   labels:
+    role: media
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: media-platform
     pulumi.planton.dev/stack.name: production.HetznerCloudVolume.media-storage
-    role: media
 spec:
   size: 500
   location: fsn1

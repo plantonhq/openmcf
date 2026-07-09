@@ -36,7 +36,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
   name: my-mesh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -87,7 +87,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
   name: dev-mesh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
   name: prod-mesh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -141,7 +141,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
   name: platform-mesh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

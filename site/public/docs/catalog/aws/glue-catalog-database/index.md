@@ -30,7 +30,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: analytics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: experiments
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: data
@@ -96,7 +96,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: sales_analytics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: analytics
@@ -117,7 +117,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: prod_warehouse
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: data-platform

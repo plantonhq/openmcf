@@ -38,7 +38,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSet
 metadata:
   name: my-runners
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -124,7 +124,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSet
 metadata:
   name: org-runners
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -158,7 +158,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSet
 metadata:
   name: ci-runners
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -203,7 +203,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSet
 metadata:
   name: build-runners
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

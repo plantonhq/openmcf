@@ -5,7 +5,7 @@ import (
 
 	awsvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumilabels"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumiannotationkeys"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,11 +21,11 @@ func TestExtractFromManifest(t *testing.T) {
 			name: "stack.fqdn takes precedence",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						pulumilabels.StackFqdnLabelKey:    "demo-org/aws-examples/dev",
-						pulumilabels.OrganizationLabelKey: "should-be-ignored",
-						pulumilabels.ProjectLabelKey:      "should-be-ignored",
-						pulumilabels.StackNameLabelKey:    "should-be-ignored",
+					Annotations: map[string]string{
+						pulumiannotationkeys.StackFqdnAnnotationKey:    "demo-org/aws-examples/dev",
+						pulumiannotationkeys.OrganizationAnnotationKey: "should-be-ignored",
+						pulumiannotationkeys.ProjectAnnotationKey:      "should-be-ignored",
+						pulumiannotationkeys.StackNameAnnotationKey:    "should-be-ignored",
 					},
 				},
 			},
@@ -38,13 +38,13 @@ func TestExtractFromManifest(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "individual labels when stack.fqdn not present",
+			name: "individual annotations when stack.fqdn not present",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						pulumilabels.OrganizationLabelKey: "my-org",
-						pulumilabels.ProjectLabelKey:      "my-project",
-						pulumilabels.StackNameLabelKey:    "production",
+					Annotations: map[string]string{
+						pulumiannotationkeys.OrganizationAnnotationKey: "my-org",
+						pulumiannotationkeys.ProjectAnnotationKey:      "my-project",
+						pulumiannotationkeys.StackNameAnnotationKey:    "production",
 					},
 				},
 			},
@@ -60,8 +60,8 @@ func TestExtractFromManifest(t *testing.T) {
 			name: "invalid stack.fqdn format",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						pulumilabels.StackFqdnLabelKey: "invalid-format",
+					Annotations: map[string]string{
+						pulumiannotationkeys.StackFqdnAnnotationKey: "invalid-format",
 					},
 				},
 			},
@@ -70,50 +70,50 @@ func TestExtractFromManifest(t *testing.T) {
 			errorMsg:  "invalid stack.fqdn format",
 		},
 		{
-			name: "missing required labels",
+			name: "missing required annotations",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						pulumilabels.OrganizationLabelKey: "my-org",
-						pulumilabels.ProjectLabelKey:      "my-project",
+					Annotations: map[string]string{
+						pulumiannotationkeys.OrganizationAnnotationKey: "my-org",
+						pulumiannotationkeys.ProjectAnnotationKey:      "my-project",
 						// Missing stack name
 					},
 				},
 			},
 			want:      nil,
 			wantError: true,
-			errorMsg:  "missing required Pulumi backend labels",
+			errorMsg:  "missing required Pulumi backend annotations",
 		},
 		{
-			name: "empty label values",
+			name: "empty annotation values",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						pulumilabels.OrganizationLabelKey: "my-org",
-						pulumilabels.ProjectLabelKey:      "",
-						pulumilabels.StackNameLabelKey:    "dev",
+					Annotations: map[string]string{
+						pulumiannotationkeys.OrganizationAnnotationKey: "my-org",
+						pulumiannotationkeys.ProjectAnnotationKey:      "",
+						pulumiannotationkeys.StackNameAnnotationKey:    "dev",
 					},
 				},
 			},
 			want:      nil,
 			wantError: true,
-			errorMsg:  "Pulumi backend labels cannot be empty",
+			errorMsg:  "Pulumi backend annotations cannot be empty",
 		},
 		{
-			name: "no labels",
+			name: "no annotations",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{},
 			},
 			want:      nil,
 			wantError: true,
-			errorMsg:  "no labels found in manifest",
+			errorMsg:  "no annotations found in manifest",
 		},
 		{
 			name: "empty stack.fqdn components",
 			manifest: &awsvpcv1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
-					Labels: map[string]string{
-						pulumilabels.StackFqdnLabelKey: "org//stack", // Missing project
+					Annotations: map[string]string{
+						pulumiannotationkeys.StackFqdnAnnotationKey: "org//stack", // Missing project
 					},
 				},
 			},

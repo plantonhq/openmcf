@@ -24,7 +24,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLogAnalyticsWorkspace
 metadata:
   name: my-workspace
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -72,7 +72,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLogAnalyticsWorkspace
 metadata:
   name: dev-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLogAnalyticsWorkspace
 metadata:
   name: prod-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLogAnalyticsWorkspace
 metadata:
   name: compliance-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLogAnalyticsWorkspace
 metadata:
   name: ref-workspace
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

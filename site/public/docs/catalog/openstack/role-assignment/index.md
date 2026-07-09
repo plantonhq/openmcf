@@ -35,7 +35,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRoleAssignment
 metadata:
   name: my-role-assignment
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRoleAssignment
 metadata:
   name: alice-member-on-webteam
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -124,7 +124,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRoleAssignment
 metadata:
   name: bob-admin-on-dataplatform
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -148,7 +148,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRoleAssignment
 metadata:
   name: auditors-reader-on-corp
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -168,7 +168,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackRoleAssignment
 metadata:
   name: devs-member-on-staging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

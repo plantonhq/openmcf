@@ -28,7 +28,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: my-cronjob
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: log-cleanup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -138,7 +138,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: db-backup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -193,7 +193,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: scheduled-backup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -268,7 +268,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
   name: data-migration
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

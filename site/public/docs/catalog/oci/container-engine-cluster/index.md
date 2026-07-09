@@ -33,7 +33,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciContainerEngineCluster
 metadata:
   name: my-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -154,7 +154,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciContainerEngineCluster
 metadata:
   name: dev-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -178,7 +178,7 @@ metadata:
   name: prod-cluster
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: oke-platform
@@ -237,7 +237,7 @@ metadata:
   name: sso-cluster
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: oke-platform
@@ -282,7 +282,7 @@ metadata:
   name: secure-cluster
   org: acme
   env: prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: oke-platform

@@ -37,7 +37,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: my-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: dev-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: prod-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: shared-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +181,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
   name: app-mongodb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

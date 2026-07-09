@@ -24,7 +24,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
   name: my-app-insights
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -75,7 +75,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
   name: dev-web-insights
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -96,7 +96,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
   name: staging-insights
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
   name: prod-insights
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +146,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
   name: nodejs-insights
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -171,7 +171,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureApplicationInsights
 metadata:
   name: ref-insights
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

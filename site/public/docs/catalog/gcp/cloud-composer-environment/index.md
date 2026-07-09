@@ -40,7 +40,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudComposerEnvironment
 metadata:
   name: my-airflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudComposerEnvironment
 metadata:
   name: my-data-pipelines
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: data-platform
@@ -149,7 +149,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudComposerEnvironment
 metadata:
   name: prod-airflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: production
@@ -209,7 +209,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudComposerEnvironment
 metadata:
   name: enterprise-airflow
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: enterprise

@@ -35,7 +35,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: my-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: payment-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: dev-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: order-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

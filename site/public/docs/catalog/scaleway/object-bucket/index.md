@@ -34,7 +34,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayObjectBucket
 metadata:
   name: my-app-assets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayObjectBucket
 metadata:
   name: dev-scratch-bucket
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayObjectBucket
 metadata:
   name: media-archive
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -147,7 +147,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayObjectBucket
 metadata:
   name: prod-user-content
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

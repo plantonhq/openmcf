@@ -249,7 +249,7 @@ planton pulumi up -f resource.yaml
 # Option 3: Check stack label in manifest
 # Ensure manifest has:
 metadata:
-  labels:
+  annotations:
     pulumi.planton.dev/stack.name: "org/project/stack"
 ```
 

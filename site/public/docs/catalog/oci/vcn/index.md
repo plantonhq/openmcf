@@ -34,7 +34,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciVcn
 metadata:
   name: my-vcn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +85,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciVcn
 metadata:
   name: dev-vcn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciVcn
 metadata:
   name: web-vcn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciVcn
 metadata:
   name: prod-vcn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -161,7 +161,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciVcn
 metadata:
   name: ref-vcn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

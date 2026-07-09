@@ -19,7 +19,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudFirewall
 metadata:
   name: ssh-only
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +85,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudFirewall
 metadata:
   name: ssh-only
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,11 +112,12 @@ metadata:
   org: acme-corp
   env: production
   labels:
+    role: web
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
     pulumi.planton.dev/stack.name: production.HetznerCloudFirewall.web-server
-    role: web
 spec:
   rules:
     - direction: in
@@ -160,11 +161,12 @@ metadata:
   org: acme-corp
   env: production
   labels:
+    role: database
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
     pulumi.planton.dev/stack.name: production.HetznerCloudFirewall.db-restricted
-    role: database
 spec:
   rules:
     - direction: in
@@ -192,7 +194,7 @@ metadata:
   name: web-firewall
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -222,7 +224,7 @@ metadata:
   name: web-01
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure

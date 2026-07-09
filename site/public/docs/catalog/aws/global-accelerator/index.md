@@ -34,7 +34,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: my-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: web-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -145,7 +145,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: global-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -197,7 +197,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: game-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -230,7 +230,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: ref-ga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

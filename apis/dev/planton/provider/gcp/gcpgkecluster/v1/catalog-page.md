@@ -31,7 +31,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
   name: my-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
   name: prod-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
   name: ref-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

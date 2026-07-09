@@ -28,7 +28,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: my-prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -85,7 +85,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: dev-prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: prod-prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +142,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: shared-prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPrometheus
 metadata:
   name: metrics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -26,7 +26,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanLoadBalancer
 metadata:
   name: my-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanLoadBalancer
 metadata:
   name: dev-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -133,7 +133,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanLoadBalancer
 metadata:
   name: prod-web-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -165,7 +165,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanLoadBalancer
 metadata:
   name: full-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

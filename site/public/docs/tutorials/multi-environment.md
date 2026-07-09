@@ -73,7 +73,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   namespace:

@@ -25,7 +25,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudVswitch
 metadata:
   name: my-vswitch
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudVswitch
 metadata:
   name: dev-vswitch
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ metadata:
   name: prod-app-vswitch
   org: my-org
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ kind: AliCloudVswitch
 metadata:
   name: db-vswitch
   env: staging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -155,7 +155,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudVswitch
 metadata:
   name: ipv6-vswitch
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

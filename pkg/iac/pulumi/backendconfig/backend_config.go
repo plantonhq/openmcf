@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumilabels"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumiannotationkeys"
 	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
 	"google.golang.org/protobuf/proto"
 )
@@ -21,18 +21,18 @@ type PulumiBackendConfig struct {
 	StackName string
 }
 
-// ExtractFromManifest extracts Pulumi backend configuration from manifest labels
+// ExtractFromManifest extracts Pulumi backend configuration from manifest annotations
 // Priority: stack.fqdn > (organization + project + stack.name)
 func ExtractFromManifest(manifest proto.Message) (*PulumiBackendConfig, error) {
-	labels := metadatareflect.ExtractLabels(manifest)
-	if labels == nil {
-		return nil, fmt.Errorf("no labels found in manifest")
+	annotations := metadatareflect.ExtractAnnotations(manifest)
+	if annotations == nil {
+		return nil, fmt.Errorf("no annotations found in manifest")
 	}
 
 	config := &PulumiBackendConfig{}
 
 	// First priority: Check for stack.fqdn
-	if stackFqdn, ok := labels[pulumilabels.StackFqdnLabelKey]; ok && stackFqdn != "" {
+	if stackFqdn, ok := annotations[pulumiannotationkeys.StackFqdnAnnotationKey]; ok && stackFqdn != "" {
 		config.StackFqdn = stackFqdn
 
 		// Parse the FQDN to extract components
@@ -49,20 +49,20 @@ func ExtractFromManifest(manifest proto.Message) (*PulumiBackendConfig, error) {
 	}
 
 	// Second priority: Check for individual components
-	org, hasOrg := labels[pulumilabels.OrganizationLabelKey]
-	project, hasProject := labels[pulumilabels.ProjectLabelKey]
-	stack, hasStack := labels[pulumilabels.StackNameLabelKey]
+	org, hasOrg := annotations[pulumiannotationkeys.OrganizationAnnotationKey]
+	project, hasProject := annotations[pulumiannotationkeys.ProjectAnnotationKey]
+	stack, hasStack := annotations[pulumiannotationkeys.StackNameAnnotationKey]
 
 	if !hasOrg || !hasProject || !hasStack {
-		return nil, fmt.Errorf("missing required Pulumi backend labels: need either %s or all of (%s, %s, %s)",
-			pulumilabels.StackFqdnLabelKey,
-			pulumilabels.OrganizationLabelKey,
-			pulumilabels.ProjectLabelKey,
-			pulumilabels.StackNameLabelKey)
+		return nil, fmt.Errorf("missing required Pulumi backend annotations: need either %s or all of (%s, %s, %s)",
+			pulumiannotationkeys.StackFqdnAnnotationKey,
+			pulumiannotationkeys.OrganizationAnnotationKey,
+			pulumiannotationkeys.ProjectAnnotationKey,
+			pulumiannotationkeys.StackNameAnnotationKey)
 	}
 
 	if org == "" || project == "" || stack == "" {
-		return nil, fmt.Errorf("Pulumi backend labels cannot be empty")
+		return nil, fmt.Errorf("Pulumi backend annotations cannot be empty")
 	}
 
 	config.Organization = org

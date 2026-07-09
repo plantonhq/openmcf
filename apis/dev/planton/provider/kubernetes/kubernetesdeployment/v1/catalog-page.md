@@ -36,7 +36,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
   name: my-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
   name: web-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -165,7 +165,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
   name: api-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -231,7 +231,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
   name: prod-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -301,7 +301,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
   name: worker
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

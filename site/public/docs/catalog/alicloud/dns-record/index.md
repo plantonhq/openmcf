@@ -31,7 +31,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudDnsRecord
 metadata:
   name: my-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudDnsRecord
 metadata:
   name: web-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudDnsRecord
 metadata:
   name: cdn-alias
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -122,7 +122,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudDnsRecord
 metadata:
   name: mail-primary
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

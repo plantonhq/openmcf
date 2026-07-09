@@ -34,7 +34,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaPostgresOperator
 metadata:
   name: my-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -84,7 +84,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaPostgresOperator
 metadata:
   name: pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaPostgresOperator
 metadata:
   name: prod-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaPostgresOperator
 metadata:
   name: shared-pg-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

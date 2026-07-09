@@ -33,7 +33,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsOpenSearchDomain
 metadata:
   name: my-search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -127,7 +127,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsOpenSearchDomain
 metadata:
   name: prod-search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsOpenSearchDomain
 metadata:
   name: fgac-search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -209,7 +209,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsOpenSearchDomain
 metadata:
   name: analytics-search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -252,7 +252,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsOpenSearchDomain
 metadata:
   name: ref-search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

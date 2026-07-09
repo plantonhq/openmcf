@@ -29,7 +29,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudEipAddress
 metadata:
   name: my-eip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,7 +91,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudEipAddress
 metadata:
   name: nat-eip
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

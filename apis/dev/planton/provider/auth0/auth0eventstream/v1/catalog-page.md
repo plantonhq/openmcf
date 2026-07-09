@@ -26,7 +26,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0EventStream
 metadata:
   name: login-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0EventStream
 metadata:
   name: security-events
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -122,7 +122,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0EventStream
 metadata:
   name: user-lifecycle
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -155,7 +155,7 @@ apiVersion: auth0.planton.dev/v1
 kind: Auth0EventStream
 metadata:
   name: api-audit
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

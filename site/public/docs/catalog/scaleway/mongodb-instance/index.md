@@ -35,7 +35,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayMongodbInstance
 metadata:
   name: my-mongo
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -101,7 +101,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayMongodbInstance
 metadata:
   name: dev-mongo
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayMongodbInstance
 metadata:
   name: prod-mongo
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -177,7 +177,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayMongodbInstance
 metadata:
   name: staging-mongo
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

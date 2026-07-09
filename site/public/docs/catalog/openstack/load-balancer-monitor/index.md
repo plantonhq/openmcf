@@ -30,7 +30,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: http-health
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -87,7 +87,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: web-http-health
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -112,7 +112,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: db-tcp-check
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -134,7 +134,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: api-health
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -160,7 +160,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: ref-monitor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

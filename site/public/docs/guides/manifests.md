@@ -94,7 +94,7 @@ Labels tell Planton which IaC engine to use and where to store state:
 ```yaml
 metadata:
   name: my-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/stack.name: prod.AwsRdsInstance.my-database
 ```
@@ -104,7 +104,7 @@ For OpenTofu or Terraform, use backend labels instead:
 ```yaml
 metadata:
   name: my-database
-  labels:
+  annotations:
     planton.dev/provisioner: tofu
     tofu.planton.dev/backend.type: s3
     tofu.planton.dev/backend.bucket: my-state-bucket
@@ -145,7 +145,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: app-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/stack.name: prod.KubernetesPostgres.app-database
 spec:
@@ -172,7 +172,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSql
 metadata:
   name: analytics-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/stack.name: prod.GcpCloudSql.analytics-db
 spec:
@@ -195,7 +195,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRdsInstance
 metadata:
   name: orders-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/stack.name: prod.AwsRdsInstance.orders-db
 spec:

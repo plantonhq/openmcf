@@ -36,7 +36,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: my-ontap
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: app-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -134,7 +134,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: throughput-tier
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -162,7 +162,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: ha-ontap
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -197,7 +197,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: ref-ontap
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

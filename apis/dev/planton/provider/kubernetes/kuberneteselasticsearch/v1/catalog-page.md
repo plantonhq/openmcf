@@ -34,7 +34,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticsearch
 metadata:
   name: my-es
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -96,7 +96,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticsearch
 metadata:
   name: dev-es
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticsearch
 metadata:
   name: prod-es
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -178,7 +178,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticsearch
 metadata:
   name: shared-es
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -225,7 +225,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticsearch
 metadata:
   name: search
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

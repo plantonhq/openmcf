@@ -37,7 +37,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSagemakerDomain
 metadata:
   name: my-domain
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSagemakerDomain
 metadata:
   name: ml-team
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSagemakerDomain
 metadata:
   name: enterprise-ml
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -190,7 +190,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSagemakerDomain
 metadata:
   name: data-science
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -249,7 +249,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsSagemakerDomain
 metadata:
   name: ref-domain
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

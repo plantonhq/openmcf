@@ -31,7 +31,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDynamicGroup
 metadata:
   name: my-compute-workers
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDynamicGroup
 metadata:
   name: compute-workers
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDynamicGroup
 metadata:
   name: serverless-functions
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciDynamicGroup
 metadata:
   name: tagged-workers
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,12 +142,13 @@ kind: OciDynamicGroup
 metadata:
   name: oke-worker-nodes
   labels:
+    team: platform
+    cost-center: infrastructure
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: platform-infra
     pulumi.planton.dev/stack.name: prod.OciDynamicGroup.oke-worker-nodes
-    team: platform
-    cost-center: infrastructure
 spec:
   compartmentId:
     valueFrom:

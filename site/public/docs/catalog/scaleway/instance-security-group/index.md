@@ -32,7 +32,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstanceSecurityGroup
 metadata:
   name: web-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstanceSecurityGroup
 metadata:
   name: web-allowlist
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -135,7 +135,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstanceSecurityGroup
 metadata:
   name: denylist-sg
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -167,7 +167,7 @@ apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstanceSecurityGroup
 metadata:
   name: db-strict
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

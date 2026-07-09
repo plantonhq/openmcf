@@ -23,7 +23,7 @@ Every Planton manifest follows the Kubernetes Resource Model. The `metadata` blo
 ```yaml
 metadata:
   name: my-resource-name
-  labels:
+  annotations:
     # Choose your provisioner: "pulumi" or "tofu"
     planton.dev/provisioner: pulumi
     # Pulumi state backend labels
@@ -38,11 +38,12 @@ For OpenTofu, replace the provisioner and backend labels:
 metadata:
   name: my-resource-name
   labels:
-    planton.dev/provisioner: tofu
     # OpenTofu state backend labels (example: S3 backend)
     tf.planton.dev/backend.type: s3
     tf.planton.dev/backend.s3.bucket: my-tf-state-bucket
     tf.planton.dev/backend.s3.region: us-east-1
+  annotations:
+    planton.dev/provisioner: tofu
 ```
 
 See [State Management](/docs/concepts/state-management) for all backend options.
@@ -62,7 +63,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
   name: my-app-assets
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +96,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRdsInstance
 metadata:
   name: my-app-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +130,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsVpc
 metadata:
   name: my-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -161,7 +162,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSql
 metadata:
   name: my-gcp-database
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -192,7 +193,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeCluster
 metadata:
   name: my-gke-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -230,7 +231,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksCluster
 metadata:
   name: my-aks-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -279,7 +280,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
   name: my-api-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -332,7 +333,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPostgres
 metadata:
   name: my-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -377,7 +378,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareWorker
 metadata:
   name: my-edge-function
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -410,7 +411,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVpc
 metadata:
   name: my-civo-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

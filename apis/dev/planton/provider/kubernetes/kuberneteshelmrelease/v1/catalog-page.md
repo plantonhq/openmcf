@@ -25,7 +25,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: my-nginx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: ingress-nginx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -101,7 +101,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: prometheus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -132,7 +132,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: cert-manager
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

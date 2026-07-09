@@ -34,7 +34,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksNodePool
 metadata:
   name: worker-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksNodePool
 metadata:
   name: app-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksNodePool
 metadata:
   name: prod-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -135,7 +135,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksNodePool
 metadata:
   name: batch-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -164,7 +164,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksNodePool
 metadata:
   name: system-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -193,7 +193,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureAksNodePool
 metadata:
   name: ref-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

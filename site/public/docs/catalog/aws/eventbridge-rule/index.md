@@ -34,7 +34,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeRule
 metadata:
   name: hourly-cleanup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeRule
 metadata:
   name: order-router
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -157,7 +157,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeRule
 metadata:
   name: nightly-batch
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +188,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeRule
 metadata:
   name: ec2-state-handler
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -231,7 +231,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeRule
 metadata:
   name: staging-order-router
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

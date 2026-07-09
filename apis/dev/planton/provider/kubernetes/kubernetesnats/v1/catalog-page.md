@@ -33,7 +33,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: my-nats
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: dev-nats
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: prod-nats
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -185,7 +185,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: event-bus
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -255,7 +255,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
   name: my-nats
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

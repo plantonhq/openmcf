@@ -26,7 +26,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBlockVolume
 metadata:
   name: my-volume
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +95,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBlockVolume
 metadata:
   name: dev-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -116,7 +116,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBlockVolume
 metadata:
   name: db-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -141,7 +141,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBlockVolume
 metadata:
   name: app-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -169,7 +169,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciBlockVolume
 metadata:
   name: critical-data
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

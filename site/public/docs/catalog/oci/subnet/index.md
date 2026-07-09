@@ -34,7 +34,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSubnet
 metadata:
   name: my-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSubnet
 metadata:
   name: private-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -127,7 +127,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSubnet
 metadata:
   name: public-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -151,7 +151,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSubnet
 metadata:
   name: app-tier
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +188,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciSubnet
 metadata:
   name: ref-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

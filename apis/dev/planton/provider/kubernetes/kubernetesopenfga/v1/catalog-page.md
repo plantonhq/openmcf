@@ -33,7 +33,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenFga
 metadata:
   name: my-openfga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -98,7 +98,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenFga
 metadata:
   name: dev-openfga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -134,7 +134,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenFga
 metadata:
   name: prod-openfga
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenFga
 metadata:
   name: openfga-main
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

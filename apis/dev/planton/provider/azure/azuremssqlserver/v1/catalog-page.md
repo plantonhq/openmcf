@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMssqlServer
 metadata:
   name: my-sql-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -110,7 +110,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMssqlServer
 metadata:
   name: dev-sql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -136,7 +136,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMssqlServer
 metadata:
   name: prod-sql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -178,7 +178,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMssqlServer
 metadata:
   name: private-sql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -209,7 +209,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMssqlServer
 metadata:
   name: serverless-sql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -241,7 +241,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureMssqlServer
 metadata:
   name: ref-sql
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

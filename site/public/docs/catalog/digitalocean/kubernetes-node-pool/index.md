@@ -35,7 +35,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: worker-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: web-workers
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: api-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -145,7 +145,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: ml-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

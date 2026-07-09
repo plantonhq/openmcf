@@ -26,7 +26,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackInstance
 metadata:
   name: my-instance
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +95,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackInstance
 metadata:
   name: web-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -119,7 +119,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackInstance
 metadata:
   name: db-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackInstance
 metadata:
   name: app-server-01
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -194,7 +194,7 @@ apiVersion: openstack.planton.dev/v1
 kind: OpenStackInstance
 metadata:
   name: ref-instance
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

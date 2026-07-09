@@ -34,7 +34,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesArgocd
 metadata:
   name: my-argocd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -87,7 +87,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesArgocd
 metadata:
   name: dev-argocd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesArgocd
 metadata:
   name: prod-argocd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +144,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesArgocd
 metadata:
   name: platform-argocd
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

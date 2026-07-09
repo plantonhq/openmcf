@@ -25,7 +25,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: my-secret
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: app-credentials
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: api-tls
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -138,7 +138,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: ghcr-pull-secret
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -170,7 +170,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: monitoring-auth
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -192,7 +192,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
   name: deploy-key
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

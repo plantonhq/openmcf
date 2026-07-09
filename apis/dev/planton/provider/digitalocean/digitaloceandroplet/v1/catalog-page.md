@@ -26,7 +26,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDroplet
 metadata:
   name: my-droplet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDroplet
 metadata:
   name: dev-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDroplet
 metadata:
   name: staging-web
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +146,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDroplet
 metadata:
   name: prod-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

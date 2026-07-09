@@ -31,7 +31,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
   name: my-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -82,7 +82,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
   name: prod-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
   name: compliant-repo
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -124,7 +124,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
   name: ci-images
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -146,7 +146,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
   name: prod-frontend
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -173,7 +173,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
   name: dev-scratch
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -15,7 +15,7 @@ This directory contains example manifests demonstrating how to embed backend con
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     pulumi.planton.dev/stack.fqdn: "myorg/project/stack"
 ```
 
@@ -23,7 +23,7 @@ metadata:
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     pulumi.planton.dev/organization: "myorg"
     pulumi.planton.dev/project: "my-project"
     pulumi.planton.dev/stack.name: "production"
@@ -35,7 +35,7 @@ metadata:
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     terraform.planton.dev/backend.type: "s3"
     terraform.planton.dev/backend.object: "bucket-name/path/to/state.tfstate"
 ```
@@ -44,7 +44,7 @@ metadata:
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     terraform.planton.dev/backend.type: "gcs"
     terraform.planton.dev/backend.object: "bucket-name/prefix/path"
 ```
@@ -53,7 +53,7 @@ metadata:
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     terraform.planton.dev/backend.type: "azurerm"
     terraform.planton.dev/backend.object: "container-name/path/to/state"
 ```

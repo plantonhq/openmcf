@@ -29,7 +29,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStrimziKafkaOperator
 metadata:
   name: strimzi
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStrimziKafkaOperator
 metadata:
   name: strimzi
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -111,7 +111,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStrimziKafkaOperator
 metadata:
   name: strimzi-prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -139,7 +139,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStrimziKafkaOperator
 metadata:
   name: strimzi-shared
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -38,7 +38,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiGateway
 metadata:
   name: my-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiGateway
 metadata:
   name: users-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -170,7 +170,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiGateway
 metadata:
   name: secure-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -233,7 +233,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiGateway
 metadata:
   name: proxy-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -272,7 +272,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiGateway
 metadata:
   name: ref-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

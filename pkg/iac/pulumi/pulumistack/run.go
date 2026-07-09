@@ -28,20 +28,20 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 		return errors.Wrapf(err, "failed to override values in target manifest file")
 	}
 
-	// Try to extract backend configuration from manifest labels
+	// Try to extract backend configuration from manifest annotations
 	// If found, use it instead of the provided stackFqdn
 	finalStackFqdn := stackFqdn
 	if manifestBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject); err == nil && manifestBackendConfig != nil {
 		if manifestBackendConfig.StackFqdn != "" {
 			cyan := color.New(color.FgCyan).SprintFunc()
-			fmt.Printf("\nDetected Stack from Labels: %s\n\n", cyan(manifestBackendConfig.StackFqdn))
+			fmt.Printf("\nDetected Stack from Annotations: %s\n\n", cyan(manifestBackendConfig.StackFqdn))
 			finalStackFqdn = manifestBackendConfig.StackFqdn
 		}
 	}
 
 	// Validate that we have a stack FQDN
 	if finalStackFqdn == "" {
-		return errors.New("Pulumi stack FQDN is required. Provide it via --stack flag or set pulumi.planton.dev/stack.fqdn label in manifest")
+		return errors.New("Pulumi stack FQDN is required. Provide it via --stack flag or set pulumi.planton.dev/stack.fqdn annotation in manifest")
 	}
 
 	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)

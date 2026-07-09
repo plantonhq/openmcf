@@ -33,7 +33,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudCenInstance
 metadata:
   name: my-cen
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -93,7 +93,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudCenInstance
 metadata:
   name: intra-region-cen
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: networking
@@ -120,7 +120,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudCenInstance
 metadata:
   name: global-cen
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: networking
@@ -155,7 +155,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudCenInstance
 metadata:
   name: managed-cen
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: networking

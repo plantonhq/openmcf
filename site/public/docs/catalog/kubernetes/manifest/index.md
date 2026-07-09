@@ -33,7 +33,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesManifest
 metadata:
   name: my-manifest
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesManifest
 metadata:
   name: app-config
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -113,7 +113,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesManifest
 metadata:
   name: rbac-setup
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -163,7 +163,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesManifest
 metadata:
   name: batch-stack
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

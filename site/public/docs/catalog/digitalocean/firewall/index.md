@@ -31,7 +31,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFirewall
 metadata:
   name: my-firewall
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -123,7 +123,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFirewall
 metadata:
   name: web-server-fw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -171,7 +171,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFirewall
 metadata:
   name: app-web-fw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -217,7 +217,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFirewall
 metadata:
   name: app-db-fw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -256,7 +256,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanFirewall
 metadata:
   name: mixed-sources-fw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

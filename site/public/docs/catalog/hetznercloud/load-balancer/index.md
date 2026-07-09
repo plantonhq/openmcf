@@ -33,7 +33,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudLoadBalancer
 metadata:
   name: my-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudLoadBalancer
 metadata:
   name: web-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +144,7 @@ metadata:
   name: web-https-lb
   org: acme-corp
   env: staging
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: web-platform
@@ -194,7 +194,7 @@ metadata:
   name: internal-lb
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -235,7 +235,7 @@ metadata:
   name: prod-lb
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure

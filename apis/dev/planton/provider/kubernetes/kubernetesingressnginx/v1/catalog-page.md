@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIngressNginx
 metadata:
   name: my-ingress
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -82,7 +82,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIngressNginx
 metadata:
   name: gke-external
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -104,7 +104,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIngressNginx
 metadata:
   name: eks-internal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIngressNginx
 metadata:
   name: aks-ingress
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -153,7 +153,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIngressNginx
 metadata:
   name: platform-ingress
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

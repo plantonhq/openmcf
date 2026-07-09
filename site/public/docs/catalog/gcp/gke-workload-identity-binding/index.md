@@ -32,7 +32,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-binding
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -78,7 +78,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-binding
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: payments-api-binding
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -120,7 +120,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: external-dns-binding
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

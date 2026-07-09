@@ -24,7 +24,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciLogGroup
 metadata:
   name: my-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -91,7 +91,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciLogGroup
 metadata:
   name: app-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciLogGroup
 metadata:
   name: network-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciLogGroup
 metadata:
   name: platform-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +188,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciLogGroup
 metadata:
   name: api-logs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

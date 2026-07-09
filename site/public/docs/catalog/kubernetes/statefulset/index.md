@@ -45,7 +45,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
   name: my-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -135,7 +135,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
   name: postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +188,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
   name: redis-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -278,7 +278,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
   name: event-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

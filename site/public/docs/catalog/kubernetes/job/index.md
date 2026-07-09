@@ -35,7 +35,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
   name: db-migrate
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -103,7 +103,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
   name: db-migrate
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -144,7 +144,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
   name: batch-processor
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -190,7 +190,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
   name: etl-pipeline
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

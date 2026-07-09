@@ -35,7 +35,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsClientVpn
 metadata:
   name: my-vpn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsClientVpn
 metadata:
   name: dev-vpn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -119,7 +119,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsClientVpn
 metadata:
   name: team-vpn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -148,7 +148,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsClientVpn
 metadata:
   name: secure-vpn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +181,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsClientVpn
 metadata:
   name: low-latency-vpn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -208,7 +208,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsClientVpn
 metadata:
   name: ref-vpn
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

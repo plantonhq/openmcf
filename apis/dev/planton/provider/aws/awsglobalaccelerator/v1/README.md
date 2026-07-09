@@ -126,7 +126,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
   name: my-accelerator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   listeners:

@@ -1,10 +1,10 @@
 # Pulumi Backend Config Package
 
-This package provides functionality to extract Pulumi backend configuration from Planton resource manifests using standardized labels.
+This package provides functionality to extract Pulumi backend configuration from Planton resource manifests using standardized annotations.
 
 ## Overview
 
-The `backendconfig` package implements the logic to read and parse Pulumi backend configuration from manifest labels. It supports both a simplified single-label approach (stack FQDN) and a detailed multi-label approach, with intelligent prioritization between them.
+The `backendconfig` package implements the logic to read and parse Pulumi backend configuration from manifest annotations. It supports both a simplified single-annotation approach (stack FQDN) and a detailed multi-annotation approach, with intelligent prioritization between them.
 
 ## Core Types
 
@@ -27,11 +27,11 @@ type PulumiBackendConfig struct {
 func ExtractFromManifest(manifest proto.Message) (*PulumiBackendConfig, error)
 ```
 
-Extracts Pulumi backend configuration from a manifest's metadata labels.
+Extracts Pulumi backend configuration from a manifest's metadata annotations.
 
 **Priority Logic:**
-1. If `stack.fqdn` label is present, it takes precedence
-2. If not, all three component labels must be present
+1. If `stack.fqdn` annotation is present, it takes precedence
+2. If not, all three component annotations must be present
 3. Returns an error if neither approach provides complete configuration
 
 **Example Usage:**
@@ -56,7 +56,7 @@ fmt.Printf("Stack: %s\n", config.StackFqdn)
 
 ### Stack FQDN Parsing
 
-When a `stack.fqdn` label is provided, it's automatically parsed into its components:
+When a `stack.fqdn` annotation is provided, it's automatically parsed into its components:
 
 ```
 "demo-org/aws-infrastructure/production" 
@@ -74,34 +74,34 @@ The parser:
 ### Validation Rules
 
 1. **Stack FQDN Format**: Must be `organization/project/stack`
-2. **Required Labels**: Either stack.fqdn OR all three component labels
-3. **Non-Empty Values**: All label values must be non-empty strings
-4. **No Partial Config**: Cannot specify only some component labels
+2. **Required Annotations**: Either stack.fqdn OR all three component annotations
+3. **Non-Empty Values**: All annotation values must be non-empty strings
+4. **No Partial Config**: Cannot specify only some component annotations
 
 ## Error Handling
 
 The package provides detailed error messages for common issues:
 
 ```go
-// Missing labels
-"no labels found in manifest"
+// Missing annotations
+"no annotations found in manifest"
 
 // Invalid FQDN format
 "invalid stack.fqdn format: stack FQDN must be in format 'organization/project/stack'"
 
-// Missing required labels
-"missing required Pulumi backend labels: need either pulumi.planton.dev/stack.fqdn or all of (organization, project, stack.name)"
+// Missing required annotations
+"missing required Pulumi backend annotations: need either pulumi.planton.dev/stack.fqdn or all of (organization, project, stack.name)"
 
 // Empty values
-"Pulumi backend labels cannot be empty"
+"Pulumi backend annotations cannot be empty"
 ```
 
 ## Testing
 
 The package includes comprehensive tests covering:
-- Stack FQDN precedence over component labels
+- Stack FQDN precedence over component annotations
 - FQDN parsing with various formats
-- Error cases (missing labels, invalid formats, empty values)
+- Error cases (missing annotations, invalid formats, empty values)
 - Edge cases (spaces in FQDN, empty components)
 
 Run tests:
@@ -143,12 +143,12 @@ if manifestConfig != nil {
 ## Design Decisions
 
 1. **Proto-Agnostic**: Uses `proto.Message` interface to work with any manifest type
-2. **Clear Precedence**: Stack FQDN always wins over component labels
+2. **Clear Precedence**: Stack FQDN always wins over component annotations
 3. **Fail-Fast Validation**: Returns errors immediately for invalid configurations
-4. **Nil-Safe**: Returns nil for manifests without metadata or labels
+4. **Nil-Safe**: Returns nil for manifests without metadata or annotations
 
 ## Related Packages
 
-- `pkg/iac/pulumi/pulumilabels`: Defines the label constants
-- `pkg/reflection/metadatareflect`: Provides label extraction from protobuf messages
+- `pkg/iac/pulumi/pulumiannotationkeys`: Defines the annotation key constants
+- `pkg/reflection/metadatareflect`: Provides annotation extraction from protobuf messages
 - `pkg/iac/pulumi/pulumistack`: Consumes the extracted configuration

@@ -27,7 +27,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureSubnet
 metadata:
   name: my-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -81,7 +81,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureSubnet
 metadata:
   name: workload-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -102,7 +102,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureSubnet
 metadata:
   name: postgres-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -131,7 +131,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureSubnet
 metadata:
   name: pe-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -154,7 +154,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureSubnet
 metadata:
   name: app-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +188,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureSubnet
 metadata:
   name: cae-subnet
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

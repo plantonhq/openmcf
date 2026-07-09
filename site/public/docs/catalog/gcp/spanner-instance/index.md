@@ -33,7 +33,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
   name: my-spanner
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -95,7 +95,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
   name: dev-spanner
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
   name: prod-spanner
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
   name: global-spanner
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -174,7 +174,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
   name: ref-spanner
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

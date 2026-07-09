@@ -34,7 +34,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesAltinityOperator
 metadata:
   name: my-altinity-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesAltinityOperator
 metadata:
   name: dev-altinity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesAltinityOperator
 metadata:
   name: prod-altinity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +142,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesAltinityOperator
 metadata:
   name: platform-altinity
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

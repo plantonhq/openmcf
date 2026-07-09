@@ -25,7 +25,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareKvNamespace
 metadata:
   name: my-kv
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -67,7 +67,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareKvNamespace
 metadata:
   name: dev-cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareKvNamespace
 metadata:
   name: session-store
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareKvNamespace
 metadata:
   name: feature-flags
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

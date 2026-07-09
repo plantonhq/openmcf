@@ -40,7 +40,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
   name: my-tekton-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -100,7 +100,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
   name: ci-tekton-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -130,7 +130,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
   name: team-tekton-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
   name: prod-tekton-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -36,7 +36,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPostgresqlDbSystem
 metadata:
   name: my-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -164,7 +164,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPostgresqlDbSystem
 metadata:
   name: dev-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -198,7 +198,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPostgresqlDbSystem
 metadata:
   name: prod-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-org
     pulumi.planton.dev/project: acme-data
@@ -244,7 +244,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPostgresqlDbSystem
 metadata:
   name: test-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -286,7 +286,7 @@ apiVersion: oci.planton.dev/v1
 kind: OciPostgresqlDbSystem
 metadata:
   name: ref-postgres
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -23,7 +23,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanVpc
 metadata:
   name: my-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -67,7 +67,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanVpc
 metadata:
   name: dev-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -86,7 +86,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanVpc
 metadata:
   name: staging-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -106,7 +106,7 @@ apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanVpc
 metadata:
   name: prod-vpc
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

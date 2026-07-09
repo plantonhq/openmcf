@@ -36,7 +36,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRedis
 metadata:
   name: my-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -90,7 +90,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRedis
 metadata:
   name: dev-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRedis
 metadata:
   name: prod-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -147,7 +147,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRedis
 metadata:
   name: shared-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -179,7 +179,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRedis
 metadata:
   name: cache
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

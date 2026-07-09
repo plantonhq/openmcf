@@ -37,7 +37,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
   name: my-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
   name: dev-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -150,7 +150,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
   name: prod-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -217,7 +217,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
   name: shared-kafka
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

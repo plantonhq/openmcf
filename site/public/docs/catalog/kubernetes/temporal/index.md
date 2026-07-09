@@ -44,7 +44,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: my-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -140,7 +140,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: dev-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -162,7 +162,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: prod-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -229,7 +229,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: platform-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -297,7 +297,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTemporal
 metadata:
   name: my-temporal
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

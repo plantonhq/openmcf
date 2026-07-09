@@ -30,7 +30,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticOperator
 metadata:
   name: eck
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticOperator
 metadata:
   name: eck
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -110,7 +110,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticOperator
 metadata:
   name: eck-prod
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -138,7 +138,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesElasticOperator
 metadata:
   name: eck-shared
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

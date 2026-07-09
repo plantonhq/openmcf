@@ -30,7 +30,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerApp
 metadata:
   name: my-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerApp
 metadata:
   name: web-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -176,7 +176,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerApp
 metadata:
   name: worker
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -216,7 +216,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerApp
 metadata:
   name: enterprise-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -276,7 +276,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureContainerApp
 metadata:
   name: ref-app
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

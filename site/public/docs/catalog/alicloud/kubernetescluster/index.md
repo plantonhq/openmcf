@@ -37,7 +37,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudKubernetesCluster
 metadata:
   name: my-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -129,7 +129,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudKubernetesCluster
 metadata:
   name: dev-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -156,7 +156,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudKubernetesCluster
 metadata:
   name: staging-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -204,7 +204,7 @@ metadata:
   name: prod-cluster
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -278,7 +278,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudKubernetesCluster
 metadata:
   name: ref-cluster
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

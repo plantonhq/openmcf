@@ -26,7 +26,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudKubernetesNodePool
 metadata:
   name: my-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -124,7 +124,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudKubernetesNodePool
 metadata:
   name: dev-pool
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -154,7 +154,7 @@ metadata:
   name: prod-compute
   org: acme-corp
   env: production
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infrastructure
@@ -212,7 +212,7 @@ apiVersion: alicloud.planton.dev/v1
 kind: AliCloudKubernetesNodePool
 metadata:
   name: batch-spot
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

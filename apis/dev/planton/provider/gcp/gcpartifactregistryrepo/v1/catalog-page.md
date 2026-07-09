@@ -28,7 +28,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpArtifactRegistryRepo
 metadata:
   name: my-docker-repo
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -75,7 +75,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpArtifactRegistryRepo
 metadata:
   name: backend-images
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -96,7 +96,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpArtifactRegistryRepo
 metadata:
   name: oss-npm-packages
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -118,7 +118,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpArtifactRegistryRepo
 metadata:
   name: java-artifacts
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -142,7 +142,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpArtifactRegistryRepo
 metadata:
   name: internal-pypi
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: shared-services

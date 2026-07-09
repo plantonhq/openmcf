@@ -163,7 +163,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesRedis
 metadata:
   name: my-redis
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
 spec:
   namespace: redis

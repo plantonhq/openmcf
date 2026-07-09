@@ -28,7 +28,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLoadBalancer
 metadata:
   name: my-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -110,7 +110,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLoadBalancer
 metadata:
   name: web-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -145,7 +145,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLoadBalancer
 metadata:
   name: internal-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -181,7 +181,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLoadBalancer
 metadata:
   name: multi-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -231,7 +231,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLoadBalancer
 metadata:
   name: sql-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -271,7 +271,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureLoadBalancer
 metadata:
   name: ref-lb
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

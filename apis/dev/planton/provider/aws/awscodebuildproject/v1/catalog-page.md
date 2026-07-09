@@ -28,7 +28,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: my-build
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: app-ci
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -158,7 +158,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: docker-builder
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -208,7 +208,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: pipeline-build
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -245,7 +245,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsCodeBuildProject
 metadata:
   name: connected-build
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

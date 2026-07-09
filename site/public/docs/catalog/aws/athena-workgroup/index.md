@@ -35,7 +35,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAthenaWorkgroup
 metadata:
   name: analytics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAthenaWorkgroup
 metadata:
   name: analytics-team
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: analytics
@@ -114,7 +114,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAthenaWorkgroup
 metadata:
   name: data-science
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: data
@@ -137,7 +137,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsAthenaWorkgroup
 metadata:
   name: prod-analytics
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme
     pulumi.planton.dev/project: analytics

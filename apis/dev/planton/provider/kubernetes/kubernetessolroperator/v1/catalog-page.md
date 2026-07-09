@@ -27,7 +27,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
   name: main
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
   name: dev-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -116,7 +116,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
   name: prod-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -143,7 +143,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
   name: search-operator
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

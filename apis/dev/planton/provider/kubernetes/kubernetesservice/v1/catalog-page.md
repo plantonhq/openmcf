@@ -26,7 +26,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: my-service
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -92,7 +92,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: backend-api
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: public-gateway
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -158,7 +158,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: media-server
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -206,7 +206,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: external-db
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -227,7 +227,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesService
 metadata:
   name: cassandra
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

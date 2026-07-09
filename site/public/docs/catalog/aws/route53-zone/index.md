@@ -37,7 +37,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -109,7 +109,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -149,7 +149,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53Zone
 metadata:
   name: internal.example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -184,7 +184,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -221,7 +221,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -258,7 +258,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

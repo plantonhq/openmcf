@@ -36,7 +36,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticFileSystem
 metadata:
   name: my-efs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -104,7 +104,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticFileSystem
 metadata:
   name: prod-efs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -128,7 +128,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticFileSystem
 metadata:
   name: dev-efs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -155,7 +155,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticFileSystem
 metadata:
   name: shared-efs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -202,7 +202,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsElasticFileSystem
 metadata:
   name: ref-efs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -172,7 +172,7 @@ If you do not want to specify the engine on every command, set the `planton.dev/
 
 ```yaml
 metadata:
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi  # or: tofu, terraform
 ```
 

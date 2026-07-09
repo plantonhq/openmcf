@@ -27,7 +27,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirewallRule
 metadata:
   name: allow-web
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -108,7 +108,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirewallRule
 metadata:
   name: allow-web
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -139,7 +139,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirewallRule
 metadata:
   name: allow-iap-ssh
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -168,7 +168,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpFirewallRule
 metadata:
   name: deny-all-egress
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

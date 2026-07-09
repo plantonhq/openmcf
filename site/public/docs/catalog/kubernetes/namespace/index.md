@@ -36,7 +36,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNamespace
 metadata:
   name: my-namespace
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNamespace
 metadata:
   name: dev-team-alpha
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -137,7 +137,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNamespace
 metadata:
   name: staging-backend
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -169,7 +169,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNamespace
 metadata:
   name: prod-payments
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

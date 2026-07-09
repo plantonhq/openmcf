@@ -32,7 +32,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDnsRecord
 metadata:
   name: www-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -117,7 +117,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDnsRecord
 metadata:
   name: api-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -141,7 +141,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDnsRecord
 metadata:
   name: mail-mx-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -165,7 +165,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoDnsRecord
 metadata:
   name: docs-cname
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -28,7 +28,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
   name: my-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -87,7 +87,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
   name: dev-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -114,7 +114,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
   name: prod-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -154,7 +154,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
   name: perf-blobs
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -188,7 +188,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
   name: archive-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -219,7 +219,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureStorageAccount
 metadata:
   name: ref-storage
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

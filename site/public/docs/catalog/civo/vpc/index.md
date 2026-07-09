@@ -31,7 +31,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVpc
 metadata:
   name: my-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -79,7 +79,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVpc
 metadata:
   name: dev-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVpc
 metadata:
   name: staging-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: civo.planton.dev/v1
 kind: CivoVpc
 metadata:
   name: prod-network
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: acme-corp
     pulumi.planton.dev/project: infra

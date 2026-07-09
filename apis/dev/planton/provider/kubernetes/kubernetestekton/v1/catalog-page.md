@@ -29,7 +29,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
   name: my-tekton
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -76,7 +76,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
   name: ci-tekton
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -94,7 +94,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
   name: team-tekton
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -121,7 +121,7 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
   name: prod-tekton
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

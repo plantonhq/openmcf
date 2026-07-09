@@ -33,7 +33,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsTransitGateway
 metadata:
   name: my-tgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -99,7 +99,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsTransitGateway
 metadata:
   name: hub-tgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -134,7 +134,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsTransitGateway
 metadata:
   name: inspection-tgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -166,7 +166,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsTransitGateway
 metadata:
   name: enterprise-tgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -203,7 +203,7 @@ apiVersion: aws.planton.dev/v1
 kind: AwsTransitGateway
 metadata:
   name: ref-tgw
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

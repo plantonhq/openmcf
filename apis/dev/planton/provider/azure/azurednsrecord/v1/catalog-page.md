@@ -24,7 +24,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
   name: my-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -76,7 +76,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
   name: web-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -101,7 +101,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
   name: app-cname
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -125,7 +125,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
   name: mail-mx-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -151,7 +151,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
   name: spf-txt-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -175,7 +175,7 @@ apiVersion: azure.planton.dev/v1
 kind: AzureDnsRecord
 metadata:
   name: ref-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

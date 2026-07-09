@@ -32,7 +32,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsRecord
 metadata:
   name: app-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -83,7 +83,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsRecord
 metadata:
   name: web-a-record
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -107,7 +107,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsRecord
 metadata:
   name: docs-cname
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -139,7 +139,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsRecord
 metadata:
   name: api-round-robin
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -165,7 +165,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsRecord
 metadata:
   name: mail-mx
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -190,7 +190,7 @@ apiVersion: gcp.planton.dev/v1
 kind: GcpDnsRecord
 metadata:
   name: spf-txt
-  labels:
+  annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
