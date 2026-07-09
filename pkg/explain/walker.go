@@ -49,6 +49,16 @@ func (e *Engine) renderField(fd protoreflect.FieldDescriptor, visited map[protor
 		f.Fields, f.Constraints = e.expandIfMessage(fd, visited, f.Constraints)
 	}
 
+	// The foreign-key wrapper's docs describe the concept ("a literal or a
+	// reference") but not the YAML serialization, and the wrapper is
+	// deliberately not expanded -- so without this line authors guess the
+	// shape and guess wrong (a bare string does NOT parse). Spell out both
+	// authorable forms, concretized with the field's default reference
+	// target when the schema declares one.
+	if fd.Message() != nil && fd.Message().FullName() == stringValueOrRefFullName {
+		f.Constraints = append(f.Constraints, valueFromContract(f.RefKind, f.RefFieldPath))
+	}
+
 	if fd.Kind() == protoreflect.EnumKind {
 		values := fd.Enum().Values()
 		for i := 0; i < values.Len(); i++ {
@@ -163,6 +173,22 @@ func applyValidateRules(fd protoreflect.FieldDescriptor, f *Field) {
 	if body, err := protojson.Marshal(structural); err == nil && string(body) != "{}" {
 		f.Constraints = append(f.Constraints, string(body))
 	}
+}
+
+// valueFromContract renders the exact YAML shapes a StringValueOrRef field
+// accepts, using the declared default reference target when present.
+func valueFromContract(refKind, refFieldPath string) string {
+	kind := refKind
+	if kind == "" {
+		kind = "<Kind>"
+	}
+	fieldPath := refFieldPath
+	if fieldPath == "" {
+		fieldPath = "status.outputs.<output>"
+	}
+	return fmt.Sprintf(
+		"write as {value: <literal>} or {valueFrom: {kind: %s, name: <that resource's name>, fieldPath: %s}} -- a bare string does not parse",
+		kind, fieldPath)
 }
 
 // messageCelRules extracts a message's cross-field CEL rules with their

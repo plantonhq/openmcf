@@ -234,6 +234,11 @@ func resolveEnum(scope string, enum *descriptorpb.EnumDescriptorProto, rest []in
 // gutters (the repo's /** ... */ house style) are stripped, and surrounding
 // blank lines are trimmed. Interior blank lines survive -- they are the
 // authors' paragraph breaks.
+//
+// Order matters: the single leading space is dropped BEFORE gutter
+// detection, and a bare "*" is only treated as a gutter when followed by a
+// space (or alone). A line beginning "**bold**" is markdown, not a gutter --
+// stripping its first "*" was a real defect this ordering fixes.
 func cleanComment(raw string) string {
 	if raw == "" {
 		return ""
@@ -242,16 +247,17 @@ func cleanComment(raw string) string {
 	cleaned := make([]string, 0, len(lines))
 	for _, line := range lines {
 		line = strings.TrimRight(line, " \t")
-		trimmed := strings.TrimLeft(line, " \t")
+		line = strings.TrimPrefix(line, " ")
 		switch {
-		case strings.HasPrefix(trimmed, "* "):
-			line = trimmed[2:]
-		case trimmed == "*":
+		case line == "*":
 			line = ""
-		case strings.HasPrefix(trimmed, "*"):
-			line = trimmed[1:]
-		case strings.HasPrefix(line, " "):
-			line = line[1:]
+		case strings.HasPrefix(line, "* "):
+			line = line[2:]
+		case strings.HasPrefix(strings.TrimLeft(line, " \t"), "* "):
+			// Indented gutter (block comments nested under message bodies).
+			line = strings.TrimLeft(line, " \t")[2:]
+		case strings.TrimLeft(line, " \t") == "*":
+			line = ""
 		}
 		cleaned = append(cleaned, line)
 	}

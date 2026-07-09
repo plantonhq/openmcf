@@ -55,6 +55,12 @@ func TestLookupKeysMatchRuntimeReflection(t *testing.T) {
 	if doc := Lookup(md.FullName()); !strings.Contains(doc, "Namespace-as-a-Service") {
 		t.Errorf("message doc mismatch for %s: %q", specName, doc)
 	}
+	// The catalog's house style opens docs with a bold name. The gutter
+	// stripper must not eat the first bold marker ("**X**" is markdown,
+	// not a block-comment gutter).
+	if doc := Lookup(md.FullName()); !strings.HasPrefix(doc, "**KubernetesNamespaceSpec**") {
+		t.Errorf("bold marker mangled by comment cleaning: %q", doc[:40])
+	}
 
 	nameField := md.Fields().ByName("name")
 	if nameField == nil {

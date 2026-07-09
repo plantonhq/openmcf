@@ -1,6 +1,7 @@
 package explain
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -90,6 +91,27 @@ func TestForeignKeyField(t *testing.T) {
 	}
 	if len(vpcId.Fields) != 0 {
 		t.Error("foreign-key wrapper must be terminal, not expanded")
+	}
+
+	// The YAML authoring contract must be spelled out -- a bare string does
+	// not parse for these fields, and the wrapper is never expanded, so this
+	// line is the only place an author learns the real shape.
+	contract := false
+	for _, c := range vpcId.Constraints {
+		if strings.Contains(c, "write as {value:") && strings.Contains(c, "kind: AwsVpc") {
+			contract = true
+		}
+	}
+	if !contract {
+		t.Errorf("valueFrom authoring contract missing: %v", vpcId.Constraints)
+	}
+}
+
+func TestForeignKeyDrillDeadEndTeachesTheShape(t *testing.T) {
+	engine := DefaultEngine()
+	_, err := engine.Explain(mustResource(t, "aws-security-group"), []string{"spec", "vpcId", "value"})
+	if err == nil || !strings.Contains(err.Error(), "write as {value:") || !strings.Contains(err.Error(), "kind: AwsVpc") {
+		t.Fatalf("drill into a foreign-key wrapper should answer with the authoring shape, got: %v", err)
 	}
 }
 
@@ -257,9 +279,45 @@ func TestRenderRootView(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := Render(report)
-	for _, want := range []string{"KIND:", "AwsVpc", "VERSION:", "aws.planton.dev/v1", "SPEC:", "region <string> -required-", "OUTPUTS"} {
+	for _, want := range []string{
+		"KIND:", "AwsVpc", "VERSION:", "aws.planton.dev/v1",
+		"MANIFEST:", "apiVersion: aws.planton.dev/v1", // the envelope skeleton
+		"SPEC:", "region <string> -required-", "OUTPUTS",
+	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("rendered text missing %q", want)
 		}
 	}
+}
+
+func TestRenderEnumHandling(t *testing.T) {
+	big := Field{Name: "kind", Type: "enum"}
+	for i := 0; i < 20; i++ {
+		big.Enum = append(big.Enum, EnumValue{Name: fmt.Sprintf("Kind%d", i), Doc: "prose"})
+	}
+	parent := Field{Name: "relationships", Type: "Rel", Fields: []Field{big}}
+
+	t.Run("catalog-scale enums are elided in trees", func(t *testing.T) {
+		text := Render(&Report{Kind: "X", Field: &parent})
+		if !strings.Contains(text, "<20 values -- drill into this field to list them>") {
+			t.Errorf("big enum not elided:\n%s", text)
+		}
+		if strings.Contains(text, "Kind0") {
+			t.Errorf("big enum values leaked into tree view")
+		}
+	})
+
+	t.Run("the asked-about field expands its values with docs", func(t *testing.T) {
+		text := Render(&Report{Kind: "X", Field: &big})
+		if !strings.Contains(text, "values (use exactly as shown):") || !strings.Contains(text, "- Kind0") {
+			t.Errorf("directly asked enum should expand:\n%s", text)
+		}
+	})
+
+	t.Run("nested enums under the asked-about field stay names-only", func(t *testing.T) {
+		text := Render(&Report{Kind: "X", Field: &parent})
+		if strings.Contains(text, "use exactly as shown") {
+			t.Errorf("nested enum docs must not expand in a parent's view:\n%s", text)
+		}
+	})
 }

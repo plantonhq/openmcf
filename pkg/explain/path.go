@@ -54,8 +54,20 @@ func (e *Engine) resolvePath(res Resource, path []string) (*Report, error) {
 			}
 		}
 		if md == nil {
+			// The foreign-key wrapper is deliberately terminal, but a
+			// drill attempt into it deserves the authoring answer, not a
+			// structural refusal.
+			if fd != nil && fd.Message() != nil && fd.Message().FullName() == stringValueOrRefFullName {
+				var tmp Field
+				for _, interpret := range e.Interpreters {
+					interpret(fd, &tmp)
+				}
+				return nil, errors.Errorf(
+					"%q is authored directly, not drilled into: %s",
+					path[i-1], valueFromContract(tmp.RefKind, tmp.RefFieldPath))
+			}
 			return nil, errors.Errorf(
-				"%s.%s does not resolve: %q is a %s, which has no fields to drill into",
+				"%s.%s does not resolve: %q is a scalar %s with no fields to drill into",
 				res.Name, strings.Join(path[:i], "."), path[i-1], fd.Kind())
 		}
 

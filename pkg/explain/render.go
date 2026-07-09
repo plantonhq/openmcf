@@ -30,6 +30,15 @@ func Render(report *Report) string {
 		b.WriteString("\nDESCRIPTION:\n")
 		writeIndented(&b, report.Doc, 1)
 	}
+	// The envelope skeleton grounds the one thing no field listing teaches:
+	// what the top level of the manifest looks like.
+	b.WriteString("\nMANIFEST:\n")
+	writeIndented(&b, "apiVersion: "+report.ApiVersion, 1)
+	writeIndented(&b, "kind: "+report.Kind, 1)
+	writeIndented(&b, "metadata:", 1)
+	writeIndented(&b, "name: <resource-name>", 2)
+	writeIndented(&b, "spec:", 1)
+	writeIndented(&b, "<the fields below>", 2)
 	if len(report.SpecRules) > 0 {
 		b.WriteString("\nRULES:\n")
 		for _, rule := range report.SpecRules {
@@ -94,15 +103,21 @@ func renderFieldTree(b *strings.Builder, f Field, depth int, expandEnumDocs bool
 		writeIndented(b, ref, body)
 	}
 	if len(f.Enum) > 0 {
-		if expandEnumDocs {
-			writeIndented(b, "values:", body)
+		switch {
+		case expandEnumDocs:
+			writeIndented(b, "values (use exactly as shown):", body)
 			for _, v := range f.Enum {
 				writeIndented(b, "- "+v.Name, body+1)
 				if v.Doc != "" {
 					writeIndented(b, v.Doc, body+2)
 				}
 			}
-		} else {
+		// Catalog-scale enums (the cloud-resource kind list is 400+) would
+		// bury every other field in a tree view; name the count and the
+		// drill-down instead.
+		case len(f.Enum) > 15:
+			writeIndented(b, fmt.Sprintf("values: <%d values -- drill into this field to list them>", len(f.Enum)), body)
+		default:
 			names := make([]string, 0, len(f.Enum))
 			for _, v := range f.Enum {
 				names = append(names, v.Name)
@@ -115,7 +130,10 @@ func renderFieldTree(b *strings.Builder, f Field, depth int, expandEnumDocs bool
 	}
 	if len(f.Fields) > 0 {
 		for _, child := range f.Fields {
-			renderFieldTree(b, child, body, expandEnumDocs)
+			// Per-value enum documentation expands only on the field the
+			// user asked about; a nested catalog-scale enum (400+ kinds,
+			// each with prose) would otherwise bury the answer.
+			renderFieldTree(b, child, body, false)
 		}
 	}
 	b.WriteString("\n")
