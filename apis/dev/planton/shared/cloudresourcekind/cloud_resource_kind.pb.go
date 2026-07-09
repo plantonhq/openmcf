@@ -200,62 +200,67 @@ const (
 	CloudResourceKind_AzureEventHubNamespace        CloudResourceKind = 471
 	CloudResourceKind_AzureFrontDoorProfile         CloudResourceKind = 480
 	// 600–799: GCP resources
-	CloudResourceKind_GcpArtifactRegistryRepo                CloudResourceKind = 600
-	CloudResourceKind_GcpTargetHttpsProxy                    CloudResourceKind = 601
-	CloudResourceKind_GcpCloudFunction                       CloudResourceKind = 602
-	CloudResourceKind_GcpCloudRun                            CloudResourceKind = 603
-	CloudResourceKind_GcpCloudSql                            CloudResourceKind = 604
-	CloudResourceKind_GcpDnsZone                             CloudResourceKind = 605
-	CloudResourceKind_GcpGcsBucket                           CloudResourceKind = 606
-	CloudResourceKind_GcpGkeCluster                          CloudResourceKind = 607
-	CloudResourceKind_GcpIamCustomRole                       CloudResourceKind = 608
-	CloudResourceKind_GcpProject                             CloudResourceKind = 609
-	CloudResourceKind_GcpVpcNetwork                          CloudResourceKind = 610
-	CloudResourceKind_GcpSubnetwork                          CloudResourceKind = 611
-	CloudResourceKind_GcpRouterNat                           CloudResourceKind = 612
-	CloudResourceKind_GcpGkeNodePool                         CloudResourceKind = 613
-	CloudResourceKind_GcpServiceAccount                      CloudResourceKind = 614
-	CloudResourceKind_GcpGkeWorkloadIdentityBinding          CloudResourceKind = 615
-	CloudResourceKind_GcpCertManagerCert                     CloudResourceKind = 616
-	CloudResourceKind_GcpComputeInstance                     CloudResourceKind = 617
-	CloudResourceKind_GcpDnsRecord                           CloudResourceKind = 618
-	CloudResourceKind_GcpProjectIamMember                    CloudResourceKind = 619
-	CloudResourceKind_GcpFirewallRule                        CloudResourceKind = 620
-	CloudResourceKind_GcpGlobalAddress                       CloudResourceKind = 621
-	CloudResourceKind_GcpCloudArmorPolicy                    CloudResourceKind = 622
-	CloudResourceKind_GcpHealthCheck                         CloudResourceKind = 623
-	CloudResourceKind_GcpBackendBucket                       CloudResourceKind = 624
-	CloudResourceKind_GcpBackendService                      CloudResourceKind = 625
-	CloudResourceKind_GcpRegionNetworkEndpointGroup          CloudResourceKind = 626
-	CloudResourceKind_GcpUrlMap                              CloudResourceKind = 627
-	CloudResourceKind_GcpManagedSslCertificate               CloudResourceKind = 628
-	CloudResourceKind_GcpTargetHttpProxy                     CloudResourceKind = 629
-	CloudResourceKind_GcpAlloydbCluster                      CloudResourceKind = 630
-	CloudResourceKind_GcpRedisInstance                       CloudResourceKind = 631
-	CloudResourceKind_GcpFirestoreDatabase                   CloudResourceKind = 632
-	CloudResourceKind_GcpSpannerInstance                     CloudResourceKind = 633
-	CloudResourceKind_GcpSpannerDatabase                     CloudResourceKind = 634
-	CloudResourceKind_GcpBigtableInstance                    CloudResourceKind = 635
-	CloudResourceKind_GcpMemorystoreInstance                 CloudResourceKind = 636
-	CloudResourceKind_GcpCloudSqlDatabase                    CloudResourceKind = 637
-	CloudResourceKind_GcpCloudSqlUser                        CloudResourceKind = 638
-	CloudResourceKind_GcpAlloydbInstance                     CloudResourceKind = 639
-	CloudResourceKind_GcpAlloydbUser                         CloudResourceKind = 640
-	CloudResourceKind_GcpSpannerBackupSchedule               CloudResourceKind = 641
-	CloudResourceKind_GcpBigtableTable                       CloudResourceKind = 642
-	CloudResourceKind_GcpFirestoreBackupSchedule             CloudResourceKind = 643
-	CloudResourceKind_GcpFirestoreIndex                      CloudResourceKind = 644
-	CloudResourceKind_GcpBigQueryDataset                     CloudResourceKind = 650
-	CloudResourceKind_GcpDataprocCluster                     CloudResourceKind = 651
-	CloudResourceKind_GcpDataprocAutoscalingPolicy           CloudResourceKind = 652
-	CloudResourceKind_GcpBigQueryTable                       CloudResourceKind = 653
-	CloudResourceKind_GcpPubSubTopic                         CloudResourceKind = 660
-	CloudResourceKind_GcpPubSubSubscription                  CloudResourceKind = 661
-	CloudResourceKind_GcpCloudTasksQueue                     CloudResourceKind = 662
-	CloudResourceKind_GcpCloudSchedulerJob                   CloudResourceKind = 663
-	CloudResourceKind_GcpPubSubSchema                        CloudResourceKind = 664
-	CloudResourceKind_GcpVertexAiNotebook                    CloudResourceKind = 670
-	CloudResourceKind_GcpVertexAiEndpoint                    CloudResourceKind = 671
+	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
+	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 601
+	CloudResourceKind_GcpCloudFunction              CloudResourceKind = 602
+	CloudResourceKind_GcpCloudRun                   CloudResourceKind = 603
+	CloudResourceKind_GcpCloudSql                   CloudResourceKind = 604
+	CloudResourceKind_GcpDnsZone                    CloudResourceKind = 605
+	CloudResourceKind_GcpGcsBucket                  CloudResourceKind = 606
+	CloudResourceKind_GcpGkeCluster                 CloudResourceKind = 607
+	CloudResourceKind_GcpIamCustomRole              CloudResourceKind = 608
+	CloudResourceKind_GcpProject                    CloudResourceKind = 609
+	CloudResourceKind_GcpVpcNetwork                 CloudResourceKind = 610
+	CloudResourceKind_GcpSubnetwork                 CloudResourceKind = 611
+	CloudResourceKind_GcpRouterNat                  CloudResourceKind = 612
+	CloudResourceKind_GcpGkeNodePool                CloudResourceKind = 613
+	CloudResourceKind_GcpServiceAccount             CloudResourceKind = 614
+	CloudResourceKind_GcpGkeWorkloadIdentityBinding CloudResourceKind = 615
+	CloudResourceKind_GcpCertManagerCert            CloudResourceKind = 616
+	CloudResourceKind_GcpComputeInstance            CloudResourceKind = 617
+	CloudResourceKind_GcpDnsRecord                  CloudResourceKind = 618
+	CloudResourceKind_GcpProjectIamMember           CloudResourceKind = 619
+	CloudResourceKind_GcpFirewallRule               CloudResourceKind = 620
+	CloudResourceKind_GcpGlobalAddress              CloudResourceKind = 621
+	CloudResourceKind_GcpCloudArmorPolicy           CloudResourceKind = 622
+	CloudResourceKind_GcpHealthCheck                CloudResourceKind = 623
+	CloudResourceKind_GcpBackendBucket              CloudResourceKind = 624
+	CloudResourceKind_GcpBackendService             CloudResourceKind = 625
+	CloudResourceKind_GcpRegionNetworkEndpointGroup CloudResourceKind = 626
+	CloudResourceKind_GcpUrlMap                     CloudResourceKind = 627
+	CloudResourceKind_GcpManagedSslCertificate      CloudResourceKind = 628
+	CloudResourceKind_GcpTargetHttpProxy            CloudResourceKind = 629
+	CloudResourceKind_GcpAlloydbCluster             CloudResourceKind = 630
+	CloudResourceKind_GcpRedisInstance              CloudResourceKind = 631
+	CloudResourceKind_GcpFirestoreDatabase          CloudResourceKind = 632
+	CloudResourceKind_GcpSpannerInstance            CloudResourceKind = 633
+	CloudResourceKind_GcpSpannerDatabase            CloudResourceKind = 634
+	CloudResourceKind_GcpBigtableInstance           CloudResourceKind = 635
+	CloudResourceKind_GcpMemorystoreInstance        CloudResourceKind = 636
+	CloudResourceKind_GcpCloudSqlDatabase           CloudResourceKind = 637
+	CloudResourceKind_GcpCloudSqlUser               CloudResourceKind = 638
+	CloudResourceKind_GcpAlloydbInstance            CloudResourceKind = 639
+	CloudResourceKind_GcpAlloydbUser                CloudResourceKind = 640
+	CloudResourceKind_GcpSpannerBackupSchedule      CloudResourceKind = 641
+	CloudResourceKind_GcpBigtableTable              CloudResourceKind = 642
+	CloudResourceKind_GcpFirestoreBackupSchedule    CloudResourceKind = 643
+	CloudResourceKind_GcpFirestoreIndex             CloudResourceKind = 644
+	CloudResourceKind_GcpBigQueryDataset            CloudResourceKind = 650
+	CloudResourceKind_GcpDataprocCluster            CloudResourceKind = 651
+	CloudResourceKind_GcpDataprocAutoscalingPolicy  CloudResourceKind = 652
+	CloudResourceKind_GcpBigQueryTable              CloudResourceKind = 653
+	CloudResourceKind_GcpPubSubTopic                CloudResourceKind = 660
+	CloudResourceKind_GcpPubSubSubscription         CloudResourceKind = 661
+	CloudResourceKind_GcpCloudTasksQueue            CloudResourceKind = 662
+	CloudResourceKind_GcpCloudSchedulerJob          CloudResourceKind = 663
+	CloudResourceKind_GcpPubSubSchema               CloudResourceKind = 664
+	CloudResourceKind_GcpVertexAiNotebook           CloudResourceKind = 670
+	CloudResourceKind_GcpVertexAiEndpoint           CloudResourceKind = 671
+	CloudResourceKind_GcpVertexAiIndex              CloudResourceKind = 672
+	// Vector Search IndexEndpoint — distinct from the online-prediction
+	// GcpVertexAiEndpoint (671); different GCP resources, different kinds.
+	CloudResourceKind_GcpVertexAiIndexEndpoint               CloudResourceKind = 673
+	CloudResourceKind_GcpVertexAiDeployedIndex               CloudResourceKind = 674
 	CloudResourceKind_GcpCloudComposerEnvironment            CloudResourceKind = 680
 	CloudResourceKind_GcpCloudComposerUserWorkloadsSecret    CloudResourceKind = 681
 	CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap CloudResourceKind = 682
@@ -722,6 +727,9 @@ var (
 		664:  "GcpPubSubSchema",
 		670:  "GcpVertexAiNotebook",
 		671:  "GcpVertexAiEndpoint",
+		672:  "GcpVertexAiIndex",
+		673:  "GcpVertexAiIndexEndpoint",
+		674:  "GcpVertexAiDeployedIndex",
 		680:  "GcpCloudComposerEnvironment",
 		681:  "GcpCloudComposerUserWorkloadsSecret",
 		682:  "GcpCloudComposerUserWorkloadsConfigMap",
@@ -1166,6 +1174,9 @@ var (
 		"GcpPubSubSchema":                         664,
 		"GcpVertexAiNotebook":                     670,
 		"GcpVertexAiEndpoint":                     671,
+		"GcpVertexAiIndex":                        672,
+		"GcpVertexAiIndexEndpoint":                673,
+		"GcpVertexAiDeployedIndex":                674,
 		"GcpCloudComposerEnvironment":             680,
 		"GcpCloudComposerUserWorkloadsSecret":     681,
 		"GcpCloudComposerUserWorkloadsConfigMap":  682,
@@ -1694,7 +1705,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xab\x9f\x01\n" +
+	"\x02v1\x10\x01*\u00a0\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1887,7 +1898,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14GcpCloudSchedulerJob\x10\x97\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\x06gcpcsj:\x04\x94\x05\xe6\x04\x12'\n" +
 	"\x0fGcpPubSubSchema\x10\x98\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcppsch\x122\n" +
 	"\x13GcpVertexAiNotebook\x10\x9e\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\x06gcpvnb:\x06\xe2\x04\xe3\x04\xe6\x04\x12*\n" +
-	"\x13GcpVertexAiEndpoint\x10\x9f\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpvep\x12:\n" +
+	"\x13GcpVertexAiEndpoint\x10\x9f\x05\x1a\x10\xa2\xf7\x04\f\b\x12\x10\x01\"\x06gcpvep\x12)\n" +
+	"\x10GcpVertexAiIndex\x10\xa0\x05\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\bgcpvaidx\x121\n" +
+	"\x18GcpVertexAiIndexEndpoint\x10\xa1\x05\x1a\x12\xa2\xf7\x04\x0e\b\x12\x10\x01\"\bgcpvaiep\x127\n" +
+	"\x18GcpVertexAiDeployedIndex\x10\xa2\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\bgcpvdidx:\x04\xa0\x05\xa1\x05\x12:\n" +
 	"\x1bGcpCloudComposerEnvironment\x10\xa8\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x10\x01\"\x06gcpcce:\x06\xe2\x04\xe3\x04\xe6\x04\x12?\n" +
 	"#GcpCloudComposerUserWorkloadsSecret\x10\xa9\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x10\x01\"\agcpcuws:\x02\xa8\x05\x12C\n" +
 	"&GcpCloudComposerUserWorkloadsConfigMap\x10\xaa\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x10\x01\"\bgcpcuwcm:\x02\xa8\x05\x12#\n" +

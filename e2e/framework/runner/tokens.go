@@ -17,6 +17,15 @@ import (
 // plain, reviewable YAML file while giving every run a fresh identifier.
 const RunIDToken = "${E2E_RUN_ID}"
 
+// UnderscoreRunIDToken is RunIDToken for identifier classes that forbid
+// hyphens (letters/numbers/underscores only — e.g. a Vertex AI
+// deployed_index_id or a BigQuery dataset id). The engine-scoped run id
+// carries a hyphenated engine suffix ("-p"/"-t"), so the plain token would
+// break such fields; this variant expands with every hyphen replaced by an
+// underscore. Use it whenever a run-scoped identifier lives in an
+// underscore-only field.
+const UnderscoreRunIDToken = "${E2E_RUN_ID_UNDERSCORE}"
+
 // ExpandManifestTokens substitutes RunIDToken occurrences in the manifest with
 // the run's unique id and returns the path to the expanded copy (a temp file,
 // so the source manifest is never modified). Manifests without the token pass
@@ -31,14 +40,18 @@ func ExpandManifestTokens(manifestPath, runID string) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to read manifest %s for token expansion", manifestPath)
 	}
-	if !strings.Contains(string(raw), RunIDToken) {
+	if !strings.Contains(string(raw), RunIDToken) && !strings.Contains(string(raw), UnderscoreRunIDToken) {
 		return manifestPath, nil
 	}
 	if runID == "" {
 		return "", errors.Errorf("manifest %s uses %s but no run id was provided", manifestPath, RunIDToken)
 	}
 
-	expanded := strings.ReplaceAll(string(raw), RunIDToken, runID)
+	// The underscore variant substitutes first: RunIDToken is not a textual
+	// prefix of it (the closing brace differs), but explicit ordering keeps
+	// the intent obvious.
+	expanded := strings.ReplaceAll(string(raw), UnderscoreRunIDToken, strings.ReplaceAll(runID, "-", "_"))
+	expanded = strings.ReplaceAll(expanded, RunIDToken, runID)
 
 	// A temp file (not next to the scenario) so scenario discovery never picks it up.
 	tmpFile, err := os.CreateTemp("", "planton-e2e-expanded-*.yaml")

@@ -1077,6 +1077,29 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpvep"
   }];
+  GcpVertexAiIndex = 672 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvaidx"
+  }];
+  // Vector Search IndexEndpoint — distinct from the online-prediction
+  // GcpVertexAiEndpoint (671); different GCP resources, different kinds.
+  GcpVertexAiIndexEndpoint = 673 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvaiep"
+  }];
+  GcpVertexAiDeployedIndex = 674 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpvdidx"
+    // The deployment joins an index onto an index endpoint — both must
+    // exist before anything can be deployed.
+    prerequisites: [
+      GcpVertexAiIndex,
+      GcpVertexAiIndexEndpoint
+    ]
+  }];
   GcpCloudComposerEnvironment = 680 [(kind_meta) = {
     provider: gcp
     version: v1

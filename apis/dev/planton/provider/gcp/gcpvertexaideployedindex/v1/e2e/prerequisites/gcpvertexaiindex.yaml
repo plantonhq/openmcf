@@ -1,0 +1,28 @@
+# Prerequisite index for the deployed-index chain. Fixed metadata.name for
+# FK resolution; the index has no user-chosen cloud-side identifier (GCP
+# assigns the numeric ID), so fixed names are safe across engines and runs.
+# STREAM_UPDATE with no initial data — the fastest index shape that can be
+# deployed; SHARD_SIZE_SMALL keeps the serving machine constraint loose.
+apiVersion: gcp.planton.dev/v1
+kind: GcpVertexAiIndex
+metadata:
+  name: planton-oss-e2e-gcpvaidx-prereq
+  id: planton-oss-e2e-gcpvaidx-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvertexaiindex
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: planton-oss-e2e-vaidx-prereq-${E2E_RUN_ID}
+  location: us-central1
+  indexUpdateMethod: STREAM_UPDATE
+  config:
+    dimensions: 2
+    approximateNeighborsCount: 10
+    shardSize: SHARD_SIZE_SMALL
+    treeAhConfig: {}

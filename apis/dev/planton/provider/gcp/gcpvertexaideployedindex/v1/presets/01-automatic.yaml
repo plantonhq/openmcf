@@ -1,0 +1,21 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpVertexAiDeployedIndex
+metadata:
+  name: products-v1
+spec:
+  location: us-central1
+  deployedIndexId: products_v1
+  index:
+    valueFrom:
+      kind: GcpVertexAiIndex
+      name: product-embeddings
+      fieldPath: status.outputs.index_id
+  indexEndpoint:
+    valueFrom:
+      kind: GcpVertexAiIndexEndpoint
+      name: vector-serving
+      fieldPath: status.outputs.index_endpoint_id
+  displayName: Products v1
+  automaticResources:
+    minReplicaCount: 2
+    maxReplicaCount: 5

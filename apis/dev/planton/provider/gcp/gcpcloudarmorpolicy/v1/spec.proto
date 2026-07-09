@@ -76,14 +76,10 @@ message GcpCloudArmorRecaptchaOptions {
   };
 
   // Site keys used to validate reCAPTCHA action-tokens.
-  repeated string action_token_site_keys = 1 [
-    (dev.planton.shared.options.sensitive_exempt_reason) = "reCAPTCHA site keys are public client identifiers, not secret material"
-  ];
+  repeated string action_token_site_keys = 1 [(dev.planton.shared.options.sensitive_exempt_reason) = "reCAPTCHA site keys are public client identifiers, not secret material"];
 
   // Site keys used to validate reCAPTCHA session-tokens.
-  repeated string session_token_site_keys = 2 [
-    (dev.planton.shared.options.sensitive_exempt_reason) = "reCAPTCHA site keys are public client identifiers, not secret material"
-  ];
+  repeated string session_token_site_keys = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "reCAPTCHA site keys are public client identifiers, not secret material"];
 }
 
 // GcpCloudArmorRuleMatch defines the traffic-matching condition for a rule.

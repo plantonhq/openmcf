@@ -14,7 +14,6 @@ go_library(
         "//apis/dev/planton/provider/gcp",
         "//apis/dev/planton/shared",
         "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
-        "//apis/dev/planton/shared/options",
         "@build_buf_gen_go_bufbuild_protovalidate_protocolbuffers_go//buf/validate",
         "@org_golang_google_protobuf//reflect/protoreflect",
         "@org_golang_google_protobuf//runtime/protoimpl",
@@ -29,7 +28,7 @@ go_test(
         "//apis/dev/planton/shared",
         "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
         "@build_buf_go_protovalidate//:protovalidate",
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//require",
+        "@com_github_onsi_ginkgo_v2//:ginkgo",
+        "@com_github_onsi_gomega//:gomega",
     ],
 )

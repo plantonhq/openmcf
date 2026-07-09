@@ -369,6 +369,15 @@ it, and only the cloud-side identifier needs uniqueness. Note the raw manifest
 will not pass `planton validate` until the token is substituted; validate it
 with a sample value substituted.
 
+When the identifier's character class forbids hyphens (letters/numbers/
+underscores only, e.g. a Vertex AI `deployed_index_id`), use the
+`${E2E_RUN_ID_UNDERSCORE}` variant — the plain token carries the runner's
+hyphenated engine suffix and would break the field. The hold class extends
+beyond names: a failed/undeploying Vertex AI DeployedIndex holds its
+user-chosen sub-resource ID with a 400 that SURVIVES deleting the parent
+endpoint, so a fixed ID fails across engines and back-to-back runs even
+with fresh prerequisites (see `e2e/README.md`).
+
 **Regional outputs: emit the spec region, not the provider attribute.** On
 released google/google-beta 6.x lines the `.region` attribute on regional
 resources (NEGs, subnetworks, regional health checks) may be a region self-link

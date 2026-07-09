@@ -1,0 +1,27 @@
+# Public Vector Search index endpoint: the smallest live-provable shape.
+# Proves ambient project, aiplatform API enablement, platform label
+# attribution, the GCP-assigned numeric ID contract (the verifier asserts
+# the index_endpoint_name output matches the live resource), and the
+# public_endpoint_domain_name output. The endpoint has no user-chosen
+# cloud-side identifier (GCP assigns the numeric ID), so fixed names are
+# safe across engines and runs.
+apiVersion: gcp.planton.dev/v1
+kind: GcpVertexAiIndexEndpoint
+metadata:
+  name: planton-oss-e2e-gcpvaiep-public
+  id: planton-oss-e2e-gcpvaiep-public
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvertexaiindexendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: planton-oss-e2e-vaiep-public-${E2E_RUN_ID}
+  location: us-central1
+  publicEndpointEnabled: true
+  labels:
+    e2e: public

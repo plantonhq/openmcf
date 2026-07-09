@@ -162,6 +162,28 @@ itself (the fallback then makes it the cloud-side name, proving the contract
 without a fixed identifier); everything else carries the token in the spec's
 explicit name field.
 
+**Identifier classes that forbid hyphens take the `${E2E_RUN_ID_UNDERSCORE}`
+token.** The engine-scoped run id carries a hyphenated engine suffix
+(`-p`/`-t`), so the plain token cannot be embedded in fields whose character
+class is letters/numbers/underscores only (first hit: a Vertex AI
+`deployed_index_id`, which must start with a letter and forbids hyphens).
+The runner expands `${E2E_RUN_ID_UNDERSCORE}` with every hyphen replaced by
+an underscore ([tokens.go](framework/runner/tokens.go)); use it whenever a
+run-scoped identifier lives in an underscore-only field. Do NOT fall back to
+a fixed identifier to dodge the character class — see the next paragraph for
+why that 400s.
+
+**Some holds are keyed by a user-chosen SUB-resource ID and survive deleting
+the parent.** A Vertex AI DeployedIndex that is in a failed state or still
+undeploying holds its user-chosen `deployed_index_id` with a 400 ("It will
+be deleted automatically, please retry again later or use a different ID")
+— and the hold survives DELETING THE PARENT index endpoint, so neither the
+dual-engine back-to-back recreate nor a fresh prerequisite chain escapes a
+fixed ID. This is a distinct class from the fixed-NAME 409s above: the held
+identifier is a spec field, not a resource name, so the run-scoped token
+must go into the spec field itself (`deployedIndexId:
+planton_oss_e2e_${E2E_RUN_ID_UNDERSCORE}` — the live-proven shape).
+
 **Retries cannot cover releases the cloud documents in HOURS.** The retry
 budget is bounded (~6 minutes) on purpose: some cloud-side holds outlive any
 reasonable wait — a direct-VPC Cloud Run service leaves a serverless address

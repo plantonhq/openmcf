@@ -607,6 +607,33 @@ func TestGcpVertexAiEndpoint_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpvertexaiendpoint", "terraform")
 }
 
+// --- GCP Vertex AI Index (Vector Search; empty STREAM_UPDATE index, ~10-60m per create) ---
+
+func TestGcpVertexAiIndex_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexaiindex", "pulumi")
+}
+func TestGcpVertexAiIndex_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexaiindex", "terraform")
+}
+
+// --- GCP Vertex AI Index Endpoint (Vector Search serving surface; public arm, fast) ---
+
+func TestGcpVertexAiIndexEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexaiindexendpoint", "pulumi")
+}
+func TestGcpVertexAiIndexEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexaiindexendpoint", "terraform")
+}
+
+// --- GCP Vertex AI Deployed Index (composed: index + index endpoint chain; deploy up to 45m) ---
+
+func TestGcpVertexAiDeployedIndex_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexaideployedindex", "pulumi")
+}
+func TestGcpVertexAiDeployedIndex_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpvertexaideployedindex", "terraform")
+}
+
 // --- GCP Vertex AI Notebook (composed: VPC -> subnetwork chain; ~5-15m per create) ---
 
 func TestGcpVertexAiNotebook_Pulumi(t *testing.T) {

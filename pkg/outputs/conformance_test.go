@@ -682,6 +682,63 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpVertexAiIndex: the fully qualified index path (the deployed
+			// index's composition key), the GCP-assigned numeric ID, the
+			// metadata schema URI, and both lifecycle timestamps.
+			name: "GcpVertexAiIndex",
+			kind: cloudresourcekind.CloudResourceKind_GcpVertexAiIndex,
+			rawOutputs: map[string]interface{}{
+				"index_id":            "projects/prod-project/locations/us-central1/indexes/5022997925215600640",
+				"index_name":          "5022997925215600640",
+				"metadata_schema_uri": "gs://google-cloud-aiplatform/schema/matchingengine/metadata/nearest_neighbor_search_1.0.0.yaml",
+				"create_time":         "2026-07-05T10:00:00Z",
+				"update_time":         "2026-07-05T11:00:00Z",
+			},
+			mustPopulate: []string{
+				"index_id", "index_name", "metadata_schema_uri",
+				"create_time", "update_time",
+			},
+		},
+		{
+			// GcpVertexAiIndexEndpoint: the fully qualified endpoint path (the
+			// deployed index's other composition key), the GCP-assigned numeric
+			// ID, the public query domain, and both lifecycle timestamps.
+			name: "GcpVertexAiIndexEndpoint",
+			kind: cloudresourcekind.CloudResourceKind_GcpVertexAiIndexEndpoint,
+			rawOutputs: map[string]interface{}{
+				"index_endpoint_id":           "projects/prod-project/locations/us-central1/indexEndpoints/7997049335000858624",
+				"index_endpoint_name":         "7997049335000858624",
+				"public_endpoint_domain_name": "1252330891.us-central1-123456789012.vdb.vertexai.goog",
+				"create_time":                 "2026-07-05T10:00:00Z",
+				"update_time":                 "2026-07-05T10:00:01Z",
+			},
+			mustPopulate: []string{
+				"index_endpoint_id", "index_endpoint_name",
+				"public_endpoint_domain_name", "create_time", "update_time",
+			},
+		},
+		{
+			// GcpVertexAiDeployedIndex: the deployment handle pair (parent
+			// endpoint path + deployed_index_id), the provider-reported name,
+			// the sync/create timestamps, and the private-endpoint addresses
+			// both engines export as empty strings on public endpoints.
+			name: "GcpVertexAiDeployedIndex",
+			kind: cloudresourcekind.CloudResourceKind_GcpVertexAiDeployedIndex,
+			rawOutputs: map[string]interface{}{
+				"name":               "products_v1",
+				"deployed_index_id":  "products_v1",
+				"create_time":        "2026-07-05T10:00:00Z",
+				"index_sync_time":    "2026-07-05T10:30:00Z",
+				"match_grpc_address": "10.128.0.5",
+				"service_attachment": "projects/p1/regions/us-central1/serviceAttachments/sa1",
+				"index_endpoint":     "projects/prod-project/locations/us-central1/indexEndpoints/7997049335000858624",
+			},
+			mustPopulate: []string{
+				"name", "deployed_index_id", "create_time", "index_sync_time",
+				"match_grpc_address", "service_attachment", "index_endpoint",
+			},
+		},
+		{
 			// GcpVertexAiNotebook: the fully qualified instance path, the short
 			// name, the JupyterLab proxy URI, lifecycle state, creator, and the
 			// health/update timestamps the deep rebuild added.

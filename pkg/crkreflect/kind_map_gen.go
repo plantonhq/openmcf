@@ -280,7 +280,10 @@ import (
 	gcptargethttpproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpproxy/v1"
 	gcptargethttpsproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1"
 	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
+	gcpvertexaideployedindexv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaideployedindex/v1"
 	gcpvertexaiendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiendpoint/v1"
+	gcpvertexaiindexv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiindex/v1"
+	gcpvertexaiindexendpointv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexaiindexendpoint/v1"
 	gcpvertexainotebookv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvertexainotebook/v1"
 	gcpvpcnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpvpcnetwork/v1"
 	gcpworkloadidentitypoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpworkloadidentitypool/v1"
@@ -766,7 +769,10 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpTargetHttpProxy:                     &gcptargethttpproxyv1.GcpTargetHttpProxy{},
 	cloudresourcekind.CloudResourceKind_GcpTargetHttpsProxy:                    &gcptargethttpsproxyv1.GcpTargetHttpsProxy{},
 	cloudresourcekind.CloudResourceKind_GcpUrlMap:                              &gcpurlmapv1.GcpUrlMap{},
+	cloudresourcekind.CloudResourceKind_GcpVertexAiDeployedIndex:               &gcpvertexaideployedindexv1.GcpVertexAiDeployedIndex{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiEndpoint:                    &gcpvertexaiendpointv1.GcpVertexAiEndpoint{},
+	cloudresourcekind.CloudResourceKind_GcpVertexAiIndex:                       &gcpvertexaiindexv1.GcpVertexAiIndex{},
+	cloudresourcekind.CloudResourceKind_GcpVertexAiIndexEndpoint:               &gcpvertexaiindexendpointv1.GcpVertexAiIndexEndpoint{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook:                    &gcpvertexainotebookv1.GcpVertexAiNotebook{},
 	cloudresourcekind.CloudResourceKind_GcpVpcNetwork:                          &gcpvpcnetworkv1.GcpVpcNetwork{},
 	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPool:                &gcpworkloadidentitypoolv1.GcpWorkloadIdentityPool{},

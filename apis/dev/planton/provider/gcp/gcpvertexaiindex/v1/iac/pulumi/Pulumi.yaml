@@ -1,0 +1,4 @@
+name: gcpvertexaiindex-pulumi-project
+runtime:
+  name: go
+description: Planton GcpVertexAiIndex Pulumi module
