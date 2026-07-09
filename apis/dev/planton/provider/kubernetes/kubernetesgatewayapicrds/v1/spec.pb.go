@@ -8,7 +8,6 @@ package kubernetesgatewayapicrdsv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -85,8 +84,6 @@ func (KubernetesGatewayApiCrdsSpec_InstallChannel_GatewayApiInstallChannel) Enum
 // GRPCRoute, and other Gateway API resources to be used in the cluster.
 type KubernetesGatewayApiCrdsSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster where the Gateway API CRDs will be installed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Gateway API version to install (e.g., "v1.2.1", "v1.3.0").
 	// Defaults to v1.2.1 if not specified.
 	// Must start with 'v' followed by a valid semver version.
@@ -126,13 +123,6 @@ func (x *KubernetesGatewayApiCrdsSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesGatewayApiCrdsSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiCrdsSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesGatewayApiCrdsSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesGatewayApiCrdsSpec) GetVersion() string {
@@ -200,9 +190,8 @@ var File_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a(dev/planton/shared/options/options.proto\"\xa3\x05\n" +
-	"\x1cKubernetesGatewayApiCrdsSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12[\n" +
+	"Fdev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xd6\x04\n" +
+	"\x1cKubernetesGatewayApiCrdsSpec\x12[\n" +
 	"\aversion\x18\x02 \x01(\tB<\xbaH/r-\x10\x012)^v[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9]+)?$\x8a\xa6\x1d\x06v1.2.1H\x00R\aversion\x88\x01\x01\x12\x91\x01\n" +
 	"\x0finstall_channel\x18\x03 \x01(\v2h.dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannelR\x0einstallChannel\x1a\xa2\x02\n" +
 	"\x0eInstallChannel\x12\xa6\x01\n" +
@@ -212,7 +201,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_prot
 	"\bstandard\x10\x01\x12\x10\n" +
 	"\fexperimental\x10\x02B\n" +
 	"\n" +
-	"\b_versionB\xd9\x03\n" +
+	"\b_versionJ\x04\b\x01\x10\x02R\x0etarget_clusterB\xd9\x03\n" +
 	"?com.dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1B\tSpecProtoP\x01Zxgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1;kubernetesgatewayapicrdsv1\xa2\x02\x05DPPKK\xaa\x02;Dev.Planton.Provider.Kubernetes.Kubernetesgatewayapicrds.V1\xca\x02;Dev\\Planton\\Provider\\Kubernetes\\Kubernetesgatewayapicrds\\V1\xe2\x02GDev\\Planton\\Provider\\Kubernetes\\Kubernetesgatewayapicrds\\V1\\GPBMetadata\xea\x02@Dev::Planton::Provider::Kubernetes::Kubernetesgatewayapicrds::V1b\x06proto3"
 
 var (
@@ -233,17 +222,15 @@ var file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_proto_
 	(KubernetesGatewayApiCrdsSpec_InstallChannel_GatewayApiInstallChannel)(0), // 0: dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel.GatewayApiInstallChannel
 	(*KubernetesGatewayApiCrdsSpec)(nil),                                      // 1: dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec
 	(*KubernetesGatewayApiCrdsSpec_InstallChannel)(nil),                       // 2: dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel
-	(*kubernetes.KubernetesClusterSelector)(nil),                              // 3: dev.planton.provider.kubernetes.KubernetesClusterSelector
 }
 var file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	2, // 1: dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.install_channel:type_name -> dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel
-	0, // 2: dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel.channel:type_name -> dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel.GatewayApiInstallChannel
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.install_channel:type_name -> dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel
+	0, // 1: dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel.channel:type_name -> dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel.GatewayApiInstallChannel
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_proto_init() }

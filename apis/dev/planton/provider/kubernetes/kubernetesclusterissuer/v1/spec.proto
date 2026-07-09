@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesclusterissuer.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
@@ -15,8 +14,8 @@ import "dev/planton/shared/options/options.proto";
 // (e.g., "example.com"), matching the convention used by all Planton ingress
 // components to derive issuer names from hostnames.
 message KubernetesClusterIssuerSpec {
-  // Target Kubernetes Cluster where cert-manager is installed.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+  reserved 1;
+  reserved "target_cluster";
 
   // Namespace where cert-manager is installed.
   // Required for creating credential Secrets (Cloudflare API tokens) and

@@ -35,8 +35,6 @@ const (
 // Use cases include databases, distributed systems, and any application requiring persistent identity.
 type KubernetesStatefulSetSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Flag to indicate if the namespace should be created
@@ -102,13 +100,6 @@ func (x *KubernetesStatefulSetSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesStatefulSetSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesStatefulSetSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesStatefulSetSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesStatefulSetSpec) GetNamespace() *v1.StringValueOrRef {
@@ -745,9 +736,8 @@ var File_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetesstatefulset/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesstatefulset.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a+dev/planton/provider/kubernetes/probe.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc1\t\n" +
-	"\x19KubernetesStatefulSetSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Cdev/planton/provider/kubernetes/kubernetesstatefulset/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesstatefulset.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a+dev/planton/provider/kubernetes/probe.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf4\b\n" +
+	"\x19KubernetesStatefulSetSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12~\n" +
 	"\tcontainer\x18\x04 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12p\n" +
@@ -760,7 +750,7 @@ const file_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_spec_proto_r
 	"configMaps\x1a=\n" +
 	"\x0fConfigMapsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd3\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\x01\x10\x02R\x0etarget_cluster\"\xd3\x01\n" +
 	"\x1cKubernetesStatefulSetIngress\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
 	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
@@ -832,40 +822,38 @@ var file_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_spec_proto_goT
 	(*KubernetesStatefulSetAvailability)(nil),        // 5: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetAvailability
 	(*KubernetesStatefulSetPodDisruptionBudget)(nil), // 6: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetPodDisruptionBudget
 	(*KubernetesStatefulSetVolumeClaimTemplate)(nil), // 7: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetVolumeClaimTemplate
-	nil, // 8: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.ConfigMapsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil), // 9: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.Container)(nil),                 // 11: dev.planton.provider.kubernetes.Container
-	(*kubernetes.ContainerImage)(nil),            // 12: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.ContainerResources)(nil),        // 13: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),              // 14: dev.planton.provider.kubernetes.ContainerEnv
-	(*kubernetes.VolumeMount)(nil),               // 15: dev.planton.provider.kubernetes.VolumeMount
-	(*kubernetes.Probe)(nil),                     // 16: dev.planton.provider.kubernetes.Probe
+	nil,                                   // 8: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.ConfigMapsEntry
+	(*v1.StringValueOrRef)(nil),           // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.Container)(nil),          // 10: dev.planton.provider.kubernetes.Container
+	(*kubernetes.ContainerImage)(nil),     // 11: dev.planton.provider.kubernetes.ContainerImage
+	(*kubernetes.ContainerResources)(nil), // 12: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.ContainerEnv)(nil),       // 13: dev.planton.provider.kubernetes.ContainerEnv
+	(*kubernetes.VolumeMount)(nil),        // 14: dev.planton.provider.kubernetes.VolumeMount
+	(*kubernetes.Probe)(nil),              // 15: dev.planton.provider.kubernetes.Probe
 }
 var file_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_spec_proto_depIdxs = []int32{
-	9,  // 0: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	10, // 1: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 2: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainer
-	1,  // 3: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetIngress
-	5,  // 4: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.availability:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetAvailability
-	7,  // 5: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.volume_claim_templates:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetVolumeClaimTemplate
-	8,  // 6: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.ConfigMapsEntry
-	3,  // 7: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainer.app:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp
-	11, // 8: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainer.sidecars:type_name -> dev.planton.provider.kubernetes.Container
-	12, // 9: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	13, // 10: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	14, // 11: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	4,  // 12: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.ports:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerAppPort
-	15, // 13: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
-	16, // 14: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.liveness_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	16, // 15: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.readiness_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	16, // 16: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.startup_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	6,  // 17: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetAvailability.pod_disruption_budget:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetPodDisruptionBudget
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	9,  // 0: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 1: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainer
+	1,  // 2: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetIngress
+	5,  // 3: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.availability:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetAvailability
+	7,  // 4: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.volume_claim_templates:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetVolumeClaimTemplate
+	8,  // 5: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.ConfigMapsEntry
+	3,  // 6: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainer.app:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp
+	10, // 7: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainer.sidecars:type_name -> dev.planton.provider.kubernetes.Container
+	11, // 8: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	12, // 9: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	13, // 10: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
+	4,  // 11: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.ports:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerAppPort
+	14, // 12: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
+	15, // 13: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.liveness_probe:type_name -> dev.planton.provider.kubernetes.Probe
+	15, // 14: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.readiness_probe:type_name -> dev.planton.provider.kubernetes.Probe
+	15, // 15: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerApp.startup_probe:type_name -> dev.planton.provider.kubernetes.Probe
+	6,  // 16: dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetAvailability.pod_disruption_budget:type_name -> dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetPodDisruptionBudget
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_spec_proto_init() }

@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/options/options.proto";
 
 // KubernetesGatewayApiCrdsSpec defines configuration for installing the
@@ -13,8 +12,8 @@ import "dev/planton/shared/options/options.proto";
 // and service mesh traffic. Installing these CRDs enables Gateway, HTTPRoute,
 // GRPCRoute, and other Gateway API resources to be used in the cluster.
 message KubernetesGatewayApiCrdsSpec {
-  // Target Kubernetes Cluster where the Gateway API CRDs will be installed.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+  reserved 1;
+  reserved "target_cluster";
 
   // Gateway API version to install (e.g., "v1.2.1", "v1.3.0").
   // Defaults to v1.2.1 if not specified.

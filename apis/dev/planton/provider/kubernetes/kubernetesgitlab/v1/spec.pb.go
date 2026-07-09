@@ -29,8 +29,6 @@ const (
 // It includes container specifications and ingress settings to control resource allocation and external access.
 type KubernetesGitlabSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -71,13 +69,6 @@ func (x *KubernetesGitlabSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesGitlabSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesGitlabSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesGitlabSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesGitlabSpec) GetNamespace() *v1.StringValueOrRef {
@@ -216,13 +207,12 @@ var File_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetesgitlab/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesgitlab.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf2\x03\n" +
-	"\x14KubernetesGitlabSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	">dev/planton/provider/kubernetes/kubernetesgitlab/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesgitlab.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa5\x03\n" +
+	"\x14KubernetesGitlabSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12x\n" +
 	"\tcontainer\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12f\n" +
-	"\aingress\x18\x05 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabIngressR\aingress\"\xce\x01\n" +
+	"\aingress\x18\x05 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabIngressR\aingressJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xce\x01\n" +
 	"\x17KubernetesGitlabIngress\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
 	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
@@ -248,24 +238,22 @@ func file_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto_rawDesc
 
 var file_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto_goTypes = []any{
-	(*KubernetesGitlabSpec)(nil),                 // 0: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec
-	(*KubernetesGitlabIngress)(nil),              // 1: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabIngress
-	(*KubernetesGitlabSpecContainer)(nil),        // 2: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpecContainer
-	(*kubernetes.KubernetesClusterSelector)(nil), // 3: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 5: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesGitlabSpec)(nil),          // 0: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec
+	(*KubernetesGitlabIngress)(nil),       // 1: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabIngress
+	(*KubernetesGitlabSpecContainer)(nil), // 2: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpecContainer
+	(*v1.StringValueOrRef)(nil),           // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 4: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	4, // 1: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 2: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpecContainer
-	1, // 3: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabIngress
-	5, // 4: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3, // 0: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpecContainer
+	1, // 2: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabIngress
+	4, // 3: dev.planton.provider.kubernetes.kubernetesgitlab.v1.KubernetesGitlabSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgitlab_v1_spec_proto_init() }

@@ -8,7 +8,6 @@ package kubernetesingressnginxv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -27,8 +26,6 @@ const (
 // KubernetesIngressNginxSpec defines configuration for ingress‑nginx on any cluster.
 type KubernetesIngressNginxSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -78,13 +75,6 @@ func (x *KubernetesIngressNginxSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesIngressNginxSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesIngressNginxSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesIngressNginxSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesIngressNginxSpec) GetNamespace() *v1.StringValueOrRef {
@@ -360,9 +350,8 @@ var File_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto pr
 
 const file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kubernetesingressnginx/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesingressnginx.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xba\x05\n" +
-	"\x1aKubernetesIngressNginxSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Ddev/planton/provider/kubernetes/kubernetesingressnginx/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesingressnginx.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xed\x04\n" +
+	"\x1aKubernetesIngressNginxSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12#\n" +
 	"\rchart_version\x18\x04 \x01(\tR\fchartVersion\x12\x1a\n" +
@@ -370,7 +359,7 @@ const file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_
 	"\x03gke\x18d \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxGkeConfigH\x00R\x03gke\x12n\n" +
 	"\x03eks\x18e \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfigH\x00R\x03eks\x12n\n" +
 	"\x03aks\x18f \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxAksConfigH\x00R\x03aksB\x11\n" +
-	"\x0fprovider_config\"y\n" +
+	"\x0fprovider_configJ\x04\b\x01\x10\x02R\x0etarget_cluster\"y\n" +
 	"\x1fKubernetesIngressNginxGkeConfig\x12$\n" +
 	"\x0estatic_ip_name\x18\x01 \x01(\tR\fstaticIpName\x120\n" +
 	"\x14subnetwork_self_link\x18\x02 \x01(\tR\x12subnetworkSelfLink\"\xef\x02\n" +
@@ -398,26 +387,24 @@ func file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_r
 
 var file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_goTypes = []any{
-	(*KubernetesIngressNginxSpec)(nil),           // 0: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec
-	(*KubernetesIngressNginxGkeConfig)(nil),      // 1: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxGkeConfig
-	(*KubernetesIngressNginxEksConfig)(nil),      // 2: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfig
-	(*KubernetesIngressNginxAksConfig)(nil),      // 3: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxAksConfig
-	(*kubernetes.KubernetesClusterSelector)(nil), // 4: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesIngressNginxSpec)(nil),      // 0: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec
+	(*KubernetesIngressNginxGkeConfig)(nil), // 1: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxGkeConfig
+	(*KubernetesIngressNginxEksConfig)(nil), // 2: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfig
+	(*KubernetesIngressNginxAksConfig)(nil), // 3: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxAksConfig
+	(*v1.StringValueOrRef)(nil),             // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	5, // 1: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.gke:type_name -> dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxGkeConfig
-	2, // 3: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.eks:type_name -> dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfig
-	3, // 4: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.aks:type_name -> dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxAksConfig
-	5, // 5: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfig.additional_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // 6: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfig.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4, // 0: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.gke:type_name -> dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxGkeConfig
+	2, // 2: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.eks:type_name -> dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfig
+	3, // 3: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxSpec.aks:type_name -> dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxAksConfig
+	4, // 4: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfig.additional_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 5: dev.planton.provider.kubernetes.kubernetesingressnginx.v1.KubernetesIngressNginxEksConfig.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_init() }

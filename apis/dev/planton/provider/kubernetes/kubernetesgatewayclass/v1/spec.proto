@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetesgatewayclass.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/gateway_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 
 // KubernetesGatewayClassSpec defines a Kubernetes Gateway API GatewayClass:
 // a cluster-scoped template that identifies the controller responsible for
@@ -19,10 +18,8 @@ import "dev/planton/provider/kubernetes/target_cluster.proto";
 // upstream), so this spec carries target_cluster but intentionally has NO
 // namespace field.
 message KubernetesGatewayClassSpec {
-  // Target Kubernetes cluster where this GatewayClass is created. The Gateway
-  // API CRDs (KubernetesGatewayApiCrds) must already be installed on the
-  // cluster.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+  reserved 1;
+  reserved "target_cluster";
 
   // Name of the controller that manages Gateways of this class, expressed as a
   // domain-prefixed path (for example, "istio.io/gateway-controller" or

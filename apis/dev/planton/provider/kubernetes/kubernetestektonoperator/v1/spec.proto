@@ -5,7 +5,6 @@ package dev.planton.provider.kubernetes.kubernetestektonoperator.v1;
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
 import "dev/planton/provider/kubernetes/options.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/options/options.proto";
 
 // KubernetesTektonOperatorSpec defines the configuration for deploying the Tekton Operator on a Kubernetes cluster.
@@ -20,8 +19,8 @@ import "dev/planton/shared/options/options.proto";
 // These namespaces are automatically created and managed by the Tekton Operator and cannot be customized.
 // See: https://tekton.dev/docs/operator/tektonconfig/
 message KubernetesTektonOperatorSpec {
-  // Target Kubernetes Cluster where the Tekton Operator will be deployed.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+  reserved 1;
+  reserved "target_cluster";
 
   // The container specifications for the Tekton Operator deployment.
   KubernetesTektonOperatorSpecContainer container = 2 [(buf.validate.field).required = true];

@@ -33,8 +33,6 @@ const (
 // official OpenBao Helm chart from openbao.github.io/openbao-helm.
 type KubernetesOpenBaoSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Flag to indicate if the namespace should be created.
@@ -95,13 +93,6 @@ func (x *KubernetesOpenBaoSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesOpenBaoSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesOpenBaoSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesOpenBaoSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesOpenBaoSpec) GetNamespace() *v1.StringValueOrRef {
@@ -877,9 +868,8 @@ var File_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesopenbao/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xca\b\n" +
-	"\x15KubernetesOpenBaoSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"?dev/planton/provider/kubernetes/kubernetesopenbao/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xfd\a\n" +
+	"\x15KubernetesOpenBaoSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12=\n" +
 	"\x12helm_chart_version\x18\x04 \x01(\tB\n" +
@@ -899,7 +889,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\vauto_unseal\x18\v \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnsealR\n" +
 	"autoUnsealB\x15\n" +
 	"\x13_helm_chart_versionB\r\n" +
-	"\v_ui_enabled\"\x82\x02\n" +
+	"\v_ui_enabledJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x82\x02\n" +
 	" KubernetesOpenBaoServerContainer\x12%\n" +
 	"\breplicas\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\n" +
 	"(\x01R\breplicas\x12Q\n" +
@@ -965,45 +955,43 @@ func file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDes
 
 var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_goTypes = []any{
-	(*KubernetesOpenBaoSpec)(nil),                // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec
-	(*KubernetesOpenBaoServerContainer)(nil),     // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
-	(*KubernetesOpenBaoHighAvailability)(nil),    // 2: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHighAvailability
-	(*KubernetesOpenBaoIngress)(nil),             // 3: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoIngress
-	(*KubernetesOpenBaoInjector)(nil),            // 4: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector
-	(*KubernetesOpenBaoAutoUnseal)(nil),          // 5: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal
-	(*KubernetesOpenBaoGcpKmsSeal)(nil),          // 6: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal
-	(*KubernetesOpenBaoAwsKmsSeal)(nil),          // 7: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSeal
-	(*KubernetesOpenBaoAzureKeyVaultSeal)(nil),   // 8: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSeal
-	(*KubernetesOpenBaoTransitSeal)(nil),         // 9: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSeal
-	(*kubernetes.KubernetesClusterSelector)(nil), // 10: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 12: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),            // 13: google.protobuf.FieldOptions
+	(*KubernetesOpenBaoSpec)(nil),              // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec
+	(*KubernetesOpenBaoServerContainer)(nil),   // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
+	(*KubernetesOpenBaoHighAvailability)(nil),  // 2: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHighAvailability
+	(*KubernetesOpenBaoIngress)(nil),           // 3: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoIngress
+	(*KubernetesOpenBaoInjector)(nil),          // 4: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector
+	(*KubernetesOpenBaoAutoUnseal)(nil),        // 5: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal
+	(*KubernetesOpenBaoGcpKmsSeal)(nil),        // 6: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal
+	(*KubernetesOpenBaoAwsKmsSeal)(nil),        // 7: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSeal
+	(*KubernetesOpenBaoAzureKeyVaultSeal)(nil), // 8: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSeal
+	(*KubernetesOpenBaoTransitSeal)(nil),       // 9: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSeal
+	(*v1.StringValueOrRef)(nil),                // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),      // 11: dev.planton.provider.kubernetes.ContainerResources
+	(*descriptorpb.FieldOptions)(nil),          // 12: google.protobuf.FieldOptions
 }
 var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_depIdxs = []int32{
-	10, // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	11, // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 2: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.server_container:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
-	2,  // 3: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.high_availability:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHighAvailability
-	3,  // 4: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoIngress
-	4,  // 5: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.injector:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector
-	5,  // 6: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.auto_unseal:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal
-	12, // 7: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	6,  // 8: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.gcp_kms:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal
-	7,  // 9: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.aws_kms:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSeal
-	8,  // 10: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.azure_key_vault:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSeal
-	9,  // 11: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.transit:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSeal
-	11, // 12: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.project:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 13: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.key_ring:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 14: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.crypto_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 15: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.workload_identity_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 16: dev.planton.provider.kubernetes.kubernetesopenbao.v1.default_server_container:extendee -> google.protobuf.FieldOptions
-	1,  // 17: dev.planton.provider.kubernetes.kubernetesopenbao.v1.default_server_container:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	17, // [17:18] is the sub-list for extension type_name
-	16, // [16:17] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	10, // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.server_container:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
+	2,  // 2: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.high_availability:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHighAvailability
+	3,  // 3: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoIngress
+	4,  // 4: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.injector:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector
+	5,  // 5: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.auto_unseal:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal
+	11, // 6: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	6,  // 7: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.gcp_kms:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal
+	7,  // 8: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.aws_kms:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSeal
+	8,  // 9: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.azure_key_vault:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSeal
+	9,  // 10: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.transit:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSeal
+	10, // 11: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.project:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 12: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.key_ring:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 13: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.crypto_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 14: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.workload_identity_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 15: dev.planton.provider.kubernetes.kubernetesopenbao.v1.default_server_container:extendee -> google.protobuf.FieldOptions
+	1,  // 16: dev.planton.provider.kubernetes.kubernetesopenbao.v1.default_server_container:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	16, // [16:17] is the sub-list for extension type_name
+	15, // [15:16] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_init() }

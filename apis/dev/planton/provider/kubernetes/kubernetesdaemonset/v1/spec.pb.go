@@ -31,8 +31,6 @@ const (
 // Common use cases include: cluster storage daemons, log collection daemons, and node monitoring daemons.
 type KubernetesDaemonSetSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Flag to indicate if the namespace should be created
@@ -116,13 +114,6 @@ func (x *KubernetesDaemonSetSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesDaemonSetSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesDaemonSetSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesDaemonSetSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesDaemonSetSpec) GetNamespace() *v1.StringValueOrRef {
@@ -999,10 +990,8 @@ var File_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto proto
 
 const file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/kubernetes/kubernetesdaemonset/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesdaemonset.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a+dev/planton/provider/kubernetes/probe.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x92\n" +
-	"\n" +
-	"\x17KubernetesDaemonSetSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Adev/planton/provider/kubernetes/kubernetesdaemonset/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesdaemonset.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a+dev/planton/provider/kubernetes/probe.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc5\t\n" +
+	"\x17KubernetesDaemonSetSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12z\n" +
 	"\tcontainer\x18\x04 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12\x86\x01\n" +
@@ -1021,7 +1010,7 @@ const file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_raw
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
 	"\x0fConfigMapsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd9\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\x01\x10\x02R\x0etarget_cluster\"\xd9\x01\n" +
 	"\x1cKubernetesDaemonSetContainer\x12q\n" +
 	"\x03app\x18\x01 \x01(\v2W.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppB\x06\xbaH\x03\xc8\x01\x01R\x03app\x12F\n" +
 	"\bsidecars\x18\x02 \x03(\v2*.dev.planton.provider.kubernetes.ContainerR\bsidecars\"\xc9\b\n" +
@@ -1103,57 +1092,55 @@ func file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawD
 
 var file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_goTypes = []any{
-	(*KubernetesDaemonSetSpec)(nil),              // 0: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec
-	(*KubernetesDaemonSetContainer)(nil),         // 1: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer
-	(*KubernetesDaemonSetContainerApp)(nil),      // 2: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp
-	(*KubernetesDaemonSetContainerAppPort)(nil),  // 3: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppPort
-	(*KubernetesDaemonSetToleration)(nil),        // 4: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetToleration
-	(*KubernetesDaemonSetUpdateStrategy)(nil),    // 5: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy
-	(*KubernetesDaemonSetRollingUpdate)(nil),     // 6: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRollingUpdate
-	(*KubernetesDaemonSetSecurityContext)(nil),   // 7: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext
-	(*KubernetesDaemonSetCapabilities)(nil),      // 8: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetCapabilities
-	(*KubernetesDaemonSetRbac)(nil),              // 9: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac
-	(*KubernetesDaemonSetRbacRule)(nil),          // 10: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
-	nil,                                          // 11: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.NodeSelectorEntry
-	nil,                                          // 12: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.ConfigMapsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil), // 13: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.Container)(nil),                 // 15: dev.planton.provider.kubernetes.Container
-	(*kubernetes.ContainerImage)(nil),            // 16: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.ContainerResources)(nil),        // 17: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),              // 18: dev.planton.provider.kubernetes.ContainerEnv
-	(*kubernetes.VolumeMount)(nil),               // 19: dev.planton.provider.kubernetes.VolumeMount
-	(*kubernetes.Probe)(nil),                     // 20: dev.planton.provider.kubernetes.Probe
+	(*KubernetesDaemonSetSpec)(nil),             // 0: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec
+	(*KubernetesDaemonSetContainer)(nil),        // 1: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer
+	(*KubernetesDaemonSetContainerApp)(nil),     // 2: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp
+	(*KubernetesDaemonSetContainerAppPort)(nil), // 3: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppPort
+	(*KubernetesDaemonSetToleration)(nil),       // 4: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetToleration
+	(*KubernetesDaemonSetUpdateStrategy)(nil),   // 5: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy
+	(*KubernetesDaemonSetRollingUpdate)(nil),    // 6: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRollingUpdate
+	(*KubernetesDaemonSetSecurityContext)(nil),  // 7: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext
+	(*KubernetesDaemonSetCapabilities)(nil),     // 8: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetCapabilities
+	(*KubernetesDaemonSetRbac)(nil),             // 9: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac
+	(*KubernetesDaemonSetRbacRule)(nil),         // 10: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
+	nil,                                         // 11: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.NodeSelectorEntry
+	nil,                                         // 12: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.ConfigMapsEntry
+	(*v1.StringValueOrRef)(nil),                 // 13: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.Container)(nil),                // 14: dev.planton.provider.kubernetes.Container
+	(*kubernetes.ContainerImage)(nil),           // 15: dev.planton.provider.kubernetes.ContainerImage
+	(*kubernetes.ContainerResources)(nil),       // 16: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.ContainerEnv)(nil),             // 17: dev.planton.provider.kubernetes.ContainerEnv
+	(*kubernetes.VolumeMount)(nil),              // 18: dev.planton.provider.kubernetes.VolumeMount
+	(*kubernetes.Probe)(nil),                    // 19: dev.planton.provider.kubernetes.Probe
 }
 var file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_depIdxs = []int32{
-	13, // 0: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	14, // 1: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 2: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer
-	11, // 3: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.NodeSelectorEntry
-	4,  // 4: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.tolerations:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetToleration
-	5,  // 5: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.update_strategy:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy
-	12, // 6: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.ConfigMapsEntry
-	9,  // 7: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.rbac:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac
-	2,  // 8: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer.app:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp
-	15, // 9: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer.sidecars:type_name -> dev.planton.provider.kubernetes.Container
-	16, // 10: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	17, // 11: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	18, // 12: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	3,  // 13: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.ports:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppPort
-	19, // 14: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
-	20, // 15: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.liveness_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	20, // 16: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.readiness_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	20, // 17: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.startup_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	7,  // 18: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.security_context:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext
-	6,  // 19: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy.rolling_update:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRollingUpdate
-	8,  // 20: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext.capabilities:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetCapabilities
-	10, // 21: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac.cluster_rules:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
-	10, // 22: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac.namespace_rules:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	13, // 0: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer
+	11, // 2: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.NodeSelectorEntry
+	4,  // 3: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.tolerations:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetToleration
+	5,  // 4: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.update_strategy:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy
+	12, // 5: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.ConfigMapsEntry
+	9,  // 6: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.rbac:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac
+	2,  // 7: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer.app:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp
+	14, // 8: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer.sidecars:type_name -> dev.planton.provider.kubernetes.Container
+	15, // 9: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	16, // 10: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	17, // 11: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
+	3,  // 12: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.ports:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppPort
+	18, // 13: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
+	19, // 14: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.liveness_probe:type_name -> dev.planton.provider.kubernetes.Probe
+	19, // 15: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.readiness_probe:type_name -> dev.planton.provider.kubernetes.Probe
+	19, // 16: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.startup_probe:type_name -> dev.planton.provider.kubernetes.Probe
+	7,  // 17: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.security_context:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext
+	6,  // 18: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy.rolling_update:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRollingUpdate
+	8,  // 19: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext.capabilities:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetCapabilities
+	10, // 20: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac.cluster_rules:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
+	10, // 21: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac.namespace_rules:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_init() }

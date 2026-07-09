@@ -30,8 +30,6 @@ const (
 // This component creates a CephCluster along with optional block pools, filesystems, and object stores.
 type KubernetesRookCephClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster where the Ceph cluster will be deployed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace where the Ceph cluster will be installed.
 	// This namespace should match or be different from the operator namespace depending on your multi-tenancy requirements.
 	// Default: rook-ceph
@@ -100,13 +98,6 @@ func (x *KubernetesRookCephClusterSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesRookCephClusterSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesRookCephClusterSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesRookCephClusterSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesRookCephClusterSpec) GetNamespace() *v1.StringValueOrRef {
@@ -1164,9 +1155,8 @@ var File_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto
 
 const file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetesrookcephcluster/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf9\t\n" +
-	"\x1dKubernetesRookCephClusterSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Gdev/planton/provider/kubernetes/kubernetesrookcephcluster/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xac\t\n" +
+	"\x1dKubernetesRookCephClusterSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12H\n" +
 	"\x12operator_namespace\x18\x04 \x01(\tB\x14\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\trook-cephH\x00R\x11operatorNamespace\x88\x01\x01\x12E\n" +
@@ -1186,7 +1176,7 @@ const file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_pro
 	"\x13_helm_chart_versionB\x11\n" +
 	"\x0f_enable_toolboxB\x14\n" +
 	"\x12_enable_monitoringB\x13\n" +
-	"\x11_enable_dashboard\"\xe7\x01\n" +
+	"\x11_enable_dashboardJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xe7\x01\n" +
 	"\rCephImageSpec\x12A\n" +
 	"\n" +
 	"repository\x18\x01 \x01(\tB\x1c\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\x11quay.io/ceph/cephH\x00R\n" +
@@ -1308,50 +1298,48 @@ func file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_prot
 
 var file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto_goTypes = []any{
-	(*KubernetesRookCephClusterSpec)(nil),        // 0: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec
-	(*CephImageSpec)(nil),                        // 1: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephImageSpec
-	(*CephClusterConfig)(nil),                    // 2: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig
-	(*CephMonSpec)(nil),                          // 3: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephMonSpec
-	(*CephMgrSpec)(nil),                          // 4: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephMgrSpec
-	(*CephStorageSpec)(nil),                      // 5: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageSpec
-	(*CephStorageNodeSpec)(nil),                  // 6: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageNodeSpec
-	(*CephNetworkSpec)(nil),                      // 7: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephNetworkSpec
-	(*CephResourcesSpec)(nil),                    // 8: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec
-	(*CephBlockPoolSpec)(nil),                    // 9: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephBlockPoolSpec
-	(*CephFilesystemSpec)(nil),                   // 10: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephFilesystemSpec
-	(*CephObjectStoreSpec)(nil),                  // 11: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephObjectStoreSpec
-	(*CephStorageClassSpec)(nil),                 // 12: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageClassSpec
-	(*kubernetes.KubernetesClusterSelector)(nil), // 13: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 15: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesRookCephClusterSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec
+	(*CephImageSpec)(nil),                 // 1: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephImageSpec
+	(*CephClusterConfig)(nil),             // 2: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig
+	(*CephMonSpec)(nil),                   // 3: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephMonSpec
+	(*CephMgrSpec)(nil),                   // 4: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephMgrSpec
+	(*CephStorageSpec)(nil),               // 5: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageSpec
+	(*CephStorageNodeSpec)(nil),           // 6: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageNodeSpec
+	(*CephNetworkSpec)(nil),               // 7: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephNetworkSpec
+	(*CephResourcesSpec)(nil),             // 8: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec
+	(*CephBlockPoolSpec)(nil),             // 9: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephBlockPoolSpec
+	(*CephFilesystemSpec)(nil),            // 10: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephFilesystemSpec
+	(*CephObjectStoreSpec)(nil),           // 11: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephObjectStoreSpec
+	(*CephStorageClassSpec)(nil),          // 12: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageClassSpec
+	(*v1.StringValueOrRef)(nil),           // 13: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 14: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto_depIdxs = []int32{
-	13, // 0: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	14, // 1: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 2: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.ceph_image:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephImageSpec
-	2,  // 3: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.cluster:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig
-	9,  // 4: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.block_pools:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephBlockPoolSpec
-	10, // 5: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.filesystems:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephFilesystemSpec
-	11, // 6: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.object_stores:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephObjectStoreSpec
-	3,  // 7: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.mon:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephMonSpec
-	4,  // 8: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.mgr:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephMgrSpec
-	5,  // 9: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.storage:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageSpec
-	8,  // 10: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.resources:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec
-	7,  // 11: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.network:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephNetworkSpec
-	6,  // 12: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageSpec.nodes:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageNodeSpec
-	15, // 13: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec.mon:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	15, // 14: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec.mgr:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	15, // 15: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec.osd:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	12, // 16: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephBlockPoolSpec.storage_class:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageClassSpec
-	15, // 17: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephFilesystemSpec.mds_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	12, // 18: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephFilesystemSpec.storage_class:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageClassSpec
-	15, // 19: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephObjectStoreSpec.gateway_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	12, // 20: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephObjectStoreSpec.storage_class:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageClassSpec
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	13, // 0: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.ceph_image:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephImageSpec
+	2,  // 2: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.cluster:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig
+	9,  // 3: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.block_pools:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephBlockPoolSpec
+	10, // 4: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.filesystems:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephFilesystemSpec
+	11, // 5: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.KubernetesRookCephClusterSpec.object_stores:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephObjectStoreSpec
+	3,  // 6: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.mon:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephMonSpec
+	4,  // 7: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.mgr:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephMgrSpec
+	5,  // 8: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.storage:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageSpec
+	8,  // 9: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.resources:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec
+	7,  // 10: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephClusterConfig.network:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephNetworkSpec
+	6,  // 11: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageSpec.nodes:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageNodeSpec
+	14, // 12: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec.mon:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	14, // 13: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec.mgr:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	14, // 14: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephResourcesSpec.osd:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	12, // 15: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephBlockPoolSpec.storage_class:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageClassSpec
+	14, // 16: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephFilesystemSpec.mds_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	12, // 17: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephFilesystemSpec.storage_class:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageClassSpec
+	14, // 18: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephObjectStoreSpec.gateway_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	12, // 19: dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephObjectStoreSpec.storage_class:type_name -> dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1.CephStorageClassSpec
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_proto_init() }

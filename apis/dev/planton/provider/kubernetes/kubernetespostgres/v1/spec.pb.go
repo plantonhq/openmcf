@@ -422,8 +422,6 @@ func (x *KubernetesPostgresDatabase) GetOwnerRole() string {
 // It includes container specifications and ingress settings to control resource allocation and external access.
 type KubernetesPostgresSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -484,13 +482,6 @@ func (x *KubernetesPostgresSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesPostgresSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesPostgresSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *KubernetesPostgresSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesPostgresSpec) GetNamespace() *v1.StringValueOrRef {
@@ -692,7 +683,7 @@ var File_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetespostgres/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetespostgres.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xc1\x01\n" +
+	"@dev/planton/provider/kubernetes/kubernetespostgres/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetespostgres.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xc1\x01\n" +
 	"\x1fKubernetesPostgresR2Credentials\x12:\n" +
 	"\x15cloudflare_account_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13cloudflareAccountId\x12*\n" +
 	"\raccess_key_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vaccessKeyId\x126\n" +
@@ -719,9 +710,8 @@ const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawD
 	"\x1aKubernetesPostgresDatabase\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1d\n" +
 	"\n" +
-	"owner_role\x18\x02 \x01(\tR\townerRole\"\xef\x06\n" +
-	"\x16KubernetesPostgresSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"owner_role\x18\x02 \x01(\tR\townerRole\"\xa2\x06\n" +
+	"\x16KubernetesPostgresSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x9c\x01\n" +
 	"\tcontainer\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainerB*\x8a߄\x02%\b\x01\x12\x1c\n" +
@@ -731,7 +721,7 @@ const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawD
 	"\aingress\x18\x05 \x01(\v2P.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngressR\aingress\x12z\n" +
 	"\rbackup_config\x18\x06 \x01(\v2U.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfigR\fbackupConfig\x12o\n" +
 	"\tdatabases\x18\a \x03(\v2Q.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabaseR\tdatabases\x12c\n" +
-	"\x05users\x18\b \x03(\v2M.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUserR\x05users\"\xcb\x02\n" +
+	"\x05users\x18\b \x03(\v2M.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUserR\x05usersJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xcb\x02\n" +
 	"\x1bKubernetesPostgresContainer\x12\x1a\n" +
 	"\breplicas\x18\x01 \x01(\x05R\breplicas\x12Q\n" +
 	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\xbc\x01\n" +
@@ -758,18 +748,17 @@ func file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawDe
 
 var file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_goTypes = []any{
-	(*KubernetesPostgresR2Credentials)(nil),      // 0: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresR2Credentials
-	(*KubernetesPostgresRestoreConfig)(nil),      // 1: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresRestoreConfig
-	(*KubernetesPostgresBackupConfig)(nil),       // 2: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig
-	(*KubernetesPostgresUser)(nil),               // 3: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUser
-	(*KubernetesPostgresDatabase)(nil),           // 4: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabase
-	(*KubernetesPostgresSpec)(nil),               // 5: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec
-	(*KubernetesPostgresContainer)(nil),          // 6: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
-	(*KubernetesPostgresIngress)(nil),            // 7: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngress
-	(*v1.StringValueOrRef)(nil),                  // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesClusterSelector)(nil), // 9: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*kubernetes.ContainerResources)(nil),        // 10: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),            // 11: google.protobuf.FieldOptions
+	(*KubernetesPostgresR2Credentials)(nil), // 0: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresR2Credentials
+	(*KubernetesPostgresRestoreConfig)(nil), // 1: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresRestoreConfig
+	(*KubernetesPostgresBackupConfig)(nil),  // 2: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig
+	(*KubernetesPostgresUser)(nil),          // 3: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUser
+	(*KubernetesPostgresDatabase)(nil),      // 4: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabase
+	(*KubernetesPostgresSpec)(nil),          // 5: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec
+	(*KubernetesPostgresContainer)(nil),     // 6: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
+	(*KubernetesPostgresIngress)(nil),       // 7: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngress
+	(*v1.StringValueOrRef)(nil),             // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),   // 9: dev.planton.provider.kubernetes.ContainerResources
+	(*descriptorpb.FieldOptions)(nil),       // 10: google.protobuf.FieldOptions
 }
 var file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_depIdxs = []int32{
 	8,  // 0: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresRestoreConfig.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
@@ -777,21 +766,20 @@ var file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_depIdx
 	8,  // 2: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0,  // 3: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig.credentials:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresR2Credentials
 	1,  // 4: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig.restore:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresRestoreConfig
-	9,  // 5: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	8,  // 6: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 7: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
-	7,  // 8: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngress
-	2,  // 9: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.backup_config:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig
-	4,  // 10: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.databases:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabase
-	3,  // 11: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.users:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUser
-	10, // 12: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	11, // 13: dev.planton.provider.kubernetes.kubernetespostgres.v1.default_container:extendee -> google.protobuf.FieldOptions
-	6,  // 14: dev.planton.provider.kubernetes.kubernetespostgres.v1.default_container:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	14, // [14:15] is the sub-list for extension type_name
-	13, // [13:14] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	8,  // 5: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 6: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
+	7,  // 7: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresIngress
+	2,  // 8: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.backup_config:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresBackupConfig
+	4,  // 9: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.databases:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresDatabase
+	3,  // 10: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.users:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresUser
+	9,  // 11: dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	10, // 12: dev.planton.provider.kubernetes.kubernetespostgres.v1.default_container:extendee -> google.protobuf.FieldOptions
+	6,  // 13: dev.planton.provider.kubernetes.kubernetespostgres.v1.default_container:type_name -> dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainer
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	13, // [13:14] is the sub-list for extension type_name
+	12, // [12:13] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_init() }

@@ -8,7 +8,6 @@ package kubernetessecretv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -33,8 +32,6 @@ const (
 // with type-specific fields and validations for each variant.
 type KubernetesSecretSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Kubernetes cluster in which the secret should be created.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// *
 	// The name of the Kubernetes Secret.
 	// Must be a valid DNS subdomain name (lowercase alphanumeric, hyphens, and dots).
@@ -99,13 +96,6 @@ func (x *KubernetesSecretSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesSecretSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesSecretSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesSecretSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesSecretSpec) GetName() string {
@@ -547,9 +537,8 @@ var File_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetessecret/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessecret.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a(dev/planton/shared/options/options.proto\"\xba\x0e\n" +
-	"\x14KubernetesSecretSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12\xe5\x01\n" +
+	">dev/planton/provider/kubernetes/kubernetessecret/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessecret.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xed\r\n" +
+	"\x14KubernetesSecretSpec\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12\xfb\x01\n" +
 	"\tnamespace\x18\x03 \x01(\tB\xd7\x01\xbaH\xc8\x01\xba\x01\xc0\x01\n" +
@@ -573,7 +562,7 @@ const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDes
 	"\x14secret_data_required\x12hExactly one secret data type must be provided (opaque, tls, docker_config_json, basic_auth, or ssh_auth)\x1aohas(this.opaque) || has(this.tls) || has(this.docker_config_json) || has(this.basic_auth) || has(this.ssh_auth)B\r\n" +
 	"\vsecret_dataB\f\n" +
 	"\n" +
-	"_namespace\"\xce\x01\n" +
+	"_namespaceJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xce\x01\n" +
 	"\x1aKubernetesSecretOpaqueData\x12w\n" +
 	"\x04data\x18\x01 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
@@ -617,23 +606,21 @@ var file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_goTypes 
 	nil,                                          // 6: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntry
 	nil,                                          // 7: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntry
 	nil,                                          // 8: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntry
-	(*kubernetes.KubernetesClusterSelector)(nil), // 9: dev.planton.provider.kubernetes.KubernetesClusterSelector
 }
 var file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_depIdxs = []int32{
-	9, // 0: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	6, // 1: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntry
-	7, // 2: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntry
-	1, // 3: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.opaque:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData
-	2, // 4: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretTlsData
-	3, // 5: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.docker_config_json:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretDockerConfigJsonData
-	4, // 6: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.basic_auth:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretBasicAuthData
-	5, // 7: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.ssh_auth:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSshAuthData
-	8, // 8: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.data:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntry
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	6, // 0: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntry
+	7, // 1: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntry
+	1, // 2: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.opaque:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData
+	2, // 3: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretTlsData
+	3, // 4: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.docker_config_json:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretDockerConfigJsonData
+	4, // 5: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.basic_auth:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretBasicAuthData
+	5, // 6: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.ssh_auth:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSshAuthData
+	8, // 7: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.data:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntry
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_init() }

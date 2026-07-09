@@ -85,8 +85,6 @@ func (KubernetesTemporalDatabaseBackend) EnumDescriptor() ([]byte, []int) {
 // temporal kubernetes spec defines minimal fields for deploying temporal on kubernetes.
 type KubernetesTemporalSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -158,13 +156,6 @@ func (x *KubernetesTemporalSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesTemporalSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesTemporalSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesTemporalSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesTemporalSpec) GetNamespace() *v1.StringValueOrRef {
@@ -1022,9 +1013,8 @@ var File_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetestemporal/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestemporal.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe6\t\n" +
-	"\x16KubernetesTemporalSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"@dev/planton/provider/kubernetes/kubernetestemporal/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestemporal.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x99\t\n" +
+	"\x16KubernetesTemporalSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12{\n" +
 	"\bdatabase\x18\x04 \x01(\v2W.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfigB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12$\n" +
@@ -1040,7 +1030,7 @@ const file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawD
 	"\x12num_history_shards\x18\r \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\x80\x01(\x01H\x01R\x10numHistoryShards\x88\x01\x01\x12m\n" +
 	"\bservices\x18\x0e \x01(\v2Q.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServicesR\bservicesB\x15\n" +
 	"\x13_cassandra_replicasB\x15\n" +
-	"\x13_num_history_shards\"\x87\x04\n" +
+	"\x13_num_history_shardsJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x87\x04\n" +
 	" KubernetesTemporalDatabaseConfig\x12z\n" +
 	"\abackend\x18\x01 \x01(\x0e2X.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseBackendB\x06\xbaH\x03\xc8\x01\x01R\abackend\x12\x86\x01\n" +
 	"\x11external_database\x18\x02 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabaseR\x10externalDatabase\x126\n" +
@@ -1127,35 +1117,33 @@ var file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_goType
 	(*KubernetesTemporalDynamicConfig)(nil),           // 8: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfig
 	(*KubernetesTemporalServiceConfig)(nil),           // 9: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
 	(*KubernetesTemporalServices)(nil),                // 10: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices
-	(*kubernetes.KubernetesClusterSelector)(nil),      // 11: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                       // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesSensitiveValue)(nil),       // 13: dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	(*kubernetes.ContainerResources)(nil),             // 14: dev.planton.provider.kubernetes.ContainerResources
+	(*v1.StringValueOrRef)(nil),                       // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesSensitiveValue)(nil),       // 12: dev.planton.provider.kubernetes.KubernetesSensitiveValue
+	(*kubernetes.ContainerResources)(nil),             // 13: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_depIdxs = []int32{
-	11, // 0: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	12, // 1: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 2: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig
-	5,  // 3: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress
-	4,  // 4: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.external_elasticsearch:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalElasticsearch
-	8,  // 5: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.dynamic_config:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfig
-	10, // 6: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.services:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices
-	0,  // 7: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig.backend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseBackend
-	3,  // 8: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig.external_database:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabase
-	13, // 9: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabase.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	13, // 10: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalElasticsearch.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	6,  // 11: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress.frontend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalFrontendIngressEndpoint
-	7,  // 12: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress.web_ui:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUiIngressEndpoint
-	14, // 13: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	9,  // 14: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.frontend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	9,  // 15: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.history:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	9,  // 16: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.matching:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	9,  // 17: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.worker:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	11, // 0: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 1: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig
+	5,  // 2: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress
+	4,  // 3: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.external_elasticsearch:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalElasticsearch
+	8,  // 4: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.dynamic_config:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfig
+	10, // 5: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.services:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices
+	0,  // 6: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig.backend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseBackend
+	3,  // 7: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig.external_database:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabase
+	12, // 8: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabase.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
+	12, // 9: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalElasticsearch.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
+	6,  // 10: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress.frontend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalFrontendIngressEndpoint
+	7,  // 11: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress.web_ui:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUiIngressEndpoint
+	13, // 12: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	9,  // 13: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.frontend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	9,  // 14: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.history:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	9,  // 15: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.matching:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	9,  // 16: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.worker:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_init() }

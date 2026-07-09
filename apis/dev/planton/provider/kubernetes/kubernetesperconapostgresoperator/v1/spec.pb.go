@@ -29,8 +29,6 @@ const (
 // deployment within a Kubernetes environment. It includes container specifications to control resource allocation.
 type KubernetesPerconaPostgresOperatorSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -69,13 +67,6 @@ func (x *KubernetesPerconaPostgresOperatorSpec) ProtoReflect() protoreflect.Mess
 // Deprecated: Use KubernetesPerconaPostgresOperatorSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesPerconaPostgresOperatorSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesperconapostgresoperator_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesPerconaPostgresOperatorSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesPerconaPostgresOperatorSpec) GetNamespace() *v1.StringValueOrRef {
@@ -150,12 +141,11 @@ var File_dev_planton_provider_kubernetes_kubernetesperconapostgresoperator_v1_sp
 
 const file_dev_planton_provider_kubernetes_kubernetesperconapostgresoperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Odev/planton/provider/kubernetes/kubernetesperconapostgresoperator/v1/spec.proto\x12Ddev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbe\x03\n" +
-	"%KubernetesPerconaPostgresOperatorSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Odev/planton/provider/kubernetes/kubernetesperconapostgresoperator/v1/spec.proto\x12Ddev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf1\x02\n" +
+	"%KubernetesPerconaPostgresOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x9a\x01\n" +
-	"\tcontainer\x18\x04 \x01(\v2t.dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\"\xa7\x01\n" +
+	"\tcontainer\x18\x04 \x01(\v2t.dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainerJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xa7\x01\n" +
 	".KubernetesPerconaPostgresOperatorSpecContainer\x12u\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB\"\xba\xfb\xa4\x02\x1d\n" +
 	"\f\n" +
@@ -179,20 +169,18 @@ var file_dev_planton_provider_kubernetes_kubernetesperconapostgresoperator_v1_sp
 var file_dev_planton_provider_kubernetes_kubernetesperconapostgresoperator_v1_spec_proto_goTypes = []any{
 	(*KubernetesPerconaPostgresOperatorSpec)(nil),          // 0: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpec
 	(*KubernetesPerconaPostgresOperatorSpecContainer)(nil), // 1: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpecContainer
-	(*kubernetes.KubernetesClusterSelector)(nil),           // 2: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                            // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),                  // 4: dev.planton.provider.kubernetes.ContainerResources
+	(*v1.StringValueOrRef)(nil),                            // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),                  // 3: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetesperconapostgresoperator_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	3, // 1: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpecContainer
-	4, // 3: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpecContainer
+	3, // 2: dev.planton.provider.kubernetes.kubernetesperconapostgresoperator.v1.KubernetesPerconaPostgresOperatorSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() {

@@ -29,8 +29,6 @@ const (
 // It includes container specifications and ingress settings to control resource allocation and external access.
 type KubernetesGrafanaSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -71,13 +69,6 @@ func (x *KubernetesGrafanaSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesGrafanaSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesGrafanaSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesGrafanaSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesGrafanaSpec) GetNamespace() *v1.StringValueOrRef {
@@ -217,13 +208,12 @@ var File_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesgrafana/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesgrafana.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf7\x03\n" +
-	"\x15KubernetesGrafanaSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"?dev/planton/provider/kubernetes/kubernetesgrafana/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesgrafana.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xaa\x03\n" +
+	"\x15KubernetesGrafanaSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12z\n" +
 	"\tcontainer\x18\x04 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12h\n" +
-	"\aingress\x18\x05 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaIngressR\aingress\"\xcf\x01\n" +
+	"\aingress\x18\x05 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaIngressR\aingressJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xcf\x01\n" +
 	"\x18KubernetesGrafanaIngress\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
 	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
@@ -249,24 +239,22 @@ func file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_rawDes
 
 var file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_goTypes = []any{
-	(*KubernetesGrafanaSpec)(nil),                // 0: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec
-	(*KubernetesGrafanaIngress)(nil),             // 1: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaIngress
-	(*KubernetesGrafanaSpecContainer)(nil),       // 2: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpecContainer
-	(*kubernetes.KubernetesClusterSelector)(nil), // 3: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),        // 5: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesGrafanaSpec)(nil),          // 0: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec
+	(*KubernetesGrafanaIngress)(nil),       // 1: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaIngress
+	(*KubernetesGrafanaSpecContainer)(nil), // 2: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpecContainer
+	(*v1.StringValueOrRef)(nil),            // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),  // 4: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	4, // 1: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 2: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpecContainer
-	1, // 3: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaIngress
-	5, // 4: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3, // 0: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpecContainer
+	1, // 2: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaIngress
+	4, // 3: dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_init() }

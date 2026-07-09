@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/istio_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesRequestAuthenticationSpec defines an Istio RequestAuthentication: a
@@ -25,10 +24,8 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // the whole mesh). At most one of `selector` and `target_refs` may be set
 // (enforced below).
 message KubernetesRequestAuthenticationSpec {
-  // Target Kubernetes cluster where this RequestAuthentication is created. The Istio
-  // CRDs (KubernetesIstioBaseCrds) must already be present on the cluster; the policy
-  // is only enforced where istiod (the Istio control plane) is running.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+  reserved 1;
+  reserved "target_cluster";
 
   // Namespace in which the RequestAuthentication is created. The policy's scope is
   // this namespace (or mesh-wide if this is the Istio root namespace and no selector

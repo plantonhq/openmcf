@@ -4,7 +4,6 @@ package dev.planton.provider.kubernetes.kubernetesgrpcroute.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/gateway_api.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // KubernetesGrpcRouteSpec defines a Kubernetes Gateway API GRPCRoute: a
@@ -21,10 +20,8 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 //   - CommonRouteSpec.useDefaultGateways
 //   - GRPCRouteRule.sessionPersistence
 message KubernetesGrpcRouteSpec {
-  // Target Kubernetes cluster where this GRPCRoute is created. The Gateway API
-  // CRDs (KubernetesGatewayApiCrds) and a Gateway the route attaches to must
-  // already be present on the cluster.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+  reserved 1;
+  reserved "target_cluster";
 
   // Namespace in which the GRPCRoute is created. Backends in other namespaces,
   // and Gateways in other namespaces, are subject to the usual same-namespace /

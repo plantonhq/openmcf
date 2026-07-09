@@ -5,7 +5,6 @@ package dev.planton.provider.kubernetes.kubernetesrookcephoperator.v1;
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
 import "dev/planton/provider/kubernetes/options.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
@@ -13,8 +12,8 @@ import "dev/planton/shared/options/options.proto";
 // Rook enables Ceph storage to be deployed and managed on Kubernetes, providing file, block, and object storage.
 // This operator manages the lifecycle of Ceph clusters within Kubernetes environments.
 message KubernetesRookCephOperatorSpec {
-  // Target Kubernetes Cluster where the Rook Ceph Operator will be deployed.
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+  reserved 1;
+  reserved "target_cluster";
 
   // Kubernetes Namespace where the operator will be installed.
   // Default: rook-ceph

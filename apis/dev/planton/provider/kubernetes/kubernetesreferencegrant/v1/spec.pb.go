@@ -8,7 +8,6 @@ package kubernetesreferencegrantv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -43,9 +42,6 @@ const (
 // no controller-managed status to surface.
 type KubernetesReferenceGrantSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this ReferenceGrant is created. The Gateway
-	// API CRDs (KubernetesGatewayApiCrds) must already be present on the cluster.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace the ReferenceGrant is created in. This is the namespace being
 	// referenced INTO (the "to" side): the grant lives alongside the resources it
 	// authorizes inbound references to, and revoking the grant revokes that access.
@@ -92,13 +88,6 @@ func (x *KubernetesReferenceGrantSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesReferenceGrantSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesReferenceGrantSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesReferenceGrantSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesReferenceGrantSpec) GetNamespace() *v1.StringValueOrRef {
@@ -313,14 +302,13 @@ var File_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetesreferencegrant/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesreferencegrant.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdd\x03\n" +
-	"\x1cKubernetesReferenceGrantSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Fdev/planton/provider/kubernetes/kubernetesreferencegrant/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesreferencegrant.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x90\x03\n" +
+	"\x1cKubernetesReferenceGrantSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12y\n" +
 	"\x04from\x18\x03 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantFromB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x04from\x12s\n" +
 	"\x02to\x18\x04 \x03(\v2W.dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantToB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x02to\"\xac\x02\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x02toJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xac\x02\n" +
 	"\x1cKubernetesReferenceGrantFrom\x12l\n" +
 	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
 	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12K\n" +
@@ -349,22 +337,20 @@ func file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto
 
 var file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto_goTypes = []any{
-	(*KubernetesReferenceGrantSpec)(nil),         // 0: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec
-	(*KubernetesReferenceGrantFrom)(nil),         // 1: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantFrom
-	(*KubernetesReferenceGrantTo)(nil),           // 2: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantTo
-	(*kubernetes.KubernetesClusterSelector)(nil), // 3: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesReferenceGrantSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec
+	(*KubernetesReferenceGrantFrom)(nil), // 1: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantFrom
+	(*KubernetesReferenceGrantTo)(nil),   // 2: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantTo
+	(*v1.StringValueOrRef)(nil),          // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	4, // 1: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.from:type_name -> dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantFrom
-	2, // 3: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.to:type_name -> dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantTo
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 0: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.from:type_name -> dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantFrom
+	2, // 2: dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.to:type_name -> dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantTo
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_proto_init() }

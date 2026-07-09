@@ -8,7 +8,6 @@ package kubernetestektonv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -40,8 +39,6 @@ const (
 //	kubectl apply --filename https://infra.tekton.dev/tekton-releases/dashboard/latest/release.yaml
 type KubernetesTektonSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster where Tekton will be deployed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// The version of Tekton Pipelines to deploy.
 	// This maps to release versions from https://github.com/tektoncd/pipeline/releases
 	// Examples: "latest", "v0.65.2", "v0.64.0"
@@ -85,13 +82,6 @@ func (x *KubernetesTektonSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesTektonSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesTektonSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesTektonSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesTektonSpec) GetPipelineVersion() string {
@@ -297,13 +287,12 @@ var File_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetestekton/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetestekton.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a(dev/planton/shared/options/options.proto\"\x93\x03\n" +
-	"\x14KubernetesTektonSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x125\n" +
+	">dev/planton/provider/kubernetes/kubernetestekton/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetestekton.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xc6\x02\n" +
+	"\x14KubernetesTektonSpec\x125\n" +
 	"\x10pipeline_version\x18\x02 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06latestR\x0fpipelineVersion\x12l\n" +
 	"\tdashboard\x18\x03 \x01(\v2N.dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboardR\tdashboard\x12s\n" +
-	"\fcloud_events\x18\x04 \x01(\v2P.dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonCloudEventsR\vcloudEvents\"\xcc\x01\n" +
+	"\fcloud_events\x18\x04 \x01(\v2P.dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonCloudEventsR\vcloudEventsJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xcc\x01\n" +
 	"\x19KubernetesTektonDashboard\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12$\n" +
 	"\aversion\x18\x02 \x01(\tB\n" +
@@ -332,22 +321,20 @@ func file_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto_rawDesc
 
 var file_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto_goTypes = []any{
-	(*KubernetesTektonSpec)(nil),                 // 0: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonSpec
-	(*KubernetesTektonDashboard)(nil),            // 1: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboard
-	(*KubernetesTektonDashboardIngress)(nil),     // 2: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboardIngress
-	(*KubernetesTektonCloudEvents)(nil),          // 3: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonCloudEvents
-	(*kubernetes.KubernetesClusterSelector)(nil), // 4: dev.planton.provider.kubernetes.KubernetesClusterSelector
+	(*KubernetesTektonSpec)(nil),             // 0: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonSpec
+	(*KubernetesTektonDashboard)(nil),        // 1: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboard
+	(*KubernetesTektonDashboardIngress)(nil), // 2: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboardIngress
+	(*KubernetesTektonCloudEvents)(nil),      // 3: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonCloudEvents
 }
 var file_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	1, // 1: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonSpec.dashboard:type_name -> dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboard
-	3, // 2: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonSpec.cloud_events:type_name -> dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonCloudEvents
-	2, // 3: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboard.ingress:type_name -> dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboardIngress
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonSpec.dashboard:type_name -> dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboard
+	3, // 1: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonSpec.cloud_events:type_name -> dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonCloudEvents
+	2, // 2: dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboard.ingress:type_name -> dev.planton.provider.kubernetes.kubernetestekton.v1.KubernetesTektonDashboardIngress
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetestekton_v1_spec_proto_init() }

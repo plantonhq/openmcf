@@ -51,10 +51,6 @@ const (
 // to all applicable workloads mesh-wide).
 type KubernetesEnvoyFilterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this EnvoyFilter is created. The Istio CRDs
-	// (KubernetesIstioBaseCrds) must already be present on the cluster; the patches are only
-	// honored where istiod (the Istio control plane) is running.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the EnvoyFilter is created. An EnvoyFilter in a workload namespace
 	// affects only workloads in that namespace; one in the Istio mesh root namespace (e.g.
 	// istio-system) affects all applicable workloads mesh-wide.
@@ -135,13 +131,6 @@ func (x *KubernetesEnvoyFilterSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesEnvoyFilterSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesEnvoyFilterSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesEnvoyFilterSpec) GetNamespace() *v1.StringValueOrRef {
@@ -1069,9 +1058,8 @@ var File_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetesenvoyfilter/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xc1\x06\n" +
-	"\x19KubernetesEnvoyFilterSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Cdev/planton/provider/kubernetes/kubernetesenvoyfilter/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xf4\x05\n" +
+	"\x19KubernetesEnvoyFilterSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12z\n" +
 	"\x11workload_selector\x18\x03 \x01(\v2M.dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelectorR\x10workloadSelector\x12\x81\x01\n" +
 	"\x0econfig_patches\x18\x04 \x03(\v2Z.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatchR\rconfigPatches\x12\x1f\n" +
@@ -1079,7 +1067,7 @@ const file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_r
 	"\vtarget_refs\x18\x06 \x03(\v2H.dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReferenceB\b\xbaH\x05\x92\x01\x02\x10\x10R\n" +
 	"targetRefs:\xb1\x01\xbaH\xad\x01\x1a\xaa\x01\n" +
 	".envoy_filter.workload_selector_xor_target_refs\x12:at most one of workload_selector or target_refs may be set\x1a<!(has(this.workload_selector) && size(this.target_refs) > 0)B\v\n" +
-	"\t_priority\"\xde\x03\n" +
+	"\t_priorityJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xde\x03\n" +
 	" KubernetesEnvoyFilterConfigPatch\x12\xc3\x01\n" +
 	"\bapply_to\x18\x01 \x01(\tB\xa2\x01\xbaH\x9e\x01r\x9b\x01R\bLISTENERR\fFILTER_CHAINR\x0eNETWORK_FILTERR\vHTTP_FILTERR\x13ROUTE_CONFIGURATIONR\fVIRTUAL_HOSTR\n" +
 	"HTTP_ROUTER\aCLUSTERR\x10EXTENSION_CONFIGR\tBOOTSTRAPR\x0fLISTENER_FILTERH\x00R\aapplyTo\x88\x01\x01\x12{\n" +
@@ -1204,36 +1192,34 @@ var file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_goT
 	(*KubernetesEnvoyFilterSubFilterMatch)(nil),                     // 11: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSubFilterMatch
 	(*KubernetesEnvoyFilterPatch)(nil),                              // 12: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch
 	nil,                                                             // 13: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.MetadataEntry
-	(*kubernetes.KubernetesClusterSelector)(nil),                    // 14: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                                     // 15: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiNetworkingWorkloadSelector)(nil), // 16: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
-	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil),      // 17: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
-	(*structpb.Struct)(nil),                                         // 18: google.protobuf.Struct
+	(*v1.StringValueOrRef)(nil),                                     // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiNetworkingWorkloadSelector)(nil), // 15: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
+	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil),      // 16: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	(*structpb.Struct)(nil),                                         // 17: google.protobuf.Struct
 }
 var file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_depIdxs = []int32{
-	14, // 0: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	15, // 1: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 2: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
-	1,  // 3: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.config_patches:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch
-	17, // 4: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
-	2,  // 5: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch.match:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch
-	12, // 6: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch.patch:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch
-	3,  // 7: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.proxy:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch
-	8,  // 8: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.listener:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch
-	5,  // 9: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.route_configuration:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch
-	4,  // 10: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.cluster:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterClusterMatch
-	13, // 11: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.metadata:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.MetadataEntry
-	6,  // 12: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch.vhost:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch
-	7,  // 13: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch.route:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteMatch
-	9,  // 14: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch.filter_chain:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch
-	10, // 15: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch.filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch
-	11, // 16: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch.sub_filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSubFilterMatch
-	18, // 17: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch.value:type_name -> google.protobuf.Struct
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	14, // 0: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 1: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
+	1,  // 2: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.config_patches:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch
+	16, // 3: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	2,  // 4: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch.match:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch
+	12, // 5: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch.patch:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch
+	3,  // 6: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.proxy:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch
+	8,  // 7: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.listener:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch
+	5,  // 8: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.route_configuration:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch
+	4,  // 9: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.cluster:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterClusterMatch
+	13, // 10: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.metadata:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.MetadataEntry
+	6,  // 11: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch.vhost:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch
+	7,  // 12: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch.route:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteMatch
+	9,  // 13: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch.filter_chain:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch
+	10, // 14: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch.filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch
+	11, // 15: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch.sub_filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSubFilterMatch
+	17, // 16: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch.value:type_name -> google.protobuf.Struct
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_init() }

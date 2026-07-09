@@ -33,8 +33,6 @@ const (
 // resource allocation, data persistence, and external access.
 type KubernetesKafkaSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// flag to indicate if the namespace should be created
@@ -83,13 +81,6 @@ func (x *KubernetesKafkaSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesKafkaSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesKafkaSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesKafkaSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesKafkaSpec) GetNamespace() *v1.StringValueOrRef {
@@ -524,9 +515,8 @@ var File_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto protorefl
 
 const file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/kubernetes/kuberneteskafka/v1/spec.proto\x122dev.planton.provider.kubernetes.kuberneteskafka.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\x89\b\n" +
-	"\x13KubernetesKafkaSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"=dev/planton/provider/kubernetes/kuberneteskafka/v1/spec.proto\x122dev.planton.provider.kubernetes.kuberneteskafka.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xbc\a\n" +
+	"\x13KubernetesKafkaSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12a\n" +
 	"\fkafka_topics\x18\x04 \x03(\v2>.dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopicR\vkafkaTopics\x12\xa9\x01\n" +
@@ -540,7 +530,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDesc
 	"\x0350m\x12\x05100Mi\x1a\x031GiR\x12zookeeperContainer\x12\x96\x01\n" +
 	"\x19schema_registry_container\x18\a \x01(\v2Z.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainerR\x17schemaRegistryContainer\x12d\n" +
 	"\aingress\x18\b \x01(\v2J.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaIngressR\aingress\x125\n" +
-	"\x12is_deploy_kafka_ui\x18\t \x01(\bB\b\x92\xa6\x1d\x04trueR\x0fisDeployKafkaUi\"\xcd\x01\n" +
+	"\x12is_deploy_kafka_ui\x18\t \x01(\bB\b\x92\xa6\x1d\x04trueR\x0fisDeployKafkaUiJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\xcd\x01\n" +
 	"\x16KubernetesKafkaIngress\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
 	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
@@ -619,32 +609,30 @@ var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_goTypes =
 	(*KubernetesKafkaSchemaRegistryContainer)(nil), // 4: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainer
 	(*KafkaTopic)(nil),                             // 5: dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic
 	nil,                                            // 6: dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.ConfigEntry
-	(*kubernetes.KubernetesClusterSelector)(nil),   // 7: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                    // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),          // 9: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),              // 10: google.protobuf.FieldOptions
+	(*v1.StringValueOrRef)(nil),                    // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),          // 8: dev.planton.provider.kubernetes.ContainerResources
+	(*descriptorpb.FieldOptions)(nil),              // 9: google.protobuf.FieldOptions
 }
 var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_depIdxs = []int32{
-	7,  // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	8,  // 1: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 2: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.kafka_topics:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic
-	2,  // 3: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.broker_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer
-	3,  // 4: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.zookeeper_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer
-	4,  // 5: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.schema_registry_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainer
-	1,  // 6: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.ingress:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaIngress
-	9,  // 7: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	9,  // 8: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	9,  // 9: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	6,  // 10: dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.config:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.ConfigEntry
-	10, // 11: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_broker_container:extendee -> google.protobuf.FieldOptions
-	10, // 12: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_zookeeper_container:extendee -> google.protobuf.FieldOptions
-	2,  // 13: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_broker_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer
-	3,  // 14: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_zookeeper_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	13, // [13:15] is the sub-list for extension type_name
-	11, // [11:13] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	7,  // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 1: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.kafka_topics:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic
+	2,  // 2: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.broker_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer
+	3,  // 3: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.zookeeper_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer
+	4,  // 4: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.schema_registry_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainer
+	1,  // 5: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.ingress:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaIngress
+	8,  // 6: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	8,  // 7: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	8,  // 8: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	6,  // 9: dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.config:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.ConfigEntry
+	9,  // 10: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_broker_container:extendee -> google.protobuf.FieldOptions
+	9,  // 11: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_zookeeper_container:extendee -> google.protobuf.FieldOptions
+	2,  // 12: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_broker_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer
+	3,  // 13: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_zookeeper_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	12, // [12:14] is the sub-list for extension type_name
+	10, // [10:12] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_init() }

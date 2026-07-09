@@ -5,7 +5,6 @@ package dev.planton.provider.kubernetes.kuberneteskafka.v1;
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
 import "dev/planton/provider/kubernetes/options.proto";
-import "dev/planton/provider/kubernetes/target_cluster.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 import "google/protobuf/descriptor.proto";
@@ -21,8 +20,8 @@ extend google.protobuf.FieldOptions {
 // By configuring these parameters, you can set up a Kafka cluster tailored to your application's needs, including
 // resource allocation, data persistence, and external access.
 message KubernetesKafkaSpec {
-  // Target Kubernetes Cluster
-  dev.planton.provider.kubernetes.KubernetesClusterSelector target_cluster = 1;
+  reserved 1;
+  reserved "target_cluster";
 
   // Kubernetes Namespace
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [

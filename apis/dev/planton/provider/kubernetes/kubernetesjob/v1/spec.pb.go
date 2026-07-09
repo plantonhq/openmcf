@@ -32,8 +32,6 @@ const (
 // workflows that need to run to completion before the process exits.
 type KubernetesJobSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Kubernetes Namespace
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Flag to indicate if the namespace should be created
@@ -167,13 +165,6 @@ func (*KubernetesJobSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *KubernetesJobSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
-}
-
 func (x *KubernetesJobSpec) GetNamespace() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Namespace
@@ -297,9 +288,9 @@ var File_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto protoreflec
 
 const file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/kubernetes/kubernetesjob/v1/spec.proto\x120dev.planton.provider.kubernetes.kubernetesjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcb\v\n" +
-	"\x11KubernetesJobSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	";dev/planton/provider/kubernetes/kubernetesjob/v1/spec.proto\x120dev.planton.provider.kubernetes.kubernetesjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfe\n" +
+	"\n" +
+	"\x11KubernetesJobSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12E\n" +
 	"\x05image\x18\x04 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12t\n" +
@@ -335,7 +326,7 @@ const file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDesc =
 	"\x10_completion_modeB\x11\n" +
 	"\x0f_restart_policyB\n" +
 	"\n" +
-	"\b_suspendB\x8c\x03\n" +
+	"\b_suspendJ\x04\b\x01\x10\x02R\x0etarget_clusterB\x8c\x03\n" +
 	"4com.dev.planton.provider.kubernetes.kubernetesjob.v1B\tSpecProtoP\x01Zbgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjob/v1;kubernetesjobv1\xa2\x02\x05DPPKK\xaa\x020Dev.Planton.Provider.Kubernetes.Kubernetesjob.V1\xca\x020Dev\\Planton\\Provider\\Kubernetes\\Kubernetesjob\\V1\xe2\x02<Dev\\Planton\\Provider\\Kubernetes\\Kubernetesjob\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Kubernetes::Kubernetesjob::V1b\x06proto3"
 
 var (
@@ -352,28 +343,26 @@ func file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZI
 
 var file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_goTypes = []any{
-	(*KubernetesJobSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec
-	nil,                       // 1: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.ConfigMapsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil), // 2: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerImage)(nil),            // 4: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.ContainerResources)(nil),        // 5: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),              // 6: dev.planton.provider.kubernetes.ContainerEnv
-	(*kubernetes.VolumeMount)(nil),               // 7: dev.planton.provider.kubernetes.VolumeMount
+	(*KubernetesJobSpec)(nil),             // 0: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec
+	nil,                                   // 1: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.ConfigMapsEntry
+	(*v1.StringValueOrRef)(nil),           // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerImage)(nil),     // 3: dev.planton.provider.kubernetes.ContainerImage
+	(*kubernetes.ContainerResources)(nil), // 4: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.ContainerEnv)(nil),       // 5: dev.planton.provider.kubernetes.ContainerEnv
+	(*kubernetes.VolumeMount)(nil),        // 6: dev.planton.provider.kubernetes.VolumeMount
 }
 var file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	3, // 1: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 2: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	5, // 3: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	6, // 4: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	1, // 5: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.ConfigMapsEntry
-	7, // 6: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 1: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	4, // 2: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	5, // 3: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
+	1, // 4: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.ConfigMapsEntry
+	6, // 5: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_init() }

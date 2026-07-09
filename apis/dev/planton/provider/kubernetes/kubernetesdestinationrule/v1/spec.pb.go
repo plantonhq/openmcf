@@ -48,10 +48,6 @@ const (
 // it matches DestinationRule's own upstream XValidation `oneof(warmupDurationSecs, warmup)`.
 type KubernetesDestinationRuleSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes cluster where this DestinationRule is created. The Istio CRDs
-	// (KubernetesIstioBaseCrds) must already be present on the cluster; the policy is only
-	// honored where istiod (the Istio control plane) is running.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace in which the DestinationRule is created. For short host names, istiod
 	// interprets the host relative to THIS namespace, not the target service's namespace —
 	// prefer fully-qualified hosts to avoid ambiguity. `export_to` controls cross-namespace
@@ -142,13 +138,6 @@ func (x *KubernetesDestinationRuleSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesDestinationRuleSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesDestinationRuleSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesDestinationRuleSpec) GetNamespace() *v1.StringValueOrRef {
@@ -1797,15 +1786,14 @@ var File_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto
 
 const file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetesdestinationrule/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesdestinationrule.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\x05\n" +
-	"\x1dKubernetesDestinationRuleSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12j\n" +
+	"Gdev/planton/provider/kubernetes/kubernetesdestinationrule/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesdestinationrule.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd3\x04\n" +
+	"\x1dKubernetesDestinationRuleSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x1a\n" +
 	"\x04host\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04host\x12\x8b\x01\n" +
 	"\x0etraffic_policy\x18\x04 \x01(\v2d.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicyR\rtrafficPolicy\x12w\n" +
 	"\asubsets\x18\x05 \x03(\v2].dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubsetR\asubsets\x12\x1b\n" +
 	"\texport_to\x18\x06 \x03(\tR\bexportTo\x12p\n" +
-	"\x11workload_selector\x18\a \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\x10workloadSelector\"\x9a\b\n" +
+	"\x11workload_selector\x18\a \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\x10workloadSelectorJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x9a\b\n" +
 	"&KubernetesDestinationRuleTrafficPolicy\x12\x90\x01\n" +
 	"\rload_balancer\x18\x01 \x01(\v2k.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettingsR\floadBalancer\x12\x96\x01\n" +
 	"\x0fconnection_pool\x18\x02 \x01(\v2m.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettingsR\x0econnectionPool\x12\x94\x01\n" +
@@ -2032,48 +2020,46 @@ var file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto
 	(*KubernetesDestinationRuleSubset)(nil),                 // 20: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset
 	nil,                                                     // 21: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.ToEntry
 	nil,                                                     // 22: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.LabelsEntry
-	(*kubernetes.KubernetesClusterSelector)(nil),            // 23: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                             // 24: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),   // 25: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	(*kubernetes.KubernetesIstioApiPortSelector)(nil),       // 26: dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
+	(*v1.StringValueOrRef)(nil),                             // 23: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),   // 24: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	(*kubernetes.KubernetesIstioApiPortSelector)(nil),       // 25: dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
 }
 var file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_depIdxs = []int32{
-	23, // 0: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	24, // 1: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 2: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
-	20, // 3: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.subsets:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset
-	25, // 4: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	3,  // 5: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.load_balancer:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
-	9,  // 6: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.connection_pool:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
-	13, // 7: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.outlier_detection:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
-	14, // 8: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.tls:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
-	2,  // 9: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.port_level_settings:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy
-	15, // 10: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.tunnel:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTunnelSettings
-	16, // 11: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.proxy_protocol:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleProxyProtocol
-	26, // 12: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.port:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
-	3,  // 13: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.load_balancer:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
-	9,  // 14: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.connection_pool:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
-	13, // 15: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.outlier_detection:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
-	14, // 16: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.tls:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
-	4,  // 17: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.consistent_hash:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb
-	17, // 18: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.locality_lb_setting:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting
-	8,  // 19: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.warmup:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleWarmupConfiguration
-	5,  // 20: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.http_cookie:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookie
-	6,  // 21: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.ring_hash:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRingHash
-	7,  // 22: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.maglev:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleMagLev
-	10, // 23: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings.tcp:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings
-	12, // 24: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings.http:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpSettings
-	11, // 25: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings.tcp_keepalive:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpKeepalive
-	18, // 26: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting.distribute:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute
-	19, // 27: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting.failover:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityFailover
-	21, // 28: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.to:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.ToEntry
-	22, // 29: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.labels:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.LabelsEntry
-	1,  // 30: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
-	31, // [31:31] is the sub-list for method output_type
-	31, // [31:31] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	23, // 0: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
+	20, // 2: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.subsets:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset
+	24, // 3: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	3,  // 4: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.load_balancer:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
+	9,  // 5: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.connection_pool:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
+	13, // 6: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.outlier_detection:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
+	14, // 7: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.tls:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
+	2,  // 8: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.port_level_settings:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy
+	15, // 9: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.tunnel:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTunnelSettings
+	16, // 10: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.proxy_protocol:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleProxyProtocol
+	25, // 11: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.port:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
+	3,  // 12: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.load_balancer:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
+	9,  // 13: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.connection_pool:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
+	13, // 14: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.outlier_detection:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
+	14, // 15: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.tls:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
+	4,  // 16: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.consistent_hash:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb
+	17, // 17: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.locality_lb_setting:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting
+	8,  // 18: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.warmup:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleWarmupConfiguration
+	5,  // 19: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.http_cookie:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookie
+	6,  // 20: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.ring_hash:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRingHash
+	7,  // 21: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.maglev:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleMagLev
+	10, // 22: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings.tcp:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings
+	12, // 23: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings.http:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpSettings
+	11, // 24: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings.tcp_keepalive:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpKeepalive
+	18, // 25: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting.distribute:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute
+	19, // 26: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting.failover:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityFailover
+	21, // 27: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.to:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.ToEntry
+	22, // 28: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.labels:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.LabelsEntry
+	1,  // 29: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
+	30, // [30:30] is the sub-list for method output_type
+	30, // [30:30] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_init() }

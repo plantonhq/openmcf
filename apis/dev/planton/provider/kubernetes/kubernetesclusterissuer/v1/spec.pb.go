@@ -8,7 +8,6 @@ package kubernetesclusterissuerv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -34,8 +33,6 @@ const (
 // components to derive issuer names from hostnames.
 type KubernetesClusterIssuerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Target Kubernetes Cluster where cert-manager is installed.
-	TargetCluster *kubernetes.KubernetesClusterSelector `protobuf:"bytes,1,opt,name=target_cluster,json=targetCluster,proto3" json:"target_cluster,omitempty"`
 	// Namespace where cert-manager is installed.
 	// Required for creating credential Secrets (Cloudflare API tokens) and
 	// where cert-manager places ACME account key Secrets.
@@ -86,13 +83,6 @@ func (x *KubernetesClusterIssuerSpec) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesClusterIssuerSpec.ProtoReflect.Descriptor instead.
 func (*KubernetesClusterIssuerSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *KubernetesClusterIssuerSpec) GetTargetCluster() *kubernetes.KubernetesClusterSelector {
-	if x != nil {
-		return x.TargetCluster
-	}
-	return nil
 }
 
 func (x *KubernetesClusterIssuerSpec) GetCertManagerNamespace() *v1.StringValueOrRef {
@@ -456,9 +446,8 @@ var File_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto p
 
 const file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kubernetesclusterissuer/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesclusterissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a4dev/planton/provider/kubernetes/target_cluster.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfc\x06\n" +
-	"\x1bKubernetesClusterIssuerSpec\x12a\n" +
-	"\x0etarget_cluster\x18\x01 \x01(\v2:.dev.planton.provider.kubernetes.KubernetesClusterSelectorR\rtargetCluster\x12\x91\x01\n" +
+	"Edev/planton/provider/kubernetes/kubernetesclusterissuer/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesclusterissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xaf\x06\n" +
+	"\x1bKubernetesClusterIssuerSpec\x12\x91\x01\n" +
 	"\x16cert_manager_namespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb5\x06\x92\xd4a\x18status.outputs.namespaceR\x14certManagerNamespace\x12%\n" +
 	"\n" +
 	"dns_domain\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tdnsDomain\x12o\n" +
@@ -471,7 +460,7 @@ const file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto
 	"awsRoute53\x12i\n" +
 	"\tazure_dns\x18g \x01(\v2J.dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AzureDnsSolverH\x00R\bazureDnsB\n" +
 	"\n" +
-	"\bprovider\"\x93\x01\n" +
+	"\bproviderJ\x04\b\x01\x10\x02R\x0etarget_cluster\"\x93\x01\n" +
 	"\x17ClusterIssuerAcmeConfig\x12\x1c\n" +
 	"\x05email\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05email\x12O\n" +
 	"\x06server\x18\x02 \x01(\tB2\x8a\xa6\x1d.https://acme-v02.api.letsencrypt.org/directoryH\x00R\x06server\x88\x01\x01B\t\n" +
@@ -503,28 +492,26 @@ func file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto_
 
 var file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto_goTypes = []any{
-	(*KubernetesClusterIssuerSpec)(nil),          // 0: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec
-	(*ClusterIssuerAcmeConfig)(nil),              // 1: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.ClusterIssuerAcmeConfig
-	(*CloudflareDnsSolver)(nil),                  // 2: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.CloudflareDnsSolver
-	(*GcpCloudDnsSolver)(nil),                    // 3: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.GcpCloudDnsSolver
-	(*AwsRoute53Solver)(nil),                     // 4: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AwsRoute53Solver
-	(*AzureDnsSolver)(nil),                       // 5: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AzureDnsSolver
-	(*kubernetes.KubernetesClusterSelector)(nil), // 6: dev.planton.provider.kubernetes.KubernetesClusterSelector
-	(*v1.StringValueOrRef)(nil),                  // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesClusterIssuerSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec
+	(*ClusterIssuerAcmeConfig)(nil),     // 1: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.ClusterIssuerAcmeConfig
+	(*CloudflareDnsSolver)(nil),         // 2: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.CloudflareDnsSolver
+	(*GcpCloudDnsSolver)(nil),           // 3: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.GcpCloudDnsSolver
+	(*AwsRoute53Solver)(nil),            // 4: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AwsRoute53Solver
+	(*AzureDnsSolver)(nil),              // 5: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AzureDnsSolver
+	(*v1.StringValueOrRef)(nil),         // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto_depIdxs = []int32{
-	6, // 0: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.target_cluster:type_name -> dev.planton.provider.kubernetes.KubernetesClusterSelector
-	7, // 1: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.cert_manager_namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.acme:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.ClusterIssuerAcmeConfig
-	2, // 3: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.cloudflare:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.CloudflareDnsSolver
-	3, // 4: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.gcp_cloud_dns:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.GcpCloudDnsSolver
-	4, // 5: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.aws_route53:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AwsRoute53Solver
-	5, // 6: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.azure_dns:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AzureDnsSolver
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	6, // 0: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.cert_manager_namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.acme:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.ClusterIssuerAcmeConfig
+	2, // 2: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.cloudflare:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.CloudflareDnsSolver
+	3, // 3: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.gcp_cloud_dns:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.GcpCloudDnsSolver
+	4, // 4: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.aws_route53:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AwsRoute53Solver
+	5, // 5: dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.KubernetesClusterIssuerSpec.azure_dns:type_name -> dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.AzureDnsSolver
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto_init() }
