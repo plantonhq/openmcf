@@ -939,6 +939,57 @@ func TestAwsFsxDataRepositoryAssociation_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsfsxdatarepositoryassociation", "terraform")
 }
 
+// --- AWS FSx for NetApp ONTAP (file system → SVM → volume) ---
+
+func TestAwsFsxOntapFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapfilesystem", "pulumi")
+}
+
+func TestAwsFsxOntapFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapfilesystem", "terraform")
+}
+
+func TestAwsFsxOntapStorageVirtualMachine_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapstoragevirtualmachine", "pulumi")
+}
+
+func TestAwsFsxOntapStorageVirtualMachine_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapstoragevirtualmachine", "terraform")
+}
+
+func TestAwsFsxOntapVolume_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapvolume", "pulumi")
+}
+
+func TestAwsFsxOntapVolume_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxontapvolume", "terraform")
+}
+
+// AwsS3ObjectSet: a minimal single-object lane plus a full-surface lane
+// (metadata/header breadth, checksum, SSE-S3 override, STANDARD_IA, website
+// redirect, force_destroy versioned purge), both riding the shared versioned
+// S3 bucket fixture.
+func TestAwsS3ObjectSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3objectset", "pulumi")
+}
+
+func TestAwsS3ObjectSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3objectset", "terraform")
+}
+
+// AwsSagemakerDomain: a required-only minimal lane plus a full-surface lane
+// (tag propagation, CloudTrail attribution, Docker, all four IAM-compatible
+// app baselines with idle shutdown, S3 sharing, both inheritance planes,
+// POSIX identity, Studio UI hiding, role-free Canvas governance), both with
+// homeEfsRetentionPolicy Delete for zero-orphan teardown.
+func TestAwsSagemakerDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerdomain", "pulumi")
+}
+
+func TestAwsSagemakerDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerdomain", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

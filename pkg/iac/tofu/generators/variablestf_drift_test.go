@@ -189,6 +189,14 @@ var migratedKinds = []string{
 	"AwsFsxOpenzfsFileSystem",
 	"AwsFsxWindowsFileSystem",
 	"AwsFsxDataRepositoryAssociation",
+	// SageMaker Domain, migrated off its legacy hand-written contract.
+	"AwsSagemakerDomain",
+	// FSx ONTAP trio, migrated off their hand-written contracts together.
+	"AwsFsxOntapFileSystem",
+	"AwsFsxOntapStorageVirtualMachine",
+	"AwsFsxOntapVolume",
+	// S3 object set, migrated off its legacy hand-written contract.
+	"AwsS3ObjectSet",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

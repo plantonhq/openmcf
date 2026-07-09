@@ -71,6 +71,103 @@ func fsxFileSystemExists(ctx context.Context, cfg aws.Config, id, region string)
 	return false, nil
 }
 
+// fsxStorageVirtualMachineVerifier verifies an
+// AwsFsxOntapStorageVirtualMachine via DescribeStorageVirtualMachines, keyed
+// on the svm_id output.
+type fsxStorageVirtualMachineVerifier struct{}
+
+func (*fsxStorageVirtualMachineVerifier) IDOutputKey() string { return "svm_id" }
+
+func (*fsxStorageVirtualMachineVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, region string) error {
+	exists, err := fsxStorageVirtualMachineExists(ctx, cfg, id, region)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "awsfsxontapstoragevirtualmachine verify-exists failed for %q", id)
+	}
+	if !exists {
+		return pkgerrors.Errorf("awsfsxontapstoragevirtualmachine %q not found after deploy", id)
+	}
+	return nil
+}
+
+func (*fsxStorageVirtualMachineVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error {
+	exists, err := fsxStorageVirtualMachineExists(ctx, cfg, id, region)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "awsfsxontapstoragevirtualmachine verify-absent failed for %q", id)
+	}
+	if exists {
+		return pkgerrors.Errorf("awsfsxontapstoragevirtualmachine %q still exists after destroy", id)
+	}
+	return nil
+}
+
+func fsxStorageVirtualMachineExists(ctx context.Context, cfg aws.Config, id, region string) (bool, error) {
+	client := fsxClient(cfg, region)
+	out, err := client.DescribeStorageVirtualMachines(ctx, &fsx.DescribeStorageVirtualMachinesInput{
+		StorageVirtualMachineIds: []string{id},
+	})
+	if err != nil {
+		var notFound *fsxtypes.StorageVirtualMachineNotFound
+		if errors.As(err, &notFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, svm := range out.StorageVirtualMachines {
+		if !fsxLifecycleGone(string(svm.Lifecycle)) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// fsxVolumeVerifier verifies an AwsFsxOntapVolume via DescribeVolumes, keyed
+// on the volume_id output.
+type fsxVolumeVerifier struct{}
+
+func (*fsxVolumeVerifier) IDOutputKey() string { return "volume_id" }
+
+func (*fsxVolumeVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, region string) error {
+	exists, err := fsxVolumeExists(ctx, cfg, id, region)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "awsfsxontapvolume verify-exists failed for %q", id)
+	}
+	if !exists {
+		return pkgerrors.Errorf("awsfsxontapvolume %q not found after deploy", id)
+	}
+	return nil
+}
+
+func (*fsxVolumeVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error {
+	exists, err := fsxVolumeExists(ctx, cfg, id, region)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "awsfsxontapvolume verify-absent failed for %q", id)
+	}
+	if exists {
+		return pkgerrors.Errorf("awsfsxontapvolume %q still exists after destroy", id)
+	}
+	return nil
+}
+
+func fsxVolumeExists(ctx context.Context, cfg aws.Config, id, region string) (bool, error) {
+	client := fsxClient(cfg, region)
+	out, err := client.DescribeVolumes(ctx, &fsx.DescribeVolumesInput{
+		VolumeIds: []string{id},
+	})
+	if err != nil {
+		var notFound *fsxtypes.VolumeNotFound
+		if errors.As(err, &notFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, vol := range out.Volumes {
+		if !fsxLifecycleGone(string(vol.Lifecycle)) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // fsxDataRepositoryAssociationVerifier verifies an
 // AwsFsxDataRepositoryAssociation via DescribeDataRepositoryAssociations,
 // keyed on the association_id output.

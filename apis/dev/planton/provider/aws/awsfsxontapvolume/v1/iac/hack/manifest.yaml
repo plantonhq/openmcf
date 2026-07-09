@@ -10,10 +10,44 @@ spec:
   storage_virtual_machine_id:
     value: svm-0123456789abcdef0
   name: vol_test
-  size_in_megabytes: 1024
+  # The byte-precise size arm (1 TiB) so the offline plan proof exercises the
+  # int64 → string conversion path alongside the FLEXGROUP aggregate layout,
+  # SnapLock, tiering, and the delete-time controls.
+  size_in_bytes: 1099511627776
   junction_path: /test
+  ontap_volume_type: RW
+  volume_style: FLEXGROUP
   security_style: UNIX
+  snapshot_policy: default
   storage_efficiency_enabled: true
+  copy_tags_to_backups: true
+  skip_final_backup: false
+  final_backup_tags:
+    retention: decommission-audit
+  bypass_snaplock_enterprise_retention: false
   tiering_policy:
     name: AUTO
     cooling_period: 31
+  snaplock_configuration:
+    snaplock_type: ENTERPRISE
+    audit_log_volume: false
+    privileged_delete: DISABLED
+    volume_append_mode_enabled: false
+    autocommit_period:
+      type: DAYS
+      value: 7
+    retention_period:
+      default_retention:
+        type: YEARS
+        value: 1
+      minimum_retention:
+        type: DAYS
+        value: 30
+      maximum_retention:
+        type: YEARS
+        value: 5
+  aggregate_configuration:
+    aggregates:
+      - aggr1
+      - aggr2
+    constituents_per_aggregate: 8

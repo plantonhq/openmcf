@@ -1003,6 +1003,31 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsS3ObjectSet: a map-output kind — the three per-key maps are
+			// dot-flattened by both engines (object_etags.config/app.json = ...)
+			// and must route back into the proto maps with keys VERBATIM
+			// (object keys contain slashes and dots). bucket_id keys the E2E
+			// verifier's HeadObject loop; object_arns composes into IAM policy
+			// Resource lists.
+			name: "AwsS3ObjectSet",
+			kind: cloudresourcekind.CloudResourceKind_AwsS3ObjectSet,
+			rawOutputs: map[string]interface{}{
+				"bucket_id": "planton-oss-e2e-awss3bucket-prereq",
+				"object_arns": map[string]interface{}{
+					"config/app.json": "arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq/config/app.json",
+				},
+				"object_etags": map[string]interface{}{
+					"config/app.json": "9a0364b9e99bb480dd25e1f0284c8555",
+				},
+				"object_version_ids": map[string]interface{}{
+					"config/app.json": "3sL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUo",
+				},
+			},
+			mustPopulate: []string{
+				"bucket_id", "object_arns", "object_etags", "object_version_ids",
+			},
+		},
+		{
 			// AwsKinesisStream: stream_arn is the join key consumers, Lambda
 			// event source mappings, DynamoDB streaming destinations, and
 			// Firehose sources reference; stream_name keys the E2E verifier.
@@ -1823,6 +1848,102 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 			mustPopulate: []string{
 				"association_id", "association_arn", "file_system_id",
+			},
+		},
+		{
+			// AwsFsxOntapFileSystem: file_system_id keys the E2E verifier and
+			// is the SVM join key; the management/intercluster endpoint pairs
+			// carry the ONTAP CLI and SnapMirror endpoints (there is NO
+			// file-system-level data dns_name for ONTAP — data access is via
+			// SVM endpoints); the repeated lists guard the multi-value
+			// exports both engines emit.
+			name: "AwsFsxOntapFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxOntapFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":            "fs-0123456789abcdef0",
+				"file_system_arn":           "arn:aws:fsx:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"management_dns_name":       "management.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"management_ip_addresses":   []interface{}{"198.19.255.10"},
+				"intercluster_dns_name":     "intercluster.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"intercluster_ip_addresses": []interface{}{"198.19.255.11", "198.19.255.12"},
+				"network_interface_ids":     []interface{}{"eni-0abc123", "eni-0def456"},
+				"vpc_id":                    "vpc-0abc123",
+				"owner_id":                  "123456789012",
+			},
+			mustPopulate: []string{
+				"file_system_id", "file_system_arn", "management_dns_name",
+				"management_ip_addresses", "intercluster_dns_name",
+				"intercluster_ip_addresses", "network_interface_ids", "vpc_id", "owner_id",
+			},
+		},
+		{
+			// AwsFsxOntapStorageVirtualMachine: svm_id keys the E2E verifier
+			// and is the volume join key; the per-protocol endpoint pairs
+			// (iscsi/management/nfs/smb) carry the data-access surface — smb
+			// is exported empty when no Active Directory is configured so the
+			// output shape stays configuration-invariant.
+			name: "AwsFsxOntapStorageVirtualMachine",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxOntapStorageVirtualMachine,
+			rawOutputs: map[string]interface{}{
+				"svm_id":                  "svm-0123456789abcdef0",
+				"arn":                     "arn:aws:fsx:us-west-2:123456789012:storage-virtual-machine/fs-0123456789abcdef0/svm-0123456789abcdef0",
+				"uuid":                    "abcdef01-2345-6789-abcd-ef0123456789",
+				"subtype":                 "DEFAULT",
+				"iscsi_dns_name":          "iscsi.svm-0123456789abcdef0.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"iscsi_ip_addresses":      []interface{}{"10.0.1.40"},
+				"management_dns_name":     "svm-0123456789abcdef0.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"management_ip_addresses": []interface{}{"10.0.1.41"},
+				"nfs_dns_name":            "svm-0123456789abcdef0.fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"nfs_ip_addresses":        []interface{}{"10.0.1.41"},
+				"smb_dns_name":            "",
+				"smb_ip_addresses":        []interface{}{},
+			},
+			mustPopulate: []string{
+				"svm_id", "arn", "uuid", "subtype", "iscsi_dns_name",
+				"iscsi_ip_addresses", "management_dns_name", "management_ip_addresses",
+				"nfs_dns_name", "nfs_ip_addresses",
+			},
+		},
+		{
+			// AwsFsxOntapVolume: volume_id keys the E2E verifier; uuid and
+			// the echoed file_system_id support ONTAP CLI operations and
+			// composition; flexcache_endpoint_type and ontap_volume_type are
+			// AWS-computed classifications.
+			name: "AwsFsxOntapVolume",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxOntapVolume,
+			rawOutputs: map[string]interface{}{
+				"volume_id":               "fsvol-0123456789abcdef0",
+				"arn":                     "arn:aws:fsx:us-west-2:123456789012:volume/fs-0123456789abcdef0/fsvol-0123456789abcdef0",
+				"uuid":                    "01234567-89ab-cdef-0123-456789abcdef",
+				"file_system_id":          "fs-0123456789abcdef0",
+				"flexcache_endpoint_type": "NONE",
+				"ontap_volume_type":       "RW",
+			},
+			mustPopulate: []string{
+				"volume_id", "arn", "uuid", "file_system_id",
+				"flexcache_endpoint_type", "ontap_volume_type",
+			},
+		},
+		{
+			// AwsSagemakerDomain: domain_id keys the E2E verifier and is the
+			// join key user profiles and spaces reference; the two SSO outputs
+			// are empty strings under IAM auth so the output SHAPE is
+			// auth-mode-invariant.
+			name: "AwsSagemakerDomain",
+			kind: cloudresourcekind.CloudResourceKind_AwsSagemakerDomain,
+			rawOutputs: map[string]interface{}{
+				"domain_id":                             "d-0123456789ab",
+				"domain_arn":                            "arn:aws:sagemaker:us-west-2:123456789012:domain/d-0123456789ab",
+				"domain_url":                            "https://d-0123456789ab.studio.us-west-2.sagemaker.aws",
+				"home_efs_file_system_id":               "fs-0123456789abcdef0",
+				"security_group_id_for_domain_boundary": "sg-0123456789abcdef0",
+				"single_sign_on_application_arn":        "arn:aws:sso::123456789012:application/ssoins-abc/apl-def",
+				"single_sign_on_managed_application_instance_id": "app-ins-0123456789abcdef",
+			},
+			mustPopulate: []string{
+				"domain_id", "domain_arn", "domain_url", "home_efs_file_system_id",
+				"security_group_id_for_domain_boundary", "single_sign_on_application_arn",
+				"single_sign_on_managed_application_instance_id",
 			},
 		},
 		{

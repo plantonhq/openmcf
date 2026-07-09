@@ -144,10 +144,14 @@ var verifiers = map[string]Verifier{
 
 	"awsglobalaccelerator": &globalAcceleratorVerifier{},
 
-	"awsfsxlustrefilesystem":          &fsxFileSystemVerifier{component: "awsfsxlustrefilesystem"},
-	"awsfsxopenzfsfilesystem":         &fsxFileSystemVerifier{component: "awsfsxopenzfsfilesystem"},
-	"awsfsxwindowsfilesystem":         &fsxFileSystemVerifier{component: "awsfsxwindowsfilesystem"},
-	"awsfsxdatarepositoryassociation": &fsxDataRepositoryAssociationVerifier{},
+	"awsfsxlustrefilesystem":           &fsxFileSystemVerifier{component: "awsfsxlustrefilesystem"},
+	"awsfsxopenzfsfilesystem":          &fsxFileSystemVerifier{component: "awsfsxopenzfsfilesystem"},
+	"awsfsxwindowsfilesystem":          &fsxFileSystemVerifier{component: "awsfsxwindowsfilesystem"},
+	"awsfsxontapfilesystem":            &fsxFileSystemVerifier{component: "awsfsxontapfilesystem"},
+	"awsfsxontapstoragevirtualmachine": &fsxStorageVirtualMachineVerifier{},
+	"awsfsxontapvolume":                &fsxVolumeVerifier{},
+	"awsfsxdatarepositoryassociation":  &fsxDataRepositoryAssociationVerifier{},
+	"awssagemakerdomain":               &sageMakerDomainVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

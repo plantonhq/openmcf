@@ -145,6 +145,8 @@ github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2 h1:wmt05tPp/CaRZpPV5B4SaJ5T
 github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2/go.mod h1:d+K9HESMpGb1EU9/UmmpInbGIUcAkwmcY6ZO/A3zZsw=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0 h1:ta8csKy5vN91F3i5gGR85lFV0srBqySEji7Jroes6rE=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0/go.mod h1:77ZAgynvx1txMvDG8gGWoWkO1augYDxkp9JElWFgjQU=
+github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0 h1:AjmVRphbA9OREBmvmlIIzLN4hk0kgP2egsY9Lwja5fY=
+github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0/go.mod h1:CivQlQhQJ/KgONEX70dPCPtPls/vHyhGHiqY5o1GSCw=
 github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0 h1:sVd6FrVJZo+FOZ46Bdtujc82tq/WVo96LkIR9ll9adg=
 github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0/go.mod h1:HlQu5hAX7DOaLl8AK1ac10N4PhMhslC7mds020yPKJ8=
 github.com/aws/aws-sdk-go-v2/service/sfn v1.44.0 h1:4v05JQSOFrZ1TB+kKs+cv16LBJP3UvniiMysb3CJn5o=

@@ -236,9 +236,13 @@ const (
 	// AwsElasticFileSystem is a prerequisite because an access point is created
 	// INTO a file system -- the spec's required file_system_id reference must
 	// resolve before the CreateAccessPoint call.
-	CloudResourceKind_AwsEfsAccessPoint                CloudResourceKind = 360
-	CloudResourceKind_AwsFsxLustreFileSystem           CloudResourceKind = 291
-	CloudResourceKind_AwsFsxOpenzfsFileSystem          CloudResourceKind = 292
+	CloudResourceKind_AwsEfsAccessPoint       CloudResourceKind = 360
+	CloudResourceKind_AwsFsxLustreFileSystem  CloudResourceKind = 291
+	CloudResourceKind_AwsFsxOpenzfsFileSystem CloudResourceKind = 292
+	// Every Windows file system must join an Active Directory domain; the
+	// directory itself is external infrastructure (AWS Managed Microsoft AD or
+	// a self-managed domain), so only the network dependency is a declarable
+	// prerequisite.
 	CloudResourceKind_AwsFsxWindowsFileSystem          CloudResourceKind = 293
 	CloudResourceKind_AwsFsxOntapFileSystem            CloudResourceKind = 294
 	CloudResourceKind_AwsFsxOntapStorageVirtualMachine CloudResourceKind = 295
@@ -276,6 +280,9 @@ const (
 	CloudResourceKind_AwsGlueCatalogDatabase   CloudResourceKind = 264
 	CloudResourceKind_AwsRedshiftCluster       CloudResourceKind = 265
 	// AI/ML
+	// A domain cannot exist without VPC subnets and a SageMaker execution role
+	// (default_user_settings.execution_role_arn is required), so both are hard
+	// deploy prerequisites.
 	CloudResourceKind_AwsSagemakerDomain CloudResourceKind = 270
 	// A service can run entirely on companion defaults, so the App Runner
 	// family's kinds are dependency-free leaves except the VPC connector
@@ -1860,7 +1867,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x91\xa2\x01\n" +
+	"\x02v1\x10\x01*\xaf\xa2\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1938,13 +1945,13 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\rAwsNatGateway\x10\x9e\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x10\x01\"\x06awsnat:\x06\x9c\x02\x99\x02\x9d\x02\x128\n" +
 	"\x1cAwsEgressOnlyInternetGateway\x10\x9f\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawseigw:\x02\xd8\x01\x121\n" +
 	"\x14AwsElasticFileSystem\x10\xa2\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsefs:\x04\x9c\x02\xd7\x01\x12.\n" +
-	"\x11AwsEfsAccessPoint\x10\xe8\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsefsap:\x02\xa2\x02\x12-\n" +
-	"\x16AwsFsxLustreFileSystem\x10\xa3\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxl\x12.\n" +
-	"\x17AwsFsxOpenzfsFileSystem\x10\xa4\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxz\x12.\n" +
-	"\x17AwsFsxWindowsFileSystem\x10\xa5\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxw\x12,\n" +
-	"\x15AwsFsxOntapFileSystem\x10\xa6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxo\x12:\n" +
-	" AwsFsxOntapStorageVirtualMachine\x10\xa7\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawsfxosvm\x12)\n" +
-	"\x11AwsFsxOntapVolume\x10\xa8\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsfxov\x12<\n" +
+	"\x11AwsEfsAccessPoint\x10\xe8\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsefsap:\x02\xa2\x02\x121\n" +
+	"\x16AwsFsxLustreFileSystem\x10\xa3\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsfxl:\x02\x9c\x02\x122\n" +
+	"\x17AwsFsxOpenzfsFileSystem\x10\xa4\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsfxz:\x02\x9c\x02\x122\n" +
+	"\x17AwsFsxWindowsFileSystem\x10\xa5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsfxw:\x02\x9c\x02\x120\n" +
+	"\x15AwsFsxOntapFileSystem\x10\xa6\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsfxo:\x02\x9c\x02\x12>\n" +
+	" AwsFsxOntapStorageVirtualMachine\x10\xa7\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawsfxosvm:\x02\xa6\x02\x12-\n" +
+	"\x11AwsFsxOntapVolume\x10\xa8\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\aawsfxov:\x02\xa7\x02\x12<\n" +
 	"\x1fAwsFsxDataRepositoryAssociation\x10\xf7\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsfxdra:\x02\xa3\x02\x12)\n" +
 	"\x12AwsCognitoUserPool\x10\xac\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscog\x128\n" +
 	"\x1aAwsCognitoIdentityProvider\x10\xae\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawscogidp:\x02\xac\x02\x129\n" +
@@ -1961,8 +1968,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x18AwsKinesisStreamConsumer\x10\x86\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawskincon:\x02\x84\x02\x12)\n" +
 	"\x12AwsAthenaWorkgroup\x10\x87\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsath\x12.\n" +
 	"\x16AwsGlueCatalogDatabase\x10\x88\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsglue\x12,\n" +
-	"\x12AwsRedshiftCluster\x10\x89\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awsrs:\x02\x9c\x02\x12(\n" +
-	"\x12AwsSagemakerDomain\x10\x8e\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05sgmkd\x12)\n" +
+	"\x12AwsRedshiftCluster\x10\x89\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awsrs:\x02\x9c\x02\x12.\n" +
+	"\x12AwsSagemakerDomain\x10\x8e\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05sgmkd:\x04\x9c\x02\xd0\x01\x12)\n" +
 	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x0f\xa2\xf7\x04\v\b\f\x10\x01\"\x05awsar\x12=\n" +
 	"$AwsAppRunnerAutoScalingConfiguration\x10\xf0\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x10\x01\"\bawsarasc\x126\n" +
 	"\x18AwsAppRunnerVpcConnector\x10\xf1\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawsarvc:\x04\x9c\x02\xd7\x01\x12>\n" +

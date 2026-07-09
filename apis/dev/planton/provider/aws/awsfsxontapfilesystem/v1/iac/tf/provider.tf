@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     aws = {
+      # Family floor: the complete ONTAP file-system surface used by this
+      # module predates the v6 line (the last additions — MULTI_AZ_2 and the
+      # second-generation throughput tiers — landed in 5.58.0), so the floor
+      # is the v6 major itself, keeping the FSx family on one provider line.
       source  = "hashicorp/aws"
-      version = "= 5.82.0"
+      version = ">= 6.0.0"
     }
   }
 }

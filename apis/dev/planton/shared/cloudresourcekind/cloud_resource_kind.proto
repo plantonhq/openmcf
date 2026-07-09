@@ -625,18 +625,21 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsfxo"
+    prerequisites: [AwsSubnet]
   }];
 
   AwsFsxOntapStorageVirtualMachine = 295 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxosvm"
+    prerequisites: [AwsFsxOntapFileSystem]
   }];
 
   AwsFsxOntapVolume = 296 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxov"
+    prerequisites: [AwsFsxOntapStorageVirtualMachine]
   }];
 
   AwsFsxDataRepositoryAssociation = 375 [(kind_meta) = {
@@ -776,10 +779,17 @@ enum CloudResourceKind {
   }];
 
   // AI/ML
+  // A domain cannot exist without VPC subnets and a SageMaker execution role
+  // (default_user_settings.execution_role_arn is required), so both are hard
+  // deploy prerequisites.
   AwsSagemakerDomain = 270 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "sgmkd"
+    prerequisites: [
+      AwsSubnet,
+      AwsIamRole
+    ]
   }];
 
   // Containers

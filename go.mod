@@ -49,6 +49,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0
+	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0
 	github.com/aws/aws-sdk-go-v2/service/sfn v1.44.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.40.3

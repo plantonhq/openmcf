@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     aws = {
+      # Family floor: the complete volume surface used by this module
+      # predates the v6 line (the last addition — final_backup_tags — landed
+      # in 5.59.0), so the floor is the v6 major itself, keeping the FSx
+      # family on one provider line.
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = ">= 6.0.0"
     }
   }
 }

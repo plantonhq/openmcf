@@ -18,7 +18,12 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awsfsxontapvolumev1.AwsFs
 	locals := &Locals{}
 	locals.AwsFsxOntapVolume = stackInput.Target
 
+	// Resource-identity tags follow the catalog convention. The Name tag is
+	// the resource's metadata.name — distinct from spec.name, the
+	// ONTAP-internal volume identity; the Terraform module pins the same
+	// basis, keeping the two engines' physical identity converged.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsFsxOntapVolume.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsFsxOntapVolume.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsFsxOntapVolume.Metadata.Env,
