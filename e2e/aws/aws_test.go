@@ -859,6 +859,42 @@ func TestAwsCodePipeline_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awscodepipeline", "terraform")
 }
 
+// --- AWS MemoryDB family (user, ACL, cluster) ---
+
+func TestAwsMemorydbUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbuser", "pulumi")
+}
+
+func TestAwsMemorydbUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbuser", "terraform")
+}
+
+func TestAwsMemorydbAcl_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbacl", "pulumi")
+}
+
+func TestAwsMemorydbAcl_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbacl", "terraform")
+}
+
+func TestAwsMemorydbCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbcluster", "pulumi")
+}
+
+func TestAwsMemorydbCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmemorydbcluster", "terraform")
+}
+
+// --- AWS Client VPN ---
+
+func TestAwsClientVpn_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsclientvpn", "pulumi")
+}
+
+func TestAwsClientVpn_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsclientvpn", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

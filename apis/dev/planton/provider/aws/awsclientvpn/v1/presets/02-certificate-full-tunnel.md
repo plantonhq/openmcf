@@ -1,28 +1,45 @@
-# Certificate-Based Full-Tunnel VPN
+# Certificate Full-Tunnel VPN
 
-This preset creates an AWS Client VPN endpoint with full-tunnel routing, where all client traffic -- including internet traffic -- routes through the VPN. This provides complete network control and visibility over connected clients, suitable for security-sensitive environments that require traffic inspection or compliance logging.
+This preset creates a Client VPN endpoint that routes ALL client traffic
+through AWS — internet included — for postures where every packet must
+egress through inspected, NAT-ed infrastructure.
 
 ## When to Use
 
-- Security-sensitive environments requiring all traffic to pass through corporate network controls
-- Compliance scenarios where internet traffic must be logged, filtered, or inspected
-- Environments where clients should appear to originate from the VPC's IP addresses
+- Compliance postures requiring all remote-worker traffic to egress
+  through corporate infrastructure
+- Untrusted client networks (public Wi-Fi) where local breakout is
+  unacceptable
 
 ## Key Configuration Choices
 
-- **Full-tunnel** (`disableSplitTunnel: true`) -- All client traffic routes through the VPN, including internet-bound traffic
-- **Authorize all traffic** (`cidrAuthorizationRules: [0.0.0.0/0]`) -- Clients can reach both VPC resources and the internet through the VPN
-- **Certificate authentication** (`authenticationType: certificate`) -- Mutual TLS; same as split-tunnel preset
-- **TCP on port 443** -- Firewall-friendly transport
+- **Full tunnel** (`splitTunnel: false`) — all client traffic enters the
+  VPN
+- **The 0.0.0.0/0 pair** — a route through a NAT-routed subnet AND an
+  authorization rule for it; without BOTH, connected clients lose internet
+  access (the route carries the traffic, the rule authorizes it)
+- **NAT-routed target subnet** — the associated subnet must reach the
+  internet through a NAT gateway; the VPN only delivers traffic to the
+  subnet
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<vpc-id>` | VPC ID to attach the VPN endpoint to | AWS VPC console or `AwsVpc` status outputs |
-| `<private-subnet-id>` | Subnet ID for VPN target network association | AWS VPC console or `AwsVpc` status outputs |
-| `<server-certificate-arn>` | ACM certificate ARN for the VPN server | AWS ACM console or `AwsCertManagerCert` status outputs |
+| `<aws-region>` | AWS region code (e.g. `us-west-2`) | Your deployment region |
+| `<client-ca-certificate-arn>` | ACM ARN of the client CA chain | ACM console, or an AwsCertManagerCert output |
+| `<server-certificate-arn>` | ACM ARN of the server certificate | ACM console, or an AwsCertManagerCert output |
+| `<vpc-id>` | The VPC whose security groups apply | Your AwsVpc output |
+| `<nat-routed-private-subnet-id>` | Private subnet with a NAT route to the internet | Your AwsSubnet output |
+| `<vpn-log-group-name>` | CloudWatch log group for connection events | Your AwsCloudwatchLogGroup output |
+
+## Common Additions
+
+- `clientRouteEnforcementEnabled: true` so managed devices cannot bypass
+  the tunnel with client-side route edits
+- `dnsServers` pointing at the VPC resolver so DNS also resolves privately
 
 ## Related Presets
 
-- **01-certificate-split-tunnel** -- Use instead when only VPC traffic should route through the VPN (better performance for general internet use)
+- **01-certificate-split-tunnel** — VPC-only traffic through the VPN
+- **03-saml-sso** — SAML single sign-on with the self-service portal

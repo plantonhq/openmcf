@@ -119,7 +119,9 @@ import (
 	awslblistenerrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslblistenerrule/v1"
 	awslbtargetgroupv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslbtargetgroup/v1"
 	awsmemcachedelasticachev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemcachedelasticache/v1"
+	awsmemorydbaclv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbacl/v1"
 	awsmemorydbclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbcluster/v1"
+	awsmemorydbuserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbuser/v1"
 	awsmskclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskcluster/v1"
 	awsmskserverlessclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskserverlesscluster/v1"
 	awsmwaaenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmwaaenvironment/v1"
@@ -592,7 +594,9 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                      &awslblistenerrulev1.AwsLbListenerRule{},
 	cloudresourcekind.CloudResourceKind_AwsLbTargetGroup:                       &awslbtargetgroupv1.AwsLbTargetGroup{},
 	cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache:                &awsmemcachedelasticachev1.AwsMemcachedElasticache{},
+	cloudresourcekind.CloudResourceKind_AwsMemorydbAcl:                         &awsmemorydbaclv1.AwsMemorydbAcl{},
 	cloudresourcekind.CloudResourceKind_AwsMemorydbCluster:                     &awsmemorydbclusterv1.AwsMemorydbCluster{},
+	cloudresourcekind.CloudResourceKind_AwsMemorydbUser:                        &awsmemorydbuserv1.AwsMemorydbUser{},
 	cloudresourcekind.CloudResourceKind_AwsMskCluster:                          &awsmskclusterv1.AwsMskCluster{},
 	cloudresourcekind.CloudResourceKind_AwsMskServerlessCluster:                &awsmskserverlessclusterv1.AwsMskServerlessCluster{},
 	cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment:                     &awsmwaaenvironmentv1.AwsMwaaEnvironment{},

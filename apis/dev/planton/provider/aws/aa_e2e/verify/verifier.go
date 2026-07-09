@@ -136,6 +136,11 @@ var verifiers = map[string]Verifier{
 	"awscodebuildproject":    &codeBuildProjectVerifier{},
 	"awscodepipeline":        &codePipelineVerifier{},
 	"awsgluecatalogdatabase": &glueCatalogDatabaseVerifier{},
+
+	"awsmemorydbcluster": &memorydbClusterVerifier{},
+	"awsmemorydbuser":    &memorydbUserVerifier{},
+	"awsmemorydbacl":     &memorydbAclVerifier{},
+	"awsclientvpn":       &clientVpnVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

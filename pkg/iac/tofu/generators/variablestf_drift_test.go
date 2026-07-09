@@ -173,6 +173,13 @@ var migratedKinds = []string{
 	// CI/CD pair, migrated off their hand-written contracts together.
 	"AwsCodeBuildProject",
 	"AwsCodePipeline",
+	// MemoryDB family: the cluster migrated off its hand-written contract;
+	// the user and ACL generator-owned from the day they were forged.
+	"AwsMemorydbCluster",
+	"AwsMemorydbUser",
+	"AwsMemorydbAcl",
+	// Client VPN, migrated off its legacy hand-written contract.
+	"AwsClientVpn",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

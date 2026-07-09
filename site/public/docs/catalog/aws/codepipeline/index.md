@@ -164,7 +164,7 @@ This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stag
 | `region` | `string` | — | AWS region where this action executes. Required for cross-region actions. Defaults to the pipeline's region. | — |
 | `roleArn` | `string` | — | IAM role ARN the action assumes instead of the pipeline role. Useful for cross-account deployments. Can reference an AwsIamRole resource via `valueFrom`. | — |
 | `runOrder` | `int` | `1` | Execution order within a stage. Same value = parallel; lower values run first. | 1–999 |
-| `timeoutInMinutes` | `int` | — | Maximum action runtime before timeout. If omitted, the provider default applies. | 5–86400 |
+| `timeoutInMinutes` | `int` | — | Timeout override — AWS supports it ONLY on Manual Approval actions (`category: Approval`, `provider: Manual`); other action types are rejected at creation. | 5–86400 |
 
 ### Trigger Fields
 
@@ -224,6 +224,7 @@ This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stag
 | `retry_configuration_requires_retry_result` | `onFailure.retryConfiguration` requires `result: RETRY`. |
 | `git_configuration_needs_filter` | A trigger's git configuration needs at least one push or pull-request filter. |
 | `git_filter_needs_pattern` | A git filter block needs at least one includes or excludes pattern. |
+| `timeout_only_for_approval_actions` | `timeoutInMinutes` is only supported on Manual Approval actions. |
 
 ## Examples
 

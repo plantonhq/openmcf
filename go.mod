@@ -38,6 +38,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.44.4
 	github.com/aws/aws-sdk-go-v2/service/kms v1.53.6
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.94.1
+	github.com/aws/aws-sdk-go-v2/service/memorydb v1.35.0
 	github.com/aws/aws-sdk-go-v2/service/mwaa v1.41.7
 	github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/opensearch v1.73.0

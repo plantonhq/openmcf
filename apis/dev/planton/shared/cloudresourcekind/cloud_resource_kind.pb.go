@@ -121,8 +121,12 @@ const (
 	CloudResourceKind_AwsIamUser      CloudResourceKind = 218
 	CloudResourceKind_AwsKmsKey       CloudResourceKind = 219
 	CloudResourceKind_AwsEc2Instance  CloudResourceKind = 220
-	CloudResourceKind_AwsClientVpn    CloudResourceKind = 221
-	CloudResourceKind_AwsDocumentDb   CloudResourceKind = 222
+	// Every Client VPN endpoint requires an ACM server certificate at create
+	// time; the imported self-signed fixture satisfies it. Subnets/VPC are
+	// optional composition (a zero-association endpoint is valid) -- composed
+	// scenarios declare them via the e2e-prerequisites annotation.
+	CloudResourceKind_AwsClientVpn  CloudResourceKind = 221
+	CloudResourceKind_AwsDocumentDb CloudResourceKind = 222
 	// AwsRoute53Zone is a prerequisite because every record lives inside a
 	// hosted zone -- the spec's zone_id reference must resolve before the
 	// record can be created.
@@ -311,8 +315,16 @@ const (
 	CloudResourceKind_AwsMwaaEnvironment CloudResourceKind = 340
 	// Graph Database
 	CloudResourceKind_AwsNeptuneCluster CloudResourceKind = 341
-	// In-Memory Database
+	// A cluster always launches into a subnet group; the subnets are the hard
+	// deploy prerequisite. The ACL it attaches is optional composition (the
+	// built-in "open-access" ACL needs no resource) -- scenarios declare the
+	// ACL/user chain via the e2e-prerequisites annotation.
 	CloudResourceKind_AwsMemorydbCluster CloudResourceKind = 342
+	CloudResourceKind_AwsMemorydbUser    CloudResourceKind = 373
+	// An empty ACL is valid (MemoryDB has no mandatory "default" member), so
+	// the user is optional composition -- the composed scenario declares it via
+	// the e2e-prerequisites annotation, never a registry edge.
+	CloudResourceKind_AwsMemorydbAcl CloudResourceKind = 374
 	// Streaming
 	// AwsSubnet and AwsSecurityGroup are prerequisites because brokers are
 	// placed in referenced subnets and AWS requires at least one attached
@@ -799,6 +811,8 @@ var (
 		340:  "AwsMwaaEnvironment",
 		341:  "AwsNeptuneCluster",
 		342:  "AwsMemorydbCluster",
+		373:  "AwsMemorydbUser",
+		374:  "AwsMemorydbAcl",
 		350:  "AwsMskCluster",
 		351:  "AwsMskServerlessCluster",
 		352:  "AwsLambdaEventSourceMapping",
@@ -1248,6 +1262,8 @@ var (
 		"AwsMwaaEnvironment":                      340,
 		"AwsNeptuneCluster":                       341,
 		"AwsMemorydbCluster":                      342,
+		"AwsMemorydbUser":                         373,
+		"AwsMemorydbAcl":                          374,
 		"AwsMskCluster":                           350,
 		"AwsMskServerlessCluster":                 351,
 		"AwsLambdaEventSourceMapping":             352,
@@ -1841,7 +1857,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf5\xa0\x01\n" +
+	"\x02v1\x10\x01*ӡ\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1875,8 +1891,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\n" +
 	"AwsIamUser\x10\xda\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsuser\x12 \n" +
 	"\tAwsKmsKey\x10\xdb\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awskms\x12&\n" +
-	"\x0eAwsEc2Instance\x10\xdc\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aec2inst\x12#\n" +
-	"\fAwsClientVpn\x10\xdd\x01\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsvpn\x12'\n" +
+	"\x0eAwsEc2Instance\x10\xdc\x01\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aec2inst\x12'\n" +
+	"\fAwsClientVpn\x10\xdd\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsvpn:\x02\xc9\x01\x12'\n" +
 	"\rAwsDocumentDb\x10\xde\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05docdb:\x02\x9c\x02\x12.\n" +
 	"\x13AwsRoute53DnsRecord\x10\xdf\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06r53rec:\x02\xd4\x01\x12)\n" +
 	"\x0eAwsS3ObjectSet\x10\xe0\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06s3objs:\x02\xd5\x01\x12\"\n" +
@@ -1956,8 +1972,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x13AwsCodeBuildProject\x10\xca\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\x05awscb:\x02\xd0\x01\x12+\n" +
 	"\x0fAwsCodePipeline\x10\xcb\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x10\x01\"\x05awscp:\x04\xd0\x01\xd5\x01\x120\n" +
 	"\x12AwsMwaaEnvironment\x10\xd4\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\aawsmwaa:\x04\x9c\x02\xd7\x01\x12,\n" +
-	"\x11AwsNeptuneCluster\x10\xd5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnep:\x02\x9c\x02\x12)\n" +
-	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsmdb\x12*\n" +
+	"\x11AwsNeptuneCluster\x10\xd5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsnep:\x02\x9c\x02\x12-\n" +
+	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\x06awsmdb:\x02\x9c\x02\x12*\n" +
+	"\x0fAwsMemorydbUser\x10\xf5\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x10\x01\"\n" +
+	"awsmdbuser\x12(\n" +
+	"\x0eAwsMemorydbAcl\x10\xf6\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawsmdbacl\x12*\n" +
 	"\rAwsMskCluster\x10\xde\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\x06awsmsk:\x04\x9c\x02\xd7\x01\x124\n" +
 	"\x17AwsMskServerlessCluster\x10\xdf\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsmsksl:\x02\x9c\x02\x129\n" +
 	"\x1bAwsLambdaEventSourceMapping\x10\xe0\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tlambdaesm:\x02\xd1\x01\x120\n" +

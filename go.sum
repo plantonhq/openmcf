@@ -123,6 +123,8 @@ github.com/aws/aws-sdk-go-v2/service/kms v1.53.6 h1:udpfx3CG5T0eLYXiJMFdN7bBAXKP
 github.com/aws/aws-sdk-go-v2/service/kms v1.53.6/go.mod h1:0RXNc6Yf3AvSMldGD6Lcch96Ojlw2TtGnHsqfD/L4u8=
 github.com/aws/aws-sdk-go-v2/service/lambda v1.94.1 h1:GLkCSQiEUNjCCDb39BuFVaMwfbwUr4kqYHk4PcJzpPY=
 github.com/aws/aws-sdk-go-v2/service/lambda v1.94.1/go.mod h1:gKWVtxlMTgoLU9m6FDw7z6FAEFh8u8CoaPJx0zWk5J8=
+github.com/aws/aws-sdk-go-v2/service/memorydb v1.35.0 h1:JL16vUpy10xVFk2ggkEoJ094m7Qc/sx9vD3QqVyhuMY=
+github.com/aws/aws-sdk-go-v2/service/memorydb v1.35.0/go.mod h1:Y7RKCwnmFsrln6gorJVQ/gZgBbGGg+RHoRw64uxEVos=
 github.com/aws/aws-sdk-go-v2/service/mwaa v1.41.7 h1:Rp+H5JJZCsax45M/b2wIoLPT+/KPDDL6kqY2TJsOS/g=
 github.com/aws/aws-sdk-go-v2/service/mwaa v1.41.7/go.mod h1:QGxtdTS/3lgJj97BbQyD3htWPmw3B2G+Xsnxsygp/80=
 github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2 h1:4yml3fO1g1DvPMn4N9JMLMDo7vgdgPL9i10MP4Q4stM=

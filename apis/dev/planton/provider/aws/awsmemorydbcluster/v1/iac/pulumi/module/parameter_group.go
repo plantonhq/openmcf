@@ -7,11 +7,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// parameterGroup creates a custom MemoryDB parameter group when inline
-// parameters are provided and a parameter_group_family is specified.
+// parameterGroup creates the module-managed MemoryDB parameter group when
+// the folded parameters arm is used (CEL guarantees the family accompanies
+// it). The bring-your-own parameter_group_name arm is handled in cluster.go.
 func parameterGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*memorydb.ParameterGroup, error) {
 	spec := locals.Spec
-	if spec == nil || len(spec.Parameters) == 0 || spec.ParameterGroupFamily == "" {
+	if len(spec.Parameters) == 0 {
 		return nil, nil
 	}
 
@@ -23,10 +24,12 @@ func parameterGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider)
 		})
 	}
 
+	// "-params" suffix keeps the group distinct from the cluster while
+	// remaining discoverable by the cluster's name, on both engines.
 	pg, err := memorydb.NewParameterGroup(ctx, "parameter-group", &memorydb.ParameterGroupArgs{
-		Name:        pulumi.Sprintf("%s-custom", locals.Target.Metadata.Id),
+		Name:        pulumi.Sprintf("%s-params", locals.ClusterName),
 		Family:      pulumi.String(spec.ParameterGroupFamily),
-		Description: pulumi.Sprintf("Custom parameter group for %s", locals.Target.Metadata.Id),
+		Description: pulumi.Sprintf("Custom parameter group for %s", locals.ClusterName),
 		Parameters:  params,
 		Tags:        pulumi.ToStringMap(locals.AwsTags),
 	}, pulumi.Provider(provider))
@@ -34,6 +37,7 @@ func parameterGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider)
 		return nil, errors.Wrap(err, "create parameter group")
 	}
 
-	ctx.Export(OpParameterGroupName, pg.Name)
+	// The parameter_group_name output is exported once, in cluster.go, where
+	// all three arms (module-managed / bring-your-own / default) converge.
 	return pg, nil
 }

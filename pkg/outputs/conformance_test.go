@@ -1652,6 +1652,74 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"pipeline_arn", "pipeline_name"},
 		},
 		{
+			// AwsMemorydbCluster: cluster_name keys the E2E verifier;
+			// cluster_endpoint_address/port are what applications connect to;
+			// the group-name pair is exported in EVERY arm (module-managed,
+			// bring-your-own, or empty when a default applies) so the output
+			// shape is engine- and configuration-invariant.
+			name: "AwsMemorydbCluster",
+			kind: cloudresourcekind.CloudResourceKind_AwsMemorydbCluster,
+			rawOutputs: map[string]interface{}{
+				"cluster_endpoint_address": "clustercfg.sessions.abc123.memorydb.us-west-2.amazonaws.com",
+				"cluster_endpoint_port":    6379,
+				"cluster_arn":              "arn:aws:memorydb:us-west-2:123456789012:cluster/sessions",
+				"cluster_name":             "sessions",
+				"engine_patch_version":     "7.2.6",
+				"subnet_group_name":        "sessions",
+				"parameter_group_name":     "",
+			},
+			mustPopulate: []string{
+				"cluster_endpoint_address", "cluster_endpoint_port", "cluster_arn",
+				"cluster_name", "engine_patch_version", "subnet_group_name",
+			},
+		},
+		{
+			// AwsMemorydbUser: user_name is the join key ACL membership lists
+			// reference; user_arn is what IAM memorydb:Connect policies need.
+			name: "AwsMemorydbUser",
+			kind: cloudresourcekind.CloudResourceKind_AwsMemorydbUser,
+			rawOutputs: map[string]interface{}{
+				"user_name":              "orders-service",
+				"user_arn":               "arn:aws:memorydb:us-west-2:123456789012:user/orders-service",
+				"minimum_engine_version": "7.2",
+			},
+			mustPopulate: []string{"user_name", "user_arn", "minimum_engine_version"},
+		},
+		{
+			// AwsMemorydbAcl: acl_name is the join key the cluster's acl_name
+			// reference resolves against.
+			name: "AwsMemorydbAcl",
+			kind: cloudresourcekind.CloudResourceKind_AwsMemorydbAcl,
+			rawOutputs: map[string]interface{}{
+				"acl_name":               "payments-env-acl",
+				"acl_arn":                "arn:aws:memorydb:us-west-2:123456789012:acl/payments-env-acl",
+				"minimum_engine_version": "7.2",
+			},
+			mustPopulate: []string{"acl_name", "acl_arn", "minimum_engine_version"},
+		},
+		{
+			// AwsClientVpn: the endpoint ID keys the E2E verifier and the
+			// client-configuration export; subnet_association_ids proves the
+			// dot-flattened map route into the proto map field; the TGW
+			// attachment ID is exported empty for VPC-attached endpoints so
+			// the output shape is configuration-invariant.
+			name: "AwsClientVpn",
+			kind: cloudresourcekind.CloudResourceKind_AwsClientVpn,
+			rawOutputs: map[string]interface{}{
+				"client_vpn_endpoint_id":               "cvpn-endpoint-0123456789abcdef0",
+				"client_vpn_endpoint_arn":              "arn:aws:ec2:us-west-2:123456789012:client-vpn-endpoint/cvpn-endpoint-0123456789abcdef0",
+				"endpoint_dns_name":                    "cvpn-endpoint-0123456789abcdef0.prod.clientvpn.us-west-2.amazonaws.com",
+				"self_service_portal_url":              "",
+				"subnet_association_ids.subnet-aaa111": "cvpn-assoc-0aaa",
+				"subnet_association_ids.subnet-bbb222": "cvpn-assoc-0bbb",
+				"transit_gateway_attachment_id":        "",
+			},
+			mustPopulate: []string{
+				"client_vpn_endpoint_id", "client_vpn_endpoint_arn", "endpoint_dns_name",
+				"subnet_association_ids",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

@@ -253,10 +253,15 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "ec2inst"
   }];
+  // Every Client VPN endpoint requires an ACM server certificate at create
+  // time; the imported self-signed fixture satisfies it. Subnets/VPC are
+  // optional composition (a zero-association endpoint is valid) -- composed
+  // scenarios declare them via the e2e-prerequisites annotation.
   AwsClientVpn = 221 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsvpn"
+    prerequisites: [AwsCertManagerCert]
   }];
   AwsDocumentDb = 222 [(kind_meta) = {
     provider: aws
@@ -897,10 +902,29 @@ enum CloudResourceKind {
   }];
 
   // In-Memory Database
+
+  // A cluster always launches into a subnet group; the subnets are the hard
+  // deploy prerequisite. The ACL it attaches is optional composition (the
+  // built-in "open-access" ACL needs no resource) -- scenarios declare the
+  // ACL/user chain via the e2e-prerequisites annotation.
   AwsMemorydbCluster = 342 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsmdb"
+    prerequisites: [AwsSubnet]
+  }];
+  AwsMemorydbUser = 373 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsmdbuser"
+  }];
+  // An empty ACL is valid (MemoryDB has no mandatory "default" member), so
+  // the user is optional composition -- the composed scenario declares it via
+  // the e2e-prerequisites annotation, never a registry edge.
+  AwsMemorydbAcl = 374 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsmdbacl"
   }];
 
   // Streaming

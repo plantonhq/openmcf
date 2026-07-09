@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsclientvpn
+spec:
+  # A Client VPN endpoint under live E2E: two lanes. The endpoint-only lane
+  # is fast (endpoint create is near-instant; a zero-association endpoint
+  # is a valid pre-staged front door) and proves the endpoint surface plus
+  # a folded authorization rule. The composed lane pays the association
+  # cost -- AWS takes ~10 minutes each way with a 4-minute waiter floor --
+  # to prove the association/route/rule folds and their ordering edge.
+  # Registry prerequisite: AwsCertManagerCert (the imported self-signed
+  # fixture serves as both server certificate and client CA chain).
+  # Excluded arms recorded in the scenarios: directory/federated auth
+  # (need an AD directory / IAM SAML provider), connection logging (needs
+  # a log-group fixture; proven offline), IPv6/dual-stack address types,
+  # the transit-gateway arm (needs a live TGW). Verification is
+  # DescribeClientVpnEndpoints keyed on the endpoint ID, state-aware
+  # (deleting counts as absent).
+  tier: 2
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision (association cost: composed lane ~25-35 minutes
+    per engine). Artifacts complete and re-runnable; the offline gate is fully
+    green.
+  timeout_minutes: 60

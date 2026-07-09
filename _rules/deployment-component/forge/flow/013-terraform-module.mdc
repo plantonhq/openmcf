@@ -162,6 +162,22 @@ NOTES
   avoid modeling a policy/user-data string field out of interpolation concerns.
   (Exercise one template-introducer-bearing value in the kind's E2E scenario:
   `tofu validate` never sees real tfvars, so only a rendered run proves it.)
+- **The offline `tofu plan` proof: render tfvars with
+  `planton tofu load-tfvars <path-to-hack-manifest>` (positional arg; prints
+  HCL tfvars to stdout), save to a file, then in `iac/tf/` run
+  `tofu init -backend=false` + `tofu plan -input=false -refresh=false
+  -var-file=<file>`.** Two credential realities: the AWS provider validates
+  credentials via an STS `GetCallerIdentity` call at PLAN time, so dummy static
+  keys fail the "offline" proof — a real credential chain is required even
+  though `-refresh=false` with no state reads or mutates nothing. And the
+  provider's AWS SDK can fail to refresh a cached SSO token that the AWS CLI
+  itself accepts — when an `AWS_PROFILE` SSO profile errors with "refresh
+  cached SSO token failed", export short-lived static credentials instead:
+  `eval $(aws configure export-credentials --profile <profile> --format env)`.
+  The proof passes when the plan renders every expected resource
+  (`Plan: N to add`) with zero errors. Remove the `.terraform/`,
+  `.terraform.lock.hcl`, and any plan-file artifacts afterwards (gitignored,
+  but they bloat the working tree).
 
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` in the proto schema

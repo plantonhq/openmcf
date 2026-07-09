@@ -1,168 +1,68 @@
 variable "metadata" {
-  description = "metadata for all resource objects on planton"
+  description = "Cloud resource metadata"
   type = object({
-
-    # name of the resource
     name = string
-
-    # id of the resource
-    id = string
-
-    # id of the organization to which the api-resource belongs to
-    org = string
-
-    # environment to which the resource belongs to
-    env = string
-
-    # labels for the resource
-    labels = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # annotations for the resource
-    annotations = object({
-
-      # Description for key
-      key = string
-
-      # Description for value
-      value = string
-    })
-
-    # tags for the resource
-    tags = list(string)
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for Deployment Component"
+  description = "AwsClientVpn specification"
   type = object({
-
-    # The AWS region where the resource will be created.
     region = string
-
-    # Description for description
-    description = string
-
-    # Description for vpc_id
-    vpc_id = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # Description for subnets
-    subnets = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
+    description = optional(string, "")
+    authentication_options = list(object({
+      type = string
+      root_certificate_chain_arn = optional(string, "")
+      active_directory_id = optional(string, "")
+      saml_provider_arn = optional(string, "")
+      self_service_saml_provider_arn = optional(string, "")
     }))
-
-    # Description for client_cidr_block
-    client_cidr_block = string
-
-    # Description for authentication_type
-    authentication_type = string
-
-    # Description for server_certificate_arn
-    server_certificate_arn = object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
-    })
-
-    # Description for cidr_authorization_rules
-    cidr_authorization_rules = list(string)
-
-    # Description for disable_split_tunnel
-    disable_split_tunnel = bool
-
-    # Description for vpn_port
-    vpn_port = number
-
-    # Description for transport_protocol
-    transport_protocol = string
-
-    # Description for log_group_name
-    log_group_name = string
-
-    # Description for security_groups
-    security_groups = list(object({
-
-      # Description for value
-      value = string
-
-      # Description for value_from
-      value_from = object({
-
-        # Description for kind
-        kind = string
-
-        # Description for env
-        env = string
-
-        # Description for name
-        name = string
-
-        # Description for field_path
-        field_path = string
-      })
+    server_certificate_arn = string
+    client_cidr_block = optional(string, "")
+    split_tunnel = optional(bool, false)
+    transport_protocol = optional(string, "")
+    vpn_port = optional(number)
+    endpoint_ip_address_type = optional(string, "")
+    traffic_ip_address_type = optional(string, "")
+    vpc_id = optional(string, "")
+    security_group_ids = optional(list(string), [])
+    subnet_ids = optional(list(string), [])
+    transit_gateway_configuration = optional(object({
+      transit_gateway_id = string
+      availability_zones = optional(list(string), [])
+      availability_zone_ids = optional(list(string), [])
     }))
-
-    # Description for dns_servers
-    dns_servers = list(string)
+    authorization_rules = optional(list(object({
+      target_network_cidr = string
+      access_group_id = optional(string, "")
+      authorize_all_groups = optional(bool, false)
+      description = optional(string, "")
+    })), [])
+    routes = optional(list(object({
+      destination_cidr_block = string
+      target_subnet_id = string
+      description = optional(string, "")
+    })), [])
+    session_timeout_hours = optional(number)
+    disconnect_on_session_timeout = optional(bool, false)
+    self_service_portal_enabled = optional(bool, false)
+    client_connect_options = optional(object({
+      lambda_function_arn = string
+    }))
+    client_login_banner = optional(object({
+      banner_text = string
+    }))
+    client_route_enforcement_enabled = optional(bool, false)
+    dns_servers = optional(list(string), [])
+    connection_log = optional(object({
+      cloudwatch_log_group = string
+      cloudwatch_log_stream = optional(string, "")
+    }))
   })
 }

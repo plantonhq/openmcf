@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsmemorydbuser
+spec:
+  # A MemoryDB user under live E2E: a dependency-free leaf with two fast
+  # lanes -- the password arm (dual passwords, the zero-downtime-rotation
+  # shape) and the iam arm (no credential material). CreateUser does not
+  # wait; deletes settle in seconds-to-minutes. Verification is
+  # DescribeUsers keyed on the user name, state-aware (deleting counts as
+  # absent).
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision. Artifacts complete and re-runnable; dual-engine
+    create/delete cycles were exercised against the live account but a clean
+    observed completion is still pending.
+  timeout_minutes: 15
