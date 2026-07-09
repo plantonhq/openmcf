@@ -76,6 +76,7 @@ The following AWS resources can be deployed using Planton:
 - [Neptune Cluster](/docs/catalog/aws/neptune-cluster)
 - [NLB](/docs/catalog/aws/nlb)
 - [OpenSearch Domain](/docs/catalog/aws/opensearch-domain)
+- [Planton Runner](/docs/catalog/aws/planton-runner)
 - [RDS Cluster](/docs/catalog/aws/rds-cluster)
 - [RDS Instance](/docs/catalog/aws/rds-instance)
 - [Redis ElastiCache](/docs/catalog/aws/redis-elasticache)

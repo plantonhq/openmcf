@@ -335,6 +335,32 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsPlantonRunner: flat scalar outputs -- the compute handles
+			// (service/cluster/task-definition ARNs, the E2E verifier keys on
+			// service_arn), the security-group id private targets trust, the
+			// two IAM identities, the credentials secret, and the log group
+			// carrying the runner's operation audit trail.
+			name: "AwsPlantonRunner",
+			kind: cloudresourcekind.CloudResourceKind_AwsPlantonRunner,
+			rawOutputs: map[string]interface{}{
+				"service_arn":            "arn:aws:ecs:us-west-2:123456789012:service/vpc-runner/vpc-runner",
+				"service_name":           "vpc-runner",
+				"cluster_arn":            "arn:aws:ecs:us-west-2:123456789012:cluster/vpc-runner",
+				"task_definition_arn":    "arn:aws:ecs:us-west-2:123456789012:task-definition/vpc-runner:1",
+				"log_group_name":         "/ecs/vpc-runner",
+				"security_group_id":      "sg-0abc123",
+				"execution_role_arn":     "arn:aws:iam::123456789012:role/vpc-runner-exec",
+				"task_role_arn":          "arn:aws:iam::123456789012:role/vpc-runner-runtime",
+				"credentials_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:vpc-runner-credentials-AbCdEf",
+				"region":                 "us-west-2",
+			},
+			mustPopulate: []string{
+				"service_arn", "service_name", "cluster_arn", "task_definition_arn",
+				"log_group_name", "security_group_id", "execution_role_arn",
+				"task_role_arn", "credentials_secret_arn", "region",
+			},
+		},
+		{
 			// AwsLaunchTemplate: the template id/arn plus the two version numbers.
 			// latest_version and default_version are int64 proto fields fed from
 			// numeric engine outputs (Terraform's number, Pulumi's IntOutput) --

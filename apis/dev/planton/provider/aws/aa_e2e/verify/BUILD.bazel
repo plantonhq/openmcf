@@ -42,6 +42,7 @@ go_library(
         "nat_gateway.go",
         "neptune_cluster.go",
         "opensearch_domain.go",
+        "planton_runner.go",
         "rds_cluster.go",
         "rds_instance.go",
         "redshift_cluster.go",

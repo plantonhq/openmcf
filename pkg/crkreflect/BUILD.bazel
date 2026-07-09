@@ -131,6 +131,7 @@ go_library(
         "//apis/dev/planton/provider/aws/awsneptunecluster/v1:awsneptunecluster",
         "//apis/dev/planton/provider/aws/awsnlb/v1:awsnlb",
         "//apis/dev/planton/provider/aws/awsopensearchdomain/v1:awsopensearchdomain",
+        "//apis/dev/planton/provider/aws/awsplantonrunner/v1:awsplantonrunner",
         "//apis/dev/planton/provider/aws/awsrdscluster/v1:awsrdscluster",
         "//apis/dev/planton/provider/aws/awsrdsinstance/v1:awsrdsinstance",
         "//apis/dev/planton/provider/aws/awsrediselasticache/v1:awsrediselasticache",
