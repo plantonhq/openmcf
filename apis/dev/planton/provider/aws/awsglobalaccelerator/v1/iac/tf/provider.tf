@@ -3,8 +3,13 @@ terraform {
 
   required_providers {
     aws = {
+      # Floor: >= 6.0.0. The newest arguments this module sends — the
+      # endpoint configuration's attachment_arn (cross-account attachments)
+      # and the accelerator's dual-stack surface — landed on the v5 line
+      # (v5.47-v5.48), so the v6 major floor carries the full modeled
+      # surface with current provider behavior.
       source  = "hashicorp/aws"
-      version = ">= 5.0"
+      version = ">= 6.0.0"
     }
   }
 }

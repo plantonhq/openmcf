@@ -1,47 +1,50 @@
 variable "metadata" {
-  description = "Resource metadata (name, org, env, id, labels)"
+  description = "Cloud resource metadata"
   type = object({
     name = string
-    org  = optional(string, "")
-    env  = optional(string, "")
-    id   = optional(string, "")
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "AwsGlobalAccelerator spec"
+  description = "AwsGlobalAccelerator specification"
   type = object({
-    # The AWS region where the resource will be created.
     region = string
-    enabled           = optional(bool, true)
-    ip_address_type   = optional(string, "IPV4")
-    ip_addresses      = optional(list(string), [])
+    enabled = optional(bool)
+    ip_address_type = optional(string)
+    ip_addresses = optional(list(string), [])
     flow_logs = optional(object({
-      enabled   = optional(bool, false)
+      enabled = optional(bool, false)
       s3_bucket = optional(string, "")
       s3_prefix = optional(string, "")
-    }), null)
+    }))
     listeners = list(object({
-      name             = string
-      protocol         = string
-      client_affinity  = optional(string, "NONE")
+      name = string
+      protocol = string
+      client_affinity = optional(string)
       port_ranges = list(object({
         from_port = number
-        to_port   = number
+        to_port = number
       }))
       endpoint_groups = list(object({
-        name                           = string
-        endpoint_group_region          = optional(string, "")
-        health_check_port              = optional(number, null)
-        health_check_protocol          = optional(string, "TCP")
-        health_check_path              = optional(string, "")
-        health_check_interval_seconds  = optional(number, 30)
-        threshold_count                = optional(number, 3)
-        traffic_dial_percentage        = optional(number, 100.0)
+        name = string
+        endpoint_group_region = optional(string, "")
+        health_check_port = optional(number)
+        health_check_protocol = optional(string)
+        health_check_path = optional(string, "")
+        health_check_interval_seconds = optional(number)
+        threshold_count = optional(number)
+        traffic_dial_percentage = optional(number)
         endpoints = optional(list(object({
-          endpoint_id                    = string
-          weight                         = optional(number, 128)
-          client_ip_preservation_enabled = optional(bool, false)
+          endpoint_id = string
+          weight = optional(number)
+          client_ip_preservation_enabled = optional(bool)
+          attachment_arn = optional(string, "")
         })), [])
         port_overrides = optional(list(object({
           listener_port = number
@@ -51,4 +54,3 @@ variable "spec" {
     }))
   })
 }
-

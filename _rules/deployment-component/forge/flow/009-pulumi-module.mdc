@@ -75,6 +75,11 @@ EXPORTING OUTPUTS -- APPLYT TYPING IS A DEPLOY-TIME TRAP
   its zero value when nil, so a chain like
   `created.Endpoints.Index(pulumi.Int(0)).Address().Elem()` is a stable, panic-free
   export shape.
+- NESTED-BLOCK ARGS: assign the VALUE `XArgs{...}` struct to an `XPtrInput` field
+  directly -- the codegen'd value type implements the Ptr interface. Do NOT wrap it
+  in the SDK's `XPtr(&XArgs{...})` helper for resource inputs: the wrapper's element
+  type trips the engine's input-marshaling assertion ("cannot assign xPtrType to X")
+  -- another compiles-clean, panics-only-at-deploy class no offline gate catches.
 HANDLING OPTIONAL FIELDS WITH DEFAULTS
 - Fields with `(dev.planton.shared.options.default)` are `optional` (pointer types in Go)
 - ALWAYS use getter methods: `spec.GetFieldName()` instead of `spec.FieldName`

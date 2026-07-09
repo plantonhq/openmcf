@@ -1,0 +1,33 @@
+# Minimal AwsGlobalAccelerator scenario: a dependency-free leaf lane. One TCP
+# listener and one endpoint group with no endpoints -- a valid AWS shape (an
+# endpoint group may be created first and endpoints registered later), which
+# keeps this lane free of any fixture chain while proving the full
+# accelerator -> listener -> endpoint group lifecycle, the deploy waiter, and
+# the disable-before-delete destroy path. Defaults are exercised by omission:
+# enabled, ip_address_type, client_affinity, every health-check dial, and
+# traffic_dial_percentage all fall through to provider/AWS defaults. Full
+# metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1
+kind: AwsGlobalAccelerator
+metadata:
+  name: planton-oss-e2e-awsga-min
+  id: planton-oss-e2e-awsga-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsglobalaccelerator
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  listeners:
+    - name: web
+      protocol: TCP
+      portRanges:
+        - fromPort: 80
+          toPort: 80
+      endpointGroups:
+        - name: primary

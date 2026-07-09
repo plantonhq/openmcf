@@ -895,6 +895,16 @@ func TestAwsClientVpn_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsclientvpn", "terraform")
 }
 
+// AwsGlobalAccelerator: a dependency-free minimal lane plus an Elastic
+// IP-composed lane (the EIP fixture resolves into the polymorphic endpoint
+// reference).
+func TestAwsGlobalAccelerator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsglobalaccelerator", "pulumi")
+}
+func TestAwsGlobalAccelerator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsglobalaccelerator", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

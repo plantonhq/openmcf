@@ -141,6 +141,8 @@ var verifiers = map[string]Verifier{
 	"awsmemorydbuser":    &memorydbUserVerifier{},
 	"awsmemorydbacl":     &memorydbAclVerifier{},
 	"awsclientvpn":       &clientVpnVerifier{},
+
+	"awsglobalaccelerator": &globalAcceleratorVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

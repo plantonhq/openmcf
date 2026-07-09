@@ -111,6 +111,16 @@ Use update when you need to:
 - Added/modified validations
 - Renamed fields
 
+**Provider validators are not always the service's real contract:** an IaC
+provider's schema validator can be LOOSER than the cloud API it wraps (e.g. a
+validator accepting a numeric RANGE where the service accepts only two exact
+VALUES and rejects everything else at create time). Never loosen an existing
+spec rule to match a provider validator without a live-API proof — the tighter
+rule may be carrying the service's actual behavior. When a live call rejects a
+value the provider validator allowed, promote the API's real constraint into
+the spec rule and note the observed rejection in the rule's comment, so
+misconfigurations fail at validation rather than at deploy.
+
 **Validation message quality:** When adding or modifying CEL validations, every `message` string must meet the quality standards in rule `002-spec-validate` ("VALIDATION MESSAGE QUALITY"). These messages are rendered directly in user-facing UIs and CLIs. Write them like a knowledgeable colleague helping someone configure this component for the first time.
 
 #### Scenario 3: Refresh Documentation

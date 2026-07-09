@@ -1720,6 +1720,32 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsGlobalAccelerator: the accelerator ARN keys the E2E verifier;
+			// the repeated accelerator_ip_addresses guards the static-anycast
+			// export both engines flatten from ip_sets (an engine that exports
+			// an empty list fails here); the dot-flattened listener/endpoint
+			// group maps prove the name-keyed ARN routes into the proto map
+			// fields, including the "listener/group" composite keys surviving
+			// per-segment field lookup. dual_stack_dns_name is exported empty
+			// for IPV4 accelerators so the output shape is
+			// configuration-invariant.
+			name: "AwsGlobalAccelerator",
+			kind: cloudresourcekind.CloudResourceKind_AwsGlobalAccelerator,
+			rawOutputs: map[string]interface{}{
+				"accelerator_arn":                 "arn:aws:globalaccelerator::123456789012:accelerator/1234abcd-abcd-1234-abcd-1234abcdefgh",
+				"accelerator_dns_name":            "a1234567890abcdef.awsglobalaccelerator.com",
+				"accelerator_dual_stack_dns_name": "",
+				"accelerator_hosted_zone_id":      "Z2BJ6XQ5FK7U4H",
+				"accelerator_ip_addresses":        []interface{}{"75.2.0.1", "99.83.0.1"},
+				"listener_arns.web":               "arn:aws:globalaccelerator::123456789012:accelerator/1234abcd-abcd-1234-abcd-1234abcdefgh/listener/0123vxyz",
+				"endpoint_group_arns.web/primary": "arn:aws:globalaccelerator::123456789012:accelerator/1234abcd-abcd-1234-abcd-1234abcdefgh/listener/0123vxyz/endpoint-group/098765zyxwvu",
+			},
+			mustPopulate: []string{
+				"accelerator_arn", "accelerator_dns_name", "accelerator_hosted_zone_id",
+				"accelerator_ip_addresses", "listener_arns", "endpoint_group_arns",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

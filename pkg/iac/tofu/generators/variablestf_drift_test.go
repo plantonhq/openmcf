@@ -180,6 +180,8 @@ var migratedKinds = []string{
 	"AwsMemorydbAcl",
 	// Client VPN, migrated off its legacy hand-written contract.
 	"AwsClientVpn",
+	// Global Accelerator, migrated off its hand-written contract.
+	"AwsGlobalAccelerator",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed
