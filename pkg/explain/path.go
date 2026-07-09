@@ -64,7 +64,7 @@ func (e *Engine) resolvePath(res Resource, path []string) (*Report, error) {
 				}
 				return nil, errors.Errorf(
 					"%q is authored directly, not drilled into: %s",
-					path[i-1], valueFromContract(tmp.RefKind, tmp.RefFieldPath))
+					path[i-1], ValueFromContract(tmp.RefKind, tmp.RefFieldPath))
 			}
 			return nil, errors.Errorf(
 				"%s.%s does not resolve: %q is a scalar %s with no fields to drill into",

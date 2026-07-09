@@ -37,15 +37,15 @@ func (e *Engine) renderField(fd protoreflect.FieldDescriptor, visited map[protor
 
 	switch {
 	case fd.IsMap():
-		f.Type = fmt.Sprintf("map<%s, %s>", fd.MapKey().Kind().String(), typeLabel(fd.MapValue()))
+		f.Type = fmt.Sprintf("map<%s, %s>", fd.MapKey().Kind().String(), TypeLabel(fd.MapValue()))
 		if valueMsg := fd.MapValue().Message(); valueMsg != nil && expandable(valueMsg) {
 			f.Fields, f.Constraints = e.expandMessage(valueMsg, visited, f.Constraints)
 		}
 	case fd.IsList():
-		f.Type = "[]" + typeLabel(fd)
+		f.Type = "[]" + TypeLabel(fd)
 		f.Fields, f.Constraints = e.expandIfMessage(fd, visited, f.Constraints)
 	default:
-		f.Type = typeLabel(fd)
+		f.Type = TypeLabel(fd)
 		f.Fields, f.Constraints = e.expandIfMessage(fd, visited, f.Constraints)
 	}
 
@@ -56,7 +56,7 @@ func (e *Engine) renderField(fd protoreflect.FieldDescriptor, visited map[protor
 	// authorable forms, concretized with the field's default reference
 	// target when the schema declares one.
 	if fd.Message() != nil && fd.Message().FullName() == stringValueOrRefFullName {
-		f.Constraints = append(f.Constraints, valueFromContract(f.RefKind, f.RefFieldPath))
+		f.Constraints = append(f.Constraints, ValueFromContract(f.RefKind, f.RefFieldPath))
 	}
 
 	if fd.Kind() == protoreflect.EnumKind {
@@ -72,10 +72,15 @@ func (e *Engine) renderField(fd protoreflect.FieldDescriptor, visited map[protor
 	return f
 }
 
-// typeLabel names a field's element type the way a manifest author thinks
+// TypeLabel names a field's element type the way a manifest author thinks
 // about it. Well-known types collapse to friendly names; the foreign-key
 // wrapper is surfaced as its two authorable shapes.
-func typeLabel(fd protoreflect.FieldDescriptor) string {
+//
+// Exported as shared vocabulary: every surface that talks to manifest
+// authors about schemas (this package's reference reports, the YAML
+// diagnoser's error messages) must name types identically, or the two
+// surfaces drift into teaching different languages.
+func TypeLabel(fd protoreflect.FieldDescriptor) string {
 	if fd.Kind() != protoreflect.MessageKind && fd.Kind() != protoreflect.GroupKind {
 		if fd.Kind() == protoreflect.EnumKind {
 			return "enum"
@@ -175,9 +180,11 @@ func applyValidateRules(fd protoreflect.FieldDescriptor, f *Field) {
 	}
 }
 
-// valueFromContract renders the exact YAML shapes a StringValueOrRef field
+// ValueFromContract renders the exact YAML shapes a StringValueOrRef field
 // accepts, using the declared default reference target when present.
-func valueFromContract(refKind, refFieldPath string) string {
+// Exported for the same shared-vocabulary reason as TypeLabel: reference
+// reports and load-error diagnoses must teach the identical authoring shape.
+func ValueFromContract(refKind, refFieldPath string) string {
 	kind := refKind
 	if kind == "" {
 		kind = "<Kind>"
