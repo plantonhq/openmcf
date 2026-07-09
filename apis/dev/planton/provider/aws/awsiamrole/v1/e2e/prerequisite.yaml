@@ -346,3 +346,87 @@ spec:
         Principal:
           Service: states.amazonaws.com
         Action: sts:AssumeRole
+---
+# CodeBuild service role: trusts codebuild.amazonaws.com and carries the
+# CloudWatch Logs permissions builds need to stream output. The E2E project
+# never starts a build, but AWS validates the role's assumability at
+# CreateProject, so the trust policy is the load-bearing part.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-codebuild-service-role
+  id: planton-oss-e2e-codebuild-service-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the CodeBuild service
+  inlinePolicies:
+    codebuildLogsE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: codebuild.amazonaws.com
+        Action: sts:AssumeRole
+---
+# CodePipeline role: trusts codepipeline.amazonaws.com. Carries the S3
+# artifact-store access and CodeBuild start/poll permissions the E2E
+# pipeline's two stages declare -- CreatePipeline validates the role can be
+# assumed, and the first (automatic) execution exercises these permissions.
+apiVersion: aws.planton.dev/v1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-codepipeline-role
+  id: planton-oss-e2e-codepipeline-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for CodePipeline orchestration
+  inlinePolicies:
+    codepipelineE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:GetObjectVersion
+            - s3:GetBucketVersioning
+            - s3:PutObject
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - codebuild:BatchGetBuilds
+            - codebuild:StartBuild
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: codepipeline.amazonaws.com
+        Action: sts:AssumeRole

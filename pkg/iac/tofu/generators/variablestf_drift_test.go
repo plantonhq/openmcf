@@ -170,6 +170,9 @@ var migratedKinds = []string{
 	// Analytics pair, migrated off their hand-written contracts together.
 	"AwsAthenaWorkgroup",
 	"AwsGlueCatalogDatabase",
+	// CI/CD pair, migrated off their hand-written contracts together.
+	"AwsCodeBuildProject",
+	"AwsCodePipeline",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

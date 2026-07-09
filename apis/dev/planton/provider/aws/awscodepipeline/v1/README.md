@@ -158,6 +158,37 @@ spec:
 |-------|------|----------|-------------|
 | `name` | string | **Yes** | Stage name, unique within the pipeline (1-100 chars) |
 | `actions` | list | **Yes** | Actions to execute in this stage (min 1) |
+| `beforeEntry` | object | No | Entry gate: rules that must pass before the stage starts (V2 only) |
+| `onSuccess` | object | No | Post-success verification rules (V2 only) |
+| `onFailure` | object | No | Failure handling: ROLLBACK / RETRY / rule-gated (V2 only) |
+
+### Stage Condition (`beforeEntry` / `onSuccess` / `onFailure.condition`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `result` | string | No | Outcome when rules do NOT pass: `FAIL` (default) or `SKIP` |
+| `rules` | list | **Yes** | 1-5 checks, AND'd together |
+
+### Rule
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | **Yes** | Rule name, unique within the condition |
+| `ruleTypeId.provider` | string | **Yes** | Managed rule: `DeploymentWindow`, `CloudWatchAlarm`, `LambdaInvoke`, `VariableCheck`, `Commands` |
+| `ruleTypeId.category` / `.owner` / `.version` | string | No | Default `Rule` / `AWS` / current version |
+| `configuration` | map | No | Rule-provider-specific keys (e.g., `Cron` + `TimeZone`, `AlarmName` + `WaitTime`) |
+| `commands` | list | No | Shell commands for the `Commands` rule (max 50) |
+| `inputArtifacts` | list | No | Artifacts available to the rule |
+| `region` / `roleArn` | — | No | Cross-region / scoped-role execution |
+| `timeoutInMinutes` | int | No | Rule timeout (5-86400) |
+
+### Failure Handling (`onFailure`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `result` | string | No | `ROLLBACK` (revert to last successful state), `RETRY`, or `FAIL` |
+| `retryConfiguration.retryMode` | string | With RETRY | `FAILED_ACTIONS` (default) or `ALL_ACTIONS` |
+| `condition` | object | No | Rules gating the failure handling |
 
 ### Action
 
@@ -175,7 +206,7 @@ spec:
 | `region` | string | No | AWS region for cross-region actions |
 | `roleArn` | StringValueOrRef | No | IAM role to assume (for cross-account or scoped permissions) |
 | `runOrder` | int | No | Execution order within stage (1-999; same value = parallel) |
-| `timeoutInMinutes` | int | No | Maximum action runtime (5-86400 minutes) |
+| `timeoutInMinutes` | int | No | Timeout override (5-86400 minutes) — AWS supports it ONLY on Manual Approval actions |
 
 ### Trigger (V2 Only)
 
@@ -183,8 +214,8 @@ spec:
 |-------|------|----------|-------------|
 | `providerType` | string | **Yes** | Must be `CodeStarSourceConnection` |
 | `gitConfiguration.sourceActionName` | string | **Yes** | Name of the source action to trigger from |
-| `gitConfiguration.push` | list | No | Push event filters (branch, tag, file path patterns) |
-| `gitConfiguration.pullRequest` | list | No | Pull request event filters (branch, file path, event type) |
+| `gitConfiguration.push` | list | Conditional | Push event filters (branch, tag, file path patterns); at least one push or pullRequest filter is required |
+| `gitConfiguration.pullRequest` | list | Conditional | Pull request event filters (branch, file path, events `OPEN`/`UPDATED`/`CLOSED`) |
 
 ### Variable (V2 Only)
 
@@ -208,11 +239,9 @@ spec:
 | `01-github-source-codebuild` | V2 pipeline: GitHub (CodeStar) source → CodeBuild build. Classic CI pipeline |
 | `02-ecr-ecs-deploy` | V2 pipeline: ECR source → CodeBuild → ECS deploy. Container deployment pipeline |
 | `03-s3-lambda-deploy` | V2 pipeline: S3 source → Lambda deploy. Serverless deployment pipeline |
+| `04-gated-deploy-with-rollback` | V2 pipeline: deployment-window entry gate, post-deploy alarm check, automatic rollback |
 
-## Deferred to v2
+## Deliberate Exclusions
 
-- **Stage conditions** — `before_entry`, `on_success`, `on_failure` condition blocks for stage-level gates
-- **Webhooks** — Legacy V1 webhook mechanism (superseded by V2 triggers)
-- **Custom action types** — Account-level custom action definitions
-- **Retry configuration** — Automatic retry on stage/action failure
-- **Rollback configuration** — Automatic rollback on stage failure
+- **Webhooks (`aws_codepipeline_webhook`)** — the legacy V1 trigger mechanism; V2 native `triggers` supersede it with richer filtering and no shared-secret management.
+- **Custom action types** — account-level action-type definitions with independent lifecycles, referenced by any pipeline via `category`/`owner: Custom`/`provider`/`version`.

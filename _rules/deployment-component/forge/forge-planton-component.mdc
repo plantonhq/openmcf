@@ -133,6 +133,17 @@ This is identified in rule 001 and applied in rule 002. The ratcheting gate
 forged component is not done until the gate is green. Authority: the option comments in
 `dev/planton/shared/options/options.proto`.
 
+**Run registry-driven guards with a freshly built CLI, never the installed binary.**
+`secret-coverage`, `validate-refs`, and every other command that walks the kind registry
+reads the protos COMPILED INTO the binary, not the working tree -- a stale installed
+`planton` reports false gaps (fields it predates) and false stale-baseline entries
+(exemptions it predates), and can equally report false greens. Build from the working
+tree first (`go build -o /tmp/planton-dev .` at the repo root -- the root package is the
+CLI main) and run the guard through that binary. The same false-result class applies in
+reverse: a green from an old binary proves nothing about the current tree. The
+`go test ./pkg/secretcoverage/ ./pkg/refcheck/` suites always test the working tree and
+are the cheaper equivalent gate when no CLI invocation is needed.
+
 ## Usage
 
 ```

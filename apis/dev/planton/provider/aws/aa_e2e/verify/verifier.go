@@ -133,6 +133,8 @@ var verifiers = map[string]Verifier{
 	"awstransitgatewayroutetable":    &transitGatewayRouteTableVerifier{},
 
 	"awsathenaworkgroup":     &athenaWorkgroupVerifier{},
+	"awscodebuildproject":    &codeBuildProjectVerifier{},
+	"awscodepipeline":        &codePipelineVerifier{},
 	"awsgluecatalogdatabase": &glueCatalogDatabaseVerifier{},
 }
 

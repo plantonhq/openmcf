@@ -861,12 +861,17 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awscb"
+    prerequisites: [AwsIamRole]
   }];
 
   AwsCodePipeline = 331 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awscp"
+    prerequisites: [
+      AwsIamRole,
+      AwsS3Bucket
+    ]
   }];
 
   // Workflow / Orchestration

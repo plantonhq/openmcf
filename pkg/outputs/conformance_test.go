@@ -1618,6 +1618,40 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"database_name", "database_arn", "catalog_id"},
 		},
 		{
+			// AwsCodeBuildProject: project_name keys the E2E verifier and
+			// CodePipeline Build actions; the webhook trio (incl. the
+			// provider-minted secret) is exported empty when no webhook exists,
+			// so the output SHAPE is engine- and configuration-invariant.
+			name: "AwsCodeBuildProject",
+			kind: cloudresourcekind.CloudResourceKind_AwsCodeBuildProject,
+			rawOutputs: map[string]interface{}{
+				"project_arn":          "arn:aws:codebuild:us-west-2:123456789012:project/api-ci",
+				"project_name":         "api-ci",
+				"service_role_arn":     "arn:aws:iam::123456789012:role/codebuild-service-role",
+				"badge_url":            "https://codebuild.us-west-2.amazonaws.com/badges?uuid=abc",
+				"public_project_alias": "api-ci-public",
+				"webhook_url":          "https://github.com/example/repo/settings/hooks/1",
+				"webhook_payload_url":  "https://codebuild.us-west-2.amazonaws.com/webhooks?t=abc",
+				"webhook_secret":       "0123456789abcdef",
+			},
+			mustPopulate: []string{
+				"project_arn", "project_name", "service_role_arn", "badge_url",
+				"public_project_alias", "webhook_url", "webhook_payload_url", "webhook_secret",
+			},
+		},
+		{
+			// AwsCodePipeline: pipeline_name keys the E2E verifier and CLI
+			// operations; pipeline_arn is what IAM policies and EventBridge
+			// targets reference.
+			name: "AwsCodePipeline",
+			kind: cloudresourcekind.CloudResourceKind_AwsCodePipeline,
+			rawOutputs: map[string]interface{}{
+				"pipeline_arn":  "arn:aws:codepipeline:us-west-2:123456789012:release-pipeline",
+				"pipeline_name": "release-pipeline",
+			},
+			mustPopulate: []string{"pipeline_arn", "pipeline_name"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

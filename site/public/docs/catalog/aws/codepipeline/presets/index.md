@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "S3 Source + Lambda Deploy (Serverless Deployment Pipeline)"
     excerpt: "This preset creates a V2 pipeline that triggers when a deployment package is uploaded to S3 and invokes a Lambda function to perform the deployment. This is the standard serverless deployment..."
+  - slug: "04-gated-deploy-with-rollback"
+    rank: "04"
+    title: "Gated Production Deploy with Automatic Rollback"
+    excerpt: "This preset creates a three-stage V2 pipeline that treats the production deploy as a guarded, self-healing operation: the deploy stage only opens during business hours (a DeploymentWindow entry..."
 ---
 
 # CodePipeline Presets

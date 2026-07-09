@@ -841,6 +841,24 @@ func TestAwsGlueCatalogDatabase_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsgluecatalogdatabase", "terraform")
 }
 
+// --- AWS CI/CD pair (CodeBuild project, CodePipeline) ---
+
+func TestAwsCodeBuildProject_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscodebuildproject", "pulumi")
+}
+
+func TestAwsCodeBuildProject_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscodebuildproject", "terraform")
+}
+
+func TestAwsCodePipeline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscodepipeline", "pulumi")
+}
+
+func TestAwsCodePipeline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscodepipeline", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

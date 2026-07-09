@@ -1,29 +1,19 @@
-.PHONY: help preview up destroy refresh cancel
+.PHONY: deps
+deps:
+	go mod download
+	go mod tidy
 
-help:
-	@echo "Available targets:"
-	@echo "  preview  - Preview changes to the stack"
-	@echo "  up       - Deploy the stack"
-	@echo "  destroy  - Destroy the stack"
-	@echo "  refresh  - Refresh the stack state"
-	@echo "  cancel   - Cancel the current stack operation"
+.PHONY: vet
+vet:
+	go vet ./...
 
-preview:
-	@echo "Running Pulumi preview..."
-	pulumi preview
+.PHONY: fmt
+fmt:
+	go fmt ./...
 
-up:
-	@echo "Deploying stack..."
-	pulumi up
+.PHONY: build
+build:deps vet fmt
 
-destroy:
-	@echo "Destroying stack..."
-	pulumi destroy
-
-refresh:
-	@echo "Refreshing stack state..."
-	pulumi refresh
-
-cancel:
-	@echo "Cancelling current operation..."
-	pulumi cancel
+.PHONY: update-deps
+update-deps:
+	go get github.com/plantonhq/planton@latest
