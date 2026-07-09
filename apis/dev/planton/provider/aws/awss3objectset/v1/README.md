@@ -20,24 +20,33 @@ Managing S3 objects alongside infrastructure requires coordinating bucket creati
 
 ### Multi-Object Support
 
-- Upload one or more objects per deployment.
-- Each object has its own key, content, content type, caching settings, and tags.
+- Upload one or more objects per deployment. Each object's identity is its key: adding, removing, or reordering entries never churns unrelated objects.
 - Set-level tags are merged with object-level tags (object tags take precedence).
 
 ### Content Sources
 
 - **Inline Text** (`content`): For configuration files, JSON, YAML, HTML, and other text formats.
-- **Base64 Binary** (`content_base64`): For images, compiled assets, or any binary data.
+- **Base64 Binary** (`content_base64`): For images, compiled assets, or any binary data small enough to carry in a manifest.
 
-### Object Metadata
+### Per-Object HTTP and Storage Surface
 
-- **Content Type**: Set the MIME type for correct browser/client handling.
-- **Cache Control**: Configure caching headers for CDN and browser caching.
-- **Content Encoding**: Declare pre-compressed content (gzip, brotli).
-- **ACL**: Set per-object access control (private, public-read, etc.).
+- **Presentation headers**: content type, cache control, content encoding, content disposition, content language, and website redirect targets.
+- **User metadata**: lowercase-keyed `x-amz-meta-*` entries stored with the object.
+- **Storage class**: STANDARD through INTELLIGENT_TIERING, infrequent-access, and archive tiers.
+- **Upload integrity checksums**: CRC32/CRC32C/CRC64NVME/SHA1/SHA256 stored alongside the object.
+
+### Security Posture: Bucket First, Object Override Second
+
+Uniform encryption and access posture belongs on the bucket — `AwsS3Bucket` models default encryption, versioning, public-access blocking, and ownership controls, and S3 applies them to every uploaded object automatically. The per-object `server_side_encryption` / `kms_key` / `bucket_key_enabled` / `acl` fields here are overrides for individual objects that must diverge. Object Lock retention (`object_lock_mode` + `object_lock_retain_until_date`, plus legal holds) is available for objects in Object Lock-enabled buckets.
+
+### Clean Destroys, Even Under Retention
+
+Destroying an object removes all of its versions on versioned buckets. For objects under GOVERNANCE-mode Object Lock retention or legal holds, `force_destroy` sends the governance-bypass flag with the delete (valid only on Object Lock-enabled buckets) so retained objects can still be torn down deliberately.
 
 ## Stack Outputs
 
+- **bucket_id**: The bucket the objects were uploaded to.
+- **object_arns**: Map of object key to ARN, for IAM policy Resource lists.
 - **object_etags**: Map of object key to ETag (content hash) for cache invalidation.
 - **object_version_ids**: Map of object key to version ID (when bucket versioning is enabled).
 
@@ -45,5 +54,5 @@ Managing S3 objects alongside infrastructure requires coordinating bucket creati
 
 - **Infrastructure as Code**: Manage S3 objects declaratively alongside buckets and other resources.
 - **Consistency**: Ensure objects are always in sync with infrastructure deployments.
-- **Simplicity**: Single resource manages multiple objects with shared defaults.
-- **Flexibility**: Supports text and binary content, per-object metadata, and tag inheritance.
+- **Simplicity**: Single resource manages multiple objects with shared tag inheritance.
+- **Flexibility**: Text and binary content, the full per-object HTTP/storage/encryption surface, and honest composition with the bucket's own posture.

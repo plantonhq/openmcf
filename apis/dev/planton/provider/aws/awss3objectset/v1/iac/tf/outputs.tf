@@ -3,6 +3,13 @@ output "bucket_id" {
   value       = local.bucket_name
 }
 
+output "object_arns" {
+  description = "Map of object key to its ARN (arn:aws:s3:::bucket/key), for IAM policy Resource lists"
+  value = {
+    for key, obj in aws_s3_object.objects : key => obj.arn
+  }
+}
+
 output "object_etags" {
   description = "Map of object key to its ETag (content hash)"
   value = {

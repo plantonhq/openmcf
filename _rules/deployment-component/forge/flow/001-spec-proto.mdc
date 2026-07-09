@@ -55,6 +55,23 @@ DEFAULT FIELD OPTIONS
 - The `DEFAULT_REQUIRES_OPTIONAL` linter enforces this pattern at build time
 - See the reference component `spec.proto` files named in TOOLS for worked examples
 
+VERIFY FLAG SEMANTICS IN THE PROVIDER'S CRUD FUNCTIONS, NOT THE ARGUMENT NAME
+- A provider argument's NAME can suggest a much broader behavior than its real
+  API semantic. Before writing a field comment, read what the provider's
+  create/update/delete functions actually DO with the argument (and its
+  website doc line), and state that behavior — never the name's implication.
+- Delete-time flags are the highest-risk class: nothing offline exercises the
+  destroy path (`tofu plan`/`pulumi preview` prove create-shape only), so a
+  wrong delete-flag comment ships unless a live destroy runs. Worked example:
+  `aws_s3_object.force_destroy` reads like "purge versions on delete" but is
+  ONLY the GOVERNANCE-retention bypass header — S3 rejects it with a 400 on
+  buckets without Object Lock, so the innocent-looking "safe default" broke
+  every destroy against a regular versioned bucket (deletes already remove
+  all versions without it).
+- If a flag is only VALID under some other resource's configuration (a
+  bucket-level toggle, an account posture), the field comment must state that
+  coupling explicitly so manifests do not wire it blindly.
+
 PROACTIVE DEFAULT IDENTIFICATION (MANDATORY STEP)
 - During spec authoring, you MUST review EVERY field and ask: "Does this field have a well-known sensible default from the provider's documentation?"
 - If the provider docs say "if not specified, defaults to X", add `optional` + `(dev.planton.shared.options.default)`.

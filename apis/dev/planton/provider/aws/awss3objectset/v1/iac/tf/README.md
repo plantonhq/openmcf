@@ -54,9 +54,11 @@ module "s3_objects" {
 
 | Name | Description |
 |------|-------------|
+| bucket_id | The bucket the objects were uploaded to |
+| object_arns | Map of object key to ARN (for IAM policy Resource lists) |
 | object_etags | Map of object key to ETag |
 | object_version_ids | Map of object key to version ID |
 
 ## Resources Created
 
-- `aws_s3_object` - One per object in the spec, keyed by S3 object key
+- `aws_s3_object` - One per object in the spec, keyed by S3 object key (so adding, removing, or reordering entries never churns unrelated objects). Each object carries the full per-object surface: presentation headers, user metadata, storage class, encryption override, upload checksum, Object Lock retention with the governance-bypass force_destroy, and canned ACL.
