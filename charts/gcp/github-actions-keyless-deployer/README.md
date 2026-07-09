@@ -14,7 +14,9 @@ Out of the box it grants one repository's workflows the roles to deploy
 Cloud Run and push images to an Artifact Registry repository it also
 creates. Both are parameters: swap the roles for GKE or infrastructure
 pipelines, widen the grants to the whole organization, or drop the
-registry if images live elsewhere.
+registry if images live elsewhere. An optional impersonation arm routes
+the roles through a dedicated deployer service account for the cases that
+need a real service-account identity.
 
 ## What it deploys
 
@@ -22,8 +24,10 @@ registry if images live elsewhere.
 |----------|------|---------|-----------|
 | Federation pool | `GcpWorkloadIdentityPool` | The trust container IAM principals are built from | always |
 | GitHub OIDC provider | `GcpWorkloadIdentityPoolProvider` | Trusts GitHub's issuer, locked to your org by attribute condition | always |
-| Deploy grants | `GcpProjectIamMember` (one per role) | Additive project roles for the GitHub principal | always |
-| Image repository | `GcpArtifactRegistryRepo` | Docker repository with repo-scoped push access for the same principal | `registryEnabled` |
+| Deploy grants | `GcpProjectIamMember` (one per role) | Additive project roles for the deploying identity | always |
+| Deployer account | `GcpServiceAccount` | Dedicated identity the workflows impersonate; holds the deploy roles | `impersonationEnabled` |
+| Impersonation grant | `GcpServiceAccountIamMember` | `workloadIdentityUser` on the account for the GitHub principal — the only grant the principal holds | `impersonationEnabled` |
+| Image repository | `GcpArtifactRegistryRepo` | Docker repository with repo-scoped push access for the deploying identity | `registryEnabled` |
 
 ## Architecture
 
@@ -34,18 +38,45 @@ flowchart TB
     Provider["GcpWorkloadIdentityPoolProvider<br/>issuer: token.actions.githubusercontent.com<br/>condition: repository_owner == your org"]
     Grants["GcpProjectIamMember × N<br/>(one per deployer role)"]
     Registry["GcpArtifactRegistryRepo<br/>+ artifactregistry.writer grant"]
+    subgraph imp [Impersonation — impersonationEnabled]
+        DeployerSA[GcpServiceAccount]
+        ImpGrant["GcpServiceAccountIamMember<br/>(workloadIdentityUser →<br/>GitHub principalSet)"]
+        ImpGrant -->|serviceAccountId| DeployerSA
+    end
 
     Provider -->|workloadIdentityPoolId| Pool
     Workflow -.->|"token exchange (STS)"| Provider
-    Grants -.->|"member: principalSet<br/>(pool + attribute.repository)"| Pool
-    Registry -.->|"iamMembers member:<br/>same principalSet"| Pool
+    Grants -.->|"member: principalSet<br/>(direct federation, default)"| Pool
+    Grants -->|"member: SA<br/>(impersonation arm)"| DeployerSA
+    Registry -.->|"iamMembers member:<br/>same identity"| Pool
 ```
 
-The pool deploys first, then the provider; the grants and the registry are
-independent of both in the dependency graph (their member strings are
-composed from parameters, since IAM principals for federated identities are
-built from the project number and pool ID rather than output by any single
-resource) — but nothing federates until the provider exists.
+The pool deploys first, then the provider; with the default direct
+federation the grants and the registry are independent of both in the
+dependency graph (their member strings are composed from parameters, since
+IAM principals for federated identities are built from the project number
+and pool ID rather than output by any single resource) — but nothing
+federates until the provider exists. With the impersonation arm on, every
+deploy grant references the deployer account's `member` output, so the
+account deploys first and the grants follow it.
+
+## Direct federation vs impersonation
+
+The default (`impersonationEnabled: false`) grants roles straight to the
+GitHub principal — Google's recommended modern CI path: the workflow's
+short-lived credential holds exactly the granted roles, there is no
+intermediate service account to manage, and one less credential hop to
+audit. Prefer it.
+
+Turn on the impersonation arm when the workflow needs a real
+service-account identity: signed URLs and `signBlob`, domain-wide
+delegation, tooling that only accepts a service-account email, or an org
+policy that forbids granting roles to federated principals. With the arm
+on, the deploy roles bind to the deployer account, and the GitHub
+principal holds exactly one permission — `roles/iam.workloadIdentityUser`
+on that account (granted account-scoped, never project-wide: a
+project-level grant would allow impersonating every account in the
+project).
 
 ## Parameters
 
@@ -57,7 +88,9 @@ resource) — but nothing federates until the provider exists.
 | `github_repo` | Repository receiving the grants; empty = every repo in the org | `my-app` |
 | `pool_id` | Workload Identity Pool ID (immutable, ~30-day deletion reservation) | `github-actions` |
 | `provider_id` | OIDC provider ID inside the pool (immutable) | `github-oidc` |
-| `deployer_roles` | Project roles granted to the principal, one resource each | `run.admin`, `iam.serviceAccountUser` |
+| `deployer_roles` | Project roles granted to the deploying identity, one resource each | `run.admin`, `iam.serviceAccountUser` |
+| `impersonationEnabled` | Route the roles through a dedicated deployer service account | `false` |
+| `deployer_service_account_id` | Account ID for that identity (used only with impersonation) | `gha-deployer` |
 | `registryEnabled` | Also create the Docker repository + push grant | `true` |
 | `registry_location` | Artifact Registry location (region or multi-region) | `us-central1` |
 | `registry_repository_id` | Repository ID — part of every image path | `app-images` |
@@ -107,6 +140,18 @@ steps:
 No secrets block, no key file — `id-token: write` and the provider path are
 the entire configuration.
 
+With the impersonation arm on, add the deployer account's email and the
+auth step handles the impersonation hop itself; everything after it is
+unchanged:
+
+```yaml
+  - uses: google-github-actions/auth@v2
+    with:
+      project_id: my-gcp-project
+      workload_identity_provider: projects/123456789012/locations/global/workloadIdentityPools/github-actions/providers/github-oidc
+      service_account: gha-deployer@my-gcp-project.iam.gserviceaccount.com
+```
+
 ### Tighten or widen the trust
 
 - **Per-branch deploys**: tighten the provider's `attributeCondition` to
@@ -123,6 +168,10 @@ the entire configuration.
   additive grant — adding/removing never disturbs the others),
   `github_repo` (grants are recreated for the new principal), the
   provider's display name, description, and attribute condition.
+- **Flipping `impersonationEnabled`** rebinds every deploy grant to the
+  other identity (the grants are recreated) and, when turning it off,
+  deletes the deployer account — workflows must add or remove the
+  `service_account:` line in their auth step in the same change.
 - **Recreates the federation**: `pool_id` and `provider_id` are immutable,
   and both are reserved for ~30 days after deletion — a recreated provider
   also changes the `workload_identity_provider` value configured in

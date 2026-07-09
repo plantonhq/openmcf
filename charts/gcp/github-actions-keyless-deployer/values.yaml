@@ -72,6 +72,31 @@ params:
       - roles/run.admin
       - roles/iam.serviceAccountUser
 
+  # ─── Deployer identity (impersonation arm) ──────────────────────────────
+  - name: impersonationEnabled
+    description: >
+      Route the deploy permissions through a dedicated service account
+      instead of granting them directly to the GitHub principal. Off (the
+      default and the recommended posture), workflows hold the roles below
+      directly — one less credential hop, nothing long-lived. Turn on when
+      the workflow needs a real service-account identity: signed URLs and
+      signBlob, domain-wide delegation, tools that only accept a
+      service-account email, or an org policy that forbids granting roles
+      to federated principals. When on, the roles below bind to the
+      service account and the GitHub principal receives exactly one grant —
+      permission to impersonate it.
+    type: bool
+    value: false
+
+  - name: deployer_service_account_id
+    description: >
+      Account ID for the deployer service account (becomes
+      <id>@<project>.iam.gserviceaccount.com; 6-30 lowercase letters,
+      digits, and hyphens). Only used when impersonationEnabled is true.
+      The email is also what your workflow passes to
+      google-github-actions/auth as service_account.
+    value: gha-deployer
+
   # ─── Container registry ─────────────────────────────────────────────────
   - name: registryEnabled
     description: >

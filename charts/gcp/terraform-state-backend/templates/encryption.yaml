@@ -43,18 +43,24 @@ spec:
 ---
 # Cloud Storage does the actual encrypt/decrypt calls, acting as the
 # project's Storage service agent — so THAT identity (not you, not the
-# state service account) needs permission to use the key. Granted at
-# project scope because key-scoped IAM is not a first-class node yet;
-# additive, so it never disturbs other KMS grants in the project.
+# state service account) needs permission to use the key. Granted ON the
+# key itself: the agent can use exactly this key and nothing else in the
+# project, and the bucket references this grant (state-bucket.yaml), so
+# deployment orders the bucket after the permission it depends on exists.
+# Additive, so it never disturbs other grants on the same key.
 apiVersion: gcp.planton.dev/v1
-kind: GcpProjectIamMember
+kind: GcpKmsKeyIamMember
 metadata:
   name: "{{ values.bucket_name }}-gcs-agent-kms"
 spec:
-  projectId:
-    value: "{{ values.gcp_project_id }}"
+  cryptoKeyId:
+    valueFrom:
+      name: "{{ values.bucket_name }}-key"
   role:
     value: roles/cloudkms.cryptoKeyEncrypterDecrypter
   member:
+    # The agent is created by GCP, not by any resource here — its email
+    # embeds the project NUMBER (not ID), which is why the chart asks for
+    # gcp_project_number when this toggle is on.
     value: "serviceAccount:service-{{ values.gcp_project_number }}@gs-project-accounts.iam.gserviceaccount.com"
 {% endif %}

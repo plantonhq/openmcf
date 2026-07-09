@@ -47,13 +47,16 @@ spec:
 
 {% if values.kmsEnabled | bool %}
   # Encrypt state objects under the customer-managed key from
-  # encryption.yaml. NOTE: the Cloud Storage service agent's KMS grant (also
-  # in encryption.yaml) must be effective before the bucket can be created
-  # with this key — if a first deploy loses that race to IAM propagation,
-  # simply re-run the deployment.
+  # encryption.yaml — referenced THROUGH the storage-agent grant, whose
+  # crypto_key_id output echoes the key's resolved path. Chaining through
+  # the grant makes the permission a dependency: the bucket deploys only
+  # after the Cloud Storage service agent can already use the key, so a
+  # first CMEK-enabled deploy never races IAM propagation.
   kmsKeyName:
     valueFrom:
-      name: "{{ values.bucket_name }}-key"
+      kind: GcpKmsKeyIamMember
+      name: "{{ values.bucket_name }}-gcs-agent-kms"
+      fieldPath: status.outputs.crypto_key_id
 {% endif %}
 
 {% if values.serviceAccountEnabled | bool %}

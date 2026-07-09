@@ -20,7 +20,7 @@ object in the same bucket, so one bucket is the entire state backend.
 | State bucket | `GcpGcsBucket` | Versioned, never-public home for state objects and backend locks | always |
 | Key ring | `GcpKmsKeyRing` | Permanent container and IAM boundary for the state key | `kmsEnabled` |
 | State key | `GcpKmsKey` | Customer-managed encryption key, 90-day rotation | `kmsEnabled` |
-| Storage-agent KMS grant | `GcpProjectIamMember` | Lets the Cloud Storage service agent encrypt/decrypt with the key | `kmsEnabled` |
+| Storage-agent KMS grant | `GcpKmsKeyIamMember` | Lets the Cloud Storage service agent encrypt/decrypt with exactly this key | `kmsEnabled` |
 | State-access identity | `GcpServiceAccount` | Single-purpose account whose only power is object access on this bucket | `serviceAccountEnabled` |
 
 ## Architecture
@@ -30,8 +30,9 @@ flowchart TB
     subgraph enc [Encryption — kmsEnabled]
         KeyRing[GcpKmsKeyRing]
         Key[GcpKmsKey]
-        AgentGrant["GcpProjectIamMember<br/>(Cloud Storage service agent →<br/>cryptoKeyEncrypterDecrypter)"]
+        AgentGrant["GcpKmsKeyIamMember<br/>(Cloud Storage service agent →<br/>cryptoKeyEncrypterDecrypter)"]
         Key -->|keyRingId| KeyRing
+        AgentGrant -->|cryptoKeyId| Key
     end
 
     subgraph access [Access — serviceAccountEnabled]
@@ -39,14 +40,19 @@ flowchart TB
     end
 
     Bucket["GcpGcsBucket<br/>versioning · bounded history ·<br/>public access enforced-off · soft delete"]
-    Bucket -->|kmsKeyName| Key
+    Bucket -->|"kmsKeyName<br/>(via the grant's crypto_key_id)"| AgentGrant
     Bucket -->|"iamMembers member<br/>(roles/storage.objectAdmin)"| SA
 ```
 
 Deployment order is derived from the references: the key ring deploys first,
-then the key, then the bucket; the service account and the storage-agent
-grant have no inbound references and deploy in the first layer. With both
-toggles off, the chart is exactly one resource.
+then the key, then the storage-agent grant on it, then the bucket. The
+bucket takes its key path from the grant's `crypto_key_id` output rather
+than from the key directly — the grant is key-scoped (the agent can use
+this key and nothing else in the project), and referencing it makes the
+permission a real dependency, so the bucket is never created before the
+agent can encrypt with the key. The service account has no inbound
+references and deploys in the first layer. With both toggles off, the chart
+is exactly one resource.
 
 ## Parameters
 
@@ -99,9 +105,7 @@ automatically.
   permanent; moving state is a deliberate migration, never a rename.
 - **Enabling CMEK later** (`kmsEnabled: true`) re-encrypts nothing
   retroactively: existing state objects keep Google-managed encryption until
-  the next apply rewrites them. IAM propagation for the storage-agent grant
-  can take up to a minute — if the first CMEK-enabled deploy fails with a
-  KMS permission error, re-run it.
+  the next apply rewrites them.
 - **Key ring and key names are permanent** in GCP: they survive destroy
   (versions are destroyed; the names can never be reused in that ring or
   location). Choose names you can live with.

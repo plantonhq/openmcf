@@ -175,6 +175,16 @@ params:
     default kind, and then always set `fieldPath` explicitly too.
   - Reference chart-internal resources by their rendered `metadata.name`
     (including any `{{ values.* }}` prefix used when defining them).
+  - **Turn required permissions into ordering edges.** When a resource only
+    works if an IAM grant is already effective (the CMEK class: a bucket,
+    dataset, or disk encrypting with a key its service agent must first be
+    allowed to use), reference the grant resource instead of the granted-on
+    resource — resource-scoped IAM grant kinds echo their resolved inputs as
+    outputs (e.g. a key grant's `crypto_key_id` is the key's full path)
+    precisely so consumers can take their value THROUGH the grant. The
+    dependency graph then deploys the consumer after the permission exists,
+    instead of racing IAM propagation and documenting "re-run if the first
+    deploy fails".
 
 ### README.md
 
