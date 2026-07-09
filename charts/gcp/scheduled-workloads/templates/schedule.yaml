@@ -1,0 +1,51 @@
+# The trigger: Cloud Scheduler executing the job on the cron expression.
+# Executing a Cloud Run JOB is an authenticated call to the Cloud Run
+# Admin API's :run method — a *.googleapis.com endpoint, so the token type
+# is OAUTH (OIDC is for calling your own services, OAuth for calling
+# Google's). The URI is assembled from parameters: every segment (region,
+# project, job name) is a parameter of this chart by construction, and the
+# job's jobName is set explicitly from the same value the URI embeds.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudSchedulerJob
+metadata:
+  name: "{{ values.workload_name }}-schedule"
+  # Neither dependency flows data into this resource (the URI and the
+  # grant have no outputs it consumes), so both ordering edges are
+  # explicit: the job must exist before the first trigger fires, and the
+  # invoker permission must be effective before the call succeeds.
+  relationships:
+    - kind: GcpCloudRunJob
+      name: "{{ values.workload_name }}"
+      type: depends_on
+    - kind: GcpProjectIamMember
+      name: "{{ values.workload_name }}-trigger-invoker"
+      type: depends_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  location: "{{ values.region }}"
+  schedule: "{{ values.schedule }}"
+  timeZone: "{{ values.time_zone }}"
+  description: >-
+    Executes the {{ values.workload_name }} Cloud Run Job on the
+    "{{ values.schedule }}" cron expression ({{ values.time_zone }}).
+  # The Admin API acknowledges the :run call quickly (it starts the
+  # execution rather than waiting for it) — 180s is generous headroom.
+  attemptDeadline: "180s"
+  httpTarget:
+    # The Cloud Run Admin API's execute method for the job, on the
+    # region's endpoint.
+    uri: "https://{{ values.region }}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/{{ values.gcp_project_id }}/jobs/{{ values.workload_name }}:run"
+    httpMethod: POST
+    oauthToken:
+      serviceAccountEmail:
+        valueFrom:
+          name: "{{ values.workload_name }}-trigger"
+      # scope defaults to cloud-platform — exactly what the Admin API takes.
+  # Retry the TRIGGER a few times if the :run call itself fails (quota,
+  # transient API errors). Task-level failures inside an execution are the
+  # job's maxRetries concern, not the scheduler's.
+  retryConfig:
+    retryCount: 3
+    minBackoffDuration: "5s"
+    maxBackoffDuration: "300s"

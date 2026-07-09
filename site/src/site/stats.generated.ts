@@ -12,7 +12,7 @@ export const generatedStats = {
   /** Cloud providers in the catalog. */
   providers: 17,
   /** Ready-made infra charts (stacks). */
-  charts: 44,
+  charts: 47,
 } as const;
 
 export type GeneratedStats = typeof generatedStats;

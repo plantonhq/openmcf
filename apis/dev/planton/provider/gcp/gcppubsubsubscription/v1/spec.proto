@@ -93,7 +93,17 @@ message GcpPubSubSubscriptionPushConfigNoWrapper {
 // If none of the three delivery configs are set, the subscription uses pull delivery.
 message GcpPubSubSubscriptionPushConfig {
   // URL to which Pub/Sub pushes messages. Must use HTTPS.
-  string push_endpoint = 1 [(buf.validate.field).required = true];
+  // Accepts a literal URL or a reference to a GcpCloudRun service — pushing to
+  // a Cloud Run service in the same environment is the canonical serverless
+  // consumer pattern, and the service URL contains a generated suffix that can
+  // only be known by reading the deployed service's output. Pair a Cloud Run
+  // push endpoint with oidc_token (the service account must hold run.invoker)
+  // unless the service allows unauthenticated invocations.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef push_endpoint = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudRun,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.url"
+  ];
 
   // Endpoint configuration attributes. The supported attribute is "x-goog-version"
   // which controls the push message format ("v1beta1" or "v1").

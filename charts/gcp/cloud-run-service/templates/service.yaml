@@ -1,0 +1,77 @@
+# The Cloud Run service — the chart's centerpiece. Everything else here
+# exists to serve it: the identity it runs as, the registry its images come
+# from, the private data services it reaches, and the front door the world
+# reaches it through.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudRun
+metadata:
+  name: "{{ values.service_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  region: "{{ values.region }}"
+  # Dedicated runtime identity (never the default compute account) — the
+  # reference also orders the service after the account exists.
+  serviceAccount:
+    valueFrom:
+      name: "{{ values.service_name }}-runtime"
+  containers:
+    - image: "{{ values.image }}"
+      ports:
+        containerPort: {{ values.container_port }}
+      resources:
+        cpu: "{{ values.cpu }}"
+        memory: "{{ values.memory }}"
+{% if values.cloudSqlEnabled | bool %}
+      env:
+        # The socket path under /cloudsql is the instance connection name.
+        # Assembled from this chart's own parameters (project, region, and
+        # the derived instance name are all set here) rather than read from
+        # an output — environment values are plain strings, and the three
+        # segments are parameters by construction.
+        - name: INSTANCE_CONNECTION_NAME
+          value: "{{ values.gcp_project_id }}:{{ values.region }}:{{ values.service_name }}-db"
+        - name: DB_NAME
+          value: "{{ values.db_name }}"
+      volumeMounts:
+        # Cloud SQL volumes must mount at /cloudsql; the app connects via
+        # the Unix socket /cloudsql/$INSTANCE_CONNECTION_NAME using IAM
+        # database authentication — no password, the runtime identity IS
+        # the database user.
+        - name: cloudsql
+          mountPath: /cloudsql
+{% endif %}
+{% if values.cloudSqlEnabled | bool %}
+  volumes:
+    - name: cloudsql
+      cloudSqlInstance:
+        instances:
+          # References the instance's connection_name output — and orders
+          # the service after the database is ready.
+          - valueFrom:
+              name: "{{ values.service_name }}-db"
+{% endif %}
+{% if values.vpcConnectorEnabled | bool %}
+  # Outbound traffic to private ranges rides the connector into the shared
+  # network; internet-bound traffic still leaves directly. This is what
+  # lets the service reach the private database and cache by internal IP.
+  vpcAccess:
+    connector:
+      valueFrom:
+        name: "{{ values.service_name }}-connector"
+    egress: PRIVATE_RANGES_ONLY
+{% endif %}
+  scaling:
+    minInstanceCount: {{ values.min_instances }}
+    maxInstanceCount: {{ values.max_instances }}
+  allowUnauthenticated: {{ values.allowUnauthenticated | bool | lower }}
+{% if values.frontDoorEnabled | bool %}
+  # With the front door on, the run.app URL stops accepting public traffic —
+  # everything arrives through the load balancer (where Cloud Armor and the
+  # managed certificate live). Without this, the LB would be advisory: the
+  # direct URL would bypass every edge control.
+  ingress: INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER
+{% else %}
+  ingress: INGRESS_TRAFFIC_ALL
+{% endif %}
+  executionEnvironment: EXECUTION_ENVIRONMENT_GEN2

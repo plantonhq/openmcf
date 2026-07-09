@@ -1,0 +1,120 @@
+# The push consumer (pushConsumerEnabled=true): a Cloud Run service that
+# receives messages as HTTP POSTs — no polling loop, scale-to-zero between
+# messages, and Pub/Sub's retry policy doubles as the consumer's. Four
+# resources close the authentication loop:
+#
+#   service ← run.invoker grant ← push identity ← OIDC push subscription
+#
+# Pub/Sub signs an OIDC token as the push identity on every delivery; the
+# service accepts only authenticated internal traffic, so the subscription
+# is the ONLY path in. The push endpoint is a reference to the service's
+# url output — a Cloud Run URL embeds a generated suffix that exists only
+# after the service deploys, and the reference both resolves it and orders
+# the subscription after the service.
+{% if values.pushConsumerEnabled | bool %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudRun
+metadata:
+  name: "{{ values.pipeline_name }}-consumer"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  region: "{{ values.region }}"
+  containers:
+    - image: "{{ values.consumer_image }}"
+      ports:
+        containerPort: 8080
+      resources:
+        cpu: "1"
+        memory: 512Mi
+  scaling:
+    minInstanceCount: 0
+    maxInstanceCount: 20
+  # Push requests carry the OIDC identity below — unauthenticated access
+  # stays off, and internal-only ingress admits Pub/Sub push while closing
+  # the public URL.
+  allowUnauthenticated: false
+  ingress: INGRESS_TRAFFIC_INTERNAL_ONLY
+  executionEnvironment: EXECUTION_ENVIRONMENT_GEN2
+
+---
+# The identity Pub/Sub pushes as.
+apiVersion: gcp.planton.dev/v1
+kind: GcpServiceAccount
+metadata:
+  name: "{{ values.pipeline_name }}-push"
+spec:
+  serviceAccountId: "{{ values.pipeline_name }}-push"
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  displayName: "{{ values.pipeline_name }} push delivery"
+  description: >-
+    Identity Pub/Sub signs OIDC tokens as when pushing
+    {{ values.pipeline_name }} messages to the consumer service. Holds
+    run.invoker only; no user-managed key.
+
+---
+# Permission for that identity to invoke the consumer. Project-scoped
+# run.invoker (no kind models per-service Cloud Run IAM); the member
+# reference orders the grant after the account.
+apiVersion: gcp.planton.dev/v1
+kind: GcpProjectIamMember
+metadata:
+  name: "{{ values.pipeline_name }}-push-invoker"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  role:
+    value: roles/run.invoker
+  member:
+    valueFrom:
+      name: "{{ values.pipeline_name }}-push"
+
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpPubSubSubscription
+metadata:
+  name: "{{ values.pipeline_name }}-push-consumer"
+  # The invoker permission must be effective before deliveries start, and
+  # no spec field references the grant — the explicit edge orders it.
+  relationships:
+    - kind: GcpProjectIamMember
+      name: "{{ values.pipeline_name }}-push-invoker"
+      type: depends_on
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  subscriptionName: "{{ values.pipeline_name }}-push-consumer"
+  topic:
+    valueFrom:
+      name: "{{ values.pipeline_name }}-events"
+  # Push delivery acks on HTTP 2xx within the deadline; anything else is a
+  # NACK that rides the retry policy (and the dead-letter policy when the
+  # arm is on).
+  ackDeadlineSeconds: 60
+  retryPolicy:
+    minimumBackoff: "10s"
+    maximumBackoff: "600s"
+  expirationPolicy:
+    ttl: ""
+{% if values.deadLetterEnabled | bool %}
+  deadLetterPolicy:
+    deadLetterTopic:
+      valueFrom:
+        name: "{{ values.pipeline_name }}-dlq"
+    maxDeliveryAttempts: {{ values.max_delivery_attempts }}
+{% endif %}
+  pushConfig:
+    # The service's url output — resolvable only by reference (the URL's
+    # suffix is generated at deploy time).
+    pushEndpoint:
+      valueFrom:
+        name: "{{ values.pipeline_name }}-consumer"
+    oidcToken:
+      serviceAccountEmail:
+        valueFrom:
+          name: "{{ values.pipeline_name }}-push"
+      # audience defaults to the push endpoint URL — exactly what Cloud
+      # Run expects.
+{% endif %}

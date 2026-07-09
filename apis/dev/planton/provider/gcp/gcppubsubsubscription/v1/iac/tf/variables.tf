@@ -66,6 +66,7 @@ variable "spec" {
     }), null)
 
     push_config = optional(object({
+      # Resolved from a GcpCloudRun reference to a literal HTTPS URL.
       push_endpoint = string
       attributes    = optional(map(string), {})
       oidc_token = optional(object({

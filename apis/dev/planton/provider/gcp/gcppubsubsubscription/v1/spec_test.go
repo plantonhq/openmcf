@@ -163,7 +163,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should accept spec with push_config and OIDC token", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/push",
+			PushEndpoint: svr("https://example.com/push"),
 			OidcToken: &GcpPubSubSubscriptionPushConfigOidcToken{
 				ServiceAccountEmail: svr("push-sa@my-gcp-project.iam.gserviceaccount.com"),
 				Audience:            "https://example.com",
@@ -173,10 +173,23 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept spec with push_config endpoint as a reference", func() {
+		msg := minimal()
+		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
+			PushEndpoint: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "consumer-service"},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should accept spec with push_config and no_wrapper", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/webhook",
+			PushEndpoint: svr("https://example.com/webhook"),
 			NoWrapper: &GcpPubSubSubscriptionPushConfigNoWrapper{
 				WriteMetadata: true,
 			},
@@ -517,7 +530,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should reject push_config with OIDC token missing service_account_email", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/push",
+			PushEndpoint: svr("https://example.com/push"),
 			OidcToken: &GcpPubSubSubscriptionPushConfigOidcToken{
 				Audience: "https://example.com",
 			},
@@ -558,7 +571,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should reject push_config and bigquery_config both set (mutual exclusion)", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/push",
+			PushEndpoint: svr("https://example.com/push"),
 		}
 		msg.Spec.BigqueryConfig = &GcpPubSubSubscriptionBigQueryConfig{
 			Table: svr("project.dataset.table"),
@@ -570,7 +583,7 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 	ginkgo.It("should reject push_config and cloud_storage_config both set (mutual exclusion)", func() {
 		msg := minimal()
 		msg.Spec.PushConfig = &GcpPubSubSubscriptionPushConfig{
-			PushEndpoint: "https://example.com/push",
+			PushEndpoint: svr("https://example.com/push"),
 		}
 		msg.Spec.CloudStorageConfig = &GcpPubSubSubscriptionCloudStorageConfig{
 			Bucket: &foreignkeyv1.StringValueOrRef{

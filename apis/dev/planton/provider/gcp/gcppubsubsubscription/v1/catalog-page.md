@@ -75,7 +75,7 @@ This creates a pull subscription with default settings: 10-second ack deadline, 
 | `deadLetterPolicy.maxDeliveryAttempts` | `int` | `5` | Number of delivery attempts before dead-lettering. Range: 5–100. |
 | `retryPolicy.minimumBackoff` | `string` | `"10s"` | Minimum delay between delivery retries after a NACK. Range: `"0s"` to `"600s"`. |
 | `retryPolicy.maximumBackoff` | `string` | `"600s"` | Maximum delay between delivery retries after a NACK. Range: `"0s"` to `"600s"`. |
-| `pushConfig.pushEndpoint` | `string` | — | HTTPS URL to which Pub/Sub pushes messages. Required when using push delivery. |
+| `pushConfig.pushEndpoint` | `StringValueOrRef` | — | HTTPS URL to which Pub/Sub pushes messages. Can reference GcpCloudRun via `valueFrom` (its `url` output) — the canonical serverless consumer wiring. Required when using push delivery. |
 | `pushConfig.attributes` | `map<string,string>` | — | Endpoint configuration attributes. Supports `x-goog-version` (`"v1beta1"` or `"v1"`). |
 | `pushConfig.oidcToken.serviceAccountEmail` | `StringValueOrRef` | — | Service account used to generate OIDC tokens for authenticated push requests. Can reference GcpServiceAccount via `valueFrom`. |
 | `pushConfig.oidcToken.audience` | `string` | push endpoint URL | Audience claim for the OIDC token. |
@@ -122,7 +122,8 @@ spec:
     value: projects/my-gcp-project/topics/events-topic
   ackDeadlineSeconds: 30
   pushConfig:
-    pushEndpoint: https://my-service.example.com/pubsub/push
+    pushEndpoint:
+      value: https://my-service.example.com/pubsub/push
     oidcToken:
       serviceAccountEmail:
         value: push-invoker@my-gcp-project.iam.gserviceaccount.com

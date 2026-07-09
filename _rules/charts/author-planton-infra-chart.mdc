@@ -175,6 +175,41 @@ params:
     default kind, and then always set `fieldPath` explicitly too.
   - Reference chart-internal resources by their rendered `metadata.name`
     (including any `{{ values.* }}` prefix used when defining them).
+  - **Referencing resources OUTSIDE the chart is a designed capability**,
+    not a workaround — an application chart consumes the environment's
+    shared foundations (the VPC a landing-zone chart deployed, a registry
+    a CI/CD chart created) by taking the target's Planton resource name as
+    a parameter and writing a normal `valueFrom` against it. Prefer this
+    over assembling the target's identifier from parameters: the reference
+    resolves each consumer's annotated composition key (id vs name vs
+    self-link) at deploy time, so the format can never be wrong. The
+    offline gate reports such references as dangling-ref WARNINGS by
+    design (the resource must exist in the target environment at deploy
+    time) — document the expectation in the parameter description and the
+    README. Never have an application chart create a shared foundation it
+    should consume: singleton-per-network resources (a service-networking
+    connection, a service connection policy for a class+region) collide
+    when a second chart creates its own.
+  - **Ordering edges with no data flow use `metadata.relationships`.**
+    When a resource must deploy after another but no spec field consumes
+    the other's output (a managed service that requires its connection
+    policy to exist, a subscription whose service-agent permission is
+    validated at create time), declare the edge explicitly:
+
+    ```yaml
+    metadata:
+      name: my-cache
+      relationships:
+        - kind: GcpServiceConnectionPolicy
+          name: my-cache-scp
+          type: depends_on
+    ```
+
+    The platform's dependency graph consumes explicit relationships
+    alongside `valueFrom` edges. Prefer a real `valueFrom` (or the
+    grant-as-ordering-edge idiom below) whenever an output exists to
+    reference — `depends_on` is for the residual cases where nothing
+    flows.
   - **Turn required permissions into ordering edges.** When a resource only
     works if an IAM grant is already effective (the CMEK class: a bucket,
     dataset, or disk encrypting with a key its service agent must first be

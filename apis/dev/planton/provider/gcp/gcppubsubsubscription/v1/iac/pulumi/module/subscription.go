@@ -110,7 +110,10 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 	// enforces exclusivity); none set = pull.
 	if spec.PushConfig != nil {
 		pushArgs := &pubsub.SubscriptionPushConfigArgs{
-			PushEndpoint: pulumi.String(spec.PushConfig.PushEndpoint),
+			// push_endpoint is a StringValueOrRef; the resolver substitutes the
+			// referenced Cloud Run service URL (or any literal HTTPS endpoint)
+			// before the module runs, so only the resolved value exists here.
+			PushEndpoint: pulumi.String(spec.PushConfig.PushEndpoint.GetValue()),
 		}
 		if len(spec.PushConfig.Attributes) > 0 {
 			pushArgs.Attributes = pulumi.ToStringMap(spec.PushConfig.Attributes)
