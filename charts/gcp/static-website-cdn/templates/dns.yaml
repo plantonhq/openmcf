@@ -1,0 +1,35 @@
+# DNS (dnsEnabled=true): the records that make the site live — one A
+# record per domain, pointing at the site's global IP.
+#
+# Each record's value is a REFERENCE to the address resource, not a pasted
+# IP: the record can never drift from the VIP it fronts, and the
+# dependency graph creates the address before the records that name it.
+# These records are also what activates the managed certificate — Google's
+# validation probes each domain until it resolves to this IP.
+#
+# The zone is consumed by name and deliberately not created here: a DNS
+# zone usually predates, outlives, and outspans any one site it hosts.
+{% if values.dnsEnabled | bool %}
+{% for domain in values.domains %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpDnsRecord
+metadata:
+  name: "{{ values.site_name }}-{{ domain | replace('.', '-') }}-a"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  managedZone:
+    value: "{{ values.dns_zone_name }}"
+  type: A
+  # Record names are fully qualified — the trailing dot is DNS syntax, not
+  # a typo.
+  name:
+    value: "{{ domain }}."
+  values:
+    - valueFrom:
+        kind: GcpGlobalAddress
+        name: "{{ values.site_name }}-ip"
+        fieldPath: status.outputs.address
+{% endfor %}
+{% endif %}

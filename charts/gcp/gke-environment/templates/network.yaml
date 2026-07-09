@@ -1,0 +1,59 @@
+# The network layer: a custom-mode VPC (unless you bring one) and a
+# GKE-tailored subnet with PLANNED secondary ranges.
+#
+# GKE clusters are VPC-native: pods and services draw real VPC addresses
+# from secondary ranges on the node subnet. Letting GKE carve those ranges
+# ad hoc works until the day the address plan has to accommodate peering,
+# on-prem routes, or a second cluster — so this chart plans them up front
+# and names them, which also makes them visible to network reviews. The
+# ranges are immutable once the cluster exists; their sizing rationale
+# lives on the parameters.
+{% if not (values.useExistingNetwork | bool) %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpVpcNetwork
+metadata:
+  name: "{{ values.network_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  networkName: "{{ values.network_name }}"
+  # Custom mode: auto mode would scatter a /20 into every region GCP
+  # operates in — unplanned address space that collides with the pod and
+  # service ranges a cluster actually needs planned.
+  autoCreateSubnetworks: false
+{% endif %}
+
+---
+# The GKE subnet. Created by this chart even when the VPC is brought from a
+# landing zone: subnets are additive per network, and the secondary-range
+# address plan is a cluster-level decision this chart owns.
+apiVersion: gcp.planton.dev/v1
+kind: GcpSubnetwork
+metadata:
+  name: "{{ values.cluster_name }}-{{ values.region }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  # Resolves the VPC whether this chart created it or a landing-zone chart
+  # did — the reference needs only the resource name, and the platform
+  # resolves the annotated self-link at deploy time.
+  vpcSelfLink:
+    valueFrom:
+      name: "{{ values.network_name }}"
+  subnetworkName: "{{ values.cluster_name }}-{{ values.region }}"
+  region: "{{ values.region }}"
+  # Node addresses. Expandable in place later; never shrinkable.
+  ipCidrRange: "{{ values.subnet_ip_cidr_range }}"
+  # Private nodes have no external IPs, so without this they could not
+  # reach Artifact Registry, GCS, or the GKE control services — effectively
+  # mandatory for a private cluster's subnet.
+  privateIpGoogleAccess: true
+  # The names below are what the cluster's ipAllocation selects — plain
+  # "pods"/"services" because range names are scoped to their subnet, and
+  # this convention matches the kind's own proven manifests.
+  secondaryIpRanges:
+    - rangeName: pods
+      ipCidrRange: "{{ values.pods_ip_cidr_range }}"
+    - rangeName: services
+      ipCidrRange: "{{ values.services_ip_cidr_range }}"

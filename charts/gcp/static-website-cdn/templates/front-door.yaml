@@ -1,0 +1,154 @@
+# The front door: a global external HTTPS load balancer serving the CDN
+# backend on your own domains. Composition, VIP first:
+#
+#   client → global address → forwarding rule :443 → HTTPS proxy
+#          → (managed certificate, TLS) → URL map → backend bucket
+#          → Cloud CDN → the origin bucket
+#
+# plus the redirect twin on the same address: forwarding rule :80 → HTTP
+# proxy → redirect URL map → 301 to https.
+---
+# The Google-managed certificate covering every domain the site answers
+# on. It stays PROVISIONING until each domain's A record points at the
+# reserved IP below — deploy first, then let the DNS arm (or your manual
+# record) activate it; renewal is Google's problem forever after.
+apiVersion: gcp.planton.dev/v1
+kind: GcpManagedSslCertificate
+metadata:
+  name: "{{ values.site_name }}-cert"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  description: Managed TLS for the {{ values.site_name }} static site
+  domains:
+{% for domain in values.domains %}
+    - "{{ domain }}"
+{% endfor %}
+
+---
+# The serving URL map: every host, every path, straight to the CDN
+# backend. A static site needs no routing tree — if this site later grows
+# an API under /api, add hostRules/pathMatchers here and point them at a
+# backend service.
+apiVersion: gcp.planton.dev/v1
+kind: GcpUrlMap
+metadata:
+  name: "{{ values.site_name }}-url-map"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  description: Routes all {{ values.site_name }} traffic to the CDN backend bucket
+  # default_service accepts a backend service OR a backend bucket, so the
+  # field declares no default kind — the kind (and therefore the field
+  # path) is explicit.
+  defaultService:
+    valueFrom:
+      kind: GcpBackendBucket
+      name: "{{ values.site_name }}-backend"
+      fieldPath: status.outputs.self_link
+
+---
+# The redirect URL map — a URL map may carry exactly one default target,
+# so the HTTP-to-HTTPS bounce is its own tiny map on the port-80 path
+# rather than a branch of the serving map.
+apiVersion: gcp.planton.dev/v1
+kind: GcpUrlMap
+metadata:
+  name: "{{ values.site_name }}-redirect-map"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  description: Permanent redirect of plain-HTTP {{ values.site_name }} traffic to HTTPS
+  defaultUrlRedirect:
+    httpsRedirect: true
+    redirectResponseCode: MOVED_PERMANENTLY_DEFAULT
+    stripQuery: false
+
+---
+# TLS termination: the 443 frontend. The certificate attaches by
+# reference — rotation and renewal stay Google's problem.
+apiVersion: gcp.planton.dev/v1
+kind: GcpTargetHttpsProxy
+metadata:
+  name: "{{ values.site_name }}-https-proxy"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  description: Port-443 frontend for the {{ values.site_name }} static site
+  urlMap:
+    valueFrom:
+      name: "{{ values.site_name }}-url-map"
+  sslCertificates:
+    - valueFrom:
+        name: "{{ values.site_name }}-cert"
+
+---
+# The port-80 twin serving the redirect map.
+apiVersion: gcp.planton.dev/v1
+kind: GcpTargetHttpProxy
+metadata:
+  name: "{{ values.site_name }}-http-proxy"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  description: Port-80 frontend bouncing {{ values.site_name }} traffic to HTTPS
+  urlMap:
+    valueFrom:
+      name: "{{ values.site_name }}-redirect-map"
+
+---
+# The one stable address both rules share — the thing DNS points at. It
+# outlives every certificate, proxy, and backend swap behind it.
+apiVersion: gcp.planton.dev/v1
+kind: GcpGlobalAddress
+metadata:
+  name: "{{ values.site_name }}-ip"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  addressName: "{{ values.site_name }}-ip"
+  addressType: EXTERNAL
+  ipVersion: IPV4
+  description: Global VIP for the {{ values.site_name }} static site
+
+---
+# The 443 VIP: address + proxy joined into a reachable endpoint.
+apiVersion: gcp.planton.dev/v1
+kind: GcpGlobalForwardingRule
+metadata:
+  name: "{{ values.site_name }}-https-rule"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  description: Port-443 VIP for the {{ values.site_name }} static site
+  target:
+    valueFrom:
+      name: "{{ values.site_name }}-https-proxy"
+  ipAddress:
+    valueFrom:
+      name: "{{ values.site_name }}-ip"
+  portRange: "443"
+  loadBalancingScheme: EXTERNAL_MANAGED
+
+---
+# The port-80 VIP on the SAME address, serving only the redirect. The
+# target is a GcpTargetHttpProxy — not this field's default kind — so both
+# the kind and the field path are explicit.
+apiVersion: gcp.planton.dev/v1
+kind: GcpGlobalForwardingRule
+metadata:
+  name: "{{ values.site_name }}-http-rule"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  description: Port-80 VIP redirecting {{ values.site_name }} traffic to HTTPS
+  target:
+    valueFrom:
+      kind: GcpTargetHttpProxy
+      name: "{{ values.site_name }}-http-proxy"
+      fieldPath: status.outputs.self_link
+  ipAddress:
+    valueFrom:
+      name: "{{ values.site_name }}-ip"
+  portRange: "80"
+  loadBalancingScheme: EXTERNAL_MANAGED

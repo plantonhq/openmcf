@@ -220,6 +220,29 @@ params:
     dependency graph then deploys the consumer after the permission exists,
     instead of racing IAM propagation and documenting "re-run if the first
     deploy fails".
+  - **Wildcard-annotated composition keys take literal values.** Some FK
+    annotations point into a repeated output with a `[*]` wildcard (e.g. a
+    cluster's secondary-range name resolving against a subnetwork's
+    `secondary_ranges.[*].range_name`) — the platform cannot pick which
+    element a bare reference means. When the chart defines both sides,
+    pass the value as a literal that matches what the producing resource
+    declares (both sides driven by the same template values), and let a
+    sibling reference on the same resource (the cluster's `subnetwork`
+    field) carry the ordering edge. Do not invent an indexed field path:
+    overriding an annotated path is exactly the mismatch class the
+    validator exists to reject.
+  - **Selector-bound kinds are a weaker link than references — bundle them
+    deliberately or not at all.** Some kinds bind to their host by a
+    by-name selector rather than a `StringValueOrRef` (the Kubernetes
+    workload/addon kinds' `target_cluster` — a cluster-kind enum plus the
+    cluster's resource name in the same environment). A selector is not a
+    resolved reference: the offline gate cannot verify it, and no output
+    flows through it. A chart that owns the infrastructure layer (network,
+    cluster, identity, registry) should generally TEACH the selector
+    pattern in its README rather than bundle selector-bound resources —
+    what runs ON a cluster is a separate, composable decision from the
+    cluster itself. If a chart does include one, pair the selector with an
+    explicit `metadata.relationships` edge so ordering is still real.
 
 ### README.md
 

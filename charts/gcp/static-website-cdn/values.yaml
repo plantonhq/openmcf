@@ -1,0 +1,103 @@
+params:
+  # ─── Placement ───────────────────────────────────────────────────────────
+  - name: gcp_project_id
+    description: >
+      GCP project that owns every resource in this chart. The serving
+      infrastructure (CDN, certificate, load balancer pieces) is global;
+      only the origin bucket has a location, chosen below.
+    value: my-gcp-project
+
+  - name: site_name
+    description: >
+      Short name for the site and the prefix every serving resource's name
+      builds on (backend, URL maps, certificate, proxies, IP, forwarding
+      rules). Lowercase letters, digits, and hyphens.
+    value: static-site
+
+  # ─── Origin ──────────────────────────────────────────────────────────────
+  - name: bucket_name
+    description: >
+      Name of the origin bucket holding the site's files. Bucket names are
+      GLOBALLY unique across all of GCP — pick something org-scoped (e.g.
+      <org>-<site>-assets) and expect the obvious ones to be taken.
+      Immutable.
+    value: example-static-site-assets
+
+  - name: bucket_location
+    description: >
+      Where the origin's bytes live — a multi-region ("US", "EU", "ASIA")
+      or a region ("us-central1"). Multi-region is the natural default for
+      a public site: the origin serves cache MISSES from anywhere, and
+      multi-region durability costs pennies at static-site sizes. Immutable.
+    value: US
+
+  - name: index_page
+    description: >
+      Object served when a request targets a directory path ("/" or
+      "/docs/"). The conventional "index.html" matches what every static
+      site generator emits.
+    value: index.html
+
+  - name: not_found_page
+    description: >
+      Object served with a 404 when the requested path does not exist. For
+      classic multi-page sites, a real 404 page; for single-page apps that
+      route client-side, setting this to the same file as index_page makes
+      deep links load the app instead of an error.
+    value: 404.html
+
+  - name: forceDestroyEnabled
+    description: >
+      Allow destroying the origin bucket even when it still holds objects.
+      Off by default so a teardown can never silently erase content; site
+      assets are usually rebuildable from source, so flip this on when you
+      are deliberately retiring the site rather than emptying the bucket by
+      hand first.
+    type: bool
+    value: false
+
+  # ─── Domains and TLS ─────────────────────────────────────────────────────
+  - name: domains
+    description: >
+      Every domain the site answers on — all of them are added to the
+      Google-managed certificate, and each gets a DNS A record when
+      dnsEnabled is on. Bare FQDNs, no wildcards (managed certificates do
+      not support them): list the apex and the www host explicitly if you
+      serve both. Changing this list REPLACES the certificate — see the
+      README's day-2 notes before editing in place.
+    type: list
+    value:
+      - www.example.com
+
+  # ─── Edge behavior ───────────────────────────────────────────────────────
+  - name: cloudArmorEnabled
+    description: >
+      Attach a Cloud Armor EDGE security policy in front of the CDN cache.
+      Ships as a single default-allow rule, so turning it on changes
+      nothing for traffic — but IP allowlists and geo blocks become an edit
+      to that policy instead of a serving-path rework. Edge policies filter
+      by client IP and geography (they run before the cache, where request
+      bodies and headers are not yet available).
+    type: bool
+    value: false
+
+  # ─── DNS ─────────────────────────────────────────────────────────────────
+  - name: dnsEnabled
+    description: >
+      Create the A records pointing every domain at the site's global IP,
+      in the Cloud DNS zone named below. Turn off when this domain's DNS
+      lives outside Cloud DNS (or outside this GCP project) — the README
+      shows the record to create manually; the certificate stays pending
+      until it exists either way.
+    type: bool
+    value: true
+
+  - name: dns_zone_name
+    description: >
+      RESOURCE name of the existing Cloud DNS managed zone that owns these
+      domains (the zone's name in Cloud DNS, e.g. "example-com" — not the
+      dot-terminated DNS domain). The zone must already exist and be
+      authoritative for every entry in domains; this chart deliberately
+      does not create it, because a zone usually outlives and outspans any
+      one site.
+    value: example-com

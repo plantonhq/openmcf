@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: GCP GKE Environment
+spec:
+  selector:
+    kind: platform
+  description: A production GKE environment in one deploy — a GKE-tailored network with planned pod and service ranges, a regional private-nodes cluster with Workload Identity and Dataplane V2, a least-privilege node service account with exactly the roles nodes need, an autoscaling node pool with surge upgrades, and the Artifact Registry repository your images ship from. One toggle flips the whole environment to Autopilot; another drops the cluster onto a landing-zone VPC you already deployed.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/gcp/gcpgkecluster/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/gcp/gke-environment
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/gcp/gke-environment/README.md

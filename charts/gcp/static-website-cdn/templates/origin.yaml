@@ -1,0 +1,40 @@
+# The origin: a public-read bucket holding the site's files.
+#
+# The access posture is deliberate and worth understanding:
+#   - Uniform bucket-level access: IAM is the ONLY access mechanism —
+#     no per-object ACLs to audit or drift.
+#   - publicAccessPrevention "inherited" (not "enforced"): a public
+#     website's origin must be publicly readable — "enforced" would
+#     override the grant below and serve nothing. The org policy still has
+#     the final word; if your organization forbids public buckets, this is
+#     the deploy that surfaces it.
+#   - One additive grant: allUsers may READ OBJECTS, nothing else. Bucket
+#     administration, listing configuration, and writes all stay private.
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpGcsBucket
+metadata:
+  name: "{{ values.bucket_name }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  bucketName: "{{ values.bucket_name }}"
+  location: "{{ values.bucket_location }}"
+  uniformBucketLevelAccessEnabled: true
+  publicAccessPrevention: inherited
+{% if values.forceDestroyEnabled | bool %}
+  # Deliberately enabled: destroying the site erases remaining objects.
+  forceDestroy: true
+{% endif %}
+  # index/404 behavior applies both on the bucket's website endpoint and —
+  # what this chart actually serves — through the backend bucket at the
+  # load balancer.
+  website:
+    mainPageSuffix: "{{ values.index_page }}"
+    notFoundPage: "{{ values.not_found_page }}"
+  iamMembers:
+    # The grant that makes the site public: object READS for everyone.
+    # allUsers is a literal IAM principal, not a resource reference.
+    - role: roles/storage.objectViewer
+      member:
+        value: allUsers

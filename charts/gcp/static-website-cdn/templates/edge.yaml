@@ -1,0 +1,82 @@
+# The edge: Cloud CDN in front of the origin, tuned for static content.
+#
+# The backend bucket is the adapter that lets a GCS bucket stand behind a
+# load balancer; enabling CDN on it puts Google's edge caches between
+# clients and the origin, so repeat requests never cross the ocean to the
+# bucket at all.
+{% if values.cloudArmorEnabled | bool %}
+---
+# The edge security policy (cloudArmorEnabled=true). CLOUD_ARMOR_EDGE is
+# the variant that runs BEFORE the CDN cache — it filters by client IP and
+# geography only (nothing deeper is available pre-cache), which is exactly
+# what protects cached content: a plain CLOUD_ARMOR policy on a backend
+# only sees cache MISSES. Ships wide open (a single default-allow rule) so
+# attaching it changes nothing for traffic — IP allowlists and geo blocks
+# become an edit to THIS resource instead of a serving-path rework.
+apiVersion: gcp.planton.dev/v1
+kind: GcpCloudArmorPolicy
+metadata:
+  name: "{{ values.site_name }}-edge-armor"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  policyName: "{{ values.site_name }}-edge-armor"
+  description: Edge security policy for the {{ values.site_name }} CDN
+  type: CLOUD_ARMOR_EDGE
+  rules:
+    # Every policy carries a rule at the lowest priority (2147483647) as
+    # its default. Allow-all is the honest starting posture; add deny and
+    # geo rules ABOVE it (lower priority number = evaluated first).
+    - action: allow
+      priority: 2147483647
+      description: Default allow — tighten with higher-priority rules
+      match:
+        versionedExpr: SRC_IPS_V1
+        srcIpRanges:
+          - "*"
+{% endif %}
+
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpBackendBucket
+metadata:
+  name: "{{ values.site_name }}-backend"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  backendBucketName: "{{ values.site_name }}-backend"
+  description: CDN-enabled origin backend for the {{ values.site_name }} static site
+  bucketName:
+    valueFrom:
+      name: "{{ values.bucket_name }}"
+  enableCdn: true
+  cdnPolicy:
+    # CACHE_ALL_STATIC caches static content types automatically and still
+    # honors origin cache headers when present — the mode that works with
+    # every static-site generator's output without per-file tuning. If you
+    # emit precise Cache-Control headers at build time, USE_ORIGIN_HEADERS
+    # hands full control to them instead.
+    cacheMode: CACHE_ALL_STATIC
+    # One hour fresh at the edge and in browsers, one day maximum: a
+    # deployed fix propagates within the hour on its own, and an
+    # invalidation (see the README) makes it instant when that matters.
+    clientTtl: 3600
+    defaultTtl: 3600
+    maxTtl: 86400
+    # Cache 404s briefly: a hot missing path (a bad link that went viral)
+    # would otherwise hammer the origin on every request.
+    negativeCaching: true
+    # If the origin is ever unreachable, keep serving expired content for
+    # up to a day rather than erroring — for a static site, stale is
+    # strictly better than down.
+    serveWhileStale: 86400
+    # Collapse concurrent MISSes for the same object into one origin fetch.
+    requestCoalescing: true
+  # Compress text-based responses (HTML/CSS/JS/JSON) at the edge for
+  # clients that accept it — bandwidth and load-time savings for free.
+  compressionMode: AUTOMATIC
+{% if values.cloudArmorEnabled | bool %}
+  edgeSecurityPolicy:
+    valueFrom:
+      name: "{{ values.site_name }}-edge-armor"
+{% endif %}

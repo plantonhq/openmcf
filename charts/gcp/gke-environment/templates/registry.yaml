@@ -1,0 +1,36 @@
+# The image repository (registryEnabled=true): where this environment's
+# images live, kept beside the cluster so code artifact and serving
+# infrastructure deploy as one unit.
+#
+# Pull access is granted here — nodes pull with THEIR identity, so the
+# node service account gets a repository-scoped reader grant (never
+# project-wide). In Autopilot mode there is no chart-owned node account and
+# the grant drops out; grant your workloads' or GKE's pulling identity
+# reader access on this repository if pulls fail. Push access is a CI/CD
+# concern and deliberately NOT granted here — a deployer chart or your
+# pipeline identity brings its own repository-scoped writer grant.
+{% if values.registryEnabled | bool %}
+---
+apiVersion: gcp.planton.dev/v1
+kind: GcpArtifactRegistryRepo
+metadata:
+  name: "{{ values.registry_repository_id }}"
+spec:
+  projectId:
+    value: "{{ values.gcp_project_id }}"
+  location: "{{ values.region }}"
+  repositoryId: "{{ values.registry_repository_id }}"
+  format: DOCKER
+  description: >-
+    Container images for the {{ values.cluster_name }} GKE environment.
+{% if not (values.autopilotEnabled | bool) %}
+  iamMembers:
+    # The node account reads images from exactly this repository. The
+    # reference resolves the account's `member` output and orders the
+    # repository after the account exists.
+    - role: roles/artifactregistry.reader
+      member:
+        valueFrom:
+          name: "{{ values.cluster_name }}-nodes"
+{% endif %}
+{% endif %}
