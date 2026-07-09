@@ -1592,6 +1592,32 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"route_table_id", "route_table_arn"},
 		},
 		{
+			// AwsAthenaWorkgroup: workgroup_name keys the E2E verifier and every
+			// StartQueryExecution call; effective_engine_version reflects what AWS
+			// resolved for an AUTO engine selection.
+			name: "AwsAthenaWorkgroup",
+			kind: cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup,
+			rawOutputs: map[string]interface{}{
+				"workgroup_arn":            "arn:aws:athena:us-west-2:123456789012:workgroup/analytics",
+				"workgroup_name":           "analytics",
+				"effective_engine_version": "Athena engine version 3",
+			},
+			mustPopulate: []string{"workgroup_arn", "workgroup_name", "effective_engine_version"},
+		},
+		{
+			// AwsGlueCatalogDatabase: database_name keys the E2E verifier and is
+			// the join key Athena queries, Glue crawlers, and Redshift Spectrum
+			// external schemas reference.
+			name: "AwsGlueCatalogDatabase",
+			kind: cloudresourcekind.CloudResourceKind_AwsGlueCatalogDatabase,
+			rawOutputs: map[string]interface{}{
+				"database_name": "sales_lake",
+				"database_arn":  "arn:aws:glue:us-west-2:123456789012:database/sales_lake",
+				"catalog_id":    "123456789012",
+			},
+			mustPopulate: []string{"database_name", "database_arn", "catalog_id"},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

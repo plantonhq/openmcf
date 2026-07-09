@@ -823,6 +823,24 @@ func TestAwsTransitGatewayRouteTable_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awstransitgatewayroutetable", "terraform")
 }
 
+// --- AWS analytics pair (Athena workgroup, Glue Data Catalog database) ---
+
+func TestAwsAthenaWorkgroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsathenaworkgroup", "pulumi")
+}
+
+func TestAwsAthenaWorkgroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsathenaworkgroup", "terraform")
+}
+
+func TestAwsGlueCatalogDatabase_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsgluecatalogdatabase", "pulumi")
+}
+
+func TestAwsGlueCatalogDatabase_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsgluecatalogdatabase", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

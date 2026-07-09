@@ -694,9 +694,10 @@ type AwsAthenaWorkgroupCloudWatchLoggingConfig struct {
 	// Useful when several workgroups share one log group. Same character rules
 	// as log_group.
 	LogStreamNamePrefix string `protobuf:"bytes,2,opt,name=log_stream_name_prefix,json=logStreamNamePrefix,proto3" json:"log_stream_name_prefix,omitempty"`
-	// Which log categories to publish, keyed by log family. Athena currently
-	// accepts the key "SPARK" with values such as "DRIVER" and "EXECUTOR"
-	// (Spark session logs). When omitted, Athena publishes its default set.
+	// Which logs to publish, keyed by worker type. Keys are Spark worker types
+	// such as "SPARK_DRIVER" and "SPARK_EXECUTOR"; values are the log streams
+	// to deliver for that worker, such as "STDOUT" and "STDERR". When omitted,
+	// Athena publishes its default set.
 	LogTypes      []*AwsAthenaWorkgroupLogTypeEntry `protobuf:"bytes,3,rep,name=log_types,json=logTypes,proto3" json:"log_types,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -753,13 +754,13 @@ func (x *AwsAthenaWorkgroupCloudWatchLoggingConfig) GetLogTypes() []*AwsAthenaWo
 	return nil
 }
 
-// AwsAthenaWorkgroupLogTypeEntry selects the log categories of one log family
-// for CloudWatch delivery (AWS models this as a map of family -> categories).
+// AwsAthenaWorkgroupLogTypeEntry selects the log streams of one worker type
+// for CloudWatch delivery (AWS models this as a map of worker type -> streams).
 type AwsAthenaWorkgroupLogTypeEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Log family key, e.g. "SPARK".
+	// Worker type key, e.g. "SPARK_DRIVER" or "SPARK_EXECUTOR".
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// Log categories to publish within the family, e.g. "DRIVER", "EXECUTOR".
+	// Log streams to publish for the worker, e.g. "STDOUT", "STDERR".
 	Values        []string `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

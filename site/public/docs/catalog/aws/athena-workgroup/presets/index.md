@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Preset: Spark Workgroup"
     excerpt: "An Athena workgroup configured for Apache Spark workloads (PySpark notebooks and Spark SQL). Requires an IAM execution role with appropriate permissions."
+  - slug: "04-managed-results-zero-bucket"
+    rank: "04"
+    title: "Preset: Managed Results, Zero Bucket"
+    excerpt: "An Athena workgroup that stores query results in AWS-managed storage — no S3 bucket to create, secure, or lifecycle. Results are retained for 24 hours and retrieved through Athena APIs..."
 ---
 
 # Athena Workgroup Presets

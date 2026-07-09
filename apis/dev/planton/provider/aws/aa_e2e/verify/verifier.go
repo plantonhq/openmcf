@@ -131,6 +131,9 @@ var verifiers = map[string]Verifier{
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},
 	"awstransitgatewayroutetable":    &transitGatewayRouteTableVerifier{},
+
+	"awsathenaworkgroup":     &athenaWorkgroupVerifier{},
+	"awsgluecatalogdatabase": &glueCatalogDatabaseVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.
