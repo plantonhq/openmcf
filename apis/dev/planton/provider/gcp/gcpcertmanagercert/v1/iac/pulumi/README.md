@@ -1,204 +1,82 @@
-# Pulumi Implementation - GCP Cert Manager Cert
+# GcpCertManagerCert Pulumi Module
 
-This directory contains the Pulumi implementation (in Go) for the **GcpCertManagerCert** resource.
-
-## Overview
-
-The Pulumi implementation provides a programmatic way to deploy GCP SSL/TLS certificates using Go. It leverages the Pulumi GCP provider to create Certificate Manager certificates or Load Balancer certificates with automatic DNS validation.
-
-## Directory Structure
-
-```
-pulumi/
-├── main.go              # Entry point for Pulumi program
-├── module/              # Core implementation
-│   ├── main.go          # Resources function and provider setup
-│   ├── cert_manager_cert.go  # Certificate creation logic
-│   ├── locals.go        # Local variables and initialization
-│   └── outputs.go       # Output constants
-├── Pulumi.yaml          # Pulumi project configuration
-├── Makefile             # Helper commands
-├── debug.sh             # Debug script
-├── README.md            # This file
-└── examples.md          # Usage examples
-```
-
-## Module Components
-
-### main.go (Entry Point)
-
-The entry point loads the stack input and calls the module's `Resources` function:
-
-```go
-func main() {
-    pulumi.Run(func(ctx *pulumi.Context) error {
-        stackInput := &gcpcertv1.GcpCertManagerCertStackInput{}
-        if err := stackinput.Load(stackInput); err != nil {
-            return err
-        }
-        return module.Resources(ctx, stackInput)
-    })
-}
-```
-
-### module/main.go (Provider Setup)
-
-Sets up the GCP provider with credentials and calls the certificate creation logic:
-
-- Configures GCP provider from stack input
-- Decodes base64-encoded service account key
-- Calls `certManagerCert` function
-
-### module/cert_manager_cert.go (Core Logic)
-
-Implements certificate creation for both types:
-
-- **Certificate Manager (MANAGED)**:
-  - Creates DNS authorizations for each domain
-  - Creates DNS validation records in Cloud DNS
-  - Provisions Certificate Manager certificate
-  - Waits for validation
-
-- **Load Balancer Certificates**:
-  - Creates Google-managed SSL certificate
-  - Handles domain list
-  - Exports outputs
-
-### module/locals.go (Local Variables)
-
-Initializes local variables and GCP labels from metadata:
-
-```go
-type Locals struct {
-    GcpCertManagerCert *gcpcertv1.GcpCertManagerCert
-    GcpLabels          map[string]string
-}
-```
-
-### module/outputs.go (Outputs)
-
-Defines output constants for exported values:
-
-- `certificate-id`
-- `certificate-name`
-- `certificate-domain-name`
-- `certificate-status`
-
-## Prerequisites
-
-- Go 1.21 or later
-- Pulumi CLI installed
-- GCP account with appropriate permissions
-- Cloud DNS managed zone for validation
-
-## Required GCP Permissions
-
-The service account needs the following IAM roles:
-
-- `roles/certificatemanager.editor` (for Certificate Manager certificates)
-- `roles/compute.loadBalancerAdmin` (for Load Balancer certificates)
-- `roles/dns.admin` (for DNS validation records)
+This Pulumi module creates one Certificate Manager certificate —
+Google-managed (auto-renewed) or self-managed (uploaded PEM) — and enables
+the Certificate Manager API on the target project.
 
 ## Usage
 
-### Direct Pulumi Usage
+This module is typically invoked by the Planton CLI, but can also be used directly.
 
-1. **Set up environment**:
-   ```bash
-   export PULUMI_CONFIG_PASSPHRASE="your-passphrase"
-   pulumi stack init org/project/stack
-   ```
-
-2. **Create stack input**:
-   Create a JSON file with the stack input structure.
-
-3. **Run Pulumi**:
-   ```bash
-   pulumi up
-   ```
-
-### Using Planton CLI (Recommended)
+### With Planton CLI
 
 ```bash
-planton pulumi up --manifest cert.yaml --stack org/project/stack
+planton pulumi up --manifest certificate.yaml
 ```
 
-## Development
+### Standalone Usage
 
-### Building
+1. Set the stack input as an environment variable:
 
 ```bash
-go build -o /tmp/gcp-cert-manager-cert .
+export PLANTON_CLOUD_RESOURCE_MANIFEST=$(cat <<EOF
+apiVersion: gcp.planton.dev/v1
+kind: GcpCertManagerCert
+metadata:
+  name: web-cert
+spec:
+  projectId:
+    value: my-gcp-project
+  managed:
+    domains:
+      - app.example.com
+    dnsAuthorizations:
+      - value: projects/my-gcp-project/locations/global/dnsAuthorizations/app-auth
+EOF
+)
 ```
 
-### Debugging
-
-Use the debug script:
+2. Configure GCP credentials:
 
 ```bash
-./debug.sh
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 ```
 
-Or run Pulumi commands directly:
+3. Run Pulumi:
 
 ```bash
-pulumi preview  # Preview changes
-pulumi up       # Apply changes
-pulumi destroy  # Destroy resources
+pulumi up
 ```
 
-### Using Makefile
+## Inputs
 
-```bash
-make install   # Install dependencies
-make preview   # Preview changes
-make up        # Apply changes
-make destroy   # Destroy resources
-```
+The module reads its configuration from the `GcpCertManagerCertStackInput` proto message:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| target | GcpCertManagerCert | Yes | The certificate resource manifest |
+| provider_config | GcpProviderConfig | Yes | GCP provider configuration |
 
 ## Outputs
 
-After successful deployment, the following outputs are available:
+| Output | Type | Description |
+|--------|------|-------------|
+| certificate_id | string | Fully-qualified resource ID |
+| certificate_name | string | Certificate name — consumed by target HTTPS proxies |
+| san_dnsnames | string[] | SANs in the issued certificate |
+| location | string | The Certificate Manager location |
+| managed_state | string | PROVISIONING/FAILED/ACTIVE for managed; empty for self-managed (exported via a nil-guarded ApplyT, mirroring the Terraform module's try()) |
 
-- `certificate-id`: The GCP certificate ID
-- `certificate-name`: The certificate resource name
-- `certificate-domain-name`: Primary domain name
-- `certificate-status`: Certificate status (PROVISIONING/ACTIVE)
+## Required Permissions
 
-## Error Handling
+The identity running the module needs `roles/certificatemanager.editor`
+plus `roles/serviceusage.serviceUsageAdmin` (for the API enablement).
 
-The implementation includes comprehensive error handling:
+## Implementation Notes
 
-- Provider initialization errors
-- Certificate creation failures
-- DNS record creation issues
-- Validation failures
-
-All errors are wrapped with context for easier debugging.
-
-## Testing Locally
-
-1. Create a test manifest
-2. Set up GCP credentials
-3. Run `pulumi preview` to see planned changes
-4. Run `pulumi up` to create resources
-5. Verify in GCP Console
-6. Run `pulumi destroy` to clean up
-
-## Integration with Planton
-
-This Pulumi module is designed to work seamlessly with the Planton CLI, which:
-
-- Converts YAML manifests to stack inputs
-- Manages Pulumi state
-- Handles credentials
-- Provides a unified interface across providers
-
-## Support
-
-For issues or questions:
-
-- Check the main README.md
-- Review examples.md for usage patterns
-- Open an issue on GitHub
-
+- DNS authorizations are separate `GcpCertManagerDnsAuthorization`
+  resources; this module never creates them or their DNS records.
+- The self-managed arm's `pem_private_key` is secret material — masked in
+  state and outputs.
+- A managed certificate stays PROVISIONING until its validation records
+  resolve publicly — creation succeeds regardless.

@@ -3,23 +3,23 @@ kind: GcpProject
 metadata:
   name: my-production-project
 spec:
-  projectId: <your-project-id>
+  # Realistic sample values for pattern-validated fields (projectId,
+  # parentId, billingAccountId) — replace with your own.
+  projectId: acme-prod-workloads
   parentType: folder
-  parentId: "<your-folder-id>"
-  billingAccountId: "<AAAAAA-BBBBBB-CCCCCC>"
+  parentId: "123456789012"
+  billingAccountId: 0123AB-4567CD-89EFGH
   labels:
     environment: production
     managed-by: planton
-  disableDefaultNetwork: true  # default from spec; removes the insecure auto-created VPC
-  deleteProtection: true  # prevents accidental project deletion
+  # PREVENT: destroy fails while set — protection for foundation projects.
+  deletionPolicy: PREVENT
   enabledApis:
     - compute.googleapis.com
     - container.googleapis.com
     - dns.googleapis.com
-    - secretmanager.googleapis.com
     - iam.googleapis.com
     - logging.googleapis.com
     - monitoring.googleapis.com
     - cloudresourcemanager.googleapis.com
     - servicenetworking.googleapis.com
-  ownerMember: <owner-email>

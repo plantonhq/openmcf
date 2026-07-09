@@ -1,182 +1,91 @@
-# GCP Certificate Manager Cert
+# GCP Certificate Manager Certificate
 
-Provisions a Google-managed SSL/TLS certificate with automatic DNS validation through Cloud DNS. The component supports two certificate backends: Certificate Manager (newer, with DNS authorization) and classic Google-managed SSL certificates for load balancers.
+Deploys one Certificate Manager certificate — Google-managed (auto-renewed)
+or self-managed (uploaded PEM) — the modern certificate resource external
+Application Load Balancers consume via a target HTTPS proxy's
+`certificateManagerCertificates` list or a certificate map.
 
 ## What Gets Created
 
 When you deploy a GcpCertManagerCert resource, Planton provisions:
 
-- **Certificate Manager DNS Authorizations** (MANAGED type) — one `google_certificate_manager_dns_authorization` per domain (primary + alternates), each proving domain ownership
-- **Cloud DNS Validation Records** (MANAGED type) — one `google_dns_record_set` per domain in the specified Cloud DNS zone, populated automatically from the DNS authorization challenge data
-- **Certificate Manager Certificate** (MANAGED type) — a `google_certificate_manager_certificate` with managed DNS authorization references covering all specified domains
-- **Google-Managed SSL Certificate** (LOAD_BALANCER type) — a `google_compute_managed_ssl_certificate` with the specified domains, designed for use with GCP load balancers
+- **Certificate** — a `google_certificate_manager_certificate` with either
+  the managed or the self-managed arm
+- **Certificate Manager API enablement** — `certificatemanager.googleapis.com`
+  is enabled on the target project (never disabled on destroy)
+
+DNS authorizations are NOT created here — they are first-class
+`GcpCertManagerDnsAuthorization` resources this certificate references.
 
 ## Prerequisites
 
 - **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** where the certificate and DNS resources will be created
-- **A Cloud DNS managed zone** that is authoritative for the domain(s) you are requesting certificates for
-- **DNS configured** so the Cloud DNS zone is serving live DNS for the domain (nameservers delegated at the registrar)
-- **IAM permissions** to create Certificate Manager resources, Compute SSL certificates, and DNS record sets in the target project
+- For DNS-authorized managed certificates: a **GcpCertManagerDnsAuthorization**
+  per distinct domain, with its validation record served from the domain's zone
+  (compose a **GcpDnsRecord** from the authorization's outputs)
 
 ## Quick Start
 
-Create a file `cert.yaml`:
+Create a file `certificate.yaml`:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1
 kind: GcpCertManagerCert
 metadata:
-  name: my-cert
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpCertManagerCert.my-cert
+  name: web-cert
 spec:
-  gcpProjectId: my-gcp-project-123
-  primaryDomainName: example.com
-  cloudDnsZoneId:
-    value: example-com
+  projectId: my-gcp-project-123
+  managed:
+    domains:
+      - app.example.com
+    dnsAuthorizations:
+      - valueFrom:
+          kind: GcpCertManagerDnsAuthorization
+          name: app-example-com-auth
+          fieldPath: status.outputs.authorization_id
 ```
 
 Deploy:
 
 ```shell
-planton apply -f cert.yaml
+planton apply -f certificate.yaml
 ```
-
-This creates a Certificate Manager certificate for `example.com` with automatic DNS validation records in the `example-com` Cloud DNS zone.
 
 ## Configuration Reference
 
 ### Required Fields
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `gcpProjectId` | `string` | GCP project ID where the certificate and DNS resources are created. | Required |
-| `primaryDomainName` | `string` | Main domain name for the certificate. Supports apex domains (`example.com`) and wildcards (`*.example.com`). | Required, must match domain pattern |
-| `cloudDnsZoneId` | `string` or `valueFrom` | Cloud DNS managed zone ID where validation records are created. Can reference a GcpDnsZone resource via `valueFrom`. | Required |
+Exactly one of `managed` or `selfManaged` must be set:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `managed` | `object` | Google-managed arm: `domains[]` (required; wildcards allowed with DNS auth), `dnsAuthorizations[]` (refs to GcpCertManagerDnsAuthorization), `issuanceConfig` (private-PKI config path; mutually exclusive with dnsAuthorizations). Omit both auth fields for load-balancer authorization. |
+| `selfManaged` | `object` | Uploaded arm: `pemCertificate` (leaf first, then intermediates) and `pemPrivateKey` (secret — masked in outputs). |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `alternateDomainNames` | `string[]` | `[]` | Subject Alternative Names (SANs) for the certificate. Each entry follows the same pattern as `primaryDomainName`. Must not contain duplicates or repeat the primary domain. |
-| `certificateType` | `enum` | `MANAGED` | Type of certificate to create. `MANAGED` uses Certificate Manager with DNS authorization. `LOAD_BALANCER` uses classic Google-managed SSL certificates for load balancers. |
-| `validationMethod` | `string` | `DNS` | Domain ownership validation method. Currently only `DNS` is supported. |
-
-## Examples
-
-### Single-Domain Certificate
-
-A basic certificate for a single apex domain:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpCertManagerCert
-metadata:
-  name: api-cert
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCertManagerCert.api-cert
-spec:
-  gcpProjectId: my-prod-project
-  primaryDomainName: api.example.com
-  cloudDnsZoneId:
-    value: example-com
-```
-
-### Wildcard Certificate with Alternate Domains
-
-A wildcard certificate that also covers the apex domain and a subdomain:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpCertManagerCert
-metadata:
-  name: wildcard-cert
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCertManagerCert.wildcard-cert
-spec:
-  gcpProjectId: my-prod-project
-  primaryDomainName: "*.example.com"
-  alternateDomainNames:
-    - example.com
-    - "*.staging.example.com"
-  cloudDnsZoneId:
-    value: example-com
-  certificateType: MANAGED
-```
-
-### Load Balancer SSL Certificate
-
-A classic Google-managed SSL certificate for use with GCP load balancers:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpCertManagerCert
-metadata:
-  name: lb-cert
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCertManagerCert.lb-cert
-spec:
-  gcpProjectId: my-prod-project
-  primaryDomainName: app.example.com
-  alternateDomainNames:
-    - www.example.com
-  cloudDnsZoneId:
-    value: example-com
-  certificateType: LOAD_BALANCER
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed GcpDnsZone instead of hardcoding the zone ID:
-
-```yaml
-apiVersion: gcp.planton.dev/v1
-kind: GcpCertManagerCert
-metadata:
-  name: ref-cert
-  labels:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCertManagerCert.ref-cert
-spec:
-  gcpProjectId: my-prod-project
-  primaryDomainName: "*.example.com"
-  alternateDomainNames:
-    - example.com
-  cloudDnsZoneId:
-    valueFrom:
-      kind: GcpDnsZone
-      name: example.com
-      fieldPath: status.outputs.zone_name
-```
+| `projectId` | `StringValueOrRef` | provider default | GCP project. Can reference a GcpProject resource. |
+| `certName` | `string` | `metadata.name` | Certificate name in GCP (1-64 chars, unique per location). Immutable. |
+| `description` | `string` | — | Human-readable description. |
+| `location` | `string` | `global` | Certificate Manager location; regional certificates serve regional load balancers only. Immutable. |
+| `scope` | `string` | `DEFAULT` | `DEFAULT`, `EDGE_CACHE` (Media CDN), `ALL_REGIONS` (global certs only), or `CLIENT_AUTH` (backend mTLS client cert). Immutable. |
+| `labels` | `map<string,string>` | — | User labels merged beneath platform attribution labels. |
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
 | Output | Type | Description |
 |--------|------|-------------|
-| `certificate_id` | `string` | The identifier of the created certificate resource. For Certificate Manager: the certificate ID. For Load Balancer: the SSL certificate ID. |
-| `certificate_name` | `string` | The full resource name of the created certificate (e.g., `projects/my-project/locations/global/certificates/my-cert`). |
-| `certificate_domain_name` | `string` | The primary domain name for which the certificate was issued. |
-| `certificate_status` | `string` | The provisioning status of the certificate. Possible values include `ACTIVE`, `PROVISIONING`, `FAILED`. |
+| `certificate_id` | `string` | Fully-qualified resource ID (`projects/{project}/locations/{location}/certificates/{name}`) |
+| `certificate_name` | `string` | Certificate name — the value a target HTTPS proxy's `certificateManagerCertificates` list consumes |
+| `san_dnsnames` | `string[]` | Subject Alternative Names in the issued certificate |
+| `location` | `string` | The Certificate Manager location |
+| `managed_state` | `string` | `PROVISIONING`/`FAILED`/`ACTIVE` for managed certificates; empty for self-managed. Stays `PROVISIONING` until domain validation completes. |
 
 ## Related Components
 
-- [GcpDnsZone](/docs/catalog/gcp/gcpdnszone) — provides the Cloud DNS managed zone where validation records are created
-- [GcpGkeCluster](/docs/catalog/gcp/gcpgkecluster) — GKE clusters that may use certificates for ingress TLS termination
-- [GcpServiceAccount](/docs/catalog/gcp/gcpserviceaccount) — service accounts that may need permissions to manage certificates
+- [GcpCertManagerDnsAuthorization](/docs/catalog/gcp/cert-manager-dns-authorization) — the domain-control proof this certificate references
+- [GcpDnsRecord](/docs/catalog/gcp/dns-record) — serves the authorization's validation record
+- [GcpTargetHttpsProxy](/docs/catalog/gcp/target-https-proxy) — consumes the certificate
+- [GcpManagedSslCertificate](/docs/catalog/gcp/managed-ssl-certificate) / [GcpSslCertificate](/docs/catalog/gcp/ssl-certificate) — the classic compute certificate kinds

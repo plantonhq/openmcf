@@ -664,6 +664,55 @@ func TestGcpFilestoreInstance_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpfilestoreinstance", "terraform")
 }
 
+// GcpDnsRecord scenario: static A record in a chained GcpDnsZone.
+func TestGcpDnsRecord_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpdnsrecord", "pulumi")
+}
+func TestGcpDnsRecord_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpdnsrecord", "terraform")
+}
+
+// GcpGkeWorkloadIdentityBinding scenario: IAM grant on a chained
+// GcpServiceAccount.
+func TestGcpGkeWorkloadIdentityBinding_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpgkeworkloadidentitybinding", "pulumi")
+}
+func TestGcpGkeWorkloadIdentityBinding_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpgkeworkloadidentitybinding", "terraform")
+}
+
+// GcpCloudArmorPolicy scenario: leaf allowlist policy with explicit default deny.
+func TestGcpCloudArmorPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudarmorpolicy", "pulumi")
+}
+func TestGcpCloudArmorPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudarmorpolicy", "terraform")
+}
+
+// GcpCertManagerDnsAuthorization scenario: DNS authorization in a chained zone.
+func TestGcpCertManagerDnsAuthorization_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcertmanagerdnsauthorization", "pulumi")
+}
+func TestGcpCertManagerDnsAuthorization_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcertmanagerdnsauthorization", "terraform")
+}
+
+// GcpCertManagerCert scenario: managed cert composed from zone→auth→record→cert.
+func TestGcpCertManagerCert_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcertmanagercert", "pulumi")
+}
+func TestGcpCertManagerCert_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcertmanagercert", "terraform")
+}
+
+// GcpProject is plan-only unless org-level Project Creator credentials are available.
+func TestGcpProject_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpproject", "pulumi")
+}
+func TestGcpProject_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpproject", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -1,21 +1,78 @@
-# Terraform Module to Deploy AWS DynamoDB table
+# GcpProject Terraform Module
 
-```shell
-planton tofu init --manifest hack/manifest.yaml --backend-type s3 \
-  --backend-config="bucket=planton-tf-state-backend" \
-  --backend-config="dynamodb_table=planton-tf-state-backend-lock" \
-  --backend-config="region=ap-south-2" \
-  --backend-config="key=planton/gcp-stacks/test-gcp-project.tfstate"
+This Terraform module creates one Google Cloud project under an
+organization or folder — billing linked, labels/tags applied, the default
+network suppressed by default, requested APIs pre-enabled, and the
+configured deletion policy applied.
+
+## Usage
+
+### With Planton CLI
+
+```bash
+planton tofu apply --manifest project.yaml
 ```
 
-```shell
-planton tofu plan --manifest hack/manifest.yaml
+### Standalone Usage
+
+```hcl
+module "project" {
+  source = "./path/to/module"
+
+  metadata = {
+    name = "prod-workloads"
+  }
+
+  spec = {
+    project_id         = "acme-prod-workloads"
+    parent_type        = "folder"
+    parent_id          = "123456789012"
+    billing_account_id = "0123AB-4567CD-89EFGH"
+    deletion_policy    = "PREVENT"
+    enabled_apis       = ["compute.googleapis.com"]
+  }
+}
 ```
 
-```shell
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
-```
+## Requirements
 
-```shell
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
-```
+| Name | Version |
+|------|---------|
+| terraform | >= 1.0 |
+| google | ~> 6.0 |
+
+## Inputs
+
+| Name | Description | Type | Required |
+|------|-------------|------|----------|
+| metadata | Resource metadata including name | object | yes |
+| spec.project_id | Globally-unique project ID (immutable) | string | yes |
+| spec.display_name | Console display name (defaults to metadata.name) | string | no |
+| spec.parent_type / spec.parent_id | "organization" or "folder" + numeric ID | string | no |
+| spec.billing_account_id | Billing account to link | string | no |
+| spec.labels | User labels (platform attribution labels win on conflicts) | map(string) | no |
+| spec.tags | Resource-manager tags, create-time only | map(string) | no |
+| spec.auto_create_network | Whether GCP auto-creates the default VPC (default false) | bool | no |
+| spec.enabled_apis | Cloud APIs to pre-enable | list(string) | no |
+| spec.deletion_policy | DELETE (default) / PREVENT / ABANDON | string | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| project_id | The unique project ID — resolved by every other kind's project reference |
+| project_number | The numeric identifier assigned by Google |
+| name | The display name |
+
+## Required Permissions
+
+The identity running the module needs
+`roles/resourcemanager.projectCreator` on the parent, and
+`roles/billing.user` on the billing account when linking one.
+
+## Notes
+
+- IAM grants are separate `GcpProjectIamMember` resources; this module
+  never touches the project's IAM policy.
+- API enablement uses `disable_on_destroy = false`: removing an entry (or
+  the project resource) never disables a service other tooling depends on.

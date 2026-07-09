@@ -1,18 +1,12 @@
 apiVersion: gcp.planton.dev/v1
 kind: GcpCertManagerCert
 metadata:
-  name: example-cert
-  org: example-org
-  env:
-    id: production
+  name: test-certificate
 spec:
-  gcpProjectId: example-gcp-project
-  primaryDomainName: example.com
-  alternateDomainNames:
-    - www.example.com
-    - api.example.com
-  cloudDnsZoneId:
-    value: example-com-zone
-  certificateType: MANAGED
-  validationMethod: DNS
-
+  projectId:
+    value: test-gcp-project
+  managed:
+    domains:
+      - example.com
+    dnsAuthorizations:
+      - value: projects/test-gcp-project/locations/global/dnsAuthorizations/example-com-auth

@@ -1,7 +1,6 @@
 package module
 
 import (
-	"strconv"
 	"strings"
 
 	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
@@ -13,29 +12,47 @@ import (
 type Locals struct {
 	GcpCertManagerCert *gcpcertmanagercertv1.GcpCertManagerCert
 	GcpLabels          map[string]string
+
+	// ProjectId is empty when the manifest omits it — the provider's default
+	// project then applies (the same ambient contract the Terraform module
+	// honors by passing null).
+	ProjectId string
+
+	// CertName falls back to metadata.name — explicit conditional, so both
+	// engines derive the identical cloud-side name.
+	CertName string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *gcpcertmanagercertv1.GcpCertManagerCertStackInput) *Locals {
+func initializeLocals(_ *pulumi.Context, stackInput *gcpcertmanagercertv1.GcpCertManagerCertStackInput) *Locals {
 	locals := &Locals{}
 
 	locals.GcpCertManagerCert = stackInput.Target
 
 	target := stackInput.Target
 
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     strconv.FormatBool(true),
-		gcplabelkeys.ResourceName: target.Metadata.Name,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpCertManagerCert.String()),
+	locals.ProjectId = target.Spec.ProjectId.GetValue()
+
+	locals.CertName = target.Spec.CertName
+	if locals.CertName == "" {
+		locals.CertName = target.Metadata.Name
 	}
+
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range target.Spec.Labels {
+		locals.GcpLabels[key] = value
+	}
+	locals.GcpLabels[gcplabelkeys.Resource] = "true"
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.CertName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpCertManagerCert.String())
 
 	if target.Metadata.Id != "" {
 		locals.GcpLabels[gcplabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
 		locals.GcpLabels[gcplabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
 		locals.GcpLabels[gcplabelkeys.Environment] = target.Metadata.Env
 	}

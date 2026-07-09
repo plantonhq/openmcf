@@ -2,43 +2,26 @@ syntax = "proto3";
 
 package dev.planton.provider.gcp.gcpcertmanagercert.v1;
 
-// GcpCertManagerCertStackOutputs describes values returned by Pulumi/Terraform
-// after provisioning a GCP certificate.
+// Outputs produced after provisioning a Certificate Manager certificate.
 message GcpCertManagerCertStackOutputs {
-  // certificate_id is the identifier of the created certificate resource.
-  // For Certificate Manager: the certificate ID.
-  // For Load Balancer: the SSL certificate ID.
+  // Fully-qualified resource ID of the certificate
+  // (projects/{project}/locations/{location}/certificates/{name}).
   string certificate_id = 1;
 
-  // certificate_name is the full resource name of the created certificate.
-  // Example: "projects/my-project/locations/global/certificates/my-cert"
+  // Name of the certificate as it exists in GCP. This is the value a
+  // GcpTargetHttpsProxy's certificate_manager_certificates list consumes.
   string certificate_name = 2;
 
-  // certificate_domain_name is the primary domain name for which the certificate was issued.
-  string certificate_domain_name = 3;
+  // The Subject Alternative Names (dnsName type) present in the issued
+  // certificate.
+  repeated string san_dnsnames = 3;
 
-  // certificate_status represents the validation or provisioning status of the certificate.
-  // Possible values: "ACTIVE", "PROVISIONING", "FAILED", etc.
-  string certificate_status = 4;
+  // The Certificate Manager location the certificate lives in
+  // ("global" unless a regional location was configured).
+  string location = 4;
 
-  // dns_validation_records contains the CNAME records required for DNS validation.
-  // Always populated for MANAGED certificates. When cloud_dns_zone_id is set, these
-  // records are also auto-created in Cloud DNS. When cloud_dns_zone_id is omitted,
-  // users must manually insert these records into their DNS provider.
-  repeated DnsValidationRecord dns_validation_records = 5;
-}
-
-// DnsValidationRecord represents a single DNS record required for certificate validation.
-message DnsValidationRecord {
-  // record_name is the fully qualified DNS record name (e.g. "_acme-challenge.example.com.").
-  string record_name = 1;
-
-  // record_type is the DNS record type (typically "CNAME").
-  string record_type = 2;
-
-  // record_data is the DNS record value to set.
-  string record_data = 3;
-
-  // domain is the domain this validation record corresponds to.
-  string domain = 4;
+  // State of a managed certificate (PROVISIONING, FAILED, ACTIVE); empty
+  // for self-managed certificates. A managed certificate stays
+  // PROVISIONING until domain validation completes.
+  string managed_state = 5;
 }

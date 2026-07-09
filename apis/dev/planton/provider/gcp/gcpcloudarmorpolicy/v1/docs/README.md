@@ -1,6 +1,6 @@
 # GcpCloudArmorPolicy — Research Documentation
 
-This document captures research and design decisions for the GcpCloudArmorPolicy Planton component. It provides background on Google Cloud Armor, the 80/20 scoping rationale, and deliberate exclusions.
+This document captures the design notes for the GcpCloudArmorPolicy component: background on Google Cloud Armor, the modeled surface, and the deliberately unmodeled edges.
 
 ---
 
@@ -160,60 +160,42 @@ Needed when WAF rules inspect request bodies.
 
 **user_ip_request_headers** — Custom headers to use for client IP when traffic passes through a CDN or proxy (e.g., `X-Forwarded-For`, `CF-Connecting-IP`).
 
-### Request Body Inspection Size
-
-Maximum size of request body to inspect (8KB, 16KB, 32KB, 48KB, 64KB). Larger values increase inspection coverage but may add latency. Supported in Pulumi; not in Terraform.
-
 ---
 
-## 80/20 Scoping Rationale
+## Scope
 
-### What Was Included
+### Modeled
 
-The component covers the majority of production use cases:
+The component models the released provider resource surface:
 
-1. **Core policy** — Name, type, description
-2. **Rules** — All actions (allow, deny, redirect, throttle, rate_based_ban)
-3. **Match** — IP-based and CEL expressions
-4. **Rate limiting** — Full throttle and rate-based ban with thresholds, ban duration, enforce-on-key, exceed redirect
-5. **Redirect** — EXTERNAL_302 and GOOGLE_RECAPTCHA
+1. **Core policy** — Name, type, description; the ambient-project contract
+2. **Rules** — All actions (allow, deny, redirect, throttle, rate_based_ban), preview mode
+3. **Match** — IP-based and CEL expressions, with reCAPTCHA site-key options (`expr_options`) for token-evaluating expressions
+4. **Rate limiting** — Thresholds, ban escalation, single `enforce_on_key` or composite `enforce_on_key_configs`, exceed redirect
+5. **Redirect** — EXTERNAL_302 and GOOGLE_RECAPTCHA, with the policy-level `recaptcha_options_config` site key
 6. **Header injection** — Custom headers for matching requests
 7. **Preconfigured WAF** — Exclusions for all four field types (headers, cookies, URIs, query params)
-8. **Adaptive Protection** — Layer 7 DDoS defense and rule visibility
-9. **Advanced options** — JSON parsing, log level, user IP headers, request body inspection size (Pulumi)
-10. **Preview mode** — Log without enforcing
-11. **Labels** — Via Pulumi (Terraform does not support labels on security policies)
-12. **Default rule** — Auto-added at 2147483647 if not specified
+8. **Adaptive Protection** — Layer 7 DDoS defense, rule visibility, and per-granularity `threshold_configs` with auto-deploy tuning
+9. **Advanced options** — JSON parsing (with `json_custom_config` content types), log level, user IP headers
 
-### What Was Excluded (Lower Priority)
+### The Default Rule Contract
 
-- **Custom WAF rules** — ModSecurity rules beyond preconfigured sets; advanced use case
-- **Threshold configs** — Fine-grained threshold overrides; niche
-- **enforce_on_key_configs** — Complex key configuration; uncommon
-- **recaptcha_options_config** — reCAPTCHA Enterprise integration; separate product surface
-- **json_custom_config** — Custom JSON parsing; rarely needed
+Every Cloud Armor policy carries a default rule at priority 2147483647.
+Creating a policy with NO rules lets the API add a default "allow all" rule
+automatically; providing ANY rules requires the set to include that default
+explicitly — the spec enforces this pre-deploy, mirroring the API's own
+rejection. Choose the default deliberately: allowlist policies end in a
+deny-all default, WAF policies in an allow default.
 
----
+### Deliberately Unmodeled
 
-## Deliberate Exclusions
-
-The following GCP Cloud Armor features are intentionally not exposed in the spec:
-
-### recaptcha_options_config
-
-reCAPTCHA Enterprise integration for key configuration and site keys. Requires reCAPTCHA Enterprise setup. Handled separately from the base policy; users can extend the component if needed.
-
-### threshold_configs
-
-Per-rule or per-policy threshold overrides for rate limiting. Most users rely on the standard `rate_limit_threshold` and `ban_threshold`. Advanced tuning is possible via raw provider if required.
-
-### enforce_on_key_configs
-
-Complex configuration for custom enforce-on-key behavior. The flat `enforce_on_key` and `enforce_on_key_name` cover the common cases (IP, header, cookie, path).
-
-### json_custom_config
-
-Custom JSON parsing configuration for non-standard JSON structures. `STANDARD` and `STANDARD_WITH_GRAPHQL` cover the vast majority of APIs. Custom configs are rarely needed.
+- **Labels** — `google_compute_security_policy` has no labels attribute on
+  the released `google ~> 6.0` provider line; neither engine attempts
+  attribution (a one-engine label would break cross-engine parity).
+- **`request_body_inspection_size`** — absent from the released provider
+  line (a newer-major-only surface); revisit when the provider line moves.
+- **Custom ModSecurity WAF rules** — beyond the preconfigured rule sets;
+  expressed through CEL expressions where needed.
 
 ---
 

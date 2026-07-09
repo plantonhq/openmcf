@@ -33,9 +33,13 @@ This preset creates a DNS CNAME record that aliases one hostname to another. CNA
 |---|---|---|
 | `<gcp-project-id>` | GCP project ID | `GcpProject` outputs |
 | `<dns-zone-name>` | Name of the Cloud DNS managed zone | `GcpDnsZone` status outputs |
-| `<subdomain.example.com.>` | Source FQDN with trailing dot (e.g., `www.example.com.`) | Your DNS naming scheme |
 | `<target.example.com.>` | Target FQDN with trailing dot (e.g., `cdn.example.com.`) | Your target service hostname |
+
+The sample FQDN `docs.example.com.` is a realistic placeholder for the
+pattern-validated `name` field — replace it with your hostname, keeping the
+trailing dot.
 
 ## Related Presets
 
 - **01-a-record** -- Use when pointing directly to an IP address instead of another hostname
+- **03-weighted-canary** -- Use for weighted traffic splitting across targets

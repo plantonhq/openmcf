@@ -786,6 +786,88 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"zone_id", "zone_name", "nameservers"},
 		},
 		{
+			// GcpDnsRecord: FQDN, type, zone handle, project, and TTL echoed by
+			// both engines after creating a record set.
+			name: "GcpDnsRecord",
+			kind: cloudresourcekind.CloudResourceKind_GcpDnsRecord,
+			rawOutputs: map[string]interface{}{
+				"fqdn":         "www.example.com.",
+				"record_type":  "A",
+				"managed_zone": "example-com",
+				"project_id":   "my-project",
+				"ttl_seconds":  300,
+			},
+			mustPopulate: []string{"fqdn", "record_type", "managed_zone", "project_id", "ttl_seconds"},
+		},
+		{
+			// GcpGkeWorkloadIdentityBinding: the IAM member string and bound GSA
+			// email echoed by both engines after the grant is applied.
+			name: "GcpGkeWorkloadIdentityBinding",
+			kind: cloudresourcekind.CloudResourceKind_GcpGkeWorkloadIdentityBinding,
+			rawOutputs: map[string]interface{}{
+				"member":                 "serviceAccount:my-project.svc.id.goog[cert-manager/cert-manager]",
+				"service_account_email": "my-sa@my-project.iam.gserviceaccount.com",
+			},
+			mustPopulate: []string{"member", "service_account_email"},
+		},
+		{
+			// GcpCloudArmorPolicy: policy id/name/self-link/fingerprint — the
+			// self-link is the frozen composition key for backend attachments.
+			name: "GcpCloudArmorPolicy",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudArmorPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_id":        "projects/my-project/global/securityPolicies/corp-allowlist",
+				"policy_name":      "corp-allowlist",
+				"policy_self_link": "https://www.googleapis.com/compute/v1/projects/my-project/global/securityPolicies/corp-allowlist",
+				"fingerprint":      "abc123==",
+			},
+			mustPopulate: []string{"policy_id", "policy_name", "policy_self_link", "fingerprint"},
+		},
+		{
+			// GcpCertManagerDnsAuthorization: authorization id/name/domain and
+			// the validation record tuple GcpDnsRecord composes via valueFrom.
+			name: "GcpCertManagerDnsAuthorization",
+			kind: cloudresourcekind.CloudResourceKind_GcpCertManagerDnsAuthorization,
+			rawOutputs: map[string]interface{}{
+				"authorization_id":   "projects/my-project/locations/global/dnsAuthorizations/example-auth",
+				"authorization_name": "example-auth",
+				"domain":             "example.com",
+				"dns_record_name":    "_acme-challenge.example.com.",
+				"dns_record_type":    "CNAME",
+				"dns_record_data":    "abcdef.auth.goog.",
+			},
+			mustPopulate: []string{
+				"authorization_id", "authorization_name", "domain",
+				"dns_record_name", "dns_record_type", "dns_record_data",
+			},
+		},
+		{
+			// GcpCertManagerCert: certificate id/name/SANs/location/managed state
+			// — certificate_name is the frozen key for GcpTargetHttpsProxy.
+			name: "GcpCertManagerCert",
+			kind: cloudresourcekind.CloudResourceKind_GcpCertManagerCert,
+			rawOutputs: map[string]interface{}{
+				"certificate_id":   "projects/my-project/locations/global/certificates/example-cert",
+				"certificate_name": "example-cert",
+				"san_dnsnames":     []interface{}{"example.com", "*.example.com"},
+				"location":         "global",
+				"managed_state":    "PROVISIONING",
+			},
+			mustPopulate: []string{"certificate_id", "certificate_name", "location", "managed_state"},
+		},
+		{
+			// GcpProject: display name, immutable project id, and numeric
+			// project number — project_id is the frozen Layer-0 composition key.
+			name: "GcpProject",
+			kind: cloudresourcekind.CloudResourceKind_GcpProject,
+			rawOutputs: map[string]interface{}{
+				"name":           "My Production Project",
+				"project_id":     "my-prod-project",
+				"project_number": "123456789012",
+			},
+			mustPopulate: []string{"name", "project_id", "project_number"},
+		},
+		{
 			// GcpCloudRunJob: the job-name handle gcloud/Scheduler trigger, the
 			// region, the server-assigned uid, and the latest execution (empty
 			// until first run).

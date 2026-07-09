@@ -1,13 +1,16 @@
 # GcpDnsRecord Terraform Module
 
-This Terraform module creates and manages DNS records in Google Cloud DNS Managed Zones.
+This Terraform module creates one DNS record set in a Google Cloud DNS
+managed zone — static values (round-robin) or exactly one routing policy
+(weighted round robin, geolocation, or primary/backup failover). It also
+enables the Cloud DNS API on the target project.
 
 ## Usage
 
 ### With Planton CLI
 
 ```bash
-planton terraform apply --manifest dns-record.yaml
+planton tofu apply --manifest dns-record.yaml
 ```
 
 ### Standalone Usage
@@ -21,9 +24,9 @@ module "dns_record" {
   }
 
   spec = {
-    project_id = {
-      value = "my-gcp-project"
-    }
+    # StringValueOrRef fields are flattened to plain strings by the tfvars
+    # converter before the module sees them.
+    project_id   = "my-gcp-project"
     managed_zone = "example-zone"
     type         = "A"
     name         = "www.example.com."
@@ -38,24 +41,19 @@ module "dns_record" {
 | Name | Version |
 |------|---------|
 | terraform | >= 1.0 |
-| google | 6.19.0 |
-
-## Providers
-
-| Name | Version |
-|------|---------|
-| google | 6.19.0 |
+| google | ~> 6.0 |
 
 ## Inputs
 
 | Name | Description | Type | Required |
 |------|-------------|------|----------|
 | metadata | Resource metadata including name | object | yes |
-| spec.project_id | GCP project ID (StringValueOrRef) | object | yes |
-| spec.managed_zone | Name of the Cloud DNS Managed Zone | string | yes |
-| spec.type | DNS record type (A, AAAA, CNAME, etc.) | string | yes |
+| spec.project_id | GCP project ID; empty falls back to the provider's default project | string | no |
+| spec.managed_zone | Name of the Cloud DNS Managed Zone (zone resource name) | string | yes |
+| spec.type | DNS record type, uppercase (any type the API supports) | string | yes |
 | spec.name | FQDN for the record (must end with dot) | string | yes |
-| spec.values | Record values (supports multiple for round-robin) | list(string) | yes |
+| spec.values | Static record values (round-robin); mutually exclusive with routing_policy | list(string) | one of |
+| spec.routing_policy | Query steering: exactly one of wrr / geo / primary_backup | object | one of |
 | spec.ttl_seconds | TTL in seconds (default: 300) | number | no |
 
 ## Outputs
@@ -65,16 +63,17 @@ module "dns_record" {
 | fqdn | The fully qualified domain name of the record |
 | record_type | The DNS record type |
 | managed_zone | The managed zone containing the record |
-| project_id | The GCP project ID |
+| project_id | The GCP project ID the record was created in |
 | ttl_seconds | The TTL in seconds |
 
 ## Required Permissions
 
-The service account running Terraform needs:
-- `roles/dns.admin` - Full DNS management
+The identity running the module needs:
+- `roles/dns.admin` — full DNS management
 
 Or more restrictive:
-- `roles/dns.recordset.editor` - Record set operations only
+- `roles/dns.recordset.editor` plus `roles/serviceusage.serviceUsageAdmin`
+  (for the API enablement)
 
 ## Examples
 
@@ -82,7 +81,6 @@ Or more restrictive:
 
 ```hcl
 spec = {
-  project_id   = { value = "my-project" }
   managed_zone = "example-zone"
   type         = "A"
   name         = "www.example.com."
@@ -90,27 +88,35 @@ spec = {
 }
 ```
 
-### CNAME Record
+### Weighted Canary
 
 ```hcl
 spec = {
-  project_id   = { value = "my-project" }
-  managed_zone = "example-zone"
-  type         = "CNAME"
-  name         = "blog.example.com."
-  values       = ["example.github.io."]
-}
-```
-
-### Round-Robin A Record
-
-```hcl
-spec = {
-  project_id   = { value = "my-project" }
   managed_zone = "example-zone"
   type         = "A"
   name         = "api.example.com."
-  values       = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
-  ttl_seconds  = 60
+  routing_policy = {
+    wrr = [
+      { weight = 95, values = ["192.0.2.1"] },
+      { weight = 5, values = ["192.0.2.2"] },
+    ]
+  }
+  ttl_seconds = 60
+}
+```
+
+### Geolocation Routing
+
+```hcl
+spec = {
+  managed_zone = "example-zone"
+  type         = "A"
+  name         = "app.example.com."
+  routing_policy = {
+    geo = [
+      { location = "us-east1", values = ["192.0.2.1"] },
+      { location = "europe-west3", values = ["192.0.2.2"] },
+    ]
+  }
 }
 ```

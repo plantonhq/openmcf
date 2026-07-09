@@ -239,6 +239,7 @@ go_library(
         "//apis/dev/planton/provider/gcp/gcpbigtableinstance/v1:gcpbigtableinstance",
         "//apis/dev/planton/provider/gcp/gcpbigtabletable/v1:gcpbigtabletable",
         "//apis/dev/planton/provider/gcp/gcpcertmanagercert/v1:gcpcertmanagercert",
+        "//apis/dev/planton/provider/gcp/gcpcertmanagerdnsauthorization/v1:gcpcertmanagerdnsauthorization",
         "//apis/dev/planton/provider/gcp/gcpcloudarmorpolicy/v1:gcpcloudarmorpolicy",
         "//apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1:gcpcloudcomposerenvironment",
         "//apis/dev/planton/provider/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1:gcpcloudcomposeruserworkloadsconfigmap",

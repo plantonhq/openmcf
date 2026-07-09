@@ -1,37 +1,51 @@
 # GcpCloudArmorPolicy — Terraform Implementation
 
-This directory contains the Terraform implementation for provisioning a GCP Cloud Armor security policy from the Planton spec.
+This directory contains the Terraform implementation for provisioning a GCP
+Cloud Armor security policy from the Planton spec. It also enables the
+Compute Engine API on the target project.
 
 ## Provider
 
 - **Provider**: `hashicorp/google` `~> 6.0`
-- Credentials supplied via `var.provider_config.service_account_key_base64` (base64-decoded)
+- Credentials via the ambient environment (Application Default Credentials
+  or the runner's provider configuration)
 
 ## File Organization
 
 | File | Purpose |
 |------|---------|
 | `provider.tf` | Terraform block and Google provider configuration |
-| `variables.tf` | `metadata`, `spec`, and `provider_config` variable definitions |
-| `locals.tf` | Project ID, policy name (spec or metadata.name fallback), framework labels |
-| `main.tf` | `google_compute_security_policy` resource with dynamic blocks |
+| `variables.tf` | `metadata` and `spec` variable definitions (the tfvars converter flattens refs to plain strings) |
+| `locals.tf` | Ambient project fallback, policy name (spec or metadata.name fallback) |
+| `main.tf` | API enablement + `google_compute_security_policy` resource with dynamic blocks |
 | `outputs.tf` | `policy_id`, `policy_name`, `policy_self_link`, `fingerprint` |
 
 ## Dynamic Blocks
 
-The spec is mapped to the Terraform resource via nested `dynamic` blocks. Structure (5 levels):
+The spec is mapped to the Terraform resource via nested `dynamic` blocks:
 
 1. **rule** — Each spec rule maps to one `rule` block
-2. **match** — Contains either `config` (IP-based) or `expr` (CEL-based)
-3. **rate_limit_options** — Thresholds, ban, exceed redirect (when action is throttle/rate_based_ban)
-4. **header_action** / **preconfigured_waf_config** — Per-rule headers and WAF exclusions
-5. **exclusion** → **request_header**, **request_cookie**, **request_uri**, **request_query_param** — WAF exclusion fields
+2. **match** — `config` (IP-based) or `expr` (CEL-based), plus `expr_options`
+   for reCAPTCHA site keys
+3. **rate_limit_options** — Thresholds, composite `enforce_on_key_configs`,
+   ban, exceed redirect (when action is throttle/rate_based_ban)
+4. **header_action** / **preconfigured_waf_config** — Per-rule headers and
+   WAF exclusions
+5. **adaptive_protection_config** — Layer 7 DDoS defense with
+   `threshold_configs` and traffic granularity
+6. **recaptcha_options_config** — Policy-level reCAPTCHA redirect site key
 
-## Known Limitations
+## Default Rule Contract
 
-- **Labels** — The `google_compute_security_policy` Terraform resource does not support a `labels` argument. Use the Pulumi implementation if labels are required.
-- **request_body_inspection_size** — The Terraform provider does not expose this advanced option. Use Pulumi for JSON body inspection size configuration.
+Every Cloud Armor policy carries a default rule at priority 2147483647.
+Creating with NO rules lets the API add a default "allow all" rule
+automatically; providing ANY rules requires the set to include that default
+explicitly — the spec enforces this before the module ever runs.
 
-## Feature Parity
+## Deliberately Unmodeled
 
-With the above exceptions, the Terraform module supports the same spec fields as the Pulumi implementation: adaptive protection, advanced options (json_parsing, log_level, user_ip_request_headers), all rule actions, rate limiting, redirects, header injection, and preconfigured WAF exclusions.
+- **Labels** — `google_compute_security_policy` has no labels attribute on
+  the released `google ~> 6.0` line; neither engine attempts attribution.
+- **`request_body_inspection_size`** — absent from the released provider
+  line (a newer-major-only surface); not modeled on either engine so the
+  spec never advertises intent only one engine honors.

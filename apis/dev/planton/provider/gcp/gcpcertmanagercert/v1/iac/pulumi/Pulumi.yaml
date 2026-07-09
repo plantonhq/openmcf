@@ -1,4 +1,3 @@
-name: gcp-cert-manager-cert
-description: GCP Certificate Manager Cert Pulumi Module
-runtime: go
-
+name: planton-gcp-cert-manager-cert
+runtime:
+  name: go

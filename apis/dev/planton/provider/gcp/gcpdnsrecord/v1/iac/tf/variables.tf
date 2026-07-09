@@ -12,35 +12,94 @@ variable "metadata" {
 }
 
 variable "spec" {
-  description = "Specification for the GCP DNS Record"
+  description = "Specification for the GCP DNS record set"
   type = object({
+    # StringValueOrRef fields arrive as PLAIN STRINGS: the tfvars converter
+    # flattens refs before the module ever sees them.
+    project_id   = optional(string, "")
+    managed_zone = string
 
-    # The ID of the GCP project where the Managed Zone exists.
-    # Supports StringValueOrRef pattern - use {value: "project-id"} for literal values.
-    project_id = object({
-      value = string
-    })
-
-    # The name of the Managed Zone where this DNS record will be created.
-    # Supports StringValueOrRef pattern - use {value: "zone-name"} for literal values.
-    managed_zone = object({
-      value = string
-    })
-
-    # The DNS record type to create.
-    # Supported types: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA.
     type = string
-
-    # The fully qualified domain name for this record.
-    # Must end with a trailing dot to indicate FQDN.
     name = string
 
-    # The values/targets for the DNS record.
-    # Multiple values create a round-robin record set.
-    values = list(string)
+    # Static RRDATA — mutually exclusive with routing_policy (enforced by
+    # the spec's pre-deploy validation, mirrored by the provider's
+    # ExactlyOneOf on rrdatas/routing_policy).
+    values = optional(list(string), [])
 
-    # Time to live (TTL) for the DNS record in seconds.
-    # Default: 300 seconds (5 minutes).
     ttl_seconds = optional(number, 300)
+
+    routing_policy = optional(object({
+      wrr = optional(list(object({
+        weight = number
+        values = optional(list(string), [])
+        health_checked_targets = optional(object({
+          internal_load_balancers = optional(list(object({
+            ip_address         = string
+            ip_protocol        = string
+            load_balancer_type = optional(string, "")
+            network_url        = string
+            port               = string
+            project            = string
+            region             = optional(string, "")
+          })), [])
+          external_endpoints = optional(list(string), [])
+        }), null)
+      })), [])
+
+      geo = optional(list(object({
+        location = string
+        values   = optional(list(string), [])
+        health_checked_targets = optional(object({
+          internal_load_balancers = optional(list(object({
+            ip_address         = string
+            ip_protocol        = string
+            load_balancer_type = optional(string, "")
+            network_url        = string
+            port               = string
+            project            = string
+            region             = optional(string, "")
+          })), [])
+          external_endpoints = optional(list(string), [])
+        }), null)
+      })), [])
+
+      enable_geo_fencing = optional(bool, false)
+
+      primary_backup = optional(object({
+        primary = object({
+          internal_load_balancers = optional(list(object({
+            ip_address         = string
+            ip_protocol        = string
+            load_balancer_type = optional(string, "")
+            network_url        = string
+            port               = string
+            project            = string
+            region             = optional(string, "")
+          })), [])
+          external_endpoints = optional(list(string), [])
+        })
+        backup_geo = list(object({
+          location = string
+          values   = optional(list(string), [])
+          health_checked_targets = optional(object({
+            internal_load_balancers = optional(list(object({
+              ip_address         = string
+              ip_protocol        = string
+              load_balancer_type = optional(string, "")
+              network_url        = string
+              port               = string
+              project            = string
+              region             = optional(string, "")
+            })), [])
+            external_endpoints = optional(list(string), [])
+          }), null)
+        }))
+        trickle_ratio                  = optional(number)
+        enable_geo_fencing_for_backups = optional(bool, false)
+      }), null)
+
+      health_check = optional(string, "")
+    }), null)
   })
 }

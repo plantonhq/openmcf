@@ -3,45 +3,144 @@ package gcpgkeworkloadidentitybindingv1
 import (
 	"testing"
 
+	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-
-	"buf.build/go/protovalidate"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
 func TestGcpGkeWorkloadIdentityBindingSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "GcpGkeWorkloadIdentityBindingSpec Custom Validation Tests")
+	ginkgo.RunSpecs(t, "GcpGkeWorkloadIdentityBindingSpec Validation Tests")
 }
 
-var _ = ginkgo.Describe("GcpGkeWorkloadIdentityBindingSpec Custom Validation Tests", func() {
+// literal wraps a string in a StringValueOrRef literal value.
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
 
-	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("gcp_gke_workload_identity_binding", func() {
+// baseBinding returns a valid minimal binding that individual cases mutate.
+func baseBinding() *GcpGkeWorkloadIdentityBinding {
+	return &GcpGkeWorkloadIdentityBinding{
+		ApiVersion: "gcp.planton.dev/v1",
+		Kind:       "GcpGkeWorkloadIdentityBinding",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-workload-identity-binding",
+		},
+		Spec: &GcpGkeWorkloadIdentityBindingSpec{
+			ProjectId:           literal("test-project-123"),
+			ServiceAccountEmail: literal("cert-manager@test-project-123.iam.gserviceaccount.com"),
+			KsaNamespace:        "cert-manager",
+			KsaName:             "cert-manager",
+		},
+	}
+}
 
-			ginkgo.It("should not return a validation error for minimal valid fields", func() {
-				input := &GcpGkeWorkloadIdentityBinding{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpGkeWorkloadIdentityBinding",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-workload-identity-binding",
-					},
-					Spec: &GcpGkeWorkloadIdentityBindingSpec{
-						ProjectId: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-project-123"},
-						},
-						ServiceAccountEmail: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "cert-manager@test-project-123.iam.gserviceaccount.com"},
-						},
-						KsaNamespace: "cert-manager",
-						KsaName:      "cert-manager",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+var _ = ginkgo.Describe("GcpGkeWorkloadIdentityBindingSpec Validation Tests", func() {
+
+	ginkgo.Describe("Valid configurations", func() {
+
+		ginkgo.It("should accept a minimal binding", func() {
+			gomega.Expect(protovalidate.Validate(baseBinding())).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a KSA name with dots (DNS subdomain rules)", func() {
+			input := baseBinding()
+			input.Spec.KsaName = "workload.v2"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a binding with an IAM condition", func() {
+			input := baseBinding()
+			input.Spec.Condition = &GcpGkeWorkloadIdentityBindingCondition{
+				Title:       "expires-2026-12-31",
+				Expression:  `request.time < timestamp("2027-01-01T00:00:00Z")`,
+				Description: "temporary grant for the migration window",
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept single-character namespace and name", func() {
+			input := baseBinding()
+			input.Spec.KsaNamespace = "a"
+			input.Spec.KsaName = "b"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("Invalid configurations", func() {
+
+		ginkgo.It("should accept an omitted project_id (ambient pool project)", func() {
+			input := baseBinding()
+			input.Spec.ProjectId = nil
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a missing service_account_email", func() {
+			input := baseBinding()
+			input.Spec.ServiceAccountEmail = nil
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a missing ksa_namespace", func() {
+			input := baseBinding()
+			input.Spec.KsaNamespace = ""
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a missing ksa_name", func() {
+			input := baseBinding()
+			input.Spec.KsaName = ""
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an uppercase namespace (RFC 1123 label)", func() {
+			input := baseBinding()
+			input.Spec.KsaNamespace = "CertManager"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a namespace with dots (labels take no dots)", func() {
+			input := baseBinding()
+			input.Spec.KsaNamespace = "kube.system"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a namespace ending with a hyphen", func() {
+			input := baseBinding()
+			input.Spec.KsaNamespace = "cert-manager-"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a namespace longer than 63 characters", func() {
+			input := baseBinding()
+			input.Spec.KsaNamespace = "a123456789a123456789a123456789a123456789a123456789a123456789abcd"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a KSA name with underscores", func() {
+			input := baseBinding()
+			input.Spec.KsaName = "cert_manager"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a condition without a title", func() {
+			input := baseBinding()
+			input.Spec.Condition = &GcpGkeWorkloadIdentityBindingCondition{
+				Expression: `request.time < timestamp("2027-01-01T00:00:00Z")`,
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a condition without an expression", func() {
+			input := baseBinding()
+			input.Spec.Condition = &GcpGkeWorkloadIdentityBindingCondition{
+				Title: "expires-2026-12-31",
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 	})
 })

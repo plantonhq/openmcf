@@ -338,10 +338,12 @@ var _ = ginkgo.Describe("GcpCloudArmorPolicySpec", func() {
 	ginkgo.It("should accept advanced options with JSON parsing and verbose logging", func() {
 		msg := minimal()
 		msg.Spec.AdvancedOptionsConfig = &GcpCloudArmorAdvancedOptionsConfig{
-			JsonParsing:               "STANDARD",
-			LogLevel:                  "VERBOSE",
-			UserIpRequestHeaders:      []string{"X-Real-IP", "X-Forwarded-For"},
-			RequestBodyInspectionSize: "32KB",
+			JsonParsing:          "STANDARD",
+			LogLevel:             "VERBOSE",
+			UserIpRequestHeaders: []string{"X-Real-IP", "X-Forwarded-For"},
+			JsonCustomConfig: &GcpCloudArmorJsonCustomConfig{
+				ContentTypes: []string{"application/vnd.api+json"},
+			},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -478,9 +480,8 @@ var _ = ginkgo.Describe("GcpCloudArmorPolicySpec", func() {
 			RuleVisibility:           "STANDARD",
 		}
 		msg.Spec.AdvancedOptionsConfig = &GcpCloudArmorAdvancedOptionsConfig{
-			JsonParsing:               "STANDARD",
-			LogLevel:                  "VERBOSE",
-			RequestBodyInspectionSize: "32KB",
+			JsonParsing: "STANDARD",
+			LogLevel:    "VERBOSE",
 		}
 		msg.Spec.Rules = []*GcpCloudArmorRule{
 			ipAllowRule(100, []string{"10.0.0.0/8"}),
@@ -506,7 +507,7 @@ var _ = ginkgo.Describe("GcpCloudArmorPolicySpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept empty rules (IaC modules will add default)", func() {
+	ginkgo.It("should accept empty rules (the API auto-adds the default rule)", func() {
 		msg := minimal()
 		msg.Spec.Rules = nil
 		err := validator.Validate(msg)
@@ -515,11 +516,11 @@ var _ = ginkgo.Describe("GcpCloudArmorPolicySpec", func() {
 
 	// ──────────────── Negative Cases ────────────────
 
-	ginkgo.It("should reject missing project_id", func() {
+	ginkgo.It("should accept an omitted project_id (ambient project)", func() {
 		msg := minimal()
 		msg.Spec.ProjectId = nil
 		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject wrong api_version", func() {
@@ -789,15 +790,6 @@ var _ = ginkgo.Describe("GcpCloudArmorPolicySpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject invalid request_body_inspection_size", func() {
-		msg := minimal()
-		msg.Spec.AdvancedOptionsConfig = &GcpCloudArmorAdvancedOptionsConfig{
-			RequestBodyInspectionSize: "128KB",
-		}
-		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
-	})
-
 	ginkgo.It("should reject invalid rule_visibility value", func() {
 		msg := minimal()
 		msg.Spec.AdaptiveProtectionConfig = &GcpCloudArmorAdaptiveProtectionConfig{
@@ -838,6 +830,406 @@ var _ = ginkgo.Describe("GcpCloudArmorPolicySpec", func() {
 			longDesc[i] = 'a'
 		}
 		msg.Spec.Description = string(longDesc)
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Default-rule and priority contracts ────────────────
+
+	ginkgo.It("should reject a non-empty rule set without the default rule", func() {
+		msg := minimal()
+		msg.Spec.Rules = []*GcpCloudArmorRule{ipAllowRule(1000, []string{"10.0.0.0/8"})}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject duplicate rule priorities", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules,
+			ipAllowRule(1000, []string{"10.0.0.0/8"}),
+			ipDenyRule(1000, []string{"192.0.2.0/24"}),
+		)
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a negative rule priority", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, ipAllowRule(-1, []string{"10.0.0.0/8"}))
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Action/options coherence ────────────────
+
+	ginkgo.It("should reject throttle without rate_limit_options", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "throttle",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject rate_limit_options on a plain allow rule", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "allow",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RateLimitOptions: &GcpCloudArmorRateLimitOptions{
+				ConformAction:      "allow",
+				ExceedAction:       "deny(429)",
+				RateLimitThreshold: &GcpCloudArmorRateThreshold{Count: 100, IntervalSec: 60},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject the redirect action without redirect_options", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "redirect",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a redirect rule with an EXTERNAL_302 target", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "redirect",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RedirectOptions: &GcpCloudArmorRedirectConfig{
+				Type:   "EXTERNAL_302",
+				Target: "https://blocked.example.com",
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject EXTERNAL_302 redirect without a target", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "redirect",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RedirectOptions: &GcpCloudArmorRedirectConfig{
+				Type: "EXTERNAL_302",
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject GOOGLE_RECAPTCHA redirect with a target", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "redirect",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RedirectOptions: &GcpCloudArmorRedirectConfig{
+				Type:   "GOOGLE_RECAPTCHA",
+				Target: "https://blocked.example.com",
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── reCAPTCHA expression options ────────────────
+
+	ginkgo.It("should accept expr_options with reCAPTCHA site keys on a CEL match", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "allow",
+			Priority: 1000,
+			Match: &GcpCloudArmorRuleMatch{
+				Expression: "token.recaptcha_action.score > 0.5",
+				ExprOptions: &GcpCloudArmorRecaptchaOptions{
+					ActionTokenSiteKeys: []string{"6LcA1234567890abcdefghijklmnopqrstuvwxyz"},
+				},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject expr_options on an IP-based match", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "allow",
+			Priority: 1000,
+			Match: &GcpCloudArmorRuleMatch{
+				VersionedExpr: "SRC_IPS_V1",
+				SrcIpRanges:   []string{"*"},
+				ExprOptions: &GcpCloudArmorRecaptchaOptions{
+					ActionTokenSiteKeys: []string{"key"},
+				},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject empty expr_options", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "allow",
+			Priority: 1000,
+			Match: &GcpCloudArmorRuleMatch{
+				Expression:  "token.recaptcha_action.score > 0.5",
+				ExprOptions: &GcpCloudArmorRecaptchaOptions{},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a policy-level reCAPTCHA redirect site key", func() {
+		msg := minimal()
+		msg.Spec.RecaptchaOptionsConfig = &GcpCloudArmorRecaptchaOptionsConfig{
+			RedirectSiteKey: "6LcA1234567890abcdefghijklmnopqrstuvwxyz",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Composite rate-limit keys ────────────────
+
+	ginkgo.It("should accept a composite rate-limit key (IP + HTTP_PATH)", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "throttle",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RateLimitOptions: &GcpCloudArmorRateLimitOptions{
+				ConformAction: "allow",
+				ExceedAction:  "deny(429)",
+				EnforceOnKeyConfigs: []*GcpCloudArmorEnforceOnKeyConfig{
+					{EnforceOnKeyType: "IP"},
+					{EnforceOnKeyType: "HTTP_PATH"},
+				},
+				RateLimitThreshold: &GcpCloudArmorRateThreshold{Count: 100, IntervalSec: 60},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject enforce_on_key together with enforce_on_key_configs", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "throttle",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RateLimitOptions: &GcpCloudArmorRateLimitOptions{
+				ConformAction: "allow",
+				ExceedAction:  "deny(429)",
+				EnforceOnKey:  "IP",
+				EnforceOnKeyConfigs: []*GcpCloudArmorEnforceOnKeyConfig{
+					{EnforceOnKeyType: "HTTP_PATH"},
+				},
+				RateLimitThreshold: &GcpCloudArmorRateThreshold{Count: 100, IntervalSec: 60},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a composite key component naming a header without HTTP_HEADER type", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "throttle",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RateLimitOptions: &GcpCloudArmorRateLimitOptions{
+				ConformAction: "allow",
+				ExceedAction:  "deny(429)",
+				EnforceOnKeyConfigs: []*GcpCloudArmorEnforceOnKeyConfig{
+					{EnforceOnKeyType: "IP", EnforceOnKeyName: "X-API-Key"},
+				},
+				RateLimitThreshold: &GcpCloudArmorRateThreshold{Count: 100, IntervalSec: 60},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject enforce_on_key HTTP_HEADER without a key name", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "throttle",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RateLimitOptions: &GcpCloudArmorRateLimitOptions{
+				ConformAction:      "allow",
+				ExceedAction:       "deny(429)",
+				EnforceOnKey:       "HTTP_HEADER",
+				RateLimitThreshold: &GcpCloudArmorRateThreshold{Count: 100, IntervalSec: 60},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a ban duration below 60 seconds", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "rate_based_ban",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RateLimitOptions: &GcpCloudArmorRateLimitOptions{
+				ConformAction:      "allow",
+				ExceedAction:       "deny(429)",
+				BanDurationSec:     30,
+				RateLimitThreshold: &GcpCloudArmorRateThreshold{Count: 100, IntervalSec: 60},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an interval outside the API's allowed set", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "throttle",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{VersionedExpr: "SRC_IPS_V1", SrcIpRanges: []string{"*"}},
+			RateLimitOptions: &GcpCloudArmorRateLimitOptions{
+				ConformAction:      "allow",
+				ExceedAction:       "deny(429)",
+				RateLimitThreshold: &GcpCloudArmorRateThreshold{Count: 100, IntervalSec: 90},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Adaptive protection thresholds ────────────────
+
+	ginkgo.It("should accept adaptive protection threshold configs", func() {
+		confidence := 0.8
+		impacted := 0.1
+		expiration := int32(3600)
+		msg := minimal()
+		msg.Spec.AdaptiveProtectionConfig = &GcpCloudArmorAdaptiveProtectionConfig{
+			EnableLayer_7DdosDefense: true,
+			ThresholdConfigs: []*GcpCloudArmorThresholdConfig{
+				{
+					Name:                                "per-host",
+					AutoDeployConfidenceThreshold:       &confidence,
+					AutoDeployImpactedBaselineThreshold: &impacted,
+					AutoDeployExpirationSec:             &expiration,
+					TrafficGranularityConfigs: []*GcpCloudArmorTrafficGranularityConfig{
+						{Type: "HTTP_HEADER_HOST", EnableEachUniqueValue: true},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject threshold configs without layer-7 defense enabled", func() {
+		msg := minimal()
+		msg.Spec.AdaptiveProtectionConfig = &GcpCloudArmorAdaptiveProtectionConfig{
+			ThresholdConfigs: []*GcpCloudArmorThresholdConfig{
+				{Name: "per-host"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a granularity config with both value and each-unique-value", func() {
+		msg := minimal()
+		msg.Spec.AdaptiveProtectionConfig = &GcpCloudArmorAdaptiveProtectionConfig{
+			EnableLayer_7DdosDefense: true,
+			ThresholdConfigs: []*GcpCloudArmorThresholdConfig{
+				{
+					Name: "per-host",
+					TrafficGranularityConfigs: []*GcpCloudArmorTrafficGranularityConfig{
+						{Type: "HTTP_HEADER_HOST", Value: "api.example.com", EnableEachUniqueValue: true},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an out-of-range auto-deploy confidence threshold", func() {
+		confidence := 1.5
+		msg := minimal()
+		msg.Spec.AdaptiveProtectionConfig = &GcpCloudArmorAdaptiveProtectionConfig{
+			EnableLayer_7DdosDefense: true,
+			ThresholdConfigs: []*GcpCloudArmorThresholdConfig{
+				{Name: "per-host", AutoDeployConfidenceThreshold: &confidence},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── JSON custom config ────────────────
+
+	ginkgo.It("should reject json_custom_config without JSON parsing enabled", func() {
+		msg := minimal()
+		msg.Spec.AdvancedOptionsConfig = &GcpCloudArmorAdvancedOptionsConfig{
+			JsonCustomConfig: &GcpCloudArmorJsonCustomConfig{
+				ContentTypes: []string{"application/vnd.api+json"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject WAF exclusion value with EQUALS_ANY", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "deny(403)",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{Expression: "evaluatePreconfiguredWaf('sqli-v33-stable')"},
+			PreconfiguredWafConfig: &GcpCloudArmorPreconfiguredWafConfig{
+				Exclusions: []*GcpCloudArmorWafExclusion{
+					{
+						TargetRuleSet: "sqli-v33-stable",
+						RequestHeaders: []*GcpCloudArmorWafExclusionFieldParams{
+							{Operator: "EQUALS_ANY", Value: "should-not-be-here"},
+						},
+					},
+				},
+			},
+		})
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a WAF exclusion EQUALS operator without a value", func() {
+		msg := minimal()
+		msg.Spec.Rules = append(msg.Spec.Rules, &GcpCloudArmorRule{
+			Action:   "deny(403)",
+			Priority: 1000,
+			Match:    &GcpCloudArmorRuleMatch{Expression: "evaluatePreconfiguredWaf('sqli-v33-stable')"},
+			PreconfiguredWafConfig: &GcpCloudArmorPreconfiguredWafConfig{
+				Exclusions: []*GcpCloudArmorWafExclusion{
+					{
+						TargetRuleSet: "sqli-v33-stable",
+						RequestHeaders: []*GcpCloudArmorWafExclusionFieldParams{
+							{Operator: "EQUALS"},
+						},
+					},
+				},
+			},
+		})
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

@@ -1,50 +1,41 @@
 package module
 
 import (
-	"strconv"
-	"strings"
+	"fmt"
 
-	gcpprovider "github.com/plantonhq/planton/apis/dev/planton/provider/gcp"
 	gcpgkeworkloadidentitybindingv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpgkeworkloadidentitybinding/v1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
-	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/gcp/gcplabelkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals keeps frequently‑used values (metadata, labels, credentials) handy for the module.
+// Locals keeps the derived values both engines must construct identically.
 type Locals struct {
-	GcpProviderConfig             *gcpprovider.GcpProviderConfig
 	GcpGkeWorkloadIdentityBinding *gcpgkeworkloadidentitybindingv1.GcpGkeWorkloadIdentityBinding
-	GcpLabels                     map[string]string
+
+	// PoolProject is the project naming the implicit workload-identity pool
+	// (<project>.svc.id.goog). Empty when the manifest omits it — the
+	// provider's default project is then resolved at deploy time.
+	PoolProject string
+
+	// ServiceAccountId is the fully-qualified service-account resource name
+	// the provider requires (not the bare email). The "-" project wildcard
+	// lets the IAM API infer the SA's own project from the email — correct
+	// even when the GSA lives in a different project than the
+	// workload-identity pool. Identical construction in the Terraform module.
+	ServiceAccountId string
 }
 
-// initializeLocals populates the Locals struct from the stack input.
-// It mirrors the pattern used in the gcp_gke_cluster module and applies the same Planton label strategy.
 func initializeLocals(_ *pulumi.Context, stackInput *gcpgkeworkloadidentitybindingv1.GcpGkeWorkloadIdentityBindingStackInput) *Locals {
 	locals := &Locals{}
 
 	locals.GcpGkeWorkloadIdentityBinding = stackInput.Target
+	spec := stackInput.Target.Spec
 
-	// Standard Planton‑wide labels for GCP resources
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     strconv.FormatBool(true),
-		gcplabelkeys.ResourceName: locals.GcpGkeWorkloadIdentityBinding.Metadata.Name,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpGkeWorkloadIdentityBinding.String()),
-	}
+	locals.PoolProject = spec.ProjectId.GetValue()
 
-	if locals.GcpGkeWorkloadIdentityBinding.Metadata.Org != "" {
-		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpGkeWorkloadIdentityBinding.Metadata.Org
-	}
-
-	if locals.GcpGkeWorkloadIdentityBinding.Metadata.Env != "" {
-		locals.GcpLabels[gcplabelkeys.Environment] = locals.GcpGkeWorkloadIdentityBinding.Metadata.Env
-	}
-
-	if locals.GcpGkeWorkloadIdentityBinding.Metadata.Id != "" {
-		locals.GcpLabels[gcplabelkeys.ResourceId] = locals.GcpGkeWorkloadIdentityBinding.Metadata.Id
-	}
-
-	locals.GcpProviderConfig = stackInput.ProviderConfig
+	locals.ServiceAccountId = fmt.Sprintf(
+		"projects/-/serviceAccounts/%s",
+		spec.ServiceAccountEmail.GetValue(),
+	)
 
 	return locals
 }

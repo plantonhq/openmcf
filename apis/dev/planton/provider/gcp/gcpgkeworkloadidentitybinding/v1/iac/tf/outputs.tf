@@ -7,7 +7,7 @@ output "member" {
 
 output "service_account_email" {
   description = "The bound GSA email (echoed from input for convenience)"
-  value       = var.service_account_email
+  value       = var.spec.service_account_email
 }
 
 

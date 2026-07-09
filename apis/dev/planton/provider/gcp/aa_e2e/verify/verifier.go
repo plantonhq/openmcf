@@ -19,6 +19,7 @@ import (
 	artifactregistry "google.golang.org/api/artifactregistry/v1"
 	"google.golang.org/api/bigquery/v2"
 	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
+	certificatemanager "google.golang.org/api/certificatemanager/v1"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	cloudkms "google.golang.org/api/cloudkms/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
@@ -71,6 +72,7 @@ type Services struct {
 	CloudTasks          *cloudtasks.Service
 	CloudScheduler      *cloudscheduler.Service
 	ArtifactRegistry    *artifactregistry.Service
+	CertificateManager  *certificatemanager.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -161,6 +163,12 @@ var verifiers = map[string]Verifier{
 	"gcpcomputeinstance":                     &computeInstanceVerifier{},
 	"gcpcomputedisk":                         &computeDiskVerifier{},
 	"gcpfilestoreinstance":                   &filestoreInstanceVerifier{},
+	"gcpdnsrecord":                           &dnsRecordVerifier{},
+	"gcpgkeworkloadidentitybinding":          &gkeWorkloadIdentityBindingVerifier{},
+	"gcpcloudarmorpolicy":                    &cloudArmorPolicyVerifier{},
+	"gcpcertmanagerdnsauthorization":         &certManagerDnsAuthorizationVerifier{},
+	"gcpcertmanagercert":                     &certManagerCertVerifier{},
+	"gcpproject":                             &projectVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

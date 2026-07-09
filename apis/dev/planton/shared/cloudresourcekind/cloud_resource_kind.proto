@@ -716,7 +716,8 @@ enum CloudResourceKind {
       GcpUrlMap,
       GcpManagedSslCertificate,
       GcpSslPolicy,
-      GcpSslCertificate
+      GcpSslCertificate,
+      GcpCertManagerCert
     ]
   }];
   GcpCloudFunction = 602 [(kind_meta) = {
@@ -805,11 +806,13 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gkewib"
+    prerequisites: [GcpServiceAccount]
   }];
   GcpCertManagerCert = 616 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpcert"
+    prerequisites: [GcpCertManagerDnsAuthorization]
   }];
   GcpComputeInstance = 617 [(kind_meta) = {
     provider: gcp
@@ -826,6 +829,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpdrec"
+    prerequisites: [GcpDnsZone]
   }];
   GcpProjectIamMember = 619 [(kind_meta) = {
     provider: gcp
@@ -1175,6 +1179,11 @@ enum CloudResourceKind {
       GcpVpcNetwork,
       GcpSubnetwork
     ]
+  }];
+  GcpCertManagerDnsAuthorization = 716 [(kind_meta) = {
+    provider: gcp
+    version: v1
+    id_prefix: "gcpcmda"
   }];
 
   // 720–729: GCP serverless overflow

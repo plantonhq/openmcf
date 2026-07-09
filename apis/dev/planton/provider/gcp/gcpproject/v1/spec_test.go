@@ -11,363 +11,142 @@ import (
 
 func TestGcpProjectSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "GcpProjectSpec Custom Validation Tests")
+	ginkgo.RunSpecs(t, "GcpProjectSpec Validation Tests")
 }
 
-var _ = ginkgo.Describe("GcpProjectSpec Custom Validation Tests", func() {
+// baseProject returns a valid minimal project that individual cases mutate.
+func baseProject() *GcpProject {
+	return &GcpProject{
+		ApiVersion: "gcp.planton.dev/v1",
+		Kind:       "GcpProject",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-gcp-project",
+		},
+		Spec: &GcpProjectSpec{
+			ProjectId:  "my-prod-project-123",
+			ParentType: GcpProjectParentType_organization,
+			ParentId:   "123456789012",
+		},
+	}
+}
 
-	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("gcp_project with minimal required fields", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-gcp-project",
-					},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "my-proj", // Required field
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH", // Valid billing account format
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+var _ = ginkgo.Describe("GcpProjectSpec Validation Tests", func() {
+
+	ginkgo.Describe("Valid configurations", func() {
+
+		ginkgo.It("should accept a minimal project", func() {
+			gomega.Expect(protovalidate.Validate(baseProject())).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("gcp_project with add_suffix enabled", func() {
-			ginkgo.It("should not return a validation error", func() {
-				addSuffix := true
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-gcp-project",
-					},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "test-project",
-						AddSuffix:        &addSuffix,
-						ParentType:       GcpProjectParentType_folder,
-						ParentId:         "345678901234",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a project under a folder", func() {
+			input := baseProject()
+			input.Spec.ParentType = GcpProjectParentType_folder
+			input.Spec.ParentId = "987654321"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("gcp_project with all optional fields", func() {
-			ginkgo.It("should not return a validation error", func() {
-				disableNetwork := true
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "full-test-project",
-					},
-					Spec: &GcpProjectSpec{
-						ProjectId:             "full-test-123",
-						ParentType:            GcpProjectParentType_organization,
-						ParentId:              "987654321098",
-						BillingAccountId:      "ABCDEF-123456-ABCDEF",
-						Labels:                map[string]string{"env": "dev", "team": "platform"},
-						DisableDefaultNetwork: &disableNetwork,
-						EnabledApis:           []string{"compute.googleapis.com", "storage.googleapis.com"},
-						OwnerMember:           "admin@example.com",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a billing account", func() {
+			input := baseProject()
+			input.Spec.BillingAccountId = "0123AB-4567CD-89EFGH"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("gcp_project with valid project_id formats", func() {
-			ginkgo.It("should accept 6 character project_id", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "proj01",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept a display name, labels, and tags", func() {
+			input := baseProject()
+			input.Spec.DisplayName = "Production Workloads"
+			input.Spec.Labels = map[string]string{"team": "platform", "cost-center": "eng"}
+			input.Spec.Tags = map[string]string{"tagKeys/123456789": "tagValues/987654321"}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should accept 30 character project_id", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "my-very-long-project-name-12",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept enabled APIs", func() {
+			input := baseProject()
+			input.Spec.EnabledApis = []string{"compute.googleapis.com", "storage.googleapis.com"}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should accept project_id with hyphens", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "my-test-project-123",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept an explicit auto_create_network", func() {
+			autoCreate := true
+			input := baseProject()
+			input.Spec.AutoCreateNetwork = &autoCreate
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should accept project_id starting with letter ending with digit", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "project123",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("should accept every deletion policy", func() {
+			for _, policy := range []string{"DELETE", "PREVENT", "ABANDON"} {
+				input := baseProject()
+				input.Spec.DeletionPolicy = policy
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil(), "deletion_policy %s should be accepted", policy)
+			}
+		})
+
+		ginkgo.It("should accept a six-character project ID (minimum length)", func() {
+			input := baseProject()
+			input.Spec.ProjectId = "abc-12"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 
-	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("project_id validation", func() {
-			ginkgo.It("should return error when project_id is missing", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						// ProjectId is missing
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+	ginkgo.Describe("Invalid configurations", func() {
 
-			ginkgo.It("should return error when project_id is empty", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return error when project_id is too short (< 6 chars)", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "proj1",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return error when project_id is too long (> 30 chars)", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "my-very-long-project-name-that-exceeds-thirty-chars",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return error when project_id starts with digit", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "123project",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return error when project_id starts with hyphen", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "-myproject",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return error when project_id ends with hyphen", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "myproject-",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return error when project_id contains uppercase letters", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "myProject",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return error when project_id contains underscores", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "my_project",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should return error when project_id contains special characters", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "my-project!",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a missing project_id", func() {
+			input := baseProject()
+			input.Spec.ProjectId = ""
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("billing_account_id validation", func() {
-			ginkgo.It("should return error for invalid billing_account_id format", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "myproject",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "invalid-billing-id",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a project_id shorter than 6 characters", func() {
+			input := baseProject()
+			input.Spec.ProjectId = "abc12"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("enabled_apis validation", func() {
-			ginkgo.It("should return error when API doesn't end with .googleapis.com", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "myproject",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-						EnabledApis:      []string{"compute.google.com"}, // Invalid - should be googleapis.com
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a project_id longer than 30 characters", func() {
+			input := baseProject()
+			input.Spec.ProjectId = "a123456789b123456789c123456789d"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("owner_member validation", func() {
-			ginkgo.It("should return error for invalid email format", func() {
-				input := &GcpProject{
-					ApiVersion: "gcp.planton.dev/v1",
-					Kind:       "GcpProject",
-					Metadata:   &shared.CloudResourceMetadata{Name: "test"},
-					Spec: &GcpProjectSpec{
-						ProjectId:        "myproject",
-						ParentType:       GcpProjectParentType_organization,
-						ParentId:         "123456789012",
-						BillingAccountId: "0123AB-4567CD-89EFGH",
-						OwnerMember:      "not-an-email",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("should reject a project_id starting with a digit", func() {
+			input := baseProject()
+			input.Spec.ProjectId = "1my-project"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a project_id ending with a hyphen", func() {
+			input := baseProject()
+			input.Spec.ProjectId = "my-project-"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a project_id with uppercase letters", func() {
+			input := baseProject()
+			input.Spec.ProjectId = "My-Project-123"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a non-numeric parent_id", func() {
+			input := baseProject()
+			input.Spec.ParentId = "my-folder"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a malformed billing account ID", func() {
+			input := baseProject()
+			input.Spec.BillingAccountId = "not-a-billing-account"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an API entry without the googleapis.com suffix", func() {
+			input := baseProject()
+			input.Spec.EnabledApis = []string{"compute"}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid deletion policy", func() {
+			input := baseProject()
+			input.Spec.DeletionPolicy = "PROTECT"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 	})
 })

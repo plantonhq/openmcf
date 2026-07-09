@@ -1,0 +1,19 @@
+apiVersion: gcp.planton.dev/v1
+kind: GcpCertManagerCert
+metadata:
+  name: my-managed-cert
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  managed:
+    # Realistic sample domain (pattern-validated field) — replace with your
+    # own. The authorization for a domain also covers its wildcard.
+    domains:
+      - app.example.com
+    dnsAuthorizations:
+      # Reference the GcpCertManagerDnsAuthorization resource that
+      # authorizes the domain.
+      - valueFrom:
+          kind: GcpCertManagerDnsAuthorization
+          name: <dns-authorization-resource-name>
+          fieldPath: status.outputs.authorization_id

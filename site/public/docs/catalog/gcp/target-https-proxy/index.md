@@ -71,7 +71,7 @@ planton apply -f https-proxy.yaml
 ## Related Components
 
 - [GcpManagedSslCertificate](/docs/catalog/gcp/managed-ssl-certificate) — Google-managed certificates for `sslCertificates`
-- [GcpCertManagerCert](/docs/catalog/gcp/certificate-manager-cert) — Certificate Manager certificates
+- [GcpCertManagerCert](/docs/catalog/gcp/certificate-manager-certificate) — Certificate Manager certificates
 - [GcpUrlMap](/docs/catalog/gcp/url-map) — the routing table this proxy consults
 - [GcpGlobalForwardingRule](/docs/catalog/gcp/global-forwarding-rule) — the VIP that binds to this proxy
 - [GcpTargetHttpProxy](/docs/catalog/gcp/target-http-proxy) — the port-80 redirect sibling

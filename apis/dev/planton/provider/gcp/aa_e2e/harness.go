@@ -31,6 +31,7 @@ import (
 	artifactregistry "google.golang.org/api/artifactregistry/v1"
 	"google.golang.org/api/bigquery/v2"
 	bigtableadmin "google.golang.org/api/bigtableadmin/v2"
+	certificatemanager "google.golang.org/api/certificatemanager/v1"
 	cloudfunctions "google.golang.org/api/cloudfunctions/v2"
 	cloudkms "google.golang.org/api/cloudkms/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
@@ -188,6 +189,10 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create artifactregistry client")
 	}
+	certificateManagerService, err := certificatemanager.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create certificatemanager client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -230,6 +235,7 @@ func (h *Harness) Setup(ctx context.Context) error {
 		CloudTasks:          cloudTasksService,
 		CloudScheduler:      cloudSchedulerService,
 		ArtifactRegistry:    artifactRegistryService,
+		CertificateManager:  certificateManagerService,
 		RestClient:          restClient,
 	}
 	return nil

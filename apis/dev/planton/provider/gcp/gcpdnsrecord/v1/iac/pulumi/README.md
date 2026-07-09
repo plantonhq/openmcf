@@ -1,6 +1,9 @@
 # GcpDnsRecord Pulumi Module
 
-This Pulumi module creates and manages DNS records in Google Cloud DNS Managed Zones.
+This Pulumi module creates one DNS record set in a Google Cloud DNS managed
+zone — static values (round-robin) or exactly one routing policy (weighted
+round robin, geolocation, or primary/backup failover). It also enables the
+Cloud DNS API on the target project.
 
 ## Usage
 
@@ -23,9 +26,11 @@ kind: GcpDnsRecord
 metadata:
   name: www-example
 spec:
-  projectId: my-gcp-project
-  managedZone: example-zone
-  recordType: A
+  projectId:
+    value: my-gcp-project
+  managedZone:
+    value: example-zone
+  type: A
   name: www.example.com.
   values:
     - 192.0.2.1

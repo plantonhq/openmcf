@@ -1,72 +1,45 @@
-locals {
-  all_domains  = concat([var.spec.primary_domain_name], var.spec.alternate_domain_names)
-  is_managed   = var.spec.certificate_type == null || var.spec.certificate_type == 0
-  has_dns_zone = var.spec.cloud_dns_zone_id != null
+# Enable the Certificate Manager API so a fresh project can host
+# certificates. disable_on_destroy is false: tearing down one certificate
+# must never disable the API for everything else in the project.
+resource "google_project_service" "certificatemanager_api" {
+  project = local.project_id
+  service = "certificatemanager.googleapis.com"
+
+  disable_dependent_services = true
+  disable_on_destroy         = false
 }
 
-#############################################
-# Certificate Manager Certificate (MANAGED)
-#############################################
+# One Certificate Manager certificate. Exactly one arm is configured
+# (enforced pre-deploy):
+#   - managed: Google provisions and renews automatically. Domain control
+#     is proven via referenced DNS authorizations, a private-PKI issuance
+#     config, or load-balancer authorization when neither is set.
+#   - self_managed: uploaded PEM chain + private key; rotation is an
+#     in-place update with new material.
+resource "google_certificate_manager_certificate" "certificate" {
+  name        = local.cert_name
+  project     = local.project_id
+  description = var.spec.description != "" ? var.spec.description : null
+  location    = var.spec.location != "" ? var.spec.location : null
+  scope       = var.spec.scope != "" ? var.spec.scope : null
+  labels      = length(local.final_labels) > 0 ? local.final_labels : null
 
-# DNS authorizations for each domain (Certificate Manager only)
-resource "google_certificate_manager_dns_authorization" "dns_auth" {
-  for_each = local.is_managed ? toset(local.all_domains) : toset([])
-  
-  name        = "${var.metadata.name}-${replace(each.value, "*", "wildcard")}-dns-auth"
-  description = "DNS authorization for ${each.value}"
-  domain      = each.value
-  project     = var.spec.gcp_project_id
-  labels      = local.gcp_labels
-}
+  depends_on = [google_project_service.certificatemanager_api]
 
-# DNS validation records — only created when a Cloud DNS zone is provided.
-# When omitted, the dns-validation-records output contains the records for manual insertion.
-resource "google_dns_record_set" "validation_records" {
-  for_each = local.is_managed && local.has_dns_zone ? google_certificate_manager_dns_authorization.dns_auth : {}
-  
-  name         = each.value.dns_resource_record[0].name
-  type         = each.value.dns_resource_record[0].type
-  ttl          = 300
-  managed_zone = var.spec.cloud_dns_zone_id.value
-  project      = var.spec.gcp_project_id
-
-  rrdatas = [each.value.dns_resource_record[0].data]
-}
-
-# Certificate Manager certificate (MANAGED type)
-resource "google_certificate_manager_certificate" "cert" {
-  count = local.is_managed ? 1 : 0
-  
-  name        = var.metadata.name
-  description = "SSL certificate for ${var.spec.primary_domain_name}"
-  project     = var.spec.gcp_project_id
-  labels      = local.gcp_labels
-
-  managed {
-    domains = local.all_domains
-    
-    dns_authorizations = [
-      for auth in google_certificate_manager_dns_authorization.dns_auth : auth.id
-    ]
+  dynamic "managed" {
+    for_each = var.spec.managed != null ? [var.spec.managed] : []
+    content {
+      domains            = managed.value.domains
+      dns_authorizations = length(managed.value.dns_authorizations) > 0 ? managed.value.dns_authorizations : null
+      issuance_config    = managed.value.issuance_config != "" ? managed.value.issuance_config : null
+    }
   }
 
-  depends_on = [google_dns_record_set.validation_records]
-}
-
-#############################################
-# Google-managed SSL Certificate (LOAD_BALANCER)
-#############################################
-
-# Google-managed SSL certificate for load balancers
-resource "google_compute_managed_ssl_certificate" "lb_cert" {
-  count = !local.is_managed ? 1 : 0
-  
-  name        = var.metadata.name
-  description = "SSL certificate for ${var.spec.primary_domain_name}"
-  project     = var.spec.gcp_project_id
-
-  managed {
-    domains = local.all_domains
+  dynamic "self_managed" {
+    for_each = var.spec.self_managed != null ? [var.spec.self_managed] : []
+    content {
+      pem_certificate = self_managed.value.pem_certificate
+      pem_private_key = self_managed.value.pem_private_key
+    }
   }
 }
-

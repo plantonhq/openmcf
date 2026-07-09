@@ -223,6 +223,7 @@ import (
 	gcpbigtableinstancev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtableinstance/v1"
 	gcpbigtabletablev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbigtabletable/v1"
 	gcpcertmanagercertv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1"
+	gcpcertmanagerdnsauthorizationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagerdnsauthorization/v1"
 	gcpcloudarmorpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudarmorpolicy/v1"
 	gcpcloudcomposerenvironmentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposerenvironment/v1"
 	gcpcloudcomposeruserworkloadsconfigmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1"
@@ -708,6 +709,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpBigtableInstance:                    &gcpbigtableinstancev1.GcpBigtableInstance{},
 	cloudresourcekind.CloudResourceKind_GcpBigtableTable:                       &gcpbigtabletablev1.GcpBigtableTable{},
 	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:                     &gcpcertmanagercertv1.GcpCertManagerCert{},
+	cloudresourcekind.CloudResourceKind_GcpCertManagerDnsAuthorization:         &gcpcertmanagerdnsauthorizationv1.GcpCertManagerDnsAuthorization{},
 	cloudresourcekind.CloudResourceKind_GcpCloudArmorPolicy:                    &gcpcloudarmorpolicyv1.GcpCloudArmorPolicy{},
 	cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment:            &gcpcloudcomposerenvironmentv1.GcpCloudComposerEnvironment{},
 	cloudresourcekind.CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap: &gcpcloudcomposeruserworkloadsconfigmapv1.GcpCloudComposerUserWorkloadsConfigMap{},

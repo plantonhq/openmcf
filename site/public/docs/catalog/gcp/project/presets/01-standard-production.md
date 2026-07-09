@@ -1,6 +1,6 @@
 ---
 title: "Standard Production Project"
-description: "This preset creates a GCP project under a resource hierarchy folder with essential APIs pre-enabled, the default network disabled, and deletion protection turned on. It covers the core services..."
+description: "This preset creates a production-grade project under a folder: billing linked, the default network suppressed, a hardening baseline of APIs pre-enabled, and destroy blocked by `deletionPolicy:..."
 type: "preset"
 rank: "01"
 presetSlug: "01-standard-production"
@@ -13,32 +13,31 @@ order: 1
 
 # Standard Production Project
 
-This preset creates a GCP project under a resource hierarchy folder with essential APIs pre-enabled, the default network disabled, and deletion protection turned on. It covers the core services needed by most production workloads: compute, containers, DNS, secrets, IAM, and observability.
+This preset creates a production-grade project under a folder: billing
+linked, the default network suppressed, a hardening baseline of APIs
+pre-enabled, and destroy blocked by `deletionPolicy: PREVENT`.
 
 ## When to Use
 
-- New production workloads that need a dedicated GCP project
-- Projects that will host GKE clusters, Cloud Run services, or Compute Engine VMs
-- Environments following the recommended folder-based resource hierarchy
+- Foundation projects for production workloads
+- Any project whose accidental deletion would be catastrophic
 
 ## Key Configuration Choices
 
-- **Folder-based hierarchy** (`parentType: folder`) -- projects belong under folders, not directly under the organization
-- **Default network disabled** (`disableDefaultNetwork: true`) -- removes the auto-created VPC with overly permissive firewall rules
-- **Deletion protection** (`deleteProtection: true`) -- prevents accidental deletion of a production project
-- **9 essential APIs enabled** -- compute, container, DNS, secrets, IAM, logging, monitoring, resource manager, and service networking
-- **Service networking API** -- required prerequisite for Private Services Access (Cloud SQL, Memorystore private IPs)
-- **Labels** -- `environment` and `managed-by` for cost allocation and governance
+- **`deletionPolicy: PREVENT`** — destroy fails while set; flip to DELETE
+  deliberately when decommissioning.
+- **No auto-created default network** (spec default) — networks are
+  explicit `GcpVpcNetwork` resources.
+- **IAM grants are not part of the project** — add
+  `GcpProjectIamMember` resources per grant.
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<your-project-id>` | Globally unique GCP project ID (6-30 chars, lowercase) | Choose a unique ID for your project |
-| `<your-folder-id>` | Numeric folder ID in the GCP resource hierarchy | GCP Resource Manager console or `gcloud resource-manager folders list` |
-| `<AAAAAA-BBBBBB-CCCCCC>` | Billing account ID in `XXXXXX-XXXXXX-XXXXXX` format | GCP Billing console or `gcloud billing accounts list` |
-| `<owner-email>` | Email of the user, group, or service account to grant Owner role | Your organization's identity provider |
+The sample values for `projectId`, `parentId`, and `billingAccountId` are
+realistic placeholders for pattern-validated fields — replace them with
+your own project ID (6-30 lowercase chars), numeric folder ID, and billing
+account ID.
 
 ## Related Presets
 
-- **02-development** -- Use for non-production environments with fewer APIs and no deletion protection
+- **02-development** — lightweight project for dev environments

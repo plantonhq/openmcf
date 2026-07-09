@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpcertmanagerdnsauthorization.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpCertManagerDnsAuthorizationSpec creates one Certificate Manager DNS
+// authorization: the proof-of-domain-control a Google-managed certificate
+// needs before it can be issued for a domain the load balancer is not yet
+// serving.
+//
+// One authorization covers a single domain AND its wildcard — an
+// authorization for "example.com" issues certificates for both
+// "example.com" and "*.example.com".
+//
+// The authorization exports the DNS validation record (a CNAME) that must
+// exist in the domain's zone. Compose it with a GcpDnsRecord: point the
+// record's name/type/values at this kind's dns_record_name /
+// dns_record_type / dns_record_data outputs and issuance validates
+// automatically — including BEFORE the certificate is created, which is
+// what makes zero-downtime certificate migration possible.
+message GcpCertManagerDnsAuthorizationSpec {
+  // The GCP project to create the authorization in.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the authorization in GCP. Must be 1-64 characters: start with
+  // a letter, then letters, digits, hyphens, or underscores.
+  // If not specified, defaults to metadata.name.
+  string authorization_name = 2 [(buf.validate.field).cel = {
+    id: "authorization_name.valid"
+    message: "authorization_name must be 1-64 characters, start with a letter, and contain only letters, digits, hyphens, or underscores"
+    expression: "this == '' || this.matches('^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')"
+  }];
+
+  // The domain being authorized. Covers the domain itself and its
+  // wildcard: authorizing "example.com" issues certificates for
+  // "example.com" and "*.example.com". Immutable.
+  // Bare domain only — no "*." prefix and no trailing dot.
+  string domain = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "domain.valid"
+      message: "domain must be a bare domain name (no wildcard prefix, no trailing dot), e.g. example.com"
+      expression: "this.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]{2,}$')"
+    }
+  ];
+
+  // Human-readable description of the authorization.
+  string description = 4;
+
+  // The Certificate Manager location. Defaults to "global" — the correct
+  // choice for classic external HTTPS load balancers. Regional
+  // authorizations pair with regional certificates only.
+  string location = 5;
+
+  // How the validation record is scoped:
+  //   FIXED_RECORD (default for global): the classic DNS-01 style record,
+  //     one per (domain, authorization).
+  //   PER_PROJECT_RECORD: one record per (domain, project) — lets multiple
+  //     Certificate Manager resources across projects share the same
+  //     validation record, and is the default for non-global locations.
+  // If omitted, GCP picks the location-appropriate default. Immutable.
+  string type = 6 [(buf.validate.field).cel = {
+    id: "type.valid"
+    message: "type must be FIXED_RECORD or PER_PROJECT_RECORD"
+    expression: "this == '' || this in ['FIXED_RECORD', 'PER_PROJECT_RECORD']"
+  }];
+
+  // User labels merged onto the authorization beneath the platform's
+  // attribution labels (platform keys win on conflicts).
+  // Keys/values: lowercase letters, digits, underscores, hyphens.
+  map<string, string> labels = 7;
+}
