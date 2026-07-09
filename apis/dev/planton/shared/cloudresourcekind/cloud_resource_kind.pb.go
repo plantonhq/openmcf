@@ -349,11 +349,21 @@ const (
 	CloudResourceKind_AzureRedisCacheAccessPolicyAssignment CloudResourceKind = 439
 	CloudResourceKind_AzureContainerAppEnvironment          CloudResourceKind = 440
 	CloudResourceKind_AzureContainerApp                     CloudResourceKind = 441
-	CloudResourceKind_AzureServicePlan                      CloudResourceKind = 442
-	CloudResourceKind_AzureFunctionApp                      CloudResourceKind = 443
-	CloudResourceKind_AzureLinuxWebApp                      CloudResourceKind = 444
-	CloudResourceKind_AzureLogAnalyticsWorkspace            CloudResourceKind = 450
-	CloudResourceKind_AzureApplicationInsights              CloudResourceKind = 451
+	// AzureResourceGroup is a prerequisite because the plan is created inside
+	// a referenced resource group that must already exist.
+	CloudResourceKind_AzureServicePlan CloudResourceKind = 442
+	// AzureServicePlan is a prerequisite because a function app runs on a
+	// referenced plan (the resource group arrives transitively through the
+	// plan). The required storage account is deliberately NOT a registry
+	// prerequisite: storage-account names are globally unique, so scenarios
+	// bring their own scenario-local account fixtures.
+	CloudResourceKind_AzureFunctionApp CloudResourceKind = 443
+	// AzureServicePlan is a prerequisite because a web app runs on a
+	// referenced plan (the resource group arrives transitively through the
+	// plan).
+	CloudResourceKind_AzureLinuxWebApp           CloudResourceKind = 444
+	CloudResourceKind_AzureLogAnalyticsWorkspace CloudResourceKind = 450
+	CloudResourceKind_AzureApplicationInsights   CloudResourceKind = 451
 	// AzureResourceGroup is a prerequisite because the identity is created
 	// inside a referenced resource group that must already exist.
 	CloudResourceKind_AzureUserAssignedIdentity CloudResourceKind = 460
@@ -1953,7 +1963,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*Ħ\x01\n" +
+	"\x02v1\x10\x01*Ц\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2087,12 +2097,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"%AzureRedisCacheAccessPolicyAssignment\x10\xb7\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\tazredpola\x124\n" +
 	"\x1cAzureContainerAppEnvironment\x10\xb8\x03\x1a\x11\xa2\xf7\x04\r\b\r\x10\x01\"\x05azcae0\x01\x12&\n" +
 	"\x11AzureContainerApp\x10\xb9\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azca\x12%\n" +
-	"\x10AzureServicePlan\x10\xba\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azsp\x12%\n" +
-	"\x10AzureFunctionApp\x10\xbb\x03\x1a\x0e\xa2\xf7\x04\n" +
-	"\b\r\x10\x01\"\x04azfn\x12&\n" +
-	"\x10AzureLinuxWebApp\x10\xbc\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azweb\x120\n" +
+	"\b\r\x10\x01\"\x04azca\x12)\n" +
+	"\x10AzureServicePlan\x10\xba\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azsp:\x02\x90\x03\x12)\n" +
+	"\x10AzureFunctionApp\x10\xbb\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x10\x01\"\x04azfn:\x02\xba\x03\x12*\n" +
+	"\x10AzureLinuxWebApp\x10\xbc\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x10\x01\"\x05azweb:\x02\xba\x03\x120\n" +
 	"\x1aAzureLogAnalyticsWorkspace\x10\xc2\x03\x1a\x0f\xa2\xf7\x04\v\b\r\x10\x01\"\x05azlaw\x12-\n" +
 	"\x18AzureApplicationInsights\x10\xc3\x03\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\r\x10\x01\"\x04azai\x122\n" +

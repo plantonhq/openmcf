@@ -1,0 +1,50 @@
+# Minimal AzureFunctionApp scenario: a Python function app on the
+# fixture Basic B1 plan (registry prerequisite) with a SCENARIO-LOCAL
+# storage account for runtime state -- proving the plan FK seam, the
+# account-name + access-key storage binding through the account's
+# captured outputs, the enum dials, and user tags. The account is
+# declared via the extra-prerequisites annotation instead of a registry
+# prerequisite: storage-account names are globally unique and sequential
+# subtests that destroy and recreate the same name hang on recreate.
+apiVersion: azure.planton.dev/v1
+kind: AzureFunctionApp
+metadata:
+  name: planton-oss-e2e-azurefunctionapp-smoke
+  id: planton-oss-e2e-azurefunctionapp-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefunctionapp
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-extra-prerequisites: "apis/dev/planton/provider/azure/azurefunctionapp/v1/e2e/minimal-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  # centralus: the app must live in its plan's region, and the fixture
+  # plan runs in centralus (probe-verified Basic-tier capacity on
+  # the test subscription).
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  functionAppName: pltn-oss-e2e-azfn-smoke
+  servicePlanId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-plan
+  storageAccountName:
+    valueFrom:
+      name: planton-oss-e2e-functionapp-fixture-account
+  storageAccountAccessKey:
+    valueFrom:
+      name: planton-oss-e2e-functionapp-fixture-account
+  httpsOnly: true
+  siteConfig:
+    applicationStack:
+      pythonVersion: "3.12"
+    alwaysOn: true
+    minimumTlsVersion: TLS_1_2
+    ftpsState: DISABLED
+  tags:
+    e2e-suite: azure

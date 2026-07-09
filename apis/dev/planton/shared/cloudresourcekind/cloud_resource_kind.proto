@@ -950,20 +950,33 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azca"
   }];
+  // AzureResourceGroup is a prerequisite because the plan is created inside
+  // a referenced resource group that must already exist.
   AzureServicePlan = 442 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azsp"
+    prerequisites: [AzureResourceGroup]
   }];
+  // AzureServicePlan is a prerequisite because a function app runs on a
+  // referenced plan (the resource group arrives transitively through the
+  // plan). The required storage account is deliberately NOT a registry
+  // prerequisite: storage-account names are globally unique, so scenarios
+  // bring their own scenario-local account fixtures.
   AzureFunctionApp = 443 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azfn"
+    prerequisites: [AzureServicePlan]
   }];
+  // AzureServicePlan is a prerequisite because a web app runs on a
+  // referenced plan (the resource group arrives transitively through the
+  // plan).
   AzureLinuxWebApp = 444 [(kind_meta) = {
     provider: azure
     version: v1
     id_prefix: "azweb"
+    prerequisites: [AzureServicePlan]
   }];
   AzureLogAnalyticsWorkspace = 450 [(kind_meta) = {
     provider: azure

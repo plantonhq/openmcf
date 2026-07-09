@@ -4,12 +4,76 @@ metadata:
   name: hack-webapp
 spec:
   region: eastus
-  resourceGroup: hack-rg
-  name: hack-webapp-001
-  servicePlanId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/hack-rg/providers/Microsoft.Web/serverfarms/hack-plan
+  resourceGroup:
+    value: hack-rg
+  webAppName: planton-hack-webapp-001
+  servicePlanId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/hack-rg/providers/Microsoft.Web/serverFarms/hack-plan
+  httpsOnly: true
+  # Basic-auth publishing disabled exercises the hardened posture.
+  webdeployPublishBasicAuthenticationEnabled: false
+  ftpPublishBasicAuthenticationEnabled: false
+  identity:
+    type: SYSTEM_ASSIGNED
+  stickySettings:
+    appSettingNames:
+      - SLOT_MARKER
+  appSettings:
+    SLOT_MARKER: production
+  connectionStrings:
+    - name: Database
+      type: POSTGRESQL
+      value:
+        value: Host=db.example.com;Database=app
   siteConfig:
     applicationStack:
       pythonVersion: "3.12"
     healthCheckPath: /health
-    minimumTlsVersion: "1.2"
-  httpsOnly: true
+    healthCheckEvictionTimeInMin: 5
+    # Enum-valued dials exercise the wire maps on both engines.
+    minimumTlsVersion: TLS_1_2
+    ftpsState: DISABLED
+    loadBalancingMode: LEAST_REQUESTS
+    managedPipelineMode: INTEGRATED
+    http2Enabled: true
+    defaultDocuments:
+      - index.html
+    ipRestrictions:
+      - name: office
+        priority: 100
+        action: ALLOW
+        ipAddress: 203.0.113.0/24
+    ipRestrictionDefaultAction: DENY
+    # Auto-heal recycles on a 5xx storm; the uptime guard prevents
+    # recycle loops.
+    autoHealSetting:
+      trigger:
+        statusCodes:
+          - statusCodeRange: 500-599
+            count: 50
+            interval: "00:05:00"
+      minimumProcessExecutionTime: "00:01:00"
+  logs:
+    applicationLogs:
+      fileSystemLevel: INFORMATION
+    httpLogs:
+      fileSystem:
+        retentionInMb: 50
+        retentionInDays: 7
+    failedRequestTracing: true
+  # Easy Auth v2 with a custom OIDC provider exercises the auth block
+  # end to end without needing a real Entra app registration at plan time.
+  authSettingsV2:
+    authEnabled: true
+    requireAuthentication: true
+    unauthenticatedAction: RETURN_401
+    excludedPaths:
+      - /health
+    login:
+      tokenStoreEnabled: true
+    customOidcV2:
+      - name: corp-idp
+        clientId: web-app-client
+        openidConfigurationEndpoint: https://idp.example.com/.well-known/openid-configuration
+  tags:
+    cost-center: platform

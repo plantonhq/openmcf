@@ -39,7 +39,7 @@ This preset deploys a containerized web application running a custom Docker imag
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Name of the Azure resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-premium-plan-id>` | ARM ID of a Premium (P*v3) or Standard (S*) App Service Plan | Azure portal or `AzureServicePlan` status outputs (`plan_id`) |
+| `<your-premium-plan-id>` | ARM ID of a Premium (P*v3) or Standard (S*) App Service Plan | Azure portal or `AzureServicePlan` status outputs (`service_plan_id`) |
 | `<your-registry>.azurecr.io` | Azure Container Registry login server | Azure portal -> Container Registry -> Login server |
 | `<your-org>/<your-web-app>` | Container image name (without tag) | Your container registry |
 | `image_tag: latest` | Container image tag (use a specific version for production) | Your CI/CD pipeline |

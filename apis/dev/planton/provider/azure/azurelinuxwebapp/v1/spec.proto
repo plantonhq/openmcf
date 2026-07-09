@@ -10,8 +10,7 @@ import "dev/planton/shared/options/options.proto";
 // Linux Web App (Microsoft.Web/sites kind=app,linux), a managed web hosting
 // platform for running web applications on Azure App Service.
 //
-// A Linux Web App is the Azure equivalent of AWS Elastic Beanstalk or GCP
-// App Engine -- it hosts long-running web applications serving HTTP traffic.
+// A Linux Web App hosts long-running web applications serving HTTP traffic.
 // Unlike serverless Function Apps that are event-driven and scale to zero,
 // Web Apps are designed for always-on workloads: APIs, web frontends,
 // background services, and containerized applications.
@@ -22,18 +21,17 @@ import "dev/planton/shared/options/options.proto";
 // compute tier, and available features:
 //
 // Free/Shared (F1/D1):
-//   - Shared infrastructure, no custom domains or SSL
-//   - Suitable for development and testing only
+//   - Shared infrastructure, no Always-On, dev/test only
 //
 // Basic (B1-B3):
 //   - Dedicated compute, custom domains, manual scaling
 //   - No auto-scale, no deployment slots
 //
 // Standard (S1-S3):
-//   - Auto-scale up to 10 instances, deployment slots
+//   - Auto-scale up to 10 instances, deployment slots, daily backups
 //   - VNet integration, hybrid connections
 //
-// Premium (P1v3-P3v3):
+// Premium (P*v2/P*v3/P*v4):
 //   - Up to 30 instances, enhanced performance
 //   - VNet integration, private endpoints, zone redundancy
 //
@@ -45,13 +43,22 @@ import "dev/planton/shared/options/options.proto";
 // set of runtimes compared to Function Apps, including PHP, Ruby, Go, and
 // Java with configurable application servers (Tomcat, JBoss EAP).
 //
-// **Design decision**: DD04 -- Linux-only. Windows Web Apps
-// (`azurerm_windows_web_app`) are excluded from this expansion. The
-// `AzureServicePlan` resource supports both OS types, so the compute tier
-// is ready if Windows app-level resources are added later.
+// **Authentication (Easy Auth)**: the `auth_settings_v2` block turns on
+// App Service's built-in authentication layer -- Azure validates identity
+// tokens at the front door (Entra ID, Apple, Facebook, GitHub, Google,
+// Microsoft account, Twitter, or any OpenID Connect provider) before
+// requests reach application code. Provider secrets are referenced by APP
+// SETTING NAME (never inline), so the secret values live in app_settings
+// or Key Vault references.
+//
+// **Windows Web Apps** (`azurerm_windows_web_app`) are deliberately not
+// modeled: the platform targets Linux-first runtimes and containers, and
+// Windows remains the legacy .NET Framework path. The `AzureServicePlan`
+// kind supports Windows plans, so the compute tier is ready if a Windows
+// app kind is ever added.
 //
 // **ForceNew fields** (changing these destroys and recreates the web app):
-// `name`, `region`, `resource_group`.
+// `web_app_name`, `region`, `resource_group`.
 message AzureLinuxWebAppSpec {
   // The Azure region where the Web App will be created.
   // Examples: "eastus", "westus2", "westeurope", "southeastasia".
@@ -74,40 +81,37 @@ message AzureLinuxWebAppSpec {
 
   // The name of the Web App.
   // Must be globally unique across Azure (it forms the default hostname:
-  // `{name}.azurewebsites.net`).
+  // `{web_app_name}.azurewebsites.net`).
   //
   // Allowed characters: alphanumeric and hyphens.
   // Must start and end with an alphanumeric character.
   // Length: 2 to 60 characters.
   //
   // **ForceNew**: Changing this destroys and recreates the web app.
-  string name = 3 [
+  string web_app_name = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 2,
     (buf.validate.field).string.max_len = 60,
     (buf.validate.field).cel = {
       id: "web_app_name_format"
-      message: "name must contain only alphanumeric characters and hyphens, and must start and end with an alphanumeric character"
+      message: "web_app_name must contain only alphanumeric characters and hyphens, and must start and end with an alphanumeric character"
       expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,58}[a-zA-Z0-9]$')"
     }
   ];
 
   // The App Service Plan that provides compute resources for this Web App.
   // Determines the pricing tier, scale behavior, and available features.
-  //
-  // Free/Shared (F1/D1): shared infra, dev/test only
-  // Basic (B1-B3): dedicated compute, manual scaling
-  // Standard (S1-S3): auto-scale, deployment slots
-  // Premium (P1v3-P3v3): enhanced performance, zone redundancy
+  // NOT ForceNew -- apps can move between plans in the same region and
+  // resource group.
   dev.planton.shared.foreignkey.v1.StringValueOrRef service_plan_id = 4 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureServicePlan,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.plan_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_plan_id"
   ];
 
   // Site configuration for the Web App.
   // Contains the application stack (runtime), security settings,
-  // networking behavior, and operational configuration.
+  // networking behavior, auto-heal rules, and operational configuration.
   AzureLinuxWebAppSiteConfig site_config = 5 [(buf.validate.field).required = true];
 
   // Application settings (environment variables) for the Web App.
@@ -115,7 +119,8 @@ message AzureLinuxWebAppSpec {
   // environment variables.
   //
   // Common use cases: database connection strings, API keys, feature flags,
-  // third-party service configuration.
+  // third-party service configuration, and the app-setting-named secrets
+  // that auth_settings_v2 providers reference.
   map<string, string> app_settings = 6;
 
   // Named connection strings for database and service connections.
@@ -127,12 +132,19 @@ message AzureLinuxWebAppSpec {
   // Framework, Azure Service Bus SDK auto-discovery).
   repeated AzureLinuxWebAppConnectionString connection_strings = 7;
 
+  // Settings pinned to the production slot during slot swaps.
+  // Named app settings and connection strings listed here do NOT move with
+  // the app content when a staging slot is swapped into production --
+  // exactly what slot-specific values (staging database URLs, slot-scoped
+  // API keys) need.
+  AzureLinuxWebAppStickySettings sticky_settings = 8;
+
   // Application Insights connection string for APM telemetry.
   // When provided, the Web App can be configured to send telemetry
   // (requests, dependencies, exceptions, traces) to Application Insights.
   //
   // Uses the connection_string format (not the legacy instrumentation_key).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef application_insights_connection_string = 8 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef application_insights_connection_string = 9 [
     (dev.planton.shared.options.sensitive_exempt_reason) = "Foreign-key reference to an AzureApplicationInsights output (the connection string is sourced from the referenced resource, not a user-supplied secret literal).",
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationInsights,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.connection_string"
@@ -142,14 +154,14 @@ message AzureLinuxWebAppSpec {
   // When true, all HTTP requests are redirected to HTTPS.
   //
   // Default: true (secure by default, unlike the Azure API default of false)
-  optional bool https_only = 9 [(dev.planton.shared.options.default) = "true"];
+  optional bool https_only = 10 [(dev.planton.shared.options.default) = "true"];
 
   // Enable or disable public network access to the Web App.
   // When false, the Web App is only accessible via VNet integration
   // or Private Endpoints.
   //
   // Default: true
-  optional bool public_network_access_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+  optional bool public_network_access_enabled = 11 [(dev.planton.shared.options.default) = "true"];
 
   // Enable or disable the Web App.
   // When false, the Web App is stopped and does not serve traffic,
@@ -157,38 +169,7 @@ message AzureLinuxWebAppSpec {
   // Useful for temporarily disabling an app without deleting it.
   //
   // Default: true
-  optional bool enabled = 11 [(dev.planton.shared.options.default) = "true"];
-
-  // The subnet ID for VNet integration. When provided, the Web App's
-  // outbound traffic routes through this subnet, enabling access to
-  // VNet-connected resources (databases, Redis, etc.) without public endpoints.
-  //
-  // The subnet must be delegated to Microsoft.Web/serverFarms.
-  // Not supported on Free (F1) and Shared (D1) tiers.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_subnet_id = 12 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
-  ];
-
-  // Managed identity configuration for the Web App.
-  // Enables the app to authenticate with Azure services (Key Vault, Storage,
-  // ACR, etc.) without managing credentials.
-  //
-  // When identity is configured with SystemAssigned, the web app gets
-  // a system-assigned identity whose principal_id and tenant_id are exported
-  // as stack outputs.
-  AzureLinuxWebAppIdentity identity = 13;
-
-  // User Assigned Identity ID for accessing Key Vault references.
-  // When the Web App uses Key Vault references in app_settings
-  // (e.g., `@Microsoft.KeyVault(SecretUri=...)`), this identity is used
-  // to authenticate with Key Vault.
-  //
-  // If not specified, the system-assigned identity is used.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_reference_identity_id = 14 [
-    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
-  ];
+  optional bool enabled = 12 [(dev.planton.shared.options.default) = "true"];
 
   // Enable client affinity (ARR session affinity) for the Web App.
   // When true, Azure uses ARR (Application Request Routing) cookies to
@@ -198,46 +179,139 @@ message AzureLinuxWebAppSpec {
   // For stateless apps (recommended), disable this for better load distribution.
   //
   // Default: false
-  optional bool client_affinity_enabled = 15 [(dev.planton.shared.options.default) = "false"];
+  optional bool client_affinity_enabled = 13 [(dev.planton.shared.options.default) = "false"];
 
   // Enable client certificate authentication (mutual TLS).
-  // When true, clients must present a valid certificate to access the app.
+  // When true, clients must present a valid certificate to access the app
+  // (subject to client_certificate_mode).
   //
   // Default: false
-  optional bool client_certificate_enabled = 16 [(dev.planton.shared.options.default) = "false"];
+  optional bool client_certificate_enabled = 14 [(dev.planton.shared.options.default) = "false"];
 
-  // Client certificate mode when client_certificate_enabled is true.
-  //
-  // Valid values:
-  // - "Required": All requests must have a valid client certificate
-  // - "Optional": Certificate is requested but not required
-  // - "OptionalInteractiveUser": Certificate is optional for browser users
-  //
-  // Default: "Optional"
-  optional string client_certificate_mode = 17 [
-    (dev.planton.shared.options.default) = "Optional",
-    (buf.validate.field).cel = {
-      id: "client_certificate_mode_valid"
-      message: "client_certificate_mode must be one of: Required, Optional, OptionalInteractiveUser"
-      expression: "this in ['Required', 'Optional', 'OptionalInteractiveUser']"
-    }
-  ];
+  // Client certificate mode -- how strictly client certificates are
+  // enforced when client_certificate_enabled is true. Unset deploys
+  // OPTIONAL (certificate requested but not required).
+  AzureLinuxWebAppClientCertificateMode client_certificate_mode = 15 [(buf.validate.field).enum.defined_only = true];
 
   // Paths excluded from client certificate validation.
   // Semicolon-separated list of paths where client certificates are not required.
   // Example: "/api/health;/api/status"
-  string client_certificate_exclusion_paths = 18;
+  string client_certificate_exclusion_paths = 16;
+
+  // The subnet ID for VNet integration. When provided, the Web App's
+  // outbound traffic routes through this subnet, enabling access to
+  // VNet-connected resources (databases, Redis, etc.) without public endpoints.
+  //
+  // The subnet must be delegated to Microsoft.Web/serverFarms.
+  // Not supported on Free (F1) and Shared (D1) tiers.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_subnet_id = 17 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Pull container images over the VNet integration (instead of over the
+  // public internet). Required for images in registries that are only
+  // reachable privately (e.g. an ACR locked to a private endpoint).
+  // Requires virtual_network_subnet_id.
+  //
+  // Default: false
+  optional bool vnet_image_pull_enabled = 18 [(dev.planton.shared.options.default) = "false"];
+
+  // Route the backup/restore traffic of the `backup` block over the VNet
+  // integration -- needed when the backup storage account is firewalled to
+  // the VNet. Requires virtual_network_subnet_id.
+  //
+  // Default: false
+  optional bool virtual_network_backup_restore_enabled = 19 [(dev.planton.shared.options.default) = "false"];
+
+  // Managed identity configuration for the Web App.
+  // Enables the app to authenticate with Azure services (Key Vault, Storage,
+  // ACR, etc.) without managing credentials.
+  //
+  // When identity is configured with SYSTEM_ASSIGNED, the web app gets
+  // a system-assigned identity whose principal_id and tenant_id are exported
+  // as stack outputs.
+  AzureLinuxWebAppIdentity identity = 20;
+
+  // User Assigned Identity ID for accessing Key Vault references.
+  // When the Web App uses Key Vault references in app_settings
+  // (e.g., `@Microsoft.KeyVault(SecretUri=...)`), this identity is used
+  // to authenticate with Key Vault.
+  //
+  // If not specified, the system-assigned identity is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_reference_identity_id = 21 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // Allow basic-auth (username/password) publishing over Web Deploy
+  // (msdeploy). Disabling both basic-auth toggles closes the classic
+  // credential-based deployment paths and forces identity-based
+  // deployment (recommended posture for locked-down environments).
+  //
+  // Default: true (Azure's own default; flip to false to harden)
+  optional bool webdeploy_publish_basic_authentication_enabled = 22 [(dev.planton.shared.options.default) = "true"];
+
+  // Allow basic-auth (username/password) publishing over FTP/FTPS.
+  // Independent of site_config.ftps_state (which controls the FTP
+  // endpoint's TLS posture); this toggle controls whether the publishing
+  // CREDENTIAL is accepted at all.
+  //
+  // Default: true (Azure's own default; flip to false to harden)
+  optional bool ftp_publish_basic_authentication_enabled = 23 [(dev.planton.shared.options.default) = "true"];
+
+  // Path to a local ZIP package to deploy on create/update (one-shot
+  // "run-from-package" style zip deploy). Primarily useful for simple
+  // pipelines that produce a build artifact next to the manifest; most
+  // production deployments push code through CI/CD instead.
+  string zip_deploy_file = 24;
 
   // Azure Storage Account mounts for the Web App.
   // Mounts Azure File Shares or Blob containers as directories accessible
   // to the application code at runtime.
-  repeated AzureLinuxWebAppStorageMount storage_mounts = 19;
+  repeated AzureLinuxWebAppStorageMount storage_mounts = 25;
 
   // Logging configuration for the Web App.
   // Controls application-level logging, HTTP request logging, failed request
   // tracing, and detailed error messages. Unlike Function Apps where logging
   // is nested inside site_config, Web App logs are a top-level block.
-  AzureLinuxWebAppLogs logs = 20;
+  AzureLinuxWebAppLogs logs = 26;
+
+  // Scheduled backups of the app's content and configuration to an Azure
+  // Storage container (referenced by SAS URL). Requires Standard tier or
+  // above. Restore is an operational action in the portal/CLI, not a
+  // manifest field.
+  AzureLinuxWebAppBackup backup = 27;
+
+  // App Service built-in authentication (Easy Auth v2). When enabled,
+  // Azure authenticates requests at the platform layer -- before they
+  // reach application code -- against any of the configured identity
+  // providers. Provider client secrets are referenced by APP SETTING NAME
+  // (set the actual secret value in app_settings or via a Key Vault
+  // reference), never inline in this block.
+  AzureLinuxWebAppAuthSettingsV2 auth_settings_v2 = 28;
+
+  // Free-form Azure resource tags applied to the Web App, merged over the
+  // platform's metadata-derived tags (user tags win on key collision) --
+  // the hooks for cost allocation, chargeback reports, and Azure Policy
+  // governance rules that filter or group by them. Updatable in place.
+  map<string, string> tags = 29;
+
+  option (buf.validate.message).cel = {
+    id: "web_app_vnet_image_pull_requires_subnet"
+    message: "vnet_image_pull_enabled requires virtual_network_subnet_id (the image pull rides the VNet integration)"
+    expression: "!(has(this.vnet_image_pull_enabled) && this.vnet_image_pull_enabled) || has(this.virtual_network_subnet_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "web_app_vnet_backup_restore_requires_subnet"
+    message: "virtual_network_backup_restore_enabled requires virtual_network_subnet_id (backup traffic rides the VNet integration)"
+    expression: "!(has(this.virtual_network_backup_restore_enabled) && this.virtual_network_backup_restore_enabled) || has(this.virtual_network_subnet_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "web_app_vnet_route_all_requires_subnet"
+    message: "site_config.vnet_route_all_enabled requires virtual_network_subnet_id (there is no VNet to route through otherwise)"
+    expression: "!(has(this.site_config) && has(this.site_config.vnet_route_all_enabled) && this.site_config.vnet_route_all_enabled) || has(this.virtual_network_subnet_id)"
+  };
 }
 
 // AzureLinuxWebAppSiteConfig defines the site-level configuration for a
@@ -245,7 +319,8 @@ message AzureLinuxWebAppSpec {
 // azurerm_linux_web_app resource.
 //
 // Contains the application stack (runtime selection), scaling settings,
-// security configuration, networking behavior, and operational controls.
+// security configuration, networking behavior, auto-heal rules, and
+// operational controls.
 message AzureLinuxWebAppSiteConfig {
   // The application stack defines the runtime for the Web App.
   // Exactly one runtime must be specified: dotnet_version, node_version,
@@ -259,7 +334,9 @@ message AzureLinuxWebAppSiteConfig {
   // Critical for Standard and Premium plans -- without this, the app
   // may be unloaded after idle periods, causing cold start latency.
   //
-  // Not supported on Free (F1) tier.
+  // Not supported on Free (F1) or Shared (D1) tiers -- Azure rejects
+  // always_on there at apply time (the plan's SKU is not visible to
+  // manifest validation).
   optional bool always_on = 2;
 
   // Custom startup command for the Web App.
@@ -268,6 +345,20 @@ message AzureLinuxWebAppSiteConfig {
   // Example: "gunicorn --bind=0.0.0.0 --timeout 600 app:app"
   string app_command_line = 3;
 
+  // The ARM ID of the API Management API this app backs. Wires the app
+  // into an API Management gateway so the API surface is managed there.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/
+  //         Microsoft.ApiManagement/service/{apim}/apis/{api}
+  string api_management_api_id = 4;
+
+  // URL of the OpenAPI/Swagger definition describing this app's API.
+  // Surfaces in the portal's API Definition blade and to API consumers.
+  string api_definition_url = 5;
+
+  // Default documents served when a request maps to a directory.
+  // Evaluated in order (e.g. ["index.html", "default.html"]).
+  repeated string default_documents = 6;
+
   // Health check endpoint path.
   // Azure periodically sends requests to this path and marks the instance
   // as unhealthy if it doesn't respond with a 200-299 status code.
@@ -275,67 +366,58 @@ message AzureLinuxWebAppSiteConfig {
   //
   // Recommended for production deployments. Common paths: "/health",
   // "/healthz", "/api/health".
-  string health_check_path = 4;
+  string health_check_path = 7;
 
   // Time in minutes after which an unhealthy instance is evicted.
   // Azure monitors the health check path and removes instances that
   // have been continuously unhealthy for this duration.
   //
-  // Range: 2 to 10 minutes.
-  optional int32 health_check_eviction_time_in_min = 5 [(buf.validate.field).int32 = {
+  // Range: 2 to 10 minutes. Requires health_check_path.
+  optional int32 health_check_eviction_time_in_min = 8 [(buf.validate.field).int32 = {
     gte: 2
     lte: 10
   }];
 
-  // Minimum TLS version for incoming HTTPS requests.
-  //
-  // Valid values: "1.0", "1.1", "1.2", "1.3"
-  //
-  // Default: "1.2" (industry standard; "1.3" for maximum security)
-  optional string minimum_tls_version = 6 [
-    (dev.planton.shared.options.default) = "1.2",
-    (buf.validate.field).cel = {
-      id: "minimum_tls_version_valid"
-      message: "minimum_tls_version must be one of: 1.0, 1.1, 1.2, 1.3"
-      expression: "this in ['1.0', '1.1', '1.2', '1.3']"
-    }
-  ];
+  // Minimum TLS version for incoming HTTPS requests. Unset deploys
+  // TLS_1_2 (the industry floor; TLS_1_3 for maximum security).
+  AzureLinuxWebAppTlsVersion minimum_tls_version = 9 [(buf.validate.field).enum.defined_only = true];
 
-  // Minimum TLS version for SCM (Kudu) site.
-  //
-  // Default: "1.2"
-  optional string scm_minimum_tls_version = 7 [
-    (dev.planton.shared.options.default) = "1.2",
-    (buf.validate.field).cel = {
-      id: "scm_minimum_tls_version_valid"
-      message: "scm_minimum_tls_version must be one of: 1.0, 1.1, 1.2, 1.3"
-      expression: "this in ['1.0', '1.1', '1.2', '1.3']"
-    }
-  ];
+  // Minimum TLS version for the SCM (Kudu) site. Unset deploys TLS_1_2.
+  AzureLinuxWebAppTlsVersion scm_minimum_tls_version = 10 [(buf.validate.field).enum.defined_only = true];
 
-  // FTPS state for the Web App.
-  // Controls whether FTP/FTPS file deployment is allowed.
-  //
-  // Valid values:
-  // - "AllAllowed": Both FTP and FTPS are enabled
-  // - "FtpsOnly": Only FTPS (encrypted) is enabled
-  // - "Disabled": FTP/FTPS is completely disabled (recommended)
-  //
-  // Default: "Disabled" (secure by default)
-  optional string ftps_state = 8 [
-    (dev.planton.shared.options.default) = "Disabled",
-    (buf.validate.field).cel = {
-      id: "ftps_state_valid"
-      message: "ftps_state must be one of: AllAllowed, FtpsOnly, Disabled"
-      expression: "this in ['AllAllowed', 'FtpsOnly', 'Disabled']"
-    }
-  ];
+  // The minimum TLS cipher suite the app accepts. Suites WEAKER than the
+  // chosen one are rejected; Azure's cipher order (strongest first) is:
+  // TLS_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256,
+  // TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+  // TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+  // TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+  // TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+  // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+  // TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
+  // TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+  // TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+  // TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+  // TLS_RSA_WITH_AES_256_GCM_SHA384, TLS_RSA_WITH_AES_128_GCM_SHA256,
+  // TLS_RSA_WITH_AES_256_CBC_SHA256, TLS_RSA_WITH_AES_128_CBC_SHA256,
+  // TLS_RSA_WITH_AES_256_CBC_SHA, TLS_RSA_WITH_AES_128_CBC_SHA.
+  // Leave empty to accept Azure's platform default set.
+  string minimum_tls_cipher_suite = 11 [(buf.validate.field).cel = {
+    id: "minimum_tls_cipher_suite_valid"
+    message: "minimum_tls_cipher_suite must be one of Azure's TLS cipher suite identifiers (e.g. TLS_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)"
+    expression: "this == '' || this in ['TLS_AES_128_GCM_SHA256', 'TLS_AES_256_GCM_SHA384', 'TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256', 'TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256', 'TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384', 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA', 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256', 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256', 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA', 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384', 'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384', 'TLS_RSA_WITH_AES_128_CBC_SHA', 'TLS_RSA_WITH_AES_128_CBC_SHA256', 'TLS_RSA_WITH_AES_128_GCM_SHA256', 'TLS_RSA_WITH_AES_256_CBC_SHA', 'TLS_RSA_WITH_AES_256_CBC_SHA256', 'TLS_RSA_WITH_AES_256_GCM_SHA384']"
+  }];
+
+  // FTPS state for the Web App -- the FTP deployment endpoint's TLS
+  // posture. Unset deploys DISABLED (secure by default; Azure's own
+  // default). Independent of ftp_publish_basic_authentication_enabled,
+  // which controls whether the publishing credential works at all.
+  AzureLinuxWebAppFtpsState ftps_state = 12 [(buf.validate.field).enum.defined_only = true];
 
   // Number of worker instances for the Web App.
   // Controls how many instances are allocated.
   //
   // Range: 1-100.
-  optional int32 worker_count = 9 [(buf.validate.field).int32 = {
+  optional int32 worker_count = 13 [(buf.validate.field).int32 = {
     gte: 1
     lte: 100
   }];
@@ -345,105 +427,109 @@ message AzureLinuxWebAppSiteConfig {
   // for improved performance.
   //
   // Default: false
-  optional bool http2_enabled = 10 [(dev.planton.shared.options.default) = "false"];
+  optional bool http2_enabled = 14 [(dev.planton.shared.options.default) = "false"];
 
   // Enable WebSocket connections for the Web App.
   //
   // Default: false
-  optional bool websockets_enabled = 11 [(dev.planton.shared.options.default) = "false"];
+  optional bool websockets_enabled = 15 [(dev.planton.shared.options.default) = "false"];
 
   // Use a 32-bit worker process instead of 64-bit.
   // Reduces memory footprint but limits addressable memory to ~2 GB.
   //
-  // Note: The Azure provider defaults to true, but Planton overrides
+  // Note: The Azure provider defaults to true, but the platform overrides
   // this to false. 64-bit workers are recommended for production.
   //
   // Default: false (opinionated override; Azure provider default is true)
-  optional bool use_32_bit_worker = 12 [(dev.planton.shared.options.default) = "false"];
+  optional bool use_32_bit_worker = 16 [(dev.planton.shared.options.default) = "false"];
 
   // Route all outbound traffic from the Web App through the VNet.
-  // Requires virtual_network_subnet_id to be set on the spec.
+  // Requires virtual_network_subnet_id to be set on the spec (spec-enforced).
   //
   // When false (default), only RFC1918 traffic routes through the VNet.
   // When true, all outbound traffic (including public internet) routes
   // through the VNet, enabling inspection via NSG rules or a firewall.
   //
-  // Not supported on Free (F1) and Shared (D1) tiers.
-  //
   // Default: false
-  optional bool vnet_route_all_enabled = 13 [(dev.planton.shared.options.default) = "false"];
+  optional bool vnet_route_all_enabled = 17 [(dev.planton.shared.options.default) = "false"];
 
   // Load balancing mode for distributing requests across instances.
+  // Unset deploys LEAST_REQUESTS.
+  AzureLinuxWebAppLoadBalancingMode load_balancing_mode = 18 [(buf.validate.field).enum.defined_only = true];
+
+  // IIS-lineage request pipeline mode. INTEGRATED (the default) is
+  // correct for everything modern; CLASSIC exists for legacy
+  // compatibility only.
+  AzureLinuxWebAppManagedPipelineMode managed_pipeline_mode = 19 [(buf.validate.field).enum.defined_only = true];
+
+  // Enable the in-instance MySQL database (MySQL in-app). A single
+  // MySQL process on the same instance as the app -- dev/test
+  // convenience only; data does not survive instance moves and does not
+  // scale out. Use AzureMysqlFlexibleServer for real workloads.
   //
-  // Valid values: LeastRequests, WeightedRoundRobin, LeastResponseTime,
-  // WeightedTotalTraffic, RequestHash, PerSiteRoundRobin
+  // Default: false
+  optional bool local_mysql_enabled = 20 [(dev.planton.shared.options.default) = "false"];
+
+  // Enable remote debugging (Visual Studio attach). Azure supports the
+  // current Visual Studio generation only; the platform lets Azure pick
+  // the debugger version. Turn off outside active debugging sessions --
+  // it holds the process for debugger attach.
   //
-  // Default: "LeastRequests"
-  optional string load_balancing_mode = 14 [
-    (dev.planton.shared.options.default) = "LeastRequests",
-    (buf.validate.field).cel = {
-      id: "load_balancing_mode_valid"
-      message: "load_balancing_mode must be one of: LeastRequests, WeightedRoundRobin, LeastResponseTime, WeightedTotalTraffic, RequestHash, PerSiteRoundRobin"
-      expression: "this in ['LeastRequests', 'WeightedRoundRobin', 'LeastResponseTime', 'WeightedTotalTraffic', 'RequestHash', 'PerSiteRoundRobin']"
-    }
-  ];
+  // Default: false
+  optional bool remote_debugging_enabled = 21 [(dev.planton.shared.options.default) = "false"];
 
   // CORS (Cross-Origin Resource Sharing) configuration.
   // Controls which origins are allowed to make cross-origin requests to
   // the Web App's HTTP endpoints.
-  AzureLinuxWebAppCorsSettings cors = 15;
+  AzureLinuxWebAppCorsSettings cors = 22;
 
   // IP restriction rules for the main site.
   // Controls which IP addresses, service tags, or subnets can access
   // the Web App.
-  repeated AzureLinuxWebAppIpRestriction ip_restrictions = 16;
+  repeated AzureLinuxWebAppIpRestriction ip_restrictions = 23;
 
-  // Default action for IP restrictions on the main site.
-  // When "Allow", unlisted IPs are allowed (rules are deny-list).
-  // When "Deny", unlisted IPs are denied (rules are allow-list).
-  //
-  // Default: "Allow"
-  optional string ip_restriction_default_action = 17 [
-    (dev.planton.shared.options.default) = "Allow",
-    (buf.validate.field).cel = {
-      id: "ip_restriction_default_action_valid"
-      message: "ip_restriction_default_action must be one of: Allow, Deny"
-      expression: "this in ['Allow', 'Deny']"
-    }
-  ];
+  // Default action for traffic that matches no ip_restrictions rule.
+  // Unset deploys ALLOW (rules act as a deny-list); DENY flips the rules
+  // into an allow-list.
+  AzureLinuxWebAppIpRestrictionAction ip_restriction_default_action = 24 [(buf.validate.field).enum.defined_only = true];
 
   // Use the main site's IP restrictions for the SCM (Kudu) site.
   // When true, scm_ip_restrictions are ignored.
   //
   // Default: false
-  optional bool scm_use_main_ip_restriction = 18 [(dev.planton.shared.options.default) = "false"];
+  optional bool scm_use_main_ip_restriction = 25 [(dev.planton.shared.options.default) = "false"];
 
   // IP restriction rules for the SCM (Kudu) site.
   // Only used when scm_use_main_ip_restriction is false.
-  repeated AzureLinuxWebAppIpRestriction scm_ip_restrictions = 19;
+  repeated AzureLinuxWebAppIpRestriction scm_ip_restrictions = 26;
 
-  // Default action for IP restrictions on the SCM site.
-  //
-  // Default: "Allow"
-  optional string scm_ip_restriction_default_action = 20 [
-    (dev.planton.shared.options.default) = "Allow",
-    (buf.validate.field).cel = {
-      id: "scm_ip_restriction_default_action_valid"
-      message: "scm_ip_restriction_default_action must be one of: Allow, Deny"
-      expression: "this in ['Allow', 'Deny']"
-    }
-  ];
+  // Default action for traffic that matches no scm_ip_restrictions rule.
+  // Unset deploys ALLOW.
+  AzureLinuxWebAppIpRestrictionAction scm_ip_restriction_default_action = 27 [(buf.validate.field).enum.defined_only = true];
 
   // Use managed identity for pulling container images from Azure Container Registry.
   // Requires the Web App's identity to have AcrPull role on the registry.
   //
   // Default: false
-  optional bool container_registry_use_managed_identity = 21 [(dev.planton.shared.options.default) = "false"];
+  optional bool container_registry_use_managed_identity = 28 [(dev.planton.shared.options.default) = "false"];
 
   // Client ID of the managed identity used for ACR image pulls.
   // Only used when container_registry_use_managed_identity is true and
   // a user-assigned identity (not system-assigned) should be used.
-  string container_registry_managed_identity_client_id = 22;
+  string container_registry_managed_identity_client_id = 29;
+
+  // Auto-heal: recycle the app automatically when a trigger condition is
+  // met (request volume, status-code patterns, or slow requests). The
+  // only heal action Linux supports is recycling the process -- the
+  // platform sends it implicitly, so only the trigger and the optional
+  // process-uptime guard are configured here.
+  AzureLinuxWebAppAutoHealSetting auto_heal_setting = 30;
+
+  option (buf.validate.message).cel = {
+    id: "web_app_health_eviction_requires_path"
+    message: "health_check_eviction_time_in_min requires health_check_path (there is no probe to evict on otherwise)"
+    expression: "!has(this.health_check_eviction_time_in_min) || this.health_check_path != ''"
+  };
 }
 
 // AzureLinuxWebAppApplicationStack defines the runtime for the Web App.
@@ -468,11 +554,11 @@ message AzureLinuxWebAppSiteConfig {
 message AzureLinuxWebAppApplicationStack {
   // .NET runtime version.
   //
-  // Valid values: "3.1", "6.0", "7.0", "8.0", "9.0", "10.0"
+  // Valid values: "3.1", "5.0", "6.0", "7.0", "8.0", "9.0", "10.0"
   string dotnet_version = 1 [(buf.validate.field).cel = {
     id: "dotnet_version_valid"
-    message: "dotnet_version must be one of: 3.1, 6.0, 7.0, 8.0, 9.0, 10.0"
-    expression: "this == '' || this in ['3.1', '6.0', '7.0', '8.0', '9.0', '10.0']"
+    message: "dotnet_version must be one of: 3.1, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0"
+    expression: "this == '' || this in ['3.1', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0']"
   }];
 
   // Node.js runtime version.
@@ -543,25 +629,17 @@ message AzureLinuxWebAppApplicationStack {
     expression: "this == '' || this in ['8', '11', '17', '21']"
   }];
 
-  // Java application server type.
-  // Specifies the servlet container or application server runtime.
-  //
-  // Valid values:
-  // - "JAVA": Java SE (embedded server, e.g., Spring Boot executable JAR)
-  // - "TOMCAT": Apache Tomcat servlet container
-  // - "JBOSSEAP": Red Hat JBoss EAP application server
+  // Java application server type. Specifies the servlet container or
+  // application server runtime. Unset is only valid when java_version is
+  // also unset.
   //
   // RequiredWith: java_version, java_server_version
-  string java_server = 8 [(buf.validate.field).cel = {
-    id: "java_server_valid"
-    message: "java_server must be one of: JAVA, TOMCAT, JBOSSEAP"
-    expression: "this == '' || this in ['JAVA', 'TOMCAT', 'JBOSSEAP']"
-  }];
+  AzureLinuxWebAppJavaServer java_server = 8 [(buf.validate.field).enum.defined_only = true];
 
   // Java application server version.
   // The valid values depend on the selected java_server:
   //
-  // JAVA: "8", "11", "17", "21" (SE version, typically matches java_version)
+  // JAVA_SE: "8", "11", "17", "21" (SE version, typically matches java_version)
   // TOMCAT: "8.5", "9.0", "10.0", "10.1" (and minor versions)
   // JBOSSEAP: "7", "7.4", "8.0" (and minor versions)
   //
@@ -576,6 +654,27 @@ message AzureLinuxWebAppApplicationStack {
   // Any web server that listens on the configured port (default 8080)
   // can be deployed as a containerized Web App.
   AzureLinuxWebAppDockerConfig docker = 10;
+
+  option (buf.validate.message).cel = {
+    id: "java_fields_together"
+    message: "java_version, java_server, and java_server_version must be set together"
+    expression: "(this.java_version == '' && this.java_server == 0 && this.java_server_version == '') || (this.java_version != '' && this.java_server != 0 && this.java_server_version != '')"
+  };
+}
+
+// The Java application server running the app.
+enum AzureLinuxWebAppJavaServer {
+  // Not specified -- only valid when no Java runtime is selected.
+  azure_linux_web_app_java_server_unspecified = 0;
+
+  // Java SE: embedded server (e.g. a Spring Boot executable JAR).
+  JAVA_SE = 1;
+
+  // Apache Tomcat servlet container.
+  TOMCAT = 2;
+
+  // Red Hat JBoss EAP application server.
+  JBOSSEAP = 3;
 }
 
 // AzureLinuxWebAppDockerConfig defines the container configuration for
@@ -622,30 +721,44 @@ message AzureLinuxWebAppDockerConfig {
 // Managed identities eliminate the need to manage credentials for
 // authenticating with Azure services. The identity is automatically managed
 // by Azure AD and can be assigned RBAC roles on Azure resources.
-//
-// Follows the same pattern as AzureFunctionAppIdentity.
 message AzureLinuxWebAppIdentity {
-  // Identity type.
-  // "SystemAssigned": Azure-managed identity tied to the Web App lifecycle.
-  // "UserAssigned": Pre-created identity with independent lifecycle.
-  // "SystemAssigned,UserAssigned": Both identity types.
-  string type = 1 [
+  // The identity model: Azure-managed (tied to the app's lifecycle),
+  // bring-your-own (independent lifecycle), or both.
+  AzureLinuxWebAppIdentityType type = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "identity_type_valid"
-      message: "type must be 'SystemAssigned', 'UserAssigned', or 'SystemAssigned,UserAssigned'"
-      expression: "this in ['SystemAssigned', 'UserAssigned', 'SystemAssigned,UserAssigned']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
   // User Assigned Identity Azure resource IDs.
-  // Required when type includes "UserAssigned".
+  // Required when type includes USER_ASSIGNED.
   //
   // Can be literal ARM resource IDs or references to AzureUserAssignedIdentity outputs.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
   ];
+
+  option (buf.validate.message).cel = {
+    id: "web_app_identity_ids_pairing"
+    message: "identity_ids is required when type includes USER_ASSIGNED, and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 1 && this.identity_ids.size() == 0) || (this.type != 1 && this.identity_ids.size() > 0)"
+  };
+}
+
+// The managed-identity model for the Web App.
+enum AzureLinuxWebAppIdentityType {
+  // Not specified -- invalid; pick an explicit identity model.
+  azure_linux_web_app_identity_type_unspecified = 0;
+
+  // Azure creates and rotates an identity tied to the app's lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Attach pre-created AzureUserAssignedIdentity resources (independent
+  // lifecycle; shareable across apps).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned identity and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
 }
 
 // AzureLinuxWebAppConnectionString defines a named connection string
@@ -658,17 +771,12 @@ message AzureLinuxWebAppConnectionString {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The type of connection string. Determines the environment variable prefix.
-  //
-  // Valid values: MySQL, SQLServer, SQLAzure, Custom, NotificationHub,
-  // ServiceBus, EventHub, APIHub, DocDb, RedisCache, PostgreSQL
-  string type = 2 [
+  // The service type. Determines the environment variable prefix Azure
+  // exposes the value under (e.g. SQLAZURECONNSTR_, MYSQLCONNSTR_,
+  // CUSTOMCONNSTR_).
+  AzureLinuxWebAppConnectionStringType type = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "connection_string_type_valid"
-      message: "type must be one of: MySQL, SQLServer, SQLAzure, Custom, NotificationHub, ServiceBus, EventHub, APIHub, DocDb, RedisCache, PostgreSQL"
-      expression: "this in ['MySQL', 'SQLServer', 'SQLAzure', 'Custom', 'NotificationHub', 'ServiceBus', 'EventHub', 'APIHub', 'DocDb', 'RedisCache', 'PostgreSQL']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
   // The connection string value. This is a sensitive credential.
@@ -676,11 +784,53 @@ message AzureLinuxWebAppConnectionString {
   dev.planton.shared.foreignkey.v1.StringValueOrRef value = 3 [(buf.validate.field).required = true];
 }
 
+// The connection-string service type vocabulary, mirroring Azure's own.
+enum AzureLinuxWebAppConnectionStringType {
+  // Not specified -- invalid; pick the service type (CUSTOM for anything
+  // without a dedicated type).
+  azure_linux_web_app_connection_string_type_unspecified = 0;
+
+  MYSQL = 1;
+  SQL_SERVER = 2;
+  SQL_AZURE = 3;
+  CUSTOM = 4;
+  NOTIFICATION_HUB = 5;
+  SERVICE_BUS = 6;
+  EVENT_HUB = 7;
+  API_HUB = 8;
+  DOC_DB = 9;
+  REDIS_CACHE = 10;
+  POSTGRESQL = 11;
+}
+
+// Settings pinned to the production slot during slot swaps. At least one
+// of the two lists must be non-empty.
+message AzureLinuxWebAppStickySettings {
+  // Names of app_settings entries that stay with the production slot
+  // during a swap.
+  repeated string app_setting_names = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Names of connection_strings entries that stay with the production
+  // slot during a swap.
+  repeated string connection_string_names = 2 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Carries the NAMES of connection strings pinned during slot swaps, never their values.",
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "web_app_sticky_settings_not_empty"
+    message: "sticky_settings requires at least one app_setting_names or connection_string_names entry"
+    expression: "this.app_setting_names.size() > 0 || this.connection_string_names.size() > 0"
+  };
+}
+
 // AzureLinuxWebAppIpRestriction defines an IP-based access restriction rule.
 // Rules are evaluated in priority order (lower number = higher priority).
 //
 // Exactly one of ip_address, service_tag, or virtual_network_subnet_id
-// must be specified per rule.
+// must be specified per rule. (Documented, not spec-enforced:
+// virtual_network_subnet_id is a reference whose sub-fields manifest
+// validation cannot inspect.)
 message AzureLinuxWebAppIpRestriction {
   // Rule name for identification.
   string name = 1;
@@ -692,19 +842,8 @@ message AzureLinuxWebAppIpRestriction {
     lte: 65000
   }];
 
-  // Action to take when the rule matches.
-  //
-  // Valid values: "Allow", "Deny"
-  //
-  // Default: "Allow"
-  optional string action = 3 [
-    (dev.planton.shared.options.default) = "Allow",
-    (buf.validate.field).cel = {
-      id: "ip_restriction_action_valid"
-      message: "action must be one of: Allow, Deny"
-      expression: "this in ['Allow', 'Deny']"
-    }
-  ];
+  // Whether matching traffic is allowed or denied. Unset deploys ALLOW.
+  AzureLinuxWebAppIpRestrictionAction action = 3 [(buf.validate.field).enum.defined_only = true];
 
   // IP address or CIDR range.
   // Example: "10.0.0.0/24", "203.0.113.50/32"
@@ -730,26 +869,36 @@ message AzureLinuxWebAppIpRestriction {
   AzureLinuxWebAppIpRestrictionHeaders headers = 8;
 }
 
+// Whether traffic matching an IP-restriction rule (or no rule, for the
+// default action) is allowed or denied.
+enum AzureLinuxWebAppIpRestrictionAction {
+  // Not specified -- deploys ALLOW.
+  azure_linux_web_app_ip_restriction_action_unspecified = 0;
+
+  ALLOW = 1;
+  DENY = 2;
+}
+
 // AzureLinuxWebAppIpRestrictionHeaders defines header-based filters for
 // IP restriction rules. Used primarily with Azure Front Door to ensure
 // traffic comes through the CDN rather than directly to the Web App.
 message AzureLinuxWebAppIpRestrictionHeaders {
   // X-Forwarded-For header values to match.
   // Up to 8 entries. CIDR ranges are supported.
-  repeated string x_forwarded_for = 1;
+  repeated string x_forwarded_for = 1 [(buf.validate.field).repeated.max_items = 8];
 
   // X-Forwarded-Host header values to match.
   // Up to 8 entries.
-  repeated string x_forwarded_host = 2;
+  repeated string x_forwarded_host = 2 [(buf.validate.field).repeated.max_items = 8];
 
   // X-Azure-FDID (Front Door ID) header values to match.
   // Up to 8 entries. Used to ensure traffic comes from your specific
   // Front Door instance.
-  repeated string x_azure_fdid = 3;
+  repeated string x_azure_fdid = 3 [(buf.validate.field).repeated.max_items = 8];
 
   // X-FD-HealthProbe header values to match.
-  // Used to allow Front Door health probe traffic.
-  repeated string x_fd_health_probe = 4;
+  // The only supported value is "1" (allow Front Door health probes).
+  repeated string x_fd_health_probe = 4 [(buf.validate.field).repeated.max_items = 1];
 }
 
 // AzureLinuxWebAppCorsSettings configures Cross-Origin Resource Sharing
@@ -761,10 +910,17 @@ message AzureLinuxWebAppCorsSettings {
   repeated string allowed_origins = 1 [(buf.validate.field).repeated.min_items = 1];
 
   // Allow credentials (cookies, authorization headers) in cross-origin requests.
-  // Cannot be used with allowed_origins = ["*"].
+  // Cannot be combined with a wildcard origin (enforced here -- browsers
+  // reject the pairing).
   //
   // Default: false
   optional bool support_credentials = 2 [(dev.planton.shared.options.default) = "false"];
+
+  option (buf.validate.message).cel = {
+    id: "web_app_cors_credentials_wildcard"
+    message: "support_credentials cannot be used with a wildcard '*' origin"
+    expression: "!(has(this.support_credentials) && this.support_credentials) || !('*' in this.allowed_origins)"
+  };
 }
 
 // AzureLinuxWebAppStorageMount defines an Azure Storage mount for
@@ -777,18 +933,11 @@ message AzureLinuxWebAppStorageMount {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // Storage type.
-  //
-  // Valid values:
-  // - "AzureBlob": Mount an Azure Blob container (read-only)
-  // - "AzureFiles": Mount an Azure File Share (read-write)
-  string type = 2 [
+  // What is being mounted: an Azure File Share (read-write) or a Blob
+  // container (read-only).
+  AzureLinuxWebAppStorageMountType type = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "storage_mount_type_valid"
-      message: "type must be one of: AzureBlob, AzureFiles"
-      expression: "this in ['AzureBlob', 'AzureFiles']"
-    }
+    (buf.validate.field).enum.defined_only = true
   ];
 
   // Name of the Azure Storage Account that contains the share or container.
@@ -819,6 +968,18 @@ message AzureLinuxWebAppStorageMount {
   string mount_path = 6;
 }
 
+// The storage service backing a mount.
+enum AzureLinuxWebAppStorageMountType {
+  // Not specified -- invalid; pick the storage service.
+  azure_linux_web_app_storage_mount_type_unspecified = 0;
+
+  // Azure File Share (SMB) -- read-write.
+  AZURE_FILES = 1;
+
+  // Azure Blob container -- read-only.
+  AZURE_BLOB = 2;
+}
+
 // AzureLinuxWebAppLogs configures the logging behavior for the Web App.
 //
 // Unlike Function Apps where logging is nested inside site_config as
@@ -827,7 +988,8 @@ message AzureLinuxWebAppStorageMount {
 // failed request tracing, and detailed error messages.
 message AzureLinuxWebAppLogs {
   // Application-level logging configuration.
-  // Controls the verbosity of application logs written to the file system.
+  // Controls the verbosity of application logs written to the file system
+  // or shipped to blob storage.
   AzureLinuxWebAppApplicationLogs application_logs = 1;
 
   // HTTP request logging configuration.
@@ -857,31 +1019,77 @@ message AzureLinuxWebAppLogs {
 // for the Web App. Application logs capture output from the application
 // code (e.g., console.log, logging framework output).
 message AzureLinuxWebAppApplicationLogs {
-  // Log level for the file system logger.
-  // Controls which log messages are written to the application log files.
-  //
-  // Valid values:
-  // - "Off": No logging
-  // - "Error": Only errors
-  // - "Warning": Errors and warnings
-  // - "Information": Errors, warnings, and informational messages
-  // - "Verbose": All messages including debug/trace
-  //
-  // Default: "Error"
-  optional string file_system_level = 1 [
-    (dev.planton.shared.options.default) = "Error",
-    (buf.validate.field).cel = {
-      id: "file_system_level_valid"
-      message: "file_system_level must be one of: Error, Information, Verbose, Warning, Off"
-      expression: "this in ['Error', 'Information', 'Verbose', 'Warning', 'Off']"
-    }
+  // Log level for the file system logger. Unset deploys ERROR.
+  AzureLinuxWebAppLogLevel file_system_level = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Ship application logs to an Azure Blob container instead of (or in
+  // addition to) the instance file system -- durable, queryable log
+  // storage that survives instance recycling.
+  AzureLinuxWebAppBlobStorageLogs azure_blob_storage = 2;
+}
+
+// The application-log verbosity vocabulary, mirroring Azure's own.
+enum AzureLinuxWebAppLogLevel {
+  // Not specified -- deploys ERROR.
+  azure_linux_web_app_log_level_unspecified = 0;
+
+  // No logging.
+  OFF = 1;
+
+  // Only errors.
+  ERROR = 2;
+
+  // Errors and warnings.
+  WARNING = 3;
+
+  // Errors, warnings, and informational messages.
+  INFORMATION = 4;
+
+  // All messages including debug/trace.
+  VERBOSE = 5;
+}
+
+// Blob-storage destination for application logs.
+message AzureLinuxWebAppBlobStorageLogs {
+  // Log level shipped to blob storage.
+  AzureLinuxWebAppLogLevel level = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // SAS URL of the blob container receiving the logs. Carries a signed
+  // credential -- treat like a password.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef sas_url = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Days to retain logs in the container. 0 keeps them indefinitely.
+  optional int32 retention_in_days = 3 [
+    (dev.planton.shared.options.default) = "0",
+    (buf.validate.field).int32 = {gte: 0}
   ];
 }
 
 // AzureLinuxWebAppHttpLogs configures HTTP request/response logging
-// for the Web App. HTTP logs capture details about incoming requests
-// and outgoing responses, useful for traffic analysis and debugging.
+// for the Web App. Exactly one destination applies: the instance file
+// system, or an Azure Blob container.
 message AzureLinuxWebAppHttpLogs {
+  // Store HTTP logs on the instance file system (rotated by size/days).
+  AzureLinuxWebAppHttpLogsFileSystem file_system = 1;
+
+  // Ship HTTP logs to an Azure Blob container (durable storage).
+  AzureLinuxWebAppHttpLogsBlobStorage azure_blob_storage = 2;
+
+  option (buf.validate.message).cel = {
+    id: "web_app_http_logs_one_destination"
+    message: "http_logs takes exactly one destination: file_system or azure_blob_storage"
+    expression: "has(this.file_system) != has(this.azure_blob_storage)"
+  };
+}
+
+// File-system destination for HTTP logs.
+message AzureLinuxWebAppHttpLogsFileSystem {
   // Maximum size of HTTP log files in megabytes.
   // When the total log size exceeds this limit, the oldest log files
   // are automatically deleted.
@@ -904,5 +1112,779 @@ message AzureLinuxWebAppHttpLogs {
   optional int32 retention_in_days = 2 [
     (dev.planton.shared.options.default) = "0",
     (buf.validate.field).int32 = {gte: 0}
+  ];
+}
+
+// Blob-storage destination for HTTP logs.
+message AzureLinuxWebAppHttpLogsBlobStorage {
+  // SAS URL of the blob container receiving the logs. Carries a signed
+  // credential -- treat like a password.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef sas_url = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Days to retain logs in the container. 0 keeps them indefinitely.
+  optional int32 retention_in_days = 2 [
+    (dev.planton.shared.options.default) = "0",
+    (buf.validate.field).int32 = {gte: 0}
+  ];
+}
+
+// Scheduled backups of the app's content and configuration to an Azure
+// Storage container. Requires Standard tier or above (Azure rejects
+// backup on Free/Shared/Basic and Consumption plans at apply time).
+message AzureLinuxWebAppBackup {
+  // A name for this backup job (appears in the portal's backup list).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // SAS URL of the storage container receiving the backups. Carries a
+  // signed write credential -- treat like a password.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_url = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Whether the backup job runs. Disable to pause the schedule without
+  // losing its configuration.
+  //
+  // Default: true
+  optional bool enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // When and how often backups run, and how long they are kept.
+  AzureLinuxWebAppBackupSchedule schedule = 4 [(buf.validate.field).required = true];
+}
+
+// The backup cadence and retention policy.
+message AzureLinuxWebAppBackupSchedule {
+  // How many frequency_units pass between backups (e.g. 1 DAY = daily,
+  // 12 HOUR = twice a day). Range: 0-1000.
+  int32 frequency_interval = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 1000
+    }
+  ];
+
+  // The unit frequency_interval counts in.
+  AzureLinuxWebAppBackupFrequencyUnit frequency_unit = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // Never delete the last remaining backup, even when retention would
+  // expire it.
+  //
+  // Default: false
+  optional bool keep_at_least_one_backup = 3 [(dev.planton.shared.options.default) = "false"];
+
+  // Days each backup is retained before deletion. 0 keeps backups
+  // indefinitely.
+  //
+  // Default: 30
+  optional int32 retention_period_days = 4 [
+    (dev.planton.shared.options.default) = "30",
+    (buf.validate.field).int32 = {gte: 0}
+  ];
+
+  // When the schedule starts, RFC3339 format (e.g.
+  // "2026-01-01T00:00:00Z"). Unset starts immediately.
+  string start_time = 5;
+}
+
+// The backup cadence unit.
+enum AzureLinuxWebAppBackupFrequencyUnit {
+  // Not specified -- invalid; pick DAY or HOUR.
+  azure_linux_web_app_backup_frequency_unit_unspecified = 0;
+
+  DAY = 1;
+  HOUR = 2;
+}
+
+// Auto-heal: recycle the app automatically when a trigger fires. The
+// only heal action Linux App Service supports is recycling the process,
+// so the action is implicit -- both IaC engines send it -- and only the
+// trigger plus the optional uptime guard are configured.
+message AzureLinuxWebAppAutoHealSetting {
+  // The condition(s) that fire the recycle. At least one trigger kind
+  // must be set.
+  AzureLinuxWebAppAutoHealTrigger trigger = 1 [(buf.validate.field).required = true];
+
+  // Minimum process uptime (hh:mm:ss) before the recycle action may
+  // fire -- prevents recycle loops on a crashing process. Example:
+  // "00:05:00". Unset lets Azure apply its default.
+  string minimum_process_execution_time = 2 [(buf.validate.field).cel = {
+    id: "auto_heal_min_process_time_format"
+    message: "minimum_process_execution_time must be hh:mm:ss (e.g. 00:05:00)"
+    expression: "this == '' || this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+  }];
+}
+
+// The auto-heal trigger conditions. At least one of requests,
+// status_codes, slow_request, or slow_request_with_path must be set.
+message AzureLinuxWebAppAutoHealTrigger {
+  // Fire on total request volume: more than `count` requests within
+  // `interval`.
+  AzureLinuxWebAppAutoHealRequestsTrigger requests = 1;
+
+  // Fire on status-code patterns: more than `count` responses in the
+  // configured code or range within `interval`.
+  repeated AzureLinuxWebAppAutoHealStatusCodeTrigger status_codes = 2;
+
+  // Fire when more than `count` requests take longer than `time_taken`
+  // within `interval`, across all paths.
+  AzureLinuxWebAppAutoHealSlowRequestTrigger slow_request = 3;
+
+  // Fire on slow requests to specific paths (each entry carries its own
+  // path filter).
+  repeated AzureLinuxWebAppAutoHealSlowRequestWithPathTrigger slow_request_with_path = 4;
+
+  option (buf.validate.message).cel = {
+    id: "auto_heal_trigger_not_empty"
+    message: "auto_heal_setting.trigger requires at least one of: requests, status_codes, slow_request, slow_request_with_path"
+    expression: "has(this.requests) || this.status_codes.size() > 0 || has(this.slow_request) || this.slow_request_with_path.size() > 0"
+  };
+}
+
+// Request-volume trigger.
+message AzureLinuxWebAppAutoHealRequestsTrigger {
+  // Request count threshold. Minimum: 1.
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+
+  // The sliding window, hh:mm:ss (e.g. "00:05:00").
+  string interval = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "auto_heal_requests_interval_format"
+      message: "interval must be hh:mm:ss (e.g. 00:05:00)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+}
+
+// Status-code trigger. Ranges are expressed "500-599"; a single code
+// "500". Sub-status and win32 status narrow a single code (they cannot
+// be combined with a range).
+message AzureLinuxWebAppAutoHealStatusCodeTrigger {
+  // The status code ("500") or range ("500-599") to count.
+  string status_code_range = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "auto_heal_status_code_range_format"
+      message: "status_code_range must be a status code (e.g. 500) or a range (e.g. 500-599)"
+      expression: "this.matches('^[1-5][0-9]{2}(-[1-5][0-9]{2})?$')"
+    }
+  ];
+
+  // Response count threshold. Minimum: 1.
+  int32 count = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+
+  // The sliding window, hh:mm:ss.
+  string interval = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "auto_heal_status_interval_format"
+      message: "interval must be hh:mm:ss (e.g. 00:05:00)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  // IIS sub-status to narrow a single status code. Only valid when
+  // status_code_range is a single code.
+  optional int32 sub_status = 4 [(buf.validate.field).int32 = {gte: 0}];
+
+  // Win32 status to narrow a single status code. Only valid when
+  // status_code_range is a single code.
+  optional int32 win32_status_code = 5 [(buf.validate.field).int32 = {gte: 0}];
+
+  // Count only requests to this path. Empty counts all paths.
+  string path = 6;
+}
+
+// Slow-request trigger (all paths).
+message AzureLinuxWebAppAutoHealSlowRequestTrigger {
+  // Requests slower than this fire the counter, hh:mm:ss (e.g.
+  // "00:00:10" = 10 seconds).
+  string time_taken = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "auto_heal_slow_time_taken_format"
+      message: "time_taken must be hh:mm:ss (e.g. 00:00:10)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  // The sliding window, hh:mm:ss.
+  string interval = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "auto_heal_slow_interval_format"
+      message: "interval must be hh:mm:ss (e.g. 00:05:00)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  // Slow-request count threshold. Minimum: 1.
+  int32 count = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+}
+
+// Slow-request trigger scoped to a path.
+message AzureLinuxWebAppAutoHealSlowRequestWithPathTrigger {
+  // Requests slower than this fire the counter, hh:mm:ss.
+  string time_taken = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "auto_heal_slow_path_time_taken_format"
+      message: "time_taken must be hh:mm:ss (e.g. 00:00:10)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  // The sliding window, hh:mm:ss.
+  string interval = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "auto_heal_slow_path_interval_format"
+      message: "interval must be hh:mm:ss (e.g. 00:05:00)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  // Slow-request count threshold. Minimum: 1.
+  int32 count = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+
+  // Count only requests to this path.
+  string path = 4;
+}
+
+// Client certificate (mutual TLS) enforcement mode.
+enum AzureLinuxWebAppClientCertificateMode {
+  // Not specified -- deploys OPTIONAL.
+  azure_linux_web_app_client_certificate_mode_unspecified = 0;
+
+  // All requests must present a valid client certificate.
+  REQUIRED = 1;
+
+  // Certificate is requested but not required.
+  OPTIONAL = 2;
+
+  // Certificate is optional for interactive (browser) users, required
+  // for non-interactive clients.
+  OPTIONAL_INTERACTIVE_USER = 3;
+}
+
+// TLS protocol versions accepted for incoming connections.
+enum AzureLinuxWebAppTlsVersion {
+  // Not specified -- deploys TLS_1_2.
+  azure_linux_web_app_tls_version_unspecified = 0;
+
+  // TLS 1.0 -- legacy clients only; fails modern compliance baselines.
+  TLS_1_0 = 1;
+
+  // TLS 1.1 -- legacy clients only; fails modern compliance baselines.
+  TLS_1_1 = 2;
+
+  // TLS 1.2 -- the industry floor (the default).
+  TLS_1_2 = 3;
+
+  // TLS 1.3 -- the strongest option; requires modern clients.
+  TLS_1_3 = 4;
+}
+
+// The FTP deployment endpoint's TLS posture.
+enum AzureLinuxWebAppFtpsState {
+  // Not specified -- deploys DISABLED (secure by default).
+  azure_linux_web_app_ftps_state_unspecified = 0;
+
+  // Both plain FTP and FTPS accepted.
+  ALL_ALLOWED = 1;
+
+  // Only FTPS (encrypted) accepted.
+  FTPS_ONLY = 2;
+
+  // The FTP endpoint is off entirely (recommended).
+  DISABLED = 3;
+}
+
+// How requests are distributed across the app's instances.
+enum AzureLinuxWebAppLoadBalancingMode {
+  // Not specified -- deploys LEAST_REQUESTS.
+  azure_linux_web_app_load_balancing_mode_unspecified = 0;
+
+  // Route to the instance with the fewest active requests (the default).
+  LEAST_REQUESTS = 1;
+
+  WEIGHTED_ROUND_ROBIN = 2;
+  LEAST_RESPONSE_TIME = 3;
+  WEIGHTED_TOTAL_TRAFFIC = 4;
+  REQUEST_HASH = 5;
+  PER_SITE_ROUND_ROBIN = 6;
+}
+
+// IIS-lineage request pipeline mode.
+enum AzureLinuxWebAppManagedPipelineMode {
+  // Not specified -- deploys INTEGRATED.
+  azure_linux_web_app_managed_pipeline_mode_unspecified = 0;
+
+  // The modern pipeline (the default; correct for everything current).
+  INTEGRATED = 1;
+
+  // Legacy-compatibility pipeline.
+  CLASSIC = 2;
+}
+
+// App Service built-in authentication (Easy Auth v2): the platform
+// authenticates requests before they reach application code. Provider
+// client secrets are referenced by APP SETTING NAME -- the secret value
+// itself lives in app_settings (or a Key Vault reference), never in this
+// block.
+message AzureLinuxWebAppAuthSettingsV2 {
+  // Master switch: whether the authentication/authorization layer
+  // intercepts requests.
+  //
+  // Default: false
+  optional bool auth_enabled = 1 [(dev.planton.shared.options.default) = "false"];
+
+  // The Easy Auth middleware runtime version.
+  //
+  // Default: "~1"
+  optional string runtime_version = 2 [(dev.planton.shared.options.default) = "~1"];
+
+  // Path to a config file carrying the auth settings when they are
+  // file-managed instead of ARM-managed. Rarely used.
+  string config_file_path = 3;
+
+  // Require every request to be authenticated (subject to
+  // excluded_paths).
+  //
+  // Default: false
+  optional bool require_authentication = 4 [(dev.planton.shared.options.default) = "false"];
+
+  // What happens to unauthenticated requests. Unset deploys
+  // REDIRECT_TO_LOGIN_PAGE.
+  AzureLinuxWebAppUnauthenticatedAction unauthenticated_action = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // The provider unauthenticated requests are redirected to when
+  // unauthenticated_action is REDIRECT_TO_LOGIN_PAGE and more than one
+  // provider is configured: "apple", "azureactivedirectory", "facebook",
+  // "github", "google", "twitter", or the name of a custom_oidc_v2
+  // provider.
+  string default_provider = 6;
+
+  // Paths that skip authentication entirely (e.g. ["/health",
+  // "/public/*"]).
+  repeated string excluded_paths = 7;
+
+  // Require HTTPS for authentication requests.
+  //
+  // Default: true
+  optional bool require_https = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // The prefix that the Easy Auth HTTP endpoints (login, logout, token
+  // refresh) are served under.
+  //
+  // Default: "/.auth"
+  optional string http_route_api_prefix = 9 [(dev.planton.shared.options.default) = "/.auth"];
+
+  // How the original request URL is derived when the app sits behind a
+  // forward proxy. Unset deploys FORWARD_PROXY_NO_PROXY.
+  AzureLinuxWebAppForwardProxyConvention forward_proxy_convention = 10 [(buf.validate.field).enum.defined_only = true];
+
+  // The header carrying the original host, when forward_proxy_convention
+  // is FORWARD_PROXY_CUSTOM.
+  string forward_proxy_custom_host_header_name = 11;
+
+  // The header carrying the original scheme, when
+  // forward_proxy_convention is FORWARD_PROXY_CUSTOM.
+  string forward_proxy_custom_scheme_header_name = 12;
+
+  // Login/session behavior (token store, cookie expiration, nonce).
+  // Required by Azure whenever auth_settings_v2 is configured.
+  AzureLinuxWebAppAuthV2Login login = 13 [(buf.validate.field).required = true];
+
+  // Sign in with Apple.
+  AzureLinuxWebAppAuthV2Apple apple_v2 = 14;
+
+  // Microsoft Entra ID (Azure Active Directory).
+  AzureLinuxWebAppAuthV2ActiveDirectory active_directory_v2 = 15;
+
+  // Azure Static Web Apps authentication (when fronted by one).
+  AzureLinuxWebAppAuthV2StaticWebApp azure_static_web_app_v2 = 16;
+
+  // Any OpenID Connect provider(s), by name.
+  repeated AzureLinuxWebAppAuthV2CustomOidc custom_oidc_v2 = 17;
+
+  // Facebook login.
+  AzureLinuxWebAppAuthV2Facebook facebook_v2 = 18;
+
+  // GitHub login.
+  AzureLinuxWebAppAuthV2Github github_v2 = 19;
+
+  // Google login.
+  AzureLinuxWebAppAuthV2Google google_v2 = 20;
+
+  // Microsoft account (consumer) login.
+  AzureLinuxWebAppAuthV2Microsoft microsoft_v2 = 21;
+
+  // Twitter login.
+  AzureLinuxWebAppAuthV2Twitter twitter_v2 = 22;
+
+  option (buf.validate.message).cel = {
+    id: "auth_v2_custom_proxy_headers"
+    message: "forward_proxy_custom_host_header_name and forward_proxy_custom_scheme_header_name require forward_proxy_convention FORWARD_PROXY_CUSTOM"
+    expression: "(this.forward_proxy_custom_host_header_name == '' && this.forward_proxy_custom_scheme_header_name == '') || this.forward_proxy_convention == 3"
+  };
+}
+
+// What happens to requests that arrive unauthenticated.
+enum AzureLinuxWebAppUnauthenticatedAction {
+  // Not specified -- deploys REDIRECT_TO_LOGIN_PAGE.
+  azure_linux_web_app_unauthenticated_action_unspecified = 0;
+
+  // Redirect to the login page of the default provider.
+  REDIRECT_TO_LOGIN_PAGE = 1;
+
+  // Let the request through; the app decides (identity headers are
+  // populated when present).
+  ALLOW_ANONYMOUS = 2;
+
+  // Reject with HTTP 401.
+  RETURN_401 = 3;
+
+  // Reject with HTTP 403.
+  RETURN_403 = 4;
+}
+
+// How the original request URL is derived behind a forward proxy.
+enum AzureLinuxWebAppForwardProxyConvention {
+  // Not specified -- deploys FORWARD_PROXY_NO_PROXY.
+  azure_linux_web_app_forward_proxy_convention_unspecified = 0;
+
+  // No proxy: use the request as received (the default).
+  FORWARD_PROXY_NO_PROXY = 1;
+
+  // Standard X-Forwarded-Host/X-Forwarded-Proto headers.
+  FORWARD_PROXY_STANDARD = 2;
+
+  // Custom header names (set the two custom header name fields).
+  FORWARD_PROXY_CUSTOM = 3;
+}
+
+// Login/session behavior for Easy Auth.
+message AzureLinuxWebAppAuthV2Login {
+  // The endpoint the browser is sent to on logout (clears the session).
+  string logout_endpoint = 1;
+
+  // Durably store identity tokens so the app (and the /.auth/me
+  // endpoint) can retrieve them later. Required for token refresh.
+  //
+  // Default: false
+  optional bool token_store_enabled = 2 [(dev.planton.shared.options.default) = "false"];
+
+  // Hours after session expiry that a token refresh may still succeed.
+  //
+  // Default: 72
+  optional double token_refresh_extension_time = 3 [
+    (dev.planton.shared.options.default) = "72",
+    (buf.validate.field).double = {gte: 0}
+  ];
+
+  // File-system path backing the token store (mutually exclusive with
+  // the SAS-setting form).
+  string token_store_path = 4;
+
+  // Name of the app setting holding the SAS URL of the blob container
+  // backing the token store (mutually exclusive with the path form).
+  string token_store_sas_setting_name = 5;
+
+  // Preserve URL fragments (#...) across the login redirect dance.
+  //
+  // Default: false
+  optional bool preserve_url_fragments_for_logins = 6 [(dev.planton.shared.options.default) = "false"];
+
+  // External URLs that post-login/logout redirects may target (in
+  // addition to same-host URLs, which are always allowed).
+  repeated string allowed_external_redirect_urls = 7;
+
+  // How session cookies expire. Unset deploys FIXED_TIME.
+  AzureLinuxWebAppCookieExpirationConvention cookie_expiration_convention = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // Session cookie lifetime (hh:mm:ss) when the convention is
+  // FIXED_TIME.
+  //
+  // Default: "08:00:00"
+  optional string cookie_expiration_time = 9 [
+    (dev.planton.shared.options.default) = "08:00:00",
+    (buf.validate.field).cel = {
+      id: "auth_v2_cookie_expiration_format"
+      message: "cookie_expiration_time must be hh:mm:ss (e.g. 08:00:00)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  // Validate the anti-forgery nonce during the login flow. Leave on.
+  //
+  // Default: true
+  optional bool validate_nonce = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Nonce lifetime (hh:mm:ss).
+  //
+  // Default: "00:05:00"
+  optional string nonce_expiration_time = 11 [
+    (dev.planton.shared.options.default) = "00:05:00",
+    (buf.validate.field).cel = {
+      id: "auth_v2_nonce_expiration_format"
+      message: "nonce_expiration_time must be hh:mm:ss (e.g. 00:05:00)"
+      expression: "this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')"
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "auth_v2_token_store_one_backing"
+    message: "token_store_path and token_store_sas_setting_name are mutually exclusive"
+    expression: "this.token_store_path == '' || this.token_store_sas_setting_name == ''"
+  };
+}
+
+// How Easy Auth session cookies expire.
+enum AzureLinuxWebAppCookieExpirationConvention {
+  // Not specified -- deploys FIXED_TIME.
+  azure_linux_web_app_cookie_expiration_convention_unspecified = 0;
+
+  // Cookies expire after cookie_expiration_time (the default).
+  FIXED_TIME = 1;
+
+  // Cookie lifetime follows the identity provider's token lifetime.
+  IDENTITY_PROVIDER_DERIVED = 2;
+}
+
+// Sign in with Apple.
+message AzureLinuxWebAppAuthV2Apple {
+  // The Apple Services ID (client ID).
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (never the secret
+  // itself).
+  string client_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// Microsoft Entra ID (Azure Active Directory) authentication.
+message AzureLinuxWebAppAuthV2ActiveDirectory {
+  // The Entra app registration's client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The OpenID issuer endpoint for the tenant, e.g.
+  // https://login.microsoftonline.com/v2.0/{tenant-guid}/
+  string tenant_auth_endpoint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (mutually
+  // exclusive with the certificate thumbprint).
+  string client_secret_setting_name = 3;
+
+  // Thumbprint of the certificate used as the client credential
+  // (mutually exclusive with the secret setting name).
+  string client_secret_certificate_thumbprint = 4 [(dev.planton.shared.options.sensitive_exempt_reason) = "A certificate thumbprint is the certificate's public fingerprint used to SELECT the credential, not the private key or secret itself."];
+
+  // Extra parameters sent to the authorization endpoint on login
+  // (key=value form).
+  map<string, string> login_parameters = 5;
+
+  // Suppress the WWW-Authenticate challenge header on 401 responses.
+  //
+  // Default: false
+  optional bool www_authentication_disabled = 6 [(dev.planton.shared.options.default) = "false"];
+
+  // Group claim values the JWT must carry to be accepted.
+  repeated string jwt_allowed_groups = 7;
+
+  // Client-application claim values the JWT must carry to be accepted.
+  repeated string jwt_allowed_client_applications = 8;
+
+  // Entra group object IDs allowed access.
+  repeated string allowed_groups = 9;
+
+  // Identity object IDs allowed access.
+  repeated string allowed_identities = 10;
+
+  // Client (application) IDs allowed access.
+  repeated string allowed_applications = 11;
+
+  // Token audiences accepted in addition to the client ID.
+  repeated string allowed_audiences = 12;
+
+  option (buf.validate.message).cel = {
+    id: "auth_v2_aad_one_credential"
+    message: "client_secret_setting_name and client_secret_certificate_thumbprint are mutually exclusive"
+    expression: "this.client_secret_setting_name == '' || this.client_secret_certificate_thumbprint == ''"
+  };
+}
+
+// Azure Static Web Apps authentication (when the app is fronted by one).
+message AzureLinuxWebAppAuthV2StaticWebApp {
+  // The Static Web App's client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// A custom OpenID Connect provider. Azure derives the client secret's
+// app setting name from the provider name
+// ({NAME}_PROVIDER_AUTHENTICATION_SECRET) -- set that app setting with
+// the secret value.
+message AzureLinuxWebAppAuthV2CustomOidc {
+  // The provider's name (also the login route segment and the
+  // default_provider value that selects it).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The provider's client ID.
+  string client_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The provider's OpenID configuration (discovery) endpoint, e.g.
+  // https://idp.example.com/.well-known/openid-configuration
+  string openid_configuration_endpoint = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The claim carrying the user's display name.
+  string name_claim_type = 4;
+
+  // OAuth scopes requested at login.
+  repeated string scopes = 5;
+}
+
+// Facebook login.
+message AzureLinuxWebAppAuthV2Facebook {
+  // The Facebook app's App ID.
+  string app_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the app secret (never the secret
+  // itself).
+  string app_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Facebook Graph API version used for login (e.g. "v17.0").
+  string graph_api_version = 3;
+
+  // OAuth scopes requested at login.
+  repeated string login_scopes = 4;
+}
+
+// GitHub login.
+message AzureLinuxWebAppAuthV2Github {
+  // The GitHub OAuth app's client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (never the secret
+  // itself).
+  string client_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // OAuth scopes requested at login.
+  repeated string login_scopes = 3;
+}
+
+// Google login.
+message AzureLinuxWebAppAuthV2Google {
+  // The Google OAuth client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (never the secret
+  // itself).
+  string client_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Token audiences accepted in addition to the client ID.
+  repeated string allowed_audiences = 3;
+
+  // OAuth scopes requested at login.
+  repeated string login_scopes = 4;
+}
+
+// Microsoft account (consumer) login.
+message AzureLinuxWebAppAuthV2Microsoft {
+  // The Microsoft app registration's client ID.
+  string client_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the client secret (never the secret
+  // itself).
+  string client_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Token audiences accepted in addition to the client ID.
+  repeated string allowed_audiences = 3;
+
+  // OAuth scopes requested at login.
+  repeated string login_scopes = 4;
+}
+
+// Twitter login.
+message AzureLinuxWebAppAuthV2Twitter {
+  // The Twitter app's consumer (API) key.
+  string consumer_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Name of the app setting holding the consumer secret (never the
+  // secret itself).
+  string consumer_secret_setting_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
   ];
 }

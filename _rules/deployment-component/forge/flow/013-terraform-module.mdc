@@ -114,6 +114,16 @@ SUCCESS CRITERIA
 
 NOTES
 - Generate variables once up-front; derive convenience in `locals.tf`.
+- **Outputs surfacing provider-`Sensitive` attributes MUST carry `sensitive = true`.**
+  OpenTofu rejects the whole configuration at plan time ("Output refers to
+  sensitive values") when a root output references any attribute the provider
+  schema marks `Sensitive` -- and sensitivity propagates through `try()`,
+  `split()`, and index expressions. The trap: name-like fields can be
+  sensitive too (azurerm marks the whole `site_credential` block sensitive,
+  including its `name`, and `custom_domain_verification_id` on App Service
+  kinds). Check the provider schema's `Sensitive:` flag for every attribute an
+  output touches -- `terraform validate` does NOT catch this class; only a
+  plan does.
 - **Pin the provider as a FLOOR, never a ceiling, and check what the lock
   resolves.** `required_providers` uses a floor constraint (`>= 5.0.0`), not a
   tilde pin (`~> 5.0` caps the module at that major forever). A stale

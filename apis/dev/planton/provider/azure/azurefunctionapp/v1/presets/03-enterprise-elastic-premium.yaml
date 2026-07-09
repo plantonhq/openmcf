@@ -4,52 +4,58 @@ metadata:
   name: my-enterprise-fn
 spec:
   region: eastus
-  resource_group:
+  resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-enterprise-fn
-  service_plan_id:
+  functionAppName: my-enterprise-fn
+  servicePlanId:
     value: "<your-elastic-premium-plan-id>"
-  storage_account_name:
+  storageAccountName:
     value: "<your-storage-account-name>"
-  storage_uses_managed_identity: true
-  application_insights_connection_string:
+  # Credential-free storage access: the app's identity holds Storage
+  # Blob Data Owner + Storage Queue Data Contributor on the account.
+  storageUsesManagedIdentity: true
+  applicationInsightsConnectionString:
     value: "<your-app-insights-connection-string>"
-  https_only: true
-  builtin_logging_enabled: false
-  public_network_access_enabled: true
-  virtual_network_subnet_id:
+  httpsOnly: true
+  builtinLoggingEnabled: false
+  publicNetworkAccessEnabled: true
+  virtualNetworkSubnetId:
     value: "<your-vnet-subnet-id>"
   identity:
-    type: SystemAssigned
-  app_settings:
+    type: SYSTEM_ASSIGNED
+  # Basic-auth publishing disabled: deployments go through
+  # identity-based paths only.
+  webdeployPublishBasicAuthenticationEnabled: false
+  ftpPublishBasicAuthenticationEnabled: false
+  appSettings:
     ENVIRONMENT: production
     SERVICE_BUS_CONNECTION: "@Microsoft.KeyVault(SecretUri=https://<your-keyvault>.vault.azure.net/secrets/sb-connection)"
-  site_config:
-    application_stack:
-      python_version: "3.12"
-    health_check_path: /api/health
-    app_scale_limit: 30
-    elastic_instance_minimum: 2
-    pre_warmed_instance_count: 3
-    minimum_tls_version: "1.2"
-    ftps_state: Disabled
-    http2_enabled: true
-    vnet_route_all_enabled: true
-    runtime_scale_monitoring_enabled: true
-    ip_restrictions:
+  siteConfig:
+    applicationStack:
+      pythonVersion: "3.12"
+    healthCheckPath: /api/health
+    appScaleLimit: 30
+    elasticInstanceMinimum: 2
+    preWarmedInstanceCount: 3
+    minimumTlsVersion: TLS_1_2
+    ftpsState: DISABLED
+    http2Enabled: true
+    vnetRouteAllEnabled: true
+    runtimeScaleMonitoringEnabled: true
+    ipRestrictions:
       - name: allow-office
         priority: 100
-        action: Allow
-        ip_address: 203.0.113.0/24
+        action: ALLOW
+        ipAddress: 203.0.113.0/24
         description: Corporate office CIDR
       - name: allow-vpn
         priority: 200
-        action: Allow
-        ip_address: 198.51.100.0/24
+        action: ALLOW
+        ipAddress: 198.51.100.0/24
         description: VPN gateway CIDR
-    ip_restriction_default_action: Deny
-    scm_use_main_ip_restriction: true
+    ipRestrictionDefaultAction: DENY
+    scmUseMainIpRestriction: true
     cors:
-      allowed_origins:
+      allowedOrigins:
         - https://portal.example.com
-      support_credentials: true
+      supportCredentials: true

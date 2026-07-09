@@ -4,24 +4,26 @@ metadata:
   name: my-container-webapp
 spec:
   region: eastus
-  resource_group:
+  resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-container-webapp
-  service_plan_id:
+  webAppName: my-container-webapp
+  servicePlanId:
     value: "<your-premium-plan-id>"
-  https_only: true
+  httpsOnly: true
   identity:
-    type: SystemAssigned
-  app_settings:
+    type: SYSTEM_ASSIGNED
+  appSettings:
     WEBSITES_PORT: "8080"
-  site_config:
-    application_stack:
+  siteConfig:
+    applicationStack:
       docker:
-        registry_url: https://<your-registry>.azurecr.io
-        image_name: <your-org>/<your-web-app>
-        image_tag: latest
-    container_registry_use_managed_identity: true
-    health_check_path: /health
-    always_on: true
-    minimum_tls_version: "1.2"
-    ftps_state: Disabled
+        registryUrl: https://<your-registry>.azurecr.io
+        imageName: <your-org>/<your-web-app>
+        imageTag: latest
+    # Managed-identity image pulls: no registry password to manage.
+    # Grant the app's identity AcrPull on the registry.
+    containerRegistryUseManagedIdentity: true
+    healthCheckPath: /health
+    alwaysOn: true
+    minimumTlsVersion: TLS_1_2
+    ftpsState: DISABLED

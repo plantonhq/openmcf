@@ -19,9 +19,6 @@ func TestAzureFunctionAppSpec(t *testing.T) {
 // helper to create a pointer to a bool value
 func boolPtr(b bool) *bool { return &b }
 
-// helper to create a pointer to a string value
-func stringPtr(s string) *string { return &s }
-
 // helper to create a pointer to an int32 value
 func int32Ptr(i int32) *int32 { return &i }
 
@@ -34,7 +31,7 @@ func literalRef(val string) *foreignkeyv1.StringValueOrRef {
 	}
 }
 
-// helper to create a minimal valid spec
+// helper to create a minimal valid spec (account-name storage binding)
 func minimalSpec() *AzureFunctionApp {
 	return &AzureFunctionApp{
 		ApiVersion: "azure.planton.dev/v1",
@@ -45,12 +42,17 @@ func minimalSpec() *AzureFunctionApp {
 		Spec: &AzureFunctionAppSpec{
 			Region:             "eastus",
 			ResourceGroup:      literalRef("my-rg"),
-			Name:               "my-function-app",
+			FunctionAppName:    "my-function-app",
 			ServicePlanId:      literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Web/serverfarms/plan"),
-			StorageAccountName: literalRef("mystorageaccount"),
+			StorageAccountName: literalRef("mystorageacct"),
 			SiteConfig:         &AzureFunctionAppSiteConfig{},
 		},
 	}
+}
+
+// helper to create a minimal valid auth login block
+func minimalAuthLogin() *AzureFunctionAppAuthV2Login {
+	return &AzureFunctionAppAuthV2Login{}
 }
 
 var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
@@ -64,7 +66,7 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with Python application stack", func() {
+			ginkgo.It("should not return a validation error for a Python application stack", func() {
 				input := minimalSpec()
 				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
 					PythonVersion: "3.12",
@@ -73,25 +75,7 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with Node.js application stack", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					NodeVersion: "20",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with Java application stack", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					JavaVersion: "17",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with .NET application stack and isolated runtime", func() {
+			ginkgo.It("should not return a validation error for a .NET isolated application stack", func() {
 				input := minimalSpec()
 				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
 					DotnetVersion:            "8.0",
@@ -101,29 +85,22 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with Docker application stack", func() {
+			ginkgo.It("should not return a validation error for a Docker application stack", func() {
 				input := minimalSpec()
 				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
 					Docker: &AzureFunctionAppDockerConfig{
-						RegistryUrl: "https://myregistry.azurecr.io",
-						ImageName:   "myorg/my-function-app",
-						ImageTag:    "v1.0.0",
+						RegistryUrl:      "https://myregistry.azurecr.io",
+						ImageName:        "myorg/my-function-app",
+						ImageTag:         "v1.2.3",
+						RegistryUsername: "puller",
+						RegistryPassword: literalRef("secret-password"),
 					},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with PowerShell application stack", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					PowershellCoreVersion: "7.4",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with use_custom_runtime", func() {
+			ginkgo.It("should not return a validation error for a custom runtime", func() {
 				input := minimalSpec()
 				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
 					UseCustomRuntime: boolPtr(true),
@@ -132,131 +109,119 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with app_settings map", func() {
+			ginkgo.It("should not return a validation error for the Key Vault storage binding", func() {
 				input := minimalSpec()
-				input.Spec.AppSettings = map[string]string{
-					"MY_SETTING":      "value1",
-					"ANOTHER_SETTING": "value2",
-				}
+				input.Spec.StorageAccountName = nil
+				input.Spec.StorageKeyVaultSecretId = "https://my-vault.vault.azure.net/secrets/storage-connection"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with connection_strings", func() {
+			ginkgo.It("should not return a validation error for a versioned Key Vault storage binding", func() {
 				input := minimalSpec()
-				input.Spec.ConnectionStrings = []*AzureFunctionAppConnectionString{
-					{
-						Name:  "MyDatabase",
-						Type:  "SQLAzure",
-						Value: literalRef("Server=tcp:myserver.database.windows.net;Database=mydb;"),
-					},
-				}
+				input.Spec.StorageAccountName = nil
+				input.Spec.StorageKeyVaultSecretId = "https://my-vault.vault.azure.net/secrets/storage-connection/0123456789abcdef"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with application_insights_connection_string (valueFrom)", func() {
+			ginkgo.It("should not return a validation error for managed-identity storage access", func() {
 				input := minimalSpec()
-				input.Spec.ApplicationInsightsConnectionString = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-						ValueFrom: &foreignkeyv1.ValueFromRef{
-							Kind:      cloudresourcekind.CloudResourceKind_AzureApplicationInsights,
-							Name:      "my-appinsights",
-							FieldPath: "status.outputs.connection_string",
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with virtual_network_subnet_id", func() {
-				input := minimalSpec()
-				input.Spec.VirtualNetworkSubnetId = literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet1")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with SystemAssigned identity", func() {
-				input := minimalSpec()
+				input.Spec.StorageUsesManagedIdentity = boolPtr(true)
 				input.Spec.Identity = &AzureFunctionAppIdentity{
-					Type: "SystemAssigned",
+					Type: AzureFunctionAppIdentityType_SYSTEM_ASSIGNED,
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with UserAssigned identity and identity_ids", func() {
+			ginkgo.It("should not return a validation error for an access-key storage binding", func() {
 				input := minimalSpec()
-				input.Spec.Identity = &AzureFunctionAppIdentity{
-					Type: "UserAssigned",
-					IdentityIds: []*foreignkeyv1.StringValueOrRef{
-						literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-id"),
-					},
+				input.Spec.StorageAccountAccessKey = literalRef("storage-key")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with serverless scaling dials", func() {
+				input := minimalSpec()
+				input.Spec.SiteConfig.AppScaleLimit = int32Ptr(50)
+				input.Spec.SiteConfig.ElasticInstanceMinimum = int32Ptr(2)
+				input.Spec.SiteConfig.PreWarmedInstanceCount = int32Ptr(3)
+				input.Spec.SiteConfig.RuntimeScaleMonitoringEnabled = boolPtr(true)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with a daily memory quota", func() {
+				input := minimalSpec()
+				input.Spec.DailyMemoryTimeQuota = int32Ptr(500000)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with full site config dials", func() {
+				input := minimalSpec()
+				input.Spec.SiteConfig = &AzureFunctionAppSiteConfig{
+					AlwaysOn:                     boolPtr(true),
+					AppCommandLine:               "func host start",
+					ApiManagementApiId:           "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ApiManagement/service/apim/apis/api",
+					ApiDefinitionUrl:             "https://example.com/openapi.json",
+					DefaultDocuments:             []string{"index.html"},
+					HealthCheckPath:              "/api/health",
+					HealthCheckEvictionTimeInMin: int32Ptr(5),
+					MinimumTlsVersion:            AzureFunctionAppTlsVersion_TLS_1_3,
+					ScmMinimumTlsVersion:         AzureFunctionAppTlsVersion_TLS_1_2,
+					MinimumTlsCipherSuite:        "TLS_AES_256_GCM_SHA384",
+					WorkerCount:                  int32Ptr(3),
+					Http2Enabled:                 boolPtr(true),
+					WebsocketsEnabled:            boolPtr(false),
+					Use_32BitWorker:              boolPtr(false),
+					FtpsState:                    AzureFunctionAppFtpsState_DISABLED,
+					LoadBalancingMode:            AzureFunctionAppLoadBalancingMode_LEAST_REQUESTS,
+					ManagedPipelineMode:          AzureFunctionAppManagedPipelineMode_INTEGRATED,
+					RemoteDebuggingEnabled:       boolPtr(false),
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with SystemAssigned,UserAssigned identity", func() {
-				input := minimalSpec()
-				input.Spec.Identity = &AzureFunctionAppIdentity{
-					Type: "SystemAssigned,UserAssigned",
-					IdentityIds: []*foreignkeyv1.StringValueOrRef{
-						literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-id"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with health_check_path in site_config", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.HealthCheckPath = "/api/health"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with always_on in site_config", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.AlwaysOn = boolPtr(true)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with cors settings", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.Cors = &AzureFunctionAppCorsSettings{
-					AllowedOrigins:     []string{"https://myapp.example.com", "https://admin.example.com"},
-					SupportCredentials: boolPtr(true),
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a spec with IP restrictions", func() {
+			ginkgo.It("should not return a validation error for IP restrictions with a deny default", func() {
 				input := minimalSpec()
 				input.Spec.SiteConfig.IpRestrictions = []*AzureFunctionAppIpRestriction{
 					{
-						Name:      "AllowOffice",
-						Priority:  int32Ptr(100),
-						Action:    stringPtr("Allow"),
-						IpAddress: "203.0.113.0/24",
+						Name:       "front-door-only",
+						Priority:   int32Ptr(100),
+						Action:     AzureFunctionAppIpRestrictionAction_ALLOW,
+						ServiceTag: "AzureFrontDoor.Backend",
+						Headers: &AzureFunctionAppIpRestrictionHeaders{
+							XAzureFdid: []string{"11111111-2222-3333-4444-555555555555"},
+						},
 					},
+				}
+				input.Spec.SiteConfig.IpRestrictionDefaultAction = AzureFunctionAppIpRestrictionAction_DENY
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for app service logs", func() {
+				input := minimalSpec()
+				input.Spec.SiteConfig.AppServiceLogs = &AzureFunctionAppAppServiceLogs{
+					DiskQuotaMb:         int32Ptr(50),
+					RetentionPeriodDays: int32Ptr(7),
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error for a spec with storage mounts", func() {
+			ginkgo.It("should not return a validation error for storage mounts", func() {
 				input := minimalSpec()
 				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
 					{
-						Name:        "data-mount",
-						Type:        "AzureFiles",
-						AccountName: "mystore",
-						ShareName:   "myshare",
-						AccessKey:   literalRef("abc123secretkey=="),
+						Name:        "shared-data",
+						Type:        AzureFunctionAppStorageMountType_AZURE_FILES,
+						AccountName: "mystorageacct",
+						ShareName:   "data",
+						AccessKey:   literalRef("storage-key"),
 						MountPath:   "/mnt/data",
 					},
 				}
@@ -264,91 +229,58 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with all optional fields set", func() {
+			ginkgo.It("should not return a validation error for a daily backup", func() {
 				input := minimalSpec()
-				input.Metadata.Org = "mycompany"
-				input.Metadata.Env = "production"
-				input.Spec.StorageAccountAccessKey = literalRef("secretaccesskey==")
-				input.Spec.StorageUsesManagedIdentity = boolPtr(false)
-				input.Spec.FunctionsExtensionVersion = stringPtr("~4")
-				input.Spec.AppSettings = map[string]string{
-					"APP_ENV": "production",
-				}
-				input.Spec.ConnectionStrings = []*AzureFunctionAppConnectionString{
-					{
-						Name:  "Redis",
-						Type:  "RedisCache",
-						Value: literalRef("redis://my-redis:6379"),
-					},
-				}
-				input.Spec.ApplicationInsightsConnectionString = literalRef("InstrumentationKey=abc-def-123")
-				input.Spec.HttpsOnly = boolPtr(true)
-				input.Spec.PublicNetworkAccessEnabled = boolPtr(true)
-				input.Spec.BuiltinLoggingEnabled = boolPtr(false)
-				input.Spec.VirtualNetworkSubnetId = literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet1")
-				input.Spec.Identity = &AzureFunctionAppIdentity{
-					Type: "SystemAssigned",
-				}
-				input.Spec.KeyVaultReferenceIdentityId = literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/kv-id")
-				input.Spec.ClientCertificateEnabled = boolPtr(true)
-				input.Spec.ClientCertificateMode = stringPtr("Required")
-				input.Spec.ClientCertificateExclusionPaths = "/api/health;/api/status"
-				input.Spec.ContentShareForceDisabled = boolPtr(false)
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					PythonVersion: "3.12",
-				}
-				input.Spec.SiteConfig.AlwaysOn = boolPtr(true)
-				input.Spec.SiteConfig.AppCommandLine = "gunicorn --bind=0.0.0.0"
-				input.Spec.SiteConfig.HealthCheckPath = "/api/health"
-				input.Spec.SiteConfig.MinimumTlsVersion = stringPtr("1.2")
-				input.Spec.SiteConfig.ScmMinimumTlsVersion = stringPtr("1.2")
-				input.Spec.SiteConfig.AppScaleLimit = int32Ptr(50)
-				input.Spec.SiteConfig.ElasticInstanceMinimum = int32Ptr(2)
-				input.Spec.SiteConfig.PreWarmedInstanceCount = int32Ptr(1)
-				input.Spec.SiteConfig.WorkerCount = int32Ptr(3)
-				input.Spec.SiteConfig.Http2Enabled = boolPtr(true)
-				input.Spec.SiteConfig.WebsocketsEnabled = boolPtr(false)
-				input.Spec.SiteConfig.Use_32BitWorker = boolPtr(false)
-				input.Spec.SiteConfig.VnetRouteAllEnabled = boolPtr(true)
-				input.Spec.SiteConfig.FtpsState = stringPtr("Disabled")
-				input.Spec.SiteConfig.LoadBalancingMode = stringPtr("LeastRequests")
-				input.Spec.SiteConfig.RuntimeScaleMonitoringEnabled = boolPtr(true)
-				input.Spec.SiteConfig.Cors = &AzureFunctionAppCorsSettings{
-					AllowedOrigins: []string{"https://myapp.example.com"},
-				}
-				input.Spec.SiteConfig.IpRestrictions = []*AzureFunctionAppIpRestriction{
-					{
-						Name:      "AllowAll",
-						Priority:  int32Ptr(100),
-						Action:    stringPtr("Allow"),
-						IpAddress: "0.0.0.0/0",
-					},
-				}
-				input.Spec.SiteConfig.IpRestrictionDefaultAction = stringPtr("Deny")
-				input.Spec.SiteConfig.ScmUseMainIpRestriction = boolPtr(true)
-				input.Spec.SiteConfig.ContainerRegistryUseManagedIdentity = boolPtr(false)
-				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
-					{
-						Name:        "logs",
-						Type:        "AzureBlob",
-						AccountName: "logstore",
-						ShareName:   "logs-container",
-						AccessKey:   literalRef("logstorekey=="),
-						MountPath:   "/mnt/logs",
+				input.Spec.Backup = &AzureFunctionAppBackup{
+					Name:              "nightly",
+					StorageAccountUrl: literalRef("https://backups.blob.core.windows.net/fnapp?sig=abc"),
+					Schedule: &AzureFunctionAppBackupSchedule{
+						FrequencyInterval:    1,
+						FrequencyUnit:        AzureFunctionAppBackupFrequencyUnit_DAY,
+						KeepAtLeastOneBackup: boolPtr(true),
+						RetentionPeriodDays:  int32Ptr(30),
 					},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with valueFrom reference for resource_group", func() {
+			ginkgo.It("should not return a validation error for sticky settings", func() {
 				input := minimalSpec()
-				input.Spec.ResourceGroup = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
-						ValueFrom: &foreignkeyv1.ValueFromRef{
-							Kind:      cloudresourcekind.CloudResourceKind_AzureResourceGroup,
-							Name:      "shared-rg",
-							FieldPath: "status.outputs.resource_group_name",
+				input.Spec.StickySettings = &AzureFunctionAppStickySettings{
+					AppSettingNames: []string{"SLOT_MARKER"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for Entra ID Easy Auth", func() {
+				input := minimalSpec()
+				input.Spec.AuthSettingsV2 = &AzureFunctionAppAuthSettingsV2{
+					AuthEnabled:           boolPtr(true),
+					RequireAuthentication: boolPtr(true),
+					UnauthenticatedAction: AzureFunctionAppUnauthenticatedAction_RETURN_401,
+					Login:                 minimalAuthLogin(),
+					ActiveDirectoryV2: &AzureFunctionAppAuthV2ActiveDirectory{
+						ClientId:                "11111111-2222-3333-4444-555555555555",
+						TenantAuthEndpoint:      "https://login.microsoftonline.com/v2.0/99999999-8888-7777-6666-555555555555/",
+						ClientSecretSettingName: "AAD_CLIENT_SECRET",
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a custom OIDC provider", func() {
+				input := minimalSpec()
+				input.Spec.AuthSettingsV2 = &AzureFunctionAppAuthSettingsV2{
+					AuthEnabled: boolPtr(true),
+					Login:       minimalAuthLogin(),
+					CustomOidcV2: []*AzureFunctionAppAuthV2CustomOidc{
+						{
+							Name:                        "corp-idp",
+							ClientId:                    "fn-client",
+							OpenidConfigurationEndpoint: "https://idp.example.com/.well-known/openid-configuration",
 						},
 					},
 				}
@@ -356,149 +288,56 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with storage_uses_managed_identity = true", func() {
+			ginkgo.It("should not return a validation error for VNet toggles with a subnet", func() {
 				input := minimalSpec()
-				input.Spec.StorageUsesManagedIdentity = boolPtr(true)
-				input.Spec.Identity = &AzureFunctionAppIdentity{
-					Type: "SystemAssigned",
-				}
+				input.Spec.VirtualNetworkSubnetId = literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/fns")
+				input.Spec.VnetImagePullEnabled = boolPtr(true)
+				input.Spec.VirtualNetworkBackupRestoreEnabled = boolPtr(true)
+				input.Spec.SiteConfig.VnetRouteAllEnabled = boolPtr(true)
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with client_certificate_enabled and mode", func() {
+			ginkgo.It("should not return a validation error with hardened publishing and user tags", func() {
 				input := minimalSpec()
+				input.Spec.WebdeployPublishBasicAuthenticationEnabled = boolPtr(false)
+				input.Spec.FtpPublishBasicAuthenticationEnabled = boolPtr(false)
 				input.Spec.ClientCertificateEnabled = boolPtr(true)
-				input.Spec.ClientCertificateMode = stringPtr("Required")
+				input.Spec.ClientCertificateMode = AzureFunctionAppClientCertificateMode_REQUIRED
+				input.Spec.Tags = map[string]string{"cost-center": "platform"}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with key_vault_reference_identity_id", func() {
+			ginkgo.It("should not return a validation error for identity variants", func() {
 				input := minimalSpec()
-				input.Spec.KeyVaultReferenceIdentityId = literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/kv-id")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for function app name with hyphens", func() {
-				input := minimalSpec()
-				input.Spec.Name = "my-func-app-01"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for function app name starting with a number", func() {
-				input := minimalSpec()
-				input.Spec.Name = "01-func-app"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a two-character name", func() {
-				input := minimalSpec()
-				input.Spec.Name = "ab"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error for a 60-character name", func() {
-				name := ""
-				for len(name) < 60 {
-					name += "a"
-				}
-				input := minimalSpec()
-				input.Spec.Name = name
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with client_certificate_mode Optional", func() {
-				input := minimalSpec()
-				input.Spec.ClientCertificateMode = stringPtr("Optional")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with client_certificate_mode OptionalInteractiveUser", func() {
-				input := minimalSpec()
-				input.Spec.ClientCertificateMode = stringPtr("OptionalInteractiveUser")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with ftps_state AllAllowed", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.FtpsState = stringPtr("AllAllowed")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with ftps_state FtpsOnly", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.FtpsState = stringPtr("FtpsOnly")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with load_balancing_mode WeightedRoundRobin", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.LoadBalancingMode = stringPtr("WeightedRoundRobin")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with minimum_tls_version 1.3", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.MinimumTlsVersion = stringPtr("1.3")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with ip_restriction_default_action Deny", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.IpRestrictionDefaultAction = stringPtr("Deny")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with worker_count of 1", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.WorkerCount = int32Ptr(1)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with worker_count of 100", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.WorkerCount = int32Ptr(100)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with storage mount type AzureBlob", func() {
-				input := minimalSpec()
-				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
-					{
-						Name:        "blob-mount",
-						Type:        "AzureBlob",
-						AccountName: "blobstore",
-						ShareName:   "my-container",
-						AccessKey:   literalRef("blobkey=="),
+				input.Spec.Identity = &AzureFunctionAppIdentity{
+					Type: AzureFunctionAppIdentityType_USER_ASSIGNED,
+					IdentityIds: []*foreignkeyv1.StringValueOrRef{
+						literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/fn-identity"),
 					},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with service_plan_id as valueFrom reference", func() {
+			ginkgo.It("should not return a validation error with valueFrom references", func() {
 				input := minimalSpec()
 				input.Spec.ServicePlanId = &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
 						ValueFrom: &foreignkeyv1.ValueFromRef{
 							Kind:      cloudresourcekind.CloudResourceKind_AzureServicePlan,
-							Name:      "my-plan",
-							FieldPath: "status.outputs.plan_id",
+							Name:      "fn-plan",
+							FieldPath: "status.outputs.service_plan_id",
+						},
+					},
+				}
+				input.Spec.StorageAccountName = &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+						ValueFrom: &foreignkeyv1.ValueFromRef{
+							Kind:      cloudresourcekind.CloudResourceKind_AzureStorageAccount,
+							Name:      "fn-storage",
+							FieldPath: "status.outputs.storage_account_name",
 						},
 					},
 				}
@@ -506,42 +345,13 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should not return a validation error with Docker config including registry credentials", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					Docker: &AzureFunctionAppDockerConfig{
-						RegistryUrl:      "https://ghcr.io",
-						ImageName:        "myorg/my-function",
-						ImageTag:         "latest",
-						RegistryUsername: "myuser",
-						RegistryPassword: literalRef("mypassword"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with IP restriction using service_tag", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.IpRestrictions = []*AzureFunctionAppIpRestriction{
-					{
-						Name:       "AllowFrontDoor",
-						Priority:   int32Ptr(100),
-						Action:     stringPtr("Allow"),
-						ServiceTag: "AzureFrontDoor.Backend",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should not return a validation error with connection_string type PostgreSQL", func() {
+			ginkgo.It("should not return a validation error for connection strings", func() {
 				input := minimalSpec()
 				input.Spec.ConnectionStrings = []*AzureFunctionAppConnectionString{
 					{
-						Name:  "PgConn",
-						Type:  "PostgreSQL",
-						Value: literalRef("host=mydb.postgres.database.azure.com;dbname=mydb"),
+						Name:  "ServiceBus",
+						Type:  AzureFunctionAppConnectionStringType_SERVICE_BUS,
+						Value: literalRef("Endpoint=sb://ns.servicebus.windows.net/..."),
 					},
 				}
 				err := protovalidate.Validate(input)
@@ -567,41 +377,16 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when name is missing", func() {
+			ginkgo.It("should return a validation error when function_app_name is missing", func() {
 				input := minimalSpec()
-				input.Spec.Name = ""
+				input.Spec.FunctionAppName = ""
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when name is too short (1 char)", func() {
+			ginkgo.It("should return a validation error when function_app_name starts with a hyphen", func() {
 				input := minimalSpec()
-				input.Spec.Name = "a"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name exceeds 60 characters", func() {
-				tooLong := ""
-				for len(tooLong) < 61 {
-					tooLong += "a"
-				}
-				input := minimalSpec()
-				input.Spec.Name = tooLong
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name contains spaces", func() {
-				input := minimalSpec()
-				input.Spec.Name = "my function app"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name contains special characters", func() {
-				input := minimalSpec()
-				input.Spec.Name = "my.func@app"
+				input.Spec.FunctionAppName = "-my-fn"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
@@ -613,9 +398,32 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when storage_account_name is missing", func() {
+			ginkgo.It("should return a validation error when no storage binding is set", func() {
 				input := minimalSpec()
 				input.Spec.StorageAccountName = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when both storage bindings are set", func() {
+				input := minimalSpec()
+				input.Spec.StorageKeyVaultSecretId = "https://my-vault.vault.azure.net/secrets/storage-connection"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a malformed Key Vault secret ID", func() {
+				input := minimalSpec()
+				input.Spec.StorageAccountName = nil
+				input.Spec.StorageKeyVaultSecretId = "my-vault-secret"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when the access key and managed identity are combined", func() {
+				input := minimalSpec()
+				input.Spec.StorageAccountAccessKey = literalRef("storage-key")
+				input.Spec.StorageUsesManagedIdentity = boolPtr(true)
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
@@ -627,94 +435,220 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when minimum_tls_version is invalid (wrong format)", func() {
+			ginkgo.It("should return a validation error for a negative daily memory quota", func() {
 				input := minimalSpec()
-				input.Spec.SiteConfig.MinimumTlsVersion = stringPtr("tls1.2")
+				input.Spec.DailyMemoryTimeQuota = int32Ptr(-1)
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when minimum_tls_version is completely invalid", func() {
+			ginkgo.It("should return a validation error for health check eviction without a path", func() {
 				input := minimalSpec()
-				input.Spec.SiteConfig.MinimumTlsVersion = stringPtr("2.0")
+				input.Spec.SiteConfig.HealthCheckEvictionTimeInMin = int32Ptr(5)
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when ftps_state is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.FtpsState = stringPtr("enabled")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when client_certificate_mode is invalid", func() {
-				input := minimalSpec()
-				input.Spec.ClientCertificateMode = stringPtr("mandatory")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when identity type is invalid", func() {
-				input := minimalSpec()
-				input.Spec.Identity = &AzureFunctionAppIdentity{
-					Type: "ManagedIdentity",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when connection_string type is invalid", func() {
-				input := minimalSpec()
-				input.Spec.ConnectionStrings = []*AzureFunctionAppConnectionString{
-					{
-						Name:  "MyConn",
-						Type:  "InvalidType",
-						Value: literalRef("some-value"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when storage mount type is invalid", func() {
-				input := minimalSpec()
-				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
-					{
-						Name:        "bad-mount",
-						Type:        "S3",
-						AccountName: "mystore",
-						ShareName:   "myshare",
-						AccessKey:   literalRef("key=="),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when dotnet_version is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					DotnetVersion: "5.0",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when node_version is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					NodeVersion: "15",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when python_version is invalid", func() {
+			ginkgo.It("should return a validation error for an invalid python version", func() {
 				input := minimalSpec()
 				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
 					PythonVersion: "2.7",
 				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an invalid cipher suite", func() {
+				input := minimalSpec()
+				input.Spec.SiteConfig.MinimumTlsCipherSuite = "TLS_FAKE_SUITE"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for wildcard CORS with credentials", func() {
+				input := minimalSpec()
+				input.Spec.SiteConfig.Cors = &AzureFunctionAppCorsSettings{
+					AllowedOrigins:     []string{"*"},
+					SupportCredentials: boolPtr(true),
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for empty sticky settings", func() {
+				input := minimalSpec()
+				input.Spec.StickySettings = &AzureFunctionAppStickySettings{}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a backup without a schedule", func() {
+				input := minimalSpec()
+				input.Spec.Backup = &AzureFunctionAppBackup{
+					Name:              "nightly",
+					StorageAccountUrl: literalRef("https://backups.blob.core.windows.net/fnapp?sig=abc"),
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for auth settings without a login block", func() {
+				input := minimalSpec()
+				input.Spec.AuthSettingsV2 = &AzureFunctionAppAuthSettingsV2{
+					AuthEnabled: boolPtr(true),
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for Entra ID auth with both credential forms", func() {
+				input := minimalSpec()
+				input.Spec.AuthSettingsV2 = &AzureFunctionAppAuthSettingsV2{
+					AuthEnabled: boolPtr(true),
+					Login:       minimalAuthLogin(),
+					ActiveDirectoryV2: &AzureFunctionAppAuthV2ActiveDirectory{
+						ClientId:                          "11111111-2222-3333-4444-555555555555",
+						TenantAuthEndpoint:                "https://login.microsoftonline.com/v2.0/99999999-8888-7777-6666-555555555555/",
+						ClientSecretSettingName:           "AAD_CLIENT_SECRET",
+						ClientSecretCertificateThumbprint: "AB12CD34EF56",
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for custom proxy headers without the custom convention", func() {
+				input := minimalSpec()
+				input.Spec.AuthSettingsV2 = &AzureFunctionAppAuthSettingsV2{
+					AuthEnabled:                      boolPtr(true),
+					ForwardProxyCustomHostHeaderName: "X-Original-Host",
+					Login:                            minimalAuthLogin(),
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a user-assigned identity without IDs", func() {
+				input := minimalSpec()
+				input.Spec.Identity = &AzureFunctionAppIdentity{
+					Type: AzureFunctionAppIdentityType_USER_ASSIGNED,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a system-assigned identity with IDs", func() {
+				input := minimalSpec()
+				input.Spec.Identity = &AzureFunctionAppIdentity{
+					Type: AzureFunctionAppIdentityType_SYSTEM_ASSIGNED,
+					IdentityIds: []*foreignkeyv1.StringValueOrRef{
+						literalRef("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/fn-identity"),
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for vnet_image_pull_enabled without a subnet", func() {
+				input := minimalSpec()
+				input.Spec.VnetImagePullEnabled = boolPtr(true)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for vnet_route_all_enabled without a subnet", func() {
+				input := minimalSpec()
+				input.Spec.SiteConfig.VnetRouteAllEnabled = boolPtr(true)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a storage mount without a type", func() {
+				input := minimalSpec()
+				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
+					{
+						Name:        "shared-data",
+						AccountName: "mystorageacct",
+						ShareName:   "data",
+						AccessKey:   literalRef("storage-key"),
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an app service logs quota out of range", func() {
+				input := minimalSpec()
+				input.Spec.SiteConfig.AppServiceLogs = &AzureFunctionAppAppServiceLogs{
+					DiskQuotaMb: int32Ptr(200),
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for virtual_network_backup_restore_enabled without a subnet", func() {
+				input := minimalSpec()
+				input.Spec.VirtualNetworkBackupRestoreEnabled = boolPtr(true)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a login block with both token store backings", func() {
+				input := minimalSpec()
+				input.Spec.AuthSettingsV2 = &AzureFunctionAppAuthSettingsV2{
+					AuthEnabled: boolPtr(true),
+					Login: &AzureFunctionAppAuthV2Login{
+						TokenStorePath:           "/home/tokens",
+						TokenStoreSasSettingName: "TOKEN_STORE_SAS",
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a malformed cookie expiration time", func() {
+				input := minimalSpec()
+				badTime := "8 hours"
+				input.Spec.AuthSettingsV2 = &AzureFunctionAppAuthSettingsV2{
+					AuthEnabled: boolPtr(true),
+					Login: &AzureFunctionAppAuthV2Login{
+						CookieExpirationTime: &badTime,
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a backup frequency interval of zero", func() {
+				input := minimalSpec()
+				input.Spec.Backup = &AzureFunctionAppBackup{
+					Name:              "nightly",
+					StorageAccountUrl: literalRef("https://backups.blob.core.windows.net/fnapp?sig=abc"),
+					Schedule: &AzureFunctionAppBackupSchedule{
+						FrequencyInterval: 0,
+						FrequencyUnit:     AzureFunctionAppBackupFrequencyUnit_DAY,
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a backup without a frequency unit", func() {
+				input := minimalSpec()
+				input.Spec.Backup = &AzureFunctionAppBackup{
+					Name:              "nightly",
+					StorageAccountUrl: literalRef("https://backups.blob.core.windows.net/fnapp?sig=abc"),
+					Schedule: &AzureFunctionAppBackupSchedule{
+						FrequencyInterval: 1,
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an identity without a type", func() {
+				input := minimalSpec()
+				input.Spec.Identity = &AzureFunctionAppIdentity{}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
@@ -727,13 +661,8 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 			})
 
 			ginkgo.It("should return a validation error when spec is missing", func() {
-				input := &AzureFunctionApp{
-					ApiVersion: "azure.planton.dev/v1",
-					Kind:       "AzureFunctionApp",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-fn",
-					},
-				}
+				input := minimalSpec()
+				input.Spec = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
@@ -748,267 +677,6 @@ var _ = ginkgo.Describe("AzureFunctionAppSpec Validation Tests", func() {
 			ginkgo.It("should return a validation error when kind is incorrect", func() {
 				input := minimalSpec()
 				input.Kind = "WrongKind"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when worker_count is 0 (below minimum)", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.WorkerCount = int32Ptr(0)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when worker_count is negative", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.WorkerCount = int32Ptr(-1)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when load_balancing_mode is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.LoadBalancingMode = stringPtr("RoundRobin")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when ip_restriction_default_action is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.IpRestrictionDefaultAction = stringPtr("Block")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name ends with a hyphen", func() {
-				input := minimalSpec()
-				input.Spec.Name = "my-func-app-"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name starts with a hyphen", func() {
-				input := minimalSpec()
-				input.Spec.Name = "-my-func-app"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when name contains underscores", func() {
-				input := minimalSpec()
-				input.Spec.Name = "my_func_app"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when java_version is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					JavaVersion: "14",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when powershell_core_version is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					PowershellCoreVersion: "6.0",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when worker_count exceeds 100", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.WorkerCount = int32Ptr(101)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when connection_string name is empty", func() {
-				input := minimalSpec()
-				input.Spec.ConnectionStrings = []*AzureFunctionAppConnectionString{
-					{
-						Name:  "",
-						Type:  "Custom",
-						Value: literalRef("some-value"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when connection_string value is missing", func() {
-				input := minimalSpec()
-				input.Spec.ConnectionStrings = []*AzureFunctionAppConnectionString{
-					{
-						Name: "MyConn",
-						Type: "Custom",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when storage mount name is empty", func() {
-				input := minimalSpec()
-				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
-					{
-						Name:        "",
-						Type:        "AzureFiles",
-						AccountName: "mystore",
-						ShareName:   "myshare",
-						AccessKey:   literalRef("key=="),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when storage mount account_name is empty", func() {
-				input := minimalSpec()
-				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
-					{
-						Name:        "my-mount",
-						Type:        "AzureFiles",
-						AccountName: "",
-						ShareName:   "myshare",
-						AccessKey:   literalRef("key=="),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when storage mount share_name is empty", func() {
-				input := minimalSpec()
-				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
-					{
-						Name:        "my-mount",
-						Type:        "AzureFiles",
-						AccountName: "mystore",
-						ShareName:   "",
-						AccessKey:   literalRef("key=="),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when storage mount access_key is missing", func() {
-				input := minimalSpec()
-				input.Spec.StorageMounts = []*AzureFunctionAppStorageMount{
-					{
-						Name:        "my-mount",
-						Type:        "AzureFiles",
-						AccountName: "mystore",
-						ShareName:   "myshare",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when Docker config is missing registry_url", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					Docker: &AzureFunctionAppDockerConfig{
-						ImageName: "myorg/my-func",
-						ImageTag:  "v1",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when Docker config is missing image_name", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					Docker: &AzureFunctionAppDockerConfig{
-						RegistryUrl: "https://myregistry.azurecr.io",
-						ImageTag:    "v1",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when Docker config is missing image_tag", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ApplicationStack = &AzureFunctionAppApplicationStack{
-					Docker: &AzureFunctionAppDockerConfig{
-						RegistryUrl: "https://myregistry.azurecr.io",
-						ImageName:   "myorg/my-func",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when cors allowed_origins is empty", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.Cors = &AzureFunctionAppCorsSettings{
-					AllowedOrigins: []string{},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when scm_ip_restriction_default_action is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.ScmIpRestrictionDefaultAction = stringPtr("Reject")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when identity type uses wrong casing", func() {
-				input := minimalSpec()
-				input.Spec.Identity = &AzureFunctionAppIdentity{
-					Type: "systemassigned",
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when ip_restriction action is invalid", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.IpRestrictions = []*AzureFunctionAppIpRestriction{
-					{
-						Name:      "BadAction",
-						Priority:  int32Ptr(100),
-						Action:    stringPtr("Block"),
-						IpAddress: "10.0.0.0/8",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when ip_restriction priority is 0", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.IpRestrictions = []*AzureFunctionAppIpRestriction{
-					{
-						Name:      "BadPriority",
-						Priority:  int32Ptr(0),
-						Action:    stringPtr("Allow"),
-						IpAddress: "10.0.0.0/8",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error when ip_restriction priority exceeds 65000", func() {
-				input := minimalSpec()
-				input.Spec.SiteConfig.IpRestrictions = []*AzureFunctionAppIpRestriction{
-					{
-						Name:      "BadPriority",
-						Priority:  int32Ptr(65001),
-						Action:    stringPtr("Allow"),
-						IpAddress: "10.0.0.0/8",
-					},
-				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

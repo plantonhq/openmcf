@@ -38,7 +38,7 @@ This preset deploys a Python 3.12 Function App configured for HTTP-triggered API
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Name of the Azure resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-service-plan-id>` | ARM ID of the App Service Plan | Azure portal or `AzureServicePlan` status outputs (`plan_id`) |
+| `<your-service-plan-id>` | ARM ID of the App Service Plan | Azure portal or `AzureServicePlan` status outputs (`service_plan_id`) |
 | `<your-storage-account-name>` | Name of the storage account for Functions runtime | Azure portal or `AzureStorageAccount` status outputs |
 | `<your-storage-access-key>` | Access key for the storage account | Azure portal -> Storage Account -> Access keys |
 | `<your-app-insights-connection-string>` | Application Insights connection string | Azure portal or `AzureApplicationInsights` status outputs |

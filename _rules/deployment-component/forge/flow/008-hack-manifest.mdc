@@ -61,6 +61,24 @@ A wrong-case placeholder fails the plan with "the segment at position N didn't
 match". Find the canonical form in the provider clone's `_resource.go` ID
 validation or its acceptance-test fixtures -- never from the ARM type name.
 
+REBUILD THE CLI AFTER PROTO CHANGES (stale-CLI failure class)
+`planton tofu plan` / `planton validate-manifest` parse the manifest with the
+protos compiled INTO the installed CLI binary, not the working tree's. After
+adding spec fields, rebuild and reinstall before validating
+(`go build -o ~/bin/planton .` from the repo root); an
+`unknown field "<newField>"` rejection on a manifest you know is correct means
+a stale CLI, not a bad manifest.
+
+SOME PROVIDER RESOURCES READ THE CLOUD AT PLAN TIME (offline-plan boundary)
+A few resources phone home during plan: their `CustomizeDiff` fetches a
+referenced resource to validate pairings (e.g. `azurerm_linux_function_app`
+reads the referenced Service Plan to check its tier), which no synthetic
+placeholder ID can satisfy offline. When the plan fails ONLY on such a live
+read (the error names the referenced resource, not your HCL), the offline
+proof for that kind is `tofu validate` plus a plan that stops at the read --
+record the boundary in the component's audit/docs, and let the live E2E chain
+(real referenced resource) carry the full plan/apply proof.
+
 SUCCESS CRITERIA
 - Manifest exists at `.../v1/iac/hack/manifest.yaml`.
 - Minimal, valid spec with safe defaults; no credentials.

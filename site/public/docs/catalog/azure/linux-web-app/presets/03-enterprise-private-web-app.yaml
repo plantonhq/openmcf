@@ -4,55 +4,69 @@ metadata:
   name: my-enterprise-webapp
 spec:
   region: eastus
-  resource_group:
+  resourceGroup:
     value: "<your-resource-group-name>"
-  name: my-enterprise-webapp
-  service_plan_id:
+  webAppName: my-enterprise-webapp
+  servicePlanId:
     value: "<your-premium-plan-id>"
-  application_insights_connection_string:
+  applicationInsightsConnectionString:
     value: "<your-app-insights-connection-string>"
-  https_only: true
-  public_network_access_enabled: true
-  virtual_network_subnet_id:
+  httpsOnly: true
+  publicNetworkAccessEnabled: true
+  virtualNetworkSubnetId:
     value: "<your-vnet-subnet-id>"
   identity:
-    type: SystemAssigned
-  app_settings:
+    type: SYSTEM_ASSIGNED
+  # Basic-auth publishing disabled: deployments go through
+  # identity-based paths only.
+  webdeployPublishBasicAuthenticationEnabled: false
+  ftpPublishBasicAuthenticationEnabled: false
+  appSettings:
     ENVIRONMENT: production
     DB_CONNECTION: "@Microsoft.KeyVault(SecretUri=https://<your-keyvault>.vault.azure.net/secrets/db-connection)"
   logs:
-    application_logs:
-      file_system_level: Information
-    http_logs:
-      retention_in_mb: 50
-      retention_in_days: 7
-    failed_request_tracing: true
-    detailed_error_messages: false
-  site_config:
-    application_stack:
-      python_version: "3.12"
-    always_on: true
-    health_check_path: /health
-    health_check_eviction_time_in_min: 5
-    worker_count: 3
-    minimum_tls_version: "1.2"
-    ftps_state: Disabled
-    http2_enabled: true
-    vnet_route_all_enabled: true
-    ip_restrictions:
+    applicationLogs:
+      fileSystemLevel: INFORMATION
+    httpLogs:
+      fileSystem:
+        retentionInMb: 50
+        retentionInDays: 7
+    failedRequestTracing: true
+    detailedErrorMessages: false
+  siteConfig:
+    applicationStack:
+      pythonVersion: "3.12"
+    alwaysOn: true
+    healthCheckPath: /health
+    healthCheckEvictionTimeInMin: 5
+    workerCount: 3
+    minimumTlsVersion: TLS_1_2
+    ftpsState: DISABLED
+    http2Enabled: true
+    vnetRouteAllEnabled: true
+    # Auto-heal: recycle the app when a 5xx storm hits, guarded against
+    # recycle loops by the minimum-uptime setting.
+    autoHealSetting:
+      trigger:
+        statusCodes:
+          - statusCodeRange: 500-599
+            count: 50
+            interval: "00:05:00"
+      minimumProcessExecutionTime: "00:01:00"
+    ipRestrictions:
       - name: allow-office
         priority: 100
-        action: Allow
-        ip_address: 203.0.113.0/24
+        action: ALLOW
+        ipAddress: 203.0.113.0/24
         description: Corporate office CIDR
       - name: allow-vpn
         priority: 200
-        action: Allow
-        ip_address: 198.51.100.0/24
+        action: ALLOW
+        ipAddress: 198.51.100.0/24
         description: VPN gateway CIDR
-    ip_restriction_default_action: Deny
-    scm_use_main_ip_restriction: true
+    ipRestrictionDefaultAction: DENY
+    scmUseMainIpRestriction: true
     cors:
-      allowed_origins:
+      allowedOrigins:
         - https://portal.example.com
-      support_credentials: true
+      supportCredentials: true

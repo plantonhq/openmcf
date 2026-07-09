@@ -73,9 +73,28 @@ type AzureFunctionAppStackOutputs struct {
 	CustomDomainVerificationId string `protobuf:"bytes,6,opt,name=custom_domain_verification_id,json=customDomainVerificationId,proto3" json:"custom_domain_verification_id,omitempty"`
 	// The resource kind string as reported by Azure.
 	// Example: "functionapp,linux"
-	Kind          string `protobuf:"bytes,7,opt,name=kind,proto3" json:"kind,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Kind string `protobuf:"bytes,7,opt,name=kind,proto3" json:"kind,omitempty"`
+	// Every outbound IP address the platform could EVER route this app's
+	// traffic through (a superset of outbound_ip_addresses, which lists
+	// only the currently active set). Use THIS list for downstream
+	// firewall allowlists that must survive scale events and platform
+	// moves.
+	PossibleOutboundIpAddresses []string `protobuf:"bytes,8,rep,name=possible_outbound_ip_addresses,json=possibleOutboundIpAddresses,proto3" json:"possible_outbound_ip_addresses,omitempty"`
+	// The ARM ID of the App Service Environment hosting the app -- set
+	// only when the app's plan runs on Isolated SKUs inside an ASE.
+	HostingEnvironmentId string `protobuf:"bytes,9,opt,name=hosting_environment_id,json=hostingEnvironmentId,proto3" json:"hosting_environment_id,omitempty"`
+	// The site-level publishing credential's username (the Kudu/SCM
+	// basic-auth user). Paired with site_credential_password; only usable
+	// while the basic-auth publishing toggles are enabled.
+	SiteCredentialName string `protobuf:"bytes,10,opt,name=site_credential_name,json=siteCredentialName,proto3" json:"site_credential_name,omitempty"`
+	// The site-level publishing credential's password. SECRET-BEARING:
+	// anyone holding it can deploy code to the app over Web Deploy/SCM
+	// while basic-auth publishing is enabled -- treat it like an admin
+	// password (disable the basic-auth toggles to revoke the surface
+	// entirely).
+	SiteCredentialPassword string `protobuf:"bytes,11,opt,name=site_credential_password,json=siteCredentialPassword,proto3" json:"site_credential_password,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *AzureFunctionAppStackOutputs) Reset() {
@@ -157,11 +176,39 @@ func (x *AzureFunctionAppStackOutputs) GetKind() string {
 	return ""
 }
 
+func (x *AzureFunctionAppStackOutputs) GetPossibleOutboundIpAddresses() []string {
+	if x != nil {
+		return x.PossibleOutboundIpAddresses
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppStackOutputs) GetHostingEnvironmentId() string {
+	if x != nil {
+		return x.HostingEnvironmentId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppStackOutputs) GetSiteCredentialName() string {
+	if x != nil {
+		return x.SiteCredentialName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppStackOutputs) GetSiteCredentialPassword() string {
+	if x != nil {
+		return x.SiteCredentialPassword
+	}
+	return ""
+}
+
 var File_dev_planton_provider_azure_azurefunctionapp_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurefunctionapp_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/azure/azurefunctionapp/v1/stack_outputs.proto\x12.dev.planton.provider.azure.azurefunctionapp.v1\"\xde\x02\n" +
+	"Bdev/planton/provider/azure/azurefunctionapp/v1/stack_outputs.proto\x12.dev.planton.provider.azure.azurefunctionapp.v1\"\xc5\x04\n" +
 	"\x1cAzureFunctionAppStackOutputs\x12&\n" +
 	"\x0ffunction_app_id\x18\x01 \x01(\tR\rfunctionAppId\x12)\n" +
 	"\x10default_hostname\x18\x02 \x01(\tR\x0fdefaultHostname\x122\n" +
@@ -169,7 +216,12 @@ const file_dev_planton_provider_azure_azurefunctionapp_v1_stack_outputs_proto_ra
 	"\x15identity_principal_id\x18\x04 \x01(\tR\x13identityPrincipalId\x12,\n" +
 	"\x12identity_tenant_id\x18\x05 \x01(\tR\x10identityTenantId\x12A\n" +
 	"\x1dcustom_domain_verification_id\x18\x06 \x01(\tR\x1acustomDomainVerificationId\x12\x12\n" +
-	"\x04kind\x18\a \x01(\tR\x04kindB\x8b\x03\n" +
+	"\x04kind\x18\a \x01(\tR\x04kind\x12C\n" +
+	"\x1epossible_outbound_ip_addresses\x18\b \x03(\tR\x1bpossibleOutboundIpAddresses\x124\n" +
+	"\x16hosting_environment_id\x18\t \x01(\tR\x14hostingEnvironmentId\x120\n" +
+	"\x14site_credential_name\x18\n" +
+	" \x01(\tR\x12siteCredentialName\x128\n" +
+	"\x18site_credential_password\x18\v \x01(\tR\x16siteCredentialPasswordB\x8b\x03\n" +
 	"2com.dev.planton.provider.azure.azurefunctionapp.v1B\x11StackOutputsProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefunctionapp/v1;azurefunctionappv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Azure.Azurefunctionapp.V1\xca\x02.Dev\\Planton\\Provider\\Azure\\Azurefunctionapp\\V1\xe2\x02:Dev\\Planton\\Provider\\Azure\\Azurefunctionapp\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Azure::Azurefunctionapp::V1b\x06proto3"
 
 var (

@@ -13,6 +13,7 @@ go_library(
     deps = [
         "//apis/dev/planton/provider/azure/azurecosmosdbsqlroleassignment/v1:azurecosmosdbsqlroleassignment",
         "//pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider",
+        "@com_github_google_uuid//:uuid",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_azure_sdk_v6//go/azure/cosmosdb",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",

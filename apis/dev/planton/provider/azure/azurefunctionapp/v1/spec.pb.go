@@ -24,16 +24,773 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The managed-identity model for the Function App.
+type AzureFunctionAppIdentityType int32
+
+const (
+	// Not specified -- invalid; pick an explicit identity model.
+	AzureFunctionAppIdentityType_azure_function_app_identity_type_unspecified AzureFunctionAppIdentityType = 0
+	// Azure creates and rotates an identity tied to the app's lifecycle.
+	AzureFunctionAppIdentityType_SYSTEM_ASSIGNED AzureFunctionAppIdentityType = 1
+	// Attach pre-created AzureUserAssignedIdentity resources (independent
+	// lifecycle; shareable across apps).
+	AzureFunctionAppIdentityType_USER_ASSIGNED AzureFunctionAppIdentityType = 2
+	// Both a system-assigned identity and user-assigned identities.
+	AzureFunctionAppIdentityType_SYSTEM_AND_USER_ASSIGNED AzureFunctionAppIdentityType = 3
+)
+
+// Enum value maps for AzureFunctionAppIdentityType.
+var (
+	AzureFunctionAppIdentityType_name = map[int32]string{
+		0: "azure_function_app_identity_type_unspecified",
+		1: "SYSTEM_ASSIGNED",
+		2: "USER_ASSIGNED",
+		3: "SYSTEM_AND_USER_ASSIGNED",
+	}
+	AzureFunctionAppIdentityType_value = map[string]int32{
+		"azure_function_app_identity_type_unspecified": 0,
+		"SYSTEM_ASSIGNED":          1,
+		"USER_ASSIGNED":            2,
+		"SYSTEM_AND_USER_ASSIGNED": 3,
+	}
+)
+
+func (x AzureFunctionAppIdentityType) Enum() *AzureFunctionAppIdentityType {
+	p := new(AzureFunctionAppIdentityType)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppIdentityType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppIdentityType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[0].Descriptor()
+}
+
+func (AzureFunctionAppIdentityType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[0]
+}
+
+func (x AzureFunctionAppIdentityType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppIdentityType.Descriptor instead.
+func (AzureFunctionAppIdentityType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+// The connection-string service type vocabulary, mirroring Azure's own.
+type AzureFunctionAppConnectionStringType int32
+
+const (
+	// Not specified -- invalid; pick the service type (CUSTOM for anything
+	// without a dedicated type).
+	AzureFunctionAppConnectionStringType_azure_function_app_connection_string_type_unspecified AzureFunctionAppConnectionStringType = 0
+	AzureFunctionAppConnectionStringType_MYSQL                                                 AzureFunctionAppConnectionStringType = 1
+	AzureFunctionAppConnectionStringType_SQL_SERVER                                            AzureFunctionAppConnectionStringType = 2
+	AzureFunctionAppConnectionStringType_SQL_AZURE                                             AzureFunctionAppConnectionStringType = 3
+	AzureFunctionAppConnectionStringType_CUSTOM                                                AzureFunctionAppConnectionStringType = 4
+	AzureFunctionAppConnectionStringType_NOTIFICATION_HUB                                      AzureFunctionAppConnectionStringType = 5
+	AzureFunctionAppConnectionStringType_SERVICE_BUS                                           AzureFunctionAppConnectionStringType = 6
+	AzureFunctionAppConnectionStringType_EVENT_HUB                                             AzureFunctionAppConnectionStringType = 7
+	AzureFunctionAppConnectionStringType_API_HUB                                               AzureFunctionAppConnectionStringType = 8
+	AzureFunctionAppConnectionStringType_DOC_DB                                                AzureFunctionAppConnectionStringType = 9
+	AzureFunctionAppConnectionStringType_REDIS_CACHE                                           AzureFunctionAppConnectionStringType = 10
+	AzureFunctionAppConnectionStringType_POSTGRESQL                                            AzureFunctionAppConnectionStringType = 11
+)
+
+// Enum value maps for AzureFunctionAppConnectionStringType.
+var (
+	AzureFunctionAppConnectionStringType_name = map[int32]string{
+		0:  "azure_function_app_connection_string_type_unspecified",
+		1:  "MYSQL",
+		2:  "SQL_SERVER",
+		3:  "SQL_AZURE",
+		4:  "CUSTOM",
+		5:  "NOTIFICATION_HUB",
+		6:  "SERVICE_BUS",
+		7:  "EVENT_HUB",
+		8:  "API_HUB",
+		9:  "DOC_DB",
+		10: "REDIS_CACHE",
+		11: "POSTGRESQL",
+	}
+	AzureFunctionAppConnectionStringType_value = map[string]int32{
+		"azure_function_app_connection_string_type_unspecified": 0,
+		"MYSQL":            1,
+		"SQL_SERVER":       2,
+		"SQL_AZURE":        3,
+		"CUSTOM":           4,
+		"NOTIFICATION_HUB": 5,
+		"SERVICE_BUS":      6,
+		"EVENT_HUB":        7,
+		"API_HUB":          8,
+		"DOC_DB":           9,
+		"REDIS_CACHE":      10,
+		"POSTGRESQL":       11,
+	}
+)
+
+func (x AzureFunctionAppConnectionStringType) Enum() *AzureFunctionAppConnectionStringType {
+	p := new(AzureFunctionAppConnectionStringType)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppConnectionStringType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppConnectionStringType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[1].Descriptor()
+}
+
+func (AzureFunctionAppConnectionStringType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[1]
+}
+
+func (x AzureFunctionAppConnectionStringType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppConnectionStringType.Descriptor instead.
+func (AzureFunctionAppConnectionStringType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+// Whether traffic matching an IP-restriction rule (or no rule, for the
+// default action) is allowed or denied.
+type AzureFunctionAppIpRestrictionAction int32
+
+const (
+	// Not specified -- deploys ALLOW.
+	AzureFunctionAppIpRestrictionAction_azure_function_app_ip_restriction_action_unspecified AzureFunctionAppIpRestrictionAction = 0
+	AzureFunctionAppIpRestrictionAction_ALLOW                                                AzureFunctionAppIpRestrictionAction = 1
+	AzureFunctionAppIpRestrictionAction_DENY                                                 AzureFunctionAppIpRestrictionAction = 2
+)
+
+// Enum value maps for AzureFunctionAppIpRestrictionAction.
+var (
+	AzureFunctionAppIpRestrictionAction_name = map[int32]string{
+		0: "azure_function_app_ip_restriction_action_unspecified",
+		1: "ALLOW",
+		2: "DENY",
+	}
+	AzureFunctionAppIpRestrictionAction_value = map[string]int32{
+		"azure_function_app_ip_restriction_action_unspecified": 0,
+		"ALLOW": 1,
+		"DENY":  2,
+	}
+)
+
+func (x AzureFunctionAppIpRestrictionAction) Enum() *AzureFunctionAppIpRestrictionAction {
+	p := new(AzureFunctionAppIpRestrictionAction)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppIpRestrictionAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppIpRestrictionAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (AzureFunctionAppIpRestrictionAction) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[2]
+}
+
+func (x AzureFunctionAppIpRestrictionAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppIpRestrictionAction.Descriptor instead.
+func (AzureFunctionAppIpRestrictionAction) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+// The storage service backing a mount.
+type AzureFunctionAppStorageMountType int32
+
+const (
+	// Not specified -- invalid; pick the storage service.
+	AzureFunctionAppStorageMountType_azure_function_app_storage_mount_type_unspecified AzureFunctionAppStorageMountType = 0
+	// Azure File Share (SMB) -- read-write.
+	AzureFunctionAppStorageMountType_AZURE_FILES AzureFunctionAppStorageMountType = 1
+	// Azure Blob container -- read-only.
+	AzureFunctionAppStorageMountType_AZURE_BLOB AzureFunctionAppStorageMountType = 2
+)
+
+// Enum value maps for AzureFunctionAppStorageMountType.
+var (
+	AzureFunctionAppStorageMountType_name = map[int32]string{
+		0: "azure_function_app_storage_mount_type_unspecified",
+		1: "AZURE_FILES",
+		2: "AZURE_BLOB",
+	}
+	AzureFunctionAppStorageMountType_value = map[string]int32{
+		"azure_function_app_storage_mount_type_unspecified": 0,
+		"AZURE_FILES": 1,
+		"AZURE_BLOB":  2,
+	}
+)
+
+func (x AzureFunctionAppStorageMountType) Enum() *AzureFunctionAppStorageMountType {
+	p := new(AzureFunctionAppStorageMountType)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppStorageMountType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppStorageMountType) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[3].Descriptor()
+}
+
+func (AzureFunctionAppStorageMountType) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[3]
+}
+
+func (x AzureFunctionAppStorageMountType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppStorageMountType.Descriptor instead.
+func (AzureFunctionAppStorageMountType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+// The backup cadence unit.
+type AzureFunctionAppBackupFrequencyUnit int32
+
+const (
+	// Not specified -- invalid; pick DAY or HOUR.
+	AzureFunctionAppBackupFrequencyUnit_azure_function_app_backup_frequency_unit_unspecified AzureFunctionAppBackupFrequencyUnit = 0
+	AzureFunctionAppBackupFrequencyUnit_DAY                                                  AzureFunctionAppBackupFrequencyUnit = 1
+	AzureFunctionAppBackupFrequencyUnit_HOUR                                                 AzureFunctionAppBackupFrequencyUnit = 2
+)
+
+// Enum value maps for AzureFunctionAppBackupFrequencyUnit.
+var (
+	AzureFunctionAppBackupFrequencyUnit_name = map[int32]string{
+		0: "azure_function_app_backup_frequency_unit_unspecified",
+		1: "DAY",
+		2: "HOUR",
+	}
+	AzureFunctionAppBackupFrequencyUnit_value = map[string]int32{
+		"azure_function_app_backup_frequency_unit_unspecified": 0,
+		"DAY":  1,
+		"HOUR": 2,
+	}
+)
+
+func (x AzureFunctionAppBackupFrequencyUnit) Enum() *AzureFunctionAppBackupFrequencyUnit {
+	p := new(AzureFunctionAppBackupFrequencyUnit)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppBackupFrequencyUnit) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppBackupFrequencyUnit) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[4].Descriptor()
+}
+
+func (AzureFunctionAppBackupFrequencyUnit) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[4]
+}
+
+func (x AzureFunctionAppBackupFrequencyUnit) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppBackupFrequencyUnit.Descriptor instead.
+func (AzureFunctionAppBackupFrequencyUnit) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+// Client certificate (mutual TLS) enforcement mode.
+type AzureFunctionAppClientCertificateMode int32
+
+const (
+	// Not specified -- deploys OPTIONAL.
+	AzureFunctionAppClientCertificateMode_azure_function_app_client_certificate_mode_unspecified AzureFunctionAppClientCertificateMode = 0
+	// All requests must present a valid client certificate.
+	AzureFunctionAppClientCertificateMode_REQUIRED AzureFunctionAppClientCertificateMode = 1
+	// Certificate is requested but not required.
+	AzureFunctionAppClientCertificateMode_OPTIONAL AzureFunctionAppClientCertificateMode = 2
+	// Certificate is optional for interactive (browser) users, required
+	// for non-interactive clients.
+	AzureFunctionAppClientCertificateMode_OPTIONAL_INTERACTIVE_USER AzureFunctionAppClientCertificateMode = 3
+)
+
+// Enum value maps for AzureFunctionAppClientCertificateMode.
+var (
+	AzureFunctionAppClientCertificateMode_name = map[int32]string{
+		0: "azure_function_app_client_certificate_mode_unspecified",
+		1: "REQUIRED",
+		2: "OPTIONAL",
+		3: "OPTIONAL_INTERACTIVE_USER",
+	}
+	AzureFunctionAppClientCertificateMode_value = map[string]int32{
+		"azure_function_app_client_certificate_mode_unspecified": 0,
+		"REQUIRED":                  1,
+		"OPTIONAL":                  2,
+		"OPTIONAL_INTERACTIVE_USER": 3,
+	}
+)
+
+func (x AzureFunctionAppClientCertificateMode) Enum() *AzureFunctionAppClientCertificateMode {
+	p := new(AzureFunctionAppClientCertificateMode)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppClientCertificateMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppClientCertificateMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[5].Descriptor()
+}
+
+func (AzureFunctionAppClientCertificateMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[5]
+}
+
+func (x AzureFunctionAppClientCertificateMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppClientCertificateMode.Descriptor instead.
+func (AzureFunctionAppClientCertificateMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+// TLS protocol versions accepted for incoming connections.
+type AzureFunctionAppTlsVersion int32
+
+const (
+	// Not specified -- deploys TLS_1_2.
+	AzureFunctionAppTlsVersion_azure_function_app_tls_version_unspecified AzureFunctionAppTlsVersion = 0
+	// TLS 1.0 -- legacy clients only; fails modern compliance baselines.
+	AzureFunctionAppTlsVersion_TLS_1_0 AzureFunctionAppTlsVersion = 1
+	// TLS 1.1 -- legacy clients only; fails modern compliance baselines.
+	AzureFunctionAppTlsVersion_TLS_1_1 AzureFunctionAppTlsVersion = 2
+	// TLS 1.2 -- the industry floor (the default).
+	AzureFunctionAppTlsVersion_TLS_1_2 AzureFunctionAppTlsVersion = 3
+	// TLS 1.3 -- the strongest option; requires modern clients.
+	AzureFunctionAppTlsVersion_TLS_1_3 AzureFunctionAppTlsVersion = 4
+)
+
+// Enum value maps for AzureFunctionAppTlsVersion.
+var (
+	AzureFunctionAppTlsVersion_name = map[int32]string{
+		0: "azure_function_app_tls_version_unspecified",
+		1: "TLS_1_0",
+		2: "TLS_1_1",
+		3: "TLS_1_2",
+		4: "TLS_1_3",
+	}
+	AzureFunctionAppTlsVersion_value = map[string]int32{
+		"azure_function_app_tls_version_unspecified": 0,
+		"TLS_1_0": 1,
+		"TLS_1_1": 2,
+		"TLS_1_2": 3,
+		"TLS_1_3": 4,
+	}
+)
+
+func (x AzureFunctionAppTlsVersion) Enum() *AzureFunctionAppTlsVersion {
+	p := new(AzureFunctionAppTlsVersion)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppTlsVersion) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppTlsVersion) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[6].Descriptor()
+}
+
+func (AzureFunctionAppTlsVersion) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[6]
+}
+
+func (x AzureFunctionAppTlsVersion) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppTlsVersion.Descriptor instead.
+func (AzureFunctionAppTlsVersion) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+// The FTP deployment endpoint's TLS posture.
+type AzureFunctionAppFtpsState int32
+
+const (
+	// Not specified -- deploys DISABLED (secure by default).
+	AzureFunctionAppFtpsState_azure_function_app_ftps_state_unspecified AzureFunctionAppFtpsState = 0
+	// Both plain FTP and FTPS accepted.
+	AzureFunctionAppFtpsState_ALL_ALLOWED AzureFunctionAppFtpsState = 1
+	// Only FTPS (encrypted) accepted.
+	AzureFunctionAppFtpsState_FTPS_ONLY AzureFunctionAppFtpsState = 2
+	// The FTP endpoint is off entirely (recommended).
+	AzureFunctionAppFtpsState_DISABLED AzureFunctionAppFtpsState = 3
+)
+
+// Enum value maps for AzureFunctionAppFtpsState.
+var (
+	AzureFunctionAppFtpsState_name = map[int32]string{
+		0: "azure_function_app_ftps_state_unspecified",
+		1: "ALL_ALLOWED",
+		2: "FTPS_ONLY",
+		3: "DISABLED",
+	}
+	AzureFunctionAppFtpsState_value = map[string]int32{
+		"azure_function_app_ftps_state_unspecified": 0,
+		"ALL_ALLOWED": 1,
+		"FTPS_ONLY":   2,
+		"DISABLED":    3,
+	}
+)
+
+func (x AzureFunctionAppFtpsState) Enum() *AzureFunctionAppFtpsState {
+	p := new(AzureFunctionAppFtpsState)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppFtpsState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppFtpsState) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[7].Descriptor()
+}
+
+func (AzureFunctionAppFtpsState) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[7]
+}
+
+func (x AzureFunctionAppFtpsState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppFtpsState.Descriptor instead.
+func (AzureFunctionAppFtpsState) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+// How requests are distributed across the app's instances.
+type AzureFunctionAppLoadBalancingMode int32
+
+const (
+	// Not specified -- deploys LEAST_REQUESTS.
+	AzureFunctionAppLoadBalancingMode_azure_function_app_load_balancing_mode_unspecified AzureFunctionAppLoadBalancingMode = 0
+	// Route to the instance with the fewest active requests (the default).
+	AzureFunctionAppLoadBalancingMode_LEAST_REQUESTS         AzureFunctionAppLoadBalancingMode = 1
+	AzureFunctionAppLoadBalancingMode_WEIGHTED_ROUND_ROBIN   AzureFunctionAppLoadBalancingMode = 2
+	AzureFunctionAppLoadBalancingMode_LEAST_RESPONSE_TIME    AzureFunctionAppLoadBalancingMode = 3
+	AzureFunctionAppLoadBalancingMode_WEIGHTED_TOTAL_TRAFFIC AzureFunctionAppLoadBalancingMode = 4
+	AzureFunctionAppLoadBalancingMode_REQUEST_HASH           AzureFunctionAppLoadBalancingMode = 5
+	AzureFunctionAppLoadBalancingMode_PER_SITE_ROUND_ROBIN   AzureFunctionAppLoadBalancingMode = 6
+)
+
+// Enum value maps for AzureFunctionAppLoadBalancingMode.
+var (
+	AzureFunctionAppLoadBalancingMode_name = map[int32]string{
+		0: "azure_function_app_load_balancing_mode_unspecified",
+		1: "LEAST_REQUESTS",
+		2: "WEIGHTED_ROUND_ROBIN",
+		3: "LEAST_RESPONSE_TIME",
+		4: "WEIGHTED_TOTAL_TRAFFIC",
+		5: "REQUEST_HASH",
+		6: "PER_SITE_ROUND_ROBIN",
+	}
+	AzureFunctionAppLoadBalancingMode_value = map[string]int32{
+		"azure_function_app_load_balancing_mode_unspecified": 0,
+		"LEAST_REQUESTS":         1,
+		"WEIGHTED_ROUND_ROBIN":   2,
+		"LEAST_RESPONSE_TIME":    3,
+		"WEIGHTED_TOTAL_TRAFFIC": 4,
+		"REQUEST_HASH":           5,
+		"PER_SITE_ROUND_ROBIN":   6,
+	}
+)
+
+func (x AzureFunctionAppLoadBalancingMode) Enum() *AzureFunctionAppLoadBalancingMode {
+	p := new(AzureFunctionAppLoadBalancingMode)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppLoadBalancingMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppLoadBalancingMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[8].Descriptor()
+}
+
+func (AzureFunctionAppLoadBalancingMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[8]
+}
+
+func (x AzureFunctionAppLoadBalancingMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppLoadBalancingMode.Descriptor instead.
+func (AzureFunctionAppLoadBalancingMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+// IIS-lineage request pipeline mode.
+type AzureFunctionAppManagedPipelineMode int32
+
+const (
+	// Not specified -- deploys INTEGRATED.
+	AzureFunctionAppManagedPipelineMode_azure_function_app_managed_pipeline_mode_unspecified AzureFunctionAppManagedPipelineMode = 0
+	// The modern pipeline (the default; correct for everything current).
+	AzureFunctionAppManagedPipelineMode_INTEGRATED AzureFunctionAppManagedPipelineMode = 1
+	// Legacy-compatibility pipeline.
+	AzureFunctionAppManagedPipelineMode_CLASSIC AzureFunctionAppManagedPipelineMode = 2
+)
+
+// Enum value maps for AzureFunctionAppManagedPipelineMode.
+var (
+	AzureFunctionAppManagedPipelineMode_name = map[int32]string{
+		0: "azure_function_app_managed_pipeline_mode_unspecified",
+		1: "INTEGRATED",
+		2: "CLASSIC",
+	}
+	AzureFunctionAppManagedPipelineMode_value = map[string]int32{
+		"azure_function_app_managed_pipeline_mode_unspecified": 0,
+		"INTEGRATED": 1,
+		"CLASSIC":    2,
+	}
+)
+
+func (x AzureFunctionAppManagedPipelineMode) Enum() *AzureFunctionAppManagedPipelineMode {
+	p := new(AzureFunctionAppManagedPipelineMode)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppManagedPipelineMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppManagedPipelineMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[9].Descriptor()
+}
+
+func (AzureFunctionAppManagedPipelineMode) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[9]
+}
+
+func (x AzureFunctionAppManagedPipelineMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppManagedPipelineMode.Descriptor instead.
+func (AzureFunctionAppManagedPipelineMode) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+// What happens to requests that arrive unauthenticated.
+type AzureFunctionAppUnauthenticatedAction int32
+
+const (
+	// Not specified -- deploys REDIRECT_TO_LOGIN_PAGE.
+	AzureFunctionAppUnauthenticatedAction_azure_function_app_unauthenticated_action_unspecified AzureFunctionAppUnauthenticatedAction = 0
+	// Redirect to the login page of the default provider.
+	AzureFunctionAppUnauthenticatedAction_REDIRECT_TO_LOGIN_PAGE AzureFunctionAppUnauthenticatedAction = 1
+	// Let the request through; the app decides (identity headers are
+	// populated when present).
+	AzureFunctionAppUnauthenticatedAction_ALLOW_ANONYMOUS AzureFunctionAppUnauthenticatedAction = 2
+	// Reject with HTTP 401.
+	AzureFunctionAppUnauthenticatedAction_RETURN_401 AzureFunctionAppUnauthenticatedAction = 3
+	// Reject with HTTP 403.
+	AzureFunctionAppUnauthenticatedAction_RETURN_403 AzureFunctionAppUnauthenticatedAction = 4
+)
+
+// Enum value maps for AzureFunctionAppUnauthenticatedAction.
+var (
+	AzureFunctionAppUnauthenticatedAction_name = map[int32]string{
+		0: "azure_function_app_unauthenticated_action_unspecified",
+		1: "REDIRECT_TO_LOGIN_PAGE",
+		2: "ALLOW_ANONYMOUS",
+		3: "RETURN_401",
+		4: "RETURN_403",
+	}
+	AzureFunctionAppUnauthenticatedAction_value = map[string]int32{
+		"azure_function_app_unauthenticated_action_unspecified": 0,
+		"REDIRECT_TO_LOGIN_PAGE":                                1,
+		"ALLOW_ANONYMOUS":                                       2,
+		"RETURN_401":                                            3,
+		"RETURN_403":                                            4,
+	}
+)
+
+func (x AzureFunctionAppUnauthenticatedAction) Enum() *AzureFunctionAppUnauthenticatedAction {
+	p := new(AzureFunctionAppUnauthenticatedAction)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppUnauthenticatedAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppUnauthenticatedAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[10].Descriptor()
+}
+
+func (AzureFunctionAppUnauthenticatedAction) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[10]
+}
+
+func (x AzureFunctionAppUnauthenticatedAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppUnauthenticatedAction.Descriptor instead.
+func (AzureFunctionAppUnauthenticatedAction) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+// How the original request URL is derived behind a forward proxy.
+type AzureFunctionAppForwardProxyConvention int32
+
+const (
+	// Not specified -- deploys FORWARD_PROXY_NO_PROXY.
+	AzureFunctionAppForwardProxyConvention_azure_function_app_forward_proxy_convention_unspecified AzureFunctionAppForwardProxyConvention = 0
+	// No proxy: use the request as received (the default).
+	AzureFunctionAppForwardProxyConvention_FORWARD_PROXY_NO_PROXY AzureFunctionAppForwardProxyConvention = 1
+	// Standard X-Forwarded-Host/X-Forwarded-Proto headers.
+	AzureFunctionAppForwardProxyConvention_FORWARD_PROXY_STANDARD AzureFunctionAppForwardProxyConvention = 2
+	// Custom header names (set the two custom header name fields).
+	AzureFunctionAppForwardProxyConvention_FORWARD_PROXY_CUSTOM AzureFunctionAppForwardProxyConvention = 3
+)
+
+// Enum value maps for AzureFunctionAppForwardProxyConvention.
+var (
+	AzureFunctionAppForwardProxyConvention_name = map[int32]string{
+		0: "azure_function_app_forward_proxy_convention_unspecified",
+		1: "FORWARD_PROXY_NO_PROXY",
+		2: "FORWARD_PROXY_STANDARD",
+		3: "FORWARD_PROXY_CUSTOM",
+	}
+	AzureFunctionAppForwardProxyConvention_value = map[string]int32{
+		"azure_function_app_forward_proxy_convention_unspecified": 0,
+		"FORWARD_PROXY_NO_PROXY":                                  1,
+		"FORWARD_PROXY_STANDARD":                                  2,
+		"FORWARD_PROXY_CUSTOM":                                    3,
+	}
+)
+
+func (x AzureFunctionAppForwardProxyConvention) Enum() *AzureFunctionAppForwardProxyConvention {
+	p := new(AzureFunctionAppForwardProxyConvention)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppForwardProxyConvention) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppForwardProxyConvention) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[11].Descriptor()
+}
+
+func (AzureFunctionAppForwardProxyConvention) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[11]
+}
+
+func (x AzureFunctionAppForwardProxyConvention) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppForwardProxyConvention.Descriptor instead.
+func (AzureFunctionAppForwardProxyConvention) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+// How Easy Auth session cookies expire.
+type AzureFunctionAppCookieExpirationConvention int32
+
+const (
+	// Not specified -- deploys FIXED_TIME.
+	AzureFunctionAppCookieExpirationConvention_azure_function_app_cookie_expiration_convention_unspecified AzureFunctionAppCookieExpirationConvention = 0
+	// Cookies expire after cookie_expiration_time (the default).
+	AzureFunctionAppCookieExpirationConvention_FIXED_TIME AzureFunctionAppCookieExpirationConvention = 1
+	// Cookie lifetime follows the identity provider's token lifetime.
+	AzureFunctionAppCookieExpirationConvention_IDENTITY_PROVIDER_DERIVED AzureFunctionAppCookieExpirationConvention = 2
+)
+
+// Enum value maps for AzureFunctionAppCookieExpirationConvention.
+var (
+	AzureFunctionAppCookieExpirationConvention_name = map[int32]string{
+		0: "azure_function_app_cookie_expiration_convention_unspecified",
+		1: "FIXED_TIME",
+		2: "IDENTITY_PROVIDER_DERIVED",
+	}
+	AzureFunctionAppCookieExpirationConvention_value = map[string]int32{
+		"azure_function_app_cookie_expiration_convention_unspecified": 0,
+		"FIXED_TIME":                1,
+		"IDENTITY_PROVIDER_DERIVED": 2,
+	}
+)
+
+func (x AzureFunctionAppCookieExpirationConvention) Enum() *AzureFunctionAppCookieExpirationConvention {
+	p := new(AzureFunctionAppCookieExpirationConvention)
+	*p = x
+	return p
+}
+
+func (x AzureFunctionAppCookieExpirationConvention) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AzureFunctionAppCookieExpirationConvention) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[12].Descriptor()
+}
+
+func (AzureFunctionAppCookieExpirationConvention) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes[12]
+}
+
+func (x AzureFunctionAppCookieExpirationConvention) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AzureFunctionAppCookieExpirationConvention.Descriptor instead.
+func (AzureFunctionAppCookieExpirationConvention) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
 // **AzureFunctionAppSpec** defines the configuration for creating an Azure
 // Linux Function App (Microsoft.Web/sites kind=functionapp,linux), a
 // serverless compute platform for event-driven workloads.
 //
-// A Function App is the Azure equivalent of AWS Lambda or GCP Cloud Functions --
-// it hosts functions triggered by HTTP requests, queue messages, timer schedules,
-// blob storage events, and other Azure service events. Unlike Lambda, Azure
-// Functions run on an App Service Plan, giving users control over the compute
-// tier (Consumption for pay-per-execution, Elastic Premium for pre-warmed
-// instances, or Dedicated for reserved capacity).
+// A Function App hosts functions triggered by HTTP requests, queue
+// messages, timer schedules, blob storage events, and other Azure service
+// events. Azure Functions run on an App Service Plan, giving users control
+// over the compute tier (Consumption for pay-per-execution, Elastic
+// Premium for pre-warmed instances, or Dedicated for reserved capacity).
 //
 // **Relationship to AzureServicePlan**:
 //
@@ -52,17 +809,22 @@ const (
 //   - VNet integration and private endpoints supported
 //   - Unlimited execution duration
 //
-// Dedicated (B1-P3v3):
+// Dedicated (B*/S*/P*):
 //   - Fixed instance count (manual or auto-scale)
 //   - `always_on` should be true to prevent idle shutdown
 //   - Full App Service features (custom domains, SSL, etc.)
 //
+// Azure also offers Flex Consumption (FC1 plans) as a SEPARATE resource
+// type with its own storage and scaling model -- it is not this kind.
+//
 // **Storage requirement**:
 //
 // Every Function App requires an Azure Storage Account for runtime state
-// (function triggers, logs, queue management). The storage_account_name and
-// storage_account_access_key fields (or storage_uses_managed_identity) provide
-// this binding. The storage account must exist before the Function App is created.
+// (function triggers, logs, queue management). Exactly one binding form
+// applies: `storage_account_name` (with an access key or managed
+// identity), or `storage_key_vault_secret_id` (a Key Vault secret holding
+// the connection string). The storage account must exist before the
+// Function App is created.
 //
 // **Application stack**:
 //
@@ -71,13 +833,20 @@ const (
 // container, or custom handler. Docker enables running custom container images
 // as Azure Functions.
 //
-// **Design decision**: DD04 -- Linux-only. Windows Function Apps
-// (`azurerm_windows_function_app`) are excluded from this expansion. The
-// `AzureServicePlan` resource supports both OS types, so the compute tier
-// is ready if Windows app-level resources are added later.
+// **Authentication (Easy Auth)**: the `auth_settings_v2` block turns on
+// App Service's built-in authentication layer -- Azure validates identity
+// tokens at the front door (Entra ID, Apple, Facebook, GitHub, Google,
+// Microsoft account, Twitter, or any OpenID Connect provider) before
+// requests reach function code. Provider secrets are referenced by APP
+// SETTING NAME (never inline).
 //
-// **ForceNew fields** (changing these destroys and recreates the function app):
-// `name`, `region`, `resource_group`.
+// **Windows Function Apps** (`azurerm_windows_function_app`) are
+// deliberately not modeled: the platform targets Linux-first runtimes and
+// containers. The `AzureServicePlan` kind supports Windows plans, so the
+// compute tier is ready if a Windows app kind is ever added.
+//
+// **ForceNew fields** (changing these destroys and recreates the function
+// app): `function_app_name`, `region`, `resource_group`.
 type AzureFunctionAppSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Azure region where the Function App will be created.
@@ -92,14 +861,14 @@ type AzureFunctionAppSpec struct {
 	ResourceGroup *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
 	// The name of the Function App.
 	// Must be globally unique across Azure (it forms the default hostname:
-	// `{name}.azurewebsites.net`).
+	// `{function_app_name}.azurewebsites.net`).
 	//
 	// Allowed characters: alphanumeric and hyphens.
 	// Must start and end with an alphanumeric character.
 	// Length: 2 to 60 characters.
 	//
 	// **ForceNew**: Changing this destroys and recreates the function app.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	FunctionAppName string `protobuf:"bytes,3,opt,name=function_app_name,json=functionAppName,proto3" json:"function_app_name,omitempty"`
 	// The App Service Plan that provides compute resources for this Function App.
 	// Determines the pricing tier, scale behavior, and available features.
 	//
@@ -107,14 +876,16 @@ type AzureFunctionAppSpec struct {
 	// Elastic Premium (EP*): pre-warmed instances, up to 100
 	// Dedicated (B*/S*/P*): fixed or auto-scaled instances
 	//
-	// **Conditional ForceNew**: Changing between Dynamic tiers (Consumption to/from
-	// any other tier) forces recreation.
+	// **Conditional ForceNew**: Changing between Dynamic tiers (Consumption
+	// to/from any other tier) forces recreation.
 	ServicePlanId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=service_plan_id,json=servicePlanId,proto3" json:"service_plan_id,omitempty"`
 	// The name of the Azure Storage Account used for Function App runtime state.
 	// Azure Functions use storage for trigger management, execution logs, and
 	// internal coordination. The storage account must already exist.
 	//
-	// Mutually exclusive with storage_key_vault_secret_id (not exposed in v1).
+	// Exactly one storage binding applies: this field OR
+	// storage_key_vault_secret_id (enforced here, exactly as the provider
+	// enforces it).
 	StorageAccountName *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=storage_account_name,json=storageAccountName,proto3" json:"storage_account_name,omitempty"`
 	// The access key for the storage account. Defaults to referencing an
 	// AzureStorageAccount's primary_access_key output, so the binding
@@ -122,7 +893,7 @@ type AzureFunctionAppSpec struct {
 	// reference works too. Prefer storage_uses_managed_identity where the
 	// workload supports it -- keys are static credential material.
 	//
-	// Conflicts with storage_uses_managed_identity.
+	// Conflicts with storage_uses_managed_identity (enforced here).
 	StorageAccountAccessKey *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=storage_account_access_key,json=storageAccountAccessKey,proto3" json:"storage_account_access_key,omitempty"`
 	// Use the Function App's managed identity to access the storage account
 	// instead of an access key. This is the modern, credential-free approach.
@@ -131,10 +902,21 @@ type AzureFunctionAppSpec struct {
 	// must have Storage Blob Data Owner and Storage Queue Data Contributor
 	// roles on the storage account.
 	//
-	// Conflicts with storage_account_access_key.
+	// Conflicts with storage_account_access_key (enforced here).
 	//
 	// Default: false
 	StorageUsesManagedIdentity *bool `protobuf:"varint,7,opt,name=storage_uses_managed_identity,json=storageUsesManagedIdentity,proto3,oneof" json:"storage_uses_managed_identity,omitempty"`
+	// The Key Vault secret ID holding the storage account's CONNECTION
+	// STRING -- the alternative storage binding for vault-managed
+	// credentials. Format:
+	// https://{vault}.vault.azure.net/secrets/{secret}[/{version}]
+	// (an unversioned ID tracks the latest secret version; pair with
+	// key_vault_reference_identity_id or the system-assigned identity for
+	// vault access).
+	//
+	// Exactly one storage binding applies: this field OR
+	// storage_account_name (enforced here).
+	StorageKeyVaultSecretId string `protobuf:"bytes,8,opt,name=storage_key_vault_secret_id,json=storageKeyVaultSecretId,proto3" json:"storage_key_vault_secret_id,omitempty"`
 	// The Azure Functions runtime version.
 	// Controls which version of the Azure Functions host runs the app.
 	//
@@ -142,22 +924,25 @@ type AzureFunctionAppSpec struct {
 	// The "~" prefix enables automatic minor version updates.
 	//
 	// Default: "~4"
-	FunctionsExtensionVersion *string `protobuf:"bytes,8,opt,name=functions_extension_version,json=functionsExtensionVersion,proto3,oneof" json:"functions_extension_version,omitempty"`
+	FunctionsExtensionVersion *string `protobuf:"bytes,9,opt,name=functions_extension_version,json=functionsExtensionVersion,proto3,oneof" json:"functions_extension_version,omitempty"`
+	// Daily compute quota in GB-seconds -- the Consumption-plan cost
+	// circuit breaker. When the app's aggregate compute crosses the quota,
+	// Azure stops it until the next day. 0 (the default) means unlimited.
+	// Only meaningful on Consumption (Y1) plans.
+	DailyMemoryTimeQuota *int32 `protobuf:"varint,10,opt,name=daily_memory_time_quota,json=dailyMemoryTimeQuota,proto3,oneof" json:"daily_memory_time_quota,omitempty"`
 	// Site configuration for the Function App.
 	// Contains the application stack (runtime), scaling settings, security
 	// settings, and operational configuration.
-	SiteConfig *AzureFunctionAppSiteConfig `protobuf:"bytes,9,opt,name=site_config,json=siteConfig,proto3" json:"site_config,omitempty"`
+	SiteConfig *AzureFunctionAppSiteConfig `protobuf:"bytes,11,opt,name=site_config,json=siteConfig,proto3" json:"site_config,omitempty"`
 	// Application settings (environment variables) for the Function App.
 	// Key-value pairs that are available to functions at runtime via
 	// environment variables.
 	//
 	// Azure automatically manages several settings (AzureWebJobsStorage,
 	// FUNCTIONS_WORKER_RUNTIME, etc.). User-provided settings are merged
-	// with these system settings.
-	//
-	// Common use cases: database connection strings, API keys, feature flags,
-	// third-party service configuration.
-	AppSettings map[string]string `protobuf:"bytes,10,rep,name=app_settings,json=appSettings,proto3" json:"app_settings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// with these system settings. Auth provider secrets referenced by
+	// auth_settings_v2 setting names also live here.
+	AppSettings map[string]string `protobuf:"bytes,12,rep,name=app_settings,json=appSettings,proto3" json:"app_settings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Named connection strings for database and service connections.
 	// Each connection string has a name, type, and value. The type determines
 	// how Azure exposes the connection in the runtime environment.
@@ -165,82 +950,142 @@ type AzureFunctionAppSpec struct {
 	// For most use cases, app_settings is simpler. Use connection_strings when
 	// you need Azure's native connection string management (e.g., for Entity
 	// Framework, Azure Service Bus SDK auto-discovery).
-	ConnectionStrings []*AzureFunctionAppConnectionString `protobuf:"bytes,11,rep,name=connection_strings,json=connectionStrings,proto3" json:"connection_strings,omitempty"`
+	ConnectionStrings []*AzureFunctionAppConnectionString `protobuf:"bytes,13,rep,name=connection_strings,json=connectionStrings,proto3" json:"connection_strings,omitempty"`
+	// Settings pinned to the production slot during slot swaps.
+	// Named app settings and connection strings listed here do NOT move
+	// with the app content when a staging slot is swapped into production.
+	StickySettings *AzureFunctionAppStickySettings `protobuf:"bytes,14,opt,name=sticky_settings,json=stickySettings,proto3" json:"sticky_settings,omitempty"`
 	// Application Insights connection string for APM telemetry.
 	// When provided, Azure automatically configures the Function App to send
 	// telemetry (requests, dependencies, exceptions, traces) to Application
 	// Insights. This is the recommended way to monitor Function Apps.
 	//
 	// Uses the connection_string format (not the legacy instrumentation_key).
-	ApplicationInsightsConnectionString *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=application_insights_connection_string,json=applicationInsightsConnectionString,proto3" json:"application_insights_connection_string,omitempty"`
+	ApplicationInsightsConnectionString *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=application_insights_connection_string,json=applicationInsightsConnectionString,proto3" json:"application_insights_connection_string,omitempty"`
 	// Enforce HTTPS-only access to the Function App.
 	// When true, all HTTP requests are redirected to HTTPS.
 	//
 	// Default: true (secure by default, unlike the Azure API default of false)
-	HttpsOnly *bool `protobuf:"varint,13,opt,name=https_only,json=httpsOnly,proto3,oneof" json:"https_only,omitempty"`
+	HttpsOnly *bool `protobuf:"varint,16,opt,name=https_only,json=httpsOnly,proto3,oneof" json:"https_only,omitempty"`
 	// Enable or disable public network access to the Function App.
 	// When false, the Function App is only accessible via VNet integration
 	// or Private Endpoints.
 	//
 	// Default: true
-	PublicNetworkAccessEnabled *bool `protobuf:"varint,14,opt,name=public_network_access_enabled,json=publicNetworkAccessEnabled,proto3,oneof" json:"public_network_access_enabled,omitempty"`
+	PublicNetworkAccessEnabled *bool `protobuf:"varint,17,opt,name=public_network_access_enabled,json=publicNetworkAccessEnabled,proto3,oneof" json:"public_network_access_enabled,omitempty"`
+	// Enable or disable the Function App.
+	// When false, the app is stopped and does not run functions, but the
+	// resource still exists and incurs plan-level costs. Useful for
+	// temporarily disabling an app without deleting it.
+	//
+	// Default: true
+	Enabled *bool `protobuf:"varint,18,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
 	// Enable built-in logging via AzureWebJobsDashboard.
 	// When true, Azure configures the AzureWebJobsDashboard storage connection
 	// for the legacy Functions dashboard. When Application Insights is configured,
 	// you may want to disable this to avoid duplicate logging and storage costs.
 	//
 	// Default: true
-	BuiltinLoggingEnabled *bool `protobuf:"varint,15,opt,name=builtin_logging_enabled,json=builtinLoggingEnabled,proto3,oneof" json:"builtin_logging_enabled,omitempty"`
+	BuiltinLoggingEnabled *bool `protobuf:"varint,19,opt,name=builtin_logging_enabled,json=builtinLoggingEnabled,proto3,oneof" json:"builtin_logging_enabled,omitempty"`
+	// Force disable the Azure Files content share that Azure Functions
+	// automatically creates. Set to true when using a custom deployment
+	// method and the content share is not needed.
+	//
+	// Default: false
+	ContentShareForceDisabled *bool `protobuf:"varint,20,opt,name=content_share_force_disabled,json=contentShareForceDisabled,proto3,oneof" json:"content_share_force_disabled,omitempty"`
+	// Enable client certificate authentication (mutual TLS).
+	// When true, clients must present a valid certificate to access the app
+	// (subject to client_certificate_mode).
+	//
+	// Default: false
+	ClientCertificateEnabled *bool `protobuf:"varint,21,opt,name=client_certificate_enabled,json=clientCertificateEnabled,proto3,oneof" json:"client_certificate_enabled,omitempty"`
+	// Client certificate mode -- how strictly client certificates are
+	// enforced when client_certificate_enabled is true. Unset deploys
+	// OPTIONAL (certificate requested but not required).
+	ClientCertificateMode AzureFunctionAppClientCertificateMode `protobuf:"varint,22,opt,name=client_certificate_mode,json=clientCertificateMode,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppClientCertificateMode" json:"client_certificate_mode,omitempty"`
+	// Paths excluded from client certificate validation.
+	// Semicolon-separated list of paths where client certificates are not required.
+	// Example: "/api/health;/api/status"
+	ClientCertificateExclusionPaths string `protobuf:"bytes,23,opt,name=client_certificate_exclusion_paths,json=clientCertificateExclusionPaths,proto3" json:"client_certificate_exclusion_paths,omitempty"`
 	// The subnet ID for VNet integration. When provided, the Function App's
 	// outbound traffic routes through this subnet, enabling access to
 	// VNet-connected resources (databases, Redis, etc.) without public endpoints.
 	//
 	// The subnet must be delegated to Microsoft.Web/serverFarms.
 	// Not supported on Consumption plans (Y1).
-	VirtualNetworkSubnetId *v1.StringValueOrRef `protobuf:"bytes,16,opt,name=virtual_network_subnet_id,json=virtualNetworkSubnetId,proto3" json:"virtual_network_subnet_id,omitempty"`
+	VirtualNetworkSubnetId *v1.StringValueOrRef `protobuf:"bytes,24,opt,name=virtual_network_subnet_id,json=virtualNetworkSubnetId,proto3" json:"virtual_network_subnet_id,omitempty"`
+	// Pull container images over the VNet integration (instead of over the
+	// public internet). Required for images in registries that are only
+	// reachable privately (e.g. an ACR locked to a private endpoint).
+	// Requires virtual_network_subnet_id. Azure additionally requires this
+	// to stay enabled for apps hosted in an App Service Environment, and
+	// rejects it on Consumption plans (apply-time contracts).
+	//
+	// Default: false
+	VnetImagePullEnabled *bool `protobuf:"varint,25,opt,name=vnet_image_pull_enabled,json=vnetImagePullEnabled,proto3,oneof" json:"vnet_image_pull_enabled,omitempty"`
+	// Route the backup/restore traffic of the `backup` block over the VNet
+	// integration -- needed when the backup storage account is firewalled
+	// to the VNet. Requires virtual_network_subnet_id.
+	//
+	// Default: false
+	VirtualNetworkBackupRestoreEnabled *bool `protobuf:"varint,26,opt,name=virtual_network_backup_restore_enabled,json=virtualNetworkBackupRestoreEnabled,proto3,oneof" json:"virtual_network_backup_restore_enabled,omitempty"`
 	// Managed identity configuration for the Function App.
 	// Enables the app to authenticate with Azure services (Key Vault, Storage,
 	// ACR, etc.) without managing credentials.
 	//
-	// When identity is configured with SystemAssigned, the function app gets
+	// When identity is configured with SYSTEM_ASSIGNED, the function app gets
 	// a system-assigned identity whose principal_id and tenant_id are exported
 	// as stack outputs.
-	Identity *AzureFunctionAppIdentity `protobuf:"bytes,17,opt,name=identity,proto3" json:"identity,omitempty"`
+	Identity *AzureFunctionAppIdentity `protobuf:"bytes,27,opt,name=identity,proto3" json:"identity,omitempty"`
 	// User Assigned Identity ID for accessing Key Vault references.
 	// When the Function App uses Key Vault references in app_settings
 	// (e.g., `@Microsoft.KeyVault(SecretUri=...)`), this identity is used
 	// to authenticate with Key Vault.
 	//
 	// If not specified, the system-assigned identity is used.
-	KeyVaultReferenceIdentityId *v1.StringValueOrRef `protobuf:"bytes,18,opt,name=key_vault_reference_identity_id,json=keyVaultReferenceIdentityId,proto3" json:"key_vault_reference_identity_id,omitempty"`
-	// Enable client certificate authentication (mutual TLS).
-	// When true, clients must present a valid certificate to access the app.
+	KeyVaultReferenceIdentityId *v1.StringValueOrRef `protobuf:"bytes,28,opt,name=key_vault_reference_identity_id,json=keyVaultReferenceIdentityId,proto3" json:"key_vault_reference_identity_id,omitempty"`
+	// Allow basic-auth (username/password) publishing over Web Deploy
+	// (msdeploy). Disabling both basic-auth toggles closes the classic
+	// credential-based deployment paths and forces identity-based
+	// deployment (recommended posture for locked-down environments).
 	//
-	// Default: false
-	ClientCertificateEnabled *bool `protobuf:"varint,19,opt,name=client_certificate_enabled,json=clientCertificateEnabled,proto3,oneof" json:"client_certificate_enabled,omitempty"`
-	// Client certificate mode when client_certificate_enabled is true.
+	// Default: true (Azure's own default; flip to false to harden)
+	WebdeployPublishBasicAuthenticationEnabled *bool `protobuf:"varint,29,opt,name=webdeploy_publish_basic_authentication_enabled,json=webdeployPublishBasicAuthenticationEnabled,proto3,oneof" json:"webdeploy_publish_basic_authentication_enabled,omitempty"`
+	// Allow basic-auth (username/password) publishing over FTP/FTPS.
+	// Independent of site_config.ftps_state (which controls the FTP
+	// endpoint's TLS posture); this toggle controls whether the publishing
+	// CREDENTIAL is accepted at all.
 	//
-	// Valid values:
-	// - "Required": All requests must have a valid client certificate
-	// - "Optional": Certificate is requested but not required
-	// - "OptionalInteractiveUser": Certificate is optional for browser users
-	//
-	// Default: "Optional"
-	ClientCertificateMode *string `protobuf:"bytes,20,opt,name=client_certificate_mode,json=clientCertificateMode,proto3,oneof" json:"client_certificate_mode,omitempty"`
-	// Paths excluded from client certificate validation.
-	// Semicolon-separated list of paths where client certificates are not required.
-	// Example: "/api/health;/api/status"
-	ClientCertificateExclusionPaths string `protobuf:"bytes,21,opt,name=client_certificate_exclusion_paths,json=clientCertificateExclusionPaths,proto3" json:"client_certificate_exclusion_paths,omitempty"`
-	// Force disable the Azure Files content share that Azure Functions
-	// automatically creates. Set to true when using a custom deployment
-	// method and the content share is not needed.
-	//
-	// Default: false
-	ContentShareForceDisabled *bool `protobuf:"varint,22,opt,name=content_share_force_disabled,json=contentShareForceDisabled,proto3,oneof" json:"content_share_force_disabled,omitempty"`
+	// Default: true (Azure's own default; flip to false to harden)
+	FtpPublishBasicAuthenticationEnabled *bool `protobuf:"varint,30,opt,name=ftp_publish_basic_authentication_enabled,json=ftpPublishBasicAuthenticationEnabled,proto3,oneof" json:"ftp_publish_basic_authentication_enabled,omitempty"`
+	// Path to a local ZIP package to deploy on create/update (one-shot
+	// "run-from-package" style zip deploy). Primarily useful for simple
+	// pipelines that produce a build artifact next to the manifest; most
+	// production deployments push code through CI/CD instead.
+	ZipDeployFile string `protobuf:"bytes,31,opt,name=zip_deploy_file,json=zipDeployFile,proto3" json:"zip_deploy_file,omitempty"`
 	// Azure Storage Account mounts for the Function App.
 	// Mounts Azure File Shares or Blob containers as directories accessible
 	// to the function code at runtime.
-	StorageMounts []*AzureFunctionAppStorageMount `protobuf:"bytes,23,rep,name=storage_mounts,json=storageMounts,proto3" json:"storage_mounts,omitempty"`
+	StorageMounts []*AzureFunctionAppStorageMount `protobuf:"bytes,32,rep,name=storage_mounts,json=storageMounts,proto3" json:"storage_mounts,omitempty"`
+	// Scheduled backups of the app's content and configuration to an Azure
+	// Storage container (referenced by SAS URL). Requires Standard tier or
+	// above -- Azure rejects backup on Consumption and Basic plans at
+	// apply time. Restore is an operational action in the portal/CLI, not
+	// a manifest field.
+	Backup *AzureFunctionAppBackup `protobuf:"bytes,33,opt,name=backup,proto3" json:"backup,omitempty"`
+	// App Service built-in authentication (Easy Auth v2). When enabled,
+	// Azure authenticates requests at the platform layer -- before they
+	// reach function code -- against any of the configured identity
+	// providers. Provider client secrets are referenced by APP SETTING NAME
+	// (set the actual secret value in app_settings or via a Key Vault
+	// reference), never inline in this block.
+	AuthSettingsV2 *AzureFunctionAppAuthSettingsV2 `protobuf:"bytes,34,opt,name=auth_settings_v2,json=authSettingsV2,proto3" json:"auth_settings_v2,omitempty"`
+	// Free-form Azure resource tags applied to the Function App, merged
+	// over the platform's metadata-derived tags (user tags win on key
+	// collision) -- the hooks for cost allocation, chargeback reports, and
+	// Azure Policy governance rules that filter or group by them.
+	// Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,35,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -289,9 +1134,9 @@ func (x *AzureFunctionAppSpec) GetResourceGroup() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *AzureFunctionAppSpec) GetName() string {
+func (x *AzureFunctionAppSpec) GetFunctionAppName() string {
 	if x != nil {
-		return x.Name
+		return x.FunctionAppName
 	}
 	return ""
 }
@@ -324,11 +1169,25 @@ func (x *AzureFunctionAppSpec) GetStorageUsesManagedIdentity() bool {
 	return false
 }
 
+func (x *AzureFunctionAppSpec) GetStorageKeyVaultSecretId() string {
+	if x != nil {
+		return x.StorageKeyVaultSecretId
+	}
+	return ""
+}
+
 func (x *AzureFunctionAppSpec) GetFunctionsExtensionVersion() string {
 	if x != nil && x.FunctionsExtensionVersion != nil {
 		return *x.FunctionsExtensionVersion
 	}
 	return ""
+}
+
+func (x *AzureFunctionAppSpec) GetDailyMemoryTimeQuota() int32 {
+	if x != nil && x.DailyMemoryTimeQuota != nil {
+		return *x.DailyMemoryTimeQuota
+	}
+	return 0
 }
 
 func (x *AzureFunctionAppSpec) GetSiteConfig() *AzureFunctionAppSiteConfig {
@@ -348,6 +1207,13 @@ func (x *AzureFunctionAppSpec) GetAppSettings() map[string]string {
 func (x *AzureFunctionAppSpec) GetConnectionStrings() []*AzureFunctionAppConnectionString {
 	if x != nil {
 		return x.ConnectionStrings
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppSpec) GetStickySettings() *AzureFunctionAppStickySettings {
+	if x != nil {
+		return x.StickySettings
 	}
 	return nil
 }
@@ -373,6 +1239,13 @@ func (x *AzureFunctionAppSpec) GetPublicNetworkAccessEnabled() bool {
 	return false
 }
 
+func (x *AzureFunctionAppSpec) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
 func (x *AzureFunctionAppSpec) GetBuiltinLoggingEnabled() bool {
 	if x != nil && x.BuiltinLoggingEnabled != nil {
 		return *x.BuiltinLoggingEnabled
@@ -380,11 +1253,53 @@ func (x *AzureFunctionAppSpec) GetBuiltinLoggingEnabled() bool {
 	return false
 }
 
+func (x *AzureFunctionAppSpec) GetContentShareForceDisabled() bool {
+	if x != nil && x.ContentShareForceDisabled != nil {
+		return *x.ContentShareForceDisabled
+	}
+	return false
+}
+
+func (x *AzureFunctionAppSpec) GetClientCertificateEnabled() bool {
+	if x != nil && x.ClientCertificateEnabled != nil {
+		return *x.ClientCertificateEnabled
+	}
+	return false
+}
+
+func (x *AzureFunctionAppSpec) GetClientCertificateMode() AzureFunctionAppClientCertificateMode {
+	if x != nil {
+		return x.ClientCertificateMode
+	}
+	return AzureFunctionAppClientCertificateMode_azure_function_app_client_certificate_mode_unspecified
+}
+
+func (x *AzureFunctionAppSpec) GetClientCertificateExclusionPaths() string {
+	if x != nil {
+		return x.ClientCertificateExclusionPaths
+	}
+	return ""
+}
+
 func (x *AzureFunctionAppSpec) GetVirtualNetworkSubnetId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.VirtualNetworkSubnetId
 	}
 	return nil
+}
+
+func (x *AzureFunctionAppSpec) GetVnetImagePullEnabled() bool {
+	if x != nil && x.VnetImagePullEnabled != nil {
+		return *x.VnetImagePullEnabled
+	}
+	return false
+}
+
+func (x *AzureFunctionAppSpec) GetVirtualNetworkBackupRestoreEnabled() bool {
+	if x != nil && x.VirtualNetworkBackupRestoreEnabled != nil {
+		return *x.VirtualNetworkBackupRestoreEnabled
+	}
+	return false
 }
 
 func (x *AzureFunctionAppSpec) GetIdentity() *AzureFunctionAppIdentity {
@@ -401,37 +1316,51 @@ func (x *AzureFunctionAppSpec) GetKeyVaultReferenceIdentityId() *v1.StringValueO
 	return nil
 }
 
-func (x *AzureFunctionAppSpec) GetClientCertificateEnabled() bool {
-	if x != nil && x.ClientCertificateEnabled != nil {
-		return *x.ClientCertificateEnabled
+func (x *AzureFunctionAppSpec) GetWebdeployPublishBasicAuthenticationEnabled() bool {
+	if x != nil && x.WebdeployPublishBasicAuthenticationEnabled != nil {
+		return *x.WebdeployPublishBasicAuthenticationEnabled
 	}
 	return false
 }
 
-func (x *AzureFunctionAppSpec) GetClientCertificateMode() string {
-	if x != nil && x.ClientCertificateMode != nil {
-		return *x.ClientCertificateMode
+func (x *AzureFunctionAppSpec) GetFtpPublishBasicAuthenticationEnabled() bool {
+	if x != nil && x.FtpPublishBasicAuthenticationEnabled != nil {
+		return *x.FtpPublishBasicAuthenticationEnabled
 	}
-	return ""
+	return false
 }
 
-func (x *AzureFunctionAppSpec) GetClientCertificateExclusionPaths() string {
+func (x *AzureFunctionAppSpec) GetZipDeployFile() string {
 	if x != nil {
-		return x.ClientCertificateExclusionPaths
+		return x.ZipDeployFile
 	}
 	return ""
-}
-
-func (x *AzureFunctionAppSpec) GetContentShareForceDisabled() bool {
-	if x != nil && x.ContentShareForceDisabled != nil {
-		return *x.ContentShareForceDisabled
-	}
-	return false
 }
 
 func (x *AzureFunctionAppSpec) GetStorageMounts() []*AzureFunctionAppStorageMount {
 	if x != nil {
 		return x.StorageMounts
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppSpec) GetBackup() *AzureFunctionAppBackup {
+	if x != nil {
+		return x.Backup
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppSpec) GetAuthSettingsV2() *AzureFunctionAppAuthSettingsV2 {
+	if x != nil {
+		return x.AuthSettingsV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppSpec) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
 	}
 	return nil
 }
@@ -456,12 +1385,24 @@ type AzureFunctionAppSiteConfig struct {
 	// may be unloaded after idle periods, causing cold start latency.
 	//
 	// Automatically managed on Consumption and Elastic Premium plans.
-	// Not supported on Free (F1) tier.
+	// Not supported on Free (F1) tier -- Azure rejects it at apply time.
 	AlwaysOn *bool `protobuf:"varint,2,opt,name=always_on,json=alwaysOn,proto3,oneof" json:"always_on,omitempty"`
 	// Custom startup command for the Function App.
 	// Overrides the default startup behavior. Useful for custom Docker
 	// containers or runtimes that need specific initialization.
 	AppCommandLine string `protobuf:"bytes,3,opt,name=app_command_line,json=appCommandLine,proto3" json:"app_command_line,omitempty"`
+	// The ARM ID of the API Management API this app backs. Wires the app
+	// into an API Management gateway so the API surface is managed there.
+	// Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/
+	//
+	//	Microsoft.ApiManagement/service/{apim}/apis/{api}
+	ApiManagementApiId string `protobuf:"bytes,4,opt,name=api_management_api_id,json=apiManagementApiId,proto3" json:"api_management_api_id,omitempty"`
+	// URL of the OpenAPI/Swagger definition describing this app's API.
+	// Surfaces in the portal's API Definition blade and to API consumers.
+	ApiDefinitionUrl string `protobuf:"bytes,5,opt,name=api_definition_url,json=apiDefinitionUrl,proto3" json:"api_definition_url,omitempty"`
+	// Default documents served when a request maps to a directory.
+	// Evaluated in order (e.g. ["index.html", "default.html"]).
+	DefaultDocuments []string `protobuf:"bytes,6,rep,name=default_documents,json=defaultDocuments,proto3" json:"default_documents,omitempty"`
 	// Health check endpoint path.
 	// Azure periodically sends requests to this path and marks the instance
 	// as unhealthy if it doesn't respond with a 200-299 status code.
@@ -469,17 +1410,23 @@ type AzureFunctionAppSiteConfig struct {
 	//
 	// Recommended for production deployments. Common paths: "/api/health",
 	// "/healthz".
-	HealthCheckPath string `protobuf:"bytes,4,opt,name=health_check_path,json=healthCheckPath,proto3" json:"health_check_path,omitempty"`
-	// Minimum TLS version for incoming HTTPS requests.
+	HealthCheckPath string `protobuf:"bytes,7,opt,name=health_check_path,json=healthCheckPath,proto3" json:"health_check_path,omitempty"`
+	// Time in minutes after which an unhealthy instance is evicted.
+	// Azure monitors the health check path and removes instances that
+	// have been continuously unhealthy for this duration.
 	//
-	// Valid values: "1.0", "1.1", "1.2", "1.3"
-	//
-	// Default: "1.2" (industry standard; "1.3" for maximum security)
-	MinimumTlsVersion *string `protobuf:"bytes,5,opt,name=minimum_tls_version,json=minimumTlsVersion,proto3,oneof" json:"minimum_tls_version,omitempty"`
-	// Minimum TLS version for SCM (Kudu) site.
-	//
-	// Default: "1.2"
-	ScmMinimumTlsVersion *string `protobuf:"bytes,6,opt,name=scm_minimum_tls_version,json=scmMinimumTlsVersion,proto3,oneof" json:"scm_minimum_tls_version,omitempty"`
+	// Range: 2 to 10 minutes. Requires health_check_path.
+	HealthCheckEvictionTimeInMin *int32 `protobuf:"varint,8,opt,name=health_check_eviction_time_in_min,json=healthCheckEvictionTimeInMin,proto3,oneof" json:"health_check_eviction_time_in_min,omitempty"`
+	// Minimum TLS version for incoming HTTPS requests. Unset deploys
+	// TLS_1_2 (the industry floor; TLS_1_3 for maximum security).
+	MinimumTlsVersion AzureFunctionAppTlsVersion `protobuf:"varint,9,opt,name=minimum_tls_version,json=minimumTlsVersion,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppTlsVersion" json:"minimum_tls_version,omitempty"`
+	// Minimum TLS version for the SCM (Kudu) site. Unset deploys TLS_1_2.
+	ScmMinimumTlsVersion AzureFunctionAppTlsVersion `protobuf:"varint,10,opt,name=scm_minimum_tls_version,json=scmMinimumTlsVersion,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppTlsVersion" json:"scm_minimum_tls_version,omitempty"`
+	// The minimum TLS cipher suite the app accepts. Suites WEAKER than the
+	// chosen one are rejected. Azure's identifiers, strongest first:
+	// TLS_AES_256_GCM_SHA384 ... TLS_RSA_WITH_AES_128_CBC_SHA. Leave empty
+	// to accept Azure's platform default set.
+	MinimumTlsCipherSuite string `protobuf:"bytes,11,opt,name=minimum_tls_cipher_suite,json=minimumTlsCipherSuite,proto3" json:"minimum_tls_cipher_suite,omitempty"`
 	// Maximum number of workers for scale-out.
 	// Only applicable to Consumption and Elastic Premium plans.
 	//
@@ -488,41 +1435,41 @@ type AzureFunctionAppSiteConfig struct {
 	// Elastic Premium (EP*): Caps the elastic scale-out range.
 	//
 	// Ignored on Dedicated plans (use worker_count on the Service Plan instead).
-	AppScaleLimit *int32 `protobuf:"varint,7,opt,name=app_scale_limit,json=appScaleLimit,proto3,oneof" json:"app_scale_limit,omitempty"`
+	AppScaleLimit *int32 `protobuf:"varint,12,opt,name=app_scale_limit,json=appScaleLimit,proto3,oneof" json:"app_scale_limit,omitempty"`
 	// Minimum number of pre-warmed instances for Elastic Premium plans.
 	// These instances are always running and ready to handle requests,
 	// eliminating cold start latency.
 	//
 	// Only applicable to Elastic Premium (EP*) plans. Ignored on other tiers.
-	ElasticInstanceMinimum *int32 `protobuf:"varint,8,opt,name=elastic_instance_minimum,json=elasticInstanceMinimum,proto3,oneof" json:"elastic_instance_minimum,omitempty"`
+	ElasticInstanceMinimum *int32 `protobuf:"varint,13,opt,name=elastic_instance_minimum,json=elasticInstanceMinimum,proto3,oneof" json:"elastic_instance_minimum,omitempty"`
 	// Number of pre-warmed instances beyond the minimum.
 	// Pre-warmed instances sit in a "warm" state and can handle requests
 	// faster than cold-starting new instances.
 	//
 	// Only applicable to Elastic Premium (EP*) plans.
-	PreWarmedInstanceCount *int32 `protobuf:"varint,9,opt,name=pre_warmed_instance_count,json=preWarmedInstanceCount,proto3,oneof" json:"pre_warmed_instance_count,omitempty"`
+	PreWarmedInstanceCount *int32 `protobuf:"varint,14,opt,name=pre_warmed_instance_count,json=preWarmedInstanceCount,proto3,oneof" json:"pre_warmed_instance_count,omitempty"`
 	// Number of worker instances for the Function App.
 	// Controls how many instances are allocated on Dedicated plans.
 	//
 	// Range: 1-100.
-	WorkerCount *int32 `protobuf:"varint,10,opt,name=worker_count,json=workerCount,proto3,oneof" json:"worker_count,omitempty"`
+	WorkerCount *int32 `protobuf:"varint,15,opt,name=worker_count,json=workerCount,proto3,oneof" json:"worker_count,omitempty"`
 	// Enable HTTP/2 protocol for the Function App.
 	// HTTP/2 provides multiplexing, header compression, and server push
 	// for improved performance.
 	//
 	// Default: false
-	Http2Enabled *bool `protobuf:"varint,11,opt,name=http2_enabled,json=http2Enabled,proto3,oneof" json:"http2_enabled,omitempty"`
+	Http2Enabled *bool `protobuf:"varint,16,opt,name=http2_enabled,json=http2Enabled,proto3,oneof" json:"http2_enabled,omitempty"`
 	// Enable WebSocket connections for the Function App.
 	//
 	// Default: false
-	WebsocketsEnabled *bool `protobuf:"varint,12,opt,name=websockets_enabled,json=websocketsEnabled,proto3,oneof" json:"websockets_enabled,omitempty"`
+	WebsocketsEnabled *bool `protobuf:"varint,17,opt,name=websockets_enabled,json=websocketsEnabled,proto3,oneof" json:"websockets_enabled,omitempty"`
 	// Use a 32-bit worker process instead of 64-bit.
 	// Reduces memory footprint but limits addressable memory to ~2 GB.
 	//
 	// Default: false
-	Use_32BitWorker *bool `protobuf:"varint,13,opt,name=use_32_bit_worker,json=use32BitWorker,proto3,oneof" json:"use_32_bit_worker,omitempty"`
+	Use_32BitWorker *bool `protobuf:"varint,18,opt,name=use_32_bit_worker,json=use32BitWorker,proto3,oneof" json:"use_32_bit_worker,omitempty"`
 	// Route all outbound traffic from the Function App through the VNet.
-	// Requires virtual_network_subnet_id to be set on the spec.
+	// Requires virtual_network_subnet_id to be set on the spec (spec-enforced).
 	//
 	// When false (default), only RFC1918 traffic routes through the VNet.
 	// When true, all outbound traffic (including public internet) routes
@@ -531,75 +1478,71 @@ type AzureFunctionAppSiteConfig struct {
 	// Not supported on Consumption plans (Y1).
 	//
 	// Default: false
-	VnetRouteAllEnabled *bool `protobuf:"varint,14,opt,name=vnet_route_all_enabled,json=vnetRouteAllEnabled,proto3,oneof" json:"vnet_route_all_enabled,omitempty"`
-	// FTPS state for the Function App.
-	// Controls whether FTP/FTPS file deployment is allowed.
-	//
-	// Valid values:
-	// - "AllAllowed": Both FTP and FTPS are enabled
-	// - "FtpsOnly": Only FTPS (encrypted) is enabled
-	// - "Disabled": FTP/FTPS is completely disabled (recommended)
-	//
-	// Default: "Disabled" (secure by default)
-	FtpsState *string `protobuf:"bytes,15,opt,name=ftps_state,json=ftpsState,proto3,oneof" json:"ftps_state,omitempty"`
+	VnetRouteAllEnabled *bool `protobuf:"varint,19,opt,name=vnet_route_all_enabled,json=vnetRouteAllEnabled,proto3,oneof" json:"vnet_route_all_enabled,omitempty"`
+	// FTPS state for the Function App -- the FTP deployment endpoint's TLS
+	// posture. Unset deploys DISABLED (secure by default). Independent of
+	// ftp_publish_basic_authentication_enabled, which controls whether the
+	// publishing credential works at all.
+	FtpsState AzureFunctionAppFtpsState `protobuf:"varint,20,opt,name=ftps_state,json=ftpsState,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppFtpsState" json:"ftps_state,omitempty"`
 	// Load balancing mode for distributing requests across instances.
+	// Unset deploys LEAST_REQUESTS.
+	LoadBalancingMode AzureFunctionAppLoadBalancingMode `protobuf:"varint,21,opt,name=load_balancing_mode,json=loadBalancingMode,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppLoadBalancingMode" json:"load_balancing_mode,omitempty"`
+	// IIS-lineage request pipeline mode. INTEGRATED (the default) is
+	// correct for everything modern; CLASSIC exists for legacy
+	// compatibility only.
+	ManagedPipelineMode AzureFunctionAppManagedPipelineMode `protobuf:"varint,22,opt,name=managed_pipeline_mode,json=managedPipelineMode,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppManagedPipelineMode" json:"managed_pipeline_mode,omitempty"`
+	// Enable remote debugging (Visual Studio attach). Azure supports the
+	// current Visual Studio generation only; the platform lets Azure pick
+	// the debugger version. Turn off outside active debugging sessions.
 	//
-	// Valid values: LeastRequests, WeightedRoundRobin, LeastResponseTime,
-	// WeightedTotalTraffic, RequestHash, PerSiteRoundRobin
-	//
-	// Default: "LeastRequests"
-	LoadBalancingMode *string `protobuf:"bytes,16,opt,name=load_balancing_mode,json=loadBalancingMode,proto3,oneof" json:"load_balancing_mode,omitempty"`
+	// Default: false
+	RemoteDebuggingEnabled *bool `protobuf:"varint,23,opt,name=remote_debugging_enabled,json=remoteDebuggingEnabled,proto3,oneof" json:"remote_debugging_enabled,omitempty"`
 	// Enable runtime scale monitoring for KEDA-based triggers.
 	// When enabled, the Functions runtime can directly monitor event sources
 	// to make more accurate scaling decisions.
 	//
 	// Supported on Elastic Premium and Dedicated plans with Functions v4+.
-	RuntimeScaleMonitoringEnabled *bool `protobuf:"varint,17,opt,name=runtime_scale_monitoring_enabled,json=runtimeScaleMonitoringEnabled,proto3,oneof" json:"runtime_scale_monitoring_enabled,omitempty"`
+	RuntimeScaleMonitoringEnabled *bool `protobuf:"varint,24,opt,name=runtime_scale_monitoring_enabled,json=runtimeScaleMonitoringEnabled,proto3,oneof" json:"runtime_scale_monitoring_enabled,omitempty"`
 	// CORS (Cross-Origin Resource Sharing) configuration.
 	// Controls which origins are allowed to make cross-origin requests to
 	// the Function App's HTTP endpoints.
-	Cors *AzureFunctionAppCorsSettings `protobuf:"bytes,18,opt,name=cors,proto3" json:"cors,omitempty"`
+	Cors *AzureFunctionAppCorsSettings `protobuf:"bytes,25,opt,name=cors,proto3" json:"cors,omitempty"`
 	// IP restriction rules for the main site.
 	// Controls which IP addresses, service tags, or subnets can access
 	// the Function App.
-	IpRestrictions []*AzureFunctionAppIpRestriction `protobuf:"bytes,19,rep,name=ip_restrictions,json=ipRestrictions,proto3" json:"ip_restrictions,omitempty"`
-	// Default action for IP restrictions on the main site.
-	// When "Allow", unlisted IPs are allowed (rules are deny-list).
-	// When "Deny", unlisted IPs are denied (rules are allow-list).
-	//
-	// Default: "Allow"
-	IpRestrictionDefaultAction *string `protobuf:"bytes,20,opt,name=ip_restriction_default_action,json=ipRestrictionDefaultAction,proto3,oneof" json:"ip_restriction_default_action,omitempty"`
+	IpRestrictions []*AzureFunctionAppIpRestriction `protobuf:"bytes,26,rep,name=ip_restrictions,json=ipRestrictions,proto3" json:"ip_restrictions,omitempty"`
+	// Default action for traffic that matches no ip_restrictions rule.
+	// Unset deploys ALLOW (rules act as a deny-list); DENY flips the rules
+	// into an allow-list.
+	IpRestrictionDefaultAction AzureFunctionAppIpRestrictionAction `protobuf:"varint,27,opt,name=ip_restriction_default_action,json=ipRestrictionDefaultAction,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionAction" json:"ip_restriction_default_action,omitempty"`
 	// Use the main site's IP restrictions for the SCM (Kudu) site.
 	// When true, scm_ip_restrictions are ignored.
 	//
 	// Default: false
-	ScmUseMainIpRestriction *bool `protobuf:"varint,21,opt,name=scm_use_main_ip_restriction,json=scmUseMainIpRestriction,proto3,oneof" json:"scm_use_main_ip_restriction,omitempty"`
+	ScmUseMainIpRestriction *bool `protobuf:"varint,28,opt,name=scm_use_main_ip_restriction,json=scmUseMainIpRestriction,proto3,oneof" json:"scm_use_main_ip_restriction,omitempty"`
 	// IP restriction rules for the SCM (Kudu) site.
 	// Only used when scm_use_main_ip_restriction is false.
-	ScmIpRestrictions []*AzureFunctionAppIpRestriction `protobuf:"bytes,22,rep,name=scm_ip_restrictions,json=scmIpRestrictions,proto3" json:"scm_ip_restrictions,omitempty"`
-	// Default action for IP restrictions on the SCM site.
-	//
-	// Default: "Allow"
-	ScmIpRestrictionDefaultAction *string `protobuf:"bytes,23,opt,name=scm_ip_restriction_default_action,json=scmIpRestrictionDefaultAction,proto3,oneof" json:"scm_ip_restriction_default_action,omitempty"`
-	// App Service logging configuration.
-	AppServiceLogs *AzureFunctionAppAppServiceLogs `protobuf:"bytes,24,opt,name=app_service_logs,json=appServiceLogs,proto3" json:"app_service_logs,omitempty"`
-	// Default documents list for the web server.
-	// Defines which files are served when a request hits the root path.
-	DefaultDocuments []string `protobuf:"bytes,25,rep,name=default_documents,json=defaultDocuments,proto3" json:"default_documents,omitempty"`
+	ScmIpRestrictions []*AzureFunctionAppIpRestriction `protobuf:"bytes,29,rep,name=scm_ip_restrictions,json=scmIpRestrictions,proto3" json:"scm_ip_restrictions,omitempty"`
+	// Default action for traffic that matches no scm_ip_restrictions rule.
+	// Unset deploys ALLOW.
+	ScmIpRestrictionDefaultAction AzureFunctionAppIpRestrictionAction `protobuf:"varint,30,opt,name=scm_ip_restriction_default_action,json=scmIpRestrictionDefaultAction,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionAction" json:"scm_ip_restriction_default_action,omitempty"`
+	// App Service logging configuration (disk quota + retention for the
+	// file-system logs).
+	AppServiceLogs *AzureFunctionAppAppServiceLogs `protobuf:"bytes,31,opt,name=app_service_logs,json=appServiceLogs,proto3" json:"app_service_logs,omitempty"`
 	// Use managed identity for pulling container images from Azure Container Registry.
 	// Requires the Function App's identity to have AcrPull role on the registry.
 	//
 	// Default: false
-	ContainerRegistryUseManagedIdentity *bool `protobuf:"varint,26,opt,name=container_registry_use_managed_identity,json=containerRegistryUseManagedIdentity,proto3,oneof" json:"container_registry_use_managed_identity,omitempty"`
+	ContainerRegistryUseManagedIdentity *bool `protobuf:"varint,32,opt,name=container_registry_use_managed_identity,json=containerRegistryUseManagedIdentity,proto3,oneof" json:"container_registry_use_managed_identity,omitempty"`
 	// Client ID of the managed identity used for ACR image pulls.
 	// Only used when container_registry_use_managed_identity is true and
 	// a user-assigned identity (not system-assigned) should be used.
-	ContainerRegistryManagedIdentityClientId string `protobuf:"bytes,27,opt,name=container_registry_managed_identity_client_id,json=containerRegistryManagedIdentityClientId,proto3" json:"container_registry_managed_identity_client_id,omitempty"`
+	ContainerRegistryManagedIdentityClientId string `protobuf:"bytes,33,opt,name=container_registry_managed_identity_client_id,json=containerRegistryManagedIdentityClientId,proto3" json:"container_registry_managed_identity_client_id,omitempty"`
 	// Application Insights instrumentation key (classic).
 	// Prefer application_insights_connection_string on the parent spec
 	// for new deployments. This field is for backward compatibility with
 	// apps already using the instrumentation key.
-	ApplicationInsightsKey string `protobuf:"bytes,28,opt,name=application_insights_key,json=applicationInsightsKey,proto3" json:"application_insights_key,omitempty"`
+	ApplicationInsightsKey string `protobuf:"bytes,34,opt,name=application_insights_key,json=applicationInsightsKey,proto3" json:"application_insights_key,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -655,6 +1598,27 @@ func (x *AzureFunctionAppSiteConfig) GetAppCommandLine() string {
 	return ""
 }
 
+func (x *AzureFunctionAppSiteConfig) GetApiManagementApiId() string {
+	if x != nil {
+		return x.ApiManagementApiId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppSiteConfig) GetApiDefinitionUrl() string {
+	if x != nil {
+		return x.ApiDefinitionUrl
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppSiteConfig) GetDefaultDocuments() []string {
+	if x != nil {
+		return x.DefaultDocuments
+	}
+	return nil
+}
+
 func (x *AzureFunctionAppSiteConfig) GetHealthCheckPath() string {
 	if x != nil {
 		return x.HealthCheckPath
@@ -662,16 +1626,30 @@ func (x *AzureFunctionAppSiteConfig) GetHealthCheckPath() string {
 	return ""
 }
 
-func (x *AzureFunctionAppSiteConfig) GetMinimumTlsVersion() string {
-	if x != nil && x.MinimumTlsVersion != nil {
-		return *x.MinimumTlsVersion
+func (x *AzureFunctionAppSiteConfig) GetHealthCheckEvictionTimeInMin() int32 {
+	if x != nil && x.HealthCheckEvictionTimeInMin != nil {
+		return *x.HealthCheckEvictionTimeInMin
 	}
-	return ""
+	return 0
 }
 
-func (x *AzureFunctionAppSiteConfig) GetScmMinimumTlsVersion() string {
-	if x != nil && x.ScmMinimumTlsVersion != nil {
-		return *x.ScmMinimumTlsVersion
+func (x *AzureFunctionAppSiteConfig) GetMinimumTlsVersion() AzureFunctionAppTlsVersion {
+	if x != nil {
+		return x.MinimumTlsVersion
+	}
+	return AzureFunctionAppTlsVersion_azure_function_app_tls_version_unspecified
+}
+
+func (x *AzureFunctionAppSiteConfig) GetScmMinimumTlsVersion() AzureFunctionAppTlsVersion {
+	if x != nil {
+		return x.ScmMinimumTlsVersion
+	}
+	return AzureFunctionAppTlsVersion_azure_function_app_tls_version_unspecified
+}
+
+func (x *AzureFunctionAppSiteConfig) GetMinimumTlsCipherSuite() string {
+	if x != nil {
+		return x.MinimumTlsCipherSuite
 	}
 	return ""
 }
@@ -732,18 +1710,32 @@ func (x *AzureFunctionAppSiteConfig) GetVnetRouteAllEnabled() bool {
 	return false
 }
 
-func (x *AzureFunctionAppSiteConfig) GetFtpsState() string {
-	if x != nil && x.FtpsState != nil {
-		return *x.FtpsState
+func (x *AzureFunctionAppSiteConfig) GetFtpsState() AzureFunctionAppFtpsState {
+	if x != nil {
+		return x.FtpsState
 	}
-	return ""
+	return AzureFunctionAppFtpsState_azure_function_app_ftps_state_unspecified
 }
 
-func (x *AzureFunctionAppSiteConfig) GetLoadBalancingMode() string {
-	if x != nil && x.LoadBalancingMode != nil {
-		return *x.LoadBalancingMode
+func (x *AzureFunctionAppSiteConfig) GetLoadBalancingMode() AzureFunctionAppLoadBalancingMode {
+	if x != nil {
+		return x.LoadBalancingMode
 	}
-	return ""
+	return AzureFunctionAppLoadBalancingMode_azure_function_app_load_balancing_mode_unspecified
+}
+
+func (x *AzureFunctionAppSiteConfig) GetManagedPipelineMode() AzureFunctionAppManagedPipelineMode {
+	if x != nil {
+		return x.ManagedPipelineMode
+	}
+	return AzureFunctionAppManagedPipelineMode_azure_function_app_managed_pipeline_mode_unspecified
+}
+
+func (x *AzureFunctionAppSiteConfig) GetRemoteDebuggingEnabled() bool {
+	if x != nil && x.RemoteDebuggingEnabled != nil {
+		return *x.RemoteDebuggingEnabled
+	}
+	return false
 }
 
 func (x *AzureFunctionAppSiteConfig) GetRuntimeScaleMonitoringEnabled() bool {
@@ -767,11 +1759,11 @@ func (x *AzureFunctionAppSiteConfig) GetIpRestrictions() []*AzureFunctionAppIpRe
 	return nil
 }
 
-func (x *AzureFunctionAppSiteConfig) GetIpRestrictionDefaultAction() string {
-	if x != nil && x.IpRestrictionDefaultAction != nil {
-		return *x.IpRestrictionDefaultAction
+func (x *AzureFunctionAppSiteConfig) GetIpRestrictionDefaultAction() AzureFunctionAppIpRestrictionAction {
+	if x != nil {
+		return x.IpRestrictionDefaultAction
 	}
-	return ""
+	return AzureFunctionAppIpRestrictionAction_azure_function_app_ip_restriction_action_unspecified
 }
 
 func (x *AzureFunctionAppSiteConfig) GetScmUseMainIpRestriction() bool {
@@ -788,23 +1780,16 @@ func (x *AzureFunctionAppSiteConfig) GetScmIpRestrictions() []*AzureFunctionAppI
 	return nil
 }
 
-func (x *AzureFunctionAppSiteConfig) GetScmIpRestrictionDefaultAction() string {
-	if x != nil && x.ScmIpRestrictionDefaultAction != nil {
-		return *x.ScmIpRestrictionDefaultAction
+func (x *AzureFunctionAppSiteConfig) GetScmIpRestrictionDefaultAction() AzureFunctionAppIpRestrictionAction {
+	if x != nil {
+		return x.ScmIpRestrictionDefaultAction
 	}
-	return ""
+	return AzureFunctionAppIpRestrictionAction_azure_function_app_ip_restriction_action_unspecified
 }
 
 func (x *AzureFunctionAppSiteConfig) GetAppServiceLogs() *AzureFunctionAppAppServiceLogs {
 	if x != nil {
 		return x.AppServiceLogs
-	}
-	return nil
-}
-
-func (x *AzureFunctionAppSiteConfig) GetDefaultDocuments() []string {
-	if x != nil {
-		return x.DefaultDocuments
 	}
 	return nil
 }
@@ -1076,17 +2061,13 @@ func (x *AzureFunctionAppDockerConfig) GetRegistryPassword() *v1.StringValueOrRe
 // Managed identities eliminate the need to manage credentials for
 // authenticating with Azure services. The identity is automatically managed
 // by Azure AD and can be assigned RBAC roles on Azure resources.
-//
-// Follows the same pattern as AzureContainerAppIdentity.
 type AzureFunctionAppIdentity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Identity type.
-	// "SystemAssigned": Azure-managed identity tied to the Function App lifecycle.
-	// "UserAssigned": Pre-created identity with independent lifecycle.
-	// "SystemAssigned,UserAssigned": Both identity types.
-	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// The identity model: Azure-managed (tied to the app's lifecycle),
+	// bring-your-own (independent lifecycle), or both.
+	Type AzureFunctionAppIdentityType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentityType" json:"type,omitempty"`
 	// User Assigned Identity Azure resource IDs.
-	// Required when type includes "UserAssigned".
+	// Required when type includes USER_ASSIGNED.
 	//
 	// Can be literal ARM resource IDs or references to AzureUserAssignedIdentity outputs.
 	IdentityIds   []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=identity_ids,json=identityIds,proto3" json:"identity_ids,omitempty"`
@@ -1124,11 +2105,11 @@ func (*AzureFunctionAppIdentity) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *AzureFunctionAppIdentity) GetType() string {
+func (x *AzureFunctionAppIdentity) GetType() AzureFunctionAppIdentityType {
 	if x != nil {
 		return x.Type
 	}
-	return ""
+	return AzureFunctionAppIdentityType_azure_function_app_identity_type_unspecified
 }
 
 func (x *AzureFunctionAppIdentity) GetIdentityIds() []*v1.StringValueOrRef {
@@ -1145,11 +2126,10 @@ type AzureFunctionAppConnectionString struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The name of the connection string.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The type of connection string. Determines the environment variable prefix.
-	//
-	// Valid values: MySQL, SQLServer, SQLAzure, Custom, NotificationHub,
-	// ServiceBus, EventHub, APIHub, DocDb, RedisCache, PostgreSQL
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	// The service type. Determines the environment variable prefix Azure
+	// exposes the value under (e.g. SQLAZURECONNSTR_, MYSQLCONNSTR_,
+	// CUSTOMCONNSTR_).
+	Type AzureFunctionAppConnectionStringType `protobuf:"varint,2,opt,name=type,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionStringType" json:"type,omitempty"`
 	// The connection string value. This is a sensitive credential.
 	// Can be a literal value or a reference to a secrets manager.
 	Value         *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
@@ -1194,11 +2174,11 @@ func (x *AzureFunctionAppConnectionString) GetName() string {
 	return ""
 }
 
-func (x *AzureFunctionAppConnectionString) GetType() string {
+func (x *AzureFunctionAppConnectionString) GetType() AzureFunctionAppConnectionStringType {
 	if x != nil {
 		return x.Type
 	}
-	return ""
+	return AzureFunctionAppConnectionStringType_azure_function_app_connection_string_type_unspecified
 }
 
 func (x *AzureFunctionAppConnectionString) GetValue() *v1.StringValueOrRef {
@@ -1208,11 +2188,71 @@ func (x *AzureFunctionAppConnectionString) GetValue() *v1.StringValueOrRef {
 	return nil
 }
 
+// Settings pinned to the production slot during slot swaps. At least one
+// of the two lists must be non-empty.
+type AzureFunctionAppStickySettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Names of app_settings entries that stay with the production slot
+	// during a swap.
+	AppSettingNames []string `protobuf:"bytes,1,rep,name=app_setting_names,json=appSettingNames,proto3" json:"app_setting_names,omitempty"`
+	// Names of connection_strings entries that stay with the production
+	// slot during a swap.
+	ConnectionStringNames []string `protobuf:"bytes,2,rep,name=connection_string_names,json=connectionStringNames,proto3" json:"connection_string_names,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppStickySettings) Reset() {
+	*x = AzureFunctionAppStickySettings{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppStickySettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppStickySettings) ProtoMessage() {}
+
+func (x *AzureFunctionAppStickySettings) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppStickySettings.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppStickySettings) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AzureFunctionAppStickySettings) GetAppSettingNames() []string {
+	if x != nil {
+		return x.AppSettingNames
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppStickySettings) GetConnectionStringNames() []string {
+	if x != nil {
+		return x.ConnectionStringNames
+	}
+	return nil
+}
+
 // AzureFunctionAppIpRestriction defines an IP-based access restriction rule.
 // Rules are evaluated in priority order (lower number = higher priority).
 //
 // Exactly one of ip_address, service_tag, or virtual_network_subnet_id
-// must be specified per rule.
+// must be specified per rule. (Documented, not spec-enforced:
+// virtual_network_subnet_id is a reference whose sub-fields manifest
+// validation cannot inspect.)
 type AzureFunctionAppIpRestriction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Rule name for identification.
@@ -1220,12 +2260,8 @@ type AzureFunctionAppIpRestriction struct {
 	// Rule priority. Lower numbers are evaluated first.
 	// Range: 1 to 65000.
 	Priority *int32 `protobuf:"varint,2,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
-	// Action to take when the rule matches.
-	//
-	// Valid values: "Allow", "Deny"
-	//
-	// Default: "Allow"
-	Action *string `protobuf:"bytes,3,opt,name=action,proto3,oneof" json:"action,omitempty"`
+	// Whether matching traffic is allowed or denied. Unset deploys ALLOW.
+	Action AzureFunctionAppIpRestrictionAction `protobuf:"varint,3,opt,name=action,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionAction" json:"action,omitempty"`
 	// IP address or CIDR range.
 	// Example: "10.0.0.0/24", "203.0.113.50/32"
 	IpAddress string `protobuf:"bytes,4,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
@@ -1247,7 +2283,7 @@ type AzureFunctionAppIpRestriction struct {
 
 func (x *AzureFunctionAppIpRestriction) Reset() {
 	*x = AzureFunctionAppIpRestriction{}
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1259,7 +2295,7 @@ func (x *AzureFunctionAppIpRestriction) String() string {
 func (*AzureFunctionAppIpRestriction) ProtoMessage() {}
 
 func (x *AzureFunctionAppIpRestriction) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1272,7 +2308,7 @@ func (x *AzureFunctionAppIpRestriction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AzureFunctionAppIpRestriction.ProtoReflect.Descriptor instead.
 func (*AzureFunctionAppIpRestriction) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AzureFunctionAppIpRestriction) GetName() string {
@@ -1289,11 +2325,11 @@ func (x *AzureFunctionAppIpRestriction) GetPriority() int32 {
 	return 0
 }
 
-func (x *AzureFunctionAppIpRestriction) GetAction() string {
-	if x != nil && x.Action != nil {
-		return *x.Action
+func (x *AzureFunctionAppIpRestriction) GetAction() AzureFunctionAppIpRestrictionAction {
+	if x != nil {
+		return x.Action
 	}
-	return ""
+	return AzureFunctionAppIpRestrictionAction_azure_function_app_ip_restriction_action_unspecified
 }
 
 func (x *AzureFunctionAppIpRestriction) GetIpAddress() string {
@@ -1347,7 +2383,7 @@ type AzureFunctionAppIpRestrictionHeaders struct {
 	// Front Door instance.
 	XAzureFdid []string `protobuf:"bytes,3,rep,name=x_azure_fdid,json=xAzureFdid,proto3" json:"x_azure_fdid,omitempty"`
 	// X-FD-HealthProbe header values to match.
-	// Used to allow Front Door health probe traffic.
+	// The only supported value is "1" (allow Front Door health probes).
 	XFdHealthProbe []string `protobuf:"bytes,4,rep,name=x_fd_health_probe,json=xFdHealthProbe,proto3" json:"x_fd_health_probe,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -1355,7 +2391,7 @@ type AzureFunctionAppIpRestrictionHeaders struct {
 
 func (x *AzureFunctionAppIpRestrictionHeaders) Reset() {
 	*x = AzureFunctionAppIpRestrictionHeaders{}
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1367,7 +2403,7 @@ func (x *AzureFunctionAppIpRestrictionHeaders) String() string {
 func (*AzureFunctionAppIpRestrictionHeaders) ProtoMessage() {}
 
 func (x *AzureFunctionAppIpRestrictionHeaders) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1380,7 +2416,7 @@ func (x *AzureFunctionAppIpRestrictionHeaders) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AzureFunctionAppIpRestrictionHeaders.ProtoReflect.Descriptor instead.
 func (*AzureFunctionAppIpRestrictionHeaders) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AzureFunctionAppIpRestrictionHeaders) GetXForwardedFor() []string {
@@ -1420,7 +2456,8 @@ type AzureFunctionAppCorsSettings struct {
 	// Example: ["https://myapp.example.com", "https://admin.example.com"]
 	AllowedOrigins []string `protobuf:"bytes,1,rep,name=allowed_origins,json=allowedOrigins,proto3" json:"allowed_origins,omitempty"`
 	// Allow credentials (cookies, authorization headers) in cross-origin requests.
-	// Cannot be used with allowed_origins = ["*"].
+	// Cannot be combined with a wildcard origin (enforced here -- browsers
+	// reject the pairing).
 	//
 	// Default: false
 	SupportCredentials *bool `protobuf:"varint,2,opt,name=support_credentials,json=supportCredentials,proto3,oneof" json:"support_credentials,omitempty"`
@@ -1430,7 +2467,7 @@ type AzureFunctionAppCorsSettings struct {
 
 func (x *AzureFunctionAppCorsSettings) Reset() {
 	*x = AzureFunctionAppCorsSettings{}
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1442,7 +2479,7 @@ func (x *AzureFunctionAppCorsSettings) String() string {
 func (*AzureFunctionAppCorsSettings) ProtoMessage() {}
 
 func (x *AzureFunctionAppCorsSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1455,7 +2492,7 @@ func (x *AzureFunctionAppCorsSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AzureFunctionAppCorsSettings.ProtoReflect.Descriptor instead.
 func (*AzureFunctionAppCorsSettings) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AzureFunctionAppCorsSettings) GetAllowedOrigins() []string {
@@ -1489,7 +2526,7 @@ type AzureFunctionAppAppServiceLogs struct {
 
 func (x *AzureFunctionAppAppServiceLogs) Reset() {
 	*x = AzureFunctionAppAppServiceLogs{}
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1501,7 +2538,7 @@ func (x *AzureFunctionAppAppServiceLogs) String() string {
 func (*AzureFunctionAppAppServiceLogs) ProtoMessage() {}
 
 func (x *AzureFunctionAppAppServiceLogs) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1514,7 +2551,7 @@ func (x *AzureFunctionAppAppServiceLogs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AzureFunctionAppAppServiceLogs.ProtoReflect.Descriptor instead.
 func (*AzureFunctionAppAppServiceLogs) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AzureFunctionAppAppServiceLogs) GetDiskQuotaMb() int32 {
@@ -1538,18 +2575,17 @@ type AzureFunctionAppStorageMount struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique name for this mount within the Function App.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Storage type.
-	//
-	// Valid values:
-	// - "AzureBlob": Mount an Azure Blob container (read-only)
-	// - "AzureFiles": Mount an Azure File Share (read-write)
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	// What is being mounted: an Azure File Share (read-write) or a Blob
+	// container (read-only).
+	Type AzureFunctionAppStorageMountType `protobuf:"varint,2,opt,name=type,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMountType" json:"type,omitempty"`
 	// Name of the Azure Storage Account that contains the share or container.
 	AccountName string `protobuf:"bytes,3,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
 	// Name of the file share or blob container to mount.
 	ShareName string `protobuf:"bytes,4,opt,name=share_name,json=shareName,proto3" json:"share_name,omitempty"`
-	// Access key for the storage account.
-	// This is a sensitive credential.
+	// Access key for the storage account. Defaults to referencing an
+	// AzureStorageAccount's primary_access_key output, so the mount
+	// composes in one manifest set; a literal value or a managed-secret
+	// reference works too.
 	AccessKey *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
 	// Path inside the container where the share is mounted.
 	// Example: "/mnt/data"
@@ -1560,7 +2596,7 @@ type AzureFunctionAppStorageMount struct {
 
 func (x *AzureFunctionAppStorageMount) Reset() {
 	*x = AzureFunctionAppStorageMount{}
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1572,7 +2608,7 @@ func (x *AzureFunctionAppStorageMount) String() string {
 func (*AzureFunctionAppStorageMount) ProtoMessage() {}
 
 func (x *AzureFunctionAppStorageMount) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1585,7 +2621,7 @@ func (x *AzureFunctionAppStorageMount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AzureFunctionAppStorageMount.ProtoReflect.Descriptor instead.
 func (*AzureFunctionAppStorageMount) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AzureFunctionAppStorageMount) GetName() string {
@@ -1595,11 +2631,11 @@ func (x *AzureFunctionAppStorageMount) GetName() string {
 	return ""
 }
 
-func (x *AzureFunctionAppStorageMount) GetType() string {
+func (x *AzureFunctionAppStorageMount) GetType() AzureFunctionAppStorageMountType {
 	if x != nil {
 		return x.Type
 	}
-	return ""
+	return AzureFunctionAppStorageMountType_azure_function_app_storage_mount_type_unspecified
 }
 
 func (x *AzureFunctionAppStorageMount) GetAccountName() string {
@@ -1630,94 +2666,1392 @@ func (x *AzureFunctionAppStorageMount) GetMountPath() string {
 	return ""
 }
 
+// Scheduled backups of the app's content and configuration to an Azure
+// Storage container. Requires Standard tier or above (Azure rejects
+// backup on Consumption and Basic plans at apply time).
+type AzureFunctionAppBackup struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A name for this backup job (appears in the portal's backup list).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// SAS URL of the storage container receiving the backups. Carries a
+	// signed write credential -- treat like a password.
+	StorageAccountUrl *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=storage_account_url,json=storageAccountUrl,proto3" json:"storage_account_url,omitempty"`
+	// Whether the backup job runs. Disable to pause the schedule without
+	// losing its configuration.
+	//
+	// Default: true
+	Enabled *bool `protobuf:"varint,3,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// When and how often backups run, and how long they are kept.
+	Schedule      *AzureFunctionAppBackupSchedule `protobuf:"bytes,4,opt,name=schedule,proto3" json:"schedule,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppBackup) Reset() {
+	*x = AzureFunctionAppBackup{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppBackup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppBackup) ProtoMessage() {}
+
+func (x *AzureFunctionAppBackup) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppBackup.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppBackup) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AzureFunctionAppBackup) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppBackup) GetStorageAccountUrl() *v1.StringValueOrRef {
+	if x != nil {
+		return x.StorageAccountUrl
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppBackup) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *AzureFunctionAppBackup) GetSchedule() *AzureFunctionAppBackupSchedule {
+	if x != nil {
+		return x.Schedule
+	}
+	return nil
+}
+
+// The backup cadence and retention policy.
+type AzureFunctionAppBackupSchedule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many frequency_units pass between backups (e.g. 1 DAY = daily,
+	// 12 HOUR = twice a day). Range: 1-1000.
+	FrequencyInterval int32 `protobuf:"varint,1,opt,name=frequency_interval,json=frequencyInterval,proto3" json:"frequency_interval,omitempty"`
+	// The unit frequency_interval counts in.
+	FrequencyUnit AzureFunctionAppBackupFrequencyUnit `protobuf:"varint,2,opt,name=frequency_unit,json=frequencyUnit,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupFrequencyUnit" json:"frequency_unit,omitempty"`
+	// Never delete the last remaining backup, even when retention would
+	// expire it.
+	//
+	// Default: false
+	KeepAtLeastOneBackup *bool `protobuf:"varint,3,opt,name=keep_at_least_one_backup,json=keepAtLeastOneBackup,proto3,oneof" json:"keep_at_least_one_backup,omitempty"`
+	// Days each backup is retained before deletion. 0 keeps backups
+	// indefinitely.
+	//
+	// Default: 30
+	RetentionPeriodDays *int32 `protobuf:"varint,4,opt,name=retention_period_days,json=retentionPeriodDays,proto3,oneof" json:"retention_period_days,omitempty"`
+	// When the schedule starts, RFC3339 format (e.g.
+	// "2026-01-01T00:00:00Z"). Unset starts immediately.
+	StartTime     string `protobuf:"bytes,5,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppBackupSchedule) Reset() {
+	*x = AzureFunctionAppBackupSchedule{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppBackupSchedule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppBackupSchedule) ProtoMessage() {}
+
+func (x *AzureFunctionAppBackupSchedule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppBackupSchedule.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppBackupSchedule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AzureFunctionAppBackupSchedule) GetFrequencyInterval() int32 {
+	if x != nil {
+		return x.FrequencyInterval
+	}
+	return 0
+}
+
+func (x *AzureFunctionAppBackupSchedule) GetFrequencyUnit() AzureFunctionAppBackupFrequencyUnit {
+	if x != nil {
+		return x.FrequencyUnit
+	}
+	return AzureFunctionAppBackupFrequencyUnit_azure_function_app_backup_frequency_unit_unspecified
+}
+
+func (x *AzureFunctionAppBackupSchedule) GetKeepAtLeastOneBackup() bool {
+	if x != nil && x.KeepAtLeastOneBackup != nil {
+		return *x.KeepAtLeastOneBackup
+	}
+	return false
+}
+
+func (x *AzureFunctionAppBackupSchedule) GetRetentionPeriodDays() int32 {
+	if x != nil && x.RetentionPeriodDays != nil {
+		return *x.RetentionPeriodDays
+	}
+	return 0
+}
+
+func (x *AzureFunctionAppBackupSchedule) GetStartTime() string {
+	if x != nil {
+		return x.StartTime
+	}
+	return ""
+}
+
+// App Service built-in authentication (Easy Auth v2): the platform
+// authenticates requests before they reach function code. Provider
+// client secrets are referenced by APP SETTING NAME -- the secret value
+// itself lives in app_settings (or a Key Vault reference), never in this
+// block.
+type AzureFunctionAppAuthSettingsV2 struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Master switch: whether the authentication/authorization layer
+	// intercepts requests.
+	//
+	// Default: false
+	AuthEnabled *bool `protobuf:"varint,1,opt,name=auth_enabled,json=authEnabled,proto3,oneof" json:"auth_enabled,omitempty"`
+	// The Easy Auth middleware runtime version.
+	//
+	// Default: "~1"
+	RuntimeVersion *string `protobuf:"bytes,2,opt,name=runtime_version,json=runtimeVersion,proto3,oneof" json:"runtime_version,omitempty"`
+	// Path to a config file carrying the auth settings when they are
+	// file-managed instead of ARM-managed. Rarely used.
+	ConfigFilePath string `protobuf:"bytes,3,opt,name=config_file_path,json=configFilePath,proto3" json:"config_file_path,omitempty"`
+	// Require every request to be authenticated (subject to
+	// excluded_paths).
+	//
+	// Default: false
+	RequireAuthentication *bool `protobuf:"varint,4,opt,name=require_authentication,json=requireAuthentication,proto3,oneof" json:"require_authentication,omitempty"`
+	// What happens to unauthenticated requests. Unset deploys
+	// REDIRECT_TO_LOGIN_PAGE.
+	UnauthenticatedAction AzureFunctionAppUnauthenticatedAction `protobuf:"varint,5,opt,name=unauthenticated_action,json=unauthenticatedAction,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppUnauthenticatedAction" json:"unauthenticated_action,omitempty"`
+	// The provider unauthenticated requests are redirected to when
+	// unauthenticated_action is REDIRECT_TO_LOGIN_PAGE and more than one
+	// provider is configured: "apple", "azureactivedirectory", "facebook",
+	// "github", "google", "twitter", or the name of a custom_oidc_v2
+	// provider.
+	DefaultProvider string `protobuf:"bytes,6,opt,name=default_provider,json=defaultProvider,proto3" json:"default_provider,omitempty"`
+	// Paths that skip authentication entirely (e.g. ["/api/health"]).
+	ExcludedPaths []string `protobuf:"bytes,7,rep,name=excluded_paths,json=excludedPaths,proto3" json:"excluded_paths,omitempty"`
+	// Require HTTPS for authentication requests.
+	//
+	// Default: true
+	RequireHttps *bool `protobuf:"varint,8,opt,name=require_https,json=requireHttps,proto3,oneof" json:"require_https,omitempty"`
+	// The prefix that the Easy Auth HTTP endpoints (login, logout, token
+	// refresh) are served under.
+	//
+	// Default: "/.auth"
+	HttpRouteApiPrefix *string `protobuf:"bytes,9,opt,name=http_route_api_prefix,json=httpRouteApiPrefix,proto3,oneof" json:"http_route_api_prefix,omitempty"`
+	// How the original request URL is derived when the app sits behind a
+	// forward proxy. Unset deploys FORWARD_PROXY_NO_PROXY.
+	ForwardProxyConvention AzureFunctionAppForwardProxyConvention `protobuf:"varint,10,opt,name=forward_proxy_convention,json=forwardProxyConvention,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppForwardProxyConvention" json:"forward_proxy_convention,omitempty"`
+	// The header carrying the original host, when forward_proxy_convention
+	// is FORWARD_PROXY_CUSTOM.
+	ForwardProxyCustomHostHeaderName string `protobuf:"bytes,11,opt,name=forward_proxy_custom_host_header_name,json=forwardProxyCustomHostHeaderName,proto3" json:"forward_proxy_custom_host_header_name,omitempty"`
+	// The header carrying the original scheme, when
+	// forward_proxy_convention is FORWARD_PROXY_CUSTOM.
+	ForwardProxyCustomSchemeHeaderName string `protobuf:"bytes,12,opt,name=forward_proxy_custom_scheme_header_name,json=forwardProxyCustomSchemeHeaderName,proto3" json:"forward_proxy_custom_scheme_header_name,omitempty"`
+	// Login/session behavior (token store, cookie expiration, nonce).
+	// Required by Azure whenever auth_settings_v2 is configured.
+	Login *AzureFunctionAppAuthV2Login `protobuf:"bytes,13,opt,name=login,proto3" json:"login,omitempty"`
+	// Sign in with Apple.
+	AppleV2 *AzureFunctionAppAuthV2Apple `protobuf:"bytes,14,opt,name=apple_v2,json=appleV2,proto3" json:"apple_v2,omitempty"`
+	// Microsoft Entra ID (Azure Active Directory).
+	ActiveDirectoryV2 *AzureFunctionAppAuthV2ActiveDirectory `protobuf:"bytes,15,opt,name=active_directory_v2,json=activeDirectoryV2,proto3" json:"active_directory_v2,omitempty"`
+	// Azure Static Web Apps authentication (when fronted by one).
+	AzureStaticWebAppV2 *AzureFunctionAppAuthV2StaticWebApp `protobuf:"bytes,16,opt,name=azure_static_web_app_v2,json=azureStaticWebAppV2,proto3" json:"azure_static_web_app_v2,omitempty"`
+	// Any OpenID Connect provider(s), by name.
+	CustomOidcV2 []*AzureFunctionAppAuthV2CustomOidc `protobuf:"bytes,17,rep,name=custom_oidc_v2,json=customOidcV2,proto3" json:"custom_oidc_v2,omitempty"`
+	// Facebook login.
+	FacebookV2 *AzureFunctionAppAuthV2Facebook `protobuf:"bytes,18,opt,name=facebook_v2,json=facebookV2,proto3" json:"facebook_v2,omitempty"`
+	// GitHub login.
+	GithubV2 *AzureFunctionAppAuthV2Github `protobuf:"bytes,19,opt,name=github_v2,json=githubV2,proto3" json:"github_v2,omitempty"`
+	// Google login.
+	GoogleV2 *AzureFunctionAppAuthV2Google `protobuf:"bytes,20,opt,name=google_v2,json=googleV2,proto3" json:"google_v2,omitempty"`
+	// Microsoft account (consumer) login.
+	MicrosoftV2 *AzureFunctionAppAuthV2Microsoft `protobuf:"bytes,21,opt,name=microsoft_v2,json=microsoftV2,proto3" json:"microsoft_v2,omitempty"`
+	// Twitter login.
+	TwitterV2     *AzureFunctionAppAuthV2Twitter `protobuf:"bytes,22,opt,name=twitter_v2,json=twitterV2,proto3" json:"twitter_v2,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) Reset() {
+	*x = AzureFunctionAppAuthSettingsV2{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthSettingsV2) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthSettingsV2) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthSettingsV2.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthSettingsV2) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetAuthEnabled() bool {
+	if x != nil && x.AuthEnabled != nil {
+		return *x.AuthEnabled
+	}
+	return false
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetRuntimeVersion() string {
+	if x != nil && x.RuntimeVersion != nil {
+		return *x.RuntimeVersion
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetConfigFilePath() string {
+	if x != nil {
+		return x.ConfigFilePath
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetRequireAuthentication() bool {
+	if x != nil && x.RequireAuthentication != nil {
+		return *x.RequireAuthentication
+	}
+	return false
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetUnauthenticatedAction() AzureFunctionAppUnauthenticatedAction {
+	if x != nil {
+		return x.UnauthenticatedAction
+	}
+	return AzureFunctionAppUnauthenticatedAction_azure_function_app_unauthenticated_action_unspecified
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetDefaultProvider() string {
+	if x != nil {
+		return x.DefaultProvider
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetExcludedPaths() []string {
+	if x != nil {
+		return x.ExcludedPaths
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetRequireHttps() bool {
+	if x != nil && x.RequireHttps != nil {
+		return *x.RequireHttps
+	}
+	return false
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetHttpRouteApiPrefix() string {
+	if x != nil && x.HttpRouteApiPrefix != nil {
+		return *x.HttpRouteApiPrefix
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetForwardProxyConvention() AzureFunctionAppForwardProxyConvention {
+	if x != nil {
+		return x.ForwardProxyConvention
+	}
+	return AzureFunctionAppForwardProxyConvention_azure_function_app_forward_proxy_convention_unspecified
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetForwardProxyCustomHostHeaderName() string {
+	if x != nil {
+		return x.ForwardProxyCustomHostHeaderName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetForwardProxyCustomSchemeHeaderName() string {
+	if x != nil {
+		return x.ForwardProxyCustomSchemeHeaderName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetLogin() *AzureFunctionAppAuthV2Login {
+	if x != nil {
+		return x.Login
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetAppleV2() *AzureFunctionAppAuthV2Apple {
+	if x != nil {
+		return x.AppleV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetActiveDirectoryV2() *AzureFunctionAppAuthV2ActiveDirectory {
+	if x != nil {
+		return x.ActiveDirectoryV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetAzureStaticWebAppV2() *AzureFunctionAppAuthV2StaticWebApp {
+	if x != nil {
+		return x.AzureStaticWebAppV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetCustomOidcV2() []*AzureFunctionAppAuthV2CustomOidc {
+	if x != nil {
+		return x.CustomOidcV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetFacebookV2() *AzureFunctionAppAuthV2Facebook {
+	if x != nil {
+		return x.FacebookV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetGithubV2() *AzureFunctionAppAuthV2Github {
+	if x != nil {
+		return x.GithubV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetGoogleV2() *AzureFunctionAppAuthV2Google {
+	if x != nil {
+		return x.GoogleV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetMicrosoftV2() *AzureFunctionAppAuthV2Microsoft {
+	if x != nil {
+		return x.MicrosoftV2
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthSettingsV2) GetTwitterV2() *AzureFunctionAppAuthV2Twitter {
+	if x != nil {
+		return x.TwitterV2
+	}
+	return nil
+}
+
+// Login/session behavior for Easy Auth.
+type AzureFunctionAppAuthV2Login struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The endpoint the browser is sent to on logout (clears the session).
+	LogoutEndpoint string `protobuf:"bytes,1,opt,name=logout_endpoint,json=logoutEndpoint,proto3" json:"logout_endpoint,omitempty"`
+	// Durably store identity tokens so the app (and the /.auth/me
+	// endpoint) can retrieve them later. Required for token refresh.
+	//
+	// Default: false
+	TokenStoreEnabled *bool `protobuf:"varint,2,opt,name=token_store_enabled,json=tokenStoreEnabled,proto3,oneof" json:"token_store_enabled,omitempty"`
+	// Hours after session expiry that a token refresh may still succeed.
+	//
+	// Default: 72
+	TokenRefreshExtensionTime *float64 `protobuf:"fixed64,3,opt,name=token_refresh_extension_time,json=tokenRefreshExtensionTime,proto3,oneof" json:"token_refresh_extension_time,omitempty"`
+	// File-system path backing the token store (mutually exclusive with
+	// the SAS-setting form).
+	TokenStorePath string `protobuf:"bytes,4,opt,name=token_store_path,json=tokenStorePath,proto3" json:"token_store_path,omitempty"`
+	// Name of the app setting holding the SAS URL of the blob container
+	// backing the token store (mutually exclusive with the path form).
+	TokenStoreSasSettingName string `protobuf:"bytes,5,opt,name=token_store_sas_setting_name,json=tokenStoreSasSettingName,proto3" json:"token_store_sas_setting_name,omitempty"`
+	// Preserve URL fragments (#...) across the login redirect dance.
+	//
+	// Default: false
+	PreserveUrlFragmentsForLogins *bool `protobuf:"varint,6,opt,name=preserve_url_fragments_for_logins,json=preserveUrlFragmentsForLogins,proto3,oneof" json:"preserve_url_fragments_for_logins,omitempty"`
+	// External URLs that post-login/logout redirects may target (in
+	// addition to same-host URLs, which are always allowed).
+	AllowedExternalRedirectUrls []string `protobuf:"bytes,7,rep,name=allowed_external_redirect_urls,json=allowedExternalRedirectUrls,proto3" json:"allowed_external_redirect_urls,omitempty"`
+	// How session cookies expire. Unset deploys FIXED_TIME.
+	CookieExpirationConvention AzureFunctionAppCookieExpirationConvention `protobuf:"varint,8,opt,name=cookie_expiration_convention,json=cookieExpirationConvention,proto3,enum=dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCookieExpirationConvention" json:"cookie_expiration_convention,omitempty"`
+	// Session cookie lifetime (hh:mm:ss) when the convention is
+	// FIXED_TIME.
+	//
+	// Default: "08:00:00"
+	CookieExpirationTime *string `protobuf:"bytes,9,opt,name=cookie_expiration_time,json=cookieExpirationTime,proto3,oneof" json:"cookie_expiration_time,omitempty"`
+	// Validate the anti-forgery nonce during the login flow. Leave on.
+	//
+	// Default: true
+	ValidateNonce *bool `protobuf:"varint,10,opt,name=validate_nonce,json=validateNonce,proto3,oneof" json:"validate_nonce,omitempty"`
+	// Nonce lifetime (hh:mm:ss).
+	//
+	// Default: "00:05:00"
+	NonceExpirationTime *string `protobuf:"bytes,11,opt,name=nonce_expiration_time,json=nonceExpirationTime,proto3,oneof" json:"nonce_expiration_time,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2Login) Reset() {
+	*x = AzureFunctionAppAuthV2Login{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2Login) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2Login) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2Login) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2Login.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2Login) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetLogoutEndpoint() string {
+	if x != nil {
+		return x.LogoutEndpoint
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetTokenStoreEnabled() bool {
+	if x != nil && x.TokenStoreEnabled != nil {
+		return *x.TokenStoreEnabled
+	}
+	return false
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetTokenRefreshExtensionTime() float64 {
+	if x != nil && x.TokenRefreshExtensionTime != nil {
+		return *x.TokenRefreshExtensionTime
+	}
+	return 0
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetTokenStorePath() string {
+	if x != nil {
+		return x.TokenStorePath
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetTokenStoreSasSettingName() string {
+	if x != nil {
+		return x.TokenStoreSasSettingName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetPreserveUrlFragmentsForLogins() bool {
+	if x != nil && x.PreserveUrlFragmentsForLogins != nil {
+		return *x.PreserveUrlFragmentsForLogins
+	}
+	return false
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetAllowedExternalRedirectUrls() []string {
+	if x != nil {
+		return x.AllowedExternalRedirectUrls
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetCookieExpirationConvention() AzureFunctionAppCookieExpirationConvention {
+	if x != nil {
+		return x.CookieExpirationConvention
+	}
+	return AzureFunctionAppCookieExpirationConvention_azure_function_app_cookie_expiration_convention_unspecified
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetCookieExpirationTime() string {
+	if x != nil && x.CookieExpirationTime != nil {
+		return *x.CookieExpirationTime
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetValidateNonce() bool {
+	if x != nil && x.ValidateNonce != nil {
+		return *x.ValidateNonce
+	}
+	return false
+}
+
+func (x *AzureFunctionAppAuthV2Login) GetNonceExpirationTime() string {
+	if x != nil && x.NonceExpirationTime != nil {
+		return *x.NonceExpirationTime
+	}
+	return ""
+}
+
+// Sign in with Apple.
+type AzureFunctionAppAuthV2Apple struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Apple Services ID (client ID).
+	ClientId string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// Name of the app setting holding the client secret (never the secret
+	// itself).
+	ClientSecretSettingName string `protobuf:"bytes,2,opt,name=client_secret_setting_name,json=clientSecretSettingName,proto3" json:"client_secret_setting_name,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2Apple) Reset() {
+	*x = AzureFunctionAppAuthV2Apple{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2Apple) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2Apple) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2Apple) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2Apple.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2Apple) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AzureFunctionAppAuthV2Apple) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Apple) GetClientSecretSettingName() string {
+	if x != nil {
+		return x.ClientSecretSettingName
+	}
+	return ""
+}
+
+// Microsoft Entra ID (Azure Active Directory) authentication.
+type AzureFunctionAppAuthV2ActiveDirectory struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Entra app registration's client ID.
+	ClientId string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// The OpenID issuer endpoint for the tenant, e.g.
+	// https://login.microsoftonline.com/v2.0/{tenant-guid}/
+	TenantAuthEndpoint string `protobuf:"bytes,2,opt,name=tenant_auth_endpoint,json=tenantAuthEndpoint,proto3" json:"tenant_auth_endpoint,omitempty"`
+	// Name of the app setting holding the client secret (mutually
+	// exclusive with the certificate thumbprint).
+	ClientSecretSettingName string `protobuf:"bytes,3,opt,name=client_secret_setting_name,json=clientSecretSettingName,proto3" json:"client_secret_setting_name,omitempty"`
+	// Thumbprint of the certificate used as the client credential
+	// (mutually exclusive with the secret setting name).
+	ClientSecretCertificateThumbprint string `protobuf:"bytes,4,opt,name=client_secret_certificate_thumbprint,json=clientSecretCertificateThumbprint,proto3" json:"client_secret_certificate_thumbprint,omitempty"`
+	// Extra parameters sent to the authorization endpoint on login
+	// (key=value form).
+	LoginParameters map[string]string `protobuf:"bytes,5,rep,name=login_parameters,json=loginParameters,proto3" json:"login_parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Suppress the WWW-Authenticate challenge header on 401 responses.
+	//
+	// Default: false
+	WwwAuthenticationDisabled *bool `protobuf:"varint,6,opt,name=www_authentication_disabled,json=wwwAuthenticationDisabled,proto3,oneof" json:"www_authentication_disabled,omitempty"`
+	// Group claim values the JWT must carry to be accepted.
+	JwtAllowedGroups []string `protobuf:"bytes,7,rep,name=jwt_allowed_groups,json=jwtAllowedGroups,proto3" json:"jwt_allowed_groups,omitempty"`
+	// Client-application claim values the JWT must carry to be accepted.
+	JwtAllowedClientApplications []string `protobuf:"bytes,8,rep,name=jwt_allowed_client_applications,json=jwtAllowedClientApplications,proto3" json:"jwt_allowed_client_applications,omitempty"`
+	// Entra group object IDs allowed access.
+	AllowedGroups []string `protobuf:"bytes,9,rep,name=allowed_groups,json=allowedGroups,proto3" json:"allowed_groups,omitempty"`
+	// Identity object IDs allowed access.
+	AllowedIdentities []string `protobuf:"bytes,10,rep,name=allowed_identities,json=allowedIdentities,proto3" json:"allowed_identities,omitempty"`
+	// Client (application) IDs allowed access.
+	AllowedApplications []string `protobuf:"bytes,11,rep,name=allowed_applications,json=allowedApplications,proto3" json:"allowed_applications,omitempty"`
+	// Token audiences accepted in addition to the client ID.
+	AllowedAudiences []string `protobuf:"bytes,12,rep,name=allowed_audiences,json=allowedAudiences,proto3" json:"allowed_audiences,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) Reset() {
+	*x = AzureFunctionAppAuthV2ActiveDirectory{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2ActiveDirectory) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2ActiveDirectory.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2ActiveDirectory) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetTenantAuthEndpoint() string {
+	if x != nil {
+		return x.TenantAuthEndpoint
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetClientSecretSettingName() string {
+	if x != nil {
+		return x.ClientSecretSettingName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetClientSecretCertificateThumbprint() string {
+	if x != nil {
+		return x.ClientSecretCertificateThumbprint
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetLoginParameters() map[string]string {
+	if x != nil {
+		return x.LoginParameters
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetWwwAuthenticationDisabled() bool {
+	if x != nil && x.WwwAuthenticationDisabled != nil {
+		return *x.WwwAuthenticationDisabled
+	}
+	return false
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetJwtAllowedGroups() []string {
+	if x != nil {
+		return x.JwtAllowedGroups
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetJwtAllowedClientApplications() []string {
+	if x != nil {
+		return x.JwtAllowedClientApplications
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetAllowedGroups() []string {
+	if x != nil {
+		return x.AllowedGroups
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetAllowedIdentities() []string {
+	if x != nil {
+		return x.AllowedIdentities
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetAllowedApplications() []string {
+	if x != nil {
+		return x.AllowedApplications
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2ActiveDirectory) GetAllowedAudiences() []string {
+	if x != nil {
+		return x.AllowedAudiences
+	}
+	return nil
+}
+
+// Azure Static Web Apps authentication (when the app is fronted by one).
+type AzureFunctionAppAuthV2StaticWebApp struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Static Web App's client ID.
+	ClientId      string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2StaticWebApp) Reset() {
+	*x = AzureFunctionAppAuthV2StaticWebApp{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2StaticWebApp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2StaticWebApp) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2StaticWebApp) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2StaticWebApp.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2StaticWebApp) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AzureFunctionAppAuthV2StaticWebApp) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+// A custom OpenID Connect provider. Azure derives the client secret's
+// app setting name from the provider name
+// ({NAME}_PROVIDER_AUTHENTICATION_SECRET) -- set that app setting with
+// the secret value.
+type AzureFunctionAppAuthV2CustomOidc struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The provider's name (also the login route segment and the
+	// default_provider value that selects it).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The provider's client ID.
+	ClientId string `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// The provider's OpenID configuration (discovery) endpoint, e.g.
+	// https://idp.example.com/.well-known/openid-configuration
+	OpenidConfigurationEndpoint string `protobuf:"bytes,3,opt,name=openid_configuration_endpoint,json=openidConfigurationEndpoint,proto3" json:"openid_configuration_endpoint,omitempty"`
+	// The claim carrying the user's display name.
+	NameClaimType string `protobuf:"bytes,4,opt,name=name_claim_type,json=nameClaimType,proto3" json:"name_claim_type,omitempty"`
+	// OAuth scopes requested at login.
+	Scopes        []string `protobuf:"bytes,5,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2CustomOidc) Reset() {
+	*x = AzureFunctionAppAuthV2CustomOidc{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2CustomOidc) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2CustomOidc) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2CustomOidc) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2CustomOidc.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2CustomOidc) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AzureFunctionAppAuthV2CustomOidc) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2CustomOidc) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2CustomOidc) GetOpenidConfigurationEndpoint() string {
+	if x != nil {
+		return x.OpenidConfigurationEndpoint
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2CustomOidc) GetNameClaimType() string {
+	if x != nil {
+		return x.NameClaimType
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2CustomOidc) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+// Facebook login.
+type AzureFunctionAppAuthV2Facebook struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Facebook app's App ID.
+	AppId string `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	// Name of the app setting holding the app secret (never the secret
+	// itself).
+	AppSecretSettingName string `protobuf:"bytes,2,opt,name=app_secret_setting_name,json=appSecretSettingName,proto3" json:"app_secret_setting_name,omitempty"`
+	// The Facebook Graph API version used for login (e.g. "v17.0").
+	GraphApiVersion string `protobuf:"bytes,3,opt,name=graph_api_version,json=graphApiVersion,proto3" json:"graph_api_version,omitempty"`
+	// OAuth scopes requested at login.
+	LoginScopes   []string `protobuf:"bytes,4,rep,name=login_scopes,json=loginScopes,proto3" json:"login_scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2Facebook) Reset() {
+	*x = AzureFunctionAppAuthV2Facebook{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2Facebook) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2Facebook) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2Facebook) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2Facebook.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2Facebook) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AzureFunctionAppAuthV2Facebook) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Facebook) GetAppSecretSettingName() string {
+	if x != nil {
+		return x.AppSecretSettingName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Facebook) GetGraphApiVersion() string {
+	if x != nil {
+		return x.GraphApiVersion
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Facebook) GetLoginScopes() []string {
+	if x != nil {
+		return x.LoginScopes
+	}
+	return nil
+}
+
+// GitHub login.
+type AzureFunctionAppAuthV2Github struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The GitHub OAuth app's client ID.
+	ClientId string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// Name of the app setting holding the client secret (never the secret
+	// itself).
+	ClientSecretSettingName string `protobuf:"bytes,2,opt,name=client_secret_setting_name,json=clientSecretSettingName,proto3" json:"client_secret_setting_name,omitempty"`
+	// OAuth scopes requested at login.
+	LoginScopes   []string `protobuf:"bytes,3,rep,name=login_scopes,json=loginScopes,proto3" json:"login_scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2Github) Reset() {
+	*x = AzureFunctionAppAuthV2Github{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2Github) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2Github) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2Github) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2Github.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2Github) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AzureFunctionAppAuthV2Github) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Github) GetClientSecretSettingName() string {
+	if x != nil {
+		return x.ClientSecretSettingName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Github) GetLoginScopes() []string {
+	if x != nil {
+		return x.LoginScopes
+	}
+	return nil
+}
+
+// Google login.
+type AzureFunctionAppAuthV2Google struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Google OAuth client ID.
+	ClientId string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// Name of the app setting holding the client secret (never the secret
+	// itself).
+	ClientSecretSettingName string `protobuf:"bytes,2,opt,name=client_secret_setting_name,json=clientSecretSettingName,proto3" json:"client_secret_setting_name,omitempty"`
+	// Token audiences accepted in addition to the client ID.
+	AllowedAudiences []string `protobuf:"bytes,3,rep,name=allowed_audiences,json=allowedAudiences,proto3" json:"allowed_audiences,omitempty"`
+	// OAuth scopes requested at login.
+	LoginScopes   []string `protobuf:"bytes,4,rep,name=login_scopes,json=loginScopes,proto3" json:"login_scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2Google) Reset() {
+	*x = AzureFunctionAppAuthV2Google{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2Google) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2Google) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2Google) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2Google.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2Google) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AzureFunctionAppAuthV2Google) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Google) GetClientSecretSettingName() string {
+	if x != nil {
+		return x.ClientSecretSettingName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Google) GetAllowedAudiences() []string {
+	if x != nil {
+		return x.AllowedAudiences
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2Google) GetLoginScopes() []string {
+	if x != nil {
+		return x.LoginScopes
+	}
+	return nil
+}
+
+// Microsoft account (consumer) login.
+type AzureFunctionAppAuthV2Microsoft struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Microsoft app registration's client ID.
+	ClientId string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// Name of the app setting holding the client secret (never the secret
+	// itself).
+	ClientSecretSettingName string `protobuf:"bytes,2,opt,name=client_secret_setting_name,json=clientSecretSettingName,proto3" json:"client_secret_setting_name,omitempty"`
+	// Token audiences accepted in addition to the client ID.
+	AllowedAudiences []string `protobuf:"bytes,3,rep,name=allowed_audiences,json=allowedAudiences,proto3" json:"allowed_audiences,omitempty"`
+	// OAuth scopes requested at login.
+	LoginScopes   []string `protobuf:"bytes,4,rep,name=login_scopes,json=loginScopes,proto3" json:"login_scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2Microsoft) Reset() {
+	*x = AzureFunctionAppAuthV2Microsoft{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2Microsoft) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2Microsoft) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2Microsoft) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2Microsoft.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2Microsoft) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AzureFunctionAppAuthV2Microsoft) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Microsoft) GetClientSecretSettingName() string {
+	if x != nil {
+		return x.ClientSecretSettingName
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Microsoft) GetAllowedAudiences() []string {
+	if x != nil {
+		return x.AllowedAudiences
+	}
+	return nil
+}
+
+func (x *AzureFunctionAppAuthV2Microsoft) GetLoginScopes() []string {
+	if x != nil {
+		return x.LoginScopes
+	}
+	return nil
+}
+
+// Twitter login.
+type AzureFunctionAppAuthV2Twitter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Twitter app's consumer (API) key.
+	ConsumerKey string `protobuf:"bytes,1,opt,name=consumer_key,json=consumerKey,proto3" json:"consumer_key,omitempty"`
+	// Name of the app setting holding the consumer secret (never the
+	// secret itself).
+	ConsumerSecretSettingName string `protobuf:"bytes,2,opt,name=consumer_secret_setting_name,json=consumerSecretSettingName,proto3" json:"consumer_secret_setting_name,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *AzureFunctionAppAuthV2Twitter) Reset() {
+	*x = AzureFunctionAppAuthV2Twitter{}
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzureFunctionAppAuthV2Twitter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzureFunctionAppAuthV2Twitter) ProtoMessage() {}
+
+func (x *AzureFunctionAppAuthV2Twitter) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzureFunctionAppAuthV2Twitter.ProtoReflect.Descriptor instead.
+func (*AzureFunctionAppAuthV2Twitter) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AzureFunctionAppAuthV2Twitter) GetConsumerKey() string {
+	if x != nil {
+		return x.ConsumerKey
+	}
+	return ""
+}
+
+func (x *AzureFunctionAppAuthV2Twitter) GetConsumerSecretSettingName() string {
+	if x != nil {
+		return x.ConsumerSecretSettingName
+	}
+	return ""
+}
+
 var File_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/azure/azurefunctionapp/v1/spec.proto\x12.dev.planton.provider.azure.azurefunctionapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd9\x19\n" +
+	"9dev/planton/provider/azure/azurefunctionapp/v1/spec.proto\x12.dev.planton.provider.azure.azurefunctionapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x860\n" +
 	"\x14AzureFunctionAppSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xef\x01\n" +
-	"\x04name\x18\x03 \x01(\tB\xda\x01\xbaH\xd6\x01\xba\x01\xc9\x01\n" +
-	"\x18function_app_name_format\x12qname must contain only alphanumeric characters and hyphens, and must start and end with an alphanumeric character\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,58}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18<R\x04name\x12\x81\x01\n" +
-	"\x0fservice_plan_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\x03\x92\xd4a\x16status.outputs.plan_idR\rservicePlanId\x12\x98\x01\n" +
-	"\x14storage_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a#status.outputs.storage_account_nameR\x12storageAccountName\x12\x9f\x01\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x94\x02\n" +
+	"\x11function_app_name\x18\x03 \x01(\tB\xe7\x01\xbaH\xe3\x01\xba\x01\xd6\x01\n" +
+	"\x18function_app_name_format\x12~function_app_name must contain only alphanumeric characters and hyphens, and must start and end with an alphanumeric character\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,58}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18<R\x0ffunctionAppName\x12\x89\x01\n" +
+	"\x0fservice_plan_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\x03\x92\xd4a\x1estatus.outputs.service_plan_idR\rservicePlanId\x12\x92\x01\n" +
+	"\x14storage_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\x99\x03\x92\xd4a#status.outputs.storage_account_nameR\x12storageAccountName\x12\x9f\x01\n" +
 	"\x1astorage_account_access_key\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xa0\xa6\x1d\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.primary_access_keyR\x17storageAccountAccessKey\x12Q\n" +
-	"\x1dstorage_uses_managed_identity\x18\a \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x1astorageUsesManagedIdentity\x88\x01\x01\x12K\n" +
-	"\x1bfunctions_extension_version\x18\b \x01(\tB\x06\x8a\xa6\x1d\x02~4H\x01R\x19functionsExtensionVersion\x88\x01\x01\x12s\n" +
-	"\vsite_config\x18\t \x01(\v2J.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfigB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"\x1dstorage_uses_managed_identity\x18\a \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x1astorageUsesManagedIdentity\x88\x01\x01\x12\xbb\x02\n" +
+	"\x1bstorage_key_vault_secret_id\x18\b \x01(\tB\xfc\x01\xbaH\xf8\x01\xba\x01\xf4\x01\n" +
+	"\"storage_key_vault_secret_id_format\x12\x87\x01storage_key_vault_secret_id must be a Key Vault secret URL (https://{vault}.vault.azure.net/secrets/{name} with an optional /{version})\x1aDthis == '' || this.matches('^https://[^/]+/secrets/[^/]+(/[^/]+)?$')R\x17storageKeyVaultSecretId\x12K\n" +
+	"\x1bfunctions_extension_version\x18\t \x01(\tB\x06\x8a\xa6\x1d\x02~4H\x01R\x19functionsExtensionVersion\x88\x01\x01\x12H\n" +
+	"\x17daily_memory_time_quota\x18\n" +
+	" \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x010H\x02R\x14dailyMemoryTimeQuota\x88\x01\x01\x12s\n" +
+	"\vsite_config\x18\v \x01(\v2J.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfigB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"siteConfig\x12x\n" +
-	"\fapp_settings\x18\n" +
-	" \x03(\v2U.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.AppSettingsEntryR\vappSettings\x12\x7f\n" +
-	"\x12connection_strings\x18\v \x03(\v2P.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionStringR\x11connectionStrings\x12\xd8\x02\n" +
-	"&application_insights_connection_string\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\xce\x01\xaa\xa6\x1d\xa0\x01Foreign-key reference to an AzureApplicationInsights output (the connection string is sourced from the referenced resource, not a user-supplied secret literal).\x88\xd4a\xc3\x03\x92\xd4a status.outputs.connection_stringR#applicationInsightsConnectionString\x12,\n" +
+	"\fapp_settings\x18\f \x03(\v2U.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.AppSettingsEntryR\vappSettings\x12\x7f\n" +
+	"\x12connection_strings\x18\r \x03(\v2P.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionStringR\x11connectionStrings\x12w\n" +
+	"\x0fsticky_settings\x18\x0e \x01(\v2N.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStickySettingsR\x0estickySettings\x12\xd8\x02\n" +
+	"&application_insights_connection_string\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\xce\x01\xaa\xa6\x1d\xa0\x01Foreign-key reference to an AzureApplicationInsights output (the connection string is sourced from the referenced resource, not a user-supplied secret literal).\x88\xd4a\xc3\x03\x92\xd4a status.outputs.connection_stringR#applicationInsightsConnectionString\x12,\n" +
 	"\n" +
-	"https_only\x18\r \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\thttpsOnly\x88\x01\x01\x12P\n" +
-	"\x1dpublic_network_access_enabled\x18\x0e \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x1apublicNetworkAccessEnabled\x88\x01\x01\x12E\n" +
-	"\x17builtin_logging_enabled\x18\x0f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x15builtinLoggingEnabled\x88\x01\x01\x12\x90\x01\n" +
-	"\x19virtual_network_subnet_id\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16virtualNetworkSubnetId\x12d\n" +
-	"\bidentity\x18\x11 \x01(\v2H.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentityR\bidentity\x12\x9d\x01\n" +
-	"\x1fkey_vault_reference_identity_id\x18\x12 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1bkeyVaultReferenceIdentityId\x12L\n" +
-	"\x1aclient_certificate_enabled\x18\x13 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x05R\x18clientCertificateEnabled\x88\x01\x01\x12\x83\x02\n" +
-	"\x17client_certificate_mode\x18\x14 \x01(\tB\xc5\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
-	"\x1dclient_certificate_mode_valid\x12Sclient_certificate_mode must be one of: Required, Optional, OptionalInteractiveUser\x1a;this in ['Required', 'Optional', 'OptionalInteractiveUser']\x8a\xa6\x1d\bOptionalH\x06R\x15clientCertificateMode\x88\x01\x01\x12K\n" +
-	"\"client_certificate_exclusion_paths\x18\x15 \x01(\tR\x1fclientCertificateExclusionPaths\x12O\n" +
-	"\x1ccontent_share_force_disabled\x18\x16 \x01(\bB\t\x8a\xa6\x1d\x05falseH\aR\x19contentShareForceDisabled\x88\x01\x01\x12s\n" +
-	"\x0estorage_mounts\x18\x17 \x03(\v2L.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMountR\rstorageMounts\x1a>\n" +
+	"https_only\x18\x10 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\thttpsOnly\x88\x01\x01\x12P\n" +
+	"\x1dpublic_network_access_enabled\x18\x11 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x1apublicNetworkAccessEnabled\x88\x01\x01\x12'\n" +
+	"\aenabled\x18\x12 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x05R\aenabled\x88\x01\x01\x12E\n" +
+	"\x17builtin_logging_enabled\x18\x13 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x06R\x15builtinLoggingEnabled\x88\x01\x01\x12O\n" +
+	"\x1ccontent_share_force_disabled\x18\x14 \x01(\bB\t\x8a\xa6\x1d\x05falseH\aR\x19contentShareForceDisabled\x88\x01\x01\x12L\n" +
+	"\x1aclient_certificate_enabled\x18\x15 \x01(\bB\t\x8a\xa6\x1d\x05falseH\bR\x18clientCertificateEnabled\x88\x01\x01\x12\x97\x01\n" +
+	"\x17client_certificate_mode\x18\x16 \x01(\x0e2U.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppClientCertificateModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x15clientCertificateMode\x12K\n" +
+	"\"client_certificate_exclusion_paths\x18\x17 \x01(\tR\x1fclientCertificateExclusionPaths\x12\x90\x01\n" +
+	"\x19virtual_network_subnet_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16virtualNetworkSubnetId\x12E\n" +
+	"\x17vnet_image_pull_enabled\x18\x19 \x01(\bB\t\x8a\xa6\x1d\x05falseH\tR\x14vnetImagePullEnabled\x88\x01\x01\x12b\n" +
+	"&virtual_network_backup_restore_enabled\x18\x1a \x01(\bB\t\x8a\xa6\x1d\x05falseH\n" +
+	"R\"virtualNetworkBackupRestoreEnabled\x88\x01\x01\x12d\n" +
+	"\bidentity\x18\x1b \x01(\v2H.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentityR\bidentity\x12\x9d\x01\n" +
+	"\x1fkey_vault_reference_identity_id\x18\x1c \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1bkeyVaultReferenceIdentityId\x12q\n" +
+	".webdeploy_publish_basic_authentication_enabled\x18\x1d \x01(\bB\b\x8a\xa6\x1d\x04trueH\vR*webdeployPublishBasicAuthenticationEnabled\x88\x01\x01\x12e\n" +
+	"(ftp_publish_basic_authentication_enabled\x18\x1e \x01(\bB\b\x8a\xa6\x1d\x04trueH\fR$ftpPublishBasicAuthenticationEnabled\x88\x01\x01\x12&\n" +
+	"\x0fzip_deploy_file\x18\x1f \x01(\tR\rzipDeployFile\x12s\n" +
+	"\x0estorage_mounts\x18  \x03(\v2L.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMountR\rstorageMounts\x12^\n" +
+	"\x06backup\x18! \x01(\v2F.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupR\x06backup\x12x\n" +
+	"\x10auth_settings_v2\x18\" \x01(\v2N.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2R\x0eauthSettingsV2\x12b\n" +
+	"\x04tags\x18# \x03(\v2N.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.TagsEntryR\x04tags\x1a>\n" +
 	"\x10AppSettingsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B \n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xee\n" +
+	"\xbaH\xea\n" +
+	"\x1a\xd0\x01\n" +
+	"(function_app_storage_binding_exactly_one\x12Xexactly one storage binding applies: storage_account_name OR storage_key_vault_secret_id\x1aJhas(this.storage_account_name) != (this.storage_key_vault_secret_id != '')\x1a\x94\x02\n" +
+	"%function_app_storage_key_xor_identity\x12qstorage_account_access_key conflicts with storage_uses_managed_identity -- pick one storage authentication method\x1ax!(has(this.storage_account_access_key) && has(this.storage_uses_managed_identity) && this.storage_uses_managed_identity)\x1a\x83\x02\n" +
+	",function_app_vnet_image_pull_requires_subnet\x12fvnet_image_pull_enabled requires virtual_network_subnet_id (the image pull rides the VNet integration)\x1ak!(has(this.vnet_image_pull_enabled) && this.vnet_image_pull_enabled) || has(this.virtual_network_subnet_id)\x1a\xb5\x02\n" +
+	"0function_app_vnet_backup_restore_requires_subnet\x12uvirtual_network_backup_restore_enabled requires virtual_network_subnet_id (backup traffic rides the VNet integration)\x1a\x89\x01!(has(this.virtual_network_backup_restore_enabled) && this.virtual_network_backup_restore_enabled) || has(this.virtual_network_subnet_id)\x1a\xbf\x02\n" +
+	"+function_app_vnet_route_all_requires_subnet\x12ssite_config.vnet_route_all_enabled requires virtual_network_subnet_id (there is no VNet to route through otherwise)\x1a\x9a\x01!(has(this.site_config) && has(this.site_config.vnet_route_all_enabled) && this.site_config.vnet_route_all_enabled) || has(this.virtual_network_subnet_id)B \n" +
 	"\x1e_storage_uses_managed_identityB\x1e\n" +
-	"\x1c_functions_extension_versionB\r\n" +
+	"\x1c_functions_extension_versionB\x1a\n" +
+	"\x18_daily_memory_time_quotaB\r\n" +
 	"\v_https_onlyB \n" +
-	"\x1e_public_network_access_enabledB\x1a\n" +
-	"\x18_builtin_logging_enabledB\x1d\n" +
+	"\x1e_public_network_access_enabledB\n" +
+	"\n" +
+	"\b_enabledB\x1a\n" +
+	"\x18_builtin_logging_enabledB\x1f\n" +
+	"\x1d_content_share_force_disabledB\x1d\n" +
 	"\x1b_client_certificate_enabledB\x1a\n" +
-	"\x18_client_certificate_modeB\x1f\n" +
-	"\x1d_content_share_force_disabled\"\xe4\x1b\n" +
+	"\x18_vnet_image_pull_enabledB)\n" +
+	"'_virtual_network_backup_restore_enabledB1\n" +
+	"/_webdeploy_publish_basic_authentication_enabledB+\n" +
+	")_ftp_publish_basic_authentication_enabled\"\x8b#\n" +
 	"\x1aAzureFunctionAppSiteConfig\x12}\n" +
 	"\x11application_stack\x18\x01 \x01(\v2P.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppApplicationStackR\x10applicationStack\x12 \n" +
 	"\talways_on\x18\x02 \x01(\bH\x00R\balwaysOn\x88\x01\x01\x12(\n" +
-	"\x10app_command_line\x18\x03 \x01(\tR\x0eappCommandLine\x12*\n" +
-	"\x11health_check_path\x18\x04 \x01(\tR\x0fhealthCheckPath\x12\xbc\x01\n" +
-	"\x13minimum_tls_version\x18\x05 \x01(\tB\x86\x01\xbaH|\xba\x01y\n" +
-	"\x19minimum_tls_version_valid\x126minimum_tls_version must be one of: 1.0, 1.1, 1.2, 1.3\x1a$this in ['1.0', '1.1', '1.2', '1.3']\x8a\xa6\x1d\x031.2H\x01R\x11minimumTlsVersion\x88\x01\x01\x12\xcd\x01\n" +
-	"\x17scm_minimum_tls_version\x18\x06 \x01(\tB\x90\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
-	"\x1dscm_minimum_tls_version_valid\x12:scm_minimum_tls_version must be one of: 1.0, 1.1, 1.2, 1.3\x1a$this in ['1.0', '1.1', '1.2', '1.3']\x8a\xa6\x1d\x031.2H\x02R\x14scmMinimumTlsVersion\x88\x01\x01\x12+\n" +
-	"\x0fapp_scale_limit\x18\a \x01(\x05H\x03R\rappScaleLimit\x88\x01\x01\x12=\n" +
-	"\x18elastic_instance_minimum\x18\b \x01(\x05H\x04R\x16elasticInstanceMinimum\x88\x01\x01\x12>\n" +
-	"\x19pre_warmed_instance_count\x18\t \x01(\x05H\x05R\x16preWarmedInstanceCount\x88\x01\x01\x121\n" +
-	"\fworker_count\x18\n" +
-	" \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01H\x06R\vworkerCount\x88\x01\x01\x123\n" +
-	"\rhttp2_enabled\x18\v \x01(\bB\t\x8a\xa6\x1d\x05falseH\aR\fhttp2Enabled\x88\x01\x01\x12=\n" +
-	"\x12websockets_enabled\x18\f \x01(\bB\t\x8a\xa6\x1d\x05falseH\bR\x11websocketsEnabled\x88\x01\x01\x129\n" +
-	"\x11use_32_bit_worker\x18\r \x01(\bB\t\x8a\xa6\x1d\x05falseH\tR\x0euse32BitWorker\x88\x01\x01\x12C\n" +
-	"\x16vnet_route_all_enabled\x18\x0e \x01(\bB\t\x8a\xa6\x1d\x05falseH\n" +
-	"R\x13vnetRouteAllEnabled\x88\x01\x01\x12\xb5\x01\n" +
+	"\x10app_command_line\x18\x03 \x01(\tR\x0eappCommandLine\x121\n" +
+	"\x15api_management_api_id\x18\x04 \x01(\tR\x12apiManagementApiId\x12,\n" +
+	"\x12api_definition_url\x18\x05 \x01(\tR\x10apiDefinitionUrl\x12+\n" +
+	"\x11default_documents\x18\x06 \x03(\tR\x10defaultDocuments\x12*\n" +
+	"\x11health_check_path\x18\a \x01(\tR\x0fhealthCheckPath\x12W\n" +
+	"!health_check_eviction_time_in_min\x18\b \x01(\x05B\t\xbaH\x06\x1a\x04\x18\n" +
+	"(\x02H\x01R\x1chealthCheckEvictionTimeInMin\x88\x01\x01\x12\x84\x01\n" +
+	"\x13minimum_tls_version\x18\t \x01(\x0e2J.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppTlsVersionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x11minimumTlsVersion\x12\x8b\x01\n" +
+	"\x17scm_minimum_tls_version\x18\n" +
+	" \x01(\x0e2J.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppTlsVersionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x14scmMinimumTlsVersion\x12\x80\a\n" +
+	"\x18minimum_tls_cipher_suite\x18\v \x01(\tB\xc6\x06\xbaH\xc2\x06\xba\x01\xbe\x06\n" +
+	"\x1eminimum_tls_cipher_suite_valid\x12\x91\x01minimum_tls_cipher_suite must be one of Azure's TLS cipher suite identifiers (e.g. TLS_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)\x1a\x87\x05this == '' || this in ['TLS_AES_128_GCM_SHA256', 'TLS_AES_256_GCM_SHA384', 'TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256', 'TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256', 'TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384', 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA', 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256', 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256', 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA', 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384', 'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384', 'TLS_RSA_WITH_AES_128_CBC_SHA', 'TLS_RSA_WITH_AES_128_CBC_SHA256', 'TLS_RSA_WITH_AES_128_GCM_SHA256', 'TLS_RSA_WITH_AES_256_CBC_SHA', 'TLS_RSA_WITH_AES_256_CBC_SHA256', 'TLS_RSA_WITH_AES_256_GCM_SHA384']R\x15minimumTlsCipherSuite\x124\n" +
+	"\x0fapp_scale_limit\x18\f \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x02R\rappScaleLimit\x88\x01\x01\x12F\n" +
+	"\x18elastic_instance_minimum\x18\r \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x03R\x16elasticInstanceMinimum\x88\x01\x01\x12G\n" +
+	"\x19pre_warmed_instance_count\x18\x0e \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x04R\x16preWarmedInstanceCount\x88\x01\x01\x121\n" +
+	"\fworker_count\x18\x0f \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01H\x05R\vworkerCount\x88\x01\x01\x123\n" +
+	"\rhttp2_enabled\x18\x10 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x06R\fhttp2Enabled\x88\x01\x01\x12=\n" +
+	"\x12websockets_enabled\x18\x11 \x01(\bB\t\x8a\xa6\x1d\x05falseH\aR\x11websocketsEnabled\x88\x01\x01\x129\n" +
+	"\x11use_32_bit_worker\x18\x12 \x01(\bB\t\x8a\xa6\x1d\x05falseH\bR\x0euse32BitWorker\x88\x01\x01\x12C\n" +
+	"\x16vnet_route_all_enabled\x18\x13 \x01(\bB\t\x8a\xa6\x1d\x05falseH\tR\x13vnetRouteAllEnabled\x88\x01\x01\x12r\n" +
 	"\n" +
-	"ftps_state\x18\x0f \x01(\tB\x90\x01\xbaH\x80\x01\xba\x01}\n" +
-	"\x10ftps_state_valid\x129ftps_state must be one of: AllAllowed, FtpsOnly, Disabled\x1a.this in ['AllAllowed', 'FtpsOnly', 'Disabled']\x8a\xa6\x1d\bDisabledH\vR\tftpsState\x88\x01\x01\x12\xfe\x02\n" +
-	"\x13load_balancing_mode\x18\x10 \x01(\tB\xc8\x02\xbaH\xb3\x02\xba\x01\xaf\x02\n" +
-	"\x19load_balancing_mode_valid\x12\x8e\x01load_balancing_mode must be one of: LeastRequests, WeightedRoundRobin, LeastResponseTime, WeightedTotalTraffic, RequestHash, PerSiteRoundRobin\x1a\x80\x01this in ['LeastRequests', 'WeightedRoundRobin', 'LeastResponseTime', 'WeightedTotalTraffic', 'RequestHash', 'PerSiteRoundRobin']\x8a\xa6\x1d\rLeastRequestsH\fR\x11loadBalancingMode\x88\x01\x01\x12L\n" +
-	" runtime_scale_monitoring_enabled\x18\x11 \x01(\bH\rR\x1druntimeScaleMonitoringEnabled\x88\x01\x01\x12`\n" +
-	"\x04cors\x18\x12 \x01(\v2L.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCorsSettingsR\x04cors\x12v\n" +
-	"\x0fip_restrictions\x18\x13 \x03(\v2M.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionR\x0eipRestrictions\x12\xd3\x01\n" +
-	"\x1dip_restriction_default_action\x18\x14 \x01(\tB\x8a\x01\xbaH~\xba\x01{\n" +
-	"#ip_restriction_default_action_valid\x129ip_restriction_default_action must be one of: Allow, Deny\x1a\x19this in ['Allow', 'Deny']\x8a\xa6\x1d\x05AllowH\x0eR\x1aipRestrictionDefaultAction\x88\x01\x01\x12L\n" +
-	"\x1bscm_use_main_ip_restriction\x18\x15 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x0fR\x17scmUseMainIpRestriction\x88\x01\x01\x12}\n" +
-	"\x13scm_ip_restrictions\x18\x16 \x03(\v2M.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionR\x11scmIpRestrictions\x12\xe4\x01\n" +
-	"!scm_ip_restriction_default_action\x18\x17 \x01(\tB\x94\x01\xbaH\x87\x01\xba\x01\x83\x01\n" +
-	"'scm_ip_restriction_default_action_valid\x12=scm_ip_restriction_default_action must be one of: Allow, Deny\x1a\x19this in ['Allow', 'Deny']\x8a\xa6\x1d\x05AllowH\x10R\x1dscmIpRestrictionDefaultAction\x88\x01\x01\x12x\n" +
-	"\x10app_service_logs\x18\x18 \x01(\v2N.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAppServiceLogsR\x0eappServiceLogs\x12+\n" +
-	"\x11default_documents\x18\x19 \x03(\tR\x10defaultDocuments\x12d\n" +
-	"'container_registry_use_managed_identity\x18\x1a \x01(\bB\t\x8a\xa6\x1d\x05falseH\x11R#containerRegistryUseManagedIdentity\x88\x01\x01\x12_\n" +
-	"-container_registry_managed_identity_client_id\x18\x1b \x01(\tR(containerRegistryManagedIdentityClientId\x128\n" +
-	"\x18application_insights_key\x18\x1c \x01(\tR\x16applicationInsightsKeyB\f\n" +
+	"ftps_state\x18\x14 \x01(\x0e2I.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppFtpsStateB\b\xbaH\x05\x82\x01\x02\x10\x01R\tftpsState\x12\x8b\x01\n" +
+	"\x13load_balancing_mode\x18\x15 \x01(\x0e2Q.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppLoadBalancingModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x11loadBalancingMode\x12\x91\x01\n" +
+	"\x15managed_pipeline_mode\x18\x16 \x01(\x0e2S.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppManagedPipelineModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x13managedPipelineMode\x12H\n" +
+	"\x18remote_debugging_enabled\x18\x17 \x01(\bB\t\x8a\xa6\x1d\x05falseH\n" +
+	"R\x16remoteDebuggingEnabled\x88\x01\x01\x12L\n" +
+	" runtime_scale_monitoring_enabled\x18\x18 \x01(\bH\vR\x1druntimeScaleMonitoringEnabled\x88\x01\x01\x12`\n" +
+	"\x04cors\x18\x19 \x01(\v2L.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCorsSettingsR\x04cors\x12v\n" +
+	"\x0fip_restrictions\x18\x1a \x03(\v2M.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionR\x0eipRestrictions\x12\xa0\x01\n" +
+	"\x1dip_restriction_default_action\x18\x1b \x01(\x0e2S.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionActionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x1aipRestrictionDefaultAction\x12L\n" +
+	"\x1bscm_use_main_ip_restriction\x18\x1c \x01(\bB\t\x8a\xa6\x1d\x05falseH\fR\x17scmUseMainIpRestriction\x88\x01\x01\x12}\n" +
+	"\x13scm_ip_restrictions\x18\x1d \x03(\v2M.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionR\x11scmIpRestrictions\x12\xa7\x01\n" +
+	"!scm_ip_restriction_default_action\x18\x1e \x01(\x0e2S.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionActionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x1dscmIpRestrictionDefaultAction\x12x\n" +
+	"\x10app_service_logs\x18\x1f \x01(\v2N.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAppServiceLogsR\x0eappServiceLogs\x12d\n" +
+	"'container_registry_use_managed_identity\x18  \x01(\bB\t\x8a\xa6\x1d\x05falseH\rR#containerRegistryUseManagedIdentity\x88\x01\x01\x12_\n" +
+	"-container_registry_managed_identity_client_id\x18! \x01(\tR(containerRegistryManagedIdentityClientId\x12>\n" +
+	"\x18application_insights_key\x18\" \x01(\tB\x04\xa0\xa6\x1d\x01R\x16applicationInsightsKey:\xe9\x01\xbaH\xe5\x01\x1a\xe2\x01\n" +
+	"*function_app_health_eviction_requires_path\x12fhealth_check_eviction_time_in_min requires health_check_path (there is no probe to evict on otherwise)\x1aL!has(this.health_check_eviction_time_in_min) || this.health_check_path != ''B\f\n" +
 	"\n" +
-	"_always_onB\x16\n" +
-	"\x14_minimum_tls_versionB\x1a\n" +
-	"\x18_scm_minimum_tls_versionB\x12\n" +
+	"_always_onB$\n" +
+	"\"_health_check_eviction_time_in_minB\x12\n" +
 	"\x10_app_scale_limitB\x1b\n" +
 	"\x19_elastic_instance_minimumB\x1c\n" +
 	"\x1a_pre_warmed_instance_countB\x0f\n" +
@@ -1725,13 +4059,10 @@ const file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc = "
 	"\x0e_http2_enabledB\x15\n" +
 	"\x13_websockets_enabledB\x14\n" +
 	"\x12_use_32_bit_workerB\x19\n" +
-	"\x17_vnet_route_all_enabledB\r\n" +
-	"\v_ftps_stateB\x16\n" +
-	"\x14_load_balancing_modeB#\n" +
-	"!_runtime_scale_monitoring_enabledB \n" +
-	"\x1e_ip_restriction_default_actionB\x1e\n" +
-	"\x1c_scm_use_main_ip_restrictionB$\n" +
-	"\"_scm_ip_restriction_default_actionB*\n" +
+	"\x17_vnet_route_all_enabledB\x1b\n" +
+	"\x19_remote_debugging_enabledB#\n" +
+	"!_runtime_scale_monitoring_enabledB\x1e\n" +
+	"\x1c_scm_use_main_ip_restrictionB*\n" +
 	"(_container_registry_use_managed_identity\"\x84\n" +
 	"\n" +
 	" AzureFunctionAppApplicationStack\x12\xc7\x01\n" +
@@ -1759,22 +4090,24 @@ const file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc = "
 	"\timage_tag\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bimageTag\x12+\n" +
 	"\x11registry_username\x18\x04 \x01(\tR\x10registryUsername\x12e\n" +
-	"\x11registry_password\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x10registryPassword\"\xea\x02\n" +
-	"\x18AzureFunctionAppIdentity\x12\xd1\x01\n" +
-	"\x04type\x18\x01 \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\xb1\x01\n" +
-	"\x13identity_type_valid\x12Otype must be 'SystemAssigned', 'UserAssigned', or 'SystemAssigned,UserAssigned'\x1aIthis in ['SystemAssigned', 'UserAssigned', 'SystemAssigned,UserAssigned']\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds\"\xf0\x03\n" +
+	"\x11registry_password\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x10registryPassword\"\xfb\x03\n" +
+	"\x18AzureFunctionAppIdentity\x12m\n" +
+	"\x04type\x18\x01 \x01(\x0e2L.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentityTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12z\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf3\x01\xbaH\xef\x01\x1a\xec\x01\n" +
+	"!function_app_identity_ids_pairing\x12`identity_ids is required when type includes USER_ASSIGNED, and must be empty for SYSTEM_ASSIGNED\x1ae(this.type == 1 && this.identity_ids.size() == 0) || (this.type != 1 && this.identity_ids.size() > 0)\"\x8b\x02\n" +
 	" AzureFunctionAppConnectionString\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\xd9\x02\n" +
-	"\x04type\x18\x02 \x01(\tB\xc4\x02\xbaH\xc0\x02\xba\x01\xb9\x02\n" +
-	"\x1cconnection_string_type_valid\x12\x85\x01type must be one of: MySQL, SQLServer, SQLAzure, Custom, NotificationHub, ServiceBus, EventHub, APIHub, DocDb, RedisCache, PostgreSQL\x1a\x90\x01this in ['MySQL', 'SQLServer', 'SQLAzure', 'Custom', 'NotificationHub', 'ServiceBus', 'EventHub', 'APIHub', 'DocDb', 'RedisCache', 'PostgreSQL']\xc8\x01\x01R\x04type\x12P\n" +
-	"\x05value\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\xe9\x04\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12u\n" +
+	"\x04type\x18\x02 \x01(\x0e2T.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionStringTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12P\n" +
+	"\x05value\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\xd4\x03\n" +
+	"\x1eAzureFunctionAppStickySettings\x128\n" +
+	"\x11app_setting_names\x18\x01 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fappSettingNames\x12\x9d\x01\n" +
+	"\x17connection_string_names\x18\x02 \x03(\tBe\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01\xaa\xa6\x1dUCarries the NAMES of connection strings pinned during slot swaps, never their values.R\x15connectionStringNames:\xd7\x01\xbaH\xd3\x01\x1a\xd0\x01\n" +
+	"&function_app_sticky_settings_not_empty\x12Xsticky_settings requires at least one app_setting_names or connection_string_names entry\x1aLthis.app_setting_names.size() > 0 || this.connection_string_names.size() > 0\"\xca\x04\n" +
 	"\x1dAzureFunctionAppIpRestriction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12,\n" +
-	"\bpriority\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xe8\xfb\x03(\x01H\x00R\bpriority\x88\x01\x01\x12\x88\x01\n" +
-	"\x06action\x18\x03 \x01(\tBk\xbaH_\xba\x01\\\n" +
-	"\x1bip_restriction_action_valid\x12\"action must be one of: Allow, Deny\x1a\x19this in ['Allow', 'Deny']\x8a\xa6\x1d\x05AllowH\x01R\x06action\x88\x01\x01\x12\x1d\n" +
+	"\bpriority\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xe8\xfb\x03(\x01H\x00R\bpriority\x88\x01\x01\x12u\n" +
+	"\x06action\x18\x03 \x01(\x0e2S.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionActionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06action\x12\x1d\n" +
 	"\n" +
 	"ip_address\x18\x04 \x01(\tR\tipAddress\x12\x1f\n" +
 	"\vservice_tag\x18\x05 \x01(\tR\n" +
@@ -1782,37 +4115,263 @@ const file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc = "
 	"\x19virtual_network_subnet_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16virtualNetworkSubnetId\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12n\n" +
 	"\aheaders\x18\b \x01(\v2T.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeadersR\aheadersB\v\n" +
-	"\t_priorityB\t\n" +
-	"\a_action\"\xc5\x01\n" +
-	"$AzureFunctionAppIpRestrictionHeaders\x12&\n" +
-	"\x0fx_forwarded_for\x18\x01 \x03(\tR\rxForwardedFor\x12(\n" +
-	"\x10x_forwarded_host\x18\x02 \x03(\tR\x0exForwardedHost\x12 \n" +
-	"\fx_azure_fdid\x18\x03 \x03(\tR\n" +
-	"xAzureFdid\x12)\n" +
-	"\x11x_fd_health_probe\x18\x04 \x03(\tR\x0exFdHealthProbe\"\xaa\x01\n" +
+	"\t_priority\"\xed\x01\n" +
+	"$AzureFunctionAppIpRestrictionHeaders\x120\n" +
+	"\x0fx_forwarded_for\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\rxForwardedFor\x122\n" +
+	"\x10x_forwarded_host\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\x0exForwardedHost\x12*\n" +
+	"\fx_azure_fdid\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\n" +
+	"xAzureFdid\x123\n" +
+	"\x11x_fd_health_probe\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x01R\x0exFdHealthProbe\"\xfb\x02\n" +
 	"\x1cAzureFunctionAppCorsSettings\x121\n" +
 	"\x0fallowed_origins\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eallowedOrigins\x12?\n" +
-	"\x13support_credentials\x18\x02 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x12supportCredentials\x88\x01\x01B\x16\n" +
+	"\x13support_credentials\x18\x02 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x12supportCredentials\x88\x01\x01:\xce\x01\xbaH\xca\x01\x1a\xc7\x01\n" +
+	"&function_app_cors_credentials_wildcard\x12=support_credentials cannot be used with a wildcard '*' origin\x1a^!(has(this.support_credentials) && this.support_credentials) || !('*' in this.allowed_origins)B\x16\n" +
 	"\x14_support_credentials\"\xc8\x01\n" +
 	"\x1eAzureFunctionAppAppServiceLogs\x128\n" +
 	"\rdisk_quota_mb\x18\x01 \x01(\x05B\x0f\xbaH\x06\x1a\x04\x18d(\x19\x8a\xa6\x1d\x0235H\x00R\vdiskQuotaMb\x88\x01\x01\x12@\n" +
 	"\x15retention_period_days\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\x13retentionPeriodDays\x88\x01\x01B\x10\n" +
 	"\x0e_disk_quota_mbB\x18\n" +
-	"\x16_retention_period_days\"\x9d\x03\n" +
+	"\x16_retention_period_days\"\xb4\x03\n" +
 	"\x1cAzureFunctionAppStorageMount\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x88\x01\n" +
-	"\x04type\x18\x02 \x01(\tBt\xbaHq\xba\x01k\n" +
-	"\x18storage_mount_type_valid\x12*type must be one of: AzureBlob, AzureFiles\x1a#this in ['AzureBlob', 'AzureFiles']\xc8\x01\x01R\x04type\x12-\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12q\n" +
+	"\x04type\x18\x02 \x01(\x0e2P.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMountTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12-\n" +
 	"\faccount_name\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vaccountName\x12)\n" +
 	"\n" +
 	"share_name\x18\x04 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tshareName\x12Y\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tshareName\x12\x87\x01\n" +
 	"\n" +
-	"access_key\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\taccessKey\x12\x1d\n" +
+	"access_key\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.primary_access_keyR\taccessKey\x12\x1d\n" +
 	"\n" +
-	"mount_path\x18\x06 \x01(\tR\tmountPathB\x83\x03\n" +
+	"mount_path\x18\x06 \x01(\tR\tmountPath\"\xd1\x02\n" +
+	"\x16AzureFunctionAppBackup\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12n\n" +
+	"\x13storage_account_url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x11storageAccountUrl\x12'\n" +
+	"\aenabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12r\n" +
+	"\bschedule\x18\x04 \x01(\v2N.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupScheduleB\x06\xbaH\x03\xc8\x01\x01R\bscheduleB\n" +
+	"\n" +
+	"\b_enabled\"\xce\x03\n" +
+	"\x1eAzureFunctionAppBackupSchedule\x12<\n" +
+	"\x12frequency_interval\x18\x01 \x01(\x05B\r\xbaH\n" +
+	"\xc8\x01\x01\x1a\x05\x18\xe8\a(\x01R\x11frequencyInterval\x12\x87\x01\n" +
+	"\x0efrequency_unit\x18\x02 \x01(\x0e2S.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupFrequencyUnitB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\rfrequencyUnit\x12F\n" +
+	"\x18keep_at_least_one_backup\x18\x03 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x14keepAtLeastOneBackup\x88\x01\x01\x12F\n" +
+	"\x15retention_period_days\x18\x04 \x01(\x05B\r\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x0230H\x01R\x13retentionPeriodDays\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"start_time\x18\x05 \x01(\tR\tstartTimeB\x1b\n" +
+	"\x19_keep_at_least_one_backupB\x18\n" +
+	"\x16_retention_period_days\"\xd6\x13\n" +
+	"\x1eAzureFunctionAppAuthSettingsV2\x121\n" +
+	"\fauth_enabled\x18\x01 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\vauthEnabled\x88\x01\x01\x124\n" +
+	"\x0fruntime_version\x18\x02 \x01(\tB\x06\x8a\xa6\x1d\x02~1H\x01R\x0eruntimeVersion\x88\x01\x01\x12(\n" +
+	"\x10config_file_path\x18\x03 \x01(\tR\x0econfigFilePath\x12E\n" +
+	"\x16require_authentication\x18\x04 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x15requireAuthentication\x88\x01\x01\x12\x96\x01\n" +
+	"\x16unauthenticated_action\x18\x05 \x01(\x0e2U.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppUnauthenticatedActionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x15unauthenticatedAction\x12)\n" +
+	"\x10default_provider\x18\x06 \x01(\tR\x0fdefaultProvider\x12%\n" +
+	"\x0eexcluded_paths\x18\a \x03(\tR\rexcludedPaths\x122\n" +
+	"\rrequire_https\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\frequireHttps\x88\x01\x01\x12B\n" +
+	"\x15http_route_api_prefix\x18\t \x01(\tB\n" +
+	"\x8a\xa6\x1d\x06/.authH\x04R\x12httpRouteApiPrefix\x88\x01\x01\x12\x9a\x01\n" +
+	"\x18forward_proxy_convention\x18\n" +
+	" \x01(\x0e2V.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppForwardProxyConventionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x16forwardProxyConvention\x12O\n" +
+	"%forward_proxy_custom_host_header_name\x18\v \x01(\tR forwardProxyCustomHostHeaderName\x12S\n" +
+	"'forward_proxy_custom_scheme_header_name\x18\f \x01(\tR\"forwardProxyCustomSchemeHeaderName\x12i\n" +
+	"\x05login\x18\r \x01(\v2K.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2LoginB\x06\xbaH\x03\xc8\x01\x01R\x05login\x12f\n" +
+	"\bapple_v2\x18\x0e \x01(\v2K.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2AppleR\aappleV2\x12\x85\x01\n" +
+	"\x13active_directory_v2\x18\x0f \x01(\v2U.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectoryR\x11activeDirectoryV2\x12\x88\x01\n" +
+	"\x17azure_static_web_app_v2\x18\x10 \x01(\v2R.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2StaticWebAppR\x13azureStaticWebAppV2\x12v\n" +
+	"\x0ecustom_oidc_v2\x18\x11 \x03(\v2P.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2CustomOidcR\fcustomOidcV2\x12o\n" +
+	"\vfacebook_v2\x18\x12 \x01(\v2N.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2FacebookR\n" +
+	"facebookV2\x12i\n" +
+	"\tgithub_v2\x18\x13 \x01(\v2L.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2GithubR\bgithubV2\x12i\n" +
+	"\tgoogle_v2\x18\x14 \x01(\v2L.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2GoogleR\bgoogleV2\x12r\n" +
+	"\fmicrosoft_v2\x18\x15 \x01(\v2O.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2MicrosoftR\vmicrosoftV2\x12l\n" +
+	"\n" +
+	"twitter_v2\x18\x16 \x01(\v2M.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2TwitterR\ttwitterV2:\xc0\x02\xbaH\xbc\x02\x1a\xb9\x02\n" +
+	"\x1cauth_v2_custom_proxy_headers\x12\x87\x01forward_proxy_custom_host_header_name and forward_proxy_custom_scheme_header_name require forward_proxy_convention FORWARD_PROXY_CUSTOM\x1a\x8e\x01(this.forward_proxy_custom_host_header_name == '' && this.forward_proxy_custom_scheme_header_name == '') || this.forward_proxy_convention == 3B\x0f\n" +
+	"\r_auth_enabledB\x12\n" +
+	"\x10_runtime_versionB\x19\n" +
+	"\x17_require_authenticationB\x10\n" +
+	"\x0e_require_httpsB\x18\n" +
+	"\x16_http_route_api_prefix\"\xe2\v\n" +
+	"\x1bAzureFunctionAppAuthV2Login\x12'\n" +
+	"\x0flogout_endpoint\x18\x01 \x01(\tR\x0elogoutEndpoint\x12>\n" +
+	"\x13token_store_enabled\x18\x02 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x11tokenStoreEnabled\x88\x01\x01\x12Z\n" +
+	"\x1ctoken_refresh_extension_time\x18\x03 \x01(\x01B\x14\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\x00\x00\x8a\xa6\x1d\x0272H\x01R\x19tokenRefreshExtensionTime\x88\x01\x01\x12(\n" +
+	"\x10token_store_path\x18\x04 \x01(\tR\x0etokenStorePath\x12>\n" +
+	"\x1ctoken_store_sas_setting_name\x18\x05 \x01(\tR\x18tokenStoreSasSettingName\x12X\n" +
+	"!preserve_url_fragments_for_logins\x18\x06 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x1dpreserveUrlFragmentsForLogins\x88\x01\x01\x12C\n" +
+	"\x1eallowed_external_redirect_urls\x18\a \x03(\tR\x1ballowedExternalRedirectUrls\x12\xa6\x01\n" +
+	"\x1ccookie_expiration_convention\x18\b \x01(\x0e2Z.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCookieExpirationConventionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x1acookieExpirationConvention\x12\xd9\x01\n" +
+	"\x16cookie_expiration_time\x18\t \x01(\tB\x9d\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	" auth_v2_cookie_expiration_format\x127cookie_expiration_time must be hh:mm:ss (e.g. 08:00:00)\x1a,this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')\x8a\xa6\x1d\b08:00:00H\x03R\x14cookieExpirationTime\x88\x01\x01\x124\n" +
+	"\x0evalidate_nonce\x18\n" +
+	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\rvalidateNonce\x88\x01\x01\x12\xd5\x01\n" +
+	"\x15nonce_expiration_time\x18\v \x01(\tB\x9b\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
+	"\x1fauth_v2_nonce_expiration_format\x126nonce_expiration_time must be hh:mm:ss (e.g. 00:05:00)\x1a,this.matches('^[0-9]{2}:[0-9]{2}:[0-9]{2}$')\x8a\xa6\x1d\b00:05:00H\x05R\x13nonceExpirationTime\x88\x01\x01:\xba\x01\xbaH\xb6\x01\x1a\xb3\x01\n" +
+	"\x1fauth_v2_token_store_one_backing\x12Htoken_store_path and token_store_sas_setting_name are mutually exclusive\x1aFthis.token_store_path == '' || this.token_store_sas_setting_name == ''B\x16\n" +
+	"\x14_token_store_enabledB\x1f\n" +
+	"\x1d_token_refresh_extension_timeB$\n" +
+	"\"_preserve_url_fragments_for_loginsB\x19\n" +
+	"\x17_cookie_expiration_timeB\x11\n" +
+	"\x0f_validate_nonceB\x18\n" +
+	"\x16_nonce_expiration_time\"\x8f\x01\n" +
+	"\x1bAzureFunctionAppAuthV2Apple\x12'\n" +
+	"\tclient_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bclientId\x12G\n" +
+	"\x1aclient_secret_setting_name\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x17clientSecretSettingName\"\xfd\t\n" +
+	"%AzureFunctionAppAuthV2ActiveDirectory\x12'\n" +
+	"\tclient_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bclientId\x12<\n" +
+	"\x14tenant_auth_endpoint\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x12tenantAuthEndpoint\x12;\n" +
+	"\x1aclient_secret_setting_name\x18\x03 \x01(\tR\x17clientSecretSettingName\x12\xdc\x01\n" +
+	"$client_secret_certificate_thumbprint\x18\x04 \x01(\tB\x8a\x01\xaa\xa6\x1d\x85\x01A certificate thumbprint is the certificate's public fingerprint used to SELECT the credential, not the private key or secret itself.R!clientSecretCertificateThumbprint\x12\x95\x01\n" +
+	"\x10login_parameters\x18\x05 \x03(\v2j.dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory.LoginParametersEntryR\x0floginParameters\x12N\n" +
+	"\x1bwww_authentication_disabled\x18\x06 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x19wwwAuthenticationDisabled\x88\x01\x01\x12,\n" +
+	"\x12jwt_allowed_groups\x18\a \x03(\tR\x10jwtAllowedGroups\x12E\n" +
+	"\x1fjwt_allowed_client_applications\x18\b \x03(\tR\x1cjwtAllowedClientApplications\x12%\n" +
+	"\x0eallowed_groups\x18\t \x03(\tR\rallowedGroups\x12-\n" +
+	"\x12allowed_identities\x18\n" +
+	" \x03(\tR\x11allowedIdentities\x121\n" +
+	"\x14allowed_applications\x18\v \x03(\tR\x13allowedApplications\x12+\n" +
+	"\x11allowed_audiences\x18\f \x03(\tR\x10allowedAudiences\x1aB\n" +
+	"\x14LoginParametersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
+	"\x1aauth_v2_aad_one_credential\x12Zclient_secret_setting_name and client_secret_certificate_thumbprint are mutually exclusive\x1aXthis.client_secret_setting_name == '' || this.client_secret_certificate_thumbprint == ''B\x1e\n" +
+	"\x1c_www_authentication_disabled\"M\n" +
+	"\"AzureFunctionAppAuthV2StaticWebApp\x12'\n" +
+	"\tclient_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bclientId\"\xfb\x01\n" +
+	" AzureFunctionAppAuthV2CustomOidc\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12'\n" +
+	"\tclient_id\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bclientId\x12N\n" +
+	"\x1dopenid_configuration_endpoint\x18\x03 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x1bopenidConfigurationEndpoint\x12&\n" +
+	"\x0fname_claim_type\x18\x04 \x01(\tR\rnameClaimType\x12\x16\n" +
+	"\x06scopes\x18\x05 \x03(\tR\x06scopes\"\xd5\x01\n" +
+	"\x1eAzureFunctionAppAuthV2Facebook\x12!\n" +
+	"\x06app_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05appId\x12A\n" +
+	"\x17app_secret_setting_name\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x14appSecretSettingName\x12*\n" +
+	"\x11graph_api_version\x18\x03 \x01(\tR\x0fgraphApiVersion\x12!\n" +
+	"\flogin_scopes\x18\x04 \x03(\tR\vloginScopes\"\xb3\x01\n" +
+	"\x1cAzureFunctionAppAuthV2Github\x12'\n" +
+	"\tclient_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bclientId\x12G\n" +
+	"\x1aclient_secret_setting_name\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x17clientSecretSettingName\x12!\n" +
+	"\flogin_scopes\x18\x03 \x03(\tR\vloginScopes\"\xe0\x01\n" +
+	"\x1cAzureFunctionAppAuthV2Google\x12'\n" +
+	"\tclient_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bclientId\x12G\n" +
+	"\x1aclient_secret_setting_name\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x17clientSecretSettingName\x12+\n" +
+	"\x11allowed_audiences\x18\x03 \x03(\tR\x10allowedAudiences\x12!\n" +
+	"\flogin_scopes\x18\x04 \x03(\tR\vloginScopes\"\xe3\x01\n" +
+	"\x1fAzureFunctionAppAuthV2Microsoft\x12'\n" +
+	"\tclient_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bclientId\x12G\n" +
+	"\x1aclient_secret_setting_name\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x17clientSecretSettingName\x12+\n" +
+	"\x11allowed_audiences\x18\x03 \x03(\tR\x10allowedAudiences\x12!\n" +
+	"\flogin_scopes\x18\x04 \x03(\tR\vloginScopes\"\x9b\x01\n" +
+	"\x1dAzureFunctionAppAuthV2Twitter\x12-\n" +
+	"\fconsumer_key\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vconsumerKey\x12K\n" +
+	"\x1cconsumer_secret_setting_name\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x19consumerSecretSettingName*\x96\x01\n" +
+	"\x1cAzureFunctionAppIdentityType\x120\n" +
+	",azure_function_app_identity_type_unspecified\x10\x00\x12\x13\n" +
+	"\x0fSYSTEM_ASSIGNED\x10\x01\x12\x11\n" +
+	"\rUSER_ASSIGNED\x10\x02\x12\x1c\n" +
+	"\x18SYSTEM_AND_USER_ASSIGNED\x10\x03*\x87\x02\n" +
+	"$AzureFunctionAppConnectionStringType\x129\n" +
+	"5azure_function_app_connection_string_type_unspecified\x10\x00\x12\t\n" +
+	"\x05MYSQL\x10\x01\x12\x0e\n" +
+	"\n" +
+	"SQL_SERVER\x10\x02\x12\r\n" +
+	"\tSQL_AZURE\x10\x03\x12\n" +
+	"\n" +
+	"\x06CUSTOM\x10\x04\x12\x14\n" +
+	"\x10NOTIFICATION_HUB\x10\x05\x12\x0f\n" +
+	"\vSERVICE_BUS\x10\x06\x12\r\n" +
+	"\tEVENT_HUB\x10\a\x12\v\n" +
+	"\aAPI_HUB\x10\b\x12\n" +
+	"\n" +
+	"\x06DOC_DB\x10\t\x12\x0f\n" +
+	"\vREDIS_CACHE\x10\n" +
+	"\x12\x0e\n" +
+	"\n" +
+	"POSTGRESQL\x10\v*t\n" +
+	"#AzureFunctionAppIpRestrictionAction\x128\n" +
+	"4azure_function_app_ip_restriction_action_unspecified\x10\x00\x12\t\n" +
+	"\x05ALLOW\x10\x01\x12\b\n" +
+	"\x04DENY\x10\x02*z\n" +
+	" AzureFunctionAppStorageMountType\x125\n" +
+	"1azure_function_app_storage_mount_type_unspecified\x10\x00\x12\x0f\n" +
+	"\vAZURE_FILES\x10\x01\x12\x0e\n" +
+	"\n" +
+	"AZURE_BLOB\x10\x02*r\n" +
+	"#AzureFunctionAppBackupFrequencyUnit\x128\n" +
+	"4azure_function_app_backup_frequency_unit_unspecified\x10\x00\x12\a\n" +
+	"\x03DAY\x10\x01\x12\b\n" +
+	"\x04HOUR\x10\x02*\x9e\x01\n" +
+	"%AzureFunctionAppClientCertificateMode\x12:\n" +
+	"6azure_function_app_client_certificate_mode_unspecified\x10\x00\x12\f\n" +
+	"\bREQUIRED\x10\x01\x12\f\n" +
+	"\bOPTIONAL\x10\x02\x12\x1d\n" +
+	"\x19OPTIONAL_INTERACTIVE_USER\x10\x03*\x80\x01\n" +
+	"\x1aAzureFunctionAppTlsVersion\x12.\n" +
+	"*azure_function_app_tls_version_unspecified\x10\x00\x12\v\n" +
+	"\aTLS_1_0\x10\x01\x12\v\n" +
+	"\aTLS_1_1\x10\x02\x12\v\n" +
+	"\aTLS_1_2\x10\x03\x12\v\n" +
+	"\aTLS_1_3\x10\x04*x\n" +
+	"\x19AzureFunctionAppFtpsState\x12-\n" +
+	")azure_function_app_ftps_state_unspecified\x10\x00\x12\x0f\n" +
+	"\vALL_ALLOWED\x10\x01\x12\r\n" +
+	"\tFTPS_ONLY\x10\x02\x12\f\n" +
+	"\bDISABLED\x10\x03*\xea\x01\n" +
+	"!AzureFunctionAppLoadBalancingMode\x126\n" +
+	"2azure_function_app_load_balancing_mode_unspecified\x10\x00\x12\x12\n" +
+	"\x0eLEAST_REQUESTS\x10\x01\x12\x18\n" +
+	"\x14WEIGHTED_ROUND_ROBIN\x10\x02\x12\x17\n" +
+	"\x13LEAST_RESPONSE_TIME\x10\x03\x12\x1a\n" +
+	"\x16WEIGHTED_TOTAL_TRAFFIC\x10\x04\x12\x10\n" +
+	"\fREQUEST_HASH\x10\x05\x12\x18\n" +
+	"\x14PER_SITE_ROUND_ROBIN\x10\x06*|\n" +
+	"#AzureFunctionAppManagedPipelineMode\x128\n" +
+	"4azure_function_app_managed_pipeline_mode_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"INTEGRATED\x10\x01\x12\v\n" +
+	"\aCLASSIC\x10\x02*\xb3\x01\n" +
+	"%AzureFunctionAppUnauthenticatedAction\x129\n" +
+	"5azure_function_app_unauthenticated_action_unspecified\x10\x00\x12\x1a\n" +
+	"\x16REDIRECT_TO_LOGIN_PAGE\x10\x01\x12\x13\n" +
+	"\x0fALLOW_ANONYMOUS\x10\x02\x12\x0e\n" +
+	"\n" +
+	"RETURN_401\x10\x03\x12\x0e\n" +
+	"\n" +
+	"RETURN_403\x10\x04*\xb7\x01\n" +
+	"&AzureFunctionAppForwardProxyConvention\x12;\n" +
+	"7azure_function_app_forward_proxy_convention_unspecified\x10\x00\x12\x1a\n" +
+	"\x16FORWARD_PROXY_NO_PROXY\x10\x01\x12\x1a\n" +
+	"\x16FORWARD_PROXY_STANDARD\x10\x02\x12\x18\n" +
+	"\x14FORWARD_PROXY_CUSTOM\x10\x03*\x9c\x01\n" +
+	"*AzureFunctionAppCookieExpirationConvention\x12?\n" +
+	";azure_function_app_cookie_expiration_convention_unspecified\x10\x00\x12\x0e\n" +
+	"\n" +
+	"FIXED_TIME\x10\x01\x12\x1d\n" +
+	"\x19IDENTITY_PROVIDER_DERIVED\x10\x02B\x83\x03\n" +
 	"2com.dev.planton.provider.azure.azurefunctionapp.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefunctionapp/v1;azurefunctionappv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Azure.Azurefunctionapp.V1\xca\x02.Dev\\Planton\\Provider\\Azure\\Azurefunctionapp\\V1\xe2\x02:Dev\\Planton\\Provider\\Azure\\Azurefunctionapp\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Azure::Azurefunctionapp::V1b\x06proto3"
 
 var (
@@ -1827,52 +4386,115 @@ func file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescGZIP(
 	return file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
+var file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_goTypes = []any{
-	(*AzureFunctionAppSpec)(nil),                 // 0: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec
-	(*AzureFunctionAppSiteConfig)(nil),           // 1: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig
-	(*AzureFunctionAppApplicationStack)(nil),     // 2: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppApplicationStack
-	(*AzureFunctionAppDockerConfig)(nil),         // 3: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppDockerConfig
-	(*AzureFunctionAppIdentity)(nil),             // 4: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentity
-	(*AzureFunctionAppConnectionString)(nil),     // 5: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionString
-	(*AzureFunctionAppIpRestriction)(nil),        // 6: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction
-	(*AzureFunctionAppIpRestrictionHeaders)(nil), // 7: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeaders
-	(*AzureFunctionAppCorsSettings)(nil),         // 8: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCorsSettings
-	(*AzureFunctionAppAppServiceLogs)(nil),       // 9: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAppServiceLogs
-	(*AzureFunctionAppStorageMount)(nil),         // 10: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount
-	nil,                                          // 11: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.AppSettingsEntry
-	(*v1.StringValueOrRef)(nil),                  // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(AzureFunctionAppIdentityType)(0),               // 0: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentityType
+	(AzureFunctionAppConnectionStringType)(0),       // 1: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionStringType
+	(AzureFunctionAppIpRestrictionAction)(0),        // 2: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionAction
+	(AzureFunctionAppStorageMountType)(0),           // 3: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMountType
+	(AzureFunctionAppBackupFrequencyUnit)(0),        // 4: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupFrequencyUnit
+	(AzureFunctionAppClientCertificateMode)(0),      // 5: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppClientCertificateMode
+	(AzureFunctionAppTlsVersion)(0),                 // 6: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppTlsVersion
+	(AzureFunctionAppFtpsState)(0),                  // 7: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppFtpsState
+	(AzureFunctionAppLoadBalancingMode)(0),          // 8: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppLoadBalancingMode
+	(AzureFunctionAppManagedPipelineMode)(0),        // 9: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppManagedPipelineMode
+	(AzureFunctionAppUnauthenticatedAction)(0),      // 10: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppUnauthenticatedAction
+	(AzureFunctionAppForwardProxyConvention)(0),     // 11: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppForwardProxyConvention
+	(AzureFunctionAppCookieExpirationConvention)(0), // 12: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCookieExpirationConvention
+	(*AzureFunctionAppSpec)(nil),                    // 13: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec
+	(*AzureFunctionAppSiteConfig)(nil),              // 14: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig
+	(*AzureFunctionAppApplicationStack)(nil),        // 15: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppApplicationStack
+	(*AzureFunctionAppDockerConfig)(nil),            // 16: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppDockerConfig
+	(*AzureFunctionAppIdentity)(nil),                // 17: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentity
+	(*AzureFunctionAppConnectionString)(nil),        // 18: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionString
+	(*AzureFunctionAppStickySettings)(nil),          // 19: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStickySettings
+	(*AzureFunctionAppIpRestriction)(nil),           // 20: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction
+	(*AzureFunctionAppIpRestrictionHeaders)(nil),    // 21: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeaders
+	(*AzureFunctionAppCorsSettings)(nil),            // 22: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCorsSettings
+	(*AzureFunctionAppAppServiceLogs)(nil),          // 23: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAppServiceLogs
+	(*AzureFunctionAppStorageMount)(nil),            // 24: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount
+	(*AzureFunctionAppBackup)(nil),                  // 25: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackup
+	(*AzureFunctionAppBackupSchedule)(nil),          // 26: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupSchedule
+	(*AzureFunctionAppAuthSettingsV2)(nil),          // 27: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2
+	(*AzureFunctionAppAuthV2Login)(nil),             // 28: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Login
+	(*AzureFunctionAppAuthV2Apple)(nil),             // 29: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Apple
+	(*AzureFunctionAppAuthV2ActiveDirectory)(nil),   // 30: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory
+	(*AzureFunctionAppAuthV2StaticWebApp)(nil),      // 31: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2StaticWebApp
+	(*AzureFunctionAppAuthV2CustomOidc)(nil),        // 32: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2CustomOidc
+	(*AzureFunctionAppAuthV2Facebook)(nil),          // 33: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Facebook
+	(*AzureFunctionAppAuthV2Github)(nil),            // 34: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Github
+	(*AzureFunctionAppAuthV2Google)(nil),            // 35: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Google
+	(*AzureFunctionAppAuthV2Microsoft)(nil),         // 36: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Microsoft
+	(*AzureFunctionAppAuthV2Twitter)(nil),           // 37: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Twitter
+	nil,                                             // 38: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.AppSettingsEntry
+	nil,                                             // 39: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.TagsEntry
+	nil,                                             // 40: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory.LoginParametersEntry
+	(*v1.StringValueOrRef)(nil),                     // 41: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_depIdxs = []int32{
-	12, // 0: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 1: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.service_plan_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 2: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.storage_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 3: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.storage_account_access_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 4: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.site_config:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig
-	11, // 5: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.app_settings:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.AppSettingsEntry
-	5,  // 6: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.connection_strings:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionString
-	12, // 7: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.application_insights_connection_string:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 8: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.virtual_network_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 9: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.identity:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentity
-	12, // 10: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.key_vault_reference_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 11: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.storage_mounts:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount
-	2,  // 12: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.application_stack:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppApplicationStack
-	8,  // 13: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.cors:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCorsSettings
-	6,  // 14: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.ip_restrictions:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction
-	6,  // 15: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.scm_ip_restrictions:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction
-	9,  // 16: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.app_service_logs:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAppServiceLogs
-	3,  // 17: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppApplicationStack.docker:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppDockerConfig
-	12, // 18: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppDockerConfig.registry_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 19: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 20: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionString.value:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 21: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.virtual_network_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 22: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.headers:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeaders
-	12, // 23: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount.access_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	41, // 0: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 1: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.service_plan_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 2: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.storage_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 3: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.storage_account_access_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 4: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.site_config:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig
+	38, // 5: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.app_settings:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.AppSettingsEntry
+	18, // 6: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.connection_strings:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionString
+	19, // 7: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.sticky_settings:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStickySettings
+	41, // 8: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.application_insights_connection_string:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 9: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.client_certificate_mode:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppClientCertificateMode
+	41, // 10: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.virtual_network_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 11: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.identity:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentity
+	41, // 12: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.key_vault_reference_identity_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 13: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.storage_mounts:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount
+	25, // 14: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.backup:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackup
+	27, // 15: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.auth_settings_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2
+	39, // 16: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.tags:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.TagsEntry
+	15, // 17: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.application_stack:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppApplicationStack
+	6,  // 18: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.minimum_tls_version:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppTlsVersion
+	6,  // 19: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.scm_minimum_tls_version:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppTlsVersion
+	7,  // 20: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.ftps_state:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppFtpsState
+	8,  // 21: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.load_balancing_mode:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppLoadBalancingMode
+	9,  // 22: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.managed_pipeline_mode:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppManagedPipelineMode
+	22, // 23: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.cors:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCorsSettings
+	20, // 24: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.ip_restrictions:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction
+	2,  // 25: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.ip_restriction_default_action:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionAction
+	20, // 26: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.scm_ip_restrictions:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction
+	2,  // 27: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.scm_ip_restriction_default_action:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionAction
+	23, // 28: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSiteConfig.app_service_logs:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAppServiceLogs
+	16, // 29: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppApplicationStack.docker:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppDockerConfig
+	41, // 30: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppDockerConfig.registry_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 31: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentity.type:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentityType
+	41, // 32: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 33: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionString.type:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionStringType
+	41, // 34: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppConnectionString.value:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 35: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.action:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionAction
+	41, // 36: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.virtual_network_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 37: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.headers:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeaders
+	3,  // 38: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount.type:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMountType
+	41, // 39: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppStorageMount.access_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 40: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackup.storage_account_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	26, // 41: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackup.schedule:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupSchedule
+	4,  // 42: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupSchedule.frequency_unit:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppBackupFrequencyUnit
+	10, // 43: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.unauthenticated_action:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppUnauthenticatedAction
+	11, // 44: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.forward_proxy_convention:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppForwardProxyConvention
+	28, // 45: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.login:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Login
+	29, // 46: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.apple_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Apple
+	30, // 47: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.active_directory_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory
+	31, // 48: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.azure_static_web_app_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2StaticWebApp
+	32, // 49: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.custom_oidc_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2CustomOidc
+	33, // 50: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.facebook_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Facebook
+	34, // 51: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.github_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Github
+	35, // 52: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.google_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Google
+	36, // 53: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.microsoft_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Microsoft
+	37, // 54: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthSettingsV2.twitter_v2:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Twitter
+	12, // 55: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2Login.cookie_expiration_convention:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppCookieExpirationConvention
+	40, // 56: dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory.login_parameters:type_name -> dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppAuthV2ActiveDirectory.LoginParametersEntry
+	57, // [57:57] is the sub-list for method output_type
+	57, // [57:57] is the sub-list for method input_type
+	57, // [57:57] is the sub-list for extension type_name
+	57, // [57:57] is the sub-list for extension extendee
+	0,  // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_init() }
@@ -1883,21 +4505,27 @@ func file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_init() {
 	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
-	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[15].OneofWrappers = []any{}
+	file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc), len(file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   12,
+			NumEnums:      13,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_depIdxs,
+		EnumInfos:         file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_azure_azurefunctionapp_v1_spec_proto = out.File

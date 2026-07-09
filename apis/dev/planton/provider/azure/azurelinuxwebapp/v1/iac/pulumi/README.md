@@ -9,12 +9,10 @@ pulumi/
 ├── main.go          # Entrypoint (loads stack input, calls module)
 ├── Pulumi.yaml      # Pulumi project configuration
 ├── Makefile         # Build/test targets
-├── debug.sh         # Debug build script
 ├── README.md        # This file
-├── overview.md      # Architecture overview
 └── module/
-    ├── main.go      # Resource creation (azurerm_linux_web_app)
-    ├── locals.go    # Local variable initialization
+    ├── main.go      # Resource creation (appservice.LinuxWebApp) + block builders
+    ├── locals.go    # Locals + enum-to-wire-value maps
     └── outputs.go   # Output key constants
 ```
 

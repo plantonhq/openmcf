@@ -1602,6 +1602,80 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AzureServicePlan: service_plan_id is what the web/function
+			// app kinds reference; kind and reserved are Azure-computed
+			// attributes read back after creation.
+			name: "AzureServicePlan",
+			kind: cloudresourcekind.CloudResourceKind_AzureServicePlan,
+			rawOutputs: map[string]interface{}{
+				"service_plan_id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Web/serverFarms/app-plan",
+				"service_plan_name": "app-plan",
+				"os_type":           "Linux",
+				"sku_name":          "P1v3",
+				"kind":              "linux",
+				"reserved":          true,
+			},
+			mustPopulate: []string{
+				"service_plan_id", "service_plan_name", "os_type",
+				"sku_name", "kind", "reserved",
+			},
+		},
+		{
+			// AzureLinuxWebApp: default_hostname is the app's endpoint;
+			// the outbound IP sets arrive as real lists from both
+			// engines; the site credential populates while basic-auth
+			// publishing is enabled.
+			name: "AzureLinuxWebApp",
+			kind: cloudresourcekind.CloudResourceKind_AzureLinuxWebApp,
+			rawOutputs: map[string]interface{}{
+				"web_app_id":                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Web/sites/app-web",
+				"default_hostname":               "app-web.azurewebsites.net",
+				"outbound_ip_addresses":          []interface{}{"20.1.2.3", "20.1.2.4"},
+				"possible_outbound_ip_addresses": []interface{}{"20.1.2.3", "20.1.2.4", "20.1.2.5"},
+				"identity_principal_id":          "11111111-2222-3333-4444-555555555555",
+				"identity_tenant_id":             "99999999-8888-7777-6666-555555555555",
+				"custom_domain_verification_id":  "ABCD1234",
+				"kind":                           "app,linux",
+				"hosting_environment_id":         "",
+				"site_credential_name":           "$app-web",
+				"site_credential_password":       "publish-password",
+			},
+			mustPopulate: []string{
+				"web_app_id", "default_hostname", "outbound_ip_addresses",
+				"possible_outbound_ip_addresses", "identity_principal_id",
+				"identity_tenant_id", "custom_domain_verification_id",
+				"kind", "site_credential_name", "site_credential_password",
+			},
+		},
+		{
+			// AzureFunctionApp: default_hostname serves HTTP triggers;
+			// the outbound IP sets arrive as real lists from both
+			// engines; the site credential populates while basic-auth
+			// publishing is enabled.
+			name: "AzureFunctionApp",
+			kind: cloudresourcekind.CloudResourceKind_AzureFunctionApp,
+			rawOutputs: map[string]interface{}{
+				"function_app_id":                "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Web/sites/app-fn",
+				"default_hostname":               "app-fn.azurewebsites.net",
+				"outbound_ip_addresses":          []interface{}{"20.1.2.3", "20.1.2.4"},
+				"possible_outbound_ip_addresses": []interface{}{"20.1.2.3", "20.1.2.4", "20.1.2.5"},
+				"identity_principal_id":          "11111111-2222-3333-4444-555555555555",
+				"identity_tenant_id":             "99999999-8888-7777-6666-555555555555",
+				"custom_domain_verification_id":  "ABCD1234",
+				"kind":                           "functionapp,linux",
+				"hosting_environment_id":         "",
+				"site_credential_name":           "$app-fn",
+				"site_credential_password":       "publish-password",
+			},
+			mustPopulate: []string{
+				"function_app_id", "default_hostname",
+				"outbound_ip_addresses", "possible_outbound_ip_addresses",
+				"identity_principal_id", "identity_tenant_id",
+				"custom_domain_verification_id", "kind",
+				"site_credential_name", "site_credential_password",
+			},
+		},
+		{
 			// AzureManagedRedisGeoReplication: the group has no ARM
 			// object of its own -- its resource ID is the managing
 			// cluster's ARM ID.

@@ -705,6 +705,33 @@ func TestAzureFrontDoorSecurityPolicy_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurefrontdoorsecuritypolicy", "terraform")
 }
 
+// --- Azure Service Plan (fixture RG -> Basic B1 Linux plan; the compute tier the app kinds run on) ---
+
+func TestAzureServicePlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureserviceplan", "pulumi")
+}
+func TestAzureServicePlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureserviceplan", "terraform")
+}
+
+// --- Azure Linux Web App (composed: fixture RG -> fixture plan -> Python app with always-on + health probe) ---
+
+func TestAzureLinuxWebApp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurelinuxwebapp", "pulumi")
+}
+func TestAzureLinuxWebApp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurelinuxwebapp", "terraform")
+}
+
+// --- Azure Function App (composed: fixture RG -> fixture plan + scenario-local storage account -> Python function app bound by name + access key) ---
+
+func TestAzureFunctionApp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefunctionapp", "pulumi")
+}
+func TestAzureFunctionApp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefunctionapp", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -43,7 +43,7 @@ This preset deploys a production-grade Function App on an Elastic Premium plan w
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group-name>` | Name of the Azure resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-elastic-premium-plan-id>` | ARM ID of an Elastic Premium (EP1/EP2/EP3) App Service Plan | Azure portal or `AzureServicePlan` status outputs (`plan_id`) |
+| `<your-elastic-premium-plan-id>` | ARM ID of an Elastic Premium (EP1/EP2/EP3) App Service Plan | Azure portal or `AzureServicePlan` status outputs (`service_plan_id`) |
 | `<your-storage-account-name>` | Name of the storage account for Functions runtime | Azure portal or `AzureStorageAccount` status outputs |
 | `<your-app-insights-connection-string>` | Application Insights connection string | Azure portal or `AzureApplicationInsights` status outputs |
 | `<your-vnet-subnet-id>` | ARM ID of the subnet delegated to Microsoft.Web/serverFarms | Azure portal or `AzureSubnet` status outputs (`subnet_id`) |

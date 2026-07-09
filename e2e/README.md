@@ -279,6 +279,19 @@ region. True subscription-wide gates do exist (the quota-increase link
 in the ARM error is the fix) — but conclude that only after a
 probe-verified clean region also fails.
 
+App Service adds its own shape: new PAYG subscriptions carry ZERO
+Basic-tier VM quota in some regions, and the rejection is a misleading
+`401 Unauthorized` whose body says "Operation cannot be completed
+without additional quota ... Current Limit (B1 VMs): 0" — a quota
+signal wearing an auth status code, not a credential problem. The
+restriction is per-region (verified on the test subscription: `eastus`
+blocked, `westus3` clean) and the cheap probe is a one-off
+`az appservice plan create --sku B1` in a throwaway resource group. An
+App Service PLAN pins the region for every app on it — apps must live
+in their plan's region — so re-regioning an app scenario means
+re-regioning its plan fixture (the fixture resource group serves
+unchanged; a plan may live in a different region than its group).
+
 Cosmos DB adds a THIRD failure shape to this class: transient CAPACITY
 rejection rather than offer restriction. `eastus` answered
 `ServiceUnavailable` ("high demand in East US region for the zonal
