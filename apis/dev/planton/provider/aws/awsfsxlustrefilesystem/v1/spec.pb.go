@@ -25,144 +25,236 @@ const (
 )
 
 // AwsFsxLustreFileSystemSpec defines the desired configuration for an Amazon FSx
-// for Lustre file system — a fully managed, high-performance file system optimized
-// for fast processing of workloads such as machine learning training, high
-// performance computing (HPC), video processing, and financial modeling.
+// for Lustre file system — a fully managed, high-performance parallel file system
+// optimized for fast processing of workloads such as machine learning training,
+// high performance computing (HPC), video processing, and financial modeling.
 //
 // Lustre delivers sub-millisecond latencies, hundreds of GB/s throughput, and
-// millions of IOPS, making it the standard for compute-intensive workloads that
-// need to process massive datasets quickly. It integrates natively with Amazon S3,
-// allowing transparent access to S3 objects as files on the file system.
+// millions of IOPS. It integrates natively with Amazon S3, allowing transparent
+// access to S3 objects as files on the file system.
+//
+// Choosing a shape:
+//   - SCRATCH_2 + SSD: ephemeral processing storage (no replication, no backups).
+//     Cheapest way to burn through a dataset; anything worth keeping is exported
+//     back to S3.
+//   - PERSISTENT_2 + SSD: durable, within-AZ-replicated storage with the highest
+//     throughput tiers and metadata IOPS tuning. The default choice for new
+//     production workloads.
+//   - PERSISTENT_2 + INTELLIGENT_TIERING: elastic capacity that grows and shrinks
+//     with your data (no provisioned storage_capacity_gib); throughput is
+//     provisioned absolutely via throughput_capacity and reads are served from a
+//     provisioned SSD read cache. For large, cool datasets with hot subsets.
+//   - PERSISTENT_1 + HDD: lowest cost per TiB for throughput-oriented, sequential
+//     workloads; requires drive_cache_type and per_unit_storage_throughput 12 or 40.
+//
+// S3 integration comes in two generations:
+//   - The legacy in-spec import_path/export_path arms (SCRATCH_1/SCRATCH_2/
+//     PERSISTENT_1 only) create one implicit S3 link at file-system creation and
+//     are immutable afterwards.
+//   - AwsFsxDataRepositoryAssociation is the modern, first-class link (required
+//     for PERSISTENT_2): many links per file system, each with its own lifecycle
+//     and bidirectional auto import/export policies. Prefer it for anything
+//     persistent.
 //
 // Key design notes:
-//   - `deployment_type`, `storage_type`, `subnet_id`, `security_group_ids`, and
-//     `kms_key_id` are ForceNew — changing them requires replacing the file system.
-//     Plan these upfront.
-//   - Lustre file systems are single-AZ only — exactly one subnet is required.
-//   - Scratch file systems are ephemeral (no replication, no backups). Use for
-//     temporary processing. Persistent file systems replicate data within the AZ
-//     and support automatic backups.
-//   - S3 import/export paths (legacy) are ForceNew. For more flexible S3 integration,
-//     use a separate data repository association resource.
-//   - Credentials, region, and deployment workflow live outside this spec in stack inputs.
+//   - `deployment_type`, `storage_type`, `subnet_id`, `security_group_ids`,
+//     `kms_key_id`, `backup_id`, `efa_enabled`, `drive_cache_type`, and the S3
+//     import settings are ForceNew — changing them replaces the file system.
+//   - Lustre file systems are single-AZ — exactly one subnet.
+//   - Storage capacity can grow in place (never shrink; growth on SCRATCH_1
+//     replaces the file system).
+//   - Credentials, region, and deployment workflow live outside this spec in
+//     stack inputs.
 type AwsFsxLustreFileSystemSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The AWS region where the resource will be created.
+	// The AWS region where the file system will be created.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// Deployment type controlling data durability and performance characteristics.
 	// ForceNew — cannot be changed after creation.
 	//
-	//   - "SCRATCH_1": temporary storage, no data replication. Lowest cost. Legacy.
-	//   - "SCRATCH_2": temporary storage, no data replication. Higher burst throughput
-	//     than SCRATCH_1. Recommended for short-lived processing jobs.
-	//   - "PERSISTENT_1": persistent storage with data replicated within a single AZ.
-	//     Supports automatic backups. Suitable for long-running workloads.
-	//   - "PERSISTENT_2": latest persistent option with higher throughput tiers,
-	//     metadata IOPS configuration, and SSD storage. Recommended for new production
-	//     workloads requiring persistent storage.
+	//   - "SCRATCH_1": temporary storage, no replication. Legacy; fixed 200 MB/s/TiB
+	//     throughput. Growing storage on SCRATCH_1 replaces the file system.
+	//   - "SCRATCH_2": temporary storage, no replication, burst throughput up to
+	//     1300 MB/s/TiB. Recommended for short-lived processing jobs.
+	//   - "PERSISTENT_1": within-AZ-replicated storage with automatic backups.
+	//     The only deployment type supporting HDD storage and the legacy S3
+	//     import/export arms alongside SCRATCH types.
+	//   - "PERSISTENT_2": the current persistent generation — higher throughput
+	//     tiers (125-1000 MB/s/TiB), metadata IOPS configuration, EFA/GPUDirect
+	//     support, and the INTELLIGENT_TIERING storage class. Recommended for new
+	//     production workloads.
 	//
-	// Default: SCRATCH_2
+	// Default: SCRATCH_2 (the provider's own default is the legacy SCRATCH_1;
+	// this spec recommends SCRATCH_2 for its strictly better burst throughput at
+	// the same price).
 	DeploymentType *string `protobuf:"bytes,2,opt,name=deployment_type,json=deploymentType,proto3,oneof" json:"deployment_type,omitempty"`
-	// Storage capacity in GiB. Minimum 1200 GiB. Exact valid values depend on
-	// deployment type and storage type:
+	// Storage capacity in GiB. Minimum 1200. Valid step sizes depend on the
+	// deployment and storage types (AWS enforces these at create time):
 	//
-	// - SCRATCH_2 and PERSISTENT_2 (SSD): 1200, then increments of 2400.
-	// - PERSISTENT_1 (SSD): 1200, then increments of 2400.
-	// - PERSISTENT_1 (HDD): 6000, then increments of 6000.
-	// - SCRATCH_1: 1200, 2400, 3600, then increments of 3600.
+	//   - SCRATCH_2 / PERSISTENT_1 / PERSISTENT_2 (SSD): 1200, 2400, then
+	//     increments of 2400.
+	//   - PERSISTENT_1 (HDD): increments of 6000 (12 MB/s/TiB) or 1800
+	//     (40 MB/s/TiB).
+	//   - SCRATCH_1: 1200, 2400, 3600, then increments of 3600.
 	//
-	// Can be increased after creation but never decreased. Increasing storage on
-	// SCRATCH_1 forces replacement.
-	StorageCapacityGib int32 `protobuf:"varint,3,opt,name=storage_capacity_gib,json=storageCapacityGib,proto3" json:"storage_capacity_gib,omitempty"`
-	// Storage media type. ForceNew — cannot be changed after creation.
+	// Can be increased in place (never decreased; growth on SCRATCH_1 replaces
+	// the file system). Leave unset in exactly two cases: restoring from a
+	// backup (`backup_id` — capacity comes from the backup), or the
+	// INTELLIGENT_TIERING storage class (capacity is elastic and never
+	// provisioned).
+	StorageCapacityGib *int32 `protobuf:"varint,3,opt,name=storage_capacity_gib,json=storageCapacityGib,proto3,oneof" json:"storage_capacity_gib,omitempty"`
+	// Storage class backing the file system. ForceNew.
 	//
-	//   - "SSD": solid-state drives. Sub-millisecond latency. Required for SCRATCH_2,
-	//     PERSISTENT_2, and recommended for most workloads.
-	//   - "HDD": hard disk drives. Lower cost, higher latency. Only available for
-	//     PERSISTENT_1 deployments. Requires `per_unit_storage_throughput` of 12 or 40.
+	//   - "SSD": solid-state drives, sub-millisecond latency. Required for
+	//     SCRATCH_1/SCRATCH_2 and the default for both PERSISTENT generations.
+	//   - "HDD": hard disk drives — lowest cost per TiB for sequential,
+	//     throughput-oriented workloads. PERSISTENT_1 only; requires
+	//     drive_cache_type and per_unit_storage_throughput 12 or 40.
+	//   - "INTELLIGENT_TIERING": elastic, pay-for-what-you-store capacity with a
+	//     provisioned SSD read cache. PERSISTENT_2 only; requires
+	//     throughput_capacity, data_read_cache_configuration, and
+	//     metadata_configuration, and forbids provisioned storage_capacity_gib.
 	//
 	// Default: SSD
 	StorageType *string `protobuf:"bytes,4,opt,name=storage_type,json=storageType,proto3,oneof" json:"storage_type,omitempty"`
-	// Throughput per unit of storage in MB/s/TiB. Required for PERSISTENT_1 and
-	// PERSISTENT_2 deployments. Invalid for SCRATCH types.
+	// Throughput per unit of storage in MB/s/TiB, for provisioned-capacity
+	// PERSISTENT deployments (SSD and HDD storage). Invalid for SCRATCH types
+	// and for INTELLIGENT_TIERING (which provisions throughput absolutely via
+	// throughput_capacity instead).
 	//
-	// Valid values depend on deployment type and storage type:
+	// Valid values by deployment and storage type:
 	// - PERSISTENT_1 + SSD: 50, 100, 200
 	// - PERSISTENT_1 + HDD: 12, 40
 	// - PERSISTENT_2 + SSD: 125, 250, 500, 1000
-	PerUnitStorageThroughput int32 `protobuf:"varint,5,opt,name=per_unit_storage_throughput,json=perUnitStorageThroughput,proto3" json:"per_unit_storage_throughput,omitempty"`
-	// Enable LZ4 data compression for all data on the file system. Reduces storage
-	// consumption and can improve throughput for compressible data. Can be changed
-	// after creation. Compression does not affect file system performance for
-	// Lustre operations.
 	//
-	// Default: NONE
-	DataCompressionType *string `protobuf:"bytes,6,opt,name=data_compression_type,json=dataCompressionType,proto3,oneof" json:"data_compression_type,omitempty"`
-	// Lustre file system type version. ForceNew — cannot be changed after creation.
-	// Format: "x.y" (e.g., "2.12", "2.15").
+	// Can be changed in place on PERSISTENT_2 (throughput scales while the file
+	// system stays online), except when efa_enabled pins it at creation.
+	PerUnitStorageThroughput *int32 `protobuf:"varint,5,opt,name=per_unit_storage_throughput,json=perUnitStorageThroughput,proto3,oneof" json:"per_unit_storage_throughput,omitempty"`
+	// Absolute throughput in MB/s for the INTELLIGENT_TIERING storage class.
+	// Must be 4000 or a multiple of 4000. Required when (and only meaningful
+	// when) storage_type is INTELLIGENT_TIERING — provisioned-capacity file
+	// systems size their throughput per-TiB via per_unit_storage_throughput
+	// instead.
+	ThroughputCapacity *int32 `protobuf:"varint,6,opt,name=throughput_capacity,json=throughputCapacity,proto3,oneof" json:"throughput_capacity,omitempty"`
+	// Enable LZ4 data compression for all data on the file system. Reduces
+	// storage consumption and can improve throughput for compressible data.
+	// Can be changed after creation (new writes are compressed; existing data
+	// is not rewritten).
 	//
+	// - "NONE": no compression (default).
+	// - "LZ4": LZ4 compression.
+	DataCompressionType *string `protobuf:"bytes,7,opt,name=data_compression_type,json=dataCompressionType,proto3,oneof" json:"data_compression_type,omitempty"`
+	// Lustre file system version, in "x.y" format (e.g., "2.12", "2.15").
 	// Leave empty to use the latest version supported by the deployment type.
-	// Explicitly set only if workload compatibility requires a specific version.
-	FileSystemTypeVersion string `protobuf:"bytes,7,opt,name=file_system_type_version,json=fileSystemTypeVersion,proto3" json:"file_system_type_version,omitempty"`
-	// Subnet ID for the file system's network interface. Required. ForceNew.
+	// Upgrades apply in place; a downgrade replaces the file system.
+	FileSystemTypeVersion string `protobuf:"bytes,8,opt,name=file_system_type_version,json=fileSystemTypeVersion,proto3" json:"file_system_type_version,omitempty"`
+	// Enable Elastic Fabric Adapter (EFA) and GPUDirect Storage (GDS) support,
+	// giving GPU instances a direct, OS-bypass data path to the file system.
+	// ForceNew — must be decided at creation, and while enabled it also pins
+	// per_unit_storage_throughput. Requires PERSISTENT_2 with
+	// metadata_configuration, and an EFA-enabled security group attached via
+	// security_group_ids.
+	EfaEnabled bool `protobuf:"varint,9,opt,name=efa_enabled,json=efaEnabled,proto3" json:"efa_enabled,omitempty"`
+	// Read cache for HDD-backed file systems. PERSISTENT_1 + HDD only, and
+	// REQUIRED there (AWS's contract for HDD file systems). ForceNew.
 	//
-	// Lustre file systems are single-AZ — exactly one subnet is supported. The
-	// file system's ENI is created in this subnet. All compute resources mounting
-	// this file system must have network connectivity to this subnet.
-	SubnetId *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
-	// Security groups for the file system's network interface. ForceNew.
+	//   - "READ": provision an SSD read cache sized to 20% of storage capacity —
+	//     gives HDD file systems SSD-like latency for frequently read data.
+	//   - "NONE": no read cache.
+	DriveCacheType string `protobuf:"bytes,10,opt,name=drive_cache_type,json=driveCacheType,proto3" json:"drive_cache_type,omitempty"`
+	// Provisioned SSD read cache for the INTELLIGENT_TIERING storage class.
+	// Required when storage_type is INTELLIGENT_TIERING; invalid otherwise.
+	DataReadCacheConfiguration *AwsFsxLustreFileSystemDataReadCacheConfiguration `protobuf:"bytes,11,opt,name=data_read_cache_configuration,json=dataReadCacheConfiguration,proto3" json:"data_read_cache_configuration,omitempty"`
+	// Subnet for the file system's network interfaces. Required. ForceNew.
+	//
+	// Lustre file systems are single-AZ — exactly one subnet is supported. All
+	// compute resources mounting this file system must have network connectivity
+	// to this subnet.
+	SubnetId *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
+	// Security groups for the file system's network interfaces. ForceNew.
+	// Up to 50. When empty, AWS attaches the VPC's default security group.
 	//
 	// Must allow Lustre traffic between the file system and its clients:
 	// - TCP port 988 (Lustre protocol)
 	// - TCP ports 1018-1023 (Lustre data channels)
+	// EFA-enabled file systems additionally need an EFA-enabled security group.
+	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,13,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	// Customer-managed KMS key ARN for encryption at rest. ForceNew. When
+	// omitted, the file system uses the AWS-managed FSx key (all Lustre file
+	// systems are encrypted at rest); this field upgrades to a customer-managed
+	// key.
+	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,14,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	// ID of an FSx backup to restore this file system from ("backup-...").
+	// ForceNew. When set, storage capacity and most file-system settings come
+	// from the backup; leave storage_capacity_gib unset.
+	BackupId string `protobuf:"bytes,15,opt,name=backup_id,json=backupId,proto3" json:"backup_id,omitempty"`
+	// S3 URI to link as the file system's data repository (e.g., "s3://my-bucket"
+	// or "s3://my-bucket/prefix"). ForceNew. Not supported on PERSISTENT_2 —
+	// use AwsFsxDataRepositoryAssociation there (and prefer it for PERSISTENT_1
+	// too; this arm is the legacy single-link generation).
 	//
-	// Up to 50 security groups.
-	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,9,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// Customer-managed KMS key ARN for encryption at rest. ForceNew — the KMS key
-	// cannot be changed after creation. When omitted, the file system uses the
-	// AWS-managed FSx key. All Lustre file systems are encrypted at rest by default
-	// using AWS-managed keys; this field upgrades to a customer-managed key.
-	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
-	// S3 URI to import data from (e.g., "s3://my-bucket" or "s3://my-bucket/prefix").
-	// ForceNew. Only supported on SCRATCH_1 and SCRATCH_2 deployments.
+	// When set, the file system imports file metadata from S3 at creation; file
+	// data is lazy-loaded on first access.
+	ImportPath string `protobuf:"bytes,16,opt,name=import_path,json=importPath,proto3" json:"import_path,omitempty"`
+	// S3 URI where changed files are exported back to S3 (e.g.,
+	// "s3://my-bucket/output/"). ForceNew. Requires import_path and must use the
+	// same bucket. Set equal to import_path to overwrite objects in place; when
+	// omitted AWS exports to "s3://{import bucket}/FSxLustre{creation timestamp}".
+	ExportPath string `protobuf:"bytes,17,opt,name=export_path,json=exportPath,proto3" json:"export_path,omitempty"`
+	// How the file system stays in sync as objects change in the linked S3
+	// bucket. Requires import_path.
 	//
-	// When set, the file system automatically imports file metadata from S3. File
-	// data is lazy-loaded on first access. For more flexible S3 integration on
-	// PERSISTENT deployments, use a separate data repository association.
-	ImportPath string `protobuf:"bytes,11,opt,name=import_path,json=importPath,proto3" json:"import_path,omitempty"`
-	// S3 URI for exporting data back to S3 (e.g., "s3://my-bucket/output/").
-	// ForceNew. Requires `import_path` to be set.
-	//
-	// When set, changes made on the file system are automatically exported to S3.
-	ExportPath string `protobuf:"bytes,12,opt,name=export_path,json=exportPath,proto3" json:"export_path,omitempty"`
-	// CloudWatch logging configuration for Lustre audit events (file access,
-	// file creation, deletion). Useful for compliance and debugging.
-	LogConfiguration *AwsFsxLustreFileSystemLogConfiguration `protobuf:"bytes,13,opt,name=log_configuration,json=logConfiguration,proto3" json:"log_configuration,omitempty"`
-	// Number of days to retain automatic backups. Range: 0-90. Set to 0 to disable
-	// automatic backups.
+	//   - "NONE": import listings only at creation (default).
+	//   - "NEW": import metadata for objects added to the bucket.
+	//   - "NEW_CHANGED": also update metadata for changed objects.
+	//   - "NEW_CHANGED_DELETED": also delete file metadata when objects are
+	//     deleted from the bucket.
+	AutoImportPolicy string `protobuf:"bytes,18,opt,name=auto_import_policy,json=autoImportPolicy,proto3" json:"auto_import_policy,omitempty"`
+	// Stripe configuration for imported files: the maximum amount of data per
+	// file (in MiB) stored on a single physical disk. Range: 1-512000. Requires
+	// import_path; AWS defaults to 1024. ForceNew.
+	ImportedFileChunkSize *int32 `protobuf:"varint,19,opt,name=imported_file_chunk_size,json=importedFileChunkSize,proto3,oneof" json:"imported_file_chunk_size,omitempty"`
+	// Root squash configuration — maps root (UID/GID 0) clients to an
+	// unprivileged identity so no mounting host has automatic root access to
+	// the file system's contents. A POSIX-security hardening measure for
+	// multi-tenant compute fleets. Can be changed after creation.
+	RootSquashConfiguration *AwsFsxLustreFileSystemRootSquashConfiguration `protobuf:"bytes,20,opt,name=root_squash_configuration,json=rootSquashConfiguration,proto3" json:"root_squash_configuration,omitempty"`
+	// CloudWatch logging for data repository events (imports/exports between
+	// the file system and its linked S3 repositories). Useful for auditing
+	// repository task failures and lifecycle debugging.
+	LogConfiguration *AwsFsxLustreFileSystemLogConfiguration `protobuf:"bytes,21,opt,name=log_configuration,json=logConfiguration,proto3" json:"log_configuration,omitempty"`
+	// Metadata performance configuration. PERSISTENT_2 only (required there
+	// when storage_type is INTELLIGENT_TIERING or efa_enabled is set). Controls
+	// the metadata IOPS available for file creation, listing, and similar
+	// operations. Most workloads perform well with AUTOMATIC mode.
+	MetadataConfiguration *AwsFsxLustreFileSystemMetadataConfiguration `protobuf:"bytes,22,opt,name=metadata_configuration,json=metadataConfiguration,proto3" json:"metadata_configuration,omitempty"`
+	// Number of days to retain automatic backups. Range: 0-90; 0 disables
+	// automatic backups. Backups are only supported on PERSISTENT deployments.
 	//
 	// Default: 0 (no automatic backups)
-	AutomaticBackupRetentionDays *int32 `protobuf:"varint,14,opt,name=automatic_backup_retention_days,json=automaticBackupRetentionDays,proto3,oneof" json:"automatic_backup_retention_days,omitempty"`
-	// Daily UTC time to start automatic backups, in HH:MM format (e.g., "05:00").
-	// If not specified and backups are enabled, AWS chooses a default window.
-	DailyAutomaticBackupStartTime string `protobuf:"bytes,15,opt,name=daily_automatic_backup_start_time,json=dailyAutomaticBackupStartTime,proto3" json:"daily_automatic_backup_start_time,omitempty"`
-	// Copy tags from the file system to backups. ForceNew.
-	CopyTagsToBackups bool `protobuf:"varint,16,opt,name=copy_tags_to_backups,json=copyTagsToBackups,proto3" json:"copy_tags_to_backups,omitempty"`
-	// Skip creating a final backup when the file system is deleted. Applies only to
-	// PERSISTENT deployments with backup support.
+	AutomaticBackupRetentionDays *int32 `protobuf:"varint,23,opt,name=automatic_backup_retention_days,json=automaticBackupRetentionDays,proto3,oneof" json:"automatic_backup_retention_days,omitempty"`
+	// Daily UTC time to start automatic backups, in "HH:MM" format (e.g.,
+	// "05:00"). Only meaningful when automatic backups are enabled; when
+	// omitted AWS chooses a window.
+	DailyAutomaticBackupStartTime string `protobuf:"bytes,24,opt,name=daily_automatic_backup_start_time,json=dailyAutomaticBackupStartTime,proto3" json:"daily_automatic_backup_start_time,omitempty"`
+	// Copy the file system's tags to its automatic backups. ForceNew.
+	CopyTagsToBackups bool `protobuf:"varint,25,opt,name=copy_tags_to_backups,json=copyTagsToBackups,proto3" json:"copy_tags_to_backups,omitempty"`
+	// Skip creating a final backup when the file system is deleted. Applies to
+	// PERSISTENT deployments (SCRATCH file systems have no backups).
 	//
-	// Default: true
-	SkipFinalBackup *bool `protobuf:"varint,17,opt,name=skip_final_backup,json=skipFinalBackup,proto3,oneof" json:"skip_final_backup,omitempty"`
-	// Weekly UTC maintenance window in the format "d:HH:MM" where d is the day of
-	// the week (1=Monday, 7=Sunday). Example: "1:05:00" for Monday at 05:00 UTC.
-	WeeklyMaintenanceStartTime string `protobuf:"bytes,18,opt,name=weekly_maintenance_start_time,json=weeklyMaintenanceStartTime,proto3" json:"weekly_maintenance_start_time,omitempty"`
-	// Metadata performance configuration. Only supported on PERSISTENT_2 deployments.
-	// Controls the metadata IOPS available for file creation, listing, and similar
-	// operations. Most workloads perform well with AUTOMATIC mode.
-	MetadataConfiguration *AwsFsxLustreFileSystemMetadataConfiguration `protobuf:"bytes,19,opt,name=metadata_configuration,json=metadataConfiguration,proto3" json:"metadata_configuration,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Default: true — deletion is clean by default; set to false to keep a
+	// last-resort restore point (the final backup outlives the file system and
+	// keeps billing until deleted).
+	SkipFinalBackup *bool `protobuf:"varint,26,opt,name=skip_final_backup,json=skipFinalBackup,proto3,oneof" json:"skip_final_backup,omitempty"`
+	// Tags applied to the final backup taken on deletion. Only meaningful when
+	// skip_final_backup is false.
+	FinalBackupTags map[string]string `protobuf:"bytes,27,rep,name=final_backup_tags,json=finalBackupTags,proto3" json:"final_backup_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Weekly UTC maintenance window in "d:HH:MM" format where d is the day of
+	// the week (1=Monday, 7=Sunday). Example: "1:05:00" for Monday 05:00 UTC.
+	WeeklyMaintenanceStartTime string `protobuf:"bytes,28,opt,name=weekly_maintenance_start_time,json=weeklyMaintenanceStartTime,proto3" json:"weekly_maintenance_start_time,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *AwsFsxLustreFileSystemSpec) Reset() {
@@ -210,8 +302,8 @@ func (x *AwsFsxLustreFileSystemSpec) GetDeploymentType() string {
 }
 
 func (x *AwsFsxLustreFileSystemSpec) GetStorageCapacityGib() int32 {
-	if x != nil {
-		return x.StorageCapacityGib
+	if x != nil && x.StorageCapacityGib != nil {
+		return *x.StorageCapacityGib
 	}
 	return 0
 }
@@ -224,8 +316,15 @@ func (x *AwsFsxLustreFileSystemSpec) GetStorageType() string {
 }
 
 func (x *AwsFsxLustreFileSystemSpec) GetPerUnitStorageThroughput() int32 {
-	if x != nil {
-		return x.PerUnitStorageThroughput
+	if x != nil && x.PerUnitStorageThroughput != nil {
+		return *x.PerUnitStorageThroughput
+	}
+	return 0
+}
+
+func (x *AwsFsxLustreFileSystemSpec) GetThroughputCapacity() int32 {
+	if x != nil && x.ThroughputCapacity != nil {
+		return *x.ThroughputCapacity
 	}
 	return 0
 }
@@ -242,6 +341,27 @@ func (x *AwsFsxLustreFileSystemSpec) GetFileSystemTypeVersion() string {
 		return x.FileSystemTypeVersion
 	}
 	return ""
+}
+
+func (x *AwsFsxLustreFileSystemSpec) GetEfaEnabled() bool {
+	if x != nil {
+		return x.EfaEnabled
+	}
+	return false
+}
+
+func (x *AwsFsxLustreFileSystemSpec) GetDriveCacheType() string {
+	if x != nil {
+		return x.DriveCacheType
+	}
+	return ""
+}
+
+func (x *AwsFsxLustreFileSystemSpec) GetDataReadCacheConfiguration() *AwsFsxLustreFileSystemDataReadCacheConfiguration {
+	if x != nil {
+		return x.DataReadCacheConfiguration
+	}
+	return nil
 }
 
 func (x *AwsFsxLustreFileSystemSpec) GetSubnetId() *v1.StringValueOrRef {
@@ -265,6 +385,13 @@ func (x *AwsFsxLustreFileSystemSpec) GetKmsKeyId() *v1.StringValueOrRef {
 	return nil
 }
 
+func (x *AwsFsxLustreFileSystemSpec) GetBackupId() string {
+	if x != nil {
+		return x.BackupId
+	}
+	return ""
+}
+
 func (x *AwsFsxLustreFileSystemSpec) GetImportPath() string {
 	if x != nil {
 		return x.ImportPath
@@ -279,9 +406,37 @@ func (x *AwsFsxLustreFileSystemSpec) GetExportPath() string {
 	return ""
 }
 
+func (x *AwsFsxLustreFileSystemSpec) GetAutoImportPolicy() string {
+	if x != nil {
+		return x.AutoImportPolicy
+	}
+	return ""
+}
+
+func (x *AwsFsxLustreFileSystemSpec) GetImportedFileChunkSize() int32 {
+	if x != nil && x.ImportedFileChunkSize != nil {
+		return *x.ImportedFileChunkSize
+	}
+	return 0
+}
+
+func (x *AwsFsxLustreFileSystemSpec) GetRootSquashConfiguration() *AwsFsxLustreFileSystemRootSquashConfiguration {
+	if x != nil {
+		return x.RootSquashConfiguration
+	}
+	return nil
+}
+
 func (x *AwsFsxLustreFileSystemSpec) GetLogConfiguration() *AwsFsxLustreFileSystemLogConfiguration {
 	if x != nil {
 		return x.LogConfiguration
+	}
+	return nil
+}
+
+func (x *AwsFsxLustreFileSystemSpec) GetMetadataConfiguration() *AwsFsxLustreFileSystemMetadataConfiguration {
+	if x != nil {
+		return x.MetadataConfiguration
 	}
 	return nil
 }
@@ -314,6 +469,13 @@ func (x *AwsFsxLustreFileSystemSpec) GetSkipFinalBackup() bool {
 	return false
 }
 
+func (x *AwsFsxLustreFileSystemSpec) GetFinalBackupTags() map[string]string {
+	if x != nil {
+		return x.FinalBackupTags
+	}
+	return nil
+}
+
 func (x *AwsFsxLustreFileSystemSpec) GetWeeklyMaintenanceStartTime() string {
 	if x != nil {
 		return x.WeeklyMaintenanceStartTime
@@ -321,23 +483,144 @@ func (x *AwsFsxLustreFileSystemSpec) GetWeeklyMaintenanceStartTime() string {
 	return ""
 }
 
-func (x *AwsFsxLustreFileSystemSpec) GetMetadataConfiguration() *AwsFsxLustreFileSystemMetadataConfiguration {
+// AwsFsxLustreFileSystemDataReadCacheConfiguration provisions the SSD read
+// cache that serves hot data for INTELLIGENT_TIERING file systems. All reads
+// hit the cache; cold data is promoted on access.
+type AwsFsxLustreFileSystemDataReadCacheConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How the read cache is sized.
+	//
+	//   - "PROPORTIONAL_TO_THROUGHPUT_CAPACITY": AWS sizes the cache from the
+	//     provisioned throughput (the recommended hands-off mode).
+	//   - "USER_PROVISIONED": you set the exact cache size via `size_gib`.
+	//   - "NO_CACHE": no SSD read cache (every read pays the tiered-storage
+	//     latency; only for purely archival access patterns).
+	SizingMode string `protobuf:"bytes,1,opt,name=sizing_mode,json=sizingMode,proto3" json:"sizing_mode,omitempty"`
+	// Read cache size in GiB when sizing_mode is "USER_PROVISIONED". The valid
+	// range scales with throughput_capacity: for every 4000 MB/s provisioned,
+	// AWS accepts 32 GiB to 131072 GiB of cache (e.g., 8000 MB/s allows
+	// 64-262144 GiB).
+	SizeGib       *int32 `protobuf:"varint,2,opt,name=size_gib,json=sizeGib,proto3,oneof" json:"size_gib,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsFsxLustreFileSystemDataReadCacheConfiguration) Reset() {
+	*x = AwsFsxLustreFileSystemDataReadCacheConfiguration{}
+	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsFsxLustreFileSystemDataReadCacheConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsFsxLustreFileSystemDataReadCacheConfiguration) ProtoMessage() {}
+
+func (x *AwsFsxLustreFileSystemDataReadCacheConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[1]
 	if x != nil {
-		return x.MetadataConfiguration
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsFsxLustreFileSystemDataReadCacheConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsFsxLustreFileSystemDataReadCacheConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsFsxLustreFileSystemDataReadCacheConfiguration) GetSizingMode() string {
+	if x != nil {
+		return x.SizingMode
+	}
+	return ""
+}
+
+func (x *AwsFsxLustreFileSystemDataReadCacheConfiguration) GetSizeGib() int32 {
+	if x != nil && x.SizeGib != nil {
+		return *x.SizeGib
+	}
+	return 0
+}
+
+// AwsFsxLustreFileSystemRootSquashConfiguration maps root clients to an
+// unprivileged UID:GID so mounting hosts do not get automatic root access to
+// file system contents.
+type AwsFsxLustreFileSystemRootSquashConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The UID:GID pair that root users are squashed to (e.g., "65534:65534" for
+	// nobody:nogroup). Both values range 0-4294967294. Setting this enables
+	// root squash; omit the whole block to leave root access unrestricted.
+	RootSquash string `protobuf:"bytes,1,opt,name=root_squash,json=rootSquash,proto3" json:"root_squash,omitempty"`
+	// Lustre NIDs (network identifiers) of clients EXEMPT from root squash —
+	// administrative hosts that keep real root access. Format: an IPv4 address
+	// (ranges allowed in brackets) followed by "@tcp", e.g. "10.0.1.6@tcp" or
+	// "10.0.[2-10].[1-255]@tcp".
+	NoSquashNids  []string `protobuf:"bytes,2,rep,name=no_squash_nids,json=noSquashNids,proto3" json:"no_squash_nids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsFsxLustreFileSystemRootSquashConfiguration) Reset() {
+	*x = AwsFsxLustreFileSystemRootSquashConfiguration{}
+	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsFsxLustreFileSystemRootSquashConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsFsxLustreFileSystemRootSquashConfiguration) ProtoMessage() {}
+
+func (x *AwsFsxLustreFileSystemRootSquashConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsFsxLustreFileSystemRootSquashConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsFsxLustreFileSystemRootSquashConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsFsxLustreFileSystemRootSquashConfiguration) GetRootSquash() string {
+	if x != nil {
+		return x.RootSquash
+	}
+	return ""
+}
+
+func (x *AwsFsxLustreFileSystemRootSquashConfiguration) GetNoSquashNids() []string {
+	if x != nil {
+		return x.NoSquashNids
 	}
 	return nil
 }
 
-// AwsFsxLustreFileSystemLogConfiguration configures CloudWatch logging for Lustre
-// file system audit events. Events include file access, creation, deletion, and
-// permission changes.
+// AwsFsxLustreFileSystemLogConfiguration configures CloudWatch logging for
+// data repository events — imports, exports, and repository task activity
+// between the file system and its linked S3 data repositories.
 type AwsFsxLustreFileSystemLogConfiguration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// CloudWatch Logs log group ARN to receive audit events. The log group must
+	// CloudWatch Logs log group ARN to receive the events. The log group must
 	// exist and have a resource policy allowing FSx to write to it. If not set,
 	// logging is disabled regardless of the level setting.
 	Destination *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=destination,proto3" json:"destination,omitempty"`
-	// Audit log level controlling which events are logged.
+	// Log level controlling which events are logged.
 	//
 	// - "DISABLED": no logging (default when log_configuration is omitted).
 	// - "WARN_ONLY": log warning-level events only.
@@ -352,7 +635,7 @@ type AwsFsxLustreFileSystemLogConfiguration struct {
 
 func (x *AwsFsxLustreFileSystemLogConfiguration) Reset() {
 	*x = AwsFsxLustreFileSystemLogConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -364,7 +647,7 @@ func (x *AwsFsxLustreFileSystemLogConfiguration) String() string {
 func (*AwsFsxLustreFileSystemLogConfiguration) ProtoMessage() {}
 
 func (x *AwsFsxLustreFileSystemLogConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -377,7 +660,7 @@ func (x *AwsFsxLustreFileSystemLogConfiguration) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AwsFsxLustreFileSystemLogConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsFsxLustreFileSystemLogConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsFsxLustreFileSystemLogConfiguration) GetDestination() *v1.StringValueOrRef {
@@ -394,32 +677,32 @@ func (x *AwsFsxLustreFileSystemLogConfiguration) GetLevel() string {
 	return ""
 }
 
-// AwsFsxLustreFileSystemMetadataConfiguration controls the metadata performance
-// of PERSISTENT_2 Lustre file systems. Metadata operations include file creation,
-// listing, stat, rename, and deletion.
+// AwsFsxLustreFileSystemMetadataConfiguration controls the metadata
+// performance of PERSISTENT_2 Lustre file systems. Metadata operations include
+// file creation, listing, stat, rename, and deletion.
 type AwsFsxLustreFileSystemMetadataConfiguration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Metadata IOPS mode.
 	//
-	//   - "AUTOMATIC": FSx scales metadata IOPS based on file system storage capacity.
-	//     Provides 1500-192000 IOPS depending on provisioned storage.
-	//   - "USER_PROVISIONED": you specify the exact metadata IOPS. Allows higher
-	//     performance independent of storage size but at additional cost.
+	//   - "AUTOMATIC": FSx scales metadata IOPS with the file system's storage
+	//     capacity. The right choice for most workloads.
+	//   - "USER_PROVISIONED": you specify exact metadata IOPS — higher
+	//     metadata performance independent of storage size, at additional cost.
 	//
 	// Default: AUTOMATIC
 	Mode *string `protobuf:"bytes,1,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
-	// Metadata IOPS when mode is "USER_PROVISIONED". Ignored in AUTOMATIC mode.
+	// Metadata IOPS when mode is "USER_PROVISIONED". IOPS can be increased in
+	// place; a decrease replaces the file system.
 	//
-	// Valid values: 1500, 3000, 6000, 12000, 24000, 36000, 48000, 60000, 72000,
-	// 84000, 96000, 108000, 120000, 132000, 144000, 156000, 168000, 180000, 192000.
-	Iops          int32 `protobuf:"varint,2,opt,name=iops,proto3" json:"iops,omitempty"`
+	// Valid values: 1500, 3000, 6000, then multiples of 12000 up to 192000.
+	Iops          *int32 `protobuf:"varint,2,opt,name=iops,proto3,oneof" json:"iops,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsFsxLustreFileSystemMetadataConfiguration) Reset() {
 	*x = AwsFsxLustreFileSystemMetadataConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -431,7 +714,7 @@ func (x *AwsFsxLustreFileSystemMetadataConfiguration) String() string {
 func (*AwsFsxLustreFileSystemMetadataConfiguration) ProtoMessage() {}
 
 func (x *AwsFsxLustreFileSystemMetadataConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -444,7 +727,7 @@ func (x *AwsFsxLustreFileSystemMetadataConfiguration) ProtoReflect() protoreflec
 
 // Deprecated: Use AwsFsxLustreFileSystemMetadataConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsFsxLustreFileSystemMetadataConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AwsFsxLustreFileSystemMetadataConfiguration) GetMode() string {
@@ -455,8 +738,8 @@ func (x *AwsFsxLustreFileSystemMetadataConfiguration) GetMode() string {
 }
 
 func (x *AwsFsxLustreFileSystemMetadataConfiguration) GetIops() int32 {
-	if x != nil {
-		return x.Iops
+	if x != nil && x.Iops != nil {
+		return *x.Iops
 	}
 	return 0
 }
@@ -465,56 +748,104 @@ var File_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto protorefl
 
 const file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/aws/awsfsxlustrefilesystem/v1/spec.proto\x122dev.planton.provider.aws.awsfsxlustrefilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x84\x18\n" +
+	"=dev/planton/provider/aws/awsfsxlustrefilesystem/v1/spec.proto\x122dev.planton.provider.aws.awsfsxlustrefilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcb;\n" +
 	"\x1aAwsFsxLustreFileSystemSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12;\n" +
-	"\x0fdeployment_type\x18\x02 \x01(\tB\r\x8a\xa6\x1d\tSCRATCH_2H\x00R\x0edeploymentType\x88\x01\x01\x12:\n" +
-	"\x14storage_capacity_gib\x18\x03 \x01(\x05B\b\xbaH\x05\x1a\x03(\xb0\tR\x12storageCapacityGib\x12/\n" +
-	"\fstorage_type\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03SSDH\x01R\vstorageType\x88\x01\x01\x12=\n" +
-	"\x1bper_unit_storage_throughput\x18\x05 \x01(\x05R\x18perUnitStorageThroughput\x12A\n" +
-	"\x15data_compression_type\x18\x06 \x01(\tB\b\x8a\xa6\x1d\x04NONEH\x02R\x13dataCompressionType\x88\x01\x01\x127\n" +
-	"\x18file_system_type_version\x18\a \x01(\tR\x15fileSystemTypeVersion\x12x\n" +
-	"\tsubnet_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
+	"\x0fdeployment_type\x18\x02 \x01(\tB\r\x8a\xa6\x1d\tSCRATCH_2H\x00R\x0edeploymentType\x88\x01\x01\x12?\n" +
+	"\x14storage_capacity_gib\x18\x03 \x01(\x05B\b\xbaH\x05\x1a\x03(\xb0\tH\x01R\x12storageCapacityGib\x88\x01\x01\x12/\n" +
+	"\fstorage_type\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03SSDH\x02R\vstorageType\x88\x01\x01\x12_\n" +
+	"\x1bper_unit_storage_throughput\x18\x05 \x01(\x05B\x1b\xbaH\x18\x1a\x160\f0(020d0}0\xc8\x010\xfa\x010\xf4\x030\xe8\aH\x03R\x18perUnitStorageThroughput\x88\x01\x01\x12>\n" +
+	"\x13throughput_capacity\x18\x06 \x01(\x05B\b\xbaH\x05\x1a\x03(\xa0\x1fH\x04R\x12throughputCapacity\x88\x01\x01\x12A\n" +
+	"\x15data_compression_type\x18\a \x01(\tB\b\x8a\xa6\x1d\x04NONEH\x05R\x13dataCompressionType\x88\x01\x01\x12\xde\x01\n" +
+	"\x18file_system_type_version\x18\b \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
+	"\x1ffile_system_type_version_format\x12Ifile_system_type_version must be in the format x.y (e.g., '2.12', '2.15')\x1a.this == '' || this.matches('^[0-9]\\\\.[0-9]+$')R\x15fileSystemTypeVersion\x12\x1f\n" +
+	"\vefa_enabled\x18\t \x01(\bR\n" +
+	"efaEnabled\x12(\n" +
+	"\x10drive_cache_type\x18\n" +
+	" \x01(\tR\x0edriveCacheType\x12\xa7\x01\n" +
+	"\x1ddata_read_cache_configuration\x18\v \x01(\v2d.dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemDataReadCacheConfigurationR\x1adataReadCacheConfiguration\x12x\n" +
+	"\tsubnet_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
-	"\vimport_path\x18\v \x01(\tR\n" +
-	"importPath\x12\x1f\n" +
-	"\vexport_path\x18\f \x01(\tR\n" +
-	"exportPath\x12\x87\x01\n" +
-	"\x11log_configuration\x18\r \x01(\v2Z.dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemLogConfigurationR\x10logConfiguration\x12Q\n" +
-	"\x1fautomatic_backup_retention_days\x18\x0e \x01(\x05B\x05\x8a\xa6\x1d\x010H\x03R\x1cautomaticBackupRetentionDays\x88\x01\x01\x12H\n" +
-	"!daily_automatic_backup_start_time\x18\x0f \x01(\tR\x1ddailyAutomaticBackupStartTime\x12/\n" +
-	"\x14copy_tags_to_backups\x18\x10 \x01(\bR\x11copyTagsToBackups\x129\n" +
-	"\x11skip_final_backup\x18\x11 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x0fskipFinalBackup\x88\x01\x01\x12A\n" +
-	"\x1dweekly_maintenance_start_time\x18\x12 \x01(\tR\x1aweeklyMaintenanceStartTime\x12\x96\x01\n" +
-	"\x16metadata_configuration\x18\x13 \x01(\v2_.dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemMetadataConfigurationR\x15metadataConfiguration:\xba\v\xbaH\xb6\v\x1a\xde\x01\n" +
-	"\x15deployment_type_valid\x12Sdeployment_type must be 'SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', or 'PERSISTENT_2'\x1apthis.deployment_type == '' || this.deployment_type in ['SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', 'PERSISTENT_2']\x1ay\n" +
-	"\x12storage_type_valid\x12#storage_type must be 'SSD' or 'HDD'\x1a>this.storage_type == '' || this.storage_type in ['SSD', 'HDD']\x1a\xab\x01\n" +
-	"\x19hdd_requires_persistent_1\x12Hstorage_type 'HDD' is only supported with deployment_type 'PERSISTENT_1'\x1aDthis.storage_type != 'HDD' || this.deployment_type == 'PERSISTENT_1'\x1a\xe2\x01\n" +
-	"\x1ethroughput_requires_persistent\x12]per_unit_storage_throughput can only be set for PERSISTENT_1 or PERSISTENT_2 deployment types\x1aathis.per_unit_storage_throughput == 0 || this.deployment_type in ['PERSISTENT_1', 'PERSISTENT_2']\x1a\x9f\x01\n" +
-	"\x1bdata_compression_type_valid\x12-data_compression_type must be 'NONE' or 'LZ4'\x1aQthis.data_compression_type == '' || this.data_compression_type in ['NONE', 'LZ4']\x1a\xe9\x01\n" +
-	"\x1cimport_path_requires_scratch\x12{import_path is only supported on SCRATCH_1 and SCRATCH_2 deployment types (use data repository associations for PERSISTENT)\x1aLthis.import_path == '' || this.deployment_type in ['SCRATCH_1', 'SCRATCH_2']\x1av\n" +
-	"\x16export_requires_import\x12*export_path requires import_path to be set\x1a0this.export_path == '' || this.import_path != ''\x1a\xbe\x01\n" +
-	"%metadata_config_requires_persistent_2\x12Hmetadata_configuration is only supported on PERSISTENT_2 deployment type\x1aK!has(this.metadata_configuration) || this.deployment_type == 'PERSISTENT_2'B\x12\n" +
-	"\x10_deployment_typeB\x0f\n" +
-	"\r_storage_typeB\x18\n" +
-	"\x16_data_compression_typeB\"\n" +
+	"kms_key_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
+	"\tbackup_id\x18\x0f \x01(\tR\bbackupId\x12\xd7\x01\n" +
+	"\vimport_path\x18\x10 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xad\x01\n" +
+	"\x12import_path_format\x12Eimport_path must be an S3 URI beginning with s3:// (3-900 characters)\x1aPthis == '' || (this.startsWith('s3://') && size(this) >= 3 && size(this) <= 900)R\n" +
+	"importPath\x12\xd7\x01\n" +
+	"\vexport_path\x18\x11 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xad\x01\n" +
+	"\x12export_path_format\x12Eexport_path must be an S3 URI beginning with s3:// (3-900 characters)\x1aPthis == '' || (this.startsWith('s3://') && size(this) >= 3 && size(this) <= 900)R\n" +
+	"exportPath\x12,\n" +
+	"\x12auto_import_policy\x18\x12 \x01(\tR\x10autoImportPolicy\x12I\n" +
+	"\x18imported_file_chunk_size\x18\x13 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\xa0\x1f(\x01H\x06R\x15importedFileChunkSize\x88\x01\x01\x12\x9d\x01\n" +
+	"\x19root_squash_configuration\x18\x14 \x01(\v2a.dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemRootSquashConfigurationR\x17rootSquashConfiguration\x12\x87\x01\n" +
+	"\x11log_configuration\x18\x15 \x01(\v2Z.dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemLogConfigurationR\x10logConfiguration\x12\x96\x01\n" +
+	"\x16metadata_configuration\x18\x16 \x01(\v2_.dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemMetadataConfigurationR\x15metadataConfiguration\x12Z\n" +
+	"\x1fautomatic_backup_retention_days\x18\x17 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18Z(\x00\x8a\xa6\x1d\x010H\aR\x1cautomaticBackupRetentionDays\x88\x01\x01\x12\xff\x01\n" +
+	"!daily_automatic_backup_start_time\x18\x18 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xac\x01\n" +
+	"\x18daily_backup_time_format\x12Qdaily_automatic_backup_start_time must be in 24-hour HH:MM format (e.g., '05:00')\x1a=this == '' || this.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')R\x1ddailyAutomaticBackupStartTime\x12/\n" +
+	"\x14copy_tags_to_backups\x18\x19 \x01(\bR\x11copyTagsToBackups\x129\n" +
+	"\x11skip_final_backup\x18\x1a \x01(\bB\b\x8a\xa6\x1d\x04trueH\bR\x0fskipFinalBackup\x88\x01\x01\x12\x8f\x01\n" +
+	"\x11final_backup_tags\x18\x1b \x03(\v2c.dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.FinalBackupTagsEntryR\x0ffinalBackupTags\x12\xa4\x02\n" +
+	"\x1dweekly_maintenance_start_time\x18\x1c \x01(\tB\xe0\x01\xbaH\xdc\x01\xba\x01\xd8\x01\n" +
+	"\x1eweekly_maintenance_time_format\x12qweekly_maintenance_start_time must be in d:HH:MM format where d is 1 (Monday) through 7 (Sunday), e.g., '1:05:00'\x1aCthis == '' || this.matches('^[1-7]:([01][0-9]|2[0-3]):[0-5][0-9]$')R\x1aweeklyMaintenanceStartTime\x1aB\n" +
+	"\x14FinalBackupTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe4\x1f\xbaH\xe0\x1f\x1a\xde\x01\n" +
+	"\x15deployment_type_valid\x12Sdeployment_type must be 'SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', or 'PERSISTENT_2'\x1ap!has(this.deployment_type) || this.deployment_type in ['SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', 'PERSISTENT_2']\x1a\xa8\x01\n" +
+	"\x12storage_type_valid\x12;storage_type must be 'SSD', 'HDD', or 'INTELLIGENT_TIERING'\x1aU!has(this.storage_type) || this.storage_type in ['SSD', 'HDD', 'INTELLIGENT_TIERING']\x1a\xa3\x02\n" +
+	"\x19storage_capacity_required\x12\x82\x01storage_capacity_gib is required (leave it unset only when restoring from backup_id or when storage_type is 'INTELLIGENT_TIERING')\x1a\x80\x01has(this.storage_capacity_gib) || this.backup_id != '' || (has(this.storage_type) && this.storage_type == 'INTELLIGENT_TIERING')\x1a\xc6\x01\n" +
+	"\x19hdd_requires_persistent_1\x12Hstorage_type 'HDD' is only supported with deployment_type 'PERSISTENT_1'\x1a_!has(this.storage_type) || this.storage_type != 'HDD' || this.deployment_type == 'PERSISTENT_1'\x1a\xa3\x03\n" +
+	"\x1cintelligent_tiering_contract\x12\x9e\x01storage_type 'INTELLIGENT_TIERING' requires deployment_type 'PERSISTENT_2' plus throughput_capacity, data_read_cache_configuration, and metadata_configuration\x1a\xe1\x01!has(this.storage_type) || this.storage_type != 'INTELLIGENT_TIERING' || (this.deployment_type == 'PERSISTENT_2' && has(this.throughput_capacity) && has(this.data_read_cache_configuration) && has(this.metadata_configuration))\x1a\x88\x02\n" +
+	"\x1ddrive_cache_type_hdd_contract\x12`drive_cache_type ('READ' or 'NONE') is required when storage_type is 'HDD' and invalid otherwise\x1a\x84\x01(has(this.storage_type) && this.storage_type == 'HDD') ? (this.drive_cache_type in ['READ', 'NONE']) : (this.drive_cache_type == '')\x1a\xd4\x02\n" +
+	"'per_unit_throughput_requires_persistent\x12wper_unit_storage_throughput applies only to PERSISTENT_1 or PERSISTENT_2 deployments with provisioned (SSD/HDD) storage\x1a\xaf\x01!has(this.per_unit_storage_throughput) || (this.deployment_type in ['PERSISTENT_1', 'PERSISTENT_2'] && (!has(this.storage_type) || this.storage_type != 'INTELLIGENT_TIERING'))\x1a\xe2\x02\n" +
+	"0throughput_capacity_intelligent_tiering_contract\x12zthroughput_capacity (a multiple of 4000 MB/s) is required when storage_type is 'INTELLIGENT_TIERING' and invalid otherwise\x1a\xb1\x01(has(this.storage_type) && this.storage_type == 'INTELLIGENT_TIERING') ? (has(this.throughput_capacity) && this.throughput_capacity % 4000 == 0) : !has(this.throughput_capacity)\x1a\xfe\x01\n" +
+	",data_read_cache_requires_intelligent_tiering\x12Zdata_read_cache_configuration is only supported when storage_type is 'INTELLIGENT_TIERING'\x1ar!has(this.data_read_cache_configuration) || (has(this.storage_type) && this.storage_type == 'INTELLIGENT_TIERING')\x1a\xd7\x01\n" +
+	"\"efa_requires_persistent_2_metadata\x12Nefa_enabled requires deployment_type 'PERSISTENT_2' and metadata_configuration\x1aa!this.efa_enabled || (this.deployment_type == 'PERSISTENT_2' && has(this.metadata_configuration))\x1a\x9f\x01\n" +
+	"\x1bdata_compression_type_valid\x12-data_compression_type must be 'NONE' or 'LZ4'\x1aQ!has(this.data_compression_type) || this.data_compression_type in ['NONE', 'LZ4']\x1a\xcd\x01\n" +
+	"\x1cimport_path_not_persistent_2\x12kimport_path is not supported on PERSISTENT_2 deployments — use an AwsFsxDataRepositoryAssociation instead\x1a@this.import_path == '' || this.deployment_type != 'PERSISTENT_2'\x1av\n" +
+	"\x16export_requires_import\x12*export_path requires import_path to be set\x1a0this.export_path == '' || this.import_path != ''\x1a\x97\x02\n" +
+	"\x18auto_import_policy_valid\x12kauto_import_policy must be 'NONE', 'NEW', 'NEW_CHANGED', or 'NEW_CHANGED_DELETED', and requires import_path\x1a\x8d\x01this.auto_import_policy == '' || (this.import_path != '' && this.auto_import_policy in ['NONE', 'NEW', 'NEW_CHANGED', 'NEW_CHANGED_DELETED'])\x1a\x94\x01\n" +
+	"\x1achunk_size_requires_import\x127imported_file_chunk_size requires import_path to be set\x1a=!has(this.imported_file_chunk_size) || this.import_path != ''\x1a\xbe\x01\n" +
+	"%metadata_config_requires_persistent_2\x12Hmetadata_configuration is only supported on PERSISTENT_2 deployment type\x1aK!has(this.metadata_configuration) || this.deployment_type == 'PERSISTENT_2'\x1a\xbe\x01\n" +
+	" backup_restore_excludes_capacity\x12astorage_capacity_gib cannot be set when restoring from backup_id (capacity comes from the backup)\x1a7this.backup_id == '' || !has(this.storage_capacity_gib)B\x12\n" +
+	"\x10_deployment_typeB\x17\n" +
+	"\x15_storage_capacity_gibB\x0f\n" +
+	"\r_storage_typeB\x1e\n" +
+	"\x1c_per_unit_storage_throughputB\x16\n" +
+	"\x14_throughput_capacityB\x18\n" +
+	"\x16_data_compression_typeB\x1b\n" +
+	"\x19_imported_file_chunk_sizeB\"\n" +
 	" _automatic_backup_retention_daysB\x14\n" +
-	"\x12_skip_final_backup\"\x94\x03\n" +
+	"\x12_skip_final_backup\"\x8c\x04\n" +
+	"0AwsFsxLustreFileSystemDataReadCacheConfiguration\x12'\n" +
+	"\vsizing_mode\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"sizingMode\x12'\n" +
+	"\bsize_gib\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02( H\x00R\asizeGib\x88\x01\x01:\xf8\x02\xbaH\xf4\x02\x1a\xce\x01\n" +
+	"\x11sizing_mode_valid\x12\\sizing_mode must be 'NO_CACHE', 'USER_PROVISIONED', or 'PROPORTIONAL_TO_THROUGHPUT_CAPACITY'\x1a[this.sizing_mode in ['NO_CACHE', 'USER_PROVISIONED', 'PROPORTIONAL_TO_THROUGHPUT_CAPACITY']\x1a\xa0\x01\n" +
+	"\x1esize_requires_user_provisioned\x12?size_gib can only be set when sizing_mode is 'USER_PROVISIONED'\x1a=!has(this.size_gib) || this.sizing_mode == 'USER_PROVISIONED'B\v\n" +
+	"\t_size_gib\"\xc6\x03\n" +
+	"-AwsFsxLustreFileSystemRootSquashConfiguration\x12\xb4\x01\n" +
+	"\vroot_squash\x18\x01 \x01(\tB\x92\x01\xbaH\x8e\x01\xba\x01\x8a\x01\n" +
+	"\x12root_squash_format\x12;root_squash must be in UID:GID format (e.g., '65534:65534')\x1a7this == '' || this.matches('^[0-9]{1,10}:[0-9]{1,10}$')R\n" +
+	"rootSquash\x12\xdd\x01\n" +
+	"\x0eno_squash_nids\x18\x02 \x03(\tB\xb6\x01\xbaH\xb2\x01\x92\x01\xae\x01\"\xab\x01\xba\x01\xa7\x01\n" +
+	"\n" +
+	"nid_format\x12]each NID must be an IPv4 address or bracketed range followed by '@tcp' (e.g., '10.0.1.6@tcp')\x1a:this.matches('^([0-9\\\\[\\\\]-]*\\\\.){3}([0-9\\\\[\\\\]-]*)@tcp$')R\fnoSquashNids\"\x94\x03\n" +
 	"&AwsFsxLustreFileSystemLogConfiguration\x12{\n" +
 	"\vdestination\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\vdestination\x12)\n" +
 	"\x05level\x18\x02 \x01(\tB\x0e\x8a\xa6\x1d\n" +
 	"WARN_ERRORH\x00R\x05level\x88\x01\x01:\xb7\x01\xbaH\xb3\x01\x1a\xb0\x01\n" +
-	"\x0flog_level_valid\x12Dlevel must be 'DISABLED', 'WARN_ONLY', 'ERROR_ONLY', or 'WARN_ERROR'\x1aWthis.level == '' || this.level in ['DISABLED', 'WARN_ONLY', 'ERROR_ONLY', 'WARN_ERROR']B\b\n" +
-	"\x06_level\"\x90\x03\n" +
+	"\x0flog_level_valid\x12Dlevel must be 'DISABLED', 'WARN_ONLY', 'ERROR_ONLY', or 'WARN_ERROR'\x1aW!has(this.level) || this.level in ['DISABLED', 'WARN_ONLY', 'ERROR_ONLY', 'WARN_ERROR']B\b\n" +
+	"\x06_level\"\x82\x04\n" +
 	"+AwsFsxLustreFileSystemMetadataConfiguration\x12&\n" +
-	"\x04mode\x18\x01 \x01(\tB\r\x8a\xa6\x1d\tAUTOMATICH\x00R\x04mode\x88\x01\x01\x12\x12\n" +
-	"\x04iops\x18\x02 \x01(\x05R\x04iops:\x9b\x02\xbaH\x97\x02\x1a\x88\x01\n" +
-	"\x13metadata_mode_valid\x12.mode must be 'AUTOMATIC' or 'USER_PROVISIONED'\x1aAthis.mode == '' || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']\x1a\x89\x01\n" +
-	"\x1eiops_requires_user_provisioned\x124iops can only be set when mode is 'USER_PROVISIONED'\x1a1this.iops == 0 || this.mode == 'USER_PROVISIONED'B\a\n" +
-	"\x05_modeB\xa1\x03\n" +
+	"\x04mode\x18\x01 \x01(\tB\r\x8a\xa6\x1d\tAUTOMATICH\x00R\x04mode\x88\x01\x01\x12f\n" +
+	"\x04iops\x18\x02 \x01(\x05BM\xbaHJ\x1aH0\xdc\v0\xb8\x170\xf0.0\xe0]0\xc0\xbb\x010\xa0\x99\x020\x80\xf7\x020\xe0\xd4\x030\xc0\xb2\x040\xa0\x90\x050\x80\xee\x050\xe0\xcb\x060\xc0\xa9\a0\xa0\x87\b0\x80\xe5\b0\xe0\xc2\t0\xc0\xa0\n" +
+	"0\xa0\xfe\n" +
+	"0\x80\xdc\vH\x01R\x04iops\x88\x01\x01:\xb0\x02\xbaH\xac\x02\x1a\x88\x01\n" +
+	"\x13metadata_mode_valid\x12.mode must be 'AUTOMATIC' or 'USER_PROVISIONED'\x1aA!has(this.mode) || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']\x1a\x9e\x01\n" +
+	"\x1eiops_requires_user_provisioned\x124iops can only be set when mode is 'USER_PROVISIONED'\x1aF!has(this.iops) || (has(this.mode) && this.mode == 'USER_PROVISIONED')B\a\n" +
+	"\x05_modeB\a\n" +
+	"\x05_iopsB\xa1\x03\n" +
 	"6com.dev.planton.provider.aws.awsfsxlustrefilesystem.v1B\tSpecProtoP\x01Zmgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxlustrefilesystem/v1;awsfsxlustrefilesystemv1\xa2\x02\x05DPPAA\xaa\x022Dev.Planton.Provider.Aws.Awsfsxlustrefilesystem.V1\xca\x022Dev\\Planton\\Provider\\Aws\\Awsfsxlustrefilesystem\\V1\xe2\x02>Dev\\Planton\\Provider\\Aws\\Awsfsxlustrefilesystem\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Aws::Awsfsxlustrefilesystem::V1b\x06proto3"
 
 var (
@@ -529,25 +860,31 @@ func file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDescG
 	return file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_goTypes = []any{
-	(*AwsFsxLustreFileSystemSpec)(nil),                  // 0: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec
-	(*AwsFsxLustreFileSystemLogConfiguration)(nil),      // 1: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemLogConfiguration
-	(*AwsFsxLustreFileSystemMetadataConfiguration)(nil), // 2: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemMetadataConfiguration
-	(*v1.StringValueOrRef)(nil),                         // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsFsxLustreFileSystemSpec)(nil),                       // 0: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec
+	(*AwsFsxLustreFileSystemDataReadCacheConfiguration)(nil), // 1: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemDataReadCacheConfiguration
+	(*AwsFsxLustreFileSystemRootSquashConfiguration)(nil),    // 2: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemRootSquashConfiguration
+	(*AwsFsxLustreFileSystemLogConfiguration)(nil),           // 3: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemLogConfiguration
+	(*AwsFsxLustreFileSystemMetadataConfiguration)(nil),      // 4: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemMetadataConfiguration
+	nil,                         // 5: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.FinalBackupTagsEntry
+	(*v1.StringValueOrRef)(nil), // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.log_configuration:type_name -> dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemLogConfiguration
-	2, // 4: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.metadata_configuration:type_name -> dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemMetadataConfiguration
-	3, // 5: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemLogConfiguration.destination:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.data_read_cache_configuration:type_name -> dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemDataReadCacheConfiguration
+	6, // 1: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // 2: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // 3: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 4: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.root_squash_configuration:type_name -> dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemRootSquashConfiguration
+	3, // 5: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.log_configuration:type_name -> dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemLogConfiguration
+	4, // 6: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.metadata_configuration:type_name -> dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemMetadataConfiguration
+	5, // 7: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.final_backup_tags:type_name -> dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.FinalBackupTagsEntry
+	6, // 8: dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemLogConfiguration.destination:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_init() }
@@ -557,14 +894,15 @@ func file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_init() {
 	}
 	file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
-	file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

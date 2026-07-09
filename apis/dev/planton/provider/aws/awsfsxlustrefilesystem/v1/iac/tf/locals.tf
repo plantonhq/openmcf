@@ -1,41 +1,39 @@
-# ---------------------------------------------------------------------------
-# Tags and Resource Naming
-# ---------------------------------------------------------------------------
-
 locals {
-  resource_name = coalesce(var.resource_name, "awsfsxlustrefilesystem")
+  # FSx file systems have no cloud name argument — the console name is the
+  # Name tag. metadata.name is the same basis the Pulumi module pins, keeping
+  # the two engines' physical identity converged.
+  resource_name = var.metadata.name
 
-  tags = merge({
-    "Name" = local.resource_name
-  }, var.labels)
+  # Resource-identity tags follow the catalog convention; user labels merge in
+  # without being able to override the identity keys.
+  aws_tags = merge(try(var.metadata.labels, {}), {
+    "Name"                     = local.resource_name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsFsxLustreFileSystem"
+    "planton.ai/resource-id"   = var.metadata.id
+  })
 
-  # ---------------------------------------------------------------------------
-  # Optional string fields — null when not specified
-  # ---------------------------------------------------------------------------
-  kms_key_id               = var.kms_key_id != "" ? var.kms_key_id : null
-  file_system_type_version = var.file_system_type_version != "" ? var.file_system_type_version : null
-  import_path              = var.import_path != "" ? var.import_path : null
-  export_path              = var.export_path != "" ? var.export_path : null
+  # Empty strings become null so unset stays indistinguishable from the AWS
+  # defaults; empty-string arguments would otherwise fail provider validation
+  # (ARN/URI format checks) or create phantom diffs.
+  kms_key_id               = var.spec.kms_key_id != "" ? var.spec.kms_key_id : null
+  file_system_type_version = var.spec.file_system_type_version != "" ? var.spec.file_system_type_version : null
+  backup_id                = var.spec.backup_id != "" ? var.spec.backup_id : null
+  import_path              = var.spec.import_path != "" ? var.spec.import_path : null
+  export_path              = var.spec.export_path != "" ? var.spec.export_path : null
+  auto_import_policy       = var.spec.auto_import_policy != "" ? var.spec.auto_import_policy : null
+  drive_cache_type         = var.spec.drive_cache_type != "" ? var.spec.drive_cache_type : null
 
-  # ---------------------------------------------------------------------------
-  # Per-unit storage throughput — null when not set (SCRATCH types)
-  # ---------------------------------------------------------------------------
-  per_unit_storage_throughput = var.per_unit_storage_throughput > 0 ? var.per_unit_storage_throughput : null
+  daily_automatic_backup_start_time = var.spec.daily_automatic_backup_start_time != "" ? var.spec.daily_automatic_backup_start_time : null
+  weekly_maintenance_start_time     = var.spec.weekly_maintenance_start_time != "" ? var.spec.weekly_maintenance_start_time : null
 
-  # ---------------------------------------------------------------------------
-  # Backup — null when disabled
-  # ---------------------------------------------------------------------------
-  automatic_backup_retention_days    = var.automatic_backup_retention_days > 0 ? var.automatic_backup_retention_days : null
-  daily_automatic_backup_start_time  = var.daily_automatic_backup_start_time != "" ? var.daily_automatic_backup_start_time : null
-  weekly_maintenance_start_time      = var.weekly_maintenance_start_time != "" ? var.weekly_maintenance_start_time : null
+  # Empty security_group_ids means "let AWS attach the VPC default SG" —
+  # pass null so the provider omits the argument entirely (it is ForceNew;
+  # an empty set and an omitted argument are different plans).
+  security_group_ids = length(var.spec.security_group_ids) > 0 ? var.spec.security_group_ids : null
 
-  # ---------------------------------------------------------------------------
-  # Logging — build block only when destination is provided
-  # ---------------------------------------------------------------------------
-  has_log_configuration = var.log_destination != ""
-
-  # ---------------------------------------------------------------------------
-  # Metadata configuration — build block only for PERSISTENT_2 with mode set
-  # ---------------------------------------------------------------------------
-  has_metadata_configuration = var.metadata_mode != ""
+  # final_backup_tags only matter when a final backup is actually taken.
+  final_backup_tags = length(var.spec.final_backup_tags) > 0 ? var.spec.final_backup_tags : null
 }

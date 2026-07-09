@@ -90,7 +90,7 @@ This creates a Global Accelerator with a TCP listener on port 443 and one endpoi
 | `listeners[].endpointGroups[].healthCheckPort` | `int` | Listener port | Port for health checks. |
 | `listeners[].endpointGroups[].healthCheckProtocol` | `string` | `TCP` | `TCP`, `HTTP`, or `HTTPS`. |
 | `listeners[].endpointGroups[].healthCheckPath` | `string` | — | Path for HTTP/HTTPS health checks. Required when protocol is `HTTP` or `HTTPS`. |
-| `listeners[].endpointGroups[].healthCheckIntervalSeconds` | `int` | `30` | Health check interval in seconds. Range: 10–30. |
+| `listeners[].endpointGroups[].healthCheckIntervalSeconds` | `int` | `30` | Health check interval in seconds. Must be exactly `10` or `30` (AWS constraint). |
 | `listeners[].endpointGroups[].thresholdCount` | `int` | `3` | Consecutive checks to change health status. Range: 1–10. |
 | `listeners[].endpointGroups[].trafficDialPercentage` | `float` | `100.0` | Percentage of traffic to route to this group. 0.0–100.0. Set to 0 to drain a region. |
 | `listeners[].endpointGroups[].endpoints` | `object[]` | `[]` | Endpoints to register. Can be added later. |

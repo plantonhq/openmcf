@@ -59,33 +59,44 @@ This creates a SCRATCH_2 SSD file system with 1200 GiB in the specified subnet. 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `region` | `string` | AWS region where the FSx Lustre file system will be created (e.g., `us-east-1`). | Required; non-empty |
-| `storageCapacityGib` | `int32` | Storage capacity in GiB. Valid increments depend on deployment type and storage type. Can be increased after creation but never decreased. | Minimum 1200 |
+| `storageCapacityGib` | `int32` | Storage capacity in GiB. Valid increments depend on deployment type and storage type. Can be increased after creation but never decreased. Leave unset only when restoring from `backupId` or on `INTELLIGENT_TIERING`. | Minimum 1200 |
 | `subnetId` | `string` | Subnet ID for the file system's network interface. Lustre is single-AZ — exactly one subnet. ForceNew. | Required |
 | `subnetId.value` | `string` | Direct subnet ID value | — |
-| `subnetId.valueFrom` | `object` | Foreign key reference to an AwsVpc resource | Default kind: `AwsVpc` |
+| `subnetId.valueFrom` | `object` | Foreign key reference to an AwsSubnet resource | Default kind: `AwsSubnet` |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `deploymentType` | `string` | `SCRATCH_2` | Deployment type controlling durability and performance. ForceNew. Valid: `SCRATCH_1`, `SCRATCH_2`, `PERSISTENT_1`, `PERSISTENT_2`. |
-| `storageType` | `string` | `SSD` | Storage media type. ForceNew. `SSD` for sub-millisecond latency. `HDD` for lower cost — only available with `PERSISTENT_1`. |
-| `perUnitStorageThroughput` | `int32` | — | Throughput in MB/s/TiB. Required for PERSISTENT types, invalid for SCRATCH. PERSISTENT_1 + SSD: 50, 100, 200. PERSISTENT_1 + HDD: 12, 40. PERSISTENT_2 + SSD: 125, 250, 500, 1000. |
+| `storageType` | `string` | `SSD` | Storage class. ForceNew. `SSD` for sub-millisecond latency, `HDD` (PERSISTENT_1) for lower cost, `INTELLIGENT_TIERING` (PERSISTENT_2) for elastic pay-for-what-you-store capacity. |
+| `perUnitStorageThroughput` | `int32` | — | Throughput in MB/s/TiB for provisioned (SSD/HDD) PERSISTENT capacity. PERSISTENT_1 + SSD: 50, 100, 200. PERSISTENT_1 + HDD: 12, 40. PERSISTENT_2 + SSD: 125, 250, 500, 1000. In-place on PERSISTENT_2. |
+| `throughputCapacity` | `int32` | — | Absolute throughput in MB/s for `INTELLIGENT_TIERING` (multiples of 4000). Required there, invalid elsewhere. |
 | `dataCompressionType` | `string` | `NONE` | Data compression algorithm. `NONE` or `LZ4`. Can be changed after creation without impact to Lustre operations. |
-| `fileSystemTypeVersion` | `string` | — | Lustre version (e.g., `2.12`, `2.15`). ForceNew. Leave empty for the latest version supported by the deployment type. |
+| `fileSystemTypeVersion` | `string` | — | Lustre version (e.g., `2.12`, `2.15`). Upgrades in place; downgrades replace. Leave empty for the latest version. |
+| `efaEnabled` | `bool` | `false` | Elastic Fabric Adapter + GPUDirect Storage. PERSISTENT_2 with `metadataConfiguration` only. ForceNew; pins `perUnitStorageThroughput` while enabled. |
+| `driveCacheType` | `string` | — | HDD read-cache decision: `READ` (SSD cache at 20% of capacity) or `NONE`. Required for HDD storage, invalid otherwise. ForceNew. |
+| `dataReadCacheConfiguration.sizingMode` | `string` | — | INTELLIGENT_TIERING read cache sizing: `PROPORTIONAL_TO_THROUGHPUT_CAPACITY`, `USER_PROVISIONED`, or `NO_CACHE`. Required for INTELLIGENT_TIERING. |
+| `dataReadCacheConfiguration.sizeGib` | `int32` | — | Cache size when `USER_PROVISIONED`: 32–131072 GiB per 4000 MB/s of throughput. |
 | `securityGroupIds` | `string[]` | `[]` | Security group IDs attached to the file system ENI. ForceNew. Must allow TCP 988 and 1018-1023. Can reference AwsSecurityGroup resources via `valueFrom`. Up to 50. |
 | `kmsKeyId` | `string` | — | Customer-managed KMS key ARN for encryption at rest. ForceNew. When omitted, uses the AWS-managed FSx key. Can reference AwsKmsKey resource via `valueFrom`. |
-| `importPath` | `string` | — | S3 URI to import data from (e.g., `s3://my-bucket/prefix`). ForceNew. SCRATCH_1 and SCRATCH_2 only. |
-| `exportPath` | `string` | — | S3 URI for exporting data back to S3. ForceNew. Requires `importPath` to be set. |
-| `logConfiguration.destination` | `string` | — | CloudWatch Logs log group ARN for audit events. Can reference AwsCloudwatchLogGroup resource via `valueFrom`. |
-| `logConfiguration.level` | `string` | `WARN_ERROR` | Audit log level. Valid: `DISABLED`, `WARN_ONLY`, `ERROR_ONLY`, `WARN_ERROR`. |
+| `backupId` | `string` | — | FSx backup to restore from (`backup-...`). ForceNew. Excludes `storageCapacityGib`. |
+| `importPath` | `string` | — | S3 URI for the legacy data repository link. ForceNew. Not PERSISTENT_2 — use `AwsFsxDataRepositoryAssociation` there. |
+| `exportPath` | `string` | — | S3 URI for exporting data back to S3 (same bucket). ForceNew. Requires `importPath`. |
+| `autoImportPolicy` | `string` | `NONE` | How the namespace tracks bucket changes: `NONE`, `NEW`, `NEW_CHANGED`, `NEW_CHANGED_DELETED`. Requires `importPath`. |
+| `importedFileChunkSize` | `int32` | `1024` | Stripe size in MiB for imported files (1–512000). Requires `importPath`. ForceNew. |
+| `rootSquashConfiguration.rootSquash` | `string` | — | UID:GID that root clients are squashed to (e.g., `65534:65534`). |
+| `rootSquashConfiguration.noSquashNids` | `string[]` | `[]` | Lustre NIDs exempt from squashing (e.g., `10.0.1.6@tcp`). |
+| `logConfiguration.destination` | `string` | — | CloudWatch Logs log group ARN for data repository events. Can reference AwsCloudwatchLogGroup resource via `valueFrom`. |
+| `logConfiguration.level` | `string` | `WARN_ERROR` | Log level. Valid: `DISABLED`, `WARN_ONLY`, `ERROR_ONLY`, `WARN_ERROR`. |
 | `automaticBackupRetentionDays` | `int32` | `0` | Days to retain automatic backups. Range: 0-90. Set to 0 to disable. PERSISTENT deployments only. |
 | `dailyAutomaticBackupStartTime` | `string` | — | UTC time to start daily backups in `HH:MM` format (e.g., `05:00`). |
 | `copyTagsToBackups` | `bool` | `false` | Copy file system tags to automatic backups. ForceNew. |
 | `skipFinalBackup` | `bool` | `true` | Skip creating a final backup on deletion. PERSISTENT deployments only. |
+| `finalBackupTags` | `map` | — | Tags applied to the final backup when one is taken. |
 | `weeklyMaintenanceStartTime` | `string` | — | Weekly UTC maintenance window in `d:HH:MM` format where d is 1=Monday through 7=Sunday (e.g., `1:05:00` for Monday 05:00 UTC). |
 | `metadataConfiguration.mode` | `string` | `AUTOMATIC` | Metadata IOPS mode. PERSISTENT_2 only. `AUTOMATIC` scales with storage capacity. `USER_PROVISIONED` allows explicit IOPS. |
-| `metadataConfiguration.iops` | `int32` | — | Metadata IOPS when mode is `USER_PROVISIONED`. Valid values: 1500 through 192000 in documented increments. Ignored in AUTOMATIC mode. |
+| `metadataConfiguration.iops` | `int32` | — | Metadata IOPS when mode is `USER_PROVISIONED`: 1500, 3000, 6000, then multiples of 12000 up to 192000. Grows in place; a decrease replaces the file system. |
 
 ## Examples
 

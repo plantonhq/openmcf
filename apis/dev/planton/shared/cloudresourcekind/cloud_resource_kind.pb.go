@@ -243,6 +243,7 @@ const (
 	CloudResourceKind_AwsFsxOntapFileSystem            CloudResourceKind = 294
 	CloudResourceKind_AwsFsxOntapStorageVirtualMachine CloudResourceKind = 295
 	CloudResourceKind_AwsFsxOntapVolume                CloudResourceKind = 296
+	CloudResourceKind_AwsFsxDataRepositoryAssociation  CloudResourceKind = 375
 	CloudResourceKind_AwsCognitoUserPool               CloudResourceKind = 300
 	// AwsCognitoUserPool is a prerequisite because an identity provider is
 	// created INTO a pool -- the spec's required user_pool_id reference must
@@ -779,6 +780,7 @@ var (
 		294:  "AwsFsxOntapFileSystem",
 		295:  "AwsFsxOntapStorageVirtualMachine",
 		296:  "AwsFsxOntapVolume",
+		375:  "AwsFsxDataRepositoryAssociation",
 		300:  "AwsCognitoUserPool",
 		302:  "AwsCognitoIdentityProvider",
 		358:  "AwsCognitoUserPoolClient",
@@ -1230,6 +1232,7 @@ var (
 		"AwsFsxOntapFileSystem":                   294,
 		"AwsFsxOntapStorageVirtualMachine":        295,
 		"AwsFsxOntapVolume":                       296,
+		"AwsFsxDataRepositoryAssociation":         375,
 		"AwsCognitoUserPool":                      300,
 		"AwsCognitoIdentityProvider":              302,
 		"AwsCognitoUserPoolClient":                358,
@@ -1857,7 +1860,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*ӡ\x01\n" +
+	"\x02v1\x10\x01*\x91\xa2\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -1941,7 +1944,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x17AwsFsxWindowsFileSystem\x10\xa5\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxw\x12,\n" +
 	"\x15AwsFsxOntapFileSystem\x10\xa6\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awsfxo\x12:\n" +
 	" AwsFsxOntapStorageVirtualMachine\x10\xa7\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x10\x01\"\tawsfxosvm\x12)\n" +
-	"\x11AwsFsxOntapVolume\x10\xa8\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsfxov\x12)\n" +
+	"\x11AwsFsxOntapVolume\x10\xa8\x02\x1a\x11\xa2\xf7\x04\r\b\f\x10\x01\"\aawsfxov\x12<\n" +
+	"\x1fAwsFsxDataRepositoryAssociation\x10\xf7\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x10\x01\"\bawsfxdra:\x02\xa3\x02\x12)\n" +
 	"\x12AwsCognitoUserPool\x10\xac\x02\x1a\x10\xa2\xf7\x04\f\b\f\x10\x01\"\x06awscog\x128\n" +
 	"\x1aAwsCognitoIdentityProvider\x10\xae\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x10\x01\"\tawscogidp:\x02\xac\x02\x129\n" +
 	"\x18AwsCognitoUserPoolClient\x10\xe6\x02\x1a\x1a\xa2\xf7\x04\x16\b\f\x10\x01\"\fawscogclient:\x02\xac\x02\x125\n" +

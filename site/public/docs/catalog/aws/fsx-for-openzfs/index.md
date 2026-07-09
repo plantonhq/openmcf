@@ -64,22 +64,26 @@ This creates a SINGLE_AZ_2 OpenZFS file system with 256 GiB SSD storage, 160 MB/
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `region` | `string` | AWS region where the FSx OpenZFS file system will be created (e.g., `us-east-1`). | Required; non-empty |
-| `storageCapacityGib` | `int32` | Storage capacity in GiB | Minimum 64 |
-| `throughputCapacity` | `int32` | Throughput in MB/s. Valid values depend on deployment type. SINGLE_AZ_1: 64–4096. SINGLE_AZ_2/MULTI_AZ_1: 160–10240. | Must be greater than 0 |
-| `subnetIds` | `StringValueOrRef[]` | Subnet IDs. 1 for SINGLE_AZ, 2 for MULTI_AZ. Can reference AwsVpc via `valueFrom`. | Minimum 1 item |
+| `throughputCapacity` | `int32` | Throughput in MB/s. Value sets per deployment generation: SINGLE_AZ_1: 64, 128, 256, 512, 1024, 2048, 3072, 4096. SINGLE_AZ_2/MULTI_AZ_1: 160, 320, 640, 1280, 2560, 3840, 5120, 7680, 10240. | Generation value set (CEL-enforced) |
+| `subnetIds` | `StringValueOrRef[]` | Subnet IDs. Exactly 1 for single-AZ types (incl. HA), exactly 2 for MULTI_AZ_1. Can reference AwsSubnet via `valueFrom`. | Count matches deployment type |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `deploymentType` | `string` | `SINGLE_AZ_2` | `SINGLE_AZ_1`, `SINGLE_AZ_2`, or `MULTI_AZ_1`. ForceNew. |
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security group IDs. Can reference AwsSecurityGroup via `valueFrom`. ForceNew. |
-| `preferredSubnetId` | `StringValueOrRef` | — | Active file server subnet. MULTI_AZ_1 only. ForceNew. |
+| `deploymentType` | `string` | `SINGLE_AZ_2` | `SINGLE_AZ_1`, `SINGLE_AZ_2`, `SINGLE_AZ_HA_1`, `SINGLE_AZ_HA_2`, or `MULTI_AZ_1`. ForceNew. |
+| `storageCapacityGib` | `int32` | — | 64–524288 GiB. Required for SSD storage (unless restoring from `backupId`); forbidden for `INTELLIGENT_TIERING`. Grows in place. |
+| `storageType` | `string` | `SSD` | `SSD` or `INTELLIGENT_TIERING` (MULTI_AZ_1 only, elastic capacity). ForceNew. |
+| `readCacheConfiguration.sizingMode` | `string` | — | INTELLIGENT_TIERING read cache: `PROPORTIONAL_TO_THROUGHPUT_CAPACITY`, `USER_PROVISIONED`, or `NO_CACHE`. Required for INTELLIGENT_TIERING. |
+| `readCacheConfiguration.sizeGib` | `int32` | — | Cache size when `USER_PROVISIONED`. |
+| `backupId` | `string` | — | FSx backup to restore from. ForceNew; excludes `storageCapacityGib`. |
+| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security group IDs (up to 50). Can reference AwsSecurityGroup via `valueFrom`. ForceNew. |
+| `preferredSubnetId` | `StringValueOrRef` | — | Active file server subnet. Required for MULTI_AZ_1, invalid otherwise. ForceNew. |
 | `endpointIpAddressRange` | `string` | — | CIDR range for endpoint floating IPs. MULTI_AZ_1 only. ForceNew. |
-| `routeTableIds` | `StringValueOrRef[]` | `[]` | Route tables for failover routing. MULTI_AZ_1 only. |
+| `routeTableIds` | `StringValueOrRef[]` | `[]` | Route tables for failover routing (up to 50). MULTI_AZ_1 only. |
 | `kmsKeyId` | `StringValueOrRef` | AWS-managed | Customer-managed KMS key ARN. Can reference AwsKmsKey via `valueFrom`. ForceNew. |
 | `diskIopsConfiguration.mode` | `string` | `AUTOMATIC` | `AUTOMATIC` scales with storage. `USER_PROVISIONED` uses explicit IOPS. |
-| `diskIopsConfiguration.iops` | `int32` | — | Total SSD IOPS. Only when mode is `USER_PROVISIONED`. |
+| `diskIopsConfiguration.iops` | `int32` | — | Total SSD IOPS. Only when mode is `USER_PROVISIONED`. Ceilings: 160000 (SINGLE_AZ_1), 400000 (SINGLE_AZ_2). |
 | `rootVolumeConfiguration.dataCompressionType` | `string` | `NONE` | `NONE`, `ZSTD` (best ratio), or `LZ4` (fastest). |
 | `rootVolumeConfiguration.nfsExports.clientConfigurations` | `object[]` | — | NFS client access rules. Each entry: `clients` (IP/CIDR/wildcard) + `options` (mount options). |
 | `rootVolumeConfiguration.readOnly` | `bool` | `false` | Makes the root volume read-only. |
@@ -91,6 +95,8 @@ This creates a SINGLE_AZ_2 OpenZFS file system with 256 GiB SSD storage, 160 MB/
 | `copyTagsToBackups` | `bool` | `false` | Propagate file system tags to backups. |
 | `copyTagsToVolumes` | `bool` | `false` | Propagate file system tags to volumes. |
 | `skipFinalBackup` | `bool` | `true` | Skip final backup on deletion. |
+| `finalBackupTags` | `map` | — | Tags applied to the final backup when one is taken. |
+| `deleteOptions` | `string[]` | `[]` | `DELETE_CHILD_VOLUMES_AND_SNAPSHOTS` opts into cascading deletion. |
 | `weeklyMaintenanceStartTime` | `string` | — | Maintenance window in d:HH:MM UTC (1=Mon, 7=Sun). |
 
 ## Examples

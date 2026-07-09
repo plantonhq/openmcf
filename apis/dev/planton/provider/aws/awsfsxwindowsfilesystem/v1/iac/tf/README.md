@@ -35,16 +35,10 @@ iac/tf/
 
 ## Variables
 
-### `provider_config`
-
-AWS provider configuration for authentication and region.
-
-| Field               | Type   | Required | Description                    |
-|---------------------|--------|----------|--------------------------------|
-| `region`            | string | yes      | AWS region for the file system |
-| `access_key_id`     | string | no       | AWS access key ID              |
-| `secret_access_key` | string | no       | AWS secret access key          |
-| `session_token`     | string | no       | AWS session token              |
+`variables.tf` is generator-owned (regenerated from the proto contract) and
+carries two variables: `metadata` and `spec`. Region and credentials are
+injected by the runtime as environment variables — the module never takes
+provider credentials as inputs.
 
 ### `metadata`
 
@@ -64,13 +58,14 @@ The FSx for Windows File Server specification.
 | Field                              | Type   | Default       | Description |
 |------------------------------------|--------|---------------|-------------|
 | `deployment_type`                  | string | `SINGLE_AZ_2` | `SINGLE_AZ_1`, `SINGLE_AZ_2`, or `MULTI_AZ_1` |
-| `storage_capacity_gib`            | number | (required)    | Storage capacity in GiB (min 32 for SSD, 2000 for HDD) |
+| `storage_capacity_gib`            | number | (required unless `backup_id`) | Storage capacity in GiB (32–65536; min 2000 for HDD) |
 | `storage_type`                     | string | `SSD`         | `SSD` or `HDD` |
-| `throughput_capacity`              | number | (required)    | Throughput in MB/s (8, 16, 32, 64, 128, 256, 512, 1024, 2048) |
-| `subnet_ids`                       | list   | (required)    | Subnet IDs (1 for Single-AZ, 2 for Multi-AZ) |
-| `preferred_subnet_id`             | string | —             | Preferred subnet for Multi-AZ active file server |
+| `throughput_capacity`              | number | (required)    | Throughput in MB/s (8–12288 in the fixed tier set) |
+| `subnet_ids`                       | list   | (required)    | Subnet IDs (exactly 1 for Single-AZ, exactly 2 for Multi-AZ) |
+| `preferred_subnet_id`             | string | —             | Preferred subnet for the Multi-AZ active file server (required for MULTI_AZ_1) |
 | `security_group_ids`              | list   | `[]`          | Security group IDs for network access control |
 | `kms_key_id`                       | string | —             | KMS key ARN for encryption at rest (omit for AWS-managed) |
+| `backup_id`                        | string | —             | FSx backup to restore from (excludes `storage_capacity_gib`) |
 | `active_directory_id`             | string | —             | AWS Managed Microsoft AD directory ID |
 | `self_managed_active_directory`   | object | —             | Self-managed AD config (see below) |
 | `aliases`                          | list   | `[]`          | DNS aliases (CNAME records) |
@@ -80,6 +75,7 @@ The FSx for Windows File Server specification.
 | `daily_automatic_backup_start_time` | string | —           | Backup start time in `HH:MM` UTC format |
 | `copy_tags_to_backups`            | bool   | `false`       | Propagate tags to backup copies |
 | `skip_final_backup`               | bool   | `true`        | Skip final backup on resource deletion |
+| `final_backup_tags`               | map    | —             | Tags applied to the final backup when one is taken |
 | `weekly_maintenance_start_time`   | string | —             | Maintenance window in `d:HH:MM` format |
 
 #### `self_managed_active_directory` (nested object)
@@ -165,24 +161,15 @@ dynamic "disk_iops_configuration" {
 
 **Important**: When `mode` is `USER_PROVISIONED`, the `iops` field is required. When `mode` is `AUTOMATIC`, `iops` should be omitted.
 
-## Lifecycle Configuration
-
-```hcl
-lifecycle {
-  ignore_changes = [tags["CreatedAt"]]
-}
-```
-
-The `CreatedAt` tag is excluded from change detection to prevent unnecessary updates when AWS auto-populates this tag on resource creation.
-
 ## Tags
 
-All file systems are tagged with five standard Planton metadata tags (defined in `locals.tf`):
+All file systems carry the catalog's resource-identity tag set (defined in `locals.tf`), with user labels merged in unable to override the identity keys:
 
-| Tag            | Value                         |
-|----------------|-------------------------------|
-| `Resource`     | `true`                        |
-| `Organization` | From `metadata.org`           |
-| `Environment`  | From `metadata.env`           |
-| `ResourceKind` | `AwsFsxWindowsFileSystem`     |
-| `ResourceId`   | From `metadata.id`            |
+| Tag                        | Value                     |
+|----------------------------|---------------------------|
+| `Name`                     | From `metadata.name`      |
+| `planton.ai/resource`      | `true`                    |
+| `planton.ai/organization`  | From `metadata.org`       |
+| `planton.ai/environment`   | From `metadata.env`       |
+| `planton.ai/resource-kind` | `AwsFsxWindowsFileSystem` |
+| `planton.ai/resource-id`   | From `metadata.id`        |

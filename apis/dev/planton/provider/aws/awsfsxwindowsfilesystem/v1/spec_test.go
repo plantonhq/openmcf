@@ -44,7 +44,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		spec = &AwsFsxWindowsFileSystemSpec{
 			Region:             "us-west-2",
 			SubnetIds:          []*foreignkeyv1.StringValueOrRef{strRef("subnet-abc123")},
-			StorageCapacityGib: 256,
+			StorageCapacityGib: int32Ptr(256),
 			ThroughputCapacity: 64,
 			ActiveDirectoryId:  strRef("d-1234567890"),
 		}
@@ -106,7 +106,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 	ginkgo.It("accepts a spec with USER_PROVISIONED disk IOPS", func() {
 		spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
 			Mode: stringPtr("USER_PROVISIONED"),
-			Iops: 100000,
+			Iops: int32Ptr(100000),
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
@@ -114,7 +114,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 
 	ginkgo.It("accepts a full production configuration", func() {
 		spec.DeploymentType = stringPtr("MULTI_AZ_1")
-		spec.StorageCapacityGib = 2048
+		spec.StorageCapacityGib = int32Ptr(2048)
 		spec.StorageType = stringPtr("SSD")
 		spec.ThroughputCapacity = 2048
 		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
@@ -126,7 +126,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/test-key")
 		spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
 			Mode: stringPtr("USER_PROVISIONED"),
-			Iops: 200000,
+			Iops: int32Ptr(200000),
 		}
 		spec.AuditLogConfiguration = &AwsFsxWindowsFileSystemAuditLogConfiguration{
 			FileAccessAuditLogLevel:      stringPtr("SUCCESS_AND_FAILURE"),
@@ -205,7 +205,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("accepts HDD with compatible deployment and storage", func() {
 			spec.StorageType = stringPtr("HDD")
 			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-			spec.StorageCapacityGib = 2000
+			spec.StorageCapacityGib = int32Ptr(2000)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -232,7 +232,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("fails when HDD with SINGLE_AZ_1", func() {
 			spec.StorageType = stringPtr("HDD")
 			spec.DeploymentType = stringPtr("SINGLE_AZ_1")
-			spec.StorageCapacityGib = 2000
+			spec.StorageCapacityGib = int32Ptr(2000)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("HDD"))
@@ -241,7 +241,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("accepts HDD with SINGLE_AZ_2", func() {
 			spec.StorageType = stringPtr("HDD")
 			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-			spec.StorageCapacityGib = 2000
+			spec.StorageCapacityGib = int32Ptr(2000)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -249,7 +249,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("accepts HDD with MULTI_AZ_1", func() {
 			spec.StorageType = stringPtr("HDD")
 			spec.DeploymentType = stringPtr("MULTI_AZ_1")
-			spec.StorageCapacityGib = 2000
+			spec.StorageCapacityGib = int32Ptr(2000)
 			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
 				strRef("subnet-abc123"),
 				strRef("subnet-def456"),
@@ -264,7 +264,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("fails when HDD with less than 2000 GiB", func() {
 			spec.StorageType = stringPtr("HDD")
 			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-			spec.StorageCapacityGib = 1999
+			spec.StorageCapacityGib = int32Ptr(1999)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("2000"))
@@ -273,7 +273,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("accepts HDD with exactly 2000 GiB", func() {
 			spec.StorageType = stringPtr("HDD")
 			spec.DeploymentType = stringPtr("SINGLE_AZ_2")
-			spec.StorageCapacityGib = 2000
+			spec.StorageCapacityGib = int32Ptr(2000)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -343,6 +343,33 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 			spec.PreferredSubnetId = nil
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when MULTI_AZ_1 omits preferred_subnet_id", func() {
+			spec.DeploymentType = stringPtr("MULTI_AZ_1")
+			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
+				strRef("subnet-abc123"),
+				strRef("subnet-def456"),
+			}
+			spec.PreferredSubnetId = nil
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when MULTI_AZ_1 has only one subnet", func() {
+			spec.DeploymentType = stringPtr("MULTI_AZ_1")
+			spec.PreferredSubnetId = strRef("subnet-abc123")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a single-AZ deployment has two subnets", func() {
+			spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
+				strRef("subnet-abc123"),
+				strRef("subnet-def456"),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 
@@ -430,6 +457,22 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 
 		ginkgo.It("fails when dns_ips has more than 2 IPs", func() {
 			spec.SelfManagedActiveDirectory.DnsIps = []string{"10.0.0.1", "10.0.0.2", "10.0.0.3"}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a dns_ip is not a valid IP address", func() {
+			spec.SelfManagedActiveDirectory.DnsIps = []string{"dns.corp.example.com"}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when the password exceeds 256 characters", func() {
+			long := make([]byte, 257)
+			for i := range long {
+				long[i] = 'x'
+			}
+			spec.SelfManagedActiveDirectory.Password = string(long)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -580,7 +623,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("accepts USER_PROVISIONED mode with iops", func() {
 			spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
 				Mode: stringPtr("USER_PROVISIONED"),
-				Iops: 50000,
+				Iops: int32Ptr(50000),
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
@@ -606,7 +649,7 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("fails when iops is set with AUTOMATIC mode", func() {
 			spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
 				Mode: stringPtr("AUTOMATIC"),
-				Iops: 50000,
+				Iops: int32Ptr(50000),
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
@@ -615,19 +658,27 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 
 		ginkgo.It("fails when iops is set without explicit mode", func() {
 			spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
-				Iops: 50000,
+				Iops: int32Ptr(50000),
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts zero iops with AUTOMATIC mode", func() {
+		ginkgo.It("accepts unset iops with AUTOMATIC mode", func() {
 			spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
 				Mode: stringPtr("AUTOMATIC"),
-				Iops: 0,
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when iops exceeds 350000", func() {
+			spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
+				Mode: stringPtr("USER_PROVISIONED"),
+				Iops: int32Ptr(350001),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 
@@ -677,19 +728,44 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		})
 
 		ginkgo.It("fails when storage_capacity_gib is below 32", func() {
-			spec.StorageCapacityGib = 31
+			spec.StorageCapacityGib = int32Ptr(31)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("accepts storage_capacity_gib exactly at 32", func() {
-			spec.StorageCapacityGib = 32
+			spec.StorageCapacityGib = int32Ptr(32)
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("fails when storage_capacity_gib is zero", func() {
-			spec.StorageCapacityGib = 0
+		ginkgo.It("fails when storage_capacity_gib exceeds 65536", func() {
+			spec.StorageCapacityGib = int32Ptr(65537)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when storage_capacity_gib is omitted without a backup restore", func() {
+			spec.StorageCapacityGib = nil
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	// -------------------------------------------------------------------------
+	// Backup restore create shape
+	// -------------------------------------------------------------------------
+
+	ginkgo.Context("backup restore", func() {
+		ginkgo.It("accepts a backup restore without storage capacity", func() {
+			spec.StorageCapacityGib = nil
+			spec.BackupId = "backup-0123456789abcdef0"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a backup restore also provisions capacity", func() {
+			spec.BackupId = "backup-0123456789abcdef0"
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})

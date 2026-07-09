@@ -7,11 +7,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// fileSystem creates the FSx for OpenZFS file system. FSx file systems have no
+// cloud name argument — the console name is the Name tag, which locals pins to
+// metadata.name on the same basis as the Terraform module.
 func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.OpenZfsFileSystem, error) {
 	spec := locals.AwsFsxOpenzfsFileSystem.Spec
 	name := locals.AwsFsxOpenzfsFileSystem.Metadata.Name
 
-	// Subnet IDs (required, at least 1).
+	// Subnet IDs: one for the single-AZ types, two for MULTI_AZ_1
+	// (CEL-enforced at validation).
 	subnetIds := make(pulumi.StringArray, 0, len(spec.SubnetIds))
 	for _, s := range spec.SubnetIds {
 		subnetIds = append(subnetIds, pulumi.String(s.GetValue()))
@@ -20,16 +24,38 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 	args := &fsx.OpenZfsFileSystemArgs{
 		SubnetIds:          subnetIds,
 		ThroughputCapacity: pulumi.Int(int(spec.ThroughputCapacity)),
-		StorageCapacity:    pulumi.IntPtr(int(spec.StorageCapacityGib)),
 		Tags:               pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	// Deployment type (optional, default SINGLE_AZ_2 via Planton middleware).
+	// Storage capacity is presence-honest: unset means the capacity comes
+	// from a backup restore or the elastic INTELLIGENT_TIERING class, and the
+	// argument must be omitted entirely (AWS rejects it for both shapes).
+	if spec.StorageCapacityGib != nil {
+		args.StorageCapacity = pulumi.IntPtr(int(spec.GetStorageCapacityGib()))
+	}
+
+	// Deployment type — always sent; the resolved spec default is SINGLE_AZ_2.
 	if spec.GetDeploymentType() != "" {
 		args.DeploymentType = pulumi.String(spec.GetDeploymentType())
 	}
 
-	// Security groups.
+	// Storage class (SSD / INTELLIGENT_TIERING). ForceNew.
+	if spec.GetStorageType() != "" {
+		args.StorageType = pulumi.StringPtr(spec.GetStorageType())
+	}
+
+	// Provisioned SSD read cache for INTELLIGENT_TIERING.
+	if spec.ReadCacheConfiguration != nil {
+		cacheArgs := &fsx.OpenZfsFileSystemReadCacheConfigurationArgs{
+			SizingMode: pulumi.StringPtr(spec.ReadCacheConfiguration.SizingMode),
+		}
+		if spec.ReadCacheConfiguration.SizeGib != nil {
+			cacheArgs.Size = pulumi.IntPtr(int(spec.ReadCacheConfiguration.GetSizeGib()))
+		}
+		args.ReadCacheConfiguration = cacheArgs
+	}
+
+	// Security groups. ForceNew; empty lets AWS attach the VPC default SG.
 	if len(spec.SecurityGroupIds) > 0 {
 		sgIds := make(pulumi.StringArray, 0, len(spec.SecurityGroupIds))
 		for _, sg := range spec.SecurityGroupIds {
@@ -38,17 +64,14 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 		args.SecurityGroupIds = sgIds
 	}
 
-	// Preferred subnet (MULTI_AZ_1 only).
+	// MULTI_AZ_1 networking: the active file server's subnet, the floating
+	// endpoint CIDR, and the route tables AWS manages routes in.
 	if spec.PreferredSubnetId != nil && spec.PreferredSubnetId.GetValue() != "" {
 		args.PreferredSubnetId = pulumi.StringPtr(spec.PreferredSubnetId.GetValue())
 	}
-
-	// Endpoint IP address range (MULTI_AZ_1 only).
 	if spec.EndpointIpAddressRange != "" {
 		args.EndpointIpAddressRange = pulumi.StringPtr(spec.EndpointIpAddressRange)
 	}
-
-	// Route table IDs (MULTI_AZ_1 only).
 	if len(spec.RouteTableIds) > 0 {
 		rtIds := make(pulumi.StringArray, 0, len(spec.RouteTableIds))
 		for _, rt := range spec.RouteTableIds {
@@ -57,9 +80,14 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 		args.RouteTableIds = rtIds
 	}
 
-	// Customer-managed KMS key for encryption at rest.
+	// Customer-managed KMS key for encryption at rest. ForceNew.
 	if spec.KmsKeyId != nil && spec.KmsKeyId.GetValue() != "" {
 		args.KmsKeyId = pulumi.StringPtr(spec.KmsKeyId.GetValue())
+	}
+
+	// Restore-from-backup create shape. ForceNew.
+	if spec.BackupId != "" {
+		args.BackupId = pulumi.StringPtr(spec.BackupId)
 	}
 
 	// Disk IOPS configuration.
@@ -68,13 +96,13 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 		if spec.DiskIopsConfiguration.GetMode() != "" {
 			iopsArgs.Mode = pulumi.StringPtr(spec.DiskIopsConfiguration.GetMode())
 		}
-		if spec.DiskIopsConfiguration.Iops > 0 {
-			iopsArgs.Iops = pulumi.IntPtr(int(spec.DiskIopsConfiguration.Iops))
+		if spec.DiskIopsConfiguration.Iops != nil {
+			iopsArgs.Iops = pulumi.IntPtr(int(spec.DiskIopsConfiguration.GetIops()))
 		}
 		args.DiskIopsConfiguration = iopsArgs
 	}
 
-	// Root volume configuration.
+	// Root volume configuration — the file system's default NFS mount target.
 	if spec.RootVolumeConfiguration != nil {
 		rootVolArgs := &fsx.OpenZfsFileSystemRootVolumeConfigurationArgs{}
 
@@ -90,11 +118,12 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 			rootVolArgs.RecordSizeKib = pulumi.IntPtr(int(spec.RootVolumeConfiguration.GetRecordSizeKib()))
 		}
 
+		// ForceNew inside an otherwise in-place block: flipping this replaces
+		// the whole file system.
 		if spec.RootVolumeConfiguration.CopyTagsToSnapshots {
 			rootVolArgs.CopyTagsToSnapshots = pulumi.BoolPtr(true)
 		}
 
-		// NFS exports.
 		if spec.RootVolumeConfiguration.NfsExports != nil &&
 			len(spec.RootVolumeConfiguration.NfsExports.ClientConfigurations) > 0 {
 
@@ -117,7 +146,6 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 			}
 		}
 
-		// User and group quotas.
 		if len(spec.RootVolumeConfiguration.UserAndGroupQuotas) > 0 {
 			quotas := make(fsx.OpenZfsFileSystemRootVolumeConfigurationUserAndGroupQuotaArray, 0,
 				len(spec.RootVolumeConfiguration.UserAndGroupQuotas))
@@ -136,27 +164,39 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 		args.RootVolumeConfiguration = rootVolArgs
 	}
 
-	// Automatic backup retention days.
-	if spec.GetAutomaticBackupRetentionDays() > 0 {
+	// Automatic backups. Zero is a real value ("no automatic backups"), so
+	// the resolved default is always sent explicitly.
+	if spec.AutomaticBackupRetentionDays != nil {
 		args.AutomaticBackupRetentionDays = pulumi.IntPtr(int(spec.GetAutomaticBackupRetentionDays()))
 	}
-
-	// Daily automatic backup start time (HH:MM format).
 	if spec.DailyAutomaticBackupStartTime != "" {
 		args.DailyAutomaticBackupStartTime = pulumi.StringPtr(spec.DailyAutomaticBackupStartTime)
 	}
-
-	// Copy tags to backups.
 	if spec.CopyTagsToBackups {
 		args.CopyTagsToBackups = pulumi.BoolPtr(true)
 	}
-
-	// Copy tags to volumes.
 	if spec.CopyTagsToVolumes {
 		args.CopyTagsToVolumes = pulumi.BoolPtr(true)
 	}
 
-	// Weekly maintenance start time (d:HH:MM format).
+	// The final-backup decision is presence-honest: an explicit false ("take
+	// a final backup on delete") must reach AWS, so the resolved value is
+	// always sent — only-send-true would silently revert an explicit false to
+	// the provider default.
+	if spec.SkipFinalBackup != nil {
+		args.SkipFinalBackup = pulumi.BoolPtr(spec.GetSkipFinalBackup())
+	}
+	if len(spec.FinalBackupTags) > 0 {
+		args.FinalBackupTags = pulumi.ToStringMap(spec.FinalBackupTags)
+	}
+
+	// Cascading-delete opt-in: without DELETE_CHILD_VOLUMES_AND_SNAPSHOTS,
+	// deletion fails while child volumes or snapshots exist.
+	if len(spec.DeleteOptions) > 0 {
+		args.DeleteOptions = pulumi.ToStringArray(spec.DeleteOptions)
+	}
+
+	// Weekly maintenance window ("d:HH:MM").
 	if spec.WeeklyMaintenanceStartTime != "" {
 		args.WeeklyMaintenanceStartTime = pulumi.StringPtr(spec.WeeklyMaintenanceStartTime)
 	}

@@ -905,6 +905,40 @@ func TestAwsGlobalAccelerator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsglobalaccelerator", "terraform")
 }
 
+// --- AWS FSx family (Lustre, OpenZFS, Windows, data repository association) ---
+
+func TestAwsFsxLustreFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxlustrefilesystem", "pulumi")
+}
+
+func TestAwsFsxLustreFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxlustrefilesystem", "terraform")
+}
+
+func TestAwsFsxOpenzfsFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxopenzfsfilesystem", "pulumi")
+}
+
+func TestAwsFsxOpenzfsFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxopenzfsfilesystem", "terraform")
+}
+
+func TestAwsFsxWindowsFileSystem_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxwindowsfilesystem", "pulumi")
+}
+
+func TestAwsFsxWindowsFileSystem_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxwindowsfilesystem", "terraform")
+}
+
+func TestAwsFsxDataRepositoryAssociation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxdatarepositoryassociation", "pulumi")
+}
+
+func TestAwsFsxDataRepositoryAssociation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsfsxdatarepositoryassociation", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

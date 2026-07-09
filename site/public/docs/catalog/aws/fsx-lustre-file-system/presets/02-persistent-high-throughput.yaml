@@ -4,7 +4,7 @@ metadata:
   org: example-org
   env: prod
   name: ml-training-fsx
-  id: ml-training-fsx-id
+  id: awsfxl-ml-training-fsx-prod
 spec:
   region: <aws-region>
   deployment_type: PERSISTENT_2

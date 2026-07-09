@@ -600,18 +600,25 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsfxl"
+    prerequisites: [AwsSubnet]
   }];
 
   AwsFsxOpenzfsFileSystem = 292 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxz"
+    prerequisites: [AwsSubnet]
   }];
 
+  // Every Windows file system must join an Active Directory domain; the
+  // directory itself is external infrastructure (AWS Managed Microsoft AD or
+  // a self-managed domain), so only the network dependency is a declarable
+  // prerequisite.
   AwsFsxWindowsFileSystem = 293 [(kind_meta) = {
     provider: aws
     version: v1
     id_prefix: "awsfxw"
+    prerequisites: [AwsSubnet]
   }];
 
   AwsFsxOntapFileSystem = 294 [(kind_meta) = {
@@ -630,6 +637,13 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awsfxov"
+  }];
+
+  AwsFsxDataRepositoryAssociation = 375 [(kind_meta) = {
+    provider: aws
+    version: v1
+    id_prefix: "awsfxdra"
+    prerequisites: [AwsFsxLustreFileSystem]
   }];
 
   // --- Auth / Identity ---

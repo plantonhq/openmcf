@@ -1,0 +1,25 @@
+apiVersion: aws.planton.dev/v1
+kind: AwsFsxDataRepositoryAssociation
+metadata:
+  org: example-org
+  env: prod
+  name: training-data-link
+  id: awsfxdra-training-data-link-prod
+spec:
+  region: <aws-region>
+  # Reference the Lustre file system's output; a literal fs-... ID also works.
+  file_system_id:
+    valueFrom:
+      kind: AwsFsxLustreFileSystem
+      name: ml-training-fsx
+      fieldPath: status.outputs.file_system_id
+  file_system_path: /datasets
+  data_repository_path: s3://<training-data-bucket>/datasets/
+  # Track the bucket continuously: new, changed, and deleted objects flow
+  # into the namespace.
+  auto_import_events:
+    - NEW
+    - CHANGED
+    - DELETED
+  # Hydrate the existing bucket contents into the namespace at creation.
+  batch_import_meta_data_on_create: true

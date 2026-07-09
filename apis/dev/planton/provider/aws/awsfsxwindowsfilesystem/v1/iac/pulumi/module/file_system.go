@@ -20,8 +20,13 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 	args := &fsx.WindowsFileSystemArgs{
 		SubnetIds:          subnetIds,
 		ThroughputCapacity: pulumi.Int(int(spec.ThroughputCapacity)),
-		StorageCapacity:    pulumi.IntPtr(int(spec.StorageCapacityGib)),
 		Tags:               pulumi.ToStringMap(locals.AwsTags),
+	}
+
+	// Storage capacity is presence-honest: unset means the capacity comes
+	// from a backup restore and the argument must be omitted entirely.
+	if spec.StorageCapacityGib != nil {
+		args.StorageCapacity = pulumi.IntPtr(int(spec.GetStorageCapacityGib()))
 	}
 
 	// Deployment type (optional).
@@ -53,17 +58,20 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 		args.KmsKeyId = pulumi.StringPtr(spec.KmsKeyId.GetValue())
 	}
 
+	// Restore-from-backup create shape. ForceNew.
+	if spec.BackupId != "" {
+		args.BackupId = pulumi.StringPtr(spec.BackupId)
+	}
+
 	// Active Directory ID (AWS Managed Microsoft AD).
 	if spec.ActiveDirectoryId != nil && spec.ActiveDirectoryId.GetValue() != "" {
 		args.ActiveDirectoryId = pulumi.StringPtr(spec.ActiveDirectoryId.GetValue())
 	}
 
-	// Self-managed Active Directory configuration.
-	// Note: The Pulumi SDK v7.3.0 requires Username and Password (StringInput,
-	// not optional). The domain_join_service_account_secret_arn field from the
-	// proto spec is not yet available in this SDK version. Users needing Secrets
-	// Manager credentials should use the Terraform module or wait for a Pulumi
-	// SDK upgrade. The proto spec retains the field for forward compatibility.
+	// Self-managed Active Directory: the domain join uses EITHER the Secrets
+	// Manager service-account secret (recommended — credentials never touch
+	// the manifest) OR direct username/password; the spec's CEL rules keep the
+	// two arms exclusive, so exactly one is wired here.
 	if spec.SelfManagedActiveDirectory != nil {
 		smad := spec.SelfManagedActiveDirectory
 
@@ -75,8 +83,13 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 		smadArgs := &fsx.WindowsFileSystemSelfManagedActiveDirectoryArgs{
 			DomainName: pulumi.String(smad.DomainName),
 			DnsIps:     dnsIps,
-			Username:   pulumi.String(smad.Username),
-			Password:   pulumi.String(smad.Password),
+		}
+
+		if smad.DomainJoinServiceAccountSecretArn != nil && smad.DomainJoinServiceAccountSecretArn.GetValue() != "" {
+			smadArgs.DomainJoinServiceAccountSecret = pulumi.StringPtr(smad.DomainJoinServiceAccountSecretArn.GetValue())
+		} else {
+			smadArgs.Username = pulumi.StringPtr(smad.Username)
+			smadArgs.Password = pulumi.StringPtr(smad.Password)
 		}
 
 		// File system administrators group.
@@ -126,14 +139,16 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 		if spec.DiskIopsConfiguration.GetMode() != "" {
 			iopsArgs.Mode = pulumi.StringPtr(spec.DiskIopsConfiguration.GetMode())
 		}
-		if spec.DiskIopsConfiguration.Iops > 0 {
-			iopsArgs.Iops = pulumi.IntPtr(int(spec.DiskIopsConfiguration.Iops))
+		if spec.DiskIopsConfiguration.Iops != nil {
+			iopsArgs.Iops = pulumi.IntPtr(int(spec.DiskIopsConfiguration.GetIops()))
 		}
 		args.DiskIopsConfiguration = iopsArgs
 	}
 
-	// Automatic backup retention days.
-	if spec.GetAutomaticBackupRetentionDays() > 0 {
+	// Automatic backups. Zero is a real value ("no automatic backups") and
+	// the spec default (7) diverges from nothing — the resolved value is
+	// always sent explicitly.
+	if spec.AutomaticBackupRetentionDays != nil {
 		args.AutomaticBackupRetentionDays = pulumi.IntPtr(int(spec.GetAutomaticBackupRetentionDays()))
 	}
 
@@ -147,9 +162,15 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 		args.CopyTagsToBackups = pulumi.BoolPtr(true)
 	}
 
-	// Skip final backup on deletion.
-	if spec.GetSkipFinalBackup() {
-		args.SkipFinalBackup = pulumi.BoolPtr(true)
+	// The final-backup decision is presence-honest: an explicit false ("take
+	// a final backup on delete") must reach AWS, so the resolved value is
+	// always sent — only-send-true would silently revert an explicit false to
+	// the provider default.
+	if spec.SkipFinalBackup != nil {
+		args.SkipFinalBackup = pulumi.BoolPtr(spec.GetSkipFinalBackup())
+	}
+	if len(spec.FinalBackupTags) > 0 {
+		args.FinalBackupTags = pulumi.ToStringMap(spec.FinalBackupTags)
 	}
 
 	// Weekly maintenance start time (d:HH:MM format).

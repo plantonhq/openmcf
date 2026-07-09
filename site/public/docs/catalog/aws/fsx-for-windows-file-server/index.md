@@ -68,9 +68,9 @@ This creates a SINGLE_AZ_2 Windows file system with 32 GiB SSD storage, 32 MB/s 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `region` | `string` | AWS region where the file system will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `storageCapacityGib` | `int` | Storage capacity in GiB. SSD: 32-65536. HDD: 2000-65536. | Minimum 32 |
+| `storageCapacityGib` | `int` | Storage capacity in GiB. SSD: 32-65536. HDD: 2000-65536. Required unless restoring from `backupId`. | 32–65536 |
 | `throughputCapacity` | `int` | Throughput in MB/s. | Must be one of: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288 |
-| `subnetIds` | `string[]` | Subnet IDs for the file system. 1 for single-AZ, 2 for MULTI_AZ_1. Can reference AwsVpc via `valueFrom`. | Minimum 1 item |
+| `subnetIds` | `string[]` | Subnet IDs for the file system. Exactly 1 for single-AZ, exactly 2 for MULTI_AZ_1. Can reference AwsSubnet via `valueFrom`. | Count matches deployment type |
 | `activeDirectoryId` OR `selfManagedActiveDirectory` | — | Exactly one must be specified. Every Windows file system must join an AD domain. | — |
 
 ### Optional Fields
@@ -79,9 +79,10 @@ This creates a SINGLE_AZ_2 Windows file system with 32 GiB SSD storage, 32 MB/s 
 |-------|------|---------|-------------|
 | `deploymentType` | `string` | `SINGLE_AZ_2` | Deployment type: `SINGLE_AZ_1`, `SINGLE_AZ_2`, or `MULTI_AZ_1`. ForceNew. |
 | `storageType` | `string` | `SSD` | Storage media: `SSD` or `HDD`. HDD requires SINGLE_AZ_2/MULTI_AZ_1 and min 2000 GiB. ForceNew. |
-| `preferredSubnetId` | `string` | — | Preferred file server subnet for MULTI_AZ_1. Required for multi-AZ. Can reference AwsVpc via `valueFrom`. ForceNew. |
-| `securityGroupIds` | `string[]` | `[]` | Security group IDs. Must allow SMB (TCP 445) and AD ports. Can reference AwsSecurityGroup via `valueFrom`. ForceNew. |
+| `preferredSubnetId` | `string` | — | Preferred file server subnet. Required for MULTI_AZ_1, invalid otherwise. Can reference AwsSubnet via `valueFrom`. ForceNew. |
+| `securityGroupIds` | `string[]` | `[]` | Security group IDs (up to 50). Must allow SMB (TCP 445) and AD ports. Can reference AwsSecurityGroup via `valueFrom`. ForceNew. |
 | `kmsKeyId` | `string` | — | Customer-managed KMS key ARN. Defaults to AWS-managed FSx key. Can reference AwsKmsKey via `valueFrom`. ForceNew. |
+| `backupId` | `string` | — | FSx backup to restore from. ForceNew; excludes `storageCapacityGib`. |
 | `aliases` | `string[]` | `[]` | DNS alias names (4-253 chars each, max 50). Requires CNAME records pointing to the file system DNS name. |
 | `auditLogConfiguration.fileAccessAuditLogLevel` | `string` | `DISABLED` | File access audit: `DISABLED`, `SUCCESS_ONLY`, `FAILURE_ONLY`, `SUCCESS_AND_FAILURE`. |
 | `auditLogConfiguration.fileShareAccessAuditLogLevel` | `string` | `DISABLED` | File share access audit: `DISABLED`, `SUCCESS_ONLY`, `FAILURE_ONLY`, `SUCCESS_AND_FAILURE`. |
@@ -92,6 +93,7 @@ This creates a SINGLE_AZ_2 Windows file system with 32 GiB SSD storage, 32 MB/s 
 | `dailyAutomaticBackupStartTime` | `string` | — | Daily backup window in `HH:MM` UTC format. |
 | `copyTagsToBackups` | `bool` | `false` | Copy tags to backup snapshots. ForceNew. |
 | `skipFinalBackup` | `bool` | `true` | Skip final backup on deletion. |
+| `finalBackupTags` | `map` | — | Tags applied to the final backup when one is taken. |
 | `weeklyMaintenanceStartTime` | `string` | — | Weekly maintenance window in `d:HH:MM` UTC format (1=Mon, 7=Sun). |
 
 ### Self-Managed AD Fields

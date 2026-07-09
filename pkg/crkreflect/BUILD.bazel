@@ -107,6 +107,7 @@ go_library(
         "//apis/dev/planton/provider/aws/awselasticip/v1:awselasticip",
         "//apis/dev/planton/provider/aws/awseventbridgebus/v1:awseventbridgebus",
         "//apis/dev/planton/provider/aws/awseventbridgerule/v1:awseventbridgerule",
+        "//apis/dev/planton/provider/aws/awsfsxdatarepositoryassociation/v1:awsfsxdatarepositoryassociation",
         "//apis/dev/planton/provider/aws/awsfsxlustrefilesystem/v1:awsfsxlustrefilesystem",
         "//apis/dev/planton/provider/aws/awsfsxontapfilesystem/v1:awsfsxontapfilesystem",
         "//apis/dev/planton/provider/aws/awsfsxontapstoragevirtualmachine/v1:awsfsxontapstoragevirtualmachine",

@@ -52,6 +52,7 @@ The following AWS resources can be deployed using Planton:
 - [ElastiCache User Group](/docs/catalog/aws/elasticache-user-group)
 - [EventBridge Bus](/docs/catalog/aws/eventbridge-bus)
 - [EventBridge Rule](/docs/catalog/aws/eventbridge-rule)
+- [FSx Data Repository Association](/docs/catalog/aws/fsx-data-repository-association)
 - [FSx for ONTAP](/docs/catalog/aws/fsx-for-ontap)
 - [FSx for OpenZFS](/docs/catalog/aws/fsx-for-openzfs)
 - [FSx for Windows File Server](/docs/catalog/aws/fsx-for-windows-file-server)

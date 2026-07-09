@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsfsxdatarepositoryassociation.v1;
+
+// AwsFsxDataRepositoryAssociationStackOutputs captures observable identifiers
+// from a provisioned FSx data repository association.
+message AwsFsxDataRepositoryAssociationStackOutputs {
+  // The AWS-assigned association ID (dra-...). The identifier FSx data
+  // repository task APIs and the console use to address this link.
+  string association_id = 1;
+
+  // The Amazon Resource Name of the association, for IAM resource-level
+  // permissions.
+  string association_arn = 2;
+
+  // The ID of the Lustre file system the association is attached to
+  // (fs-...), echoed for downstream composition without re-resolving the
+  // file-system reference.
+  string file_system_id = 3;
+}

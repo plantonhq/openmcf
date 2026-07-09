@@ -143,6 +143,11 @@ var verifiers = map[string]Verifier{
 	"awsclientvpn":       &clientVpnVerifier{},
 
 	"awsglobalaccelerator": &globalAcceleratorVerifier{},
+
+	"awsfsxlustrefilesystem":          &fsxFileSystemVerifier{component: "awsfsxlustrefilesystem"},
+	"awsfsxopenzfsfilesystem":         &fsxFileSystemVerifier{component: "awsfsxopenzfsfilesystem"},
+	"awsfsxwindowsfilesystem":         &fsxFileSystemVerifier{component: "awsfsxwindowsfilesystem"},
+	"awsfsxdatarepositoryassociation": &fsxDataRepositoryAssociationVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

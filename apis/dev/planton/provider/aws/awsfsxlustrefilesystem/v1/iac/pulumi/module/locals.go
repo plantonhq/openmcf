@@ -18,7 +18,12 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awsfsxlustrefilesystemv1.
 	locals := &Locals{}
 	locals.AwsFsxLustreFileSystem = stackInput.Target
 
+	// Resource-identity tags follow the catalog convention. The Name tag is
+	// the resource's metadata.name — FSx has no name argument, so the console
+	// name is this tag; the Terraform module pins the same basis, keeping the
+	// two engines' physical identity converged.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsFsxLustreFileSystem.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsFsxLustreFileSystem.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsFsxLustreFileSystem.Metadata.Env,

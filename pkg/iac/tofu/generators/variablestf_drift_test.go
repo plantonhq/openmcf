@@ -182,6 +182,13 @@ var migratedKinds = []string{
 	"AwsClientVpn",
 	// Global Accelerator, migrated off its hand-written contract.
 	"AwsGlobalAccelerator",
+	// FSx standalone trio, migrated off their hand-written contracts
+	// together; the data repository association generator-owned from the
+	// day it was forged.
+	"AwsFsxLustreFileSystem",
+	"AwsFsxOpenzfsFileSystem",
+	"AwsFsxWindowsFileSystem",
+	"AwsFsxDataRepositoryAssociation",
 }
 
 // TestVariablesTFDrift asserts that every migrated module's committed

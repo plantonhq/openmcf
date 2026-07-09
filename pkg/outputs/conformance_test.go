@@ -1746,6 +1746,86 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// AwsFsxLustreFileSystem: file_system_id keys the E2E verifier;
+			// dns_name + mount_name compose the Lustre mount command; the
+			// repeated network_interface_ids guard the ENI list export both
+			// engines emit.
+			name: "AwsFsxLustreFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxLustreFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":           "fs-0123456789abcdef0",
+				"file_system_arn":          "arn:aws:fsx:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"dns_name":                 "fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"mount_name":               "2p5wpbwj",
+				"network_interface_ids":    []interface{}{"eni-0abc123", "eni-0def456"},
+				"vpc_id":                   "vpc-0abc123",
+				"file_system_type_version": "2.15",
+				"owner_id":                 "123456789012",
+			},
+			mustPopulate: []string{
+				"file_system_id", "file_system_arn", "dns_name", "mount_name",
+				"network_interface_ids", "vpc_id", "file_system_type_version", "owner_id",
+			},
+		},
+		{
+			// AwsFsxOpenzfsFileSystem: file_system_id keys the E2E verifier;
+			// root_volume_id is the join key for child volumes;
+			// endpoint_ip_address carries the (floating, for MULTI_AZ) NFS
+			// endpoint.
+			name: "AwsFsxOpenzfsFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxOpenzfsFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":        "fs-0123456789abcdef0",
+				"file_system_arn":       "arn:aws:fsx:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"dns_name":              "fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"endpoint_ip_address":   "10.0.1.25",
+				"root_volume_id":        "fsvol-0123456789abcdef0",
+				"network_interface_ids": []interface{}{"eni-0abc123"},
+				"vpc_id":                "vpc-0abc123",
+				"owner_id":              "123456789012",
+			},
+			mustPopulate: []string{
+				"file_system_id", "file_system_arn", "dns_name", "endpoint_ip_address",
+				"root_volume_id", "network_interface_ids", "vpc_id", "owner_id",
+			},
+		},
+		{
+			// AwsFsxWindowsFileSystem: file_system_id keys the E2E verifier;
+			// preferred_file_server_ip + remote_administration_endpoint carry
+			// the SMB/PowerShell endpoints.
+			name: "AwsFsxWindowsFileSystem",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxWindowsFileSystem,
+			rawOutputs: map[string]interface{}{
+				"file_system_id":                 "fs-0123456789abcdef0",
+				"file_system_arn":                "arn:aws:fsx:us-west-2:123456789012:file-system/fs-0123456789abcdef0",
+				"dns_name":                       "fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"preferred_file_server_ip":       "10.0.1.30",
+				"remote_administration_endpoint": "fs-0123456789abcdef0.fsx.us-west-2.amazonaws.com",
+				"network_interface_ids":          []interface{}{"eni-0abc123"},
+				"vpc_id":                         "vpc-0abc123",
+				"owner_id":                       "123456789012",
+			},
+			mustPopulate: []string{
+				"file_system_id", "file_system_arn", "dns_name", "preferred_file_server_ip",
+				"remote_administration_endpoint", "network_interface_ids", "vpc_id", "owner_id",
+			},
+		},
+		{
+			// AwsFsxDataRepositoryAssociation: association_id keys the E2E
+			// verifier and FSx data repository tasks; file_system_id is
+			// echoed for composition.
+			name: "AwsFsxDataRepositoryAssociation",
+			kind: cloudresourcekind.CloudResourceKind_AwsFsxDataRepositoryAssociation,
+			rawOutputs: map[string]interface{}{
+				"association_id":  "dra-0123456789abcdef0",
+				"association_arn": "arn:aws:fsx:us-west-2:123456789012:association/fs-0123456789abcdef0/dra-0123456789abcdef0",
+				"file_system_id":  "fs-0123456789abcdef0",
+			},
+			mustPopulate: []string{
+				"association_id", "association_arn", "file_system_id",
+			},
+		},
+		{
 			// Guards the externaldns tofu module's output rename to solver_sa: the
 			// module previously emitted "service_account_name", which does not flatten
 			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the

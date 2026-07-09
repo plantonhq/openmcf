@@ -32,23 +32,30 @@ const (
 // FSx for OpenZFS delivers up to 10 GB/s throughput and over 1 million IOPS,
 // making it suitable for general-purpose NFS workloads including web serving,
 // content management, analytics, DevOps, CI/CD, and application data stores.
-// It supports ZSTD/LZ4 compression, user/group quotas, and Multi-AZ deployments
-// for high availability.
+//
+// Deployment generations:
+//   - SINGLE_AZ_1: first generation, lower throughput ceiling (64-4096 MB/s).
+//   - SINGLE_AZ_2: current generation (160-10240 MB/s). Recommended default.
+//   - SINGLE_AZ_HA_1 / SINGLE_AZ_HA_2: the HA variants of each generation — an
+//     active/standby file-server pair inside ONE availability zone (failover
+//     without cross-AZ data transfer costs).
+//   - MULTI_AZ_1: active/standby across TWO availability zones — the highest
+//     availability tier. Requires two subnets, a preferred_subnet_id, and
+//     (typically) route_table_ids; supports the INTELLIGENT_TIERING storage
+//     class.
 //
 // Key design notes:
-//   - `deployment_type`, `subnet_ids`, `security_group_ids`, `kms_key_id`, and
-//     `storage_type` are ForceNew — changing them requires replacing the file system.
-//   - SINGLE_AZ_1 and SINGLE_AZ_2 require exactly one subnet. MULTI_AZ_1 requires
-//     exactly two subnets and additionally needs `preferred_subnet_id`.
-//   - SINGLE_AZ_2 is the recommended deployment type for new workloads. MULTI_AZ_1
-//     provides automatic failover across AZs for high availability.
-//   - The root volume is automatically created with the file system. Its NFS export
-//     settings, compression, and quotas are configured via `root_volume_configuration`.
-//   - Child volumes are independent lifecycle resources and are NOT managed by this
-//     component. Use the root_volume_id output to create child volumes externally.
-//   - Only SSD storage type is supported in v1. INTELLIGENT_TIERING (MULTI_AZ_1
-//     only, no explicit storage capacity) is deferred to a future version.
-//   - Credentials, region, and deployment workflow live outside this spec in stack inputs.
+//   - `deployment_type`, `subnet_ids`, `security_group_ids`, `kms_key_id`,
+//     `storage_type`, `backup_id`, `preferred_subnet_id`, and
+//     `endpoint_ip_address_range` are ForceNew — changing them replaces the
+//     file system.
+//   - The root volume is created with the file system; its NFS exports,
+//     compression, and quotas are configured via `root_volume_configuration`
+//     (note: `copy_tags_to_snapshots` inside it is ForceNew).
+//   - Child volumes are independent lifecycle resources and are NOT managed by
+//     this component. Use the root_volume_id output to create child volumes.
+//   - Credentials, region, and deployment workflow live outside this spec in
+//     stack inputs.
 type AwsFsxOpenzfsFileSystemSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
@@ -57,103 +64,138 @@ type AwsFsxOpenzfsFileSystemSpec struct {
 	// Deployment type controlling availability and performance characteristics.
 	// ForceNew — cannot be changed after creation.
 	//
-	//   - "SINGLE_AZ_1": first-generation single-AZ. Lower throughput ceiling.
-	//     Supported throughput: 64, 128, 256, 512, 1024, 2048, 3072, 4096 MB/s.
-	//   - "SINGLE_AZ_2": latest single-AZ with higher throughput and more features.
-	//     Recommended for most workloads. Supported throughput: 160, 320, 640,
-	//     1280, 2560, 3840, 5120, 7680, 10240 MB/s.
-	//   - "MULTI_AZ_1": multi-AZ with automatic failover. Requires two subnets in
-	//     different AZs, a preferred_subnet_id, and route_table_ids. Same throughput
-	//     range as SINGLE_AZ_2.
+	//   - "SINGLE_AZ_1": first-generation single-AZ. Throughput 64-4096 MB/s.
+	//   - "SINGLE_AZ_2": current-generation single-AZ. Throughput 160-10240 MB/s.
+	//     Recommended for most workloads.
+	//   - "SINGLE_AZ_HA_1" / "SINGLE_AZ_HA_2": HA (active/standby) variants of the
+	//     two generations within one AZ — automatic failover without cross-AZ
+	//     data transfer charges.
+	//   - "MULTI_AZ_1": active/standby across two AZs. Requires two subnets in
+	//     different AZs plus preferred_subnet_id; the only type supporting the
+	//     INTELLIGENT_TIERING storage class.
 	//
 	// Default: SINGLE_AZ_2
 	DeploymentType *string `protobuf:"bytes,2,opt,name=deployment_type,json=deploymentType,proto3,oneof" json:"deployment_type,omitempty"`
-	// Storage capacity in GiB. Required.
+	// Storage capacity in GiB for provisioned (SSD) storage. Range: 64-524288.
+	// Can be increased after creation but never decreased.
 	//
-	// Valid range: 64–524288 GiB. Choose based on data size and throughput needs.
-	// Storage can be increased after creation but never decreased.
-	StorageCapacityGib int32 `protobuf:"varint,3,opt,name=storage_capacity_gib,json=storageCapacityGib,proto3" json:"storage_capacity_gib,omitempty"`
+	// Leave unset in exactly two cases: the INTELLIGENT_TIERING storage class
+	// (capacity is elastic and never provisioned) or a backup restore
+	// (`backup_id` — capacity comes from the backup).
+	StorageCapacityGib *int32 `protobuf:"varint,3,opt,name=storage_capacity_gib,json=storageCapacityGib,proto3,oneof" json:"storage_capacity_gib,omitempty"`
+	// Storage class backing the file system. ForceNew.
+	//
+	//   - "SSD": provisioned solid-state storage (default; all deployment types).
+	//   - "INTELLIGENT_TIERING": elastic, pay-for-what-you-store capacity with a
+	//     provisioned SSD read cache. MULTI_AZ_1 only; forbids
+	//     storage_capacity_gib and requires read_cache_configuration.
+	//
+	// Default: SSD
+	StorageType *string `protobuf:"bytes,4,opt,name=storage_type,json=storageType,proto3,oneof" json:"storage_type,omitempty"`
 	// Throughput capacity in MB/s. Required.
 	//
-	// Valid values depend on deployment type:
-	// - SINGLE_AZ_1: 64, 128, 256, 512, 1024, 2048, 3072, 4096
-	// - SINGLE_AZ_2 / MULTI_AZ_1: 160, 320, 640, 1280, 2560, 3840, 5120, 7680, 10240
+	// Valid values by deployment generation (the values AWS accepts):
+	//   - SINGLE_AZ_1: 64, 128, 256, 512, 1024, 2048, 3072, 4096
+	//   - SINGLE_AZ_2 / MULTI_AZ_1: 160, 320, 640, 1280, 2560, 3840, 5120,
+	//     7680, 10240
+	//   - The HA variants follow their generation's value set (validated by AWS
+	//     at create time).
 	//
 	// Can be changed after creation to scale performance up or down.
-	ThroughputCapacity int32 `protobuf:"varint,4,opt,name=throughput_capacity,json=throughputCapacity,proto3" json:"throughput_capacity,omitempty"`
+	ThroughputCapacity int32 `protobuf:"varint,5,opt,name=throughput_capacity,json=throughputCapacity,proto3" json:"throughput_capacity,omitempty"`
+	// Provisioned SSD read cache for the INTELLIGENT_TIERING storage class.
+	// Required when storage_type is INTELLIGENT_TIERING; invalid otherwise.
+	ReadCacheConfiguration *AwsFsxOpenzfsFileSystemReadCacheConfiguration `protobuf:"bytes,6,opt,name=read_cache_configuration,json=readCacheConfiguration,proto3" json:"read_cache_configuration,omitempty"`
 	// Subnet IDs for the file system's network interfaces. Required. ForceNew.
 	//
-	// - SINGLE_AZ_1 / SINGLE_AZ_2: exactly one subnet.
+	// - Single-AZ types (incl. the HA variants): exactly one subnet.
 	// - MULTI_AZ_1: exactly two subnets in different availability zones.
 	//
 	// All compute resources mounting this file system must have network
 	// connectivity to these subnets.
-	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
+	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,7,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
 	// Security groups for the file system's network interfaces. ForceNew.
+	// Up to 50. When empty, AWS attaches the VPC's default security group.
 	//
 	// Must allow NFS traffic between the file system and its clients:
 	// - TCP port 111 (portmapper)
 	// - TCP port 2049 (NFS)
 	// - TCP ports 20001-20003 (NFS mount)
-	//
-	// Up to 50 security groups.
-	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
 	// Preferred subnet for the active file server in a MULTI_AZ_1 deployment.
-	// ForceNew. Required when deployment_type is MULTI_AZ_1. Must be one of the
-	// subnets specified in subnet_ids.
+	// ForceNew. REQUIRED for MULTI_AZ_1 (AWS's contract) and invalid for the
+	// single-AZ types. Must be one of the subnets in subnet_ids.
 	//
-	// In a failover event, the standby file server in the other subnet takes over.
-	// Ignored for SINGLE_AZ deployments.
-	PreferredSubnetId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=preferred_subnet_id,json=preferredSubnetId,proto3" json:"preferred_subnet_id,omitempty"`
-	// IP address range for the file system endpoints in a MULTI_AZ_1 deployment.
-	// ForceNew. Must be a CIDR block within the VPC's CIDR range that does not
-	// overlap with any existing subnets. AWS assigns floating IPs from this range
-	// for seamless failover.
+	// In a failover event, the standby file server in the other subnet takes
+	// over.
+	PreferredSubnetId *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=preferred_subnet_id,json=preferredSubnetId,proto3" json:"preferred_subnet_id,omitempty"`
+	// IP address range for the file system endpoints in a MULTI_AZ_1
+	// deployment. ForceNew. Must be a CIDR block within the VPC's CIDR range
+	// that does not overlap with any existing subnets; AWS assigns floating IPs
+	// from this range for seamless failover. When omitted, AWS picks a range.
+	EndpointIpAddressRange string `protobuf:"bytes,10,opt,name=endpoint_ip_address_range,json=endpointIpAddressRange,proto3" json:"endpoint_ip_address_range,omitempty"`
+	// Route tables in which AWS manages routes to the floating file-system
+	// endpoints of a MULTI_AZ_1 deployment. Specify every VPC route table
+	// associated with the subnets your NFS clients live in; when omitted, AWS
+	// uses the VPC's default route table. Up to 50.
 	//
-	// Ignored for SINGLE_AZ deployments.
-	EndpointIpAddressRange string `protobuf:"bytes,8,opt,name=endpoint_ip_address_range,json=endpointIpAddressRange,proto3" json:"endpoint_ip_address_range,omitempty"`
-	// Route table IDs that need routes to the file system in a MULTI_AZ_1
-	// deployment. AWS automatically manages the routes. Up to 50 route tables.
-	//
-	// Ignored for SINGLE_AZ deployments.
-	RouteTableIds []*v1.StringValueOrRef `protobuf:"bytes,9,rep,name=route_table_ids,json=routeTableIds,proto3" json:"route_table_ids,omitempty"`
-	// Customer-managed KMS key ARN for encryption at rest. ForceNew — the KMS key
-	// cannot be changed after creation. When omitted, the file system uses the
-	// AWS-managed FSx key. All OpenZFS file systems are encrypted at rest by
-	// default; this field upgrades to a customer-managed key.
-	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
-	// SSD IOPS configuration for the file system. Controls the total provisioned
-	// IOPS. When omitted, AWS uses AUTOMATIC mode which scales IOPS with storage.
-	DiskIopsConfiguration *AwsFsxOpenzfsFileSystemDiskIopsConfiguration `protobuf:"bytes,11,opt,name=disk_iops_configuration,json=diskIopsConfiguration,proto3" json:"disk_iops_configuration,omitempty"`
+	// Reference an AwsSubnet's route_table_id output when the subnet owns its
+	// table, or the AwsVpc's main/default route-table outputs when subnets ride
+	// the VPC main table; literals also work.
+	RouteTableIds []*v1.StringValueOrRef `protobuf:"bytes,11,rep,name=route_table_ids,json=routeTableIds,proto3" json:"route_table_ids,omitempty"`
+	// Customer-managed KMS key ARN for encryption at rest. ForceNew — the KMS
+	// key cannot be changed after creation. When omitted, the file system uses
+	// the AWS-managed FSx key. All OpenZFS file systems are encrypted at rest
+	// by default; this field upgrades to a customer-managed key.
+	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	// ID of an FSx backup to restore this file system from ("backup-...").
+	// ForceNew. When set, capacity and most settings come from the backup;
+	// leave storage_capacity_gib unset.
+	BackupId string `protobuf:"bytes,13,opt,name=backup_id,json=backupId,proto3" json:"backup_id,omitempty"`
+	// SSD IOPS configuration for the file system. Controls the total
+	// provisioned IOPS. When omitted, AWS uses AUTOMATIC mode which scales IOPS
+	// with storage (3 IOPS per GiB).
+	DiskIopsConfiguration *AwsFsxOpenzfsFileSystemDiskIopsConfiguration `protobuf:"bytes,14,opt,name=disk_iops_configuration,json=diskIopsConfiguration,proto3" json:"disk_iops_configuration,omitempty"`
 	// Configuration for the file system's root volume. The root volume is
 	// automatically created with the file system and serves as the default NFS
 	// mount target. Settings here control compression, NFS access, quotas, and
-	// record size for the root volume.
+	// record size.
 	//
-	// When omitted, the root volume uses defaults: no compression, no NFS access
-	// restrictions, 128 KiB record size.
-	RootVolumeConfiguration *AwsFsxOpenzfsFileSystemRootVolumeConfiguration `protobuf:"bytes,12,opt,name=root_volume_configuration,json=rootVolumeConfiguration,proto3" json:"root_volume_configuration,omitempty"`
-	// Number of days to retain automatic backups. Range: 0-90. Set to 0 to
-	// disable automatic backups.
+	// When omitted, the root volume uses defaults: no compression, no NFS
+	// access restrictions, 128 KiB record size.
+	RootVolumeConfiguration *AwsFsxOpenzfsFileSystemRootVolumeConfiguration `protobuf:"bytes,15,opt,name=root_volume_configuration,json=rootVolumeConfiguration,proto3" json:"root_volume_configuration,omitempty"`
+	// Number of days to retain automatic backups. Range: 0-90; 0 disables
+	// automatic backups.
 	//
 	// Default: 0 (no automatic backups)
-	AutomaticBackupRetentionDays *int32 `protobuf:"varint,13,opt,name=automatic_backup_retention_days,json=automaticBackupRetentionDays,proto3,oneof" json:"automatic_backup_retention_days,omitempty"`
-	// Daily UTC time to start automatic backups, in HH:MM format (e.g., "05:00").
-	// If not specified and backups are enabled, AWS chooses a default window.
-	DailyAutomaticBackupStartTime string `protobuf:"bytes,14,opt,name=daily_automatic_backup_start_time,json=dailyAutomaticBackupStartTime,proto3" json:"daily_automatic_backup_start_time,omitempty"`
+	AutomaticBackupRetentionDays *int32 `protobuf:"varint,16,opt,name=automatic_backup_retention_days,json=automaticBackupRetentionDays,proto3,oneof" json:"automatic_backup_retention_days,omitempty"`
+	// Daily UTC time to start automatic backups, in "HH:MM" format (e.g.,
+	// "05:00"). If not specified and backups are enabled, AWS chooses a window.
+	DailyAutomaticBackupStartTime string `protobuf:"bytes,17,opt,name=daily_automatic_backup_start_time,json=dailyAutomaticBackupStartTime,proto3" json:"daily_automatic_backup_start_time,omitempty"`
 	// Copy tags from the file system to backups.
-	CopyTagsToBackups bool `protobuf:"varint,15,opt,name=copy_tags_to_backups,json=copyTagsToBackups,proto3" json:"copy_tags_to_backups,omitempty"`
+	CopyTagsToBackups bool `protobuf:"varint,18,opt,name=copy_tags_to_backups,json=copyTagsToBackups,proto3" json:"copy_tags_to_backups,omitempty"`
 	// Copy tags from the file system to volumes. When true, tags are propagated
 	// to the root volume and any child volumes created on this file system.
-	CopyTagsToVolumes bool `protobuf:"varint,16,opt,name=copy_tags_to_volumes,json=copyTagsToVolumes,proto3" json:"copy_tags_to_volumes,omitempty"`
+	CopyTagsToVolumes bool `protobuf:"varint,19,opt,name=copy_tags_to_volumes,json=copyTagsToVolumes,proto3" json:"copy_tags_to_volumes,omitempty"`
 	// Skip creating a final backup when the file system is deleted.
 	//
-	// Default: true
-	SkipFinalBackup *bool `protobuf:"varint,17,opt,name=skip_final_backup,json=skipFinalBackup,proto3,oneof" json:"skip_final_backup,omitempty"`
-	// Weekly UTC maintenance window in the format "d:HH:MM" where d is the day of
-	// the week (1=Monday, 7=Sunday). Example: "1:05:00" for Monday at 05:00 UTC.
-	// If not specified, AWS chooses a default window.
-	WeeklyMaintenanceStartTime string `protobuf:"bytes,18,opt,name=weekly_maintenance_start_time,json=weeklyMaintenanceStartTime,proto3" json:"weekly_maintenance_start_time,omitempty"`
+	// Default: true — deletion is clean by default; set to false to keep a
+	// last-resort restore point (the final backup outlives the file system and
+	// keeps billing until deleted).
+	SkipFinalBackup *bool `protobuf:"varint,20,opt,name=skip_final_backup,json=skipFinalBackup,proto3,oneof" json:"skip_final_backup,omitempty"`
+	// Tags applied to the final backup taken on deletion. Only meaningful when
+	// skip_final_backup is false.
+	FinalBackupTags map[string]string `protobuf:"bytes,21,rep,name=final_backup_tags,json=finalBackupTags,proto3" json:"final_backup_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Options applied when the file system is deleted.
+	// The single supported value, "DELETE_CHILD_VOLUMES_AND_SNAPSHOTS", deletes
+	// all child volumes and snapshots along with the file system — without it,
+	// deletion fails while children exist. Use deliberately: it turns a
+	// guard-railed delete into a cascading one.
+	DeleteOptions []string `protobuf:"bytes,22,rep,name=delete_options,json=deleteOptions,proto3" json:"delete_options,omitempty"`
+	// Weekly UTC maintenance window in the format "d:HH:MM" where d is the day
+	// of the week (1=Monday, 7=Sunday). Example: "1:05:00" for Monday at 05:00
+	// UTC. If not specified, AWS chooses a default window.
+	WeeklyMaintenanceStartTime string `protobuf:"bytes,23,opt,name=weekly_maintenance_start_time,json=weeklyMaintenanceStartTime,proto3" json:"weekly_maintenance_start_time,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -203,10 +245,17 @@ func (x *AwsFsxOpenzfsFileSystemSpec) GetDeploymentType() string {
 }
 
 func (x *AwsFsxOpenzfsFileSystemSpec) GetStorageCapacityGib() int32 {
-	if x != nil {
-		return x.StorageCapacityGib
+	if x != nil && x.StorageCapacityGib != nil {
+		return *x.StorageCapacityGib
 	}
 	return 0
+}
+
+func (x *AwsFsxOpenzfsFileSystemSpec) GetStorageType() string {
+	if x != nil && x.StorageType != nil {
+		return *x.StorageType
+	}
+	return ""
 }
 
 func (x *AwsFsxOpenzfsFileSystemSpec) GetThroughputCapacity() int32 {
@@ -214,6 +263,13 @@ func (x *AwsFsxOpenzfsFileSystemSpec) GetThroughputCapacity() int32 {
 		return x.ThroughputCapacity
 	}
 	return 0
+}
+
+func (x *AwsFsxOpenzfsFileSystemSpec) GetReadCacheConfiguration() *AwsFsxOpenzfsFileSystemReadCacheConfiguration {
+	if x != nil {
+		return x.ReadCacheConfiguration
+	}
+	return nil
 }
 
 func (x *AwsFsxOpenzfsFileSystemSpec) GetSubnetIds() []*v1.StringValueOrRef {
@@ -256,6 +312,13 @@ func (x *AwsFsxOpenzfsFileSystemSpec) GetKmsKeyId() *v1.StringValueOrRef {
 		return x.KmsKeyId
 	}
 	return nil
+}
+
+func (x *AwsFsxOpenzfsFileSystemSpec) GetBackupId() string {
+	if x != nil {
+		return x.BackupId
+	}
+	return ""
 }
 
 func (x *AwsFsxOpenzfsFileSystemSpec) GetDiskIopsConfiguration() *AwsFsxOpenzfsFileSystemDiskIopsConfiguration {
@@ -307,11 +370,87 @@ func (x *AwsFsxOpenzfsFileSystemSpec) GetSkipFinalBackup() bool {
 	return false
 }
 
+func (x *AwsFsxOpenzfsFileSystemSpec) GetFinalBackupTags() map[string]string {
+	if x != nil {
+		return x.FinalBackupTags
+	}
+	return nil
+}
+
+func (x *AwsFsxOpenzfsFileSystemSpec) GetDeleteOptions() []string {
+	if x != nil {
+		return x.DeleteOptions
+	}
+	return nil
+}
+
 func (x *AwsFsxOpenzfsFileSystemSpec) GetWeeklyMaintenanceStartTime() string {
 	if x != nil {
 		return x.WeeklyMaintenanceStartTime
 	}
 	return ""
+}
+
+// AwsFsxOpenzfsFileSystemReadCacheConfiguration provisions the SSD read cache
+// that serves hot data for INTELLIGENT_TIERING file systems.
+type AwsFsxOpenzfsFileSystemReadCacheConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How the read cache is sized.
+	//
+	//   - "PROPORTIONAL_TO_THROUGHPUT_CAPACITY": AWS sizes the cache from the
+	//     provisioned throughput (the recommended hands-off mode).
+	//   - "USER_PROVISIONED": you set the exact cache size via `size_gib`.
+	//   - "NO_CACHE": no SSD read cache (every read pays the tiered-storage
+	//     latency; only for purely archival access patterns).
+	SizingMode string `protobuf:"bytes,1,opt,name=sizing_mode,json=sizingMode,proto3" json:"sizing_mode,omitempty"`
+	// Read cache size in GiB when sizing_mode is "USER_PROVISIONED".
+	SizeGib       *int32 `protobuf:"varint,2,opt,name=size_gib,json=sizeGib,proto3,oneof" json:"size_gib,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsFsxOpenzfsFileSystemReadCacheConfiguration) Reset() {
+	*x = AwsFsxOpenzfsFileSystemReadCacheConfiguration{}
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsFsxOpenzfsFileSystemReadCacheConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsFsxOpenzfsFileSystemReadCacheConfiguration) ProtoMessage() {}
+
+func (x *AwsFsxOpenzfsFileSystemReadCacheConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsFsxOpenzfsFileSystemReadCacheConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsFsxOpenzfsFileSystemReadCacheConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsFsxOpenzfsFileSystemReadCacheConfiguration) GetSizingMode() string {
+	if x != nil {
+		return x.SizingMode
+	}
+	return ""
+}
+
+func (x *AwsFsxOpenzfsFileSystemReadCacheConfiguration) GetSizeGib() int32 {
+	if x != nil && x.SizeGib != nil {
+		return *x.SizeGib
+	}
+	return 0
 }
 
 // AwsFsxOpenzfsFileSystemDiskIopsConfiguration controls the SSD IOPS provisioned
@@ -330,17 +469,17 @@ type AwsFsxOpenzfsFileSystemDiskIopsConfiguration struct {
 	Mode *string `protobuf:"bytes,1,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
 	// Total SSD IOPS provisioned. Only valid when mode is "USER_PROVISIONED".
 	//
-	// Valid ranges depend on deployment type:
-	// - SINGLE_AZ_1: up to 160,000
-	// - SINGLE_AZ_2 / MULTI_AZ_1: up to 400,000
-	Iops          int32 `protobuf:"varint,2,opt,name=iops,proto3" json:"iops,omitempty"`
+	// Ceilings by deployment generation: 160,000 (SINGLE_AZ_1) and 400,000
+	// (SINGLE_AZ_2); MULTI_AZ_1 and the HA variants are validated by AWS at
+	// create time.
+	Iops          *int32 `protobuf:"varint,2,opt,name=iops,proto3,oneof" json:"iops,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsFsxOpenzfsFileSystemDiskIopsConfiguration) Reset() {
 	*x = AwsFsxOpenzfsFileSystemDiskIopsConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -352,7 +491,7 @@ func (x *AwsFsxOpenzfsFileSystemDiskIopsConfiguration) String() string {
 func (*AwsFsxOpenzfsFileSystemDiskIopsConfiguration) ProtoMessage() {}
 
 func (x *AwsFsxOpenzfsFileSystemDiskIopsConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -365,7 +504,7 @@ func (x *AwsFsxOpenzfsFileSystemDiskIopsConfiguration) ProtoReflect() protorefle
 
 // Deprecated: Use AwsFsxOpenzfsFileSystemDiskIopsConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsFsxOpenzfsFileSystemDiskIopsConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AwsFsxOpenzfsFileSystemDiskIopsConfiguration) GetMode() string {
@@ -376,8 +515,8 @@ func (x *AwsFsxOpenzfsFileSystemDiskIopsConfiguration) GetMode() string {
 }
 
 func (x *AwsFsxOpenzfsFileSystemDiskIopsConfiguration) GetIops() int32 {
-	if x != nil {
-		return x.Iops
+	if x != nil && x.Iops != nil {
+		return *x.Iops
 	}
 	return 0
 }
@@ -412,10 +551,12 @@ type AwsFsxOpenzfsFileSystemRootVolumeConfiguration struct {
 	//
 	// Default: 128
 	RecordSizeKib *int32 `protobuf:"varint,4,opt,name=record_size_kib,json=recordSizeKib,proto3,oneof" json:"record_size_kib,omitempty"`
-	// Per-user and per-group storage quotas for the root volume. Limits how much
-	// storage individual users or groups can consume. Up to 100 quota entries.
+	// Per-user and per-group storage quotas for the root volume. Limits how
+	// much storage individual users or groups can consume.
 	UserAndGroupQuotas []*AwsFsxOpenzfsFileSystemUserAndGroupQuota `protobuf:"bytes,5,rep,name=user_and_group_quotas,json=userAndGroupQuotas,proto3" json:"user_and_group_quotas,omitempty"`
-	// Copy tags from the root volume to snapshots created from it.
+	// Copy tags from the root volume to snapshots created from it. ForceNew —
+	// changing this replaces the whole FILE SYSTEM (a subtle provider trap:
+	// this is the one root-volume setting that cannot change in place).
 	CopyTagsToSnapshots bool `protobuf:"varint,6,opt,name=copy_tags_to_snapshots,json=copyTagsToSnapshots,proto3" json:"copy_tags_to_snapshots,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
@@ -423,7 +564,7 @@ type AwsFsxOpenzfsFileSystemRootVolumeConfiguration struct {
 
 func (x *AwsFsxOpenzfsFileSystemRootVolumeConfiguration) Reset() {
 	*x = AwsFsxOpenzfsFileSystemRootVolumeConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -435,7 +576,7 @@ func (x *AwsFsxOpenzfsFileSystemRootVolumeConfiguration) String() string {
 func (*AwsFsxOpenzfsFileSystemRootVolumeConfiguration) ProtoMessage() {}
 
 func (x *AwsFsxOpenzfsFileSystemRootVolumeConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -448,7 +589,7 @@ func (x *AwsFsxOpenzfsFileSystemRootVolumeConfiguration) ProtoReflect() protoref
 
 // Deprecated: Use AwsFsxOpenzfsFileSystemRootVolumeConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsFsxOpenzfsFileSystemRootVolumeConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsFsxOpenzfsFileSystemRootVolumeConfiguration) GetDataCompressionType() string {
@@ -507,7 +648,7 @@ type AwsFsxOpenzfsFileSystemNfsExports struct {
 
 func (x *AwsFsxOpenzfsFileSystemNfsExports) Reset() {
 	*x = AwsFsxOpenzfsFileSystemNfsExports{}
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -519,7 +660,7 @@ func (x *AwsFsxOpenzfsFileSystemNfsExports) String() string {
 func (*AwsFsxOpenzfsFileSystemNfsExports) ProtoMessage() {}
 
 func (x *AwsFsxOpenzfsFileSystemNfsExports) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -532,7 +673,7 @@ func (x *AwsFsxOpenzfsFileSystemNfsExports) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AwsFsxOpenzfsFileSystemNfsExports.ProtoReflect.Descriptor instead.
 func (*AwsFsxOpenzfsFileSystemNfsExports) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AwsFsxOpenzfsFileSystemNfsExports) GetClientConfigurations() []*AwsFsxOpenzfsFileSystemNfsClientConfiguration {
@@ -547,10 +688,12 @@ func (x *AwsFsxOpenzfsFileSystemNfsExports) GetClientConfigurations() []*AwsFsxO
 type AwsFsxOpenzfsFileSystemNfsClientConfiguration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Client specification: an IP address, CIDR block, or wildcard (*).
+	// 1-128 characters.
 	//
 	// Examples: "*" (all clients), "10.0.0.0/16", "192.168.1.100"
 	Clients string `protobuf:"bytes,1,opt,name=clients,proto3" json:"clients,omitempty"`
-	// NFS mount options for the specified clients. At least one option is required.
+	// NFS mount options for the specified clients. At least one option is
+	// required; each option is 1-128 characters.
 	//
 	// Common options:
 	// - "rw" (read-write) or "ro" (read-only)
@@ -566,7 +709,7 @@ type AwsFsxOpenzfsFileSystemNfsClientConfiguration struct {
 
 func (x *AwsFsxOpenzfsFileSystemNfsClientConfiguration) Reset() {
 	*x = AwsFsxOpenzfsFileSystemNfsClientConfiguration{}
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +721,7 @@ func (x *AwsFsxOpenzfsFileSystemNfsClientConfiguration) String() string {
 func (*AwsFsxOpenzfsFileSystemNfsClientConfiguration) ProtoMessage() {}
 
 func (x *AwsFsxOpenzfsFileSystemNfsClientConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +734,7 @@ func (x *AwsFsxOpenzfsFileSystemNfsClientConfiguration) ProtoReflect() protorefl
 
 // Deprecated: Use AwsFsxOpenzfsFileSystemNfsClientConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsFsxOpenzfsFileSystemNfsClientConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AwsFsxOpenzfsFileSystemNfsClientConfiguration) GetClients() string {
@@ -630,7 +773,7 @@ type AwsFsxOpenzfsFileSystemUserAndGroupQuota struct {
 
 func (x *AwsFsxOpenzfsFileSystemUserAndGroupQuota) Reset() {
 	*x = AwsFsxOpenzfsFileSystemUserAndGroupQuota{}
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -642,7 +785,7 @@ func (x *AwsFsxOpenzfsFileSystemUserAndGroupQuota) String() string {
 func (*AwsFsxOpenzfsFileSystemUserAndGroupQuota) ProtoMessage() {}
 
 func (x *AwsFsxOpenzfsFileSystemUserAndGroupQuota) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -655,7 +798,7 @@ func (x *AwsFsxOpenzfsFileSystemUserAndGroupQuota) ProtoReflect() protoreflect.M
 
 // Deprecated: Use AwsFsxOpenzfsFileSystemUserAndGroupQuota.ProtoReflect.Descriptor instead.
 func (*AwsFsxOpenzfsFileSystemUserAndGroupQuota) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AwsFsxOpenzfsFileSystemUserAndGroupQuota) GetId() int32 {
@@ -683,42 +826,74 @@ var File_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto protoref
 
 const file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awsfsxopenzfsfilesystem/v1/spec.proto\x123dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x83\x13\n" +
+	">dev/planton/provider/aws/awsfsxopenzfsfilesystem/v1/spec.proto\x123dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb13\n" +
 	"\x1bAwsFsxOpenzfsFileSystemSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12=\n" +
-	"\x0fdeployment_type\x18\x02 \x01(\tB\x0f\x8a\xa6\x1d\vSINGLE_AZ_2H\x00R\x0edeploymentType\x88\x01\x01\x129\n" +
-	"\x14storage_capacity_gib\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(@R\x12storageCapacityGib\x128\n" +
-	"\x13throughput_capacity\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\x12throughputCapacity\x12|\n" +
+	"\x0fdeployment_type\x18\x02 \x01(\tB\x0f\x8a\xa6\x1d\vSINGLE_AZ_2H\x00R\x0edeploymentType\x88\x01\x01\x12B\n" +
+	"\x14storage_capacity_gib\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\x80 (@H\x01R\x12storageCapacityGib\x88\x01\x01\x12/\n" +
+	"\fstorage_type\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03SSDH\x02R\vstorageType\x88\x01\x01\x128\n" +
+	"\x13throughput_capacity\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\x12throughputCapacity\x12\x9c\x01\n" +
+	"\x18read_cache_configuration\x18\x06 \x01(\v2b.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemReadCacheConfigurationR\x16readCacheConfiguration\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x85\x01\n" +
-	"\x13preferred_subnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x129\n" +
-	"\x19endpoint_ip_address_range\x18\b \x01(\tR\x16endpointIpAddressRange\x12Z\n" +
-	"\x0froute_table_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\rrouteTableIds\x12q\n" +
+	"subnet_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x85\x01\n" +
+	"\x13preferred_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x129\n" +
+	"\x19endpoint_ip_address_range\x18\n" +
+	" \x01(\tR\x16endpointIpAddressRange\x12\x8a\x01\n" +
+	"\x0froute_table_ids\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x05\x92\x01\x02\x102\x88\xd4a\x9c\x02\x92\xd4a\x1dstatus.outputs.route_table_idR\rrouteTableIds\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x99\x01\n" +
-	"\x17disk_iops_configuration\x18\v \x01(\v2a.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemDiskIopsConfigurationR\x15diskIopsConfiguration\x12\x9f\x01\n" +
-	"\x19root_volume_configuration\x18\f \x01(\v2c.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfigurationR\x17rootVolumeConfiguration\x12Q\n" +
-	"\x1fautomatic_backup_retention_days\x18\r \x01(\x05B\x05\x8a\xa6\x1d\x010H\x01R\x1cautomaticBackupRetentionDays\x88\x01\x01\x12H\n" +
-	"!daily_automatic_backup_start_time\x18\x0e \x01(\tR\x1ddailyAutomaticBackupStartTime\x12/\n" +
-	"\x14copy_tags_to_backups\x18\x0f \x01(\bR\x11copyTagsToBackups\x12/\n" +
-	"\x14copy_tags_to_volumes\x18\x10 \x01(\bR\x11copyTagsToVolumes\x129\n" +
-	"\x11skip_final_backup\x18\x11 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x0fskipFinalBackup\x88\x01\x01\x12A\n" +
-	"\x1dweekly_maintenance_start_time\x18\x12 \x01(\tR\x1aweeklyMaintenanceStartTime:\xe7\x05\xbaH\xe3\x05\x1a\xc2\x01\n" +
-	"\x15deployment_type_valid\x12Edeployment_type must be 'SINGLE_AZ_1', 'SINGLE_AZ_2', or 'MULTI_AZ_1'\x1abthis.deployment_type == '' || this.deployment_type in ['SINGLE_AZ_1', 'SINGLE_AZ_2', 'MULTI_AZ_1']\x1a\xb0\x01\n" +
-	"\"preferred_subnet_requires_multi_az\x12Bpreferred_subnet_id can only be set for MULTI_AZ_1 deployment type\x1aF!has(this.preferred_subnet_id) || this.deployment_type == 'MULTI_AZ_1'\x1a\xbd\x01\n" +
+	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
+	"\tbackup_id\x18\r \x01(\tR\bbackupId\x12\x99\x01\n" +
+	"\x17disk_iops_configuration\x18\x0e \x01(\v2a.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemDiskIopsConfigurationR\x15diskIopsConfiguration\x12\x9f\x01\n" +
+	"\x19root_volume_configuration\x18\x0f \x01(\v2c.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfigurationR\x17rootVolumeConfiguration\x12Z\n" +
+	"\x1fautomatic_backup_retention_days\x18\x10 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18Z(\x00\x8a\xa6\x1d\x010H\x03R\x1cautomaticBackupRetentionDays\x88\x01\x01\x12\xff\x01\n" +
+	"!daily_automatic_backup_start_time\x18\x11 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xac\x01\n" +
+	"\x18daily_backup_time_format\x12Qdaily_automatic_backup_start_time must be in 24-hour HH:MM format (e.g., '05:00')\x1a=this == '' || this.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')R\x1ddailyAutomaticBackupStartTime\x12/\n" +
+	"\x14copy_tags_to_backups\x18\x12 \x01(\bR\x11copyTagsToBackups\x12/\n" +
+	"\x14copy_tags_to_volumes\x18\x13 \x01(\bR\x11copyTagsToVolumes\x129\n" +
+	"\x11skip_final_backup\x18\x14 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x0fskipFinalBackup\x88\x01\x01\x12\x91\x01\n" +
+	"\x11final_backup_tags\x18\x15 \x03(\v2e.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.FinalBackupTagsEntryR\x0ffinalBackupTags\x12%\n" +
+	"\x0edelete_options\x18\x16 \x03(\tR\rdeleteOptions\x12\xa4\x02\n" +
+	"\x1dweekly_maintenance_start_time\x18\x17 \x01(\tB\xe0\x01\xbaH\xdc\x01\xba\x01\xd8\x01\n" +
+	"\x1eweekly_maintenance_time_format\x12qweekly_maintenance_start_time must be in d:HH:MM format where d is 1 (Monday) through 7 (Sunday), e.g., '1:05:00'\x1aCthis == '' || this.matches('^[1-7]:([01][0-9]|2[0-3]):[0-5][0-9]$')R\x1aweeklyMaintenanceStartTime\x1aB\n" +
+	"\x14FinalBackupTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x98\x1e\xbaH\x94\x1e\x1a\x8b\x02\n" +
+	"\x15deployment_type_valid\x12ideployment_type must be 'SINGLE_AZ_1', 'SINGLE_AZ_2', 'SINGLE_AZ_HA_1', 'SINGLE_AZ_HA_2', or 'MULTI_AZ_1'\x1a\x86\x01!has(this.deployment_type) || this.deployment_type in ['SINGLE_AZ_1', 'SINGLE_AZ_2', 'SINGLE_AZ_HA_1', 'SINGLE_AZ_HA_2', 'MULTI_AZ_1']\x1a\x99\x01\n" +
+	"\x12storage_type_valid\x123storage_type must be 'SSD' or 'INTELLIGENT_TIERING'\x1aN!has(this.storage_type) || this.storage_type in ['SSD', 'INTELLIGENT_TIERING']\x1a\xda\x02\n" +
+	"\x1dstorage_capacity_ssd_contract\x12\x92\x01storage_capacity_gib is required for SSD storage (leave it unset only when restoring from backup_id) and must not be set for 'INTELLIGENT_TIERING'\x1a\xa3\x01(has(this.storage_type) && this.storage_type == 'INTELLIGENT_TIERING') ? !has(this.storage_capacity_gib) : (has(this.storage_capacity_gib) || this.backup_id != '')\x1a\x9d\x02\n" +
+	"\x1cintelligent_tiering_contract\x12estorage_type 'INTELLIGENT_TIERING' requires deployment_type 'MULTI_AZ_1' and read_cache_configuration\x1a\x95\x01!has(this.storage_type) || this.storage_type != 'INTELLIGENT_TIERING' || (this.deployment_type == 'MULTI_AZ_1' && has(this.read_cache_configuration))\x1a\xef\x01\n" +
+	"'read_cache_requires_intelligent_tiering\x12Uread_cache_configuration is only supported when storage_type is 'INTELLIGENT_TIERING'\x1am!has(this.read_cache_configuration) || (has(this.storage_type) && this.storage_type == 'INTELLIGENT_TIERING')\x1a\xf2\x01\n" +
+	"\x1fthroughput_capacity_single_az_1\x12]throughput_capacity for SINGLE_AZ_1 must be one of: 64, 128, 256, 512, 1024, 2048, 3072, 4096\x1apthis.deployment_type != 'SINGLE_AZ_1' || this.throughput_capacity in [64, 128, 256, 512, 1024, 2048, 3072, 4096]\x1a\x9e\x02\n" +
+	"\x18throughput_capacity_gen2\x12sthroughput_capacity for SINGLE_AZ_2 / MULTI_AZ_1 must be one of: 160, 320, 640, 1280, 2560, 3840, 5120, 7680, 10240\x1a\x8c\x01!(this.deployment_type in ['SINGLE_AZ_2', 'MULTI_AZ_1']) || this.throughput_capacity in [160, 320, 640, 1280, 2560, 3840, 5120, 7680, 10240]\x1a\x94\x02\n" +
+	" throughput_capacity_default_gen2\x12\x80\x01throughput_capacity must be one of: 160, 320, 640, 1280, 2560, 3840, 5120, 7680, 10240 (the SINGLE_AZ_2 default deployment type)\x1amhas(this.deployment_type) || this.throughput_capacity in [160, 320, 640, 1280, 2560, 3840, 5120, 7680, 10240]\x1a\xde\x01\n" +
+	"\"preferred_subnet_multi_az_contract\x12Qpreferred_subnet_id is required for MULTI_AZ_1 and can only be set for MULTI_AZ_1\x1aethis.deployment_type == 'MULTI_AZ_1' ? has(this.preferred_subnet_id) : !has(this.preferred_subnet_id)\x1a\xda\x01\n" +
+	"\x1fsubnet_count_matches_deployment\x12WMULTI_AZ_1 requires exactly two subnets; single-AZ deployment types require exactly one\x1a^this.deployment_type == 'MULTI_AZ_1' ? size(this.subnet_ids) == 2 : size(this.subnet_ids) == 1\x1a\xbd\x01\n" +
 	"#endpoint_ip_range_requires_multi_az\x12Hendpoint_ip_address_range can only be set for MULTI_AZ_1 deployment type\x1aLthis.endpoint_ip_address_range == '' || this.deployment_type == 'MULTI_AZ_1'\x1a\xa8\x01\n" +
-	"\x1droute_tables_require_multi_az\x12>route_table_ids can only be set for MULTI_AZ_1 deployment type\x1aGsize(this.route_table_ids) == 0 || this.deployment_type == 'MULTI_AZ_1'B\x12\n" +
-	"\x10_deployment_typeB\"\n" +
+	"\x1droute_tables_require_multi_az\x12>route_table_ids can only be set for MULTI_AZ_1 deployment type\x1aGsize(this.route_table_ids) == 0 || this.deployment_type == 'MULTI_AZ_1'\x1a\xbe\x01\n" +
+	" backup_restore_excludes_capacity\x12astorage_capacity_gib cannot be set when restoring from backup_id (capacity comes from the backup)\x1a7this.backup_id == '' || !has(this.storage_capacity_gib)\x1a\xa2\x01\n" +
+	"\x14delete_options_valid\x12Cdelete_options entries must be 'DELETE_CHILD_VOLUMES_AND_SNAPSHOTS'\x1aEthis.delete_options.all(o, o == 'DELETE_CHILD_VOLUMES_AND_SNAPSHOTS')\x1a\x8c\x02\n" +
+	"\x1ddisk_iops_ceiling_single_az_1\x12Cdisk_iops_configuration.iops for SINGLE_AZ_1 must be at most 160000\x1a\xa5\x01this.deployment_type != 'SINGLE_AZ_1' || !has(this.disk_iops_configuration) || !has(this.disk_iops_configuration.iops) || this.disk_iops_configuration.iops <= 160000\x1a\xad\x02\n" +
+	"\x1ddisk_iops_ceiling_single_az_2\x12Cdisk_iops_configuration.iops for SINGLE_AZ_2 must be at most 400000\x1a\xc6\x01!(this.deployment_type == 'SINGLE_AZ_2' || !has(this.deployment_type)) || !has(this.disk_iops_configuration) || !has(this.disk_iops_configuration.iops) || this.disk_iops_configuration.iops <= 400000B\x12\n" +
+	"\x10_deployment_typeB\x17\n" +
+	"\x15_storage_capacity_gibB\x0f\n" +
+	"\r_storage_typeB\"\n" +
 	" _automatic_backup_retention_daysB\x14\n" +
-	"\x12_skip_final_backup\"\x8d\x03\n" +
+	"\x12_skip_final_backup\"\x89\x04\n" +
+	"-AwsFsxOpenzfsFileSystemReadCacheConfiguration\x12'\n" +
+	"\vsizing_mode\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"sizingMode\x12'\n" +
+	"\bsize_gib\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02( H\x00R\asizeGib\x88\x01\x01:\xf8\x02\xbaH\xf4\x02\x1a\xce\x01\n" +
+	"\x11sizing_mode_valid\x12\\sizing_mode must be 'NO_CACHE', 'USER_PROVISIONED', or 'PROPORTIONAL_TO_THROUGHPUT_CAPACITY'\x1a[this.sizing_mode in ['NO_CACHE', 'USER_PROVISIONED', 'PROPORTIONAL_TO_THROUGHPUT_CAPACITY']\x1a\xa0\x01\n" +
+	"\x1esize_requires_user_provisioned\x12?size_gib can only be set when sizing_mode is 'USER_PROVISIONED'\x1a=!has(this.size_gib) || this.sizing_mode == 'USER_PROVISIONED'B\v\n" +
+	"\t_size_gib\"\xb9\x03\n" +
 	",AwsFsxOpenzfsFileSystemDiskIopsConfiguration\x12&\n" +
-	"\x04mode\x18\x01 \x01(\tB\r\x8a\xa6\x1d\tAUTOMATICH\x00R\x04mode\x88\x01\x01\x12\x12\n" +
-	"\x04iops\x18\x02 \x01(\x05R\x04iops:\x97\x02\xbaH\x93\x02\x1a\x84\x01\n" +
-	"\x0fiops_mode_valid\x12.mode must be 'AUTOMATIC' or 'USER_PROVISIONED'\x1aAthis.mode == '' || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']\x1a\x89\x01\n" +
-	"\x1eiops_requires_user_provisioned\x124iops can only be set when mode is 'USER_PROVISIONED'\x1a1this.iops == 0 || this.mode == 'USER_PROVISIONED'B\a\n" +
-	"\x05_mode\"\xae\a\n" +
+	"\x04mode\x18\x01 \x01(\tB\r\x8a\xa6\x1d\tAUTOMATICH\x00R\x04mode\x88\x01\x01\x12 \n" +
+	"\x04iops\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\x04iops\x88\x01\x01:\xac\x02\xbaH\xa8\x02\x1a\x84\x01\n" +
+	"\x0fiops_mode_valid\x12.mode must be 'AUTOMATIC' or 'USER_PROVISIONED'\x1aA!has(this.mode) || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']\x1a\x9e\x01\n" +
+	"\x1eiops_requires_user_provisioned\x124iops can only be set when mode is 'USER_PROVISIONED'\x1aF!has(this.iops) || (has(this.mode) && this.mode == 'USER_PROVISIONED')B\a\n" +
+	"\x05_modeB\a\n" +
+	"\x05_iops\"\xaf\a\n" +
 	".AwsFsxOpenzfsFileSystemRootVolumeConfiguration\x12A\n" +
 	"\x15data_compression_type\x18\x01 \x01(\tB\b\x8a\xa6\x1d\x04NONEH\x00R\x13dataCompressionType\x88\x01\x01\x12w\n" +
 	"\vnfs_exports\x18\x02 \x01(\v2V.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsExportsR\n" +
@@ -726,17 +901,18 @@ const file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDes
 	"\tread_only\x18\x03 \x01(\bR\breadOnly\x124\n" +
 	"\x0frecord_size_kib\x18\x04 \x01(\x05B\a\x8a\xa6\x1d\x03128H\x01R\rrecordSizeKib\x88\x01\x01\x12\x90\x01\n" +
 	"\x15user_and_group_quotas\x18\x05 \x03(\v2].dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemUserAndGroupQuotaR\x12userAndGroupQuotas\x123\n" +
-	"\x16copy_tags_to_snapshots\x18\x06 \x01(\bR\x13copyTagsToSnapshots:\xf6\x02\xbaH\xf2\x02\x1a\xb0\x01\n" +
-	"\x1bdata_compression_type_valid\x126data_compression_type must be 'NONE', 'ZSTD', or 'LZ4'\x1aYthis.data_compression_type == '' || this.data_compression_type in ['NONE', 'ZSTD', 'LZ4']\x1a\xbc\x01\n" +
-	"\x15record_size_kib_valid\x12Erecord_size_kib must be one of: 4, 8, 16, 32, 64, 128, 256, 512, 1024\x1a\\this.record_size_kib == 0 || this.record_size_kib in [4, 8, 16, 32, 64, 128, 256, 512, 1024]B\x18\n" +
+	"\x16copy_tags_to_snapshots\x18\x06 \x01(\bR\x13copyTagsToSnapshots:\xf7\x02\xbaH\xf3\x02\x1a\xb0\x01\n" +
+	"\x1bdata_compression_type_valid\x126data_compression_type must be 'NONE', 'ZSTD', or 'LZ4'\x1aY!has(this.data_compression_type) || this.data_compression_type in ['NONE', 'ZSTD', 'LZ4']\x1a\xbd\x01\n" +
+	"\x15record_size_kib_valid\x12Erecord_size_kib must be one of: 4, 8, 16, 32, 64, 128, 256, 512, 1024\x1a]!has(this.record_size_kib) || this.record_size_kib in [4, 8, 16, 32, 64, 128, 256, 512, 1024]B\x18\n" +
 	"\x16_data_compression_typeB\x12\n" +
-	"\x10_record_size_kib\"\xc7\x01\n" +
-	"!AwsFsxOpenzfsFileSystemNfsExports\x12\xa1\x01\n" +
-	"\x15client_configurations\x18\x01 \x03(\v2b.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsClientConfigurationB\b\xbaH\x05\x92\x01\x02\x10\x19R\x14clientConfigurations\"x\n" +
-	"-AwsFsxOpenzfsFileSystemNfsClientConfiguration\x12!\n" +
-	"\aclients\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aclients\x12$\n" +
-	"\aoptions\x18\x02 \x03(\tB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\x14R\aoptions\"\xff\x01\n" +
+	"\x10_record_size_kib\"\xc9\x01\n" +
+	"!AwsFsxOpenzfsFileSystemNfsExports\x12\xa3\x01\n" +
+	"\x15client_configurations\x18\x01 \x03(\v2b.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsClientConfigurationB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x19R\x14clientConfigurations\"\x84\x01\n" +
+	"-AwsFsxOpenzfsFileSystemNfsClientConfiguration\x12$\n" +
+	"\aclients\x18\x01 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\aclients\x12-\n" +
+	"\aoptions\x18\x02 \x03(\tB\x13\xbaH\x10\x92\x01\r\b\x01\x10\x14\"\ar\x05\x10\x01\x18\x80\x01R\aoptions\"\xff\x01\n" +
 	"(AwsFsxOpenzfsFileSystemUserAndGroupQuota\x12\x17\n" +
 	"\x02id\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x02id\x12D\n" +
 	"\x1astorage_capacity_quota_gib\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x17storageCapacityQuotaGib\x12\x1b\n" +
@@ -756,32 +932,36 @@ func file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_goTypes = []any{
 	(*AwsFsxOpenzfsFileSystemSpec)(nil),                    // 0: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec
-	(*AwsFsxOpenzfsFileSystemDiskIopsConfiguration)(nil),   // 1: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemDiskIopsConfiguration
-	(*AwsFsxOpenzfsFileSystemRootVolumeConfiguration)(nil), // 2: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfiguration
-	(*AwsFsxOpenzfsFileSystemNfsExports)(nil),              // 3: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsExports
-	(*AwsFsxOpenzfsFileSystemNfsClientConfiguration)(nil),  // 4: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsClientConfiguration
-	(*AwsFsxOpenzfsFileSystemUserAndGroupQuota)(nil),       // 5: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemUserAndGroupQuota
-	(*v1.StringValueOrRef)(nil),                            // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsFsxOpenzfsFileSystemReadCacheConfiguration)(nil),  // 1: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemReadCacheConfiguration
+	(*AwsFsxOpenzfsFileSystemDiskIopsConfiguration)(nil),   // 2: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemDiskIopsConfiguration
+	(*AwsFsxOpenzfsFileSystemRootVolumeConfiguration)(nil), // 3: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfiguration
+	(*AwsFsxOpenzfsFileSystemNfsExports)(nil),              // 4: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsExports
+	(*AwsFsxOpenzfsFileSystemNfsClientConfiguration)(nil),  // 5: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsClientConfiguration
+	(*AwsFsxOpenzfsFileSystemUserAndGroupQuota)(nil),       // 6: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemUserAndGroupQuota
+	nil,                         // 7: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.FinalBackupTagsEntry
+	(*v1.StringValueOrRef)(nil), // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_depIdxs = []int32{
-	6,  // 0: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 1: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 2: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.preferred_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 3: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.route_table_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 4: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 5: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.disk_iops_configuration:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemDiskIopsConfiguration
-	2,  // 6: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.root_volume_configuration:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfiguration
-	3,  // 7: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfiguration.nfs_exports:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsExports
-	5,  // 8: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfiguration.user_and_group_quotas:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemUserAndGroupQuota
-	4,  // 9: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsExports.client_configurations:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsClientConfiguration
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	1,  // 0: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.read_cache_configuration:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemReadCacheConfiguration
+	8,  // 1: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 2: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 3: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.preferred_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 4: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.route_table_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 5: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 6: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.disk_iops_configuration:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemDiskIopsConfiguration
+	3,  // 7: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.root_volume_configuration:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfiguration
+	7,  // 8: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.final_backup_tags:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.FinalBackupTagsEntry
+	4,  // 9: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfiguration.nfs_exports:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsExports
+	6,  // 10: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfiguration.user_and_group_quotas:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemUserAndGroupQuota
+	5,  // 11: dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsExports.client_configurations:type_name -> dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemNfsClientConfiguration
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_init() }
@@ -792,13 +972,14 @@ func file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_init() 
 	file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDesc), len(file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

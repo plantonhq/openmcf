@@ -91,6 +91,7 @@ import (
 	awselasticipv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticip/v1"
 	awseventbridgebusv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseventbridgebus/v1"
 	awseventbridgerulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awseventbridgerule/v1"
+	awsfsxdatarepositoryassociationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxdatarepositoryassociation/v1"
 	awsfsxlustrefilesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxlustrefilesystem/v1"
 	awsfsxontapfilesystemv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxontapfilesystem/v1"
 	awsfsxontapstoragevirtualmachinev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsfsxontapstoragevirtualmachine/v1"
@@ -566,6 +567,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsElasticacheUserGroup:                &awselasticacheusergroupv1.AwsElasticacheUserGroup{},
 	cloudresourcekind.CloudResourceKind_AwsEventBridgeBus:                      &awseventbridgebusv1.AwsEventBridgeBus{},
 	cloudresourcekind.CloudResourceKind_AwsEventBridgeRule:                     &awseventbridgerulev1.AwsEventBridgeRule{},
+	cloudresourcekind.CloudResourceKind_AwsFsxDataRepositoryAssociation:        &awsfsxdatarepositoryassociationv1.AwsFsxDataRepositoryAssociation{},
 	cloudresourcekind.CloudResourceKind_AwsFsxLustreFileSystem:                 &awsfsxlustrefilesystemv1.AwsFsxLustreFileSystem{},
 	cloudresourcekind.CloudResourceKind_AwsFsxOntapFileSystem:                  &awsfsxontapfilesystemv1.AwsFsxOntapFileSystem{},
 	cloudresourcekind.CloudResourceKind_AwsFsxOntapStorageVirtualMachine:       &awsfsxontapstoragevirtualmachinev1.AwsFsxOntapStorageVirtualMachine{},

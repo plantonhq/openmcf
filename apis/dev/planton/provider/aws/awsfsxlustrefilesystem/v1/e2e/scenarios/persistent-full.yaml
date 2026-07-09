@@ -1,0 +1,54 @@
+# Full-surface PERSISTENT_2 AwsFsxLustreFileSystem scenario: per-TiB
+# throughput, LZ4 compression, user-provisioned metadata IOPS, POSIX root
+# squash with an exempt administrative NID, automatic backups with an
+# explicit take-a-final-backup decision and final-backup tags, and a pinned
+# maintenance window. Excluded arms are recorded in profile.yaml
+# (INTELLIGENT_TIERING, HDD/drive-cache, EFA, backup restore, the legacy S3
+# link, CloudWatch logging).
+apiVersion: aws.planton.dev/v1
+kind: AwsFsxLustreFileSystem
+metadata:
+  name: planton-oss-e2e-awsfxl-persistent
+  id: planton-oss-e2e-awsfxl-persistent
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsfsxlustrefilesystem
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  deploymentType: PERSISTENT_2
+  storageCapacityGib: 1200
+  storageType: SSD
+  perUnitStorageThroughput: 125
+  dataCompressionType: LZ4
+  subnetId:
+    valueFrom:
+      kind: AwsSubnet
+      name: planton-oss-e2e-awssubnet-prereq-a
+      fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-prereq
+        fieldPath: status.outputs.security_group_id
+  rootSquashConfiguration:
+    rootSquash: "65534:65534"
+    noSquashNids:
+      - 10.0.1.6@tcp
+  metadataConfiguration:
+    mode: USER_PROVISIONED
+    iops: 1500
+  automaticBackupRetentionDays: 1
+  dailyAutomaticBackupStartTime: "04:00"
+  copyTagsToBackups: true
+  # Explicit false proves the presence-honest final-backup path end to end;
+  # the final backup is removed by the zero-orphan sweep after the lane.
+  skipFinalBackup: false
+  finalBackupTags:
+    planton-e2e: "true"
+  weeklyMaintenanceStartTime: "7:03:00"
