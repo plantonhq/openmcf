@@ -38,7 +38,7 @@ params:
 
 # ─── Cluster core ─────────────────────────────────────────────────────
 - name: cluster_name
-  description: EKS cluster name
+  description: EKS cluster name, unique within the environment (also the physical cluster name in AWS)
   value: eks-demo
 
 - name: cluster_version
@@ -92,14 +92,20 @@ params:
   description: EC2 KeyPair name (blank to disable SSH)
   value: ""
 
-# ─── Route 53 & ACM Cert (optional) ───────────────────────────────────
-- name: create_hosted_zone
-  description: Create Route 53 public zone
+# ─── Planton runner (private endpoint) ────────────────────────────────
+- name: enable_planton_runner
+  description: When the API endpoint is private, deploy a standing Planton runner inside the VPC so the platform can deploy and operate the in-cluster add-ons (outbound-only; no inbound exposure). Disable only if an in-VPC runner already serves this network
+  type: bool
+  value: true
+
+# ─── DNS (optional) ───────────────────────────────────────────────────
+- name: dnsEnabled
+  description: Provision a Route 53 public zone for domain_name and run external-dns wired to it, so Ingress and Service hostnames get DNS records automatically (delegate the zone's NS records at your registrar)
   type: bool
   value: false
 
 - name: domain_name
-  description: Apex domain managed in Route 53 (e.g. example.com)
+  description: Apex domain managed in Route 53 (e.g. example.com)
   value: example.com
 
 # ─── KMS secrets encryption ───────────────────────────────────────────
@@ -116,27 +122,6 @@ params:
 - name: certManagerEnabled
   type: bool
   value: true
-- name: elasticOperatorEnabled
-  type: bool
-  value: true
-- name: externalDnsEnabled
-  type: bool
-  value: true
-- name: externalSecretsEnabled
-  type: bool
-  value: true
 - name: ingressNginxEnabled
-  type: bool
-  value: true
-- name: istioEnabled
-  type: bool
-  value: true
-- name: kafkaOperatorEnabled
-  type: bool
-  value: true
-- name: postgresOperatorEnabled
-  type: bool
-  value: true
-- name: solrOperatorEnabled
   type: bool
   value: true

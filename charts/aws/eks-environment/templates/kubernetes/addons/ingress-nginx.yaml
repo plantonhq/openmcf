@@ -4,6 +4,11 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIngressNginx
 metadata:
   name: {{ values.cluster_name }}-ingress-nginx
+  # The platform publishes the cluster's Kubernetes connection at the
+  # env-qualified slug <env>-<cluster name>; naming it here binds this addon
+  # to that connection instead of the environment's default.
+  annotations:
+    planton.dev/connection: "{{ values.env }}-{{ values.cluster_name }}"
   relationships:
     - kind: AwsEksNodeGroup
       name: "{{ values.node_group_name }}"

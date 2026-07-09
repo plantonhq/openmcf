@@ -12,13 +12,13 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsEksAddon
 metadata:
-  name: "{{ values.env }}-{{ values.cluster_name }}-vpc-cni"
+  name: "{{ values.cluster_name }}-vpc-cni"
 spec:
   region: "{{ values.aws_region }}"
   clusterName:
     valueFrom:
       kind: AwsEksCluster
-      name: "{{ values.env }}-{{ values.cluster_name }}"
+      name: "{{ values.cluster_name }}"
       fieldPath: status.outputs.name
   addonName: vpc-cni
   resolveConflictsOnCreate: OVERWRITE
@@ -27,13 +27,13 @@ spec:
 apiVersion: aws.planton.dev/v1
 kind: AwsEksAddon
 metadata:
-  name: "{{ values.env }}-{{ values.cluster_name }}-kube-proxy"
+  name: "{{ values.cluster_name }}-kube-proxy"
 spec:
   region: "{{ values.aws_region }}"
   clusterName:
     valueFrom:
       kind: AwsEksCluster
-      name: "{{ values.env }}-{{ values.cluster_name }}"
+      name: "{{ values.cluster_name }}"
       fieldPath: status.outputs.name
   addonName: kube-proxy
   resolveConflictsOnCreate: OVERWRITE
@@ -42,7 +42,7 @@ spec:
 apiVersion: aws.planton.dev/v1
 kind: AwsEksAddon
 metadata:
-  name: "{{ values.env }}-{{ values.cluster_name }}-coredns"
+  name: "{{ values.cluster_name }}-coredns"
   # depends_on the node group (not just the cluster): coredns runs as a
   # Deployment, so on a cluster with no ready nodes the add-on sits
   # DEGRADED and its create times out. The spec only references the
@@ -56,7 +56,7 @@ spec:
   clusterName:
     valueFrom:
       kind: AwsEksCluster
-      name: "{{ values.env }}-{{ values.cluster_name }}"
+      name: "{{ values.cluster_name }}"
       fieldPath: status.outputs.name
   addonName: coredns
   resolveConflictsOnCreate: OVERWRITE

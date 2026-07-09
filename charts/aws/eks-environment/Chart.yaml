@@ -5,7 +5,7 @@ metadata:
 spec:
   selector:
     kind: platform
-  description: Configurable EKS Environment with custom VPC, Route 53, optional ACM CMK encryption, autoscaled managed node‑group and toggleable Kubernetes add‑ons.
+  description: Complete EKS environment in one run — custom VPC, cluster with public or private API endpoint (private includes an in-VPC Planton runner), autoscaled managed node-group, optional KMS secrets encryption, and the networking add-ons every cluster needs — ingress-nginx, cert-manager, and optional Route 53 DNS with external-dns.
   iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/provider/aws/awsekscluster/v1/assets/logo.svg
   isReady: true
   webLinks:

@@ -2,7 +2,19 @@
 apiVersion: aws.planton.dev/v1
 kind: AwsEksCluster
 metadata:
-  name: "{{ values.env }}-{{ values.cluster_name }}"
+  # The name is deliberately not environment-prefixed: the platform publishes
+  # this cluster's Kubernetes connection at the env-qualified slug
+  # <env>-<cluster name>, so the qualification lives on the connection, not
+  # the resource. Deploying the chart into multiple environments of one AWS
+  # account needs per-environment cluster_name values (EKS names are
+  # account+region scoped).
+  name: "{{ values.cluster_name }}"
+  {% if values.disable_public_endpoint | bool and values.enable_planton_runner | bool %}
+  # In-cluster work routes through the standing in-VPC runner: the platform
+  # copies this binding onto the cluster's published Kubernetes connection.
+  annotations:
+    planton.dev/runner: "{{ values.cluster_name }}-runner"
+  {% endif %}
 spec:
   region: "{{ values.aws_region }}"
   subnetIds:
@@ -19,6 +31,15 @@ spec:
       kind: AwsIamRole
       name: "{{ values.env }}-eks-cluster-role"
       fieldPath: status.outputs.role_arn
+  {% if values.disable_public_endpoint | bool and values.enable_planton_runner | bool %}
+  # Admit the in-VPC runner at the private API endpoint: this group carries
+  # an ingress rule (443) from the runner's own security group.
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: "{{ values.cluster_name }}-runner-access"
+        fieldPath: status.outputs.security_group_id
+  {% endif %}
   version: "{{ values.cluster_version }}"
   # The private endpoint is always on: nodes and in-VPC clients reach the
   # API server over private ENIs regardless of the public-endpoint choice.

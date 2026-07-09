@@ -8,7 +8,7 @@ spec:
   clusterName:
     valueFrom:
       kind: AwsEksCluster
-      name: "{{ values.env }}-{{ values.cluster_name }}"
+      name: "{{ values.cluster_name }}"
       fieldPath: status.outputs.name
   nodeRoleArn:
     valueFrom:
