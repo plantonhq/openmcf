@@ -98,6 +98,20 @@ generate-cloud-resource-kind-map:
 generate-kubernetes-types:
 	$(MAKE) -C pkg/kubernetes/kubernetestypes build
 
+# Regenerates pkg/protodocs/index.json.gz -- the proto-source documentation
+# `planton explain` serves offline. Generated protobuf code strips comments,
+# so the prose is distilled from a descriptor image built with source info.
+# Deterministic: unchanged protos regenerate a byte-identical artifact.
+.PHONY: generate-proto-docs
+generate-proto-docs:
+	mkdir -p build
+	cd apis && buf build -o ../build/proto-docs-image.binpb
+	go run ./pkg/protodocs/distiller \
+		--image build/proto-docs-image.binpb \
+		--out pkg/protodocs/index.json.gz \
+		--include dev/planton
+	rm -f build/proto-docs-image.binpb
+
 .PHONY: build-go
 build-go: fmt deps vet
 	GOOS=darwin GOARCH=amd64 ${build_cmd} -o ${build_dir}/${name}-darwin-amd64 .
@@ -110,7 +124,7 @@ build-go: fmt deps vet
 build-cli: build-go
 
 .PHONY: build
-build: protos generate-cloud-resource-kind-map bazel-mod-tidy bazel-gazelle bazel-build-cli build-cli e2e-matrix
+build: protos generate-cloud-resource-kind-map generate-proto-docs bazel-mod-tidy bazel-gazelle bazel-build-cli build-cli e2e-matrix
 
 ${build_dir}/${name}: build-go
 

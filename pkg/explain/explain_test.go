@@ -1,0 +1,265 @@
+package explain
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/crkreflect"
+	"google.golang.org/protobuf/reflect/protoreflect"
+)
+
+func fieldByName(fields []Field, name string) *Field {
+	for i := range fields {
+		if fields[i].Name == name {
+			return &fields[i]
+		}
+	}
+	return nil
+}
+
+func mustResource(t *testing.T, name string) Resource {
+	t.Helper()
+	res, err := ResolveKindName(name)
+	if err != nil {
+		t.Fatalf("resolve %s: %v", name, err)
+	}
+	return res
+}
+
+func TestRootReport_AwsVpc(t *testing.T) {
+	engine := DefaultEngine()
+	report, err := engine.Explain(mustResource(t, "AwsVpc"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if report.Kind != "AwsVpc" {
+		t.Errorf("kind = %q", report.Kind)
+	}
+	if report.ApiVersion != "aws.planton.dev/v1" {
+		t.Errorf("apiVersion = %q", report.ApiVersion)
+	}
+	if !strings.Contains(report.Doc, "CIDR") {
+		t.Errorf("spec doc not carried onto the report: %q", report.Doc)
+	}
+
+	region := fieldByName(report.Spec, "region")
+	if region == nil {
+		t.Fatal("region missing from spec")
+	}
+	if !region.Required {
+		t.Error("region should derive required from min_len")
+	}
+	if !strings.Contains(region.Doc, "region") {
+		t.Errorf("region doc missing: %q", region.Doc)
+	}
+	if fieldByName(report.Spec, "cidrBlock") == nil {
+		t.Error("spec fields must use protojson names (cidrBlock)")
+	}
+
+	if len(report.SpecRules) == 0 {
+		t.Error("AwsVpc cross-field CEL rules missing")
+	}
+
+	vpcId := fieldByName(report.Outputs, "vpcId")
+	if vpcId == nil {
+		t.Fatal("vpcId missing from outputs")
+	}
+	if !strings.Contains(vpcId.Doc, "status.outputs.vpc_id") {
+		t.Errorf("output doc missing: %q", vpcId.Doc)
+	}
+}
+
+func TestForeignKeyField(t *testing.T) {
+	engine := DefaultEngine()
+	report, err := engine.Explain(mustResource(t, "aws-security-group"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vpcId := fieldByName(report.Spec, "vpcId")
+	if vpcId == nil {
+		t.Fatal("vpcId missing from spec")
+	}
+	if vpcId.Type != "string | valueFrom" {
+		t.Errorf("type = %q", vpcId.Type)
+	}
+	if vpcId.RefKind != "AwsVpc" || vpcId.RefFieldPath != "status.outputs.vpc_id" {
+		t.Errorf("ref = %q %q", vpcId.RefKind, vpcId.RefFieldPath)
+	}
+	if len(vpcId.Fields) != 0 {
+		t.Error("foreign-key wrapper must be terminal, not expanded")
+	}
+}
+
+func TestEnumValueDocs(t *testing.T) {
+	engine := DefaultEngine()
+	report, err := engine.Explain(mustResource(t, "kubernetes-namespace"), []string{"spec", "podSecurityStandard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Field == nil {
+		t.Fatal("field view expected")
+	}
+	if report.Path != "KubernetesNamespace.spec.podSecurityStandard" {
+		t.Errorf("path = %q", report.Path)
+	}
+	var baseline *EnumValue
+	for i := range report.Field.Enum {
+		if report.Field.Enum[i].Name == "baseline" {
+			baseline = &report.Field.Enum[i]
+		}
+	}
+	if baseline == nil {
+		t.Fatal("baseline enum value missing")
+	}
+	if !strings.Contains(baseline.Doc, "Minimally restrictive") {
+		t.Errorf("enum value doc missing: %q", baseline.Doc)
+	}
+}
+
+func TestPathResolution(t *testing.T) {
+	engine := DefaultEngine()
+
+	t.Run("nested field", func(t *testing.T) {
+		report, err := engine.Explain(mustResource(t, "AwsVpc"), []string{"spec", "region"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if report.Field == nil || report.Field.Name != "region" {
+			t.Fatalf("resolved field = %+v", report.Field)
+		}
+	})
+
+	t.Run("envelope metadata resolves too", func(t *testing.T) {
+		report, err := engine.Explain(mustResource(t, "AwsVpc"), []string{"metadata"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if report.Field == nil || len(report.Field.Fields) == 0 {
+			t.Fatal("metadata should expand into its fields")
+		}
+	})
+
+	t.Run("unknown segment names the valid drill point", func(t *testing.T) {
+		_, err := engine.Explain(mustResource(t, "AwsVpc"), []string{"spec", "nope"})
+		if err == nil || !strings.Contains(err.Error(), `no field "nope"`) {
+			t.Fatalf("err = %v", err)
+		}
+		if !strings.Contains(err.Error(), "AwsVpc.spec") {
+			t.Fatalf("error should point at the last resolvable path: %v", err)
+		}
+	})
+
+	t.Run("scalar dead end", func(t *testing.T) {
+		_, err := engine.Explain(mustResource(t, "AwsVpc"), []string{"spec", "region", "deeper"})
+		if err == nil || !strings.Contains(err.Error(), "no fields to drill into") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+}
+
+// kindDispatcher is a test double for the kind-valued dispatch seam: it
+// claims AwsVpc's instanceTenancy field and resolves the next segment as a
+// cloud-resource kind -- structurally identical to a platform envelope's
+// kind-discriminated payload.
+type kindDispatcher struct{}
+
+func (kindDispatcher) Claims(fd protoreflect.FieldDescriptor) bool {
+	return fd.JSONName() == "instanceTenancy"
+}
+
+func (kindDispatcher) Resolve(segment string) (Resource, error) {
+	kind := crkreflect.KindFromString(segment)
+	if kind == cloudresourcekind.CloudResourceKind_unspecified {
+		return Resource{}, errors.Errorf("unknown kind %q", segment)
+	}
+	return KindResource(kind)
+}
+
+func (kindDispatcher) Hint() string { return "drill with .<kind> to see that kind's schema" }
+
+func TestDispatcher(t *testing.T) {
+	engine := DefaultEngine()
+	engine.Dispatchers = []Dispatcher{kindDispatcher{}}
+
+	t.Run("continues resolution across the boundary", func(t *testing.T) {
+		report, err := engine.Explain(mustResource(t, "AwsVpc"), []string{"spec", "instanceTenancy", "aws-alb"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if report.Kind != "AwsAlb" {
+			t.Errorf("dispatched kind = %q", report.Kind)
+		}
+		if report.Path != "AwsVpc.spec.instanceTenancy.aws-alb" {
+			t.Errorf("path should stay anchored on what the user typed: %q", report.Path)
+		}
+		if len(report.Spec) == 0 {
+			t.Error("dispatched report should carry the target's spec")
+		}
+	})
+
+	t.Run("drills into the dispatched schema", func(t *testing.T) {
+		report, err := engine.Explain(mustResource(t, "AwsVpc"),
+			[]string{"spec", "instanceTenancy", "aws-security-group", "spec", "vpcId"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if report.Field == nil || report.Field.RefKind != "AwsVpc" {
+			t.Fatalf("field across dispatch = %+v", report.Field)
+		}
+	})
+
+	t.Run("bare claimed field carries the hint", func(t *testing.T) {
+		report, err := engine.Explain(mustResource(t, "AwsVpc"), []string{"spec", "instanceTenancy"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, c := range report.Field.Constraints {
+			if strings.Contains(c, "drill with") {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("hint missing from constraints: %v", report.Field.Constraints)
+		}
+	})
+
+	t.Run("unknown dispatch segment errors", func(t *testing.T) {
+		_, err := engine.Explain(mustResource(t, "AwsVpc"), []string{"spec", "instanceTenancy", "not-a-kind"})
+		if err == nil || !strings.Contains(err.Error(), "unknown kind") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+}
+
+// TestAllKindsExplain is the walker's survival gate: every compiled-in kind
+// must produce a root report without panicking or erroring.
+func TestAllKindsExplain(t *testing.T) {
+	engine := DefaultEngine()
+	for _, kind := range crkreflect.KindsList() {
+		res, err := KindResource(kind)
+		if err != nil {
+			t.Fatalf("%s: %v", kind, err)
+		}
+		if _, err := engine.Explain(res, nil); err != nil {
+			t.Errorf("%s: %v", kind, err)
+		}
+	}
+}
+
+func TestRenderRootView(t *testing.T) {
+	engine := DefaultEngine()
+	report, err := engine.Explain(mustResource(t, "AwsVpc"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := Render(report)
+	for _, want := range []string{"KIND:", "AwsVpc", "VERSION:", "aws.planton.dev/v1", "SPEC:", "region <string> -required-", "OUTPUTS"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("rendered text missing %q", want)
+		}
+	}
+}
